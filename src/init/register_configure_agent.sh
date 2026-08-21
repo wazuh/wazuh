@@ -148,15 +148,15 @@ add_adress_block() {
     # Remove both server and legacy manager configuration blocks
     ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
-    # Only one <server> block is supported; if WAZUH_MANAGER carries several
+    # Only one <manager> block is supported; if WAZUH_MANAGER carries several
     # comma-separated addresses, the last one prevails (server rotation was
     # removed, #37702 restrictions 2/3), matching the client parser.
     last_index=$(( ${#ADDRESSES[@]} - 1 ))
     {
-        echo "    <server>"
+        echo "    <manager>"
         echo "      <address>${ADDRESSES[last_index]}</address>"
         echo "      <port>1517</port>"
-        echo "    </server>"
+        echo "    </manager>"
     } >> "${TMP_SERVER}"
 
     insert_into_agent_block "${TMP_SERVER}"

@@ -5,7 +5,7 @@
                 value: 10
             - auto_restart:
                 value: 'yes'
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: 127.0.0.1

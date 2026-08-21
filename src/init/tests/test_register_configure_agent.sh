@@ -93,9 +93,9 @@ missing_lines() {
 
 MULTILINE_CONF='<ossec_config>
   <agent>
-    <server>
+    <manager>
       <address>MANAGER_IP</address>
-    </server>
+    </manager>
     <enrollment>
       <enabled>yes</enabled>
       <port>1515</port>
@@ -110,7 +110,7 @@ MULTILINE_CONF='<ossec_config>
 
 SINGLE_LINE_CONF='<ossec_config>
   <agent>
-    <server><address>MANAGER_IP</address></server>
+    <manager><address>MANAGER_IP</address></manager>
     <enrollment><enabled>yes</enabled><port>1515</port></enrollment>
     <config-profile>CONFIG_PROFILE</config-profile>
   </agent>
@@ -122,9 +122,9 @@ SINGLE_LINE_CONF='<ossec_config>
 
 NO_ENROLLMENT_CONF='<ossec_config>
   <agent>
-    <server>
+    <manager>
       <address>MANAGER_IP</address>
-    </server>
+    </manager>
   </agent>
   <rootcheck>
     <disabled>no</disabled>
@@ -141,9 +141,9 @@ COMMENTED_CONF='<ossec_config>
   </agent>
   -->
   <agent>
-    <server>
+    <manager>
       <address>MANAGER_IP</address>
-    </server>
+    </manager>
   </agent>
 </ossec_config>
 '

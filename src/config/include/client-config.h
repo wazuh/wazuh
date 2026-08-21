@@ -86,7 +86,7 @@ typedef struct agent_report {
  * test harness zero-inits the whole agent struct, and the old parser
  * dereferenced a lazily-allocated nested pointer with nothing there yet).
  *
- * `manager_address`/`port`/`interface_index` (superseded by <agent><server>)
+ * `manager_address`/`port`/`interface_index` (superseded by <agent><manager>)
  * and `agent_certificate_path`/`agent_key_path`/`server_ca_path`/`ssl_cipher`
  * (superseded by <agent><ssl>) are gone: enrollment dials the same target
  * and presents the same TLS material as every other HTTPS endpoint, by
@@ -143,7 +143,7 @@ void Free_Agent(agent * config);
 bool Validate_Address(agent_server *servers);
 
 /**
- * @brief Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured.
+ * @brief Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface configured.
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returns true if successful and false if not success.
  */
@@ -171,7 +171,7 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
  * (https_client/src/moduleConfig.cpp) and the sync protocol (FULLSESSION_MAX_BYTES). */
 #define DEFAULT_BATCH_SIZE_BYTES (1024 * 1024)
 
-/* Port used when <server><port> is unspecified. Must mirror the manager's
+/* Port used when <manager><port> is unspecified. Must mirror the manager's
  * DEFAULT_HTTPS_PORT (src/remoted/remoted_module/src/http_server/httpServerConfig.cpp)
  * since the agent has no legacy-transport fallback to default to instead. */
 #define DEFAULT_HTTPS_CLIENT_PORT 1517

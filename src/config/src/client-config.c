@@ -14,7 +14,7 @@
 #include "config.h"
 #include "sec.h"
 
-int Read_Agent_Server(XML_NODE node, agent *logr);
+int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
 int Read_Agent_Batch(XML_NODE node, agent *logr);
 int Read_Agent_Report(XML_NODE node, agent_report *report);
@@ -34,7 +34,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char * rip = NULL;
 
     /* XML definitions */
-    const char *xml_agent_server = "server";
+    const char *xml_agent_manager = "manager";
     const char *xml_agent_ssl = "ssl";
     const char *xml_agent_batch = "batch";
     const char *xml_agent_stats_report = "stats_report";
@@ -72,7 +72,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         }
         /* Get manager IP */
         else if (strcmp(node[i]->element, xml_agent_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_ip);
+            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_agent_ip);
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
                 merror(INVALID_IP, node[i]->content);
@@ -81,7 +81,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_agent_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_hostname);
+            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_agent_hostname);
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
@@ -91,19 +91,19 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
         }
-        /* Get parameters for the configured server block */
-        else if (strcmp(node[i]->element, xml_agent_server) == 0) {
+        /* Get parameters for the configured manager block */
+        else if (strcmp(node[i]->element, xml_agent_manager) == 0) {
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
                 return (OS_INVALID);
             }
-            if (Read_Agent_Server(chld_node, logr) < 0) {
+            if (Read_Agent_Manager(chld_node, logr) < 0) {
                 OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_agent_ssl) == 0) {
-            /* HTTPS transport TLS settings (sibling of <server>, #37702 §10). */
+            /* HTTPS transport TLS settings (sibling of <manager>, #37702 §10). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_SSL(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -243,8 +243,8 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
  */
 int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
-    const char *xml_agent_server = "server";
-    const char *xml_agent_addr = "address";
+    const char *xml_client_server = "server";
+    const char *xml_client_addr = "address";
     char * address = NULL;
 
     agent * logr = (agent *)d1;
@@ -256,7 +256,7 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     for (int i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
 
-        if (!node[i]->element || strcmp(node[i]->element, xml_agent_server) != 0) {
+        if (!node[i]->element || strcmp(node[i]->element, xml_client_server) != 0) {
             continue;
         }
 
@@ -266,7 +266,7 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
 
         for (int j = 0; chld_node[j]; j++) {
             if (!chld_node[j]->element || !chld_node[j]->content ||
-                strcmp(chld_node[j]->element, xml_agent_addr) != 0) {
+                strcmp(chld_node[j]->element, xml_client_addr) != 0) {
                 continue;
             }
 
@@ -290,7 +290,7 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
     logr->server_count = 1;
 
-    minfo("<agent><server><address> is not configured. Using <client><server><address> '%s' "
+    minfo("<agent><manager><address> is not configured. Using <client><server><address> '%s' "
           "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
 
     return (0);
@@ -338,13 +338,13 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 }
 
 /**
- * @brief Read the <agent><server> block: the single manager endpoint.
+ * @brief Read the <agent><manager> block: the single manager endpoint.
  *
- * @param node Children of the <server> element.
+ * @param node Children of the <manager> element.
  * @param logr Agent configuration to fill.
  * @return 0 on success, OS_INVALID on error.
  */
-int Read_Agent_Server(XML_NODE node, agent * logr)
+int Read_Agent_Manager(XML_NODE node, agent * logr)
 {
     /* XML definitions */
     const char *xml_agent_addr = "address";
@@ -427,12 +427,12 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
         return (OS_INVALID);
     }
 
-    /* Single <server> block: the last one prevails (#37702 restriction 2) and
+    /* Single <manager> block: the last one prevails (#37702 restriction 2) and
      * server rotation is removed (restriction 3), so replace any previous entry
      * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
     if (logr->server) {
         if (logr->server_count > 0) {
-            mwarn("Only one <server> block is supported; the last one prevails.");
+            mwarn("Only one <manager> block is supported; the last one prevails.");
         }
         for (int k = 0; logr->server[k].rip; k++) {
             os_free(logr->server[k].rip);
@@ -455,7 +455,7 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
     logr->server_count = 1;
 
     if (!port_set) {
-        minfo("<agent><server><port> is not configured. Using the default port %d.",
+        minfo("<agent><manager><port> is not configured. Using the default port %d.",
               DEFAULT_HTTPS_REMOTE_PORT);
     }
 
@@ -836,7 +836,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
 
-    /* Superseded by <agent><server>/<agent><ssl> (#38465): enrollment now
+    /* Superseded by <agent><manager>/<agent><ssl> (#38465): enrollment now
      * dials the same target and presents the same TLS material as every
      * other HTTPS endpoint, so a second address/port/interface/cert/key/CA
      * for it is redundant by design. Recognized-but-ignored rather than
@@ -918,7 +918,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
                    strcmp(node[j]->element, xml_agent_certif_path) == 0 ||
                    strcmp(node[j]->element, xml_agent_key_path) == 0) {
             minfo("<%s> under <enrollment> is no longer used: enrollment reuses "
-                  "<agent><server>/<agent><ssl>. Ignoring.", node[j]->element);
+                  "<agent><manager>/<agent><ssl>. Ignoring.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
