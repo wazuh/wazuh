@@ -509,16 +509,55 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
         memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
     }
 
-    if (fsource = gzopen(source, "rb"), !fsource) {
+    // Not gzopen(): a symlink left at source would be followed, disclosing whatever it points to.
+    if (fsource = w_gzopen_nofollow(TMP_DIR, source + strlen(TMP_DIR) + 1, "rb"), !fsource) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", source);
         return -1;
     }
 
-    if (ftarget = wfopen(dest, "wb"), !ftarget) {
+    // dest still holds the literal template here: unlike _unsign() above, it was never expanded into a
+    // unique name, leaving a predictable path a symlink could be pre-planted at before wfopen() opened
+    // it. Expand it now and, on POSIX, reuse the descriptor mkstemp() already vetted instead of a second,
+    // name-based open that would reintroduce the same race.
+#ifndef WIN32
+    {
+        int fd;
+
+        if (fd = mkstemp(dest), fd < 0) {
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+            return -1;
+        }
+
+        if (chmod(dest, 0640) < 0) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "uncompress()", dest);
+            return -1;
+        }
+
+        if (ftarget = fdopen(fd, "wb"), !ftarget) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
+            return -1;
+        }
+    }
+#else
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
+        gzclose(fsource);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+        return -1;
+    }
+
+    if (ftarget = w_fopen_nofollow(TMP_DIR, dest + strlen(TMP_DIR) + 1, "wb"), !ftarget) {
         gzclose(fsource);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;
     }
+#endif
 
     {
         int length;
