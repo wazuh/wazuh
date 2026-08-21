@@ -16,6 +16,7 @@
  */
 
 #include "curlHandle.hpp"
+#include "moduleLog.hpp"
 
 #include <curl/curl.h>
 
@@ -297,7 +298,25 @@ namespace
                     return TransportStatus::OtherError;
                 }
 
-                return statusFromCurlCode(curl_easy_perform(m_handle));
+                // The CURLcode collapses into a coarse TransportStatus, so the cause
+                // is only visible here: keep libcurl's own message and log both.
+                curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, m_errorBuffer);
+
+                const CURLcode code = curl_easy_perform(m_handle);
+
+                if (code != CURLE_OK)
+                {
+                    char* url = nullptr;
+                    curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url);
+                    LOGFN_DEBUG1(m_logFn,
+                                 "libcurl failed on %s: (%d) %s: %s",
+                                 url != nullptr ? url : "unknown URL",
+                                 static_cast<int>(code),
+                                 curl_easy_strerror(code),
+                                 m_errorBuffer[0] != '\0' ? m_errorBuffer : "no further detail");
+                }
+
+                return statusFromCurlCode(code);
             }
 
             long responseCode() override
@@ -319,6 +338,11 @@ namespace
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
             HeaderCapture m_headerCapture {};
+            /// libcurl stores this pointer rather than copying it, and may read it
+            /// until curl_easy_cleanup(); a local in perform() would dangle across
+            /// the getinfo calls the caller makes after it returns.
+            char m_errorBuffer[CURL_ERROR_SIZE] {};
+            const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
     };
 } // namespace
 
