@@ -1559,3 +1559,229 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
     EXPECT_TRUE(complete) << "a trickling reader was cut off; the per-write timer did not rearm";
     EXPECT_EQ(decoded, payload);
 }
+
+// ---------------------------------------------------------------------------
+// Global endpoint prefix (issue #38491)
+// ---------------------------------------------------------------------------
+
+// The canonicalization contract of HttpServerConfig::globalPrefix, exercised without sockets.
+// The single runtime call site is RestinioHttpServer::start().
+TEST(NormalizeGlobalPrefixTest, IdentityForms)
+{
+    EXPECT_EQ(normalizeGlobalPrefix(""), "");
+    EXPECT_EQ(normalizeGlobalPrefix("/"), "");
+    EXPECT_EQ(normalizeGlobalPrefix("///"), "");
+}
+
+TEST(NormalizeGlobalPrefixTest, CanonicalForms)
+{
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager-5"), "/wazuh-manager-5");
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager-5/"), "/wazuh-manager-5");
+    EXPECT_EQ(normalizeGlobalPrefix("/p///"), "/p");
+    EXPECT_EQ(normalizeGlobalPrefix("/edge/wazuh-5"), "/edge/wazuh-5");
+    EXPECT_EQ(normalizeGlobalPrefix("/v5.0_beta~1"), "/v5.0_beta~1");
+    // Defensive: the C-side validator requires the leading '/', but a directly-constructed
+    // config gets the same canonical form instead of a corrupted concatenation.
+    EXPECT_EQ(normalizeGlobalPrefix("wazuh-manager-5"), "/wazuh-manager-5");
+}
+
+TEST(NormalizeGlobalPrefixTest, EmptyInteriorSegmentThrows)
+{
+    EXPECT_THROW(normalizeGlobalPrefix("/a//b"), std::invalid_argument);
+}
+
+TEST(NormalizeGlobalPrefixTest, InvalidCharactersThrow)
+{
+    for (const auto* bad : {"/p x", "/p?x", "/p#f", "/p:id", "/p(x)", "/p*", "/p%2F", "/p+q", "/p\\q"})
+    {
+        EXPECT_THROW(normalizeGlobalPrefix(bad), std::invalid_argument) << "accepted: " << bad;
+    }
+}
+
+namespace
+{
+    // Real TLS server with a RAW ("/wazuh-manager-5/", trailing slash on purpose: start() must
+    // normalize) global prefix and UNPREFIXED route registrations -- the transport applies the
+    // prefix. No auth: routing is what this suite measures; the signed path is
+    // globalPrefixE2E_test.cpp's job.
+    class GlobalPrefixTransportTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            if (std::system("openssl version >/dev/null 2>&1") != 0)
+            {
+                GTEST_SKIP() << "openssl not available to generate the test certificate";
+            }
+            m_cert = remoted::test::generateTestCertificate("global_prefix_transport");
+            if (!m_cert)
+            {
+                GTEST_SKIP() << "could not generate a throwaway TLS certificate";
+            }
+            m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(
+                std::vector<std::string> {m_cert->certPath, m_cert->keyPath});
+        }
+
+        // Starts a fresh server with the given raw prefix and the two canonical routes.
+        void startServer(const std::string& rawPrefix)
+        {
+            m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + m_portOffset++);
+            m_server = makeHttpServer();
+            m_server->addRoute(
+                Method::Get,
+                "/",
+                [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
+                { r->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+                /*countAgainstBudget=*/false);
+            // Echoes the target the handler observed: with the prefix in effect it must be the
+            // RAW prefixed target (the transport never rewrites it -- the auth layer signs it).
+            m_server->addRoute(Method::Post,
+                               "/echo",
+                               [](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> r)
+                               { r->send(HttpResponse::json(200, request->target)); });
+
+            HttpServerConfig config;
+            config.port = m_port;
+            config.certificatePath = m_cert->certPath;
+            config.privateKeyPath = m_cert->keyPath;
+            config.globalPrefix = rawPrefix;
+            ASSERT_NO_THROW(m_server->start(config));
+        }
+
+        void TearDown() override
+        {
+            if (m_server)
+            {
+                m_server->stop();
+            }
+        }
+
+        static int statusOf(const std::string& rawResponse)
+        {
+            const auto space = rawResponse.find(' ');
+            if (space == std::string::npos || space + 4 > rawResponse.size())
+            {
+                return 0;
+            }
+            return std::atoi(rawResponse.c_str() + space + 1);
+        }
+
+        std::string post(const std::string& target)
+        {
+            return remoted::test::sendRawOverTls(m_port,
+                                                 "POST " + target +
+                                                     " HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: "
+                                                     "0\r\nConnection: close\r\n\r\n");
+        }
+
+        std::uint16_t m_port {0};
+        int m_portOffset {0};
+        std::shared_ptr<IHttpServer> m_server;
+        std::optional<remoted::test::TestCertificate> m_cert;
+        std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+    };
+} // namespace
+
+TEST_F(GlobalPrefixTransportTest, PrefixedRoutesAnswerAndTargetStaysRaw)
+{
+    startServer("/wazuh-manager-5/"); // raw form: start() must normalize the trailing slash
+
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
+
+    const auto echoed = post("/wazuh-manager-5/echo?a=1&b=2");
+    EXPECT_EQ(statusOf(echoed), 200);
+    // The query survives and the target is the raw PREFIXED one -- never rewritten (D1).
+    EXPECT_NE(echoed.find("/wazuh-manager-5/echo?a=1&b=2"), std::string::npos) << echoed;
+}
+
+TEST_F(GlobalPrefixTransportTest, UnprefixedPathsAnswer404)
+{
+    startServer("/wazuh-manager-5/");
+
+    const auto health = remoted::test::sendGetRequest(m_port, "/");
+    EXPECT_EQ(statusOf(health), 404);
+    EXPECT_NE(health.find(R"({"error":"not_found"})"), std::string::npos) << health;
+
+    EXPECT_EQ(statusOf(post("/echo")), 404);
+}
+
+TEST_F(GlobalPrefixTransportTest, HealthAnswersBothSpellingsUnderPrefix)
+{
+    startServer("/wazuh-manager-5/");
+
+    // Pinned RESTinio behavior (routerSemanticsSpike_test.cpp S2/S9): the "/" route is
+    // registered as the BARE prefix, so both spellings -- and a query -- answer.
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5?probe=1")), 200);
+}
+
+TEST_F(GlobalPrefixTransportTest, CaseVariantMatches)
+{
+    startServer("/wazuh-manager-5/");
+
+    // Pinned RESTinio behavior (spike S3): express matching is case-insensitive. Same surface
+    // as today -- on authenticated routes the MAC covers the real bytes either way.
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER-5/")), 200);
+}
+
+TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysRaw)
+{
+    startServer("/wazuh-manager-5/");
+
+    // Pinned RESTinio behavior: the express router percent-DECODES ordinary bytes before
+    // matching ("%2D" == '-', so this spelling routes), while an encoded slash ("%2F") never
+    // becomes a path separator (spike S5, and the second assertion below). Predates the prefix
+    // -- it applies to every route equally -- and is harmless under the verbatim-MAC contract:
+    // the handler-observed target stays the RAW encoded bytes, so the MAC covers exactly what
+    // was sent either way.
+    const auto encoded = post("/wazuh%2Dmanager-5/echo");
+    EXPECT_EQ(statusOf(encoded), 200);
+    EXPECT_NE(encoded.find("/wazuh%2Dmanager-5/echo"), std::string::npos)
+        << "the transport must never hand the decoded spelling to handlers/auth: " << encoded;
+
+    EXPECT_EQ(statusOf(post("/wazuh-manager-5%2Fecho")), 404);
+}
+
+TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
+{
+    for (const auto* identity : {"", "/"})
+    {
+        startServer(identity);
+
+        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/")), 200) << "prefix: '" << identity << "'";
+        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 404)
+            << "prefix: '" << identity << "'";
+
+        const auto echoed = post("/echo?x=1");
+        EXPECT_EQ(statusOf(echoed), 200) << "prefix: '" << identity << "'";
+        EXPECT_NE(echoed.find("/echo?x=1"), std::string::npos) << echoed;
+
+        m_server->stop();
+    }
+}
+
+TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
+{
+    m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + 500);
+    m_server = makeHttpServer();
+    m_server->addRoute(Method::Get,
+                       "/",
+                       [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
+                       { r->send(HttpResponse::json(200, "{}")); });
+
+    HttpServerConfig config;
+    config.port = m_port;
+    config.certificatePath = m_cert->certPath;
+    config.privateKeyPath = m_cert->keyPath;
+    config.globalPrefix = "/bad prefix";
+
+    EXPECT_THROW(m_server->start(config), std::invalid_argument);
+
+    // Same discipline as StartWithMissingCertificateThrowsAndStaysStopped: a failed start leaves
+    // a stoppable, restartable server.
+    EXPECT_NO_THROW(m_server->stop());
+    config.globalPrefix = "/wazuh-manager-5";
+    ASSERT_NO_THROW(m_server->start(config));
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
+}

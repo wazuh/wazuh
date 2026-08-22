@@ -13,7 +13,9 @@
 
 #include "proc.hpp"
 
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace
 {
@@ -183,6 +185,54 @@ namespace remoted::http
         result.dualStackMode = resolveDualStackMode(config.dual_stack);
 
         return result;
+    }
+
+    std::string normalizeGlobalPrefix(std::string_view raw)
+    {
+        // "" / "/" / "///" all mean the root: no prefix. N slashes are treated alike because
+        // they all normalize to the same (empty) set of path segments.
+        if (raw.find_first_not_of('/') == std::string_view::npos)
+        {
+            return {};
+        }
+
+        std::string prefix;
+        if (raw.front() != '/')
+        {
+            // Defensive only: the C-side validator already rejects a missing leading slash, but
+            // a directly-constructed HttpServerConfig (tests, embedders) gets the same contract.
+            prefix.reserve(raw.size() + 1);
+            prefix.push_back('/');
+        }
+        prefix.append(raw);
+
+        while (prefix.back() == '/')
+        {
+            prefix.pop_back();
+        }
+
+        for (const char byte : prefix)
+        {
+            // RFC 3986 unreserved + '/'. Deliberately no '%' (the prefix is compared byte-exactly
+            // against the wire target, never percent-decoded) and none of path2regex's
+            // metacharacters (: ( ) * + ?), which would corrupt the concatenated route pattern.
+            const bool allowed = (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') ||
+                                 (byte >= '0' && byte <= '9') || byte == '.' || byte == '_' || byte == '~' ||
+                                 byte == '-' || byte == '/';
+            if (!allowed)
+            {
+                throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                            "': allowed characters are A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'");
+            }
+        }
+
+        if (prefix.find("//") != std::string::npos)
+        {
+            throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                        "': it contains an empty path segment ('//')");
+        }
+
+        return prefix;
     }
 
 } // namespace remoted::http

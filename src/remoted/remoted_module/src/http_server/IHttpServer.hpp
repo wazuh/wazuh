@@ -48,8 +48,11 @@ namespace remoted::http
     struct HttpRequest
     {
         Method method {Method::Get};
-        std::string target; ///< Request path (without query).
-        std::string body;   ///< Raw request body.
+        /// Raw request target (path + query, exactly as received on the wire). The auth layer
+        /// signs this value verbatim -- global endpoint prefix included when one is configured
+        /// (HttpServerConfig::globalPrefix) -- so it is never normalized or rewritten.
+        std::string target;
+        std::string body; ///< Raw request body.
         /// Header name -> value, EXACTLY as the transport reports it (a well-known field name like
         /// "Authorization" or "Content-Type" is NOT necessarily lowercased -- see
         /// RestinioHttpServer.cpp's makeHttpRequest()). Always look these up via
@@ -241,10 +244,20 @@ namespace remoted::http
     {
         std::string bindAddress {"127.0.0.1"}; ///< Listen address.
         std::uint16_t port {1517};             ///< Listen port.
-        std::string certificatePath;           ///< TLS certificate chain (PEM) path.
-        std::string privateKeyPath;            ///< TLS private key (PEM) path.
-        std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
-        std::string ciphers;                   ///< TLS 1.3 ciphersuite override
+        /// Global endpoint prefix every registered route is served under (e.g.
+        /// "/wazuh-manager-5"). Stored raw; RestinioHttpServer::start() canonicalizes it via
+        /// normalizeGlobalPrefix() (leading '/', no trailing '/'; "" == "/" == no prefix) and
+        /// throws std::invalid_argument for an invalid value. With a prefix set, unprefixed
+        /// paths answer 404. The request target is NOT rewritten: handlers and the auth layer
+        /// keep seeing the full path exactly as received, and agents sign that full (prefixed)
+        /// target -- so a proxy must forward the path untouched, and a prefix mismatch between
+        /// agent and manager surfaces as 404. Public HTTPS listener only (the local admin UDS
+        /// server is never prefixed). Note: the prefix consumes part of maxUrlSize.
+        std::string globalPrefix {};
+        std::string certificatePath; ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;  ///< TLS private key (PEM) path.
+        std::string caPath;          ///< CA bundle (PEM) used to verify client certificates.
+        std::string ciphers;         ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
@@ -306,7 +319,10 @@ namespace remoted::http
          * @brief Register a route. Must be called before start().
          *
          * @param method            HTTP verb to match.
-         * @param path              Path to match (implementation routing syntax).
+         * @param path              Path to match (implementation routing syntax). Must start with
+         *                          '/'; it is the route's LOGICAL path -- the transport serves it
+         *                          under HttpServerConfig::globalPrefix automatically, so callers
+         *                          never prefix it themselves.
          * @param handler           Handler invoked on a match.
          * @param countAgainstBudget When false, the route is exempt from the in-flight byte budget
          *                           (no reservation, never shed with 503). Use for tiny liveness
