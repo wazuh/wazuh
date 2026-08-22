@@ -126,6 +126,10 @@ echo "=== preflight ==="
     exit 1
 }
 use_mode none
+# Explicit identity prefix: every group below assumes unprefixed endpoints except the #38491
+# one, which flips it and flips it back. Makes the suite self-contained regardless of the
+# manager's current <global_prefix>.
+use_prefix /
 use_config both_topologies
 require "$NODE1" "manager node 1"
 wait_for_node "$NODE2" "manager node 2" || exit 1
@@ -331,21 +335,19 @@ note "Both modes were affected identically before the fix: the defect was in the
 note "not in the peer-address check that 'full' adds."
 use_mode none
 
-# remoted supports three modes: none, certificate and full. Anything else is not a mode -- it is
-# an invalid value, ignored with a warning, leaving verification_mode unset. This group checks
-# that an unsupported value cannot take the listener down.
-group "an unsupported verification_mode is ignored, not fatal"
+# remoted supports three modes: none, certificate and full. Anything else is REJECTED at config
+# parse time ("Reject, don't fall back: a typo must not silently disable certificate
+# verification", remote-config.c) -- remoted refuses to start, and 'wazuh-manager-remoted -t'
+# names the value. This group used to assert the OLD behavior (ignored with a warning) and went
+# stale when the parser was hardened; it now asserts the rejection.
+group "an unsupported verification_mode is FATAL at config parse"
 use_mode unsupported_value
-# set_manager_verification_mode.sh also writes <ca>, and remoted's documented special case is that
-# a configured <ca> with no usable <verification_mode> infers 'certificate'. So the listener does
-# keep serving -- it just asks for a client certificate, which is the whole point of the inference.
-check "without a client certificate: mTLS demanded"  "TLS_ERROR" "$(status --url "$NODE1")"
-check "with the agent certificate: still serving"     "202" "$(status --url "$NODE1" --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
-if grep -q "9001.*verification_mode" /var/wazuh-manager/logs/wazuh-manager.log 2>/dev/null; then
-    note "The manager warned about the value instead of accepting it:"
-    grep "9001.*verification_mode" /var/wazuh-manager/logs/wazuh-manager.log | tail -1 | sed 's/^/        /'
+check "listener never comes up with the bad value"    "TLS_ERROR" "$(status --url "$NODE1")"
+if /var/wazuh-manager/bin/wazuh-manager-remoted -t 2>&1 | grep -q "verification_mode"; then
+    note "-t names the offending option:"
+    /var/wazuh-manager/bin/wazuh-manager-remoted -t 2>&1 | grep "verification_mode" | head -1 | sed 's/^/        /'
 else
-    note "NOTE: no (9001) warning naming verification_mode found in wazuh-manager.log."
+    note "NOTE: -t did not name verification_mode; check the parser's error message."
 fi
 use_mode none
 
