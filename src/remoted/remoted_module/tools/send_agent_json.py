@@ -94,6 +94,25 @@ MAX_FUTURE_SKEW_SECONDS = 30
 MAX_BODY_SIZE = 10 * 1024 * 1024
 
 
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
+
 def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
     """Parses client.keys the same way Keystore does: 'id name ip key' lines, '#'/' '-prefixed
     lines are comments, a name starting with '#'/'!' means removed. Returns raw key bytes."""
@@ -320,7 +339,7 @@ def run_all(base_url, agent_id, agent_key):
     print(f"Running {total} scenarios against {base_url} (agent {agent_id})\n")
 
     results = []
-    for target in ENDPOINTS:
+    for target in (prefixed(endpoint) for endpoint in ENDPOINTS):
         for name, expected, build in SCENARIOS:
             results.append(run_scenario(base_url, agent_id, agent_key, target, name, expected, build))
         print()
@@ -333,6 +352,10 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default="",
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--endpoint", default="stats", choices=("stats", "config"),
@@ -348,13 +371,15 @@ def main():
                         help="Ignore --body/--tamper/--endpoint and run every scenario against "
                              "BOTH /stats and /config.")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = normalize_global_prefix(args.global_prefix)
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
     if args.all:
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1
 
-    method, target, protocol_version = "POST", f"/{args.endpoint}", "1"
+    method, target, protocol_version = "POST", prefixed(f"/{args.endpoint}"), "1"
     signed_body = args.body.encode() if args.body is not None else default_body(target)
     timestamp = int(time.time())
     headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)

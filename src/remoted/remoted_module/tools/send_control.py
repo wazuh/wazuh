@@ -70,6 +70,25 @@ MAX_CONTROL_BODY_SIZE = 64 * 1024
 CONN_CLOSED = "CONN_CLOSED"
 
 
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
+
 def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
     """Parses client.keys the same way Keystore does: 'id name ip key'
     lines, '#'/' '-prefixed lines are comments, a name starting with '#'/'!' means
@@ -118,7 +137,7 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 # controlEndpoint.cpp and authMiddleware.cpp can return is covered here.
 
 def scenario_valid_startup(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -129,7 +148,7 @@ def scenario_valid_startup(agent_id, agent_key):
 
 
 def scenario_valid_notify(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -142,7 +161,7 @@ def scenario_valid_notify(agent_id, agent_key):
 
 
 def scenario_valid_notify_with_host(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -166,7 +185,7 @@ def scenario_valid_notify_with_host(agent_id, agent_key):
 
 
 def scenario_valid_shutdown(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "shutdown"
     }
@@ -176,21 +195,21 @@ def scenario_valid_shutdown(agent_id, agent_key):
 
 
 def scenario_invalid_json(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body = b'{not valid json}'
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
 
 
 def scenario_empty_body(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body = b''
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
 
 
 def scenario_unknown_message_type(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "unknown_type"
     }
@@ -200,7 +219,7 @@ def scenario_unknown_message_type(agent_id, agent_key):
 
 
 def scenario_invalid_version_startup(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": "999.0.0"  # version higher than manager's
@@ -211,7 +230,7 @@ def scenario_invalid_version_startup(agent_id, agent_key):
 
 
 def scenario_malformed_version(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": "not-a-version"
@@ -222,7 +241,7 @@ def scenario_malformed_version(agent_id, agent_key):
 
 
 def scenario_oversized_hostname(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -240,7 +259,7 @@ def scenario_oversized_hostname(agent_id, agent_key):
 
 
 def scenario_invalid_mac(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     signed_body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -256,7 +275,7 @@ def scenario_invalid_mac(agent_id, agent_key):
 
 
 def scenario_missing_protocol_version(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -268,7 +287,7 @@ def scenario_missing_protocol_version(agent_id, agent_key):
 
 
 def scenario_missing_authorization(_agent_id, _agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -278,7 +297,7 @@ def scenario_missing_authorization(_agent_id, _agent_key):
 
 
 def scenario_expired_request(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -290,7 +309,7 @@ def scenario_expired_request(agent_id, agent_key):
 
 
 def scenario_future_request(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -303,7 +322,7 @@ def scenario_future_request(agent_id, agent_key):
 
 def scenario_body_too_large(agent_id, agent_key):
     # Between control endpoint's body cap (64 KiB) and AuthConfig's cap (10 MiB)
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION,
@@ -328,7 +347,7 @@ def scenario_url_too_large(agent_id, agent_key):
 
 def scenario_header_value_too_large(agent_id, agent_key):
     # max_field_value_size is 8192
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -399,6 +418,10 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default="",
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--type", choices=["startup", "notify", "shutdown"],
@@ -413,6 +436,8 @@ def main():
                         help="Ignore other options and run every success/failure scenario "
                              "(one per distinct error reachable through this endpoint).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = normalize_global_prefix(args.global_prefix)
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
@@ -422,7 +447,7 @@ def main():
     if not args.type:
         parser.error("--type is required (or use --all to run all scenarios)")
 
-    method, target, protocol_version = "POST", "/control", "1"
+    method, target, protocol_version = "POST", prefixed("/control"), "1"
 
     # Build the appropriate body based on the type
     body_dict = {"type": args.type}

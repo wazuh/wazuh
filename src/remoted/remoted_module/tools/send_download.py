@@ -61,6 +61,25 @@ class ManagerPaths:
         self.wpk_dir = f"{self.home}/var/upgrade"
 
 
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
+
 def multigroup_dir_name(selector: str) -> str:
     """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 8).
     Replicated, not queried -- the manager derives it the same way."""
@@ -113,8 +132,8 @@ def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> Do
     """Signs and sends one /download request, consuming the body as a stream so the
     client never holds the whole file either."""
     result = DownloadResult()
-    url = base_url.rstrip("/") + TARGET
-    headers = _auth_header(agent_id, agent_key, "1", "POST", TARGET, int(time.time()), body)
+    url = base_url.rstrip("/") + prefixed(TARGET)
+    headers = _auth_header(agent_id, agent_key, "1", "POST", prefixed(TARGET), int(time.time()), body)
 
     try:
         response = requests.post(url, headers=headers, data=body, verify=False, stream=True, timeout=timeout)
@@ -425,6 +444,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default="",
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
                         help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
@@ -446,6 +469,8 @@ def main():
                         help="Group used by the 404 scenario; must not exist on the manager.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = normalize_global_prefix(args.global_prefix)
 
     paths = ManagerPaths(args.manager_home)
 
@@ -481,7 +506,7 @@ def main():
         raise SystemExit("--resource-id is required for a wpk download")
 
     body = request_body(args.resource_type, resource_id)
-    print(f"--> POST {args.url.rstrip('/')}{TARGET}  {body.decode()}")
+    print(f"--> POST {args.url.rstrip('/')}{prefixed(TARGET)}  {body.decode()}")
 
     watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
     with watcher:

@@ -68,6 +68,25 @@ def derive_key(password: str) -> bytes:
     return hkdf.derive(password.encode())
 
 
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
+
 def sign_request(key: bytes, method: str, request_target: str, timestamp: int, body: bytes) -> str:
     """Builds the WazuhEnroll canonical byte sequence and returns its lowercase-hex AES-CMAC."""
     c = cmac.CMAC(algorithms.AES(key))
@@ -116,7 +135,7 @@ DEFAULT_TIMEOUT_SECONDS = 20
 
 
 def send(base_url, body, headers, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
-    url = base_url.rstrip("/") + "/enroll"
+    url = base_url.rstrip("/") + prefixed("/enroll")
     # protocol-version first so a scenario can override it (pass a different value) or drop it
     # (pass None) -- every other scenario gets the valid one without having to say so. /enroll
     # validates this header before anything else, so omitting it here would turn every scenario
@@ -135,12 +154,12 @@ def scenario_valid(key, name, timestamp):
     # a tool meant for repeatable testing must not require a fresh client.keys between runs.
     unique_name = f"{name}-{timestamp}"
     body = build_body(unique_name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", timestamp, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), timestamp, body), body
 
 
 def scenario_tampered_body(key, name, timestamp):
     signed_body = build_body(name, "5.0.0")
-    headers = _auth_header(key, "POST", "/enroll", timestamp, signed_body)
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, signed_body)
     tampered_body = build_body(name + "-tampered", "5.0.0")
     return headers, tampered_body
 
@@ -148,7 +167,7 @@ def scenario_tampered_body(key, name, timestamp):
 def scenario_wrong_key(_key, name, timestamp):
     wrong_key = bytes(32)  # all-zero key -- never the real derived key
     body = build_body(name, "5.0.0")
-    return _auth_header(wrong_key, "POST", "/enroll", timestamp, body), body
+    return _auth_header(wrong_key, "POST", prefixed("/enroll"), timestamp, body), body
 
 
 def scenario_missing_authorization(_key, name, _timestamp):
@@ -164,30 +183,30 @@ def scenario_malformed_authorization(_key, name, _timestamp):
 def scenario_expired(key, name, _timestamp):
     ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 5)
     body = build_body(name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", ts, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), ts, body), body
 
 
 def scenario_future(key, name, _timestamp):
     ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 5)
     body = build_body(name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", ts, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), ts, body), body
 
 
 def scenario_missing_name(key, _name, timestamp):
     body = json.dumps({"version": "5.0.0"}).encode()
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
 def scenario_invalid_ip(key, name, timestamp):
     body = build_body(name, "5.0.0", ip="not-an-ip")
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
 def scenario_malformed_json(key, _name, timestamp):
     body = b"not valid json{{{"
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
@@ -258,6 +277,10 @@ def run_all(base_url, key, name, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default="",
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path.")
     parser.add_argument("--name", default="test-agent", help="Agent name to enroll.")
     parser.add_argument("--version", default="5.0.0", help="Agent version to report.")
     parser.add_argument("--groups", help="Comma-separated centralized group(s).")
@@ -284,6 +307,8 @@ def main():
                              "default of 15s -- raise this if the manager's authd_connect_timeout/"
                              "authd_response_timeout were themselves raised).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = normalize_global_prefix(args.global_prefix)
 
     if args.password_file and args.password is not None:
         parser.error("--password and --password-file are mutually exclusive")
@@ -306,7 +331,7 @@ def main():
 
     headers = {}
     if key:
-        headers = _auth_header(key, "POST", "/enroll", timestamp, signed_body)
+        headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, signed_body)
 
     sent_body = signed_body
     if args.tamper:

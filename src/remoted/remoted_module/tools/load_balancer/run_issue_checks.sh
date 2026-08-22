@@ -89,6 +89,7 @@ group() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 use_config() { "$HERE/start_load_balancer.sh" "$1" "${2:-8443}" >/dev/null 2>&1; }
 use_mode()   { "$HERE/set_manager_verification_mode.sh" "$1" >/dev/null 2>&1; }
+use_prefix() { "$HERE/set_manager_global_prefix.sh" "$1" >/dev/null 2>&1; }
 
 # Waits until a node actually answers a signed request, not merely until its port is open.
 # remoted needs about 15 s after start (it retries wazuh-db first), and NGINX marks a backend down
@@ -187,6 +188,17 @@ check "merge_slashes on does NOT break it (//)"     "404" "$(status --url "$TERM
 check "merge_slashes on does NOT break it (..)"     "404" "$(status --url "$TERM" --target '/foo/../stateless')"
 note "404 rather than 401 is the proof: the target arrived verbatim, so the signature still matched."
 
+# ============================================================ issue #38491: global endpoint prefix
+group "Global endpoint prefix (issue #38491) -- configured on both ends, never rewritten"
+use_prefix /wazuh-manager-5/
+use_config works_prefix_passthrough
+check "prefixed target, signed exactly as sent"     "202" "$(status --url "$TERM" --target /wazuh-manager-5/stateless)"
+check "health probe moved under the prefix"         "200" "$(status --url "$TERM" --no-auth --method GET --target /wazuh-manager-5/ --body '')"
+check "unprefixed path no longer exists"            "404" "$(status --url "$NODE1" --target /stateless)"
+check "signature minted for the BARE path -> 401"   "401" "$(status --url "$NODE1" --target /wazuh-manager-5/stateless --signed-target /stateless)"
+note "The probe signs --target verbatim, so the prefix works with no probe changes. The proxy's"
+note "only job is passthrough: location /wazuh-manager-5/ + proxy_pass with NO URI component."
+use_prefix /
 use_config both_topologies
 group "Unsigned field: Content-Encoding (issue: are additional signed fields needed?)"
 check "control: zstd body with its header"          "202" "$(status --url "$TERM" --zstd)"

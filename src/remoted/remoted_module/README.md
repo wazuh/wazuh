@@ -1769,7 +1769,7 @@ python3 tools/send_stateless.py            # one valid signed request -> 200
 python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
-# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys
+# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
 ```
 
 ### Manual / end-to-end (`tools/send_agent_json.py`)
@@ -1798,7 +1798,7 @@ python3 tools/send_agent_json.py --endpoint config        # same, against /confi
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
 python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
-# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
+# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
 ```
 
 `--all` runs every scenario against **both** endpoints on purpose: they are deliberate near-duplicates
@@ -1827,7 +1827,7 @@ python3 tools/send_scan_vd.py --auto-offset                 # looks up the curre
 python3 tools/send_scan_vd.py --feed-offset 1                # a deliberately wrong offset -> 409,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --all                          # every /scan/vd success/failure scenario
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
+# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --global-prefix
 ```
 
 `send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling
