@@ -6,7 +6,7 @@
   "password": "admin",
   "ssl": {
     "certificate_authorities": [
-      "/workspaces/devContainer/wazuh/src/engine/tools/devContainer/e2e/certs/root-ca.pem"
+      "/workspaces/devContainer/wazuh/tools/devContainer/e2e/certs/root-ca.pem"
     ]
   }
 }

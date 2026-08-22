@@ -54,8 +54,8 @@ CLEANUP_AFTER=false
 KEEP_AGENTS=false
 METRICS_INTERVAL=1
 
-MONITOR_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor.py"
-GRAPHICS_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor_graphics_generator.py"
+MONITOR_PY="$SCRIPT_DIR/../devContainer/scripts/monitor.py"
+GRAPHICS_PY="$SCRIPT_DIR/../devContainer/scripts/monitor_graphics_generator.py"
 
 PYTHON="${PYTHON:-python3}"
 if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
