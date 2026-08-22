@@ -117,7 +117,8 @@ transmitted:
 WAZUH-REQUEST\n
 <protocol-version>\n
 <uppercase-method>\n
-<request-target>\n      (raw path + query, exactly as sent — no normalization)
+<request-target>\n      (raw path + query, exactly as sent — no normalization; when a
+                         global_prefix is configured, the prefixed path IS the target)
 <agent-id>\n
 <timestamp>\n
 <request-body>          (exact body bytes, no trailing newline)
@@ -282,6 +283,14 @@ the intermediary — see [Load balancers](load-balancers/README.md).
 
 The listener exposes **nine** agent-facing routes. Every one of them except `GET /` and
 `POST /enroll` is authenticated with the AES-CMAC scheme above.
+
+Every path on this page is the endpoint's **logical** path. When
+[`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) is configured (freshly
+generated configurations ship `/wazuh-manager-5/`), the server exposes each endpoint under that
+prefix — `POST /stateless` becomes `POST /wazuh-manager-5/stateless`, the health probe becomes
+`GET /wazuh-manager-5/` (with or without the trailing slash) — and the unprefixed paths answer
+`404`. The prefixed path is what travels on the wire, so it is also what the request signature
+covers: agents send **and sign** the full prefixed target.
 
 The module's own statistics are **not** served here: they live on a separate manager-local Unix
 socket (`GET /`, `GET /metrics` on `queue/sockets/remoted-module.sock`), so they are never reachable
@@ -978,7 +987,7 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
   WAZUH-ENROLL\n
   <protocol-version>\n    (the header's value, already validated -- today always 1)
   <uppercase-method>\n
-  <request-target>\n      (raw path + query, exactly as sent)
+  <request-target>\n      (raw path + query, exactly as sent — global_prefix included when configured)
   <unix-timestamp>\n
   <request-body>          (exact body bytes, no trailing newline)
   ```

@@ -127,18 +127,27 @@ decrypted traffic.
 
 These come from the protocol, so they hold for NGINX, HAProxy, an ALB or anything else.
 
-### 4.1. remoted cannot live under a URL path prefix
+### 4.1. The proxy must never rewrite the path — prefixes are CONFIGURED, not rewritten
 
-Publishing it as `https://lb/wazuh/...` requires the proxy to rewrite the path, and the path is
-signed:
+The request path is signed, so any proxy-side rewrite breaks every request:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted recomputes over<br/>'/stateless' → MISMATCH → 401"]
+    A["agent signs<br/>'/wazuh-manager-5/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted recomputes over<br/>'/stateless' → MISMATCH → 401"]
 ```
 
-Give remoted its **own port or hostname**. Query strings, extra headers and repeated slashes are
-fine — they are forwarded unchanged as long as the proxy does not rewrite the target.
+To publish remoted under a URL path prefix, configure the SAME prefix on both ends instead:
+[`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the manager (freshly
+generated configurations ship `/wazuh-manager-5/`) and the matching prefix on the agents. The
+agent then sends **and signs** `/wazuh-manager-5/stateless`, and the proxy's only job is to
+forward that path untouched (passthrough). A prefix mismatch between agent and manager surfaces
+as `404`, not `401`.
+
+If you cannot align the prefix end to end, give remoted its **own port or hostname**. Query
+strings, extra headers and repeated slashes are fine — they are forwarded unchanged as long as
+the proxy does not rewrite the target. (Percent-encoded spellings of a path also route — the
+router decodes ordinary bytes for matching — but the signature still covers the exact bytes the
+agent sent, so this changes nothing for a well-behaved client.)
 
 ### 4.2. The backend connection must be TLS 1.3
 
@@ -322,7 +331,9 @@ from any agent at any time**. Two things must therefore hold across all managers
 
 ## 8. Checklist before going to production
 
-- [ ] remoted has its own port or hostname (no URL path prefix)
+- [ ] The published path prefix (if any) equals `remote.https.global_prefix` on every manager
+      node and on every agent — the proxy never rewrites it. Otherwise remoted has its own port
+      or hostname
 - [ ] The proxy forwards the request target unchanged
 - [ ] Backend connections negotiate TLS 1.3
 - [ ] Backend certificate verification is enabled, and the certificate has a matching SAN

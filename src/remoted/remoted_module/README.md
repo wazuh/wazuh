@@ -74,7 +74,15 @@ src/http_server/
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
 
-- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`.
+- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
+  **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
+  (`<remote><https><global_prefix>`; `""` == `/` == no prefix). With a prefix in effect the
+  unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
+  `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
+  auth layer signs the raw (prefixed) target, so agents send and sign the full prefixed path and
+  proxies must forward it untouched. Canonicalization lives in one place
+  (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
+  a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
   while deliberately leaving the I/O runtime alive (so an in-flight deferred reply can still be
   delivered); `stop()` calls `stopAccepting()` first, then releases the I/O runtime. See *Deferred
