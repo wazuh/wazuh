@@ -44,6 +44,10 @@ namespace remoted::http
      *     ClientVerificationMode::None here, since this struct has no separate "unset" state.
      *   - dual_stack defaults to Unset (its C-ABI default already matches), and only applies to
      *     an IPv6 bind address.
+     *   - global_prefix is copied VERBATIM (empty buffer -> "" == "/" == no prefix, today's
+     *     behavior); its canonicalization (trailing-slash strip, identity collapse) happens in
+     *     RestinioHttpServer::start() via normalizeGlobalPrefix() below -- never here -- and its
+     *     grammar was already validated fatally by the C parser (w_remoted_parse_https()).
      * The in-flight byte budget and max parallel connections are set directly by remoted in
      * secure.c (deliberately not an internal option), independent of
      * `remoted_module_https_config()`.

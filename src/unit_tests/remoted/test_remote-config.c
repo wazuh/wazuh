@@ -113,6 +113,7 @@ static int teardown(void **state) {
     test_state *ts = *state;
     if (ts->logr->lip) free(ts->logr->lip);
     if (ts->logr->https.bind_addr) free(ts->logr->https.bind_addr);
+    if (ts->logr->https.global_prefix) free(ts->logr->https.global_prefix);
     if (ts->logr->https.certificate) free(ts->logr->https.certificate);
     if (ts->logr->https.key) free(ts->logr->https.key);
     if (ts->logr->https.ca) free(ts->logr->https.ca);
@@ -644,9 +645,10 @@ static void test_w_remoted_parse_legacy_enabled_invalid(void **state) {
 static void test_w_remoted_parse_https_valid_full(void **state) {
     test_state *ts = *state;
 
-    xml_node **nodes = create_node_array(8,
+    xml_node **nodes = create_node_array(9,
         create_xml_node("port", "9443"),
         create_xml_node("bind_addr", "0.0.0.0"),
+        create_xml_node("global_prefix", "/wazuh-manager-5/"),
         create_xml_node("certificate", "etc/remoted-https/server.crt"),
         create_xml_node("key", "etc/remoted-https/server.key"),
         create_xml_node("ca", "etc/remoted-https/ca.crt"),
@@ -664,6 +666,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(ts->logr->https.port, 9443);
     assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5/");
     assert_string_equal(ts->logr->https.certificate, "etc/remoted-https/server.crt");
     assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
     assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
@@ -710,6 +713,238 @@ static void test_w_remoted_parse_https_invalid_bind_addr(void **state) {
     assert_int_equal(result, OS_INVALID);
 
     free_node_array(nodes);
+}
+
+// global_prefix: valid values
+
+static void test_w_remoted_parse_https_global_prefix_valid(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/wazuh-manager-5/")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5/");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_root_identity(void **state) {
+    test_state *ts = *state;
+
+    // "/" is the explicit identity value: accepted, endpoints served unprefixed.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_no_trailing_slash(void **state) {
+    test_state *ts = *state;
+
+    // Both spellings are accepted; trailing-slash normalization is the C++ side's job.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/wazuh-manager-5")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_multi_segment(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/edge/wazuh-5")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/edge/wazuh-5");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_max_len_boundary(void **state) {
+    test_state *ts = *state;
+
+    // Exactly REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN (255) characters: the last accepted length
+    // (one less than the 256-byte C-ABI buffer, leaving room for the NUL).
+    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1];
+    value[0] = '/';
+    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN - 1);
+    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", value)
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, value);
+
+    free_node_array(nodes);
+}
+
+// global_prefix: invalid values (every one is fatal, so 'remoted -t' reports it)
+
+static void test_w_remoted_parse_https_global_prefix_too_long(void **state) {
+    test_state *ts = *state;
+
+    // One character over the limit: rejected by the shared max-len check, never truncated.
+    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 2];
+    value[0] = '/';
+    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN);
+    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", value)
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for '<remote><https><global_prefix>' exceeds the maximum length of 255 characters.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_empty(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid '<remote><https><global_prefix>' option: the value cannot be empty.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_no_leading_slash(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "wazuh")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid '<remote><https><global_prefix>' option: 'wazuh' must start with '/'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_empty_segment(void **state) {
+    test_state *ts = *state;
+
+    const char *values[] = { "//", "/a//b", NULL };
+    const char *messages[] = {
+        "Invalid '<remote><https><global_prefix>' option: '//' contains an empty path segment ('//').",
+        "Invalid '<remote><https><global_prefix>' option: '/a//b' contains an empty path segment ('//').",
+        NULL
+    };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        expect_string(__wrap__merror, formatted_msg, messages[i]);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
+}
+
+static void test_w_remoted_parse_https_global_prefix_bad_chars(void **state) {
+    test_state *ts = *state;
+
+    // One representative per rejected class: query, space, percent-encoding (the prefix is
+    // matched byte-exactly against the wire, never decoded).
+    const char *values[] = { "/a?x=1", "/a b", "/a%20b", NULL };
+    const char *messages[] = {
+        "Invalid character '?' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        "Invalid character ' ' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        "Invalid character '%' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        NULL
+    };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        expect_string(__wrap__merror, formatted_msg, messages[i]);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
+}
+
+static void test_w_remoted_parse_https_global_prefix_dot_segment(void **state) {
+    test_state *ts = *state;
+
+    // Proxies dot-normalize request paths, so a '.'/'..' prefix could never match consistently.
+    const char *values[] = { "/./a", "/a/../b", "/a/..", NULL };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        char message[256];
+        snprintf(message, sizeof(message),
+                 "Invalid '<remote><https><global_prefix>' option: '%s' contains a '.' or '..' path segment.",
+                 values[i]);
+        expect_string(__wrap__merror, formatted_msg, message);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
 }
 
 static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
@@ -1336,6 +1571,17 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_valid_full, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_valid, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_root_identity, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_trailing_slash, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_multi_segment, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_max_len_boundary, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_too_long, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_leading_slash, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty_segment, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_bad_chars, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_dot_segment, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_ciphers, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_dual_stack, setup, teardown),

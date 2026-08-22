@@ -3657,6 +3657,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.worker_node = true;
     test_logr.https.port = 9443;
     test_logr.https.bind_addr = "0.0.0.0";
+    test_logr.https.global_prefix = "/wazuh-manager-5/";
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
@@ -3722,6 +3723,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.http_max_body_size, 12345);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
     assert_string_equal(rm_config.bind_address, "0.0.0.0");
+    // Copied verbatim, like every other https string: no getDefine involved (global_prefix is a
+    // regular <remote><https> setting, not an internal option), so the strict will_return
+    // ordering above is untouched.
+    assert_string_equal(rm_config.global_prefix, "/wazuh-manager-5/");
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
@@ -3746,7 +3751,9 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     remoted test_logr;
     memset(&test_logr, 0, sizeof(test_logr));
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-    // bind_addr/certificate/key/ca/ciphers left NULL, as when <https> is entirely absent.
+    // bind_addr/global_prefix/certificate/key/ca/ciphers left NULL, as when <https> is entirely
+    // absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
+    // without the tag keeps serving unprefixed endpoints (the module resolves "" to "/").
 
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3794,6 +3801,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
     assert_string_equal(rm_config.bind_address, "");
+    assert_string_equal(rm_config.global_prefix, "");
     assert_string_equal(rm_config.certificate_path, "");
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");

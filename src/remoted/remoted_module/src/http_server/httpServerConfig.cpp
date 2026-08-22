@@ -145,6 +145,12 @@ namespace remoted::http
 
         result.bindAddress = config.bind_address[0] != '\0' ? std::string {config.bind_address} : DEFAULT_BIND_ADDRESS;
 
+        // Copied VERBATIM (an empty buffer resolves to "" == no prefix): canonicalization --
+        // trailing-slash strip, identity collapse -- happens in ONE place, RestinioHttpServer::
+        // start() via normalizeGlobalPrefix(), so a directly-constructed HttpServerConfig
+        // behaves identically to a builder-produced one.
+        result.globalPrefix = config.global_prefix[0] != '\0' ? std::string {config.global_prefix} : std::string {};
+
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
         result.ioThreads = resolveThreadCount(config.io_threads);
         result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);

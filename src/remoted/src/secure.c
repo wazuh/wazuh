@@ -401,6 +401,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
     }
 
+    if (logr->https.global_prefix) {
+        snprintf(rm_config->global_prefix, sizeof(rm_config->global_prefix), "%s", logr->https.global_prefix);
+    }
+
     if (logr->https.certificate) {
         snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", logr->https.certificate);
     }

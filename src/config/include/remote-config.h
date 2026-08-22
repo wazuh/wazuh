@@ -56,16 +56,17 @@
 
 /* Maximum lengths for <remote><https> string options. Kept in sync by hand with the
  * fixed-size C-ABI buffers in src/remoted/remoted_module/include/remoted_module.h
- * (bind_address[256], certificate_path[512], private_key_path[512], ca_path[512],
- * ciphers[256]) that secure.c's HandleSecure() copies these values into via snprintf.
- * Each limit is one less than its buffer size, to leave room for the NUL terminator.
+ * (bind_address[256], global_prefix[256], certificate_path[512], private_key_path[512],
+ * ca_path[512], ciphers[256]) that secure.c's HandleSecure() copies these values into via
+ * snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
  * A value that doesn't fit must be rejected here instead of silently truncated: past
  * this point it is a plain char* with no length limit until it reaches that buffer. */
-#define REMOTED_HTTPS_BIND_ADDR_MAX_LEN   255
-#define REMOTED_HTTPS_CERTIFICATE_MAX_LEN 511
-#define REMOTED_HTTPS_KEY_MAX_LEN         511
-#define REMOTED_HTTPS_CA_MAX_LEN          511
-#define REMOTED_HTTPS_CIPHERS_MAX_LEN     255
+#define REMOTED_HTTPS_BIND_ADDR_MAX_LEN     255
+#define REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN 255
+#define REMOTED_HTTPS_CERTIFICATE_MAX_LEN   511
+#define REMOTED_HTTPS_KEY_MAX_LEN           511
+#define REMOTED_HTTPS_CA_MAX_LEN            511
+#define REMOTED_HTTPS_CIPHERS_MAX_LEN       255
 
 #include "shared.h"
 #include "global-config.h"
@@ -75,6 +76,7 @@
 typedef struct _remoted_https_config {
     int port;                  ///< 0 -> module default
     char *bind_addr;           ///< NULL -> module default
+    char *global_prefix;       ///< NULL -> module default "/" (endpoints served unprefixed)
     char *certificate;         ///< NULL -> module default
     char *key;                 ///< NULL -> module default
     char *ca;                  ///< NULL -> client-certificate verification disabled

@@ -188,6 +188,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     const auto config = buildHttpServerConfig(zeroedConfig());
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
+    // Empty C-ABI buffer -> "" == no prefix, today's behavior (D3: an absent tag changes nothing).
+    EXPECT_EQ(config.globalPrefix, "");
     EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
@@ -264,6 +266,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
     std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
     std::snprintf(raw.bind_address, sizeof(raw.bind_address), "0.0.0.0");
+    std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager-5/");
     std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
     std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
 
@@ -287,6 +290,9 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
     EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
     EXPECT_EQ(config.bindAddress, "0.0.0.0");
+    // VERBATIM copy (trailing slash kept): canonicalization is RestinioHttpServer::start()'s
+    // single job -- see NormalizeGlobalPrefixTest for that contract.
+    EXPECT_EQ(config.globalPrefix, "/wazuh-manager-5/");
     EXPECT_EQ(config.caPath, "/custom/ca.pem");
     EXPECT_EQ(config.ciphers, "HIGH:!ADH");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
