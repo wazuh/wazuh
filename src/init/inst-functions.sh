@@ -585,6 +585,33 @@ CheckRemoteSize()
     esac
 }
 
+# Mirrors w_remoted_validate_global_prefix() in src/config/src/remote-config.c exactly, so a
+# bad value aborts BEFORE any side effect instead of producing a configuration the service
+# then refuses to start with: leading '/', charset [A-Za-z0-9._~/-] (no '%': the prefix is
+# compared byte-exactly against the wire target, never percent-decoded), no empty ('//') and
+# no '.'/'..' segments (proxies dot-normalize request paths), at most 255 characters.
+# '/' alone is the explicit identity value (endpoints served unprefixed).
+CheckRemotePrefix()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        /*) ;;
+        *) RemoteVarError "$1" "$2" "expected a URL path starting with '/'";;
+    esac
+    case "$2" in
+        *//*) RemoteVarError "$1" "$2" "empty path segments ('//') are not allowed";;
+    esac
+    case "$2" in
+        *[!A-Za-z0-9._~/-]*) RemoteVarError "$1" "$2" "allowed characters are A-Z a-z 0-9 . _ ~ - /";;
+    esac
+    case "${2}/" in
+        */./*|*/../*) RemoteVarError "$1" "$2" "'.' and '..' path segments are not allowed";;
+    esac
+    if [ ${#2} -gt 255 ]; then
+        RemoteVarError "$1" "$2" "maximum length is 255 characters"
+    fi
+}
+
 ##########
 # ValidateRemoteVars()
 # Idempotent: install.sh validates up front, before any side effect, while the
@@ -598,13 +625,15 @@ ValidateRemoteVars()
     REMOTE_VARS_VALIDATED="yes"
 
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
-                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS; do
+                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS \
+                           WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
 
     CheckRemotePort "WAZUH_REMOTE_HTTPS_PORT" "${WAZUH_REMOTE_HTTPS_PORT}"
     CheckRemoteIP "WAZUH_REMOTE_HTTPS_BIND_ADDR" "${WAZUH_REMOTE_HTTPS_BIND_ADDR}"
+    CheckRemotePrefix "WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX" "${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX}"
     CheckRemoteSize "WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE" "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}"
     CheckRemoteYesNo "WAZUH_REMOTE_HTTPS_DUAL_STACK" "${WAZUH_REMOTE_HTTPS_DUAL_STACK}"
 
@@ -676,6 +705,7 @@ WriteRemote()
     echo "    <https>" >> $NEWCONFIG
     echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
     echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}</bind_addr>" >> $NEWCONFIG
+    echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager-5/}</global_prefix>" >> $NEWCONFIG
     echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
     echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
