@@ -32,6 +32,7 @@ import argparse
 import concurrent.futures
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -66,6 +67,13 @@ class ManagerPaths:
 # Applied to every target BEFORE signing: the MAC covers the request target exactly as it
 # travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
 # manager's configured prefix surfaces as 404 (route not found), not 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
 
@@ -74,6 +82,33 @@ def normalize_global_prefix(raw: str) -> str:
     """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
     stripped = raw.strip("/") if raw else ""
     return "/" + stripped if stripped else ""
+
+
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
+
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
 
 
 def prefixed(path: str) -> str:
@@ -444,10 +479,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
-    parser.add_argument("--global-prefix", default="",
+    parser.add_argument("--global-prefix", default=None,
                         help="URL path prefix the manager serves every endpoint under "
                              "(<remote><https><global_prefix>). Applied to the target BEFORE "
-                             "signing: the MAC covers the full prefixed path.")
+                             "signing: the MAC covers the full prefixed path. Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
                         help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
@@ -470,7 +507,9 @@ def main():
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
     global GLOBAL_PREFIX
-    GLOBAL_PREFIX = normalize_global_prefix(args.global_prefix)
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     paths = ManagerPaths(args.manager_home)
 

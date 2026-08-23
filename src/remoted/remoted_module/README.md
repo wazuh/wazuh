@@ -1764,6 +1764,11 @@ Signs and sends `POST /stateless` requests exactly as `AuthMiddleware` expects (
 canonical byte sequence, agent key read straight from `client.keys`). Requires
 `pip install requests cryptography`.
 
+Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
+flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
+a default installation needs no flag. The prefix is applied to the target **before** signing, since
+the MAC covers the request target as it travels; pass `/` to force the unprefixed paths.
+
 ```bash
 python3 tools/send_stateless.py            # one valid signed request -> 200
 python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
