@@ -30,6 +30,9 @@ cd "$SCRIPT_DIR"
 # Empty means "let run_benchmark.sh read it from the manager's own config"; pass
 # --cluster only for a remote manager, or to override what the config says.
 CLUSTER=""
+# The manager's <remote><https><global_prefix>, when it has one. Unlike the cluster name
+# it is never read from the config: pass it, or every agent-mode run in the matrix 404s.
+GLOBAL_PREFIX=""
 SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync.sock"
 SEED=4242
 # Agent-mode runs wait for remoted to load the fleet's keys before measuring. On the
@@ -46,6 +49,7 @@ usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --cluster)        CLUSTER="$2"; shift 2 ;;
+        --global-prefix)  GLOBAL_PREFIX="$2"; shift 2 ;;
         --socket)         SOCKET="$2"; shift 2 ;;
         --seed)           SEED="$2"; shift 2 ;;
         --enroll-settle)  ENROLL_SETTLE="$2"; shift 2 ;;
@@ -94,6 +98,7 @@ for entry in "${MATRIX[@]}"; do
 
     cluster_args=()
     [[ -n "$CLUSTER" ]] && cluster_args+=(--cluster "$CLUSTER")
+    [[ -n "$GLOBAL_PREFIX" ]] && cluster_args+=(--global-prefix "$GLOBAL_PREFIX")
 
     extra=()
     $CHARTS || extra+=(--no-charts)

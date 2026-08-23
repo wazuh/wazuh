@@ -33,23 +33,31 @@ type Client struct {
 	agentMode bool
 	baseURL   string // "https://host:1517" (agent) or "http://unix" (uds)
 	timeout   time.Duration
+
+	// globalPrefix is the manager's <remote><https><global_prefix>, already through
+	// NormalizeGlobalPrefix. Only NewAgentClient sets it: a UDS client physically
+	// cannot carry one, which is the admin-plane rule enforced by construction rather
+	// than by a mode check at each call site.
+	globalPrefix string
 }
 
 // NewAgentClient builds an HTTPS client for one enrolled agent. reuse toggles
 // HTTP keep-alive; the run records which was used, since it changes the
-// connection-establishment cost materially.
-func NewAgentClient(id Identity, host string, port int, timeout time.Duration, reuse bool) *Client {
+// connection-establishment cost materially. globalPrefix is the manager's configured
+// global endpoint prefix, already normalized (see prefix.go); "" means unprefixed.
+func NewAgentClient(id Identity, host string, port int, timeout time.Duration, reuse bool, globalPrefix string) *Client {
 	transport := &http.Transport{
 		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 		DisableKeepAlives: !reuse,
 	}
 	return &Client{
-		http:      &http.Client{Transport: transport, Timeout: timeout},
-		agentID:   id.ID,
-		keyHex:    id.Key,
-		agentMode: true,
-		baseURL:   fmt.Sprintf("https://%s:%d", host, port),
-		timeout:   timeout,
+		http:         &http.Client{Transport: transport, Timeout: timeout},
+		agentID:      id.ID,
+		keyHex:       id.Key,
+		agentMode:    true,
+		baseURL:      fmt.Sprintf("https://%s:%d", host, port),
+		timeout:      timeout,
+		globalPrefix: globalPrefix,
 	}
 }
 
@@ -79,7 +87,14 @@ func NewUDSClient(agentID, socketPath string, timeout time.Duration) *Client {
 // already compressed body, so the AES-CMAC below covers the COMPRESSED bytes
 // -- exactly remoted's contract (the signature is over the wire bytes).
 func (c *Client) Do(method, target string, body []byte, contentType, contentEncoding string, now int64, setAgentIDHeader bool) (Response, error) {
-	req, err := http.NewRequest(method, c.baseURL+target, bytes.NewReader(body))
+	// The signed target is the request target verbatim, global prefix included: remoted
+	// does not strip the prefix before verifying. One local, used twice below, is what
+	// keeps "what we sign" and "what we send" from ever drifting apart -- see prefix.go
+	// for the two failure modes that drift produces. In uds mode globalPrefix is always
+	// empty, so full == target.
+	full := c.globalPrefix + target
+
+	req, err := http.NewRequest(method, c.baseURL+full, bytes.NewReader(body))
 	if err != nil {
 		return Response{}, err
 	}
@@ -91,7 +106,7 @@ func (c *Client) Do(method, target string, body []byte, contentType, contentEnco
 	}
 
 	if c.agentMode {
-		headers, err := AuthHeaders(c.keyHex, method, target, c.agentID, now, body)
+		headers, err := AuthHeaders(c.keyHex, method, full, c.agentID, now, body)
 		if err != nil {
 			return Response{}, err
 		}

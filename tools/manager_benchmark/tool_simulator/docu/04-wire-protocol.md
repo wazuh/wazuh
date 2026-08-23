@@ -43,7 +43,8 @@ to raw bytes, and its length **MUST** be 16, 24 or 32 bytes (AES-128/192/256).
 "WAZUH-REQUEST\n"
 <protocol-version> "\n"      e.g. "1\n"
 <METHOD> "\n"                uppercase, e.g. "POST\n"
-<request-target> "\n"        exactly as sent, query string included, e.g. "/stateful\n"
+<request-target> "\n"        exactly as sent, query string and global prefix included,
+                             e.g. "/stateful\n" or "/wazuh-manager-5/stateful\n"
 <agent-id> "\n"              the SAME string used in the Authorization header, e.g. "001\n"
 <timestamp> "\n"             the SAME decimal string used in the header
 <body>                       the exact request bytes, with NO trailing newline
@@ -55,11 +56,18 @@ Details that are easy to get wrong and produce an opaque `401`:
 - The agent id and the timestamp are hashed as the strings that appear in the header. Sending `001`
   in the header and hashing `1` fails.
 - The method is uppercase; the target is the raw target, not a normalized path.
+- When the manager configures `<remote><https><global_prefix>`, the prefix is **part of the
+  target** and therefore part of the MAC: remoted does not strip it before verifying. The two
+  failure modes are distinct and both diagnosable from the status alone — signing the bare target
+  while sending the prefixed one is `401`; sending the bare target is `404`, because the route does
+  not exist and auth is never reached. The sender applies `--global-prefix` to one string that
+  feeds both the URL and the signature (`internal/wire/client.go`, `Do`).
 - The timestamp **MUST** be within the manager's window: at most 300 s old and at most 30 s in the
   future by default. A sender whose clock drifts will see uniform `401`s.
 
 Reference implementations to check a Go port against, byte for byte:
-`src/remoted/remoted_module/tools/send_stateless.py` (`sign_request()`) and the manager side in
+`src/remoted/remoted_module/tools/send_stateless.py` (`sign_request()`, plus
+`normalize_global_prefix()`/`prefixed()` for the prefix) and the manager side in
 `src/remoted/remoted_module/src/auth/authMiddleware.cpp`. The sender **SHOULD** ship a unit test
 that reproduces a known MAC from a fixed key, timestamp and body, so a regression is caught without
 a manager.
@@ -72,6 +80,10 @@ a manager.
 - Routes used: `POST /control` (see [03](03-control-protocol.md)), `POST /stateful` with
   `Content-Type: application/octet-stream` and the FlatBuffers body, and `POST /stateless` with the
   H/E log-event batch (see [13](13-engine-event-streams.md)) when the scenario has an engine lane.
+- When the manager sets a global endpoint prefix, all of those routes are served under it and
+  `--global-prefix` **MUST** match it exactly (see the canonical string above). The uds transport
+  is never prefixed: the module's socket is not published under the manager's prefix, so
+  `NewUDSClient` takes no prefix at all.
 - The sender **MUST NOT** send `X-Wazuh-Agent-Id` on `/stateful`: remoted sets it from the identity
   it authenticated, and the server rejects a session whose `Start.agentid` disagrees with it (`403`).
 - Connection reuse across requests of one agent is **RECOMMENDED** (HTTP keep-alive), but the run
