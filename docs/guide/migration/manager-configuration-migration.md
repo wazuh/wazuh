@@ -201,12 +201,17 @@ The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum 
 ```xml
 <auth>
   ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
 ```
+
+`ssl_manager_cert`/`ssl_manager_key` now point at the same certificate the HTTPS agent server
+(`remoted_module`) presents, not a separate `authd.pem`/`authd-key.pem` pair -- authd no longer
+generates or owns a certificate of its own (see `ssl_manager_cert` in
+[authd/configuration.md](../../ref/modules/authd/configuration.md#ssl_manager_cert)).
 
 ### Sections to remove from `wazuh-manager.conf`
 
@@ -440,10 +445,21 @@ The 5.0 defaults resolve to `etc/certs/apid.pem`, `etc/certs/apid-key.pem` and `
 
 ### Simplified `upload_configuration`
 
-The `upload_configuration` section has been reduced. The following subsections are no longer valid in 5.0 and must be removed if present:
+The `upload_configuration.integrations.virustotal` subsection is no longer valid in 5.0 and must be removed if present:
 
 ```yaml
 # Removed in 5.0:
+upload_configuration:
+  integrations:
+    virustotal:
+      public_key:
+        allow: yes
+        minimum_quota: 240
+```
+
+`remote_commands.{localfile,wodle_command}` and `limits.eps` are still valid in 5.0. The options that remain valid are:
+
+```yaml
 upload_configuration:
   remote_commands:
     localfile:
@@ -455,17 +471,6 @@ upload_configuration:
   limits:
     eps:
       allow: yes
-  integrations:
-    virustotal:
-      public_key:
-        allow: yes
-        minimum_quota: 240
-```
-
-The options that remain valid are:
-
-```yaml
-upload_configuration:
   agents:
     allow_higher_versions:
       allow: yes

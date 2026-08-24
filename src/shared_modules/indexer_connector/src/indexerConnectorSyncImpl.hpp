@@ -1043,7 +1043,8 @@ public:
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
+        const auto onError =
+            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
@@ -1053,7 +1054,17 @@ public:
             else
             {
                 LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
-                throw IndexerConnectorException("Search query failed: " + error);
+                // The transport reduces every HTTP failure to "Client error"/"Server error", so
+                // without the status and (truncated) body the exception is undiagnosable AND
+                // unclassifiable -- callers must be able to tell "no such index" (an empty
+                // dataset, e.g. no Windows agent ever synced a hotfix) from a real outage.
+                std::string detail = "Search query failed (status " + std::to_string(statusCode) + "): " + error;
+                if (!responseBody.empty())
+                {
+                    detail += " - ";
+                    detail += responseBody.substr(0, 256);
+                }
+                throw IndexerConnectorException(detail);
             }
         };
 

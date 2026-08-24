@@ -64,7 +64,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
     if (!dest)
     {
         closeExclusiveTempFile(destFd); // fdopen() failed: the fd is still ours to close.
-        std::remove(destPath.c_str());
+        (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: fdopen() on a just-opened fd doesn't fail in practice.
     }
 
@@ -72,7 +72,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
 
     if (cctx == nullptr)
     {
-        std::remove(destPath.c_str());
+        (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: allocation failure only.
     }
 
@@ -81,7 +81,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
     if (ZSTD_isError(ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, kCompressionLevel)) ||
             ZSTD_isError(ZSTD_CCtx_setPledgedSrcSize(cctx, sourceSize)))
     {
-        std::remove(destPath.c_str());
+        (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: cannot fail on a freshly created CCtx.
     }
 
@@ -111,7 +111,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
     {
         if (abortFlag != nullptr && abortFlag->load())
         {
-            std::remove(destPath.c_str());
+            (void)std::remove(destPath.c_str());
             return std::nullopt;
         }
 
@@ -124,7 +124,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
 
             if (ZSTD_isError(ret) || !flushOutput(output))
             {
-                std::remove(destPath.c_str());
+                (void)std::remove(destPath.c_str());
                 return std::nullopt;
             }
         }
@@ -132,7 +132,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
 
     if (std::ferror(source.get()))
     {
-        std::remove(destPath.c_str());
+        (void)std::remove(destPath.c_str());
         return std::nullopt;
     }
 
@@ -150,7 +150,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
 
         if (ZSTD_isError(remaining) || !flushOutput(output))
         {
-            std::remove(destPath.c_str());
+            (void)std::remove(destPath.c_str());
             return std::nullopt;
         }
     }

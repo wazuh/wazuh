@@ -14,6 +14,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 namespace remoted::downstream
@@ -131,6 +132,10 @@ namespace remoted::downstream
             {
                 if (current >= m_capacity)
                 {
+                    // Counted here and only here: this is the shed decision the forwarder turns
+                    // into a 503. Touched only on the rejection path, so admissions stay at
+                    // their current cost.
+                    m_rejectedTotal.fetch_add(1, std::memory_order_relaxed);
                     return std::nullopt; // limit reached
                 }
             } while (!m_inFlight.compare_exchange_weak(
@@ -151,6 +156,12 @@ namespace remoted::downstream
             return m_capacity;
         }
 
+        /// @brief Requests tryAcquire() has refused since construction (0 while disabled).
+        std::uint64_t rejectedTotal() const noexcept
+        {
+            return m_rejectedTotal.load(std::memory_order_relaxed);
+        }
+
         /// @brief Whether the limit is enforced (false when constructed with 0).
         bool enabled() const noexcept
         {
@@ -163,8 +174,9 @@ namespace remoted::downstream
             m_inFlight.fetch_sub(1, std::memory_order_acq_rel);
         }
 
-        const std::size_t m_capacity;            ///< 0 => limit disabled.
-        std::atomic<std::size_t> m_inFlight {0}; ///< Live count of parked deferred requests.
+        const std::size_t m_capacity;                   ///< 0 => limit disabled.
+        std::atomic<std::size_t> m_inFlight {0};        ///< Live count of parked deferred requests.
+        std::atomic<std::uint64_t> m_rejectedTotal {0}; ///< Requests refused by tryAcquire().
     };
 
 } // namespace remoted::downstream

@@ -21,9 +21,6 @@
 #define CONTINUE_ENTRY     "continue"
 #define ABORT_ENTRY        "abort"
 
-/* Maximum number of active responses active */
-#define MAX_AR      64
-
 /* Maximum number of command arguments */
 #define MAX_ARGS    32
 

@@ -189,7 +189,7 @@ whole retry contract — there are no acknowledgments and no session state to re
 | `403` | `{"error":"identity mismatch","code":403}` | claimed an identity that does not match the authenticated one (or a foreign cluster). |
 | `413` | `{"error":...,"code":413}` | declared more bytes than the server's TOTAL in-flight budget; must split the session. |
 | `500` | `{"error":"vulnerability scan failed","code":500}` or `{"error":"Internal error","code":500}` | retries next cycle; NOTHING was indexed for this session. |
-| `503` | One deliberately GENERIC body for indexer-unavailable / admission-queue-full / shutting-down (which of them fired is an operator concern, visible in logs and `GET /metrics`, not the agent's). The two VD gates are the exception, with reason-specific bodies: `"vulnerability feed not ready"` — the only `503` that carries `Retry-After: <seconds>` — and `"scan capacity exhausted"`. | retries later; on `Retry-After` it re-sends the same session after the delay. |
+| `503` | One deliberately GENERIC body for indexer-unavailable / admission-queue-full / shutting-down (which of them fired is an operator concern, not the agent's — the pipeline and VD-capacity gates have their own counters in [`GET /metrics`](metrics.md), `sync.pipeline.shed.total` and `vd.capacity.503.total`; the transport's byte-budget and connection-cap gates are visible only as the `server.*` levels there, plus the logs). The two VD gates are the exception, with reason-specific bodies: `"vulnerability feed not ready"` — the only `503` that carries `Retry-After: <seconds>` — and `"scan capacity exhausted"`. | retries later; on `Retry-After` it re-sends the same session after the delay. |
 
 ## `GET /metrics`
 
@@ -206,20 +206,25 @@ curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http:
   "timestamp": "2026-08-06T14:41:07Z",
   "metrics": [
     {"name": "sync.bulk.flushes", "type": "counter", "enabled": true, "value": 41,
-     "description": "Group-commit flushes", "unit": "count"},
+     "description": "Successful pipeline group-commit flushes", "unit": "count"},
     {"name": "sync.session.duration.bulk", "type": "histogram", "enabled": true, "value": 41,
-     "unit": "microseconds",
+     "description": "Enqueue-to-response time of bulk sessions", "unit": "microseconds",
      "summary": {"count": 41, "sum": 5150000, "min": 900, "max": 410000,
                   "p50": 98304, "p90": 229376, "p99": 393216}}
   ]
 }
 ```
 
-Entries are sorted by name; counters are exact integers; a histogram's `value` is its observation
-count and its `summary` carries bucket-resolution percentiles (~12.5% relative error). The full
-metric catalog and where each is measured is in the
-[architecture page](architecture.md#statistics-get-metrics). Counters accumulate for the life of
-the process (they survive the module's internal restart retries); there is no reset endpoint.
+Entries are sorted by name and every one carries its `description` and `unit`. Four `type`
+strings appear in a real dump: `counter`, `gauge_int` (the shard/lane depth levels), `pull`
+(the `server.*` transport levels, read at dump time), and `histogram` — a histogram's `value`
+is its observation count and its `summary` carries bucket-resolution percentiles (~12.5%
+relative error). The full metric catalog — each metric with the setting it helps size — is in
+[Metrics](metrics.md); where each sits in the pipeline is in the
+[architecture page](architecture.md#statistics-get-metrics). Counters accumulate for the life
+of the process (they survive the module's internal restart retries); there is no reset
+endpoint. During shutdown the route itself can answer `503 {"error":"Service
+unavailable","code":503}` (the registry is gone); that response is not counted anywhere.
 
 Note it is NOT `POST /stats`: that route is the *ingest* of agent statistics reports, unrelated
 to this module's own runtime metrics.

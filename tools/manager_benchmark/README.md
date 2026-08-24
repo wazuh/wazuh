@@ -58,6 +58,20 @@ including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row p
 `charts/`. The sender's formats are pinned by
 [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
+The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
+`GET /metrics` over its admin socket (`queue/sockets/remoted-module.sock`): the `remoted.control.*`
+and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
+is what a saturation run is read on — an admission split, `scanvd_queue_full` and
+`scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many
+re-scans VD queued versus refused; the charts render it as
+`remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full /
+indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's
+`scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics
+keep their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
+disjoint. Both inventory sync and the admin server also report their route-class connection
+counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class
+cap rather than guessed at.
+
 **One poller, one source of truth.** The monitor samples the manager's processes *and* polls each
 daemon's statistics, so it also owns the inventory-sync scrape. `scrape_metrics.sh` stays as a
 standalone tool and is only started automatically when the monitor cannot run (it needs `psutil`),
@@ -108,7 +122,7 @@ A VDFirst/VDSync session's `Start.feed_offset` MUST match the manager's current 
 it is rejected with `409 version_mismatch` before ever reaching the scanner. `--mode agent` learns
 the offset live from remoted's `/control` (the same signal a real agent uses); `--mode uds` has no
 `/control` to learn it from, so pass `--vd-feed-offset <value>` explicitly — query the live value
-with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-detector/offset` —
+with `curl --unix-socket queue/sockets/vd.sock http://localhost/vulnerability-detector/offset` —
 against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
 instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
 
@@ -117,9 +131,9 @@ feed-update re-scan a real agent asks for once `/control` reports a higher `vd_f
 scenario sends one with a `scan_vd` step (agent mode only), typically right after the VD inventory
 step and with an `initial_delay` so the documents it re-scans have landed first —
 `scenarios/real_vd_rescan_storm.json` does exactly that with 100 agents. It is a different manager
-path from a VDFirst session's scan (remoted's worker pool instead of the inventory pipeline's VD scan
-lane), and its `200` means **queued**, not scanned: the scans themselves show up in the manager's log
-as `reason=feed_update`. Full contract in
+path from a VDFirst session's scan (remoted relaying VD's admission instead of the inventory
+pipeline's VD scan lane), and its `200` means **queued by VD**, not scanned: the scans themselves
+show up in the manager's log as `reason=feed_update`. Full contract in
 [`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
 
 ## Manager preparation (agent mode)

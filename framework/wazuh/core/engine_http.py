@@ -77,13 +77,13 @@ class EngineHTTPClient:
             raise WazuhInternalError(2022, extra_message=f'Invalid JSON in Engine API response: {exc}')
 
 
-class ModulesdHTTPClient:
+class VdHTTPClient:
     """Synchronous HTTP client for the modulesd vulnerability-detector status endpoint."""
 
     API_URL = 'http://localhost'
 
     def __init__(self, timeout: float = 10):
-        self.socket_path = str(common.MODULESD_SOCKET)
+        self.socket_path = str(common.VD_SOCKET)
         try:
             transport = httpx.HTTPTransport(uds=self.socket_path)
             self._client = httpx.Client(transport=transport, timeout=timeout)

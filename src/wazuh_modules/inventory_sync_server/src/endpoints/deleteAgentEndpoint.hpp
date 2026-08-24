@@ -12,9 +12,10 @@
 #ifndef _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 #define _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 
-#include "http_server/IUdsHttpServer.hpp"
+#include "common/metricNames.hpp" // invsync::metrics::RequestCounters
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <memory>
 
@@ -33,9 +34,9 @@ namespace invsync::endpoints::delete_agent
      */
 
     /// @brief The verb of the canonical route.
-    constexpr http::Method method()
+    constexpr wazuh::uds_http::Method method()
     {
-        return http::Method::Delete;
+        return wazuh::uds_http::Method::Delete;
     }
 
     /// @brief The canonical path.
@@ -46,9 +47,9 @@ namespace invsync::endpoints::delete_agent
 
     /// @brief POST alias of the same handler, for C callers whose HTTP helper (uhttp_*) only
     /// speaks POST -- authd uses this one (design doc 04 §2's sanctioned alternative).
-    constexpr http::Method altMethod()
+    constexpr wazuh::uds_http::Method altMethod()
     {
-        return http::Method::Post;
+        return wazuh::uds_http::Method::Post;
     }
 
     /// @brief The POST alias' path. Distinct from /agents so a POST there stays a 404 instead of
@@ -64,18 +65,25 @@ namespace invsync::endpoints::delete_agent
      * Both weak, like every other route: the facade's stop() resets them and the weak capture keeps
      * that reset destructive. The connector is only the admission availability check; the pipeline
      * worker re-checks its own at dispatch.
+     *
+     * requestCounters is the same sync.requests.total.* family the sync route holds (dedupe by
+     * name on one manager): the handler counts its own inline 400/503 rejections here, while an
+     * enqueued deletion's terminal response is counted by the pipeline -- each response counted
+     * exactly once, at the site that sends it. Default-constructed it counts nothing (the null
+     * object the tests rely on).
      */
     struct Dependencies
     {
         std::weak_ptr<invsync::sync::SyncPipeline> pipeline;
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
+        invsync::metrics::RequestCounters requestCounters;
     };
 
     /**
      * @brief Build the route handler: validate the header (400), gate on availability (503), and
      *        enqueue a DeleteAgent item on the agent's shard; the worker answers.
      */
-    http::RouteHandler makeHandler(Dependencies dependencies);
+    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies);
 
 } // namespace invsync::endpoints::delete_agent
 

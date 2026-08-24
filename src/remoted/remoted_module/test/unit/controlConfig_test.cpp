@@ -97,6 +97,7 @@ TEST(ControlConfigTest, PositiveOverridesReplaceDefaults)
     raw.tm_concurrency = 20;
     raw.tm_deadline_ms = 500;
     raw.tm_max_queue_size = 20000;
+    raw.keepalive_throttle_sec = 15;
 
     const auto cfg = buildControlConfig(raw);
 
@@ -107,6 +108,7 @@ TEST(ControlConfigTest, PositiveOverridesReplaceDefaults)
     EXPECT_EQ(cfg.tmConcurrency, 20U);
     EXPECT_EQ(cfg.tmDeadlineMs, 500U);
     EXPECT_EQ(cfg.tmMaxQueueSize, 20000U);
+    EXPECT_EQ(cfg.keepaliveThrottleSec, 15U);
 }
 
 // -----------------------------------------------------------------------------
@@ -125,6 +127,7 @@ TEST(ControlConfigTest, NonPositiveValuesFallBackToDefaults)
     raw.tm_concurrency = -1;
     raw.tm_deadline_ms = -1;
     raw.tm_max_queue_size = -1;
+    raw.keepalive_throttle_sec = -1;
 
     const auto cfg = buildControlConfig(raw);
 
@@ -135,6 +138,7 @@ TEST(ControlConfigTest, NonPositiveValuesFallBackToDefaults)
     EXPECT_EQ(cfg.tmConcurrency, kTmConcurrency);
     EXPECT_EQ(cfg.tmDeadlineMs, kTmDeadlineMs);
     EXPECT_EQ(cfg.tmMaxQueueSize, kTaskMaxQueueSize);
+    EXPECT_EQ(cfg.keepaliveThrottleSec, kKeepaliveThrottleSec);
 }
 
 // -----------------------------------------------------------------------------

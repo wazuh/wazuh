@@ -21,17 +21,31 @@
 #include <vector>
 
 /// Deterministic clock: tests advance it explicitly; no real sleeps anywhere.
+/// Also a spy for the skew-correction hook: tests drive a simulated skew by
+/// setting the fake's own wall time away from a scripted "server" time, then
+/// assert RetrySender pushed the right correction (appliedOffsetSeconds()) and
+/// that wallSeconds() reflects it immediately afterward.
 class FakeClock final : public IClock
 {
     public:
         std::time_t wallSeconds() const override
         {
-            return m_baseWall + static_cast<std::time_t>(m_elapsedMs / 1000);
+            return m_baseWall + static_cast<std::time_t>(m_elapsedMs / 1000) + m_appliedOffsetSeconds;
         }
 
         std::chrono::steady_clock::time_point steadyNow() const override
         {
             return m_baseSteady + std::chrono::milliseconds {m_elapsedMs};
+        }
+
+        void correctToServerTime(std::time_t serverWallSeconds) override
+        {
+            // Mirrors SkewCorrectedClock's contract: compute fresh from this
+            // clock's own raw (uncorrected) reading, not from any
+            // previously applied offset.
+            const auto raw = m_baseWall + static_cast<std::time_t>(m_elapsedMs / 1000);
+            m_appliedOffsetSeconds = static_cast<std::int64_t>(serverWallSeconds) - static_cast<std::int64_t>(raw);
+            m_offsetApplyCount++;
         }
 
         void advance(std::chrono::milliseconds delta)
@@ -45,10 +59,22 @@ class FakeClock final : public IClock
             m_elapsedMs = 0;
         }
 
+        std::int64_t appliedOffsetSeconds() const
+        {
+            return m_appliedOffsetSeconds;
+        }
+
+        int offsetApplyCount() const
+        {
+            return m_offsetApplyCount;
+        }
+
     private:
         std::time_t m_baseWall {1700000000};
         std::chrono::steady_clock::time_point m_baseSteady {};
         int64_t m_elapsedMs {0};
+        std::int64_t m_appliedOffsetSeconds {0};
+        int m_offsetApplyCount {0};
 };
 
 /// Scripted randomness: yields the queued values in order, then repeats the

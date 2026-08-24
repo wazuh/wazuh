@@ -57,19 +57,19 @@ namespace
     /**
      * @brief Checksum-of-checksums, ported from the legacy facade (inventorySyncFacade.hpp:434-503).
      *
-     * Pages the agent's documents by `checksum.hash.sha1 asc` (search_after, batches of 1000),
-     * concatenates the checksums in that order and hashes the concatenation. The query shape and
-     * the ordering are the CONTRACT with what the agent computes locally, so they are kept
-     * byte-identical.
+     * Pages the agent's documents by `checksum.hash.sha1 asc` (search_after, batches of
+     * @p batchSize), concatenates the checksums in that order and hashes the concatenation. The
+     * query shape and the ordering are the CONTRACT with what the agent computes locally, so they
+     * are kept byte-identical.
      */
     std::string calculateChecksumOfChecksums(invsync::indexer::IIndexerConnectorSync& connector,
                                              const std::string& index,
                                              const std::string& agentId,
-                                             const std::string& clusterName)
+                                             const std::string& clusterName,
+                                             std::size_t batchSize)
     {
         std::string concatenatedChecksums;
         std::string searchAfter;
-        constexpr std::size_t BATCH_SIZE = 1000;
 
         while (true)
         {
@@ -78,7 +78,7 @@ namespace
             invsync::sync::querybuilder::addClusterScope(searchQuery, clusterName);
             searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
             searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
-            searchQuery["size"] = BATCH_SIZE;
+            searchQuery["size"] = batchSize;
 
             if (!searchAfter.empty())
             {
@@ -108,7 +108,7 @@ namespace
                 }
             }
 
-            if (hits.size() < BATCH_SIZE)
+            if (hits.size() < batchSize)
             {
                 break;
             }
@@ -384,7 +384,8 @@ namespace invsync::sync
         // ONE attempt, no retries (D16): the worker already flushed this agent's earlier deltas
         // (same shard, batch cut), so the only staleness left is the indexer's refresh interval --
         // and a false mismatch there costs one full resync, which is correct, just expensive.
-        const auto calculated = calculateChecksumOfChecksums(connector, index, session.agentId, m_managerClusterName);
+        const auto calculated =
+            calculateChecksumOfChecksums(connector, index, session.agentId, m_managerClusterName, m_queryBatchSize);
 
         if (calculated != claimed)
         {

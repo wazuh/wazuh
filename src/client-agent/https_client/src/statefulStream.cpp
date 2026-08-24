@@ -15,7 +15,6 @@
 
 namespace
 {
-    constexpr uint32_t STATEFUL_MAX_ATTEMPTS = 5;
     constexpr size_t STATEFUL_MAX_QUEUE = 64;
 } // namespace
 
@@ -178,12 +177,23 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     // "Sending /stateless batch" one): logged before the request so the size is on record
     // even if the POST never completes, and so it can be lined up against what the manager
     // received.
-    LOGFN_DEBUG2(m_logFn,
-                 "Sending /stateful session %s (%llu bytes).",
-                 session.id.c_str(),
-                 static_cast<unsigned long long>(session.size));
+    if (spec.precompressedBodyFileSize > 0)
+    {
+        LOGFN_DEBUG2(m_logFn,
+                     "Sending /stateful session %s (%llu bytes raw, %llu compressed).",
+                     session.id.c_str(),
+                     static_cast<unsigned long long>(session.size),
+                     static_cast<unsigned long long>(spec.precompressedBodyFileSize));
+    }
+    else
+    {
+        LOGFN_DEBUG2(m_logFn,
+                     "Sending /stateful session %s (%llu bytes raw, uncompressed).",
+                     session.id.c_str(),
+                     static_cast<unsigned long long>(session.size));
+    }
 
-    const auto result = m_sender.send(spec, waiter, STATEFUL_MAX_ATTEMPTS);
+    const auto result = m_sender.send(spec, waiter, m_config.statefulMaxAttempts);
     // The /stateful contract is interpreted from the raw HTTP status code and body by
     // agent_sync_protocol, not from the shared D9 OutcomeClass (see SendResult::httpCode).
     // result.response.httpCode is 0 when no HTTP response was received (m_sender's retry

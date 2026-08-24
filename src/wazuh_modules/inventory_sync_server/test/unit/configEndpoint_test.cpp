@@ -25,10 +25,10 @@
 #include <utility>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
-using invsync::http::Method;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
+using wazuh::uds_http::Method;
 
 namespace
 {

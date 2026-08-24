@@ -24,6 +24,9 @@ constexpr auto DB_PERMISSIONS
     0640
 };
 
+/// @brief How long a connection waits on a busy/locked database before giving up.
+constexpr int DB_BUSY_TIMEOUT_MS {5000};
+
 using namespace SQLite;
 using ExpandedSQLPtr = std::unique_ptr<char, CustomDeleter<decltype(&sqlite3_free), sqlite3_free>>;
 
@@ -95,6 +98,7 @@ Connection::Connection(const std::string& path)
     }
 
 #endif
+    sqlite3_busy_timeout(m_db.get(), DB_BUSY_TIMEOUT_MS);
 }
 
 void Connection::close()

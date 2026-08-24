@@ -190,11 +190,35 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                                         void* txn_ctx);
 
 /**
+ * @brief Function to close a transaction without running the deleted rows operation.
+ *
+ * For a scan cut short by the shutdown: the rows it never reached are not missing, so they must
+ * not be reported as deleted, but the transaction still has to be closed to release its context.
+ *
+ * @param txn_handler Handler to an active transaction.
+ *
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_ERR on failure.
+ */
+EXPORTED FIMDBErrorCode fim_db_transaction_close(TXN_HANDLE txn_handler);
+
+/**
  * @brief Turns off the services provided.
  *
  * It will be responsible to close sync and release resources
  */
 EXPORTED void fim_db_teardown();
+
+/**
+ * @brief Sets a hook to run at the start of fim_db_teardown().
+ *
+ * Used by the Windows agent to close the inventory synchronization database on the service stop
+ * path, which POSIX does from fim_shutdown_waiter().
+ *
+ * @param hook Function to run, or NULL to clear it. Its return value gates the teardown of the
+ *             inventory database: false leaves it open, for when a scan transaction is in flight.
+ */
+EXPORTED void fim_db_set_teardown_hook(bool (*hook)(void));
 
 /**
  * @brief Closes the database connection and deletes the database file.
