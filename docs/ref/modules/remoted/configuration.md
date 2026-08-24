@@ -134,13 +134,16 @@ Address the HTTPS listener binds to.
 
 ### https.global_prefix
 
-URL path prefix every HTTPS endpoint is served under: with `/wazuh-manager-5/` configured,
-`POST /stateless` is exposed as `POST /wazuh-manager-5/stateless` and the health probe as
-`GET /wazuh-manager-5/`. With a prefix in effect, the unprefixed paths answer `404`.
+URL path prefix every HTTPS endpoint is served under: with `/wazuh-manager/` configured,
+`POST /stateless` is exposed as `POST /wazuh-manager/stateless` and the health probe as
+`GET /wazuh-manager/`. With a prefix in effect, the unprefixed paths answer `404`.
+
+This is a **URL path**, unrelated to the installation directory `/var/wazuh-manager` despite the
+similar spelling: nothing on disk is looked up under it.
 
 - **Default value:** `/` (no prefix) when the tag is absent — an upgraded configuration keeps
   serving today's unprefixed endpoints. Freshly generated configurations ship
-  `/wazuh-manager-5/`.
+  `/wazuh-manager/`.
 - **Allowed values:** `/` (explicit "no prefix"), or `/segment[/segment...]` with an optional
   trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
@@ -1140,7 +1143,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
     <https>
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
-      <global_prefix>/wazuh-manager-5/</global_prefix>
+      <global_prefix>/wazuh-manager/</global_prefix>
       <certificate>etc/certs/remoted.pem</certificate>
       <key>etc/certs/remoted-key.pem</key>
       <ca>etc/certs/root-ca.pem</ca>

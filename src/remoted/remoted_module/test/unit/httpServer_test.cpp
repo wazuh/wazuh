@@ -266,7 +266,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
     std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
     std::snprintf(raw.bind_address, sizeof(raw.bind_address), "0.0.0.0");
-    std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager-5/");
+    std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager/");
     std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
     std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
 
@@ -292,7 +292,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.bindAddress, "0.0.0.0");
     // VERBATIM copy (trailing slash kept): canonicalization is RestinioHttpServer::start()'s
     // single job -- see NormalizeGlobalPrefixTest for that contract.
-    EXPECT_EQ(config.globalPrefix, "/wazuh-manager-5/");
+    EXPECT_EQ(config.globalPrefix, "/wazuh-manager/");
     EXPECT_EQ(config.caPath, "/custom/ca.pem");
     EXPECT_EQ(config.ciphers, "HIGH:!ADH");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
@@ -1581,14 +1581,14 @@ TEST(NormalizeGlobalPrefixTest, IdentityForms)
 
 TEST(NormalizeGlobalPrefixTest, CanonicalForms)
 {
-    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager-5"), "/wazuh-manager-5");
-    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager-5/"), "/wazuh-manager-5");
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager"), "/wazuh-manager");
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager/"), "/wazuh-manager");
     EXPECT_EQ(normalizeGlobalPrefix("/p///"), "/p");
     EXPECT_EQ(normalizeGlobalPrefix("/edge/wazuh-5"), "/edge/wazuh-5");
     EXPECT_EQ(normalizeGlobalPrefix("/v5.0_beta~1"), "/v5.0_beta~1");
     // Defensive: the C-side validator requires the leading '/', but a directly-constructed
     // config gets the same canonical form instead of a corrupted concatenation.
-    EXPECT_EQ(normalizeGlobalPrefix("wazuh-manager-5"), "/wazuh-manager-5");
+    EXPECT_EQ(normalizeGlobalPrefix("wazuh-manager"), "/wazuh-manager");
 }
 
 TEST(NormalizeGlobalPrefixTest, EmptyInteriorSegmentThrows)
@@ -1606,7 +1606,7 @@ TEST(NormalizeGlobalPrefixTest, InvalidCharactersThrow)
 
 namespace
 {
-    // Real TLS server with a RAW ("/wazuh-manager-5/", trailing slash on purpose: start() must
+    // Real TLS server with a RAW ("/wazuh-manager/", trailing slash on purpose: start() must
     // normalize) global prefix and UNPREFIXED route registrations -- the transport applies the
     // prefix. No auth: routing is what this suite measures; the signed path is
     // globalPrefixE2E_test.cpp's job.
@@ -1690,19 +1690,19 @@ namespace
 
 TEST_F(GlobalPrefixTransportTest, PrefixedRoutesAnswerAndTargetStaysRaw)
 {
-    startServer("/wazuh-manager-5/"); // raw form: start() must normalize the trailing slash
+    startServer("/wazuh-manager/"); // raw form: start() must normalize the trailing slash
 
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
 
-    const auto echoed = post("/wazuh-manager-5/echo?a=1&b=2");
+    const auto echoed = post("/wazuh-manager/echo?a=1&b=2");
     EXPECT_EQ(statusOf(echoed), 200);
     // The query survives and the target is the raw PREFIXED one -- never rewritten (D1).
-    EXPECT_NE(echoed.find("/wazuh-manager-5/echo?a=1&b=2"), std::string::npos) << echoed;
+    EXPECT_NE(echoed.find("/wazuh-manager/echo?a=1&b=2"), std::string::npos) << echoed;
 }
 
 TEST_F(GlobalPrefixTransportTest, UnprefixedPathsAnswer404)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     const auto health = remoted::test::sendGetRequest(m_port, "/");
     EXPECT_EQ(statusOf(health), 404);
@@ -1713,27 +1713,27 @@ TEST_F(GlobalPrefixTransportTest, UnprefixedPathsAnswer404)
 
 TEST_F(GlobalPrefixTransportTest, HealthAnswersBothSpellingsUnderPrefix)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // Pinned RESTinio behavior (routerSemanticsSpike_test.cpp S2/S9): the "/" route is
     // registered as the BARE prefix, so both spellings -- and a query -- answer.
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5")), 200);
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5?probe=1")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager?probe=1")), 200);
 }
 
 TEST_F(GlobalPrefixTransportTest, CaseVariantMatches)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // Pinned RESTinio behavior (spike S3): express matching is case-insensitive. Same surface
     // as today -- on authenticated routes the MAC covers the real bytes either way.
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER-5/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/")), 200);
 }
 
 TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysRaw)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // Pinned RESTinio behavior: the express router percent-DECODES ordinary bytes before
     // matching ("%2D" == '-', so this spelling routes), while an encoded slash ("%2F") never
@@ -1741,12 +1741,12 @@ TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysR
     // -- it applies to every route equally -- and is harmless under the verbatim-MAC contract:
     // the handler-observed target stays the RAW encoded bytes, so the MAC covers exactly what
     // was sent either way.
-    const auto encoded = post("/wazuh%2Dmanager-5/echo");
+    const auto encoded = post("/wazuh%2Dmanager/echo");
     EXPECT_EQ(statusOf(encoded), 200);
-    EXPECT_NE(encoded.find("/wazuh%2Dmanager-5/echo"), std::string::npos)
+    EXPECT_NE(encoded.find("/wazuh%2Dmanager/echo"), std::string::npos)
         << "the transport must never hand the decoded spelling to handlers/auth: " << encoded;
 
-    EXPECT_EQ(statusOf(post("/wazuh-manager-5%2Fecho")), 404);
+    EXPECT_EQ(statusOf(post("/wazuh-manager%2Fecho")), 404);
 }
 
 TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
@@ -1756,7 +1756,7 @@ TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
         startServer(identity);
 
         EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/")), 200) << "prefix: '" << identity << "'";
-        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 404)
+        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 404)
             << "prefix: '" << identity << "'";
 
         const auto echoed = post("/echo?x=1");
@@ -1787,7 +1787,7 @@ TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
     // Same discipline as StartWithMissingCertificateThrowsAndStaysStopped: a failed start leaves
     // a stoppable, restartable server.
     EXPECT_NO_THROW(m_server->stop());
-    config.globalPrefix = "/wazuh-manager-5";
+    config.globalPrefix = "/wazuh-manager";
     ASSERT_NO_THROW(m_server->start(config));
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager-5/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
 }

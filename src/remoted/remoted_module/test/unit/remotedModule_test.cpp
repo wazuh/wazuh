@@ -273,12 +273,12 @@ TEST_F(RemotedModuleTest, GlobalPrefixMovesEveryRoute)
 {
     TempTlsFiles tls;
     auto cfg = makeConfig(tls);
-    std::snprintf(cfg.global_prefix, sizeof(cfg.global_prefix), "/wazuh-manager-5/");
+    std::snprintf(cfg.global_prefix, sizeof(cfg.global_prefix), "/wazuh-manager/");
     remoted_module_start(testLogCallback, &cfg);
 
     const auto port = static_cast<std::uint16_t>(cfg.port);
 
-    const auto prefixed = remoted::test::sendGetRequest(port, "/wazuh-manager-5/");
+    const auto prefixed = remoted::test::sendGetRequest(port, "/wazuh-manager/");
     EXPECT_NE(prefixed.find(" 200 "), std::string::npos) << prefixed;
     EXPECT_NE(prefixed.find("\"status\":\"ok\""), std::string::npos) << prefixed;
 

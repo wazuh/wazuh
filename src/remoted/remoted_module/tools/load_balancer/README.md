@@ -259,7 +259,7 @@ which is commented line by line and is where the deployment rules actually live.
 | `two_nodes_with_retry.conf` | Two nodes, retries on — to observe failover with nothing lost. |
 | `duplicates_non_idempotent.conf` | Adds the `non_idempotent` value, which is what actually opts POSTs into being retried **after delivery** — the only way to get real duplicate delivery out of NGINX. |
 | `breaks_signature_path_rewrite.conf` | **Meant to fail.** REWRITES the path to publish remoted under a prefix — the unsupported way. |
-| `works_prefix_passthrough.conf` | The SUPPORTED way to publish under a prefix: manager configured with `global_prefix` (`./set_manager_global_prefix.sh /wazuh-manager-5/`), `location` scoped to it, `proxy_pass` with no URI component. |
+| `works_prefix_passthrough.conf` | The SUPPORTED way to publish under a prefix: manager configured with `global_prefix` (`./set_manager_global_prefix.sh /wazuh-manager/`), `location` scoped to it, `proxy_pass` with no URI component. |
 | `breaks_handshake_proxy_protocol.conf` | **Meant to fail.** Passthrough with `proxy_protocol on;` — proves why it must never be enabled. |
 | `safe_merge_slashes_on.conf` | Proves `merge_slashes on` does *not* break the signature. |
 | `termination_without_client_cert.conf` | Termination where NGINX presents no client certificate of its own. |

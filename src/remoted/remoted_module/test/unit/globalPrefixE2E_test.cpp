@@ -145,50 +145,48 @@ namespace
 
 TEST_F(GlobalPrefixE2ETest, SigningTheFullPrefixedTargetSucceeds)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // The feature's load-bearing contract: MAC over the target exactly as sent, prefix included.
     const auto key = remoted::test::testAgentKey();
-    const auto response =
-        remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager-5/stateless", R"({"events":[]})");
+    const auto response = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(response), 200) << response;
 }
 
 TEST_F(GlobalPrefixE2ETest, SigningTheUnprefixedTargetIs401)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // The legacy-tooling failure mode: send the prefixed target, sign the bare one. The route
     // matches, but the canonical request no longer describes what was sent -> 401, never 200.
     const auto key = remoted::test::testAgentKey();
     const auto response = remoted::test::sendSignedRequest(
-        m_port, key, /*wire*/ "/wazuh-manager-5/stateless", /*signed*/ "/stateless", R"({"events":[]})");
+        m_port, key, /*wire*/ "/wazuh-manager/stateless", /*signed*/ "/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(response), 401) << response;
 }
 
 TEST_F(GlobalPrefixE2ETest, QueryStringIsPartOfTheSignedTarget)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     const auto key = remoted::test::testAgentKey();
 
     // Signing wire target + query verifies...
-    const auto good =
-        remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager-5/stateless?x=1", R"({"events":[]})");
+    const auto good = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless?x=1", R"({"events":[]})");
     EXPECT_EQ(statusOf(good), 200) << good;
 
     // ...while omitting the query from the MAC (same wire target) does not.
     const auto bad = remoted::test::sendSignedRequest(m_port,
                                                       key,
-                                                      /*wire*/ "/wazuh-manager-5/stateless?x=1",
-                                                      /*signed*/ "/wazuh-manager-5/stateless",
+                                                      /*wire*/ "/wazuh-manager/stateless?x=1",
+                                                      /*signed*/ "/wazuh-manager/stateless",
                                                       R"({"events":[]})");
     EXPECT_EQ(statusOf(bad), 401) << bad;
 }
 
 TEST_F(GlobalPrefixE2ETest, UnprefixedRequestNeverReachesAuth)
 {
-    startServer("/wazuh-manager-5/");
+    startServer("/wazuh-manager/");
 
     // Correctly signed for its own target, but the unprefixed route does not exist: 404 from the
     // router's non-matched handler, not a 401 -- auth never ran. Also the symptom of an
@@ -208,7 +206,7 @@ TEST_F(GlobalPrefixE2ETest, ADifferentPrefixCarriesTheSameContract)
 
     // A signature minted for another deployment's prefix does not transfer.
     const auto bad = remoted::test::sendSignedRequest(
-        m_port, key, /*wire*/ "/edge/wazuh-5/stateless", /*signed*/ "/wazuh-manager-5/stateless", R"({"events":[]})");
+        m_port, key, /*wire*/ "/edge/wazuh-5/stateless", /*signed*/ "/wazuh-manager/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(bad), 401) << bad;
 }
 

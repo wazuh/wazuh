@@ -648,7 +648,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
     xml_node **nodes = create_node_array(9,
         create_xml_node("port", "9443"),
         create_xml_node("bind_addr", "0.0.0.0"),
-        create_xml_node("global_prefix", "/wazuh-manager-5/"),
+        create_xml_node("global_prefix", "/wazuh-manager/"),
         create_xml_node("certificate", "etc/remoted-https/server.crt"),
         create_xml_node("key", "etc/remoted-https/server.key"),
         create_xml_node("ca", "etc/remoted-https/ca.crt"),
@@ -666,7 +666,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(ts->logr->https.port, 9443);
     assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5/");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
     assert_string_equal(ts->logr->https.certificate, "etc/remoted-https/server.crt");
     assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
     assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
@@ -721,13 +721,13 @@ static void test_w_remoted_parse_https_global_prefix_valid(void **state) {
     test_state *ts = *state;
 
     xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/wazuh-manager-5/")
+        create_xml_node("global_prefix", "/wazuh-manager/")
     );
 
     int result = w_remoted_parse_https(nodes, ts->logr);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5/");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
 
     free_node_array(nodes);
 }
@@ -753,13 +753,13 @@ static void test_w_remoted_parse_https_global_prefix_no_trailing_slash(void **st
 
     // Both spellings are accepted; trailing-slash normalization is the C++ side's job.
     xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/wazuh-manager-5")
+        create_xml_node("global_prefix", "/wazuh-manager")
     );
 
     int result = w_remoted_parse_https(nodes, ts->logr);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager-5");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager");
 
     free_node_array(nodes);
 }

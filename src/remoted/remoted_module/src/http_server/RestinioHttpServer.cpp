@@ -934,9 +934,9 @@ namespace remoted::http
                 // under the global prefix. The "/" route (the health probe) is registered as the
                 // BARE prefix on purpose: path2regex's trailing-slash tolerance is
                 // one-directional -- a pattern ending in '/' does NOT match the bare spelling,
-                // while a bare pattern matches both -- so "/wazuh-manager-5" answers
-                // GET /wazuh-manager-5 and GET /wazuh-manager-5/ alike (LB health checks use
-                // either), where "/wazuh-manager-5/" would 404 the former. Pinned by
+                // while a bare pattern matches both -- so "/wazuh-manager" answers
+                // GET /wazuh-manager and GET /wazuh-manager/ alike (LB health checks use
+                // either), where "/wazuh-manager/" would 404 the former. Pinned by
                 // routerSemanticsSpike_test.cpp (S2/S9).
                 const std::string routePath = prefix.empty()      ? route.path
                                               : route.path == "/" ? prefix

@@ -25,7 +25,7 @@ func TestDoSignsExactlyWhatItSends(t *testing.T) {
 		wantURI string
 	}{
 		{"unprefixed", "", "/control", "/control"},
-		{"prefixed", "/wazuh-manager-5", "/control", "/wazuh-manager-5/control"},
+		{"prefixed", "/wazuh-manager", "/control", "/wazuh-manager/control"},
 		{"prefixed with query", "/p", "/stateful?x=1", "/p/stateful?x=1"},
 		{"nested prefix", "/edge/wazuh-5", "/scan/vd", "/edge/wazuh-5/scan/vd"},
 	}

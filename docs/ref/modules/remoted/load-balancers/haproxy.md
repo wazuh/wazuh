@@ -263,7 +263,7 @@ openssl s_client -connect wazuh-manager.example.com:8444 </dev/null 2>/dev/null 
 #    :8443 must show the BALANCER's certificate, :8444 the MANAGER's
 
 # 3. The health check endpoint answers, unauthenticated
-#    (with remote.https.global_prefix configured, probe /<prefix>/ instead — e.g. /wazuh-manager-5/)
+#    (with remote.https.global_prefix configured, probe /<prefix>/ instead — e.g. /wazuh-manager/)
 curl -k https://wazuh-manager.example.com:8443/
 #    -> {"status":"ok","module":"remoted"}
 ```

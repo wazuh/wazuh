@@ -133,13 +133,13 @@ The request path is signed, so any proxy-side rewrite breaks every request:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh-manager-5/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted recomputes over<br/>'/stateless' → MISMATCH → 401"]
+    A["agent signs<br/>'/wazuh-manager/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted recomputes over<br/>'/stateless' → MISMATCH → 401"]
 ```
 
 To publish remoted under a URL path prefix, configure the SAME prefix on both ends instead:
 [`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the manager (freshly
-generated configurations ship `/wazuh-manager-5/`) and the matching prefix on the agents. The
-agent then sends **and signs** `/wazuh-manager-5/stateless`, and the proxy's only job is to
+generated configurations ship `/wazuh-manager/`) and the matching prefix on the agents. The
+agent then sends **and signs** `/wazuh-manager/stateless`, and the proxy's only job is to
 forward that path untouched (passthrough). A prefix mismatch between agent and manager surfaces
 as `404`, not `401`.
 

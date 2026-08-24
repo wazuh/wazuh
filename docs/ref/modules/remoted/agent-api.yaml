@@ -43,10 +43,10 @@ servers:
       port:
         default: "1517"
       globalPrefix:
-        default: "/wazuh-manager-5"
+        default: "/wazuh-manager"
         description: >
           Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
-          configurations ship /wazuh-manager-5; an absent tag means no prefix (use an empty
+          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
           string here). The signed request target includes this prefix.
 
 tags:

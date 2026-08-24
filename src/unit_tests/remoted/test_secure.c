@@ -3657,7 +3657,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.worker_node = true;
     test_logr.https.port = 9443;
     test_logr.https.bind_addr = "0.0.0.0";
-    test_logr.https.global_prefix = "/wazuh-manager-5/";
+    test_logr.https.global_prefix = "/wazuh-manager/";
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
@@ -3726,7 +3726,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     // Copied verbatim, like every other https string: no getDefine involved (global_prefix is a
     // regular <remote><https> setting, not an internal option), so the strict will_return
     // ordering above is untouched.
-    assert_string_equal(rm_config.global_prefix, "/wazuh-manager-5/");
+    assert_string_equal(rm_config.global_prefix, "/wazuh-manager/");
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");

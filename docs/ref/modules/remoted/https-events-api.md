@@ -286,9 +286,9 @@ The listener exposes **nine** agent-facing routes. Every one of them except `GET
 
 Every path on this page is the endpoint's **logical** path. When
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) is configured (freshly
-generated configurations ship `/wazuh-manager-5/`), the server exposes each endpoint under that
-prefix — `POST /stateless` becomes `POST /wazuh-manager-5/stateless`, the health probe becomes
-`GET /wazuh-manager-5/` (with or without the trailing slash) — and the unprefixed paths answer
+generated configurations ship `/wazuh-manager/`), the server exposes each endpoint under that
+prefix — `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health probe becomes
+`GET /wazuh-manager/` (with or without the trailing slash) — and the unprefixed paths answer
 `404`. The prefixed path is what travels on the wire, so it is also what the request signature
 covers: agents send **and sign** the full prefixed target.
 

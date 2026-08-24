@@ -187,7 +187,7 @@ longer matches, which means `401` on **every** request:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh-manager-5/stateless'"] --> N["location /wazuh-manager-5/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 401"]
+    A["agent signs<br/>'/wazuh-manager/stateless'"] --> N["location /wazuh-manager/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 401"]
 ```
 
 Consequence: a path prefix is never something the proxy adds or strips. To publish remoted under
@@ -196,7 +196,7 @@ manager and the same prefix on the agents, and keep `proxy_pass` **without** a U
 the prefixed target passes through untouched:
 
 ```nginx
-location /wazuh-manager-5/ {
+location /wazuh-manager/ {
     proxy_pass https://remoted_nodes_http;   # no trailing slash: target forwarded unchanged
 }
 ```

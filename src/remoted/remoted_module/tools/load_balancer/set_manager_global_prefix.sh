@@ -1,9 +1,9 @@
 #!/bin/bash
 # Switches <remote><https><global_prefix> on manager node 1 and restarts remoted.
 #
-# Usage: ./set_manager_global_prefix.sh /wazuh-manager-5/ | / | <any value, to test rejection>
+# Usage: ./set_manager_global_prefix.sh /wazuh-manager/ | / | <any value, to test rejection>
 #
-#   /wazuh-manager-5/   every endpoint is served under the prefix; the unprefixed paths 404.
+#   /wazuh-manager/   every endpoint is served under the prefix; the unprefixed paths 404.
 #                       Agents (and this lab's probe) must send AND SIGN the prefixed target.
 #   /                   explicit identity: endpoints served unprefixed (today's behavior).
 #
@@ -17,7 +17,7 @@
 # path, since both nodes share the binary name.
 set -euo pipefail
 
-PREFIX="${1:?usage: $0 /wazuh-manager-5/ | / | <any value, to test rejection>}"
+PREFIX="${1:?usage: $0 /wazuh-manager/ | / | <any value, to test rejection>}"
 
 MANAGER_HOME=/var/wazuh-manager
 CONFIG="$MANAGER_HOME/etc/wazuh-manager.conf"

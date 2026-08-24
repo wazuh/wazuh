@@ -15,11 +15,11 @@ func TestNormalizeGlobalPrefix(t *testing.T) {
 		{"/", ""},
 		{"//", ""},
 		{"///", ""},
-		{"wazuh-manager-5", "/wazuh-manager-5"},
-		{"/wazuh-manager-5", "/wazuh-manager-5"},
-		{"/wazuh-manager-5/", "/wazuh-manager-5"},
-		{"wazuh-manager-5/", "/wazuh-manager-5"},
-		{"//wazuh-manager-5//", "/wazuh-manager-5"},
+		{"wazuh-manager", "/wazuh-manager"},
+		{"/wazuh-manager", "/wazuh-manager"},
+		{"/wazuh-manager/", "/wazuh-manager"},
+		{"wazuh-manager/", "/wazuh-manager"},
+		{"//wazuh-manager//", "/wazuh-manager"},
 		{"/edge/wazuh-5/", "/edge/wazuh-5"},
 		{"/a/b", "/a/b"},
 		// Lenient like the Python: an interior "//" survives normalization so the
@@ -34,7 +34,7 @@ func TestNormalizeGlobalPrefix(t *testing.T) {
 }
 
 func TestGlobalPrefixWarning(t *testing.T) {
-	quiet := []string{"", "/wazuh-manager-5", "/a/b", "/a-b_c.d~e", "/5"}
+	quiet := []string{"", "/wazuh-manager", "/a/b", "/a-b_c.d~e", "/5"}
 	for _, p := range quiet {
 		if w := GlobalPrefixWarning(p); w != "" {
 			t.Errorf("GlobalPrefixWarning(%q) = %q, want no warning", p, w)

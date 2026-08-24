@@ -194,14 +194,14 @@ note "404 rather than 401 is the proof: the target arrived verbatim, so the sign
 
 # ============================================================ issue #38491: global endpoint prefix
 group "Global endpoint prefix (issue #38491) -- configured on both ends, never rewritten"
-use_prefix /wazuh-manager-5/
+use_prefix /wazuh-manager/
 use_config works_prefix_passthrough
-check "prefixed target, signed exactly as sent"     "202" "$(status --url "$TERM" --target /wazuh-manager-5/stateless)"
-check "health probe moved under the prefix"         "200" "$(status --url "$TERM" --no-auth --method GET --target /wazuh-manager-5/ --body '')"
+check "prefixed target, signed exactly as sent"     "202" "$(status --url "$TERM" --target /wazuh-manager/stateless)"
+check "health probe moved under the prefix"         "200" "$(status --url "$TERM" --no-auth --method GET --target /wazuh-manager/ --body '')"
 check "unprefixed path no longer exists"            "404" "$(status --url "$NODE1" --target /stateless)"
-check "signature minted for the BARE path -> 401"   "401" "$(status --url "$NODE1" --target /wazuh-manager-5/stateless --signed-target /stateless)"
+check "signature minted for the BARE path -> 401"   "401" "$(status --url "$NODE1" --target /wazuh-manager/stateless --signed-target /stateless)"
 note "The probe signs --target verbatim, so the prefix works with no probe changes. The proxy's"
-note "only job is passthrough: location /wazuh-manager-5/ + proxy_pass with NO URI component."
+note "only job is passthrough: location /wazuh-manager/ + proxy_pass with NO URI component."
 use_prefix /
 use_config both_topologies
 group "Unsigned field: Content-Encoding (issue: are additional signed fields needed?)"

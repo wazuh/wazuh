@@ -705,7 +705,7 @@ WriteRemote()
     echo "    <https>" >> $NEWCONFIG
     echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
     echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}</bind_addr>" >> $NEWCONFIG
-    echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager-5/}</global_prefix>" >> $NEWCONFIG
+    echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
     echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
     echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then

@@ -245,7 +245,7 @@ namespace remoted::http
         std::string bindAddress {"127.0.0.1"}; ///< Listen address.
         std::uint16_t port {1517};             ///< Listen port.
         /// Global endpoint prefix every registered route is served under (e.g.
-        /// "/wazuh-manager-5"). Stored raw; RestinioHttpServer::start() canonicalizes it via
+        /// "/wazuh-manager"). Stored raw; RestinioHttpServer::start() canonicalizes it via
         /// normalizeGlobalPrefix() (leading '/', no trailing '/'; "" == "/" == no prefix) and
         /// throws std::invalid_argument for an invalid value. With a prefix set, unprefixed
         /// paths answer 404. The request target is NOT rewritten: handlers and the auth layer

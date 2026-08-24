@@ -44,7 +44,7 @@ to raw bytes, and its length **MUST** be 16, 24 or 32 bytes (AES-128/192/256).
 <protocol-version> "\n"      e.g. "1\n"
 <METHOD> "\n"                uppercase, e.g. "POST\n"
 <request-target> "\n"        exactly as sent, query string and global prefix included,
-                             e.g. "/stateful\n" or "/wazuh-manager-5/stateful\n"
+                             e.g. "/stateful\n" or "/wazuh-manager/stateful\n"
 <agent-id> "\n"              the SAME string used in the Authorization header, e.g. "001\n"
 <timestamp> "\n"             the SAME decimal string used in the header
 <body>                       the exact request bytes, with NO trailing newline
