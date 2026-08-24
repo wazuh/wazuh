@@ -170,6 +170,8 @@ static const char *w_agent_verify_mode_str(int verification_mode)
         return "certificate";
     case AGENT_VERIFY_NONE:
         return "none";
+    case AGENT_VERIFY_SYSTEM:
+        return "system";
     default:
         return "unknown";
     }
