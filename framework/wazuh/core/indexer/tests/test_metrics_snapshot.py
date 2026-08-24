@@ -255,7 +255,6 @@ EXPECTED_COMMS_FIELDS = {
 # exist in the legacy flat format).
 EXPECTED_COMMS_FIELDS_V5_ONLY = {
     "events.failed.total",
-    "messages.states.total",
     "messages.upgrades.total",
 }
 
@@ -1254,7 +1253,7 @@ class TestCollectAndIndex:
 
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_comms_index(self):
-        """bulk_index is called with 'wazuh-metrics-comms' and the normalized comms docs."""
+        """bulk_index is called with 'wazuh-metrics-comms-v4' and the normalized comms docs."""
         comms_docs = [{"events": {"total": 1000}}]
 
         mock_indexer = AsyncMock()
@@ -1265,7 +1264,7 @@ class TestCollectAndIndex:
             await tasks._collect_and_index()
 
         mock_indexer.metrics.bulk_index.assert_any_await(
-            "wazuh-metrics-comms", comms_docs, tasks.bulk_size
+            "wazuh-metrics-comms-v4", comms_docs, tasks.bulk_size
         )
 
     @pytest.mark.asyncio
@@ -1741,7 +1740,7 @@ class TestCollectAndIndexWithValidation:
                     await tasks._collect_and_index()
 
         mock_validate.assert_called_once_with(
-            comms_docs, fake_schema, "wazuh-metrics-comms"
+            comms_docs, fake_schema, "wazuh-metrics-comms-v4"
         )
 
     @pytest.mark.asyncio
@@ -1931,7 +1930,6 @@ REMOTED_STATS_V5_ALL_ZEROS = {
             "received_breakdown": {
                 "events": 0,
                 "events_failed": 0,
-                "states": 0,
                 "upgrade_ack": 0,
                 "discarded": 0,
                 "dequeued_after": 0,
@@ -1957,7 +1955,6 @@ REMOTED_STATS_V5_NONZERO = {
             "received_breakdown": {
                 "events": 1000,
                 "events_failed": 4,
-                "states": 333,
                 "upgrade_ack": 2,
                 "discarded": 3,
                 "dequeued_after": 1,
@@ -2067,7 +2064,7 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["messages"]["control"]["replaced"]["total"] == 8
         assert doc["messages"]["control"]["processed"]["total"] == 202
         assert doc["messages"]["control"]["dropped_on_close"]["total"] == 1
-        assert doc["messages"]["states"]["total"] == 333
+        assert "states" not in doc["messages"]
         assert doc["messages"]["upgrades"]["total"] == 2
 
     @pytest.mark.asyncio

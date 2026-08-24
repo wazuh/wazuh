@@ -165,25 +165,6 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,
                                 -Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
 endif()
 
-list(APPEND shared_tests_names "test_enrollment_op")
-set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
-                              -Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \
-                              -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
-                              -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
-                              -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                              -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket,--wrap=wfopen,--wrap=fflush,--wrap=fgetpos \
-                              -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc -Wl,--wrap,popen \
-                              -Wl,--wrap=OS_SetRecvTimeout")
-
-if(${TARGET} STREQUAL "winagent")
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
-                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=fim_db_teardown")
-else()
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname \
-                                    -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
-endif()
-
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_names "test_ssl_op")
     list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new -Wl,--wrap,_merror")
@@ -201,6 +182,15 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags " ")
+endif()
+
+list(APPEND shared_tests_names "test_startup_gate_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_utf8_op")
@@ -430,6 +420,16 @@ foreach(counter RANGE ${count})
             ${SRC_FOLDER}/shared/src/read-alert.c
             ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/debug_op_wrappers.c
         )
+    endif()
+
+    # startup_gate_wait_for_ready()'s real logic only exists under #if
+    # defined(CLIENT) (shared/src/startup_gate_op.c) -- CLIENT isn't defined
+    # globally in this standalone unit_tests project the way it is in the
+    # main build (src/CMakeLists.txt), so it must be added here explicitly
+    # for agent/winagent, matching how the real agent/winagent build compiles
+    # this file. Left undefined for manager, exercising the no-op fallback.
+    if("${test_name}" STREQUAL "test_startup_gate_op" AND NOT ${TARGET} STREQUAL "manager")
+        target_compile_definitions(${test_name} PRIVATE CLIENT)
     endif()
 
     if(${TARGET} STREQUAL "manager")

@@ -11,6 +11,8 @@
 
 #include "endpoints/downloadEndpoint.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <fcntl.h>
@@ -83,7 +85,8 @@ namespace
             while (start < relative.size())
             {
                 const auto slash = relative.find('/', start);
-                const auto part = relative.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
+                const auto part =
+                    relative.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
                 full += "/" + part;
                 ::mkdir(full.c_str(), 0700);
                 m_dirs.push_back(full);
@@ -182,7 +185,7 @@ namespace
 
     /// Builds a verified request whose payload views a buffer the caller keeps alive.
     std::shared_ptr<remoted::auth::AuthenticatedRequest> authenticatedRequest(const std::shared_ptr<std::string>& body,
-                                                                             const std::string& agentId = "001")
+                                                                              const std::string& agentId = "001")
     {
         auto request = std::make_shared<remoted::auth::AuthenticatedRequest>();
         request->agentId = agentId;
@@ -244,13 +247,13 @@ TEST(DownloadParseRequestTest, RejectsMalformedBodies)
         "not json",                                                  // not JSON
         "[]",                                                        // not an object
         R"("a string")",                                             // not an object
-        R"({"resource_type":"config"})",                              // missing resource_id
-        R"({"resource_id":"web-servers"})",                           // missing resource_type
-        R"({"resource_type":"config","resource_id":"a","extra":1})",  // additionalProperties: false
-        R"({"resource_type":1,"resource_id":"a"})",                   // wrong type
-        R"({"resource_type":"config","resource_id":123})",            // wrong type
-        R"({"resource_type":"config","resource_id":null})",           // wrong type
-        R"({"resource_type":"config","resource_id":"a",)",            // truncated
+        R"({"resource_type":"config"})",                             // missing resource_id
+        R"({"resource_id":"web-servers"})",                          // missing resource_type
+        R"({"resource_type":"config","resource_id":"a","extra":1})", // additionalProperties: false
+        R"({"resource_type":1,"resource_id":"a"})",                  // wrong type
+        R"({"resource_type":"config","resource_id":123})",           // wrong type
+        R"({"resource_type":"config","resource_id":null})",          // wrong type
+        R"({"resource_type":"config","resource_id":"a",)",           // truncated
     };
 
     for (const auto* body : bodies)
@@ -351,9 +354,9 @@ TEST(DownloadGroupSelectorTest, RejectsMalformedSeparatorUse)
     // Each entry must be a valid group name, which rules these out without special cases.
     EXPECT_FALSE(isValidGroupSelector(""));
     EXPECT_FALSE(isValidGroupSelector(","));
-    EXPECT_FALSE(isValidGroupSelector(",web-servers"));   // leading
-    EXPECT_FALSE(isValidGroupSelector("web-servers,"));   // trailing
-    EXPECT_FALSE(isValidGroupSelector("web,,servers"));   // doubled
+    EXPECT_FALSE(isValidGroupSelector(",web-servers")); // leading
+    EXPECT_FALSE(isValidGroupSelector("web-servers,")); // trailing
+    EXPECT_FALSE(isValidGroupSelector("web,,servers")); // doubled
 }
 
 TEST(DownloadGroupSelectorTest, RejectsATraversableEntryAnywhereInTheSelector)
@@ -489,8 +492,7 @@ TEST(DownloadLocateTest, HostileGroupNamesNeverReachLocateResource)
     for (const auto* hostile : {"../../etc", "..", ".", "a/b"})
     {
         const auto body = std::string {R"({"resource_type":"config","resource_id":")"} + hostile + R"("})";
-        ASSERT_TRUE(std::holds_alternative<RequestError>(parseRequest(body)))
-            << "accepted hostile group: " << hostile;
+        ASSERT_TRUE(std::holds_alternative<RequestError>(parseRequest(body))) << "accepted hostile group: " << hostile;
     }
 }
 
@@ -770,6 +772,44 @@ TEST(DownloadHandlerTest, StreamsTheResolvedFileAsAnOctetStream)
     EXPECT_EQ(responder->headers.front().second, "application/octet-stream");
 }
 
+// The remoted.download.* family: each admission outcome lands in its own counter, and a started
+// stream records both the count and the bytes OFFERED (the file size, counted once at start --
+// never per chunk). All asserted through one handler so the cells are proven independent.
+TEST(DownloadHandlerTest, MetricsCountEachOutcomeAndOfferedBytes)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    const std::string contents = "#!/bin/sh\nmerged configuration\n";
+    dir.writeFile("shared/web-servers/merged.mg", contents);
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto handler = makeHandler(paths, metrics);
+
+    const auto run = [&handler](const std::string& bodyText)
+    {
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(bodyText);
+        handler(authenticatedRequest(body), responder);
+        return responder;
+    };
+
+    EXPECT_EQ(run("not json")->status, 400);
+    EXPECT_EQ(metrics.rejected->get(), 1U);
+
+    EXPECT_EQ(run(R"({"resource_type":"config","resource_id":"no-such-group"})")->status, 404);
+    EXPECT_EQ(metrics.notFound->get(), 1U);
+
+    const auto streamedResponder = run(VALID_CONFIG_BODY);
+    EXPECT_TRUE(streamedResponder->streamed);
+    EXPECT_EQ(metrics.started->get(), 1U);
+    EXPECT_EQ(metrics.bytesTotal->get(), contents.size());
+    EXPECT_EQ(metrics.openError->get(), 0U); // nothing above was an open failure
+}
+
 TEST(DownloadHandlerTest, StreamsTheEffectiveConfigForAMultigroupSelector)
 {
     // End to end: a CSV selector must reach the var/multigroups file, not a member group's.
@@ -784,8 +824,7 @@ TEST(DownloadHandlerTest, StreamsTheEffectiveConfigForAMultigroupSelector)
     paths.sharedDir = dir.path() + "/shared";
     paths.multigroupsDir = dir.path() + "/multigroups";
 
-    const auto responder =
-        runHandler(R"({"resource_type":"config","resource_id":"web-servers,databases"})", paths);
+    const auto responder = runHandler(R"({"resource_type":"config","resource_id":"web-servers,databases"})", paths);
 
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
@@ -804,8 +843,7 @@ TEST(DownloadHandlerTest, StreamsTheGroupTheAgentNamed)
     paths.sharedDir = dir.path() + "/shared";
 
     EXPECT_EQ(runHandler(VALID_CONFIG_BODY, paths)->body, "WEB SERVERS CONFIG");
-    EXPECT_EQ(runHandler(R"({"resource_type":"config","resource_id":"databases"})", paths)->body,
-              "DATABASES CONFIG");
+    EXPECT_EQ(runHandler(R"({"resource_type":"config","resource_id":"databases"})", paths)->body, "DATABASES CONFIG");
 }
 
 TEST(DownloadHandlerTest, StreamsAStagedWpk)
@@ -818,8 +856,7 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     ResourcePaths paths;
     paths.wpkDir = dir.path() + "/upgrade";
 
-    const auto responder =
-        runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
+    const auto responder = runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
 
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);

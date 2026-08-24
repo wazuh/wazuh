@@ -9,15 +9,44 @@
  * Foundation
  */
 
+#include <algorithm>      // For std::min/std::max
 #include <regex>
 #include <sstream>        // For std::ostringstream
 #include <iomanip>        // For std::hex
 #include <stdexcept>      // For std::runtime_error
 #include <string>         // For std::string and std::wstring
 #include <locale>         // For localization utilities (if needed for string conversion)
+#include <chrono>         // For the bounded WMI enumeration wait (issue #38370)
 
 #include "utilsWrapperWin.hpp"
 #include <shellapi.h>
+
+namespace
+{
+    // Releases a COM interface pointer (if non-null) when it goes out of scope, once,
+    // from whichever throw site or normal return exits the function that owns it.
+    // Centralizes the per-throw-site "if (p) p->Release();" pattern that would
+    // otherwise be duplicated at every early-exit point.
+    template <typename T>
+    class ComReleaseGuard
+    {
+        public:
+            explicit ComReleaseGuard(T*& ptr) : m_ptr(ptr) {}
+            ~ComReleaseGuard()
+            {
+                if (m_ptr)
+                {
+                    m_ptr->Release();
+                    m_ptr = nullptr;
+                }
+            }
+            ComReleaseGuard(const ComReleaseGuard&) = delete;
+            ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
+
+        private:
+            T*& m_ptr;
+    };
+}
 
 // Implement WMI functions
 HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
@@ -25,9 +54,31 @@ HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
     return CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc);
 }
 
-HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc)
+HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs)
 {
-    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0, 0, 0, 0, &pSvc);
+    // ConnectServer() has no timeout parameter of its own; WBEM_FLAG_CONNECT_USE_MAX_WAIT
+    // plus an IWbemContext __MAX_WAIT property is WMI's own documented mechanism for
+    // bounding it instead of blocking indefinitely on an unresponsive Winmgmt (#38370).
+    // Creating/configuring that context object is a COM/WMI registration concern
+    // unrelated to Winmgmt being hung; if it fails, fall back to the pre-existing
+    // unbounded ConnectServer() call instead of failing hotfix collection outright, so
+    // that this narrow COM failure mode doesn't become a hard new dependency.
+    IWbemContext* pCtx = NULL;
+    ComReleaseGuard<IWbemContext> ctxGuard(pCtx);
+
+    bool contextUsable = SUCCEEDED(CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER,
+                                                    IID_IWbemContext, (LPVOID*)&pCtx));
+
+    if (contextUsable)
+    {
+        _variant_t var(static_cast<long>(maxWaitMs));
+        contextUsable = SUCCEEDED(pCtx->SetValue(L"__MAX_WAIT", 0, &var));
+    }
+
+    const long connectFlags = contextUsable ? WBEM_FLAG_CONNECT_USE_MAX_WAIT : 0;
+    IWbemContext* const ctxArg = contextUsable ? pCtx : NULL;
+    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL,
+                               connectFlags, NULL, ctxArg, &pSvc);
 }
 
 HRESULT ComHelper::SetProxyBlanket(IWbemServices* pSvc)
@@ -96,12 +147,20 @@ std::string BstrToString(BSTR bstr)
     return converter.to_bytes(wstr);
 }
 
-void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHelper,
+                             long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
     IWbemServices* pSvc = NULL;
+    IEnumWbemClassObject* pEnumerator = NULL;
     std::ostringstream oss;
+
+    // Declared in this order so their destructors run in reverse (enumerator, then
+    // service, then locator) at every throw site and at normal function exit alike.
+    ComReleaseGuard<IWbemLocator> locatorGuard(pLoc);
+    ComReleaseGuard<IWbemServices> serviceGuard(pSvc);
+    ComReleaseGuard<IEnumWbemClassObject> enumeratorGuard(pEnumerator);
 
     hres = comHelper.CreateWmiLocator(pLoc);
 
@@ -111,12 +170,10 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         throw std::runtime_error(oss.str());
     }
 
-    hres = comHelper.ConnectToWmiServer(pLoc, pSvc);
+    hres = comHelper.ConnectToWmiServer(pLoc, pSvc, connectMaxWaitMs);
 
     if (FAILED(hres))
     {
-        if (pLoc) pLoc->Release();
-
         oss << "WMI: connection failed. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
@@ -125,33 +182,61 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     if (FAILED(hres))
     {
-        if (pSvc) pSvc->Release();
-
-        if (pLoc) pLoc->Release();
-
         oss << "WMI: security error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
 
-    IEnumWbemClassObject* pEnumerator = NULL;
     hres = comHelper.ExecuteWmiQuery(pSvc, pEnumerator);
 
     if (FAILED(hres))
     {
-        if (pLoc) pLoc->Release();
-
-        if (pSvc) pSvc->Release();
-
         oss << "WMI: query error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
 
-    IWbemClassObject* pclsObj = NULL;
-    ULONG uReturn = 0;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(overallTimeoutMs);
 
     while (pEnumerator)
     {
-        pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+        // Re-checked every iteration (success or timeout) so a Winmgmt that keeps
+        // returning objects without ever finishing can't block forever either
+        // (see #38370: previously WBEM_INFINITE let this block forever).
+        const auto now = std::chrono::steady_clock::now();
+
+        if (now >= deadline)
+        {
+            oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
+                << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
+            throw std::runtime_error(oss.str());
+        }
+
+        // Clamp the per-call wait to whatever time remains so a single Next() call
+        // can never push total elapsed time past overallTimeoutMs. The millisecond
+        // truncation in duration_cast can round remainingMs down to 0 even though
+        // now < deadline still holds; per WMI's docs, Next(0, ...) is a non-blocking
+        // poll rather than a wait, so clamp to at least 1 ms to keep this an actual wait.
+        const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count();
+        const long callTimeoutMs = static_cast<long>(std::max<long long>(1, std::min<long long>(perCallTimeoutMs, remainingMs)));
+
+        // Declared fresh each iteration so a provider that fails without touching
+        // these out-params can't leave a stale, already-Release()'d pclsObj or a
+        // stale nonzero uReturn behind from the previous iteration.
+        IWbemClassObject* pclsObj = NULL;
+        ULONG uReturn = 0;
+        const HRESULT nextRes = pEnumerator->Next(callTimeoutMs, 1, &pclsObj, &uReturn);
+
+        if (nextRes == WBEM_S_TIMEDOUT)
+        {
+            // No object was ready within callTimeoutMs -- Winmgmt is slow, not
+            // necessarily done enumerating. Loop head re-checks the deadline.
+            continue;
+        }
+
+        if (FAILED(nextRes))
+        {
+            oss << "WMI: hotfix enumeration failed. Code: " << std::hex << nextRes;
+            throw std::runtime_error(oss.str());
+        }
 
         if (0 == uReturn)
         {
@@ -159,6 +244,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         }
 
         VARIANT vtProp;
+        VariantInit(&vtProp);
         HRESULT hr = pclsObj->Get(L"HotFixID", 0, &vtProp, 0, 0);
 
         if (SUCCEEDED(hr) && vtProp.vt == VT_BSTR)
@@ -176,15 +262,14 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         pclsObj->Release();
     }
 
-    pSvc->Release();
-    pLoc->Release();
+    // pLoc/pSvc/pEnumerator are released automatically by their guards on scope exit,
+    // including the case where ExecuteWmiQuery reported success but left pEnumerator NULL.
+}
 
-    // ExecuteWmiQuery may report success yet leave a NULL enumerator; guard the release
-    // to avoid dereferencing NULL on the syscollector scan thread.
-    if (pEnumerator)
-    {
-        pEnumerator->Release();
-    }
+void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+{
+    QueryWMIHotFixesBounded(hotfixSet, comHelper, WMI_HOTFIX_NEXT_TIMEOUT_MS,
+                            WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS, WMI_CONNECT_MAX_WAIT_MS);
 }
 
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)

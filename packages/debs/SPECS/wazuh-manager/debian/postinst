@@ -135,14 +135,13 @@ case "$1" in
     # bit keeps them from replacing the root-owned indexer trust material that shares the dir.
     mkdir -p ${DIR}/etc/certs
 
-    # Generation auto-signed certificate if not exists
-    if [ ! -f "${DIR}/etc/certs/authd-key.pem" ] && [ ! -f "${DIR}/etc/certs/authd.pem" ]; then
-        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/certs/authd-key.pem -X ${DIR}/etc/certs/authd.pem 2>/dev/null
-    fi
-
     # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
     # exists. Skipped when the admin supplied their own certificate/key paths through the
-    # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables.
+    # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables. This is
+    # the manager's ONLY self-signed cert/key pair: authd no longer generates its own (its
+    # <ssl_manager_cert>/<ssl_manager_key> point here too), so both listeners present the same
+    # manager identity -- required now that /enroll's mTLS mode treats this certificate as the
+    # enrollment credential.
     if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
         if [ ! -f "${DIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${DIR}/etc/certs/remoted.pem" ]; then
             ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/certs/remoted-key.pem -X ${DIR}/etc/certs/remoted.pem 2>/dev/null
@@ -151,7 +150,7 @@ case "$1" in
 
     # The server certificates each daemon self-generates are owned by ${USER} (the daemon must
     # write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
-    for CERT_FILE in authd.pem authd-key.pem remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+    for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
         if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
             chown ${USER}:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
             chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true

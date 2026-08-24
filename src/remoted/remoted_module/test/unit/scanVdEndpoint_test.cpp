@@ -298,14 +298,24 @@ TEST_F(ScanVdEndpointTest, VersionMismatchReturns409WithCurrentOffset)
     EXPECT_EQ(json.at("current_version").get<uint64_t>(), 999u);
 }
 
-TEST_F(ScanVdEndpointTest, QueueFullReturns503ScanQueueFull)
+TEST_F(ScanVdEndpointTest, VdRejectedReturns503WithVdsOwnErrorCode)
 {
-    handler.setResponse({ScanVdOutcome::QueueFull, 0});
+    handler.setResponse({ScanVdOutcome::VdRejected, 0, "scan_queue_full"});
     dispatch("001", feedUpdateBody(100));
 
     ASSERT_TRUE(responder.done());
     EXPECT_EQ(responder.captured().status, 503);
     EXPECT_EQ(responder.captured().body, R"({"error":"scan_queue_full"})");
+}
+
+TEST_F(ScanVdEndpointTest, VdRejectedWithoutACodeFallsBackToVdError)
+{
+    handler.setResponse({ScanVdOutcome::VdRejected, 0, {}});
+    dispatch("001", feedUpdateBody(100));
+
+    ASSERT_TRUE(responder.done());
+    EXPECT_EQ(responder.captured().status, 503);
+    EXPECT_EQ(responder.captured().body, R"({"error":"vd_error"})");
 }
 
 TEST_F(ScanVdEndpointTest, InvalidAgentOutcomeReturns400InvalidAgentId)

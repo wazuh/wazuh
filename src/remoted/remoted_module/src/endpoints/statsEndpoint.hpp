@@ -53,9 +53,16 @@ namespace remoted::endpoints::stats
      * forwarder outlives every route registered with it -- i.e. the HTTP server (which owns the route
      * table holding this handler) must be stopped/destroyed before forwarder is destroyed.
      * RemotedModuleFacade::stop() already orders teardown this way.
+     *
+     * @param metrics This endpoint's remoted.http.stats.* metric set, or null for none. Must point
+     * at storage that outlives the handler (a facade value member -- see
+     * DownstreamTarget::httpMetrics). The handler counts its own empty-body 400 and hands the
+     * pointer to the forwarder, which counts every delivered status.
      */
-    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
-                                                         std::string socketPath);
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(remoted::downstream::DeferredForwarder& forwarder,
+                std::string socketPath,
+                const remoted::metrics::EndpointHttpMetrics* metrics = nullptr);
 
 } // namespace remoted::endpoints::stats
 

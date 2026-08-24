@@ -18,6 +18,10 @@
 #define ARGV0 "wazuh-agent"
 #endif
 
+#ifdef WAZUH_UNIT_TESTING
+#include "unit_tests/wrappers/windows/winsvc_wrappers.h"
+#endif
+
 /**************************************************************************************
     WARNING: all the logging functions of this file must use the plain_ variant
     to avoid calling any external library that could be loaded before the signature
@@ -34,6 +38,21 @@ static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
 void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 void wm_kill_children();
 extern void stop_wmodules();
+extern void wm_lifecycle_lock_init(void);
+
+/* Reports shutdown progress to the SCM so a slow stop_wmodules() (module
+ * joins, each up to their own budget) doesn't read as hung (issue 38428,
+ * defect #7). No-op before RegisterServiceCtrlHandler() has succeeded. */
+void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms)
+{
+    if (!ossecServiceStatusHandle) {
+        return;
+    }
+
+    ossecServiceStatus.dwCheckPoint = checkpoint;
+    ossecServiceStatus.dwWaitHint = wait_hint_ms;
+    SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus);
+}
 
 /* Start OSSEC-HIDS service */
 int os_start_service()
@@ -108,9 +127,18 @@ int os_stop_service()
     return (rc);
 }
 
-/* Check if the OSSEC-HIDS agent service is running
- * Returns 1 on success (running) or 0 if not running
- */
+/* Check if the OSSEC-HIDS agent service is running, or in any state other
+ * than fully stopped.
+ *
+ * Returns 1 if the service exists and is anything other than SERVICE_STOPPED
+ * (this includes SERVICE_STOP_PENDING/SERVICE_START_PENDING/etc.), or 0 if
+ * it's stopped or doesn't exist.
+ *
+ * Before issue 38428's fix this only returned 1 for SERVICE_RUNNING, which
+ * made the "wait for the old process to actually die" loop in win_agent.c's
+ * service-restart give up the instant the SCM reported SERVICE_STOP_PENDING
+ * -- long before stop_wmodules() had actually finished -- so the new process
+ * started up over the still-shutting-down old one. */
 int CheckServiceRunning()
 {
     int rc = 0;
@@ -126,7 +154,7 @@ int CheckServiceRunning()
             SERVICE_STATUS lpServiceStatus;
 
             if (QueryServiceStatus(schService, &lpServiceStatus)) {
-                if (lpServiceStatus.dwCurrentState == SERVICE_RUNNING) {
+                if (lpServiceStatus.dwCurrentState != SERVICE_STOPPED) {
                     rc = 1;
                 }
             }
@@ -226,9 +254,38 @@ int UninstallService()
     /* Remove from the service database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (schSCManager) {
-        schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE);
+        schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
         if (schService) {
-            if (CheckServiceRunning()) {
+            /* Query the raw state directly instead of CheckServiceRunning(): that
+             * helper now treats anything but SERVICE_STOPPED as "running" (issue
+             * 38428, to fix the restart-wait loop giving up too early), but here a
+             * SERVICE_STOP_PENDING service can't accept a fresh SERVICE_CONTROL_STOP
+             * -- ControlService() would fail with ERROR_SERVICE_CANNOT_ACCEPT_CTRL,
+             * skipping DeleteService() below and reporting the whole uninstall as
+             * failed even though the service was already on its way out. */
+            SERVICE_STATUS currentStatus;
+            BOOL queried = QueryServiceStatus(schService, &currentStatus);
+            DWORD currentState = queried ? currentStatus.dwCurrentState : SERVICE_RUNNING;
+
+            if (queried && currentState == SERVICE_STOPPED) {
+                plain_minfo("Found (%s) service is not running.", g_lpszServiceName);
+                ret = 1;
+            } else if (queried && currentState == SERVICE_STOP_PENDING) {
+                plain_minfo("Found (%s) service is already stopping; waiting for it to finish.", g_lpszServiceName);
+
+                const DWORD stopWaitTimeoutMs = 45000;
+                const DWORD waitStart = GetTickCount();
+                ret = 1;
+
+                while (QueryServiceStatus(schService, &currentStatus) && currentStatus.dwCurrentState != SERVICE_STOPPED) {
+                    if (GetTickCount() - waitStart > stopWaitTimeoutMs) {
+                        plain_merror("Failure waiting for (%s) to finish stopping before removing it.", g_lpszServiceName);
+                        ret = 0;
+                        break;
+                    }
+                    Sleep(500);
+                }
+            } else {
                 plain_minfo("Found (%s) service is running going to try and stop it.", g_lpszServiceName);
                 ret = ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus);
                 if (!ret) {
@@ -236,9 +293,6 @@ int UninstallService()
                 } else {
                     plain_minfo("Successfully stopped (%s).", g_lpszServiceName);
                 }
-            } else {
-                plain_minfo("Found (%s) service is not running.", g_lpszServiceName);
-                ret = 1;
             }
 
             if (ret && DeleteService(schService)) {
@@ -277,23 +331,38 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
-                ossecServiceStatus.dwWaitHint               = 0;
+                /* The stop path below blocks: wm_kill_children(), stop_wmodules() and the FIM
+                 * database teardown (FIM_TEARDOWN_BUDGET_MS). The wait hint provides a best-effort
+                 * estimate to the SCM covering teardown and module shutdowns. */
+                ossecServiceStatus.dwWaitHint               = FIM_TEARDOWN_BUDGET_MS + 10000;
 
                 plain_minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
-                extern bool is_fim_shutdown;
-
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Set pending exit signal.");
 
+                is_fim_shutdown = true;
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
                 stop_wmodules();
-                is_fim_shutdown = true;
+                // stop_wmodules()'s own join loop (win_utils.c) drives dwWaitHint down to a few
+                // seconds at a time via report_stop_progress() -- appropriate while it's still
+                // actively reporting every couple of seconds, but fim_db_teardown() below has no
+                // progress reporting of its own and can run up to FIM_TEARDOWN_BUDGET_MS. Without
+                // re-widening the hint here first, the SCM would only be covered for the last few
+                // seconds stop_wmodules() reported, not this next phase (issue 38428).
+                report_stop_progress(ossecServiceStatus.dwCheckPoint + 1, FIM_TEARDOWN_BUDGET_MS + 5000);
                 fim_db_teardown();
 #endif
+                // report_stop_progress() (called from stop_wmodules()'s join loop, above)
+                // leaves dwCheckPoint/dwWaitHint at whatever it last wrote to signal an
+                // in-progress stop; a terminal state has no pending operation left to
+                // report, so both must go back to zero here rather than being left stale
+                // (issue 38428).
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
+                ossecServiceStatus.dwCheckPoint              = 0;
+                ossecServiceStatus.dwWaitHint                = 0;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Exit completed successfully.");
                 break;
@@ -326,6 +395,16 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
 /* Start OSSEC service */
 void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR *argv)
 {
+#ifdef OSSECHIDS
+    /* Must run before RegisterServiceCtrlHandler() below: from that point on,
+     * the SCM can invoke OssecServiceCtrlHandler() -> stop_wmodules(), which
+     * takes wm_lifecycle_lock (issue 38428). wm_lifecycle_lock_init() is only
+     * defined in win_utils.c (win32_common), which this file is also compiled
+     * without (win32_service_rk, for the setup/UI tools) -- so this call must
+     * stay inside the same OSSECHIDS guard as stop_wmodules()/local_start(). */
+    wm_lifecycle_lock_init();
+#endif
+
     ossecServiceStatus.dwServiceType            = SERVICE_WIN32;
     ossecServiceStatus.dwCurrentState           = SERVICE_START_PENDING;
     ossecServiceStatus.dwControlsAccepted       = SERVICE_ACCEPT_STOP;

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient, ModulesdHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, VdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -192,7 +192,7 @@ def test_engine_http_client_init_error():
             assert exc_info.value.code == 2018
 
 
-# ── ModulesdHTTPClient ─────────────────────────────────────────────────────────
+# ── VdHTTPClient ─────────────────────────────────────────────────────────
 
 VD_STATUS_RESPONSE = {
     'available': True,
@@ -203,10 +203,10 @@ VD_STATUS_RESPONSE = {
 }
 
 
-def _make_modulesd_client() -> ModulesdHTTPClient:
-    with patch('wazuh.core.common.MODULESD_SOCKET', '/var/wazuh-manager/queue/sockets/modulesd'):
+def _make_modulesd_client() -> VdHTTPClient:
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
         with patch('httpx.HTTPTransport'), patch('httpx.Client'):
-            client = ModulesdHTTPClient()
+            client = VdHTTPClient()
 
     client._client = MagicMock()
     return client
@@ -280,8 +280,8 @@ def test_modulesd_get_status_request_error():
 
 
 def test_modulesd_http_client_init_error():
-    with patch('wazuh.core.common.MODULESD_SOCKET', '/var/wazuh-manager/queue/sockets/modulesd'):
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
             with pytest.raises(WazuhInternalError) as exc_info:
-                ModulesdHTTPClient()
+                VdHTTPClient()
             assert exc_info.value.code == 2023

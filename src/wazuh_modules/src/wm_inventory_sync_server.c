@@ -48,6 +48,12 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->max_inflight_bytes,
              config->cluster_name);
 
+    mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+             "route classes: reserved_control_connections=%d, control_max_body_bytes=%d, control_max_sessions=%d",
+             config->reserved_control_connections,
+             config->control_max_body_bytes,
+             config->control_max_sessions);
+
     /* The rest of the transport, so every tunable is observable here at debug level; the module's
      * own startup INFO carries the effective values. None of them is a secret. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
@@ -133,8 +139,20 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
     /* Max 10, not 30: modulesd gives the WHOLE daemon 30 s to shut down, so letting one module's drain
      * window alone consume all of it defeats the budget this value exists to respect. */
     config->drain_timeout = getDefine_Int_default("wazuh_modules", "inventory_sync_server_drain_timeout", 0, 10, 0);
+    /* Indexer search page size while draining a session. Sized against the indexer's own limits
+     * (page size vs. response memory), which this module cannot know at build time. */
+    config->session_query_batch_size =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_session_query_batch_size", 0, 100000, 0);
     config->max_parallel_connections =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_max_parallel_connections", 0, 65536, 0);
+    /* Route-class admission (QoS). The liveness class stays fixed inside the module -- it is a term
+     * of the memory ceiling, same criterion as max_header_count. */
+    config->reserved_control_connections =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_reserved_control_connections", 0, 256, 0);
+    config->control_max_body_bytes =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_control_max_body_bytes", 0, 1048576, 0);
+    config->control_max_sessions =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_control_max_sessions", 0, 1024, 0);
     /* Read with a fallback of -1 to tell "absent" from an explicit 0, then translated to the C-ABI's
      * encoding. 0 is documented as "disable the byte budget", but the option's own range starts at 0, so
      * with a fallback of 0 an absent key looked exactly like an operator asking for unlimited -- and the

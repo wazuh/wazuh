@@ -11,8 +11,11 @@
 #include <gmock/gmock.h>
 #include "persistent_queue_storage.hpp"
 #include "mock_filesystem_wrapper.hpp"
+#include "sqlite3Wrapper.hpp"
 #include <memory>
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 struct QueueScenario
 {
@@ -611,4 +614,56 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionI
 
     // Call deleteDatabase
     EXPECT_NO_THROW(storage->deleteDatabase());
+}
+
+/// @brief A stale writer lock left by another connection must resolve once it clears, not fail immediately.
+class PersistentQueueStorageBusyLockTest : public ::testing::Test
+{
+    protected:
+        std::string dbPath;
+        LoggerFunc testLogger;
+
+        void SetUp() override
+        {
+            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_busy_lock_test.db").string();
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+        }
+};
+
+TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockInsteadOfFailingImmediately)
+{
+    // Create the schema first, then hold a real write lock on it.
+    PersistentQueueStorage firstInstanceStorage(dbPath, testLogger);
+
+    SQLite3Wrapper::Connection lockHolderConnection(dbPath);
+    lockHolderConnection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    // A second instance opening the same db while the lock is held.
+    PersistentQueueStorage secondInstanceStorage(dbPath, testLogger);
+
+    // Release the lock from another thread after a short delay.
+    std::thread lockReleaser(
+        [&lockHolderConnection]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        lockHolderConnection.execute("COMMIT;");
+    });
+
+    // Without busy_timeout this throws immediately; with it, it waits out the 300ms lock.
+    EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
+
+    lockReleaser.join();
 }

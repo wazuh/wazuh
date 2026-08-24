@@ -12,11 +12,13 @@
 #ifndef _INVSYNC_UDS_HTTP_SERVER_CONFIG_HPP
 #define _INVSYNC_UDS_HTTP_SERVER_CONFIG_HPP
 
-#include "IUdsHttpServer.hpp"
 #include "inventory_sync_server.h"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
-namespace invsync::http
+namespace invsync
 {
+    /// The transport's config type, re-exported so this module's code keeps one spelling.
+    using wazuh::uds_http::UdsHttpServerConfig;
 
     /**
      * @brief Translate the C-ABI configuration struct into the server's own configuration.
@@ -31,6 +33,6 @@ namespace invsync::http
      */
     UdsHttpServerConfig buildServerConfig(const inventory_sync_server_config_t& config);
 
-} // namespace invsync::http
+} // namespace invsync
 
 #endif // _INVSYNC_UDS_HTTP_SERVER_CONFIG_HPP

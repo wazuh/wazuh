@@ -17,7 +17,7 @@ This pod structure is stored in the "data" field of the vulnerability-detection 
 
 This module uses configuration from XML file "ossec.conf" section "indexer".
 The management of the configuration is implemented in the file "src/config/src/indexer-config.c".
-The function "Read_Indexer" parses the XML section and converts it to a cJSON object that is used by the vulnerability_scanner module. A cJSON global variable is used as the converted configuration output.
+The function "Read_Indexer" is a thin wrapper that delegates the actual parsing to "get_indexer_cnf()", defined in "src/shared/src/engine_external.c". This function parses the XML section and converts it to a cJSON object that is used by the vulnerability_scanner module. A cJSON global variable is used as the converted configuration output.
 This configuration data has 2 special array fields "hosts" and "certificate_authorities", These fields are stored as an array ignoring the name of the inside elements.
 
 ## Documentation

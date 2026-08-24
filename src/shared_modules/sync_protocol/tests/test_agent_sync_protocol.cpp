@@ -771,7 +771,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSy
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+    constexpr size_t FULLSESSION_MAX_BYTES = 1U * 1024U * 1024U;
     constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
     constexpr size_t EXPECTED_BUDGET = FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES;
 
@@ -814,7 +814,7 @@ class SessionMaxBytesGuard final
 
         ~SessionMaxBytesGuard()
         {
-            AgentSyncProtocol::setSessionMaxBytes(5U * 1024U * 1024U);
+            AgentSyncProtocol::setSessionMaxBytes(1U * 1024U * 1024U);
         }
 
         SessionMaxBytesGuard(const SessionMaxBytesGuard&) = delete;
@@ -824,8 +824,8 @@ class SessionMaxBytesGuard final
 TEST_F(AgentSyncProtocolTest, SessionByteBudgetFollowsTheConfiguredSessionMax)
 {
     // <agent><batch><size> bounds a sync session the same way it bounds a
-    // /stateless request; before it was configurable this budget was fixed at
-    // 5 MiB whatever the agent had been told.
+    // /stateless request; before it was configurable this budget was fixed
+    // whatever the agent had been told.
     constexpr size_t CONFIGURED_MAX_BYTES = 512U * 1024U;
     constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
     constexpr size_t EXPECTED_BUDGET = CONFIGURED_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES;
@@ -865,7 +865,7 @@ TEST_F(AgentSyncProtocolTest, AnUnsetSessionMaxKeepsTheBuiltInDefault)
 {
     // Zero is what an absent <batch><size> reaches the module as, so it has to
     // read as "leave the default alone" rather than as a zero-byte session.
-    constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+    constexpr size_t FULLSESSION_MAX_BYTES = 1U * 1024U * 1024U;
     constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
     constexpr size_t EXPECTED_BUDGET = FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES;
 

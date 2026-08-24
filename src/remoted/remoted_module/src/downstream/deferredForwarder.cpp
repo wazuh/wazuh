@@ -18,7 +18,9 @@
 #include <asio/thread_pool.hpp>
 
 #include <array>
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <utility>
 
@@ -52,10 +54,11 @@ namespace remoted::downstream
             return response;
         }
 
-        // Number of throttle slots: one per DownstreamError value, so a permanently-failing
-        // condition (e.g. the engine socket is absent) can never mask a newly-appearing, different
-        // one (e.g. responses suddenly getting truncated).
-        constexpr std::size_t kDownstreamErrorCount {static_cast<std::size_t>(DownstreamError::ResponseTooLarge) + 1};
+        // One throttle slot (and, in ForwarderMetrics, one counter) per DownstreamError value, so
+        // a permanently-failing condition (e.g. the engine socket is absent) can never mask a
+        // newly-appearing, different one (e.g. responses suddenly getting truncated).
+        // kDownstreamErrorCount itself now lives in forwarderMetrics.hpp, next to the counters
+        // it sizes.
 
         // The operator-facing half of each downstream failure: what to check, and which tunable
         // governs it. Kept next to the error taxonomy so adding an enumerator forces a decision
@@ -88,16 +91,21 @@ namespace remoted::downstream
     {
         Impl(std::shared_ptr<IDownstreamClient> downstreamClient,
              std::shared_ptr<DeferredWorkLimiter> workLimiter,
-             std::size_t postProcessThreads)
+             std::size_t postProcessThreads,
+             ForwarderMetrics forwarderMetrics)
             : client {std::move(downstreamClient)}
             , limiter {std::move(workLimiter)}
             , postPool {postProcessThreads == 0 ? std::size_t {1} : postProcessThreads}
+            , metrics {std::move(forwarderMetrics)}
         {
         }
 
         std::shared_ptr<IDownstreamClient> client;
         std::shared_ptr<DeferredWorkLimiter> limiter;
         asio::thread_pool postPool;
+        /// Downstream failure counters, resolved once at construction (see forwarderMetrics.hpp);
+        /// each inc site sits next to the throttle that logs the same cause.
+        ForwarderMetrics metrics;
 
         /// Both of these fire once per affected request, so under a real outage or burst they would
         /// otherwise write one identical line per event. Throttled, with the count in the message.
@@ -111,8 +119,9 @@ namespace remoted::downstream
 
     DeferredForwarder::DeferredForwarder(std::shared_ptr<IDownstreamClient> client,
                                          std::shared_ptr<DeferredWorkLimiter> limiter,
-                                         std::size_t postProcessThreads)
-        : m_impl {std::make_unique<Impl>(std::move(client), std::move(limiter), postProcessThreads)}
+                                         std::size_t postProcessThreads,
+                                         ForwarderMetrics metrics)
+        : m_impl {std::make_unique<Impl>(std::move(client), std::move(limiter), postProcessThreads, std::move(metrics))}
     {
     }
 
@@ -154,6 +163,13 @@ namespace remoted::downstream
                            static_cast<unsigned long long>(shed.total),
                            remoted::common::LogThrottle::kDefaultWindowSeconds);
             }
+            // This 503 is the endpoint's answer, so it counts in its responses.* family (the
+            // limiter's own rejected.total already moved inside tryAcquire()). No latency
+            // observation: a shed measures nothing about processing.
+            if (target.httpMetrics != nullptr)
+            {
+                target.httpMetrics->responses.count(503);
+            }
             responder->send(serviceUnavailable());
             return;
         }
@@ -179,11 +195,27 @@ namespace remoted::downstream
         auto* routeMismatchThrottle = &m_impl->routeMismatchThrottle;
         // A string LITERAL, so capturing it below stays allocation-free (see DownstreamTarget).
         const char* const serviceName = target.serviceName;
+        // Raw pointers to long-lived state and a trivially-copyable time_point: like serviceName,
+        // capturing them costs nothing per request. httpMetrics points at a facade value member
+        // (see DownstreamTarget); fwdMetrics at this forwarder's own Impl, which outlives every
+        // completion (the client is stopped before the forwarder is destroyed). receivedAt is
+        // copied out of *req BEFORE the shared_ptr is moved into the keep-alive.
+        const auto* httpMetrics = target.httpMetrics;
+        const auto* fwdMetrics = &m_impl->metrics;
+        const auto receivedAt = req->receivedAt;
         m_impl->client->sendAsync(
             std::move(downstreamRequest),
             /*bodyKeepAlive=*/std::move(req),
-            [responder, slotPtr, postProcess, postPool, errorThrottles, routeMismatchThrottle, serviceName](
-                DownstreamError error, DownstreamResponse response)
+            [responder,
+             slotPtr,
+             postProcess,
+             postPool,
+             errorThrottles,
+             routeMismatchThrottle,
+             serviceName,
+             httpMetrics,
+             fwdMetrics,
+             receivedAt](DownstreamError error, DownstreamResponse response)
             {
                 // Diagnose the failure HERE, where the raw DownstreamError is still available: the
                 // endpoint's PostProcessor collapses all of them into one 503, so by the time the
@@ -201,6 +233,7 @@ namespace remoted::downstream
                 // first one to hit a slot names itself until the window rolls over.
                 if (error != DownstreamError::None)
                 {
+                    incDownstreamFailure(*fwdMetrics, error);
                     auto& throttle = (*errorThrottles)[static_cast<std::size_t>(error)];
                     if (const auto failed = throttle.record())
                     {
@@ -218,6 +251,9 @@ namespace remoted::downstream
                 {
                     // The service answered, but with a server error. Distinct from a transport
                     // failure and worth surfacing, since the endpoint also turns it into a 503.
+                    // Slot None counts these too (remoted.forwarder.downstream_5xx), the same
+                    // convention as the throttle array below.
+                    incDownstreamFailure(*fwdMetrics, DownstreamError::None);
                     auto& throttle = (*errorThrottles)[static_cast<std::size_t>(DownstreamError::None)];
                     if (const auto failed = throttle.record())
                     {
@@ -234,6 +270,7 @@ namespace remoted::downstream
                     // A route contract mismatch between remoted and the service: the agent will get
                     // a 503 and retry something that can never succeed, so without this line the
                     // mismatch is invisible in both daemons.
+                    incRouteMismatch(*fwdMetrics);
                     if (const auto failed = routeMismatchThrottle->record())
                     {
                         LOGFN_WARN(logFn(),
@@ -254,41 +291,62 @@ namespace remoted::downstream
                 // README documents it may "inspect the downstream body, apply business logic"),
                 // so a throw there (or a bad_alloc from send() under the exact memory pressure
                 // this pipeline is designed to survive) must not be allowed to escape.
-                asio::post(*postPool,
-                           [responder, slotPtr, postProcess, error, response = std::move(response)]
-                           {
-                               remoted::http::HttpResponse toSend;
-                               try
-                               {
-                                   toSend = postProcess(error, response);
-                               }
-                               catch (const std::exception& e)
-                               {
-                                   LOGFN_WARN(logFn(), "PostProcessor threw, answering 500: %s", e.what());
-                                   toSend = internalError();
-                               }
-                               catch (...)
-                               {
-                                   LOGFN_WARN(logFn(), "PostProcessor threw a non-standard exception, answering 500.");
-                                   toSend = internalError();
-                               }
+                asio::post(
+                    *postPool,
+                    [responder, slotPtr, postProcess, error, httpMetrics, receivedAt, response = std::move(response)]
+                    {
+                        remoted::http::HttpResponse toSend;
+                        try
+                        {
+                            toSend = postProcess(error, response);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOGFN_WARN(logFn(), "PostProcessor threw, answering 500: %s", e.what());
+                            toSend = internalError();
+                        }
+                        catch (...)
+                        {
+                            LOGFN_WARN(logFn(), "PostProcessor threw a non-standard exception, answering 500.");
+                            toSend = internalError();
+                        }
 
-                               try
-                               {
-                                   responder->send(std::move(toSend));
-                               }
-                               catch (const std::exception& e)
-                               {
-                                   // send() is send-once; if this itself throws, retrying isn't
-                                   // safe (the answered-flag may already be set). Log and stop --
-                                   // one dropped response, not a terminated process.
-                                   LOGFN_WARN(logFn(), "responder->send() threw: %s", e.what());
-                               }
-                               catch (...)
-                               {
-                                   LOGFN_WARN(logFn(), "responder->send() threw a non-standard exception.");
-                               }
-                           });
+                        // Count the status actually being delivered (the PostProcessor's
+                        // verdict, 500 fallback included) -- the single accounting point
+                        // for every response this endpoint sends through the forwarder --
+                        // and observe end-to-end latency (gateway receipt -> here). Runs
+                        // on the post-processing pool, never on an I/O thread. An
+                        // unstamped receivedAt (epoch default: the request skipped the
+                        // gateway, e.g. a test rig) records no latency rather than a
+                        // bogus span.
+                        if (httpMetrics != nullptr)
+                        {
+                            httpMetrics->responses.count(toSend.status);
+                            if (receivedAt != std::chrono::steady_clock::time_point {})
+                            {
+                                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                                    std::chrono::steady_clock::now() - receivedAt);
+                                remoted::metrics::observeLatency(*httpMetrics,
+                                                                 static_cast<std::uint64_t>(elapsed.count()));
+                            }
+                        }
+
+                        try
+                        {
+                            responder->send(std::move(toSend));
+                        }
+                        catch (const std::exception& e)
+                        {
+                            // send() is send-once; if this itself throws, retrying isn't
+                            // safe (the answered-flag may already be set). Log and stop --
+                            // one dropped response, not a terminated process.
+                            LOGFN_WARN(logFn(), "responder->send() threw: %s", e.what());
+                        }
+                        catch (...)
+                        {
+                            LOGFN_WARN(logFn(), "responder->send() threw a non-standard exception.");
+                        }
+                    });
             });
     }
 

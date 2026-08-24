@@ -47,6 +47,10 @@ namespace invsync::indexer
      * Taking the session means this constructor performs NO health check and NO keystore read of its
      * own: the session already did both, once, for every connector built from it.
      */
+    // LCOV_EXCL_START - integration-only: pure delegation onto the REAL IndexerConnectorSync. This adapter
+    // is the seam that lets everything above it be unit-tested against IIndexerConnectorSync fakes, so it
+    // has no testable behaviour of its own -- it is exercised by the qa/ suite, which runs in
+    // the integration workflow (real indexer container) and is never part of a coverage capture.
     class IndexerConnectorSyncAdapter final : public IIndexerConnectorSync
     {
     public:
@@ -104,6 +108,7 @@ namespace invsync::indexer
     private:
         IndexerConnectorSync m_inner;
     };
+    // LCOV_EXCL_STOP
 
 } // namespace invsync::indexer
 

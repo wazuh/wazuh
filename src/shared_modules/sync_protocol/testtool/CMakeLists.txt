@@ -13,6 +13,7 @@ include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../agent_metadata/include)
 include_directories(${CMAKE_BINARY_DIR}/shared_modules/sync_protocol)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -26,7 +27,16 @@ set_target_properties(
   sync_protocol_test_tool PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                      "${CMAKE_BINARY_DIR}/bin")
 
+target_link_directories(
+  sync_protocol_test_tool PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../agent_metadata/build/lib)
+
+# main.cpp calls metadata_provider_update()/_reset() directly (to stand in for
+# agent-info, which normally publishes this) -- agent_sync_protocol links
+# agent_metadata PRIVATE, so that symbol isn't guaranteed to reach this
+# executable's link line transitively; link it explicitly.
 target_link_libraries(sync_protocol_test_tool PRIVATE agent_sync_protocol
+                                                      agent_metadata
                                                       pthread)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL

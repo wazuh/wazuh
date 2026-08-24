@@ -157,31 +157,33 @@ namespace remoted::endpoints::scanvd
 
             const uint64_t requestedOffset = json["feed_offset"].get<uint64_t>();
 
-            handler.handleVdScan(agentId,
-                                 requestedOffset,
-                                 [responder](const ScanVdResponse& response)
-                                 {
-                                     switch (response.outcome)
-                                     {
-                                         case ScanVdOutcome::Accepted:
-                                             responder->send(remoted::http::HttpResponse::json(200, "{}"));
-                                             break;
-                                         case ScanVdOutcome::VersionMismatch:
-                                             responder->send(
-                                                 errorJsonWithOffset(409, "version_mismatch", response.currentOffset));
-                                             break;
-                                         case ScanVdOutcome::QueueFull:
-                                             // Distinct from version_mismatch: the offset matched, but this
-                                             // node's scan tracking table is full. Retrying the same offset
-                                             // against a different node (or once capacity frees up here) can
-                                             // succeed, unlike a real version mismatch.
-                                             responder->send(errorJson(503, "scan_queue_full"));
-                                             break;
-                                         case ScanVdOutcome::InvalidAgent:
-                                             responder->send(errorJson(400, "invalid_agent_id"));
-                                             break;
-                                     }
-                                 });
+            handler.handleVdScan(
+                agentId,
+                requestedOffset,
+                [responder](const ScanVdResponse& response)
+                {
+                    switch (response.outcome)
+                    {
+                        case ScanVdOutcome::Accepted:
+                            responder->send(remoted::http::HttpResponse::json(200, "{}"));
+                            break;
+                        case ScanVdOutcome::VersionMismatch:
+                            responder->send(errorJsonWithOffset(409, "version_mismatch", response.currentOffset));
+                            break;
+                        case ScanVdOutcome::VdRejected:
+                            // Distinct from version_mismatch: the offset matched, but VD did
+                            // not queue the scan (lane at capacity, feed mid-update, module
+                            // stopping, socket unreachable). Retrying the same offset later
+                            // can succeed, unlike a real version mismatch, and the agent's
+                            // pending state survives a 503 -- its next notify re-requests.
+                            // The body carries VD's own error code, so the log reader sees
+                            // the actual cause instead of a catch-all label.
+                            responder->send(
+                                errorJson(503, response.errorCode.empty() ? "vd_error" : response.errorCode));
+                            break;
+                        case ScanVdOutcome::InvalidAgent: responder->send(errorJson(400, "invalid_agent_id")); break;
+                    }
+                });
         };
     }
 

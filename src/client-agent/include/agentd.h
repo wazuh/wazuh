@@ -51,12 +51,14 @@ void start_agent(int is_startup);
 void w_agentd_populate_metadata(void);
 
 /**
- * Tries to enroll to a server indicated by server_rip
- * @return 0 on success -1 on error
- * @param server_rip the server ip where enrollment is attempted
- * @param network_interface network interface through which enrollment is attempted. (Required for IPv6 link-local addresses)
+ * @brief Runs one enrollment attempt over HTTPS (#38465): build the /enroll
+ *        request, send it via the same transport/TLS material every other
+ *        endpoint uses (agt->server[0], agt->ssl -- there is no per-attempt
+ *        server selection any more), and parse the response. On success,
+ *        reloads the in-memory `keys` and sets the crypto method.
+ * @return 0 on success, -1 on error (the caller retries with backoff).
  * */
-int try_enroll_to_server(const char *server_rip, uint32_t network_interface);
+int try_enroll_to_server(void);
 
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.

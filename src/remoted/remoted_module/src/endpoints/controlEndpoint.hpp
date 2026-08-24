@@ -36,8 +36,14 @@ namespace remoted::endpoints::control
      * the HTTP server (which owns the route table holding this handler) must be
      * stopped/destroyed before @p handler is destroyed. RemotedModuleFacade::stop()
      * already orders teardown this way.
+     *
+     * @param metrics The remoted.control.* set (copied into the handler, cold path). Only its
+     * `rejected` counter is touched here -- one bump per 400 the endpoint answers itself
+     * (invalid body/JSON/agent-id/type); the handled startup/notify/shutdown counts belong to
+     * ControlHandler. The default null object counts nothing.
      */
-    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::control::ControlHandler& handler);
+    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::control::ControlHandler& handler,
+                                                         remoted::control::ControlMetrics metrics = {});
 
 } // namespace remoted::endpoints::control
 

@@ -172,7 +172,10 @@ int main(int argc, char **argv)
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
 
-    startup_gate_wait_for_ready(ARGV0);
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+        mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
+        exit(0);
+    }
 
     // STARTUP_MSG is emitted after the startup hash gate releases. The
     // previous order logged "wazuh-execd: INFO: Started" before the gate

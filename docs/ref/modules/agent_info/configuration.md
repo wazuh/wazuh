@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Agent Info module.
 
-The agent info module collects and synchronizes agent metadata including system information, network configuration, and group memberships. This module runs on both managers and agents.
+The agent info module collects and synchronizes agent metadata including system information, network configuration, and group memberships. This module is agent-only.
 
 For module overview and architecture, see [Agent Info Module](index.html).
 
@@ -18,7 +18,7 @@ For module overview and architecture, see [Agent Info Module](index.html).
 
 **Internal Options:** None
 
-The agent info module is configured identically on both managers and agents.
+The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
 
 ### interval
 

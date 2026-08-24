@@ -26,15 +26,15 @@
 #include <variant>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
 using invsync::sync::SyncPipeline;
 using invsync::sync::SyncPipelineConfig;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
 using invsync::test::SessionSpec;
 using invsync::test::ValueSpec;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
 
 namespace
 {

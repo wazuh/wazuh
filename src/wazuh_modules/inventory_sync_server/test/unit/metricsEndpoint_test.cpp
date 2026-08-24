@@ -25,9 +25,9 @@
 #include <string>
 #include <utility>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
 namespace metrics_endpoint = invsync::endpoints::metrics;
 
 namespace
@@ -68,7 +68,7 @@ namespace
 TEST(MetricsEndpointTest, ContractIsPinned)
 {
     // The facade registers exactly this; a silent drift breaks operators' curl one-liners.
-    EXPECT_EQ(invsync::http::Method::Get, metrics_endpoint::method());
+    EXPECT_EQ(wazuh::uds_http::Method::Get, metrics_endpoint::method());
     EXPECT_STREQ("/metrics", metrics_endpoint::path());
 }
 
@@ -113,7 +113,7 @@ TEST(MetricsEndpointTest, DumpsThePopulatedRegistry)
 
 TEST(MetricsEndpointTest, AnswersServiceUnavailableWhenTheManagerIsGone)
 {
-    invsync::http::RouteHandler handler;
+    wazuh::uds_http::RouteHandler handler;
     {
         const auto manager = std::make_shared<wazuh::metrics::Manager>();
         handler = metrics_endpoint::makeHandler(manager);

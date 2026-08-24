@@ -40,6 +40,10 @@ namespace invsync::indexer
      * Taking the session means this constructor performs NO health check and NO keystore read of its
      * own -- the reason adding this second connector costs no extra startup latency.
      */
+    // LCOV_EXCL_START - integration-only: pure delegation onto the REAL IndexerConnector. This adapter
+    // is the seam that lets everything above it be unit-tested against IIndexerConnectorAsync fakes, so it
+    // has no testable behaviour of its own -- it is exercised by the qa/ suite, which runs in
+    // the integration workflow (real indexer container) and is never part of a coverage capture.
     class IndexerConnectorAsyncAdapter final : public IIndexerConnectorAsync
     {
     public:
@@ -68,6 +72,7 @@ namespace invsync::indexer
     private:
         IndexerConnectorAsync m_inner;
     };
+    // LCOV_EXCL_STOP
 
 } // namespace invsync::indexer
 

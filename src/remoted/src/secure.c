@@ -22,6 +22,8 @@
 #include "batch_queue_op.h"
 #include "http_op.h"
 #include "legacy_task_delivery.h"
+#include "config.h"
+#include "authd-config.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
 // (remoted_module.h) are two independently-maintained mirrors of the same values, since
@@ -148,6 +150,15 @@ int _close_sock(keystore * keys, int sock);
 STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
+
+/* Start every subsystem that only serves 4.x agents (queues, caches, the legacy AES keystore,
+ * and every thread that only reads/writes them). No-op when <remote><legacy> is absent or
+ * disabled. */
+static void start_legacy_subsystems(void);
+
+/* Log remoted's startup line: the classic listener's port/protocol when legacy is enabled,
+ * or a one-line notice that it's disabled. */
+static void log_secure_startup_message(void);
 
 /* Family address reference */
 #define FAMILY_ADDRESS_SIZE 46
@@ -314,6 +325,56 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
 }
 
 /**
+ * @brief Read authd's own <auth> config block (NOT logr's <remote> settings) into the
+ *        enrollment fields of the C-ABI struct, plus the `remoted.enroll_*`/`remoted.authd_*`
+ *        internal options for the bridge's operational knobs.
+ *
+ *        Deliberately sources the behavioral flags from authd's config rather than remoted's
+ *        own, so POST /enroll and legacy port 1515 can never disagree on whether password
+ *        auth is required or which agent versions are acceptable.
+ */
+STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
+    authd_config_t authd_cfg;
+    memset(&authd_cfg, 0, sizeof(authd_cfg));
+
+    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+        // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
+        // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
+        // enrollment chapter of remoted_module/README.md for the verified analysis.
+        rm_config->enrollment_enabled = !authd_cfg.flags.disabled && authd_cfg.flags.remote_enrollment;
+        rm_config->enroll_use_password = authd_cfg.flags.use_password;
+        rm_config->enroll_use_source_ip = authd_cfg.flags.use_source_ip;
+        // NOT logr->allow_higher_versions: that is a separate, independently configured
+        // <remote> setting used by /control. /enroll reads authd's own <agents> setting so
+        // it agrees with legacy port 1515 on which agent versions are acceptable.
+        rm_config->enroll_allow_higher_versions = authd_cfg.allow_higher_versions;
+    } else {
+        // authd's <auth> block could not be parsed at all -- fail closed rather than
+        // silently enabling enrollment with unknown password/version requirements.
+        rm_config->enrollment_enabled = false;
+    }
+
+    os_free(authd_cfg.ciphers);
+    os_free(authd_cfg.agent_ca);
+    os_free(authd_cfg.manager_cert);
+    os_free(authd_cfg.manager_key);
+
+    rm_config->enroll_password_refresh_interval =
+        getDefine_Int_default("remoted", "enroll_password_refresh_interval", 1, 3600, 10);
+    rm_config->authd_connect_timeout = getDefine_Int_default("remoted", "authd_connect_timeout", 1, 60, 2);
+    // authd_response_timeout: <=0 here means "worker-aware default", resolved on the C++ side
+    // (short on the master, long enough to outlast authd's own internal worker-to-master
+    // cluster retry budget on a worker) -- not a fixed constant, since the right default
+    // depends on rm_config->worker_node.
+    rm_config->authd_response_timeout = getDefine_Int_default("remoted", "authd_response_timeout", 0, 120, 0);
+    rm_config->authd_max_queue_size = getDefine_Int_default("remoted", "authd_max_queue_size", 1, 65536, 256);
+    // Capped well under authd's own local-socket listen backlog (128, OS_BindUnixDomainWithPerms)
+    // -- a pool larger than the backlog can hold gains nothing and just leaves surplus workers
+    // unable to even connect.
+    rm_config->authd_worker_threads = getDefine_Int_default("remoted", "authd_worker_threads", 1, 32, 8);
+}
+
+/**
  * @brief Build the config struct passed to remoted_module_start(), combining the
  *        `remoted.http_*` internal options (see remoted_module_https_config()) with
  *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
@@ -329,6 +390,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
+    remoted_enrollment_config(rm_config);
     rm_config->keystore_refresh_interval = keyupdate_interval;
     rm_config->worker_node = logr->worker_node;
     rm_config->verification_mode = logr->https.verification_mode;
@@ -419,6 +481,12 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
     rm_config->tm_max_queue_size = getDefine_Int_default("remoted", "control_tm_max_queue_size", 100, 1000000, 10000);
 
+    // Keepalive write throttle: the manager half of the agent/manager timing contract. It bounds
+    // how often a notify reaches wazuh-db, so the wazuh-db write load it produces scales with the
+    // fleet -- it has to be settable before any notify cadence is agreed with the agent, and it
+    // must stay above whatever cadence the agent ships.
+    rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
+
     extern module_limits_t manager_module_limits;
     extern bool manager_module_limits_enabled;
 
@@ -441,21 +509,6 @@ void HandleSecure()
     const int protocol = logr.proto;
     int n_events = 0;
 
-    agent_metadata_init();
-    legacy_task_delivery_init();
-
-    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
-    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
-    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
-
-    events_queue = batch_queue_init(batch_events_capacity);
-    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
-    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
-    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
-
-    uhttp_global_init();
-
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
 
@@ -465,39 +518,18 @@ void HandleSecure()
     /* Initialize manager */
     manager_init();
 
-    // Initialize message queue
-    rem_msginit(logr.queue_size);
-    rem_set_input_queue_max_bytes(queue_max_bytes);
-
     /* Initialize the agent key table mutex */
     key_lock_init();
 
-    /* Create current timestamp getter thread */
-    w_create_thread(current_timestamp, NULL);
-
-    /* Create shared file updating thread */
+    /* Create shared file updating thread. Always on: the HTTPS /download endpoint reads
+     * merged.mg/group files from disk regardless of the legacy flag. */
     w_create_thread(update_shared_files, NULL);
-
-    /* Create Active Response forwarder thread */
-    w_create_thread(AR_Forward, NULL);
 
     // Initialize request module
     req_init();
 
     // Create com request thread
     w_create_thread(remcom_main, NULL);
-
-    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
-    w_create_thread(legacy_upgrade_task_delivery, NULL);
-
-    /* Create wait_for_msgs threads */
-    {
-        mdebug2("Creating %d sender threads.", sender_pool);
-
-        for (int i = 0; i < sender_pool; i++) {
-            w_create_thread(wait_for_msgs, NULL);
-        }
-    }
 
     // Reset all the agents' connection status in Wazuh DB
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
@@ -520,59 +552,9 @@ void HandleSecure()
         atexit(remoted_module_stop);
     }
 
-    // Create upsert control message thread
-    w_create_thread(save_control_thread, (void *) control_msg_queue);
+    log_secure_startup_message();
 
-    // Create dispatch events thread
-    w_create_thread(dispach_events_thread, (void *) events_queue);
-
-    /* Create agent metadata cache cleanup thread (after events_queue is initialized) */
-    w_create_thread(agent_meta_cleanup_thread, events_queue);
-
-    rem_handler_args_t *worker_args;
-    os_malloc(sizeof(*worker_args), worker_args);
-    worker_args->control_msg_queue = control_msg_queue;
-    worker_args->events_queue      = events_queue;
-    // Create message handler thread pool
-    {
-        // Initialize FD list and counter.
-        global_counter = 0;
-        rem_initList(FD_LIST_INIT_VALUE);
-        for (int i = 0; i < worker_pool; i++) {
-            w_create_thread(rem_handler_main, worker_args);
-        }
-    }
-
-    /* Start up message */
-    {
-        char *_protocol = NULL;
-        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
-        }
-        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
-        }
-        minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
-            (int)getpid(),
-            logr.port,
-            _protocol ? _protocol : "unknown");
-        os_free(_protocol);
-    }
-
-    /* Read authentication keys */
-    mdebug1(ENC_READ);
-
-    key_lock_write();
-    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
-    key_unlock();
-
-    OS_StartCounter(&keys);
-
-    // Key reloader thread
-    w_create_thread(rem_keyupdate_main, NULL);
-
-    // fp closer thread
-    w_create_thread(close_fp_main, &keys);
+    start_legacy_subsystems();
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -581,6 +563,11 @@ void HandleSecure()
     if (notify = wnotify_init(MAX_EVENTS), !notify) {
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
+
+    /* protocol is 0 when <remote><legacy> is absent/disabled -- Read_Remote() resets proto
+     * to 0 in that case even if <protocol> was explicitly set, so neither branch below
+     * adds a socket and the event loop just idles -- no separate legacy_enabled check
+     * needed here. */
 
     /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
     if (protocol & REMOTED_NET_PROTOCOL_TCP) {
@@ -638,6 +625,111 @@ void HandleSecure()
     }
 
     manager_free();
+}
+
+static void start_legacy_subsystems(void) {
+    if (!logr.legacy_enabled) {
+        return;
+    }
+
+    agent_metadata_init();
+    legacy_task_delivery_init();
+
+    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
+    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+    events_queue = batch_queue_init(batch_events_capacity);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
+    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
+
+    uhttp_global_init();
+
+    // Initialize message queue
+    rem_msginit(logr.queue_size);
+    rem_set_input_queue_max_bytes(queue_max_bytes);
+
+    /* Create current timestamp getter thread (only used by the legacy
+     * connection-overtake logic) */
+    w_create_thread(current_timestamp, NULL);
+
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
+
+    /* Create wait_for_msgs threads: legacy push-only merged.mg delivery. 5.x agents
+     * pull it themselves via POST /download. */
+    mdebug2("Creating %d sender threads.", sender_pool);
+
+    for (int i = 0; i < sender_pool; i++) {
+        w_create_thread(wait_for_msgs, NULL);
+    }
+
+    // Create upsert control message thread: control_msg_queue is only ever fed by
+    // legacy text keepalive parsing.
+    w_create_thread(save_control_thread, (void *) control_msg_queue);
+
+    // Create dispatch events thread: events_queue is only fed by the legacy socket
+    // path; 5.x events go straight to downstream via POST /stateless.
+    w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    /* Create agent metadata cache cleanup thread (after events_queue is initialized).
+     * Its cache's only writer is the legacy keepalive parser. */
+    w_create_thread(agent_meta_cleanup_thread, events_queue);
+
+    // Initialize FD list and counter.
+    global_counter = 0;
+    rem_initList(FD_LIST_INIT_VALUE);
+
+    // Create message handler thread pool: processes messages read off the legacy socket.
+    // worker_args is only allocated when it will actually be handed to a thread -- worker_pool
+    // is clamped to >= 1 by config, but nothing here should rely on that to avoid a leak.
+    if (worker_pool > 0) {
+        rem_handler_args_t *worker_args;
+        os_malloc(sizeof(*worker_args), worker_args);
+        worker_args->control_msg_queue = control_msg_queue;
+        worker_args->events_queue      = events_queue;
+
+        for (int i = 0; i < worker_pool; i++) {
+            w_create_thread(rem_handler_main, worker_args);
+        }
+    }
+
+    mdebug1(ENC_READ);
+
+    key_lock_write();
+    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
+    key_unlock();
+
+    OS_StartCounter(&keys);
+
+    w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread: manages fds for legacy TCP connections only. 'keys' is already
+    // loaded by the time this runs.
+    w_create_thread(close_fp_main, &keys);
+}
+
+static void log_secure_startup_message(void) {
+    if (!logr.legacy_enabled) {
+        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+            (int)getpid());
+        return;
+    }
+
+    char *_protocol = NULL;
+    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
+    }
+    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
+    }
+    minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
+        (int)getpid(),
+        logr.port,
+        _protocol ? _protocol : "unknown");
+    os_free(_protocol);
 }
 
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
@@ -1171,7 +1263,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
-                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
+                const char * src_msg = cleaned_msg ? cleaned_msg : tmp_msg;
+                memcpy(ctrl_msg_data->message, src_msg, strnlen(src_msg, tmp_msg_length));
 
                 // Store validation results in the control message data structure
                 ctrl_msg_data->is_startup = is_startup;
@@ -1284,8 +1377,11 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) 
         // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
         // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
         // legacy_task_delivery.c). NOT discarded: the ack still falls through to the normal
-        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message.
-        legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
+        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message, so it
+        // is also counted as a received event, or as a failed one when the enqueue drops it.
+        if (legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE)) {
+            rem_inc_recv_upgrade_ack();
+        }
         mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
         return false;
     }

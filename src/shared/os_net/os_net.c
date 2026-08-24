@@ -688,6 +688,13 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
     errno = 0;
+#ifdef WIN32
+    /* A short/partial send() (SO_SNDTIMEO expiring after only part of the
+     * buffer drained) doesn't call SetLastError(), so without this the
+     * caller would read a stale, unrelated WSA error code instead of
+     * correctly seeing "no error, but incomplete" (WSAGetLastError() == 0). */
+    WSASetLastError(0);
+#endif
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
     free(buffer);
     return retval;

@@ -20,7 +20,6 @@ from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
                                        RuleModel, UpdateUserModel)
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from wazuh import security
-from wazuh.core.cluster.control import get_system_nodes_or_none
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -1159,16 +1158,13 @@ async def revoke_all_tokens(pretty: bool = False) -> ConnexionResponse:
     """
     f_kwargs = {}
 
-    nodes = await get_system_nodes_or_none()
     dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master' if nodes is not None else 'local_any',
+                          request_type='local_master',
                           is_async=False,
-                          broadcasting=nodes is not None,
                           wait_for_complete=True,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
@@ -1209,15 +1205,16 @@ async def get_security_config(pretty: bool = False, wait_for_complete: bool = Fa
 
 
 async def security_revoke_tokens():
-    """Revokes all tokens on all nodes after a change in security configuration."""
-    nodes = await get_system_nodes_or_none()
+    """Revokes all tokens after a change in security configuration.
+
+    Tokens only exist on the master node, since the API daemon does not run on
+    worker nodes and their RBAC database is never initialized.
+    """
     dapi = DistributedAPI(f=revoke_tokens,
-                          request_type='distributed_master' if nodes is not None else 'local_any',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=True,
-                          broadcasting=nodes is not None,
-                          logger=logger,
-                          nodes=nodes
+                          logger=logger
                           )
     raise_if_exc(await dapi.distribute_function())
 

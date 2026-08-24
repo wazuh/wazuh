@@ -13,6 +13,7 @@
 
 #include "curlHandle.hpp"
 
+#include <exception>
 #include <functional>
 #include <string>
 
@@ -80,7 +81,22 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
 
 HttpsClientFacade::~HttpsClientFacade()
 {
-    stop();
+    // stop() is a long best-effort teardown chain (thread joins, JSON
+    // serialization, the sync intake) and is not noexcept; a destructor is
+    // implicitly noexcept(true), so letting anything escape here would call
+    // std::terminate() instead of completing a graceful shutdown. (CID 562609)
+    try
+    {
+        stop();
+    }
+    catch (const std::exception& e)
+    {
+        LOGFN_ERROR(m_logFn, "Exception during https_client shutdown: %s", e.what());
+    }
+    catch (...)
+    {
+        LOGFN_ERROR(m_logFn, "Unknown exception during https_client shutdown.");
+    }
 }
 
 bool HttpsClientFacade::start()
@@ -108,10 +124,11 @@ bool HttpsClientFacade::start()
     }
 
     LOGFN_INFO(m_logFn,
-               "Starting https_client (server=%s:%u, agent=%s).",
+               "Starting https_client (server=%s:%u, agent=%s, body compression %s).",
                m_config.serverHost.c_str(),
                m_config.serverPort,
-               m_config.agentId.c_str());
+               m_config.agentId.c_str(),
+               m_config.httpsCompressionEnabled ? "enabled" : "disabled");
     m_started = true;
     m_dispatcher.start();
     m_dispatcher.onStateChange(HC_STATE_STARTING);
@@ -411,16 +428,21 @@ void HttpsClientFacade::notifyNow()
     }
 }
 
-bool HttpsClientFacade::setAgentKey(const char* keyHex)
+bool HttpsClientFacade::setAgentIdentity(const char* agentId, const char* keyHex)
 {
     // Callback-safe (no lifecycle lock): the natural flow is to call this from
-    // inside on_reenroll_required. It swaps the CMAC key, clears the auth pause
-    // and (via the gate's wake) drives the control loop to re-register.
-    if (keyHex == nullptr || !m_keyProvider.setKey(keyHex))
+    // inside on_reenroll_required. It swaps the CMAC key and id together (a
+    // re-enroll response, #38465, can hand back a new numeric id along with
+    // the new key -- the two must move as one, or subsequent traffic would
+    // sign under an id the manager no longer associates with this key),
+    // clears the auth pause, and (via the gate's wake) drives the control
+    // loop to re-register.
+    if (agentId == nullptr || keyHex == nullptr || !m_keyProvider.setKey(keyHex))
     {
-        return false; // Invalid material: the previous key stays in place.
+        return false; // Invalid material: the previous identity stays in place.
     }
 
+    m_signer.setAgentId(agentId);
     m_authGate.release();
     return true;
 }

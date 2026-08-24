@@ -28,7 +28,15 @@ target_include_directories(
 # ext_restinio pulls in ssl/crypto transitively (cmac.cpp's EVP_MAC), so no explicit OpenSSL link
 # is needed here. ext_rapidjson: header-only, used to parse the /stateless payload's H line.
 # ext_zstd: zstdDecoder.cpp, for Content-Encoding: zstd request bodies.
-target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd)
+# wazuh_metrics: the shared metric registry (shared_modules/metrics) behind control/metrics.hpp
+# and scanvd/scanVdMetrics.hpp. Defined later in the top-level configure (this module never
+# configures standalone), which is fine: CMake resolves link targets at generate time.
+# wazuh_uds_http_server: the shared HTTP-over-UDS server behind the module's LOCAL admin socket
+# (queue/sockets/remoted-module.sock, see startAdminServer() in remotedModuleFacade.hpp). Also
+# registered by the top-level configure; its asio/llhttp deps stay PRIVATE inside the archive,
+# and it compiles the same vendored standalone asio (ASIO_STANDALONE) ext_restinio already uses.
+target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd wazuh_metrics
+                                             wazuh_uds_http_server)
 
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")

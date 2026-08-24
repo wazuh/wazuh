@@ -519,12 +519,23 @@ void fim_initialize() {
     syscheck.registry_value_limit = 0;
     while (!fetch_document_limits_from_agentd())
     {
+        if (fim_shutdown_process_on()) {
+            mdebug1("Stop in progress: aborting the document limits wait.");
+            syscheck.disabled = 1;
+            return;
+        }
         mdebug1("Trying to fetch limits from agentd...");
 #ifdef WIN32
         Sleep(1000);
 #else
         sleep(1);
 #endif // WIN32
+    }
+
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: aborting FIM sync initialization.");
+        syscheck.disabled = 1;
+        return;
     }
 
     // Initialize locks before sync handle creation
@@ -545,6 +556,13 @@ void fim_initialize() {
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
+
+#ifdef WIN32
+    /* Registered here, not where the synchronization thread is launched: fim_sync.db is open from
+     * this point on, and the stop can arrive before start_daemon() gets to the thread (issue
+     * #38212, the install then uninstall window). */
+    fim_sync_register_teardown_hook();
+#endif
 
 // Check for limit changes
 #ifdef WIN32

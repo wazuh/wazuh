@@ -333,13 +333,56 @@ TEST_F(HcInterfaceTest, SetConfigHashAcceptsAValidHashAndRejectsNull)
     hc_destroy(handle);
 }
 
-TEST_F(HcInterfaceTest, SetAgentKeyValidatesTheMaterial)
+TEST_F(HcInterfaceTest, SetAgentIdentityValidatesTheMaterial)
 {
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
     ASSERT_NE(nullptr, handle);
-    EXPECT_TRUE(hc_set_agent_key(handle, "000102030405060708090a0b0c0d0e0f")); // 16 bytes.
-    EXPECT_FALSE(hc_set_agent_key(handle, "abcd")); // 2 bytes: not an AES length.
-    EXPECT_FALSE(hc_set_agent_key(handle, nullptr));
-    EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
+    EXPECT_TRUE(hc_set_agent_identity(handle, "002", "000102030405060708090a0b0c0d0e0f")); // 16 bytes.
+    EXPECT_FALSE(hc_set_agent_identity(handle, "002", "abcd")); // 2 bytes: not an AES length.
+    EXPECT_FALSE(hc_set_agent_identity(handle, "002", nullptr));
+    EXPECT_FALSE(hc_set_agent_identity(handle, nullptr, "000102030405060708090a0b0c0d0e0f"));
+    EXPECT_FALSE(hc_set_agent_identity(nullptr, "002", "000102030405060708090a0b0c0d0e0f"));
     hc_destroy(handle);
+}
+
+// hc_enroll() (#38465): handle-less and synchronous, so no hc_create() ever
+// runs in these tests -- the whole point is that it works without one.
+
+TEST(HcEnrollTest, NullArgumentsAreRejected)
+{
+    hc_config_t config {};
+    hc_enroll_request_t request {};
+    hc_enroll_result_t result {};
+    EXPECT_FALSE(hc_enroll(nullptr, &request, &result));
+    EXPECT_FALSE(hc_enroll(&config, nullptr, &result));
+    EXPECT_FALSE(hc_enroll(&config, &request, nullptr));
+}
+
+TEST(HcEnrollTest, UnreachableServerReturnsFalseWithZeroHttpCode)
+{
+    hc_config_t config {};
+    std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+    config.server_port = 9; // discard; nothing listens for HTTPS.
+    config.verify_mode = HC_VERIFY_NONE;
+    config.request_timeout_ms = 200;
+
+    hc_enroll_request_t request {};
+    std::strncpy(request.body_json, R"({"name":"agent01"})", sizeof(request.body_json) - 1);
+
+    hc_enroll_result_t result {};
+    EXPECT_FALSE(hc_enroll(&config, &request, &result));
+    EXPECT_EQ(0, result.http_code);
+}
+
+TEST(HcEnrollTest, InvalidTransportConfigIsRejectedBeforeSending)
+{
+    hc_config_t config {};
+    std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+    config.server_port = 9;
+    config.verify_mode = HC_VERIFY_FULL; // No CA configured: fail-closed.
+
+    hc_enroll_request_t request {};
+    hc_enroll_result_t result {};
+    EXPECT_FALSE(hc_enroll(&config, &request, &result));
+    EXPECT_EQ(0, result.http_code);
 }
