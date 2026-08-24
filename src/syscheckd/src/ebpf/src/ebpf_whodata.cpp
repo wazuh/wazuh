@@ -35,6 +35,8 @@
 #define LSM_LIST_FILE        "/sys/kernel/security/lsm"
 
 // Global
+volatile bool event_received = false;
+volatile bool ebpf_hc_created = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
 
@@ -406,7 +408,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
 
     /* Load all required symbols (C++17 fold expression) */
-    const auto all_loaded = [](auto... ptrs) { return (... && (ptrs != nullptr)); };
+    const auto all_loaded = [](auto... ptrs)
+    {
+        return (... && (ptrs != nullptr));
+    };
     if (!all_loaded(bpf_helpers->init_ring_buffer,
                     bpf_helpers->ebpf_pop_events,
                     bpf_helpers->init_bpfobj,
@@ -495,10 +500,8 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
         const bool is_walk_variant = name && strstr(name, "_walk") != nullptr;
 
         const bool keep =
-            !(use_lsm
-                ? (is_create_or_unlink_kprobe ||
-                   (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
-                : is_lsm);
+            !(use_lsm ? (is_create_or_unlink_kprobe || (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
+                      : is_lsm);
 
         bpf_helpers->bpf_program_set_autoload(prog, keep);
 
