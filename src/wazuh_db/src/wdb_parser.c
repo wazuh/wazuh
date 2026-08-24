@@ -1102,8 +1102,10 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
         j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
         j_version = cJSON_GetObjectItem(agent_data, "version");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+        cJSON *j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && (j_version == NULL || cJSON_IsString(j_version)) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && (j_version == NULL || cJSON_IsString(j_version)) &&
+            (j_connection_status == NULL || cJSON_IsString(j_connection_status)) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
             int status_code = j_status_code->valueint;
@@ -1111,11 +1113,16 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
             if (j_version != NULL) {
                 version = j_version->valuestring;
             }
+            // Optional: when present, the keepalive is stamped along with the status code.
+            char *connection_status = NULL;
+            if (j_connection_status != NULL) {
+                connection_status = j_connection_status->valuestring;
+            }
             char *sync_status = j_sync_status->valuestring;
 
             char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
 
-            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, validated_sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, connection_status, validated_sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);

@@ -18,6 +18,8 @@
 #include "sync/syncPipeline.hpp"
 #include "testIndexerConnectorFakes.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -28,13 +30,13 @@
 #include <utility>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
 using invsync::sync::SyncPipeline;
 using invsync::sync::SyncPipelineConfig;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
 namespace delete_agent = invsync::endpoints::delete_agent;
 
 namespace
@@ -76,7 +78,7 @@ namespace
         std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
         std::shared_ptr<FakeIndexerConnectorSync> admissionConnector;
         std::shared_ptr<SyncPipeline> pipeline;
-        invsync::http::RouteHandler handler;
+        wazuh::uds_http::RouteHandler handler;
 
         EndpointUnderTest()
         {
@@ -103,9 +105,9 @@ TEST(DeleteAgentEndpoint, RoutesArePinned)
 {
     // remoted never exposes these (D15); authd targets the POST alias because uhttp_* only POSTs.
     // Pinned so a silent rename cannot break that C caller.
-    EXPECT_EQ(delete_agent::method(), invsync::http::Method::Delete);
+    EXPECT_EQ(delete_agent::method(), wazuh::uds_http::Method::Delete);
     EXPECT_STREQ(delete_agent::path(), "/agents");
-    EXPECT_EQ(delete_agent::altMethod(), invsync::http::Method::Post);
+    EXPECT_EQ(delete_agent::altMethod(), wazuh::uds_http::Method::Post);
     EXPECT_STREQ(delete_agent::altPath(), "/agents/delete");
 }
 
@@ -139,7 +141,7 @@ TEST(DeleteAgentEndpoint, UnavailableIndexerIs503AtAdmission)
 TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)
 {
     EndpointUnderTest fixture;
-    invsync::http::RouteHandler handler = delete_agent::makeHandler(
+    wazuh::uds_http::RouteHandler handler = delete_agent::makeHandler(
         delete_agent::Dependencies {std::weak_ptr<SyncPipeline> {}, fixture.admissionConnector});
 
     auto responder = std::make_shared<FutureResponder>();
@@ -155,6 +157,51 @@ TEST(DeleteAgentEndpoint, StoppedPipelineRefusesTheEnqueueWith503)
     auto responder = std::make_shared<FutureResponder>();
     fixture.handler(deleteRequest("7"), responder);
     EXPECT_EQ(503, responder->get().status);
+}
+
+// The deletion plane shares the sync route's sync.requests.total.* family: the handler counts
+// its own inline rejections (each at the site that sends it), and counts NOTHING for an
+// accepted deletion -- the terminal response is the pipeline's to count, so a request is never
+// counted twice. The fixture's pipeline carries no metrics manager (null-object), so any count
+// landing in OUR family can only have come from the endpoint.
+TEST(DeleteAgentEndpoint, InlineRejectionsCountIntoTheSharedFamilyAcceptedDeletionsDoNot)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto counters = invsync::metrics::RequestCounters::make(*metrics);
+
+    EndpointUnderTest fixture;
+    auto handler =
+        delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, fixture.admissionConnector, counters});
+
+    // 400: bad agent-id header, answered (and counted) inline by the handler.
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(deleteRequest("12x"), responder);
+        EXPECT_EQ(400, responder->get().status);
+    }
+    EXPECT_EQ(1U, counters.c400->get());
+
+    // 503: the admission availability gate, answered (and counted) inline.
+    fixture.events->m_syncAvailable.store(false);
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(deleteRequest("7"), responder);
+        EXPECT_EQ(503, responder->get().status);
+    }
+    EXPECT_EQ(1U, counters.c503->get());
+    fixture.events->m_syncAvailable.store(true);
+
+    // Accepted deletion: the endpoint hands over to the pipeline and counts nothing -- the 200
+    // is the pipeline's to count (invisible here: the fixture pipeline has its own private,
+    // unwired registry), so the family must not move.
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(deleteRequest("7"), responder);
+        EXPECT_EQ(200, responder->get().status);
+    }
+    EXPECT_EQ(0U, counters.c200->get());
+    EXPECT_EQ(1U, counters.c400->get());
+    EXPECT_EQ(1U, counters.c503->get());
 }
 
 TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)

@@ -1,5 +1,15 @@
 name: 5.X - VD Scanner tools Delivery
 on:
+  push:
+    branches:
+      - 5.0.0
+    paths:
+      - "src/wazuh_modules/vulnerability_scanner/testtool/**"
+      - "src/wazuh_modules/vulnerability_scanner/src/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      - "src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "src/wazuh_modules/inventory_sync_server/**"
+      - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
@@ -7,19 +17,17 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
       - "src/wazuh_modules/vulnerability_scanner/qa/**"
-      - "src/wazuh_modules/inventory_sync/**"
+      - "src/wazuh_modules/inventory_sync_server/**"
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
   workflow_dispatch:
-
-inputs:
-  aws_region:
-    description: 'AWS region to upload the artifact'
-    required: true
-    default: 'us-east-1'
 
 # Ensures only one instance of this workflow is running per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
   BUILD_DIR: ${{ github.workspace }}/src/build
@@ -50,10 +58,10 @@ jobs:
       - name: Build external dependencies
         uses: ./.github/actions/build_external_deps
 
-      - name: Build inventory_sync testtool
+      - name: Build inventory_sync_server testtool
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "inventory_sync_testtool"
+          target: "inventory_sync_server_testtool"
           test: "false"
           asan: "false"
 
@@ -63,13 +71,12 @@ jobs:
           mkdir -p ${TOOLS_STAGING}/scanner
 
           # Copy binaries
-          cp ${{ env.BUILD_DIR }}/bin/inventory_sync_testtool ${TOOLS_STAGING}/scanner/
+          cp ${{ env.BUILD_DIR }}/bin/inventory_sync_server_testtool ${TOOLS_STAGING}/scanner/
 
           # Copy shared libraries from build/lib
           for lib in \
-            libinventory_sync.so \
+            libinventory_sync_server.so \
             libvulnerability_scanner.so \
-            librouter.so \
             libindexer_connector.so \
             libwazuhext.so \
             libcontent_manager.so \
@@ -111,7 +118,9 @@ jobs:
         if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         uses: ./.github/actions/upload_s3_artifact
         with:
-          aws_region: ${{ inputs.aws_region }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.TOOLS_FILE_NAME }}
           path: ${{ env.TOOLS_FILE_NAME }}.tar.xz
 

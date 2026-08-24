@@ -17,6 +17,7 @@
 #include "cmacSigner.hpp"
 #include "compressionGate.hpp"
 #include "iHttpPerformer.hpp"
+#include "moduleLog.hpp"
 #include "outcomeClassifier.hpp"
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
@@ -66,6 +67,14 @@ class RetrySender final
         std::chrono::milliseconds delayFor(const Result& result);
         static bool isRetryable(OutcomeClass outcome);
 
+        /// Measures skew from the failed attempt's response against this
+        /// clock's current wallSeconds() and, if it exceeds a noise floor,
+        /// pushes the correction into m_clock before the auth grace-retry
+        /// re-signs. A no-op when the response carries no Date (old manager,
+        /// or a proxy that stripped it) or when the measured gap is small
+        /// enough to be latency/rounding rather than real skew.
+        void correctClockIfSkewed(const HttpResponse& response);
+
         IHttpPerformer& m_performer;
         const ISigner& m_signer;
         IClock& m_clock;
@@ -73,6 +82,7 @@ class RetrySender final
         bool m_compressionEnabled;
         CompressionGate* m_compressionGate;
         AuthGate* m_authGate;
+        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 
 #endif // _HC_RETRY_SENDER_HPP

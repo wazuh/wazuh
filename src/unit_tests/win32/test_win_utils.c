@@ -17,6 +17,9 @@
 #include "../wrappers/common.h"
 #include "../../data_provider/include/sysInfo.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "startup_gate_op.h"
+#include "os_win.h"
+#include "../wrappers/windows/handleapi_wrappers.h"
 
 #ifdef TEST_WINAGENT
 
@@ -90,11 +93,19 @@ void mock_sysinfo_free_result_func(cJSON **object) {
     return;
 }
 
+/* Defined in win_utils.c; in the real agent it's called from
+ * OssecServiceStart() before the SCM can invoke stop_wmodules(). The tests
+ * below call stop_wmodules()/wm_start_modules_unless_shutting_down()
+ * directly, so wm_lifecycle_lock must be initialized here first -- entering
+ * an uninitialized CRITICAL_SECTION is undefined behavior (issue 38428). */
+extern void wm_lifecycle_lock_init(void);
+
 static int setup_group(void **state) {
     agt = &global_config;
     time_mock_value = 0;
     sysinfo_network_ptr = mock_sysinfo_networks_func;
     sysinfo_free_result_ptr = mock_sysinfo_free_result_func;
+    wm_lifecycle_lock_init();
 
     return 0;
 }
@@ -376,6 +387,175 @@ static void test_SendBinaryMSGAction_submits_the_binary_frame(void **state) {
     assert_int_equal(ret, 0);
 }
 
+/* --- issue 38428: startup vs. shutdown mutual exclusion ------------------ */
+
+extern volatile sig_atomic_t wm_shutdown_requested;
+extern wmodule *wmodules;
+extern void wm_start_modules_unless_shutting_down(void);
+extern void stop_wmodules(void);
+
+startup_gate_wait_result_t __wrap_startup_gate_wait_for_ready(const char *module_name) {
+    check_expected(module_name);
+    return mock_type(startup_gate_wait_result_t);
+}
+
+int __wrap_wm_config(void) {
+    return mock_type(int);
+}
+
+int __wrap_wm_check(void) {
+    return mock_type(int);
+}
+
+static int teardown_wm_lifecycle(void **state) {
+    (void)state;
+    wm_shutdown_requested = 0;
+    wmodules = NULL;
+    return 0;
+}
+
+/* --- skthread(): must not start syscheck once a shutdown is in flight --- */
+
+static void test_skthread_skips_start_on_shutdown_requested(void **state) {
+    (void)state;
+    expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-syscheckd");
+    will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_SHUTDOWN_REQUESTED);
+
+    /* No expect_function_call(__wrap_Start_win32_Syscheck) queued: cmocka
+     * fails this test if skthread() calls it anyway. */
+    skthread(NULL);
+}
+
+static void test_skthread_starts_syscheck_when_gate_ready(void **state) {
+    (void)state;
+    expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-syscheckd");
+    will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_READY);
+
+    expect_function_call(__wrap_Start_win32_Syscheck);
+    will_return(__wrap_Start_win32_Syscheck, 0);
+
+    skthread(NULL);
+}
+
+/* --- win_module_thread(): must not run a module's start routine once a
+ * shutdown is in flight -- this is the exact mechanism behind issue 38428's
+ * SCA scan_on_start being silently dropped: the thread had already been
+ * spawned before the shutdown was requested, so closing the race requires
+ * this check to happen here, not just at spawn time. */
+
+static int test_routine_call_count = 0;
+
+DWORD WINAPI test_module_routine(__attribute__((unused)) void *data) {
+    test_routine_call_count++;
+    return 0;
+}
+
+static int setup_module_routine_counter(void **state) {
+    (void)state;
+    test_routine_call_count = 0;
+    return 0;
+}
+
+static void test_win_module_thread_skips_routine_on_shutdown_requested(void **state) {
+    (void)state;
+    win_module_start_ctx_t *ctx = NULL;
+    os_calloc(1, sizeof(win_module_start_ctx_t), ctx);
+    ctx->routine = test_module_routine;
+    ctx->data = NULL;
+    snprintf(ctx->name, sizeof(ctx->name), "wazuh-modulesd/test");
+
+    expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-modulesd/test");
+    will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_SHUTDOWN_REQUESTED);
+
+    win_module_thread(ctx);
+
+    assert_int_equal(test_routine_call_count, 0);
+}
+
+static void test_win_module_thread_runs_routine_when_gate_ready(void **state) {
+    (void)state;
+    win_module_start_ctx_t *ctx = NULL;
+    os_calloc(1, sizeof(win_module_start_ctx_t), ctx);
+    ctx->routine = test_module_routine;
+    ctx->data = NULL;
+    snprintf(ctx->name, sizeof(ctx->name), "wazuh-modulesd/test");
+
+    expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-modulesd/test");
+    will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_READY);
+
+    win_module_thread(ctx);
+
+    assert_int_equal(test_routine_call_count, 1);
+}
+
+/* --- wm_start_modules_unless_shutting_down(): the lock-guarded region that
+ * replaces local_start()'s old unconditional wm_config()+spawn-loop. */
+
+static void test_wm_start_modules_skips_everything_when_shutdown_already_requested(void **state) {
+    (void)state;
+    wm_shutdown_requested = 1;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Shutdown already in progress; skipping wodle startup.");
+
+    /* No will_return(__wrap_wm_config, ...) queued: cmocka fails this test
+     * if wm_config() is called despite the shutdown flag already being set. */
+    wm_start_modules_unless_shutting_down();
+
+    assert_null(wmodules);
+}
+
+static void test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down(void **state) {
+    (void)state;
+    wm_context ctx = {
+        .name = "test-module",
+        .start = test_module_routine,
+    };
+    wmodule mod = { .context = &ctx, .data = NULL, .next = NULL };
+    wmodules = &mod;
+
+    will_return(__wrap_wm_config, 0);
+    will_return(__wrap_wm_check, 0);
+    will_return(wrap_CreateThread, (HANDLE)0x1234);
+
+    wm_start_modules_unless_shutting_down();
+
+    assert_ptr_equal(mod.win_thread, (HANDLE)0x1234);
+}
+
+/* --- stop_wmodules(): sets the shutdown flag and joins every spawned module,
+ * even when it never got a real thread (mid-startup race, issue 38428 §2). */
+
+static void test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread(void **state) {
+    (void)state;
+    wm_context ctx = { .name = "test-module" };
+    wmodule mod = { .context = &ctx, .data = NULL, .win_thread = NULL, .next = NULL };
+    wmodules = &mod;
+    wm_shutdown_requested = 0;
+
+    stop_wmodules();
+
+    assert_int_equal(wm_shutdown_requested, 1);
+}
+
+static void test_stop_wmodules_joins_a_spawned_thread(void **state) {
+    (void)state;
+    wm_context ctx = { .name = "test-module" };
+    wmodule mod = { .context = &ctx, .data = NULL, .win_thread = (HANDLE)0x5678, .next = NULL };
+    wmodules = &mod;
+    wm_shutdown_requested = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_any(wrap_WaitForSingleObject, value);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_CloseHandle_call((HANDLE)0x5678, 1);
+
+    stop_wmodules();
+
+    assert_int_equal(wm_shutdown_requested, 1);
+    assert_null(mod.win_thread);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ip_success), cmocka_unit_test(test_get_agent_ip_legacy_win32_sysinfo_error),
@@ -391,6 +571,14 @@ int main(void) {
         cmocka_unit_test(test_SendBinaryMSGAction_mutex_abandoned),
         cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
         cmocka_unit_test(test_SendBinaryMSGAction_submits_the_binary_frame),
+        cmocka_unit_test(test_skthread_skips_start_on_shutdown_requested),
+        cmocka_unit_test(test_skthread_starts_syscheck_when_gate_ready),
+        cmocka_unit_test_setup(test_win_module_thread_skips_routine_on_shutdown_requested, setup_module_routine_counter),
+        cmocka_unit_test_setup(test_win_module_thread_runs_routine_when_gate_ready, setup_module_routine_counter),
+        cmocka_unit_test_teardown(test_wm_start_modules_skips_everything_when_shutdown_already_requested, teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down, teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread, teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_stop_wmodules_joins_a_spawned_thread, teardown_wm_lifecycle),
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

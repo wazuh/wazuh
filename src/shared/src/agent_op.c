@@ -44,7 +44,8 @@ static int w_parse_agent_add_response(const char* buffer,
                                       char* id,
                                       char* key,
                                       const int json_format,
-                                      const int exit_on_error);
+                                      const int exit_on_error,
+                                      int *error_code);
 
 //Alloc and create an agent addition command payload
 static cJSON* w_create_agent_add_payload(const char *name,
@@ -347,7 +348,7 @@ static cJSON* w_create_agent_add_payload(const char *name,
     return request;
 }
 
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error) {
+static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error, int *error_code) {
     int result = 0;
     cJSON* response = NULL;
     cJSON * error = NULL;
@@ -380,6 +381,9 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                 }
                 else {
                     mwarn("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+                }
+                if (error_code) {
+                    *error_code = error->valueint;
                 }
                 result = -1;
             }
@@ -579,7 +583,8 @@ int w_request_agent_add_clustered(char *err_response,
                                   char **id,
                                   char **key,
                                   authd_force_options_t *force_options,
-                                  const char *agent_id) {
+                                  const char *agent_id,
+                                  int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
@@ -592,7 +597,7 @@ int w_request_agent_add_clustered(char *err_response,
     cJSON_Delete(payload);
 
     if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
-        result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
+        result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE, master_error_code);
     }
     else if (err_response) {
         snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
@@ -665,7 +670,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
         return result;
     } else {
         response[length] = '\0';
-        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error);
+        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error, NULL);
     }
 
     return result;

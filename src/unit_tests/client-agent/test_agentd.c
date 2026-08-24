@@ -371,17 +371,10 @@ static int setup_client_conf(void** state)
 static int teardown_client_conf(void** state)
 {
     (void)state;
+    /* agt->enrollment is a by-value struct (#38465); Free_Agent() now frees
+     * its heap fields directly, unlike the old malloc'd enrollment context
+     * this teardown used to have to tear down by hand. */
     Free_Agent(agt);
-
-    /* ClientConf() always allocates an enrollment context, but Free_Agent() does
-     * not own it (a running agent keeps it for the process lifetime) -- so the
-     * test has to tear it down itself instead of leaking it under LeakSanitizer. */
-    if (agt->enrollment_cfg)
-    {
-        w_enrollment_target_destroy(agt->enrollment_cfg->target_cfg);
-        w_enrollment_cert_destroy(agt->enrollment_cfg->cert_cfg);
-        w_enrollment_destroy(agt->enrollment_cfg);
-    }
 
     os_free(agt);
     os_free(atc);
@@ -405,7 +398,6 @@ static void test_config_report_enabled_when_absent(void** state)
 {
     (void)state;
     expect_valid_server_ip();
-    will_return(__wrap_getDefine_Int, 1); // <agent><recv_timeout>
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
 
     assert_int_equal(ClientConf("test_config_report_default.conf"), 1);
@@ -419,7 +411,6 @@ static void test_config_report_explicit_no_is_respected(void** state)
 {
     (void)state;
     expect_valid_server_ip();
-    will_return(__wrap_getDefine_Int, 1); // <agent><recv_timeout>
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
 
     assert_int_equal(ClientConf("test_config_report_disabled.conf"), 1);
@@ -432,7 +423,6 @@ static void test_config_report_custom_interval_is_respected(void** state)
 {
     (void)state;
     expect_valid_server_ip();
-    will_return(__wrap_getDefine_Int, 1); // <agent><recv_timeout>
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
 
     assert_int_equal(ClientConf("test_config_report_custom_interval.conf"), 1);

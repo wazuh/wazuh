@@ -12,6 +12,8 @@ Configuration reference for Wazuh manager components.
 
 ## Configuration Sections
 
+**Note:** The `<global>` XML section (`src/config/src/global-config.c`) only implements `agents_disconnection_time` and `agents_disconnection_alert_time`, which control general agent disconnection detection and are not Monitord-specific. Monitord's own rotation/compression tunables (e.g. `monitord.day_wait`, `monitord.compress`) are internal options unrelated to `<global>`.
+
 | Module | XML Section | YAML Section | Internal Options |
 |--------|-------------|--------------|------------------|
 | [Agent Upgrade](../../modules/agent_upgrade/configuration.md) | `<agent-upgrade>` | - | - |
@@ -23,7 +25,7 @@ Configuration reference for Wazuh manager components.
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `<indexer>` | - | - |
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | - | - | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `<logging>` | - | - |
-| [Monitord](../../modules/monitord/configuration.md) | `<global>` | - | `monitord.*` |
+| [Monitord](../../modules/monitord/configuration.md) | `<global>` (disconnection settings only) | - | `monitord.*` |
 | [Remoted](../../modules/remoted/configuration.md) | `<remote>` | - | `remoted.*` |
 | [Task Manager](../../modules/task_manager/configuration.md) | `<task-manager>` | - | - |
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `<vulnerability-detection>` | - | `vulnerability-detection.*` |

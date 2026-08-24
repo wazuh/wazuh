@@ -94,9 +94,21 @@ cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 - `control_msg_count`: Keep-alive messages processed
 - `discarded_count`: Messages dropped (should be 0)
 
+### HTTPS agent server metrics
+
+The C++ module's own metrics (per-endpoint outcomes and latency, auth rejections, downstream
+failures, backpressure) are a separate dump on its local admin socket:
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
+Full catalog, with each metric linked to the setting it helps size: [Metrics](metrics.md).
+
 ## References
 
 - [Stateless Metadata](stateless-metadata.md)
 - [Architecture](architecture.md)
 - [Protocol](event-protocol.md)
 - [Configuration](configuration.md)
+- [Metrics](metrics.md)

@@ -15,14 +15,17 @@
 #include "authGateway.hpp"
 #include <cstdint>
 #include <functional>
+#include <string>
 
 namespace remoted::endpoints::scanvd
 {
     enum class ScanVdOutcome
     {
-        Accepted,        ///< Queued (or refreshed an already-tracked request). -> 200.
+        Accepted,        ///< VD queued the scan -- it WILL run. -> 200.
         VersionMismatch, ///< requestedOffset != current VD feed offset. -> 409, carries currentOffset.
-        QueueFull,       ///< Scan tracking table is at capacity; unrelated to feed version. -> 503.
+        VdRejected,      ///< VD did not queue it (lane full, not ready, shutting down, unreachable);
+                         ///< unrelated to feed version -- the agent retries on its next notify.
+                         ///< -> 503, carries errorCode with the actual cause.
         InvalidAgent     ///< Defensive: agentId 0 reached the handler directly (bypassing the
                          ///< endpoint's own parseAgentId check). -> 400.
     };
@@ -31,6 +34,9 @@ namespace remoted::endpoints::scanvd
     {
         ScanVdOutcome outcome;
         uint64_t currentOffset; ///< Meaningful only when outcome == VersionMismatch.
+        std::string errorCode;  ///< Meaningful only when outcome == VdRejected: VD's own error code
+                                ///< passed through (scan_queue_full, feed_not_ready, shutting_down,
+                                ///< ...) or vd_unreachable when the POST itself failed.
     };
 
     using ScanVdCallback = std::function<void(const ScanVdResponse&)>;

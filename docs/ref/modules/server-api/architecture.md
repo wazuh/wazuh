@@ -123,7 +123,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `decorators.py` | `expose_resources` decorator that enforces action/resource permissions |
 | `orm.py` | ORM models for roles, policies, and user-role mappings |
 | `preprocessor.py` | Resource preprocessing before permission checks |
-| `default_resources.py` | Built-in default RBAC resource definitions |
+| `default/{roles,policies,rules,relationships,users}.yaml` | Built-in default RBAC data, loaded via `orm.py`'s `insert_default_resources` |
 | `auth_context.py` | Authentication context handling |
 
 ---
@@ -203,7 +203,7 @@ graph LR
     B --> C{"DAPI"}
     C -->|local_master| D["Master Node"]
     C -->|local_any| E["Current Node"]
-    C -->|distributed| F["Worker Node(s)"]
+    C -->|distributed_master| F["Worker Node(s)"]
 ```
 
 ---
@@ -242,7 +242,6 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
 | `queue/sockets/analysis` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
 | `queue/sockets/auth` | wazuh-manager-authd | Agent registration |
 | `queue/sockets/remote` | wazuh-manager-remoted | Agent communication |
-| `queue/sockets/request` | various | Internal requests |
 
 ---
 

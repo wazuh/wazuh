@@ -11,7 +11,7 @@
 
 #include "wazuhdb_op.h"
 #include "wdb_state.h"
-#include "httpsrv/wdb_http.h"
+#include "http/wdb_http.h"
 #include "os_net.h"
 #include "config.h"
 #include "wazuh_db-config.h"

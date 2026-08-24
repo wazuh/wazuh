@@ -14,6 +14,7 @@
 
 import argparse
 import hashlib
+import hmac
 import json
 import ssl
 import subprocess
@@ -47,6 +48,36 @@ def human_size(n):
     return f"{n / (1024 * 1024):.2f} MB"
 
 
+def hkdf_sha256(password, length=32):
+    """HKDF-SHA256(IKM=password, salt=32 zero bytes, info="WAZUH-ENROLL-CMAC-KEY"+0x01)
+    via the stdlib hmac/hashlib, independent of the C++ EnrollSigner it verifies
+    (#38438's known-answer vector was itself derived this way -- see
+    enrollSigner_test.cpp -- so this is the same trusted reference, not a
+    reimplementation guess)."""
+    salt = bytes(32)
+    info = b"WAZUH-ENROLL-CMAC-KEY" + b"\x01"
+    prk = hmac.new(salt, password, hashlib.sha256).digest()
+    okm = b""
+    previous = b""
+    counter = 1
+    while len(okm) < length:
+        previous = hmac.new(prk, previous + info + bytes([counter]), hashlib.sha256).digest()
+        okm += previous
+        counter += 1
+    return okm[:length]
+
+
+def zstd_decompress(data):
+    """Decompress a zstd frame via the `zstd` CLI (independent of the agent's
+    own libzstd linkage, same reuse-a-real-CLI idiom as cmac_hex()). Returns
+    the original bytes, or None if `data` isn't a valid zstd frame."""
+    try:
+        out = subprocess.run(["zstd", "-d", "-c"], input=data, capture_output=True, check=True)
+        return out.stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
 def cmac_hex(key_hex, message):
     """AES-CMAC(key, message) as lowercase hex, via the openssl CLI. The
     cipher follows the key length (16/24/32 bytes -> AES-128/192/256), the
@@ -78,9 +109,29 @@ class Handler(BaseHTTPRequestHandler):
 
     # Credential rotation (#37828): after this notify the mock verifies ONLY
     # against ROTATED_KEY, so the agent's old key starts getting 401 and must
-    # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_key.
+    # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_identity.
     ROTATE_KEY_AT = 7
+
+    # key_hash (#38465) exists precisely so a re-enrolling agent that already
+    # has an entry is recognized as the SAME identity, not reassigned a new
+    # one: hc_set_agent_identity() (the module's #37828 credential-rotation path)
+    # only ever refreshes the key material on a live handle, by design --
+    # there is no ABI to also change its cached agent_id. A mock (or a real
+    # manager) that mints a fresh id on every /enroll regardless of key_hash
+    # would silently desync the module's id from what's on disk.
+    KEY_HASH_TO_ID = {}
     ROTATED_KEY = "0f0e0d0c0b0a09080706050403020100"
+
+    # #38465: empty (default) -> /enroll accepts any request carrying
+    # protocol-version, no signature required (open mode). Non-empty ->
+    # /enroll additionally requires Authorization: WazuhEnroll <ts>:<mac>
+    # verified against this password via HKDF+CMAC. ENROLL_STATUS != 0 forces
+    # every /enroll response to that status with a generic error body, so the
+    # C-side 400/401/403/409/500/503 mapping (w_enrollment_process_response)
+    # can be driven on demand without five separate mocks.
+    ENROLL_PASSWORD = ""
+    ENROLL_STATUS = 0
+    ENROLL_NEXT_ID = 100
 
     # Exact startup-response bytes, kept verbatim: settings_hash is the SHA256
     # of precisely what goes on the wire (#37733 5.1.1).
@@ -208,6 +259,14 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(length)
         target = self.path
 
+        # /enroll predates any client.keys identity (that is the whole point:
+        # it is how one gets minted) -- it cannot go through the generic
+        # "Wazuh <id>:<ts>:<mac>" _verify() below, which requires an id the
+        # agent does not have yet. It carries its own WazuhEnroll scheme.
+        if target == "/enroll":
+            self._handle_enroll(body)
+            return
+
         identity, err = self._verify(target, body)
         if err:
             log(f"POST {target:<11} -> 401  ({err})")
@@ -215,7 +274,19 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         agent_id, ts, mac = identity
-        preview = body[:70].decode("latin-1").replace("\n", "\\n")
+
+        # The CMAC above covered the wire (possibly compressed) bytes, same
+        # as /enroll -- decompress only now, for the handlers below, which
+        # all expect plain JSON/text content.
+        if self.headers.get("Content-Encoding", "") == "zstd":
+            decompressed = zstd_decompress(body)
+            if decompressed is None:
+                log(f"POST {target:<11} -> 400  (bad zstd frame)")
+                self._reply(400, {"error": "bad zstd frame"})
+                return
+            body = decompressed
+
+        preview = body[:70].decode("latin-1", errors="replace").replace("\n", "\\n")
         log(f"POST {target:<11} <- id={agent_id} ts={ts} mac={mac[:10]}.. "
             f"auth OK ({len(body)} B) body='{preview}'")
 
@@ -336,6 +407,89 @@ class Handler(BaseHTTPRequestHandler):
         # which is not enough to see the per-module bodies.
         log(f"     {target} FULL BODY: {json.dumps(doc, sort_keys=True)}")
 
+    def _verify_enroll(self, body):
+        """Returns None on success, or an error string. Open mode (no
+        ENROLL_PASSWORD configured) accepts any request with protocol-version
+        present; password mode additionally checks Authorization: WazuhEnroll
+        <ts>:<mac> via an independently-derived HKDF+CMAC (see hkdf_sha256)."""
+        if self.headers.get("protocol-version", "") != "1":
+            return "missing/!=1 protocol-version"
+        if not Handler.ENROLL_PASSWORD:
+            return None
+        auth = self.headers.get("Authorization", "")
+        if not auth.startswith("WazuhEnroll "):
+            return "missing WazuhEnroll Authorization header"
+        try:
+            ts, mac = auth[len("WazuhEnroll "):].split(":", 1)
+        except ValueError:
+            return "malformed Authorization"
+        canonical = (b"WAZUH-ENROLL\n1\nPOST\n/enroll\n" + ts.encode() + b"\n" + body)
+        key = hkdf_sha256(Handler.ENROLL_PASSWORD.encode())
+        expected = cmac_hex(key.hex(), canonical)
+        if expected != mac.lower():
+            return f"CMAC mismatch (got {mac[:12]}.., want {expected[:12]}..)"
+        return None
+
+    def _handle_enroll(self, body):
+        compressed = self.headers.get("Content-Encoding", "") == "zstd"
+        preview = body[:120].decode("latin-1", errors="replace").replace("\n", "\\n")
+        log(f"POST /enroll     <- ({len(body)} B{', zstd' if compressed else ''}) body='{preview}'")
+
+        if Handler.ENROLL_STATUS:
+            self._reply(Handler.ENROLL_STATUS,
+                        {"error": {"code": "forced", "message": "forced by --enroll-status"}})
+            log(f"     /enroll     -> {Handler.ENROLL_STATUS}  (forced by --enroll-status)")
+            return
+
+        # The CMAC covers the wire bytes (compressed before signing, #38465
+        # D7) -- verify against the raw body exactly as received, same as
+        # every other endpoint. Only the JSON parsing below needs the
+        # decompressed content.
+        err = self._verify_enroll(body)
+        if err:
+            self._reply(401, {"error": {"code": "invalid_signature", "message": err}})
+            log(f"     /enroll     -> 401  ({err})")
+            return
+
+        payload = body
+        if compressed:
+            decompressed = zstd_decompress(body)
+            if decompressed is None:
+                self._reply(400, {"error": {"code": "invalid_body", "message": "bad zstd frame"}})
+                log("     /enroll     -> 400  (bad zstd frame)")
+                return
+            payload = decompressed
+
+        try:
+            request = json.loads(payload.decode())
+        except (ValueError, UnicodeDecodeError):
+            self._reply(400, {"error": {"code": "invalid_body", "message": "malformed JSON"}})
+            log("     /enroll     -> 400  (malformed JSON)")
+            return
+
+        key_hash = request.get("key_hash")
+        agent_id = Handler.KEY_HASH_TO_ID.get(key_hash) if key_hash else None
+        if agent_id is None:
+            Handler.ENROLL_NEXT_ID += 1
+            agent_id = f"{Handler.ENROLL_NEXT_ID:03d}"
+            if key_hash:
+                Handler.KEY_HASH_TO_ID[key_hash] = agent_id
+        name = request.get("name", "unknown")
+        # Must match whatever _verify()/CMAC checks against right now: if a
+        # key rotation (ROTATE_KEY_AT) already happened, handing back the
+        # pre-rotation key_hex would make the agent re-enroll, get the same
+        # already-invalid key, 401 again, and loop forever -- indistinguishable
+        # from a real bug on the agent side unless this endpoint tracks the
+        # same rotation state.
+        active_key = (Handler.ROTATED_KEY
+                      if Handler.ROTATE_KEY_AT > 0 and Handler.notify_count >= Handler.ROTATE_KEY_AT
+                      else Handler.key_hex)
+        response = {"id": agent_id, "name": name, "ip": request.get("ip", "any"),
+                   "key": active_key}
+        self._reply(200, response)
+        log(f"     /enroll     -> 200  minted id={agent_id} name={name} "
+            f"groups={request.get('groups')} key_hash={request.get('key_hash')}")
+
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")
         module, payload_start = self._parse_session_header(body)
@@ -394,6 +548,9 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=27860)
+    parser.add_argument("--bind", default="127.0.0.1",
+                        help="Listen address. Default 127.0.0.1 (single-machine demo); use "
+                             "0.0.0.0 to accept real agents on other hosts on the LAN.")
     parser.add_argument("--cert", required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
@@ -403,9 +560,19 @@ def main():
     parser.add_argument("--client-ca",
                         help="Require a client certificate and verify it against this CA "
                              "(mutual TLS). Without it, client certs are not requested.")
+    parser.add_argument("--enroll-password", default="",
+                        help="#38465: require this password on POST /enroll (Authorization: "
+                             "WazuhEnroll <ts>:<mac>, verified via HKDF+CMAC). Empty (default): "
+                             "open mode, no signature required.")
+    parser.add_argument("--enroll-status", type=int, default=0,
+                        help="#38465: force every POST /enroll response to this HTTP status "
+                             "(e.g. 403/409/500/503), to demo the agent-side error mapping "
+                             "instead of the real enroll flow.")
     args = parser.parse_args()
 
     Handler.key_hex = args.key_hex
+    Handler.ENROLL_PASSWORD = args.enroll_password
+    Handler.ENROLL_STATUS = args.enroll_status
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(args.cert, args.key)
 
@@ -425,10 +592,10 @@ def main():
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_verify_locations(args.client_ca)
 
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server = ThreadingHTTPServer((args.bind, args.port), Handler)
     server.requires_client_cert = bool(args.client_ca)
     server.socket = context.wrap_socket(server.socket, server_side=True)
-    log(f"HTTPS manager on https://127.0.0.1:{args.port} "
+    log(f"HTTPS manager on https://{args.bind}:{args.port} "
         f"(agent key {args.key_hex[:8]}..)")
     log(f"     mutual TLS: {'required, CA ' + args.client_ca if args.client_ca else 'not requested'}")
     log(f"     min TLS:    1.3")

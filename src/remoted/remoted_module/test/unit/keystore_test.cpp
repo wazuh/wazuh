@@ -42,6 +42,20 @@ namespace
             std::remove(m_path.c_str());
         }
 
+        // The interface resolves key and address together; these keep the assertions below focused on
+        // one property at a time.
+        static std::optional<std::vector<std::uint8_t>> keyOf(const Keystore& keystore, AgentId id)
+        {
+            const auto found = keystore.lookup(id, "127.0.0.1");
+            return found ? std::optional {found->key} : std::nullopt;
+        }
+
+        static bool allowed(const Keystore& keystore, AgentId id, std::string_view peerIp)
+        {
+            const auto found = keystore.lookup(id, peerIp);
+            return found && found->addressAllowed;
+        }
+
         void writeFile(const std::string& contents)
         {
             std::ofstream file(m_path);
@@ -74,9 +88,78 @@ namespace
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        const auto key = keystore.keyFor(3824);
+        const auto key = keyOf(keystore, 3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_EQ(key->size(), 32u);
+    }
+
+    // The health counters behind the remoted.auth.keystore.* pulls: the LEVEL follows each
+    // successful load, the totals accumulate successes and failures separately, and a failed
+    // reload keeps the previous level (the table is untouched). GE where the background watcher
+    // could legitimately add reloads of its own.
+    TEST_F(KeystoreTest, HealthCountersTrackLoadsAndFailures)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 1U); // the startup load
+        EXPECT_GE(keystore.reloadsTotal(), 1U);
+        EXPECT_EQ(keystore.reloadFailuresTotal(), 0U);
+
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "3825 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        EXPECT_EQ(keystore.reload(), 2);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U);
+        EXPECT_GE(keystore.reloadsTotal(), 2U);
+
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_GE(keystore.reloadFailuresTotal(), 1U);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U); // previous table (and its level) kept
+    }
+
+    // entries_skipped is the companion level to `agents`: it counts the client.keys lines the
+    // adopted load could NOT use, which is what tells an operator "that agent is silently
+    // unauthenticable, go fix line N". Comments, blanks and deliberately removed entries are
+    // normal states and must never inflate it.
+    TEST_F(KeystoreTest, SkippedEntriesLevelCountsOnlyUnusableLines)
+    {
+        const std::string goodKey {"ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"};
+        // One well-formed line per call, so each fixture line below stays short enough to read
+        // (and to survive clang-format) while only the field under test varies.
+        const auto entry = [&goodKey](const std::string& id, const std::string& name, const std::string& ip)
+        {
+            return id + " " + name + " " + ip + " " + goodKey + "\n";
+        };
+
+        writeFile("# a comment\n"
+                  "\n" +
+                  entry("3824", "debian10", "any") +            // usable
+                  entry("3825", "debian11", "192.168.0.0/33") + // ip column does not parse
+                  "3826 debian12 any nothexatall\n" +           // key does not decode
+                  entry("notanid", "debian13", "any") +         // id column is not numeric
+                  "3827 onlythreefields\n" +                    // fewer than 4 fields
+                  entry("3828", "!removed", "any"));            // deliberately removed entry
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 1U);   // only the usable entry
+        EXPECT_EQ(keystore.entriesSkipped(), 4U); // the four unusable lines, and nothing else
+
+        // A file with nothing wrong clears the level: it describes the file as it stands now,
+        // not a running total across loads.
+        writeFile(entry("3824", "debian10", "any"));
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keystore.agentsLoaded(), 1U);
+        EXPECT_EQ(keystore.entriesSkipped(), 0U);
+
+        // An unreadable file is a failed load: the previous level survives untouched, exactly
+        // like agentsLoaded().
+        writeFile(entry("3824", "debian10", "any") + entry("3825", "debian11", "999.1.1.1"));
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keystore.entriesSkipped(), 1U);
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_EQ(keystore.entriesSkipped(), 1U);
     }
 
     TEST_F(KeystoreTest, UnknownAgentIsNullopt)
@@ -84,7 +167,7 @@ namespace
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor(9999).has_value());
+        EXPECT_FALSE(keyOf(keystore, 9999).has_value());
     }
 
     TEST_F(KeystoreTest, NonNumericIdLineIsSkipped)
@@ -102,7 +185,7 @@ namespace
         Keystore keystore(m_path);
 
         EXPECT_EQ(keystore.reload(), 1);
-        EXPECT_TRUE(keystore.keyFor(3824).has_value());
+        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
     }
 
     TEST_F(KeystoreTest, CommentAndBlankLinesAreSkipped)
@@ -112,7 +195,7 @@ namespace
                   "3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_TRUE(keystore.keyFor(3824).has_value());
+        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
     }
 
     TEST_F(KeystoreTest, RemovedEntryIsSkipped)
@@ -120,7 +203,7 @@ namespace
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     TEST_F(KeystoreTest, MalformedLineIsSkipped)
@@ -128,7 +211,7 @@ namespace
         writeFile("3824 debian10 any\n"); // missing key column
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     TEST_F(KeystoreTest, NonHexKeyResolvesToAnEmptyKey)
@@ -138,7 +221,7 @@ namespace
 
         // The entry is still PRESENT (an empty key, not nullopt): that is what lets the auth
         // middleware answer the precise MissingKey rather than the vaguer UnknownAgent.
-        const auto key = keystore.keyFor(3824);
+        const auto key = keyOf(keystore, 3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_TRUE(key->empty());
     }
@@ -152,7 +235,7 @@ namespace
         Keystore keystore(m_path);
 
         EXPECT_EQ(keystore.reload(), 0);
-        const auto key = keystore.keyFor(3824);
+        const auto key = keyOf(keystore, 3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_TRUE(key->empty());
     }
@@ -164,14 +247,88 @@ namespace
         Keystore keystore(m_path);
 
         EXPECT_EQ(keystore.reload(), 1); // only the usable one
-        EXPECT_FALSE(keystore.keyFor(1)->empty());
-        EXPECT_TRUE(keystore.keyFor(2)->empty());
+        EXPECT_FALSE(keyOf(keystore, 1)->empty());
+        EXPECT_TRUE(keyOf(keystore, 2)->empty());
+    }
+
+    TEST_F(KeystoreTest, AnyRegistrationAllowsEveryAddress)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_TRUE(allowed(keystore, 3824, "10.0.0.7"));
+        EXPECT_TRUE(allowed(keystore, 3824, "203.0.113.9"));
+        EXPECT_TRUE(allowed(keystore, 3824, "2001:db8::1"));
+    }
+
+    TEST_F(KeystoreTest, FixedRegistrationAllowsOnlyThatAddress)
+    {
+        writeFile("3824 debian10 10.0.0.5 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_TRUE(allowed(keystore, 3824, "10.0.0.5"));
+        EXPECT_FALSE(allowed(keystore, 3824, "10.0.0.6"));
+    }
+
+    TEST_F(KeystoreTest, RangeRegistrationAllowsTheWholeRange)
+    {
+        writeFile("3824 debian10 10.0.0.0/24 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_TRUE(allowed(keystore, 3824, "10.0.0.7"));
+        EXPECT_FALSE(allowed(keystore, 3824, "10.0.1.7"));
+    }
+
+    TEST_F(KeystoreTest, UnknownAgentIsNotAllowedFromAnywhere)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_FALSE(allowed(keystore, 9999, "10.0.0.7"));
+    }
+
+    TEST_F(KeystoreTest, UnparseableAddressSkipsTheLine)
+    {
+        // The entry is dropped rather than loaded without a restriction, so the agent is unknown and
+        // no address is allowed for it.
+        writeFile("3824 debian10 10.0.0.256 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 0);
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
+        EXPECT_FALSE(allowed(keystore, 3824, "10.0.0.256"));
+    }
+
+    TEST_F(KeystoreTest, UnparseableAddressDoesNotBlockOtherEntries)
+    {
+        // One mistyped address costs that agent only. The C keystore calls merror_exit() here, which
+        // would take the whole daemon down over this same file.
+        writeFile("1 agent-a bogus-address ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "2 agent-b any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 1).has_value());
+        EXPECT_TRUE(keyOf(keystore, 2).has_value());
+    }
+
+    TEST_F(KeystoreTest, AddressRestrictionFollowsAReload)
+    {
+        writeFile("3824 debian10 10.0.0.5 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(allowed(keystore, 3824, "10.0.0.5"));
+
+        writeFile("3824 debian10 10.0.0.9 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        ASSERT_EQ(keystore.reload(), 1);
+
+        EXPECT_FALSE(allowed(keystore, 3824, "10.0.0.5"));
+        EXPECT_TRUE(allowed(keystore, 3824, "10.0.0.9"));
     }
 
     TEST_F(KeystoreTest, MissingFileLeavesKeystoreEmpty)
     {
         Keystore keystore(m_path + "-does-not-exist");
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     // An unreadable file must be distinguishable from an empty one by the return value, so the
@@ -191,18 +348,18 @@ namespace
         Keystore keystore(m_path);
 
         EXPECT_EQ(keystore.reload(), 1);
-        EXPECT_TRUE(keystore.keyFor(7).has_value());
+        EXPECT_TRUE(keyOf(keystore, 7).has_value());
     }
 
     TEST_F(KeystoreTest, ReloadPicksUpChanges)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
-        ASSERT_TRUE(keystore.keyFor(3824).has_value());
+        ASSERT_TRUE(keyOf(keystore, 3824).has_value());
 
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         EXPECT_EQ(keystore.reload(), 0);
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     // ---------------------------------------------------------------------------
@@ -213,20 +370,20 @@ namespace
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path, /*refreshIntervalSeconds=*/1);
-        ASSERT_TRUE(keystore.keyFor(3824).has_value());
+        ASSERT_TRUE(keyOf(keystore, 3824).has_value());
 
         // Rewrite in place -- no manual reload() call. The watcher must pick this up on its own.
         writeFile("9999 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
 
-        EXPECT_TRUE(waitFor([&] { return keystore.keyFor(9999).has_value(); }));
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_TRUE(waitFor([&] { return keyOf(keystore, 9999).has_value(); }));
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     TEST_F(KeystoreTest, HotReloadSurvivesAtomicReplace)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path, /*refreshIntervalSeconds=*/1);
-        ASSERT_TRUE(keystore.keyFor(3824).has_value());
+        ASSERT_TRUE(keyOf(keystore, 3824).has_value());
 
         // Simulate authd/enrollment tooling replacing the file atomically (write to a temp file,
         // then rename() it over the watched path) -- this invalidates the original inotify watch,
@@ -238,8 +395,8 @@ namespace
         }
         ASSERT_EQ(rename(tmpPath.c_str(), m_path.c_str()), 0);
 
-        EXPECT_TRUE(waitFor([&] { return keystore.keyFor(9999).has_value(); }));
-        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+        EXPECT_TRUE(waitFor([&] { return keyOf(keystore, 9999).has_value(); }));
+        EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
     // Races a background writer (repeatedly rewriting the file between two fully-valid but
@@ -270,8 +427,8 @@ namespace
         while (std::chrono::steady_clock::now() < raceDeadline)
         {
             keystore.reload();
-            const bool has111 = keystore.keyFor(111).has_value();
-            const bool has222 = keystore.keyFor(222).has_value();
+            const bool has111 = keyOf(keystore, 111).has_value();
+            const bool has222 = keyOf(keystore, 222).has_value();
             EXPECT_FALSE(has111 && has222) << "keystore adopted a torn read mixing both contents";
         }
 

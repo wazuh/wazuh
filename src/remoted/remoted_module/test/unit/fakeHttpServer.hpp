@@ -60,10 +60,10 @@ namespace remoted::testutil
             const auto it = m_modes.find({method, path});
             return it == m_modes.end() ? remoted::http::ResponseMode::Buffered : it->second;
         }
-        std::optional<remoted::http::InFlightBudget::Reservation>
-        tryReserveInFlightBytes(std::size_t bytes) override
+        std::optional<remoted::http::InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) override
         {
-            return m_budget.tryReserve(bytes);
+            // Mirror the real server: an auxiliary (uncounted) reservation, not an admission.
+            return m_budget.tryReserveUncounted(bytes);
         }
         void start(const remoted::http::HttpServerConfig&) override {}
         void stopAccepting() noexcept override {}

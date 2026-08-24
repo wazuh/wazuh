@@ -28,9 +28,9 @@
       - ssl_verify_host:
           value: 'no'
       - ssl_manager_cert:
-          value: '/var/wazuh-manager/etc/certs/authd.pem'
+          value: '/var/wazuh-manager/etc/certs/remoted.pem'
       - ssl_manager_key:
-          value: '/var/wazuh-manager/etc/certs/authd-key.pem'
+          value: '/var/wazuh-manager/etc/certs/remoted-key.pem'
     - section: cluster
       elements:
       - name:

@@ -270,7 +270,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskDuplicateReturnsFalseWi
 TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
-    m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection.
 
     EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
 }
@@ -299,7 +299,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIssuesTtlThenCapDelete
 TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIsNoOpWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     EXPECT_NO_THROW(m_agentInfo->cleanupExpiredTasks(86400, 4096));
 }

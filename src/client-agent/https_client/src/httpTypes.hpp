@@ -17,6 +17,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <string>
 #include <vector>
 
@@ -167,6 +168,11 @@ struct HttpResponse
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
     long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    std::time_t serverDateSeconds {0}; ///< Parsed Date header, manager's clock at
+    ///< response time (0 = absent/unparsed). Every response the manager's
+    ///< transport builds carries one, including every 401 -- RetrySender's
+    ///< one-shot auth retry uses it to detect and correct clock skew before
+    ///< assuming a 401 means a dead credential (#37828 follow-up).
     std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
     ///< the agent's own address toward the manager.
     std::string body;

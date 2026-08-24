@@ -13,9 +13,11 @@
 #define _REMOTED_DOWNSTREAM_DEFERRED_FORWARDER_HPP
 
 #include "IDownstreamClient.hpp"
-#include "auth/authTypes.hpp"          // remoted::auth::AuthenticatedRequest
-#include "deferredWorkLimiter.hpp"     // remoted::downstream::DeferredWorkLimiter
-#include "http_server/IHttpServer.hpp" // remoted::http::{HttpResponse,IHttpResponder,Method}
+#include "auth/authTypes.hpp"               // remoted::auth::AuthenticatedRequest
+#include "common/requestOutcomeMetrics.hpp" // remoted::metrics::EndpointHttpMetrics
+#include "deferredWorkLimiter.hpp"          // remoted::downstream::DeferredWorkLimiter
+#include "forwarderMetrics.hpp"             // remoted::downstream::ForwarderMetrics
+#include "http_server/IHttpServer.hpp"      // remoted::http::{HttpResponse,IHttpResponder,Method}
 
 #include <functional>
 #include <memory>
@@ -52,6 +54,20 @@ namespace remoted::downstream
         /// the whole request and will cut it off first. RemotedModuleFacade warns at startup when
         /// the downstream deadlines add up past that cap.
         int responseTimeoutMs {0};
+        /**
+         * @brief This endpoint's HTTP metric set (response counters + optional latency), or null
+         *        for none.
+         *
+         * A raw pointer on purpose, same rationale as serviceName's literal: the target is built
+         * per request, so it must not carry anything that costs an allocation or refcount bump.
+         * It points at a FACADE VALUE MEMBER (stable address across HTTP-server restart retries,
+         * same lifetime argument as its ControlMetrics member); forwarder tasks drain in the
+         * facade's stop() phase 3, before anything owning the facade dies, so it can never
+         * dangle. The forwarder counts each delivered response's status here (and observes
+         * end-to-end latency when the set has a histogram); a limiter shed counts as this
+         * endpoint's 503.
+         */
+        const remoted::metrics::EndpointHttpMetrics* httpMetrics {nullptr};
     };
 
     /**
@@ -77,9 +93,12 @@ namespace remoted::downstream
     class DeferredForwarder final
     {
     public:
+        /// @param metrics The downstream failure-taxonomy counters (see forwarderMetrics.hpp).
+        ///                Copied once here (cold path); the default null object counts nothing.
         DeferredForwarder(std::shared_ptr<IDownstreamClient> client,
                           std::shared_ptr<DeferredWorkLimiter> limiter,
-                          std::size_t postProcessThreads);
+                          std::size_t postProcessThreads,
+                          ForwarderMetrics metrics = {});
         ~DeferredForwarder();
 
         DeferredForwarder(const DeferredForwarder&) = delete;

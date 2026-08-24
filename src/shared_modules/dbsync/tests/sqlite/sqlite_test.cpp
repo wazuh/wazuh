@@ -11,6 +11,8 @@
 #include "sqlite_test.h"
 #include "sqlite_wrapper.h"
 #include "db_exception.h"
+#include <chrono>
+#include <thread>
 
 constexpr auto TEMP_TEST_DB_PATH {"temp_test.db"};
 constexpr auto TEMP_DB_PATH {"temp.db"};
@@ -275,4 +277,28 @@ TEST_F(SQLiteTest, StatementExpandBind)
     insertStmt.bind(3, 1000);
     const auto expectedStringStmt{ insertStmt.expand() };
     EXPECT_EQ(expectedStringStmt, "INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);");
+}
+
+/// @brief A connection must wait out a lock held by another writer instead of failing immediately.
+TEST_F(SQLiteTest, ConnectionWaitsOutTransientLockInsteadOfFailingImmediately)
+{
+    Connection {TEMP_TEST_DB_PATH};
+
+    Connection lockHolderConnection{TEMP_TEST_DB_PATH};
+    lockHolderConnection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    // Release the lock from another thread after a short delay.
+    std::thread lockReleaser(
+        [&lockHolderConnection]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        lockHolderConnection.execute("COMMIT;");
+    });
+
+    // Without busy_timeout this throws immediately; with it, it waits out the 300ms lock.
+    Connection secondConnection{TEMP_TEST_DB_PATH};
+    EXPECT_NO_THROW(secondConnection.execute("BEGIN IMMEDIATE TRANSACTION;"));
+    EXPECT_NO_THROW(secondConnection.execute("COMMIT;"));
+
+    lockReleaser.join();
 }

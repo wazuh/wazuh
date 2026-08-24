@@ -93,6 +93,7 @@ typedef struct _remoted {
     char *lip;
 
     bool allow_higher_versions;
+    bool legacy_enabled; ///< Whether <remote><legacy> is present and not explicitly disabled
 
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP

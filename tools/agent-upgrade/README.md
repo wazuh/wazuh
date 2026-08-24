@@ -51,32 +51,21 @@ pip install cryptography
 
 ### Canonical WPK package example
 
-1. Download sources from GitHub at branch 3.0:
+1. Prepare a directory with the files you want to ship in the package (for example, an agent installation tree containing your own `upgrade.sh`).
+
+2. Install the root CA, only if you want to **overwrite the root CA** with the file you created before:
 
 ```
-curl -Lo wazuh-3.0.zip https://github.com/wazuh/wazuh/archive/3.0.zip
-unzip wazuh-3.0.zip
+cp path/to/wpk_root.pem <package_dir>/etc/wpk_root.pem
 ```
 
-2. Compile the project:
+3. Change to that directory:
 
 ```
-make -C wazuh-3.0/src TARGET=agent
+cd <package_dir>
 ```
 
-3. Change to the base directory:
-
-```
-cd wazuh-3.0
-```
-
-4. Install the root CA, only if you want to **overwrite the root CA** with the file you created before:
-
-```
-cp path/to/wpk_root.pem etc/wpk_root.pem
-```
-
-5. Compile the WPK package. You need your SSL certificate and key:
+4. Compile the WPK package. You need your SSL certificate and key:
 
 ```
 tools/agent-upgrade/wpkpack.py output/myagent.wpk path/to/wpkcert.pem path/to/wpkcert.key *
@@ -116,22 +105,25 @@ cp /path/to/certificate etc/wpk_root.pem
 
 ### Run the upgrade
 
-Get the WPK package into the Wazuh manager and run:
+There is no standalone `agent_upgrade` binary; the CLI is `/var/wazuh-manager/bin/agent_upgrade`, a wrapper that invokes the API-based Python script `framework/scripts/agent_upgrade.py`. It creates an upgrade task and returns immediately — it does not stream progress, since agents run the upgrade autonomously (fire-and-forget in 5.x).
+
+Copy the WPK package into `<WAZUH_PATH>/var/upgrade/` on the manager (this is the directory `wazuh-remoted` delivers custom WPKs from), then run:
 
 ```
-/var/wazuh-manager/bin/agent_upgrade -a 001 -f path/to/myagent.wpk -x upgrade.sh
+/var/wazuh-manager/bin/agent_upgrade -a 001 -f myagent.wpk -x upgrade.sh
 ```
 
-- `-a 001` specifies the agent to upgrade.
-- `-f path/to/myagent.wpk` is the path to the WPK package.
-- `-x upgrade.sh` is the name of the upgrading script contained in the package.
+- `-a`/`--agents 001` specifies one or more agent IDs to upgrade.
+- `-f`/`--file myagent.wpk` is the custom WPK package. Only a bare filename or a path inside `<WAZUH_PATH>/var/upgrade/` is accepted; the script resolves and validates the file there before creating the task.
+- `-x`/`--execute upgrade.sh` is the name of the upgrading script contained in the package (defaults to `upgrade.sh`).
+
+Other flags accepted by the script: `-v`/`--version` (target version, defaults to latest), `-F`/`--force` (skip version validation), `-s`/`--silent` (suppress output), `-l`/`--list_outdated` (list outdated agents instead of upgrading), `-d`/`--debug`, `--http` (use HTTP instead of HTTPS), and `--package_type` (force `rpm` or `deb` on Linux targets).
 
 Output example:
 
 ```
-Sending WPK: [=========================] 100%
-Installation started... Please wait.
-Agent upgraded successfully
+Upgrade tasks created for 1 agent(s).
+Note: Agents will execute upgrades autonomously. Use agent logs to track progress.
 ```
 
 ## Create a WPK package repository
@@ -169,11 +161,11 @@ v3.0.0-beta5 30e750a84bc8333cb77995d99694425cacdad30d
 
 In the same way, the root CA certificate must be installed in the agent prior to run an upgrade.
 
-Run this command from the manager:
+Run this command from the manager (same `agent_upgrade` wrapper around `framework/scripts/agent_upgrade.py` used above):
 
 ```
 /var/wazuh-manager/bin/agent_upgrade -a 001 -r https://example.com/repo
 ```
 
-- `-a 001` specifies the agent to upgrade.
-- `-r https://example.com/repo` is the URL to your own WPK repository.
+- `-a`/`--agents 001` specifies the agent to upgrade.
+- `-r`/`--repository https://example.com/repo` is the URL to your own WPK repository. If omitted, the official Wazuh repository is used.

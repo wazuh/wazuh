@@ -65,7 +65,8 @@ namespace
             {CurlOption::SslCiphers, CURLOPT_TLS13_CIPHERS},
             {CurlOption::SslOptions, CURLOPT_SSL_OPTIONS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
-            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}
+            {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
+            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS}
         };
         return *map;
     }
@@ -119,12 +120,37 @@ namespace
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
-        auto* retryAfter = static_cast<long*>(userData);
-        constexpr size_t prefixLength = 12; // "Retry-After:"
+        auto* capture = static_cast<HeaderCapture*>(userData);
+        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
+        constexpr size_t datePrefixLength = 5;        // "Date:"
 
-        if (total > prefixLength && strncasecmp(data, "Retry-After:", prefixLength) == 0)
+        if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
-            *retryAfter = std::strtol(data + prefixLength, nullptr, 10);
+            *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
+        {
+            // curl callbacks are C: nothing may throw across them (see
+            // writeTrampoline above) -- std::string construction from
+            // unvalidated header bytes can throw std::bad_alloc under memory
+            // pressure, so guard it the same way.
+            try
+            {
+                // curl_getdate() parses RFC 1123/850 and asctime formats and
+                // returns -1 on failure; a null-terminated copy is required
+                // since the header line is not itself nul-terminated by libcurl.
+                const std::string value(data + datePrefixLength, total - datePrefixLength);
+                const time_t parsed = curl_getdate(value.c_str(), nullptr);
+
+                if (parsed != -1)
+                {
+                    *capture->serverDate = parsed;
+                }
+            }
+            catch (...)
+            {
+                return 0; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
+            }
         }
 
         return total;
@@ -222,51 +248,53 @@ namespace
                 m_headers = curl_slist_append(m_headers, header.c_str());
             }
 
-            void captureResponseBody(std::string* output) override
+            bool captureResponseBody(std::string* output) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output);
+                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output) == CURLE_OK;
             }
 
-            void captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
+            bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
             {
                 // Chunked transfer decoding is native curl; the trampoline
                 // receives decoded bytes and enforces maxBytes.
                 m_fileSink = FileSink {file, 0, maxBytes};
-                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink);
+                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
-            void captureRetryAfter(long* output) override
+            bool captureResponseHeaders(HeaderCapture capture) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output);
+                m_headerCapture = capture;
+                return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
             }
 
-            void streamBodyFromFile(std::FILE* file, uint64_t size) override
+            bool streamBodyFromFile(std::FILE* file, uint64_t size) override
             {
                 // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
                 // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
                 // it a POST.
-                curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L);
-                curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST");
-                curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_READDATA, file);
-                curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size));
+                return curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST") == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_READDATA, file) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size)) == CURLE_OK;
             }
 
-            void wireAbort(const std::atomic<bool>* abortFlag) override
+            bool wireAbort(const std::atomic<bool>* abortFlag) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag);
-                curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L);
+                return curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L) == CURLE_OK;
             }
 
             TransportStatus perform() override
             {
-                if (m_headers != nullptr)
+                if (m_headers != nullptr &&
+                        curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
                 {
-                    curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers);
+                    return TransportStatus::OtherError;
                 }
 
                 return statusFromCurlCode(curl_easy_perform(m_handle));
@@ -290,6 +318,7 @@ namespace
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
+            HeaderCapture m_headerCapture {};
     };
 } // namespace
 
