@@ -22,6 +22,8 @@ typedef struct agent_flags_t {
 typedef struct agent_server {
     char * rip;
     int port;
+    char * endpoint; ///< <endpoint> (#38492): optional reverse-proxy path segment, normalized
+                     ///< (no leading/trailing '/'); NULL when unset -- today's unprefixed behavior.
     uint32_t network_interface;
     int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
     int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).

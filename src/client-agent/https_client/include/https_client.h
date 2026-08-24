@@ -99,6 +99,7 @@ typedef enum hc_result_t
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
 #define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
+#define HC_MAX_ENDPOINT 256 /* #38492: reverse-proxy path segment, normalized (no leading/trailing '/'). */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -112,6 +113,10 @@ typedef struct hc_config_t
 {
     char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
     uint16_t server_port;          ///< Manager HTTPS port.
+    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
+    ///< prepended to every request target (e.g. "/endpoint/stateless");
+    ///< empty -> unprefixed, today's behavior. Never fed to the CMAC signer,
+    ///< which signs the bare HttpRequestSpec::target only.
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
     char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
     ///< AES-128/192/256-CMAC by byte length

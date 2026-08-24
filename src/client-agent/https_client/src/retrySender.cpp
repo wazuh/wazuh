@@ -12,9 +12,11 @@
 #include "retrySender.hpp"
 
 #include "bodyCompressor.hpp"
+#include "canonicalRequest.hpp"
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 #include <vector>
 
 namespace
@@ -30,7 +32,7 @@ namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
                          Backoff& backoff, bool compressionEnabled, CompressionGate* compressionGate,
-                         AuthGate* authGate)
+                         AuthGate* authGate, std::string serverEndpoint)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -38,6 +40,7 @@ RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, ICloc
     , m_compressionEnabled(compressionEnabled)
     , m_compressionGate(compressionGate)
     , m_authGate(authGate)
+    , m_serverEndpoint(std::move(serverEndpoint))
 {
 }
 
@@ -129,6 +132,13 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
 RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
+
+    // #38492/#38491: fold the configured endpoint into the target before
+    // anything else -- the manager's auth middleware CMACs the literal wire
+    // request-target (prefix included), so what gets signed below and what
+    // CurlPerformer later appends to ModuleConfig::baseUrl() must be the
+    // exact same (already-prefixed) string.
+    attempt.target = prefixedTarget(m_serverEndpoint, attempt.target);
 
     // In-memory bodies: compressed here, per attempt (cheap for the small
     // buffers every other send path uses). Compressed before signing so the

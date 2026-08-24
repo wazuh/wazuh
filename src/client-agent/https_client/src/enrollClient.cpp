@@ -12,6 +12,7 @@
 #include "enrollClient.hpp"
 
 #include "bodyCompressor.hpp"
+#include "canonicalRequest.hpp"
 #include "enrollSigner.hpp"
 
 #include <cstdlib>
@@ -143,6 +144,12 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
     }
 
+    // #38492/#38491: fold the configured endpoint into the target before
+    // signing -- the manager's auth middleware CMACs the literal wire
+    // request-target (prefix included), same reasoning as
+    // RetrySender::attemptOnce.
+    const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");
+
     // Password mode only (#38465 design): mTLS presents its credential at
     // the TLS layer (CurlPerformer::applyClientCertificate, already wired
     // through m_config), open mode sends nothing else. Signed over whatever
@@ -151,7 +158,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     if (!password.empty())
     {
         const auto signature =
-            EnrollSigner::sign(password, "POST", "/enroll", bodyPtr, bodyLength, m_clock.wallSeconds());
+            EnrollSigner::sign(password, "POST", target, bodyPtr, bodyLength, m_clock.wallSeconds());
 
         if (signature)
         {
@@ -164,7 +171,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     }
 
     HttpRequestSpec spec;
-    spec.target = "/enroll";
+    spec.target = target;
     spec.contentType = "application/json";
     spec.headers = std::move(headers);
     spec.body = bodyPtr;

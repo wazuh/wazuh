@@ -53,9 +53,15 @@ class RetrySender final
         /// uncompressed, on the same 415.
         /// authGate (optional): a 401 from any send reports here, pausing all
         /// traffic and surfacing re-enrollment once (#37828).
+        /// serverEndpoint (#38492/#38491, optional): the configured reverse-proxy
+        /// path segment, already normalized (no leading/trailing '/'). When
+        /// non-empty, attemptOnce() folds it into HttpRequestSpec::target
+        /// (via prefixedTarget()) before signing -- the manager's own auth
+        /// middleware CMACs the literal wire request-target, prefix included,
+        /// so the agent must sign the same prefixed string it sends.
         RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock, Backoff& backoff,
                     bool compressionEnabled, CompressionGate* compressionGate = nullptr,
-                    AuthGate* authGate = nullptr);
+                    AuthGate* authGate = nullptr, std::string serverEndpoint = {});
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
@@ -82,6 +88,7 @@ class RetrySender final
         bool m_compressionEnabled;
         CompressionGate* m_compressionGate;
         AuthGate* m_authGate;
+        std::string m_serverEndpoint;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

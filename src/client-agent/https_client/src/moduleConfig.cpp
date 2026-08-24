@@ -34,6 +34,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     ModuleConfig typed;
     typed.serverHost = boundedString(config.server_host, sizeof(config.server_host));
     typed.serverPort = orDefault<uint16_t>(config.server_port, 443);
+    typed.serverEndpoint = boundedString(config.server_endpoint, sizeof(config.server_endpoint));
     typed.agentId = boundedString(config.agent_id, sizeof(config.agent_id));
     typed.agentKeyHex = boundedString(config.agent_key, sizeof(config.agent_key));
     typed.verifyMode = static_cast<hc_verify_mode_t>(config.verify_mode);
@@ -169,5 +170,12 @@ std::string ModuleConfig::baseUrl() const
     // IPv4 never contain ':'; an already-bracketed value is left as is.
     const bool ipv6 = serverHost.find(':') != std::string::npos && serverHost.front() != '[';
     const std::string host = ipv6 ? "[" + serverHost + "]" : serverHost;
+
+    // serverEndpoint is NOT joined in here: #38491 (the manager's global
+    // prefix) requires the endpoint inside the signed CMAC target, not just
+    // the wire URL, so callers fold it into HttpRequestSpec::target (via
+    // prefixedTarget(), canonicalRequest.hpp) before signing -- this
+    // function only ever sees the bare, already-prefixed target appended to
+    // it afterward, same as before #38492.
     return scheme + "://" + host + ":" + std::to_string(serverPort);
 }

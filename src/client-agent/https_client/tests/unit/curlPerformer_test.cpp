@@ -101,6 +101,16 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_EQ(200, response.httpCode);
 }
 
+// #38492/#38491: CurlPerformer itself no longer knows about the endpoint --
+// the manager's auth middleware CMACs the literal wire request-target
+// (prefix included), so the prefix must be folded into
+// HttpRequestSpec::target before signing, upstream of this class (see
+// RetrySender::attemptOnce and EnrollClient::performOnce, both of which fold
+// it in via canonicalRequest.hpp's prefixedTarget()). configureRequest()'s
+// baseUrl() + spec.target composition is deliberately unaware of it and
+// stays exactly as it was before #38492 -- see MemoryBodyMapsToExactOptions
+// above, which already pins that composition with a bare target.
+
 TEST(CurlPerformerTest, ContentTypeEmittedWhenSet)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();

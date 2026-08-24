@@ -116,6 +116,38 @@ TEST(EnrollClientTest, PasswordModeAddsAuthorizationHeaderMatchingEnrollSigner)
     client.enroll(BODY, "s3cr3t");
 }
 
+// #38492/#38491: the manager's auth middleware CMACs the literal wire
+// request-target (prefix included), so /enroll's password signature must
+// cover the prefixed target too, exactly like every other endpoint
+// (RetrySender::attemptOnce carries the equivalent test).
+TEST(EnrollClientTest, ConfiguredEndpointIsFoldedIntoTheTargetAndTheSignature)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    auto config = openModeConfig();
+    config.serverEndpoint = "wazuh-manager";
+    EnrollClient client {config, performer, fsProbe, clock, TEST_LOG};
+
+    const auto expected = EnrollSigner::sign("s3cr3t", "POST", "/wazuh-manager/enroll",
+                                             reinterpret_cast<const uint8_t*>(BODY.data()), BODY.size(),
+                                             1700000000);
+    ASSERT_TRUE(expected.has_value());
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ("/wazuh-manager/enroll", spec.target);
+        EXPECT_TRUE(std::find(spec.headers.begin(), spec.headers.end(), expected->authorization)
+                    != spec.headers.end());
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "s3cr3t");
+}
+
 TEST(EnrollClientTest, CertAndPasswordCoexistNoPrecedence)
 {
     // #38465 Q3 (confirmed with the server team): a client cert and a

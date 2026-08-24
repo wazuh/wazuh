@@ -177,6 +177,9 @@ cJSON *getAgentConfig(void) {
             cJSON_AddStringToObject(server, "address", agt->server[i].rip);
             cJSON_AddNumberToObject(server, "port", agt->server[i].port);
 
+            if (agt->server[i].endpoint)
+                cJSON_AddStringToObject(server, "endpoint", agt->server[i].endpoint);
+
             if (agt->server[i].network_interface)
                 cJSON_AddNumberToObject(server, "interface_index", agt->server[i].network_interface);
 
