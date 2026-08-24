@@ -424,9 +424,13 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
+                // Includes transport-level failures (timeout, connection refused: statusCode <= 0).
+                // Raise it and let the catch around the post drop the staged queries -- the caller
+                // retries by re-staging them. The staged BULK data is deliberately left alone: it
+                // has not been attempted yet (deletes go out before the bulk POST) and the next
+                // flush sends it; clearing it here without clearing m_boundaries desyncs the two
+                // and a later 413 split would then index past the end of the buffer.
                 LOGFN_WARN(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
-                m_bulkData.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
         };
@@ -514,6 +518,17 @@ class IndexerConnectorSyncImpl final
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // No HTTP response at all (timeout, connection refused, TLS failure): the transport
+                // reports these as a negative status. Discarding here would turn every transient
+                // outage into silent data loss, so keep the batch and retry with backoff.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk request.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
@@ -536,6 +551,7 @@ class IndexerConnectorSyncImpl final
                     LOGFN_DEBUG2(m_logFn, "Stopping requested, aborting bulk processing");
                     return;
                 }
+                needToRetry = false;
 
                 std::string url;
                 url += m_selector->getNext();
@@ -627,9 +643,6 @@ class IndexerConnectorSyncImpl final
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
     {
-        std::string url;
-        url += m_selector->getNext();
-        url += "/_bulk";
         bool needToRetry = false;
 
         const auto onSuccess = [this](const std::string& response)
@@ -678,6 +691,19 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                 needToRetry = true;
             }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry the
+                // chunk with backoff instead of throwing, which would abandon the whole split and
+                // resend the full oversized batch just to hit 413 and split again. The chunk views
+                // stay valid across retries: they point into m_bulkData, which is only cleared by
+                // splitAndProcessBulk() after every chunk went through.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk chunk.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
@@ -694,6 +720,12 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            // Resolved inside the loop so a retry rotates to the next healthy host -- and throws
+            // (batch retained, resent by a later flush) once the monitor marks every host down,
+            // instead of hammering the same dead host forever while holding m_mutex.
+            std::string url;
+            url += m_selector->getNext();
+            url += "/_bulk";
             LOGFN_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
@@ -1018,6 +1050,19 @@ public:
             {
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
+            }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry with
+                // backoff like a 429 -- `conflicts=proceed` makes the update idempotent to re-run.
+                // Failing here instead would clear m_notify and silently drop the pending session
+                // completion callbacks.
+                needToRetry = true;
+                LOGFN_DEBUG2(
+                    m_logFn,
+                    "Transport-level failure, no HTTP status received (code %ld): %s. Retrying update by query.",
+                    statusCode,
+                    error.c_str());
             }
             else
             {

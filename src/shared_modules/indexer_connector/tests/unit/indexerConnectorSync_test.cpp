@@ -363,6 +363,79 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
     EXPECT_GE(callCount, 2);
 }
 
+TEST_F(IndexerConnectorSyncTest, TransportFailureRetriesWithoutDataLoss)
+{
+    int errorCallCount = 0;
+
+    // Create and configure mock selector
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke(
+            [this, &errorCallCount](auto requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+
+                // Extract data from variant
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
+                this->receivedData.push_back(data);
+
+                if (errorCallCount == 0)
+                {
+                    errorCallCount++;
+                    // Transport-level failure: no HTTP response at all (timeout, connection
+                    // refused, TLS failure). The transport reports these with a negative status.
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Timeout was reached", -1, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Timeout was reached", -1, "");
+                    }
+                }
+                else
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Stage one document and flush explicitly: the timed-out batch must be retried, not discarded.
+    EXPECT_NO_THROW({
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+        connector.flush();
+    });
+
+    // The batch survives the transport failure: the retried request carries the exact
+    // payload the failed one did.
+    ASSERT_GE(receivedData.size(), 2u);
+    EXPECT_EQ(receivedData.front(), receivedData.back());
+    EXPECT_THAT(receivedData.back(), HasSubstr(R"("_id":"id1")"));
+}
+
 TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
 {
     // Create and configure mock selector
