@@ -179,9 +179,10 @@ extern "C"
                                          ///< Range 10..1800. <=0 -> 60.
         int vd_workers;                  ///< Workers of the vulnerability-detection scan lane
                                          ///< (scan -> index -> respond, one connector each). The
-                                         ///< scanner has its own matching per-slot pool (REQ-VDQ-7),
-                                         ///< so raising this is safe. Range 0..16. <=0 -> nproc/2,
-                                         ///< minimum 1 -- same convention as sync_workers above.
+                                         ///< scanner has its own matching per-slot pool, so
+                                         ///< raising this is safe. An explicit value is clamped
+                                         ///< to 0..64; <=0 resolves to nproc/2, minimum 1 and
+                                         ///< uncapped -- same convention as sync_workers above.
         int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
                                          ///< "scan capacity exhausted". Range 0..256.
                                          ///< <=0 -> 2x vd_workers.

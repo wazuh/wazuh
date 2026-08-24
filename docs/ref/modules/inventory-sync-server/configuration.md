@@ -318,7 +318,7 @@ wazuh_modules.inventory_sync_server_vd_workers=0
 ```
 
 - **Default value:** `0` (half the host's cores, minimum 1)
-- **Allowed values:** 0 to 16
+- **Allowed values:** 0 to 64
 - **Note:** More workers let scans for different agents run at the same time instead of queueing
   behind each other. Lane occupancy and end-to-end time are `vd.lane.depth` and `vd.lane.time` in
   [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).

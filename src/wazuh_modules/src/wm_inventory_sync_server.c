@@ -205,7 +205,7 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                                          64 * 1024 * 1024);
     config->vd_feed_retry_after_seconds =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_feed_retry_after_seconds", 10, 1800, 60);
-    config->vd_workers = getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_workers", 0, 16, 0);
+    config->vd_workers = getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_workers", 0, 64, 0);
     config->vd_scan_queue_slots =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_scan_queue_slots", 0, 256, 0);
 
