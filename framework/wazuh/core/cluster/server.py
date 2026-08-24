@@ -23,6 +23,9 @@ from wazuh.core.cluster.utils import ClusterFilter, context_tag
 # Maximum simultaneous cluster TCP connections accepted from a single source IP.
 MAX_CONNECTIONS_PER_IP = 10
 
+# Maximum simultaneous cluster TCP connections accepted from all source IPs.
+MAX_TOTAL_CONNECTIONS = 1024
+
 
 class AbstractServerHandler(c_common.Handler):
     """
@@ -62,6 +65,8 @@ class AbstractServerHandler(c_common.Handler):
         self.broadcast_queue = asyncio.Queue()
         # Tracks whether this handler was counted in server.connection_counts.
         self._counted_connection = False
+        # Handle for the handshake-completion deadline timer.
+        self._handshake_deadline = None
 
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServerHandler instance.
@@ -88,10 +93,37 @@ class AbstractServerHandler(c_common.Handler):
             self.logger.warning(f"Too many connections from {self.ip} ({count}), rejecting.")
             transport.close()
             return
+        if self.server.total_connections >= MAX_TOTAL_CONNECTIONS:
+            self.logger.warning(f"Too many total connections ({self.server.total_connections}), "
+                                f"rejecting connection from {self.ip}.")
+            transport.close()
+            return
         self.server.connection_counts[self.ip] = count + 1
+        self.server.total_connections += 1
         self._counted_connection = True
         self.logger.info(f'Connection from {peername}')
         self.transport = transport
+        self._start_handshake_deadline()
+
+    def _start_handshake_deadline(self) -> None:
+        """Arm a timer that closes this connection if the handshake is never completed."""
+        self._cancel_handshake_deadline()
+        self._handshake_deadline = self.loop.call_later(c_common.PRE_AUTH_PAYLOAD_TIMEOUT,
+                                                        self._close_on_handshake_deadline)
+
+    def _cancel_handshake_deadline(self) -> None:
+        """Cancel an armed handshake deadline, if any."""
+        if self._handshake_deadline is not None:
+            self._handshake_deadline.cancel()
+            self._handshake_deadline = None
+
+    def _close_on_handshake_deadline(self) -> None:
+        """Close the transport when the handshake is not completed within the deadline."""
+        self._handshake_deadline = None
+        if self.name is None:
+            self.logger.warning("Closing connection: handshake not completed within deadline.")
+            if self.transport is not None:
+                self.transport.close()
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """Define commands for servers.
@@ -159,6 +191,7 @@ class AbstractServerHandler(c_common.Handler):
             raise exception.WazuhClusterError(3029)
         else:
             self.name = node_name
+            self._cancel_handshake_deadline()
             self.server.clients[self.name] = self
             self.tag = f'{self.tag} {self.name}'
             context_tag.set(self.tag)
@@ -196,12 +229,14 @@ class AbstractServerHandler(c_common.Handler):
             In case the connection was lost due to an exception, it will be contained in this variable.
         """
         self._cancel_payload_deadline()
+        self._cancel_handshake_deadline()
         if self._counted_connection:
             count = self.server.connection_counts.get(self.ip, 0)
             if count <= 1:
                 self.server.connection_counts.pop(self.ip, None)
             else:
                 self.server.connection_counts[self.ip] = count - 1
+            self.server.total_connections = max(0, self.server.total_connections - 1)
         if self.name:
             if exc is None:
                 self.logger.debug(f"Disconnected {self.name}.")
@@ -303,6 +338,8 @@ class AbstractServer:
         self.broadcast_results = {}
         # Per-source-IP connection counts; bounded by MAX_CONNECTIONS_PER_IP.
         self.connection_counts = {}
+        # Total accepted connections; bounded by MAX_TOTAL_CONNECTIONS.
+        self.total_connections = 0
 
     def broadcast(self, f, *args, **kwargs):
         """Add a function to the broadcast_queue of each server handler.

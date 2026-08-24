@@ -12,6 +12,46 @@
 #include "systemd_units_linux.hpp"
 #include "stringHelper.h"
 
+namespace
+{
+    /// @brief Owns a private D-Bus connection for the duration of a scope.
+    ///
+    /// bus_get_private() transfers ownership to the caller, so the connection has to be closed
+    /// and unreferenced on every exit path. Doing that through a guard rather than by hand
+    /// keeps a future early return from reintroducing the leak.
+    class ScopedDBusConnection final
+    {
+        public:
+            ScopedDBusConnection(std::shared_ptr<IDBusWrapper> dbusWrapper, DBusConnection* connection)
+                : m_dbusWrapper(std::move(dbusWrapper))
+                , m_connection(connection)
+            {
+            }
+
+            ~ScopedDBusConnection()
+            {
+                if (m_connection)
+                {
+                    m_dbusWrapper->connection_close(m_connection);
+                    m_dbusWrapper->connection_unref(m_connection);
+                }
+            }
+
+            ScopedDBusConnection(const ScopedDBusConnection&) = delete;
+            ScopedDBusConnection& operator=(const ScopedDBusConnection&) = delete;
+
+            /// @brief Returns the owned connection, or nullptr if it could not be acquired.
+            DBusConnection* get() const
+            {
+                return m_connection;
+            }
+
+        private:
+            std::shared_ptr<IDBusWrapper> m_dbusWrapper;
+            DBusConnection* m_connection;
+    };
+}
+
 SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper)
     : m_dbusWrapper(std::move(dbusWrapper))
 {
@@ -62,7 +102,9 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     DBusError err;
     m_dbusWrapper->error_init(&err);
 
-    DBusConnection* conn = m_dbusWrapper->bus_get(DBUS_BUS_SYSTEM, &err);
+    // Owned for the rest of this scope, and released on every return path below.
+    ScopedDBusConnection scopedConnection {m_dbusWrapper, m_dbusWrapper->bus_get_private(DBUS_BUS_SYSTEM, &err)};
+    DBusConnection* conn = scopedConnection.get();
 
     if (!conn || m_dbusWrapper->error_is_set(&err))
     {
