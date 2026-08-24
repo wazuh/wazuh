@@ -169,9 +169,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE "queue/sockets/execq"
 
-/* Active Response queue */
-#define ARQUEUE "queue/sockets/ar"
-
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
 

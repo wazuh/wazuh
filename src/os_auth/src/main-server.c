@@ -89,7 +89,7 @@ static void help_authd(char * home_path)
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Force shared-password enrollment on (already enabled by default); password read from %s or generated.", AUTHD_PASS);
+    print_out("    -P          Force shared-password enrollment on (enabled by default in the installer-shipped config, but off by default in the daemon itself); password read from %s or generated.", AUTHD_PASS);
     print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
@@ -211,6 +211,8 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
+        /* -L is present in the getopt string but has no handler in the switch below —
+         * dead/vestigial flag, verify before removing. */
         while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
@@ -544,7 +546,43 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
-    if (config.flags.remote_enrollment) {
+    /* Enrollment password: loaded here -- and, on a master, GENERATED here if absent -- whenever
+     * shared-password enrollment is enabled, deliberately OUTSIDE the <legacy_enrollment> gate
+     * below. etc/authd.pass is a manager-wide enrollment credential, not a property of the legacy
+     * port-1515 listener: remoted's POST /enroll bridge reads the file directly (see
+     * PasswordKeySource in remoted_module). w_authd_load_password() is the only thing anywhere in
+     * the product that creates it -- no installer, package or framework step writes it -- so
+     * gating this on legacy_enrollment would leave an HTTPS-only manager (<legacy_enrollment>no,
+     * the very configuration that flag exists to enable) with a password file nothing ever
+     * creates, and every Password-mode /enroll request failing 401 permanently, cluster-wide.
+     * Gated on remote_enrollment alone: with that off, both enrollment paths are closed and no
+     * password is needed by either. */
+    if (config.flags.remote_enrollment && config.flags.use_password) {
+        if (config.worker_node) {
+            /* Owned by the master and synced to workers; never generated here.
+             * If not synced yet, picked up later in process_message. */
+            authpass = w_authd_read_password(AUTHD_PASS);
+
+            if (authpass) {
+                authpass_mtime = File_DateofChange(AUTHD_PASS);
+                minfo("Using the enrollment password synchronized from the master node.");
+            } else {
+                minfo("Shared-password enrollment is enabled but '%s' has not been synchronized from the master node yet. Enrollment requests will be rejected until it is available.", AUTHD_PASS);
+            }
+        } else {
+            bool pass_generated = false;
+
+            authpass = w_authd_load_password(AUTHD_PASS, &pass_generated);
+
+            if (pass_generated) {
+                minfo("A new enrollment password was generated and written to '%s'", AUTHD_PASS);
+            } else {
+                minfo("Using the existing enrollment password from '%s'. To rotate the password, delete the file and restart.", AUTHD_PASS);
+            }
+        }
+    }
+
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
         g_epfd = epoll_create1(0);
 
         if (g_epfd < 0) {
@@ -595,30 +633,11 @@ int main(int argc, char **argv)
             exit(1);
         }
 
-        /* Check if password is enabled */
+        /* The password itself was already loaded/generated above, before this block: it serves
+         * POST /enroll too, so it must not depend on this listener existing. Only the
+         * listener-specific announcement belongs here. */
         if (config.flags.use_password) {
-            if (config.worker_node) {
-                /* Owned by the master and synced to workers; never generated here.
-                 * If not synced yet, picked up later in process_message. */
-                authpass = w_authd_read_password(AUTHD_PASS);
-
-                if (authpass) {
-                    authpass_mtime = File_DateofChange(AUTHD_PASS);
-                    minfo("Accepting connections on port %hu. Using password synchronized from the master node.", config.port);
-                } else {
-                    minfo("Shared-password enrollment is enabled but '%s' has not been synchronized from the master node yet. Enrollment requests will be rejected until it is available.", AUTHD_PASS);
-                }
-            } else {
-                bool pass_generated = false;
-
-                authpass = w_authd_load_password(AUTHD_PASS, &pass_generated);
-
-                if (pass_generated) {
-                    minfo("Accepting connections on port %hu. A new authentication password was generated and written to '%s'", config.port, AUTHD_PASS);
-                } else {
-                    minfo("Accepting connections on port %hu. Using existing authentication password from '%s'. To rotate the password, delete the file and restart.", config.port, AUTHD_PASS);
-                }
-            }
+            minfo("Accepting connections on port %hu. Shared-password enrollment is required.", config.port);
         } else {
             mdebug1("Accepting connections on port %hu. No password required.", config.port);
         }
@@ -660,7 +679,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
 
         if (status = pthread_create(&thread_remote_server, NULL, (void *)&run_remote_server, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
@@ -687,7 +706,7 @@ int main(int argc, char **argv)
 
     /* Join threads */
     pthread_join(thread_local_server, NULL);
-    if (config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
         pthread_join(thread_remote_server, NULL);
     }
     if (!config.worker_node) {
@@ -795,7 +814,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }

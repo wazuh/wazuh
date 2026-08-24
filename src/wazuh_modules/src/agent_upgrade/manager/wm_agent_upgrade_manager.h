@@ -44,7 +44,10 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST,
     WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH,
     WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE,
-    WM_UPGRADE_UNKNOWN_ERROR
+    WM_UPGRADE_UNKNOWN_ERROR,
+    // Appended after WM_UPGRADE_UNKNOWN_ERROR so its numeric value (referenced literally,
+    // not symbolically, by some callers/tests) never shifts when a new code is added.
+    WM_UPGRADE_LEGACY_DELIVERY_DISABLED
 } wm_upgrade_error_code;
 
 typedef enum _wm_upgrade_command {

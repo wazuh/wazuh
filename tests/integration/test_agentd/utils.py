@@ -103,10 +103,22 @@ def wait_enrollment(timeout=150, poll_interval=0.1):
 
 def wait_enrollment_try():
     """
-        Watch ossec.log until "Requesting a key" message is found
+        Watch ossec.log until the 401-triggered re-enrollment warning is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 150)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REENROLLING), timeout = 150)
+    assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
+
+
+def wait_enrollment_retry_backoff():
+    """
+        Watch ossec.log until the initial (no pre-existent key) enrollment loop logs its
+        retry-backoff line -- there is no distinct "attempt started" announcement, so this
+        is the closest observable signal that a first-time enrollment attempt failed and is
+        about to retry.
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_ENROLLMENT_RETRY_BACKOFF), timeout = 150)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
 
 

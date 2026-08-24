@@ -15,8 +15,11 @@
 // need a fake downstream client plus a real DeferredForwarder to prove the short circuit.
 #include "endpoints/configEndpoint.hpp"
 
+#include "common/requestOutcomeMetrics.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -256,6 +259,44 @@ TEST(ConfigMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     // Not spending a deferred-work slot or a UDS round trip on a body that cannot be a JSON object
     // is the only reason this check lives on the remoted side at all.
     EXPECT_FALSE(client->called());
+}
+
+// With a metric set wired in, the handler's own empty-body 400 and the forwarder-delivered
+// status each land in the endpoint's responses family -- "every response this endpoint sent",
+// whichever code path sent it.
+TEST(ConfigMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = remoted::metrics::makeEndpointHttpMetrics(manager, "config", /*withLatency=*/false);
+
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+    auto handler = config_endpoint::makeHandler(forwarder, kSocketPath, &metrics);
+
+    {
+        auto fixture = makeAuthReq("", "001"); // empty body: answered 400 by the handler itself
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 400);
+    }
+    EXPECT_EQ(metrics.responses.c400->get(), 1U);
+    EXPECT_FALSE(client->called());
+
+    {
+        auto fixture = makeAuthReq(R"({"cpu":1})", "042");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_TRUE(client->called());
+        client->fire(DownstreamError::None, DownstreamResponse {200, "{}"});
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 200);
+    }
+    EXPECT_EQ(metrics.responses.c2xx->get(), 1U);
+    EXPECT_EQ(metrics.responses.c400->get(), 1U); // untouched by the success
 }
 
 TEST(ConfigMakeHandler, ForwardsTheDocumentAndTheAgentIdThenPostProcesses)

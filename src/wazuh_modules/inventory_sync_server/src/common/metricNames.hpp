@@ -45,6 +45,15 @@ namespace invsync::metrics
     constexpr auto DOCS_SKIPPED {"sync.docs.skipped"};
     constexpr auto BYTES_INGESTED {"sync.bytes.ingested"};
 
+    // -- transport diagnostics (pull metrics over IUdsHttpServer::diagnostics(), U10) --------
+    constexpr auto SERVER_BUDGET_AVAILABLE_BYTES {"server.budget.available.bytes"};
+    constexpr auto SERVER_BUDGET_IN_FLIGHT_BYTES {"server.budget.inflight.bytes"};
+    constexpr auto SERVER_BUDGET_IN_FLIGHT_REQUESTS {"server.budget.inflight.requests"};
+    constexpr auto SERVER_SESSIONS_LIVE {"server.sessions.live"};
+    constexpr auto SERVER_SESSIONS_DATA {"server.sessions.data"};
+    constexpr auto SERVER_SESSIONS_CONTROL {"server.sessions.control"};
+    constexpr auto SERVER_SESSIONS_LIVENESS {"server.sessions.liveness"};
+
     // -- vulnerability-detection lane -------------------------------------------------------
     constexpr auto VD_CAPACITY_503_TOTAL {"vd.capacity.503.total"};
     constexpr auto VD_LANE_DEPTH {"vd.lane.depth"};
@@ -60,6 +69,20 @@ namespace invsync::metrics
     inline std::string shardName(std::size_t index, const char* what)
     {
         return std::string {SHARD_PREFIX} + std::to_string(index) + "." + what;
+    }
+
+    /**
+     * @brief Resolves vd.retry_after.total -- the ONE registration of its strings.
+     *
+     * Two components increment it (the sync endpoint's strand-side feed gate and the VD lane's
+     * dispatch-time re-check), and Manager::getOrCreate keeps only the FIRST registration's
+     * description/unit. Both resolve through this helper so there is no second copy of the
+     * strings to silently drift.
+     */
+    inline std::shared_ptr<wazuh::metrics::ICounter> makeVdRetryAfterCounter(wazuh::metrics::IManager& manager)
+    {
+        return manager.getOrCreateCounter(
+            VD_RETRY_AFTER_TOTAL, "503 responses carrying a Retry-After header (the CVE feed was not ready)", "count");
     }
 
     /**
@@ -89,7 +112,9 @@ namespace invsync::metrics
             const auto counter = [&manager](const char* code)
             {
                 return manager.getOrCreateCounter(std::string {REQUESTS_TOTAL_PREFIX} + code,
-                                                  "POST /stateful (and deletion) responses sent with this status",
+                                                  "POST /stateful and agent-deletion responses the handlers sent "
+                                                  "with this status (transport-level answers -- 413, 504, malformed "
+                                                  "HTTP -- are not counted)",
                                                   "count");
             };
             return RequestCounters {counter("200"),

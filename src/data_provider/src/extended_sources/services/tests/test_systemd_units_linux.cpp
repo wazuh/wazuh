@@ -24,7 +24,9 @@ class MockDBusWrapper : public IDBusWrapper
         MOCK_METHOD(void, error_init, (DBusError*), (override));
         MOCK_METHOD(bool, error_is_set, (const DBusError*), (override));
         MOCK_METHOD(void, error_free, (DBusError*), (override));
-        MOCK_METHOD(DBusConnection*, bus_get, (DBusBusType, DBusError*), (override));
+        MOCK_METHOD(DBusConnection*, bus_get_private, (DBusBusType, DBusError*), (override));
+        MOCK_METHOD(void, connection_close, (DBusConnection*), (override));
+        MOCK_METHOD(void, connection_unref, (DBusConnection*), (override));
         MOCK_METHOD(DBusMessage*, message_new_method_call, (const std::string&, const std::string&, const std::string&, const std::string&), (override));
         MOCK_METHOD(DBusMessage*, connection_send_with_reply_and_block, (DBusConnection*, DBusMessage*, int, DBusError*), (override));
         MOCK_METHOD(void, message_unref, (DBusMessage*), (override));
@@ -49,7 +51,7 @@ void SetUpTestMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper)
     // Initialization
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
 
-    EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
     .WillOnce(DoAll(
                   Invoke([](DBusBusType, DBusError * err)
     {
@@ -57,6 +59,11 @@ void SetUpTestMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper)
     }),
     Return(conn)
               ));
+
+    // The connection is acquired privately, so the provider owns it and must close and
+    // release it exactly once, on this path as on every other.
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
 
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
 
@@ -419,7 +426,7 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
     SystemdUnitsProvider provider(mockDbusWrapper);
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
-    EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
     .WillOnce(DoAll(
                   Invoke([](DBusBusType, DBusError * err)
     {
@@ -427,6 +434,10 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
     }),
     Return(nullptr)
               ));
+
+    // Nothing was acquired, so nothing may be closed or released.
+    EXPECT_CALL(*mockDbusWrapper, connection_close(_)).Times(0);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(_)).Times(0);
 
     EXPECT_CALL(*mockDbusWrapper, error_free(_))
     .WillRepeatedly(Invoke([](auto)
@@ -450,7 +461,7 @@ TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
     {
         // do nothing
     }));
-    EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
     .WillOnce(DoAll(
                   Invoke([](DBusBusType, DBusError * err)
     {
@@ -458,6 +469,11 @@ TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
     }),
     Return(conn)
               ));
+
+    // The connection is acquired privately, so the provider owns it and must close and
+    // release it exactly once, on this path as on every other.
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillOnce(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
     .WillOnce(Return(nullptr));
@@ -477,8 +493,13 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyHasNoArguments)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, error_free(_));
-    EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
     .WillOnce(Return(conn));
+
+    // The connection is acquired privately, so the provider owns it and must close and
+    // release it exactly once, on this path as on every other.
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
     .WillOnce(Return(msg));
@@ -504,8 +525,13 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyIsNotArray)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, error_free(_));
-    EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
     .WillOnce(Return(conn));
+
+    // The connection is acquired privately, so the provider owns it and must close and
+    // release it exactly once, on this path as on every other.
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
     .WillOnce(Return(msg));

@@ -56,7 +56,7 @@ RBAC is enforced **before** any core logic is executed.
 | `rbac/decorators.py` | `expose_resources` decorator that enforces action/resource permissions |
 | `rbac/orm.py` | ORM models for roles, policies, and user-role mappings |
 | `rbac/preprocessor.py` | Resource preprocessing before permission checks |
-| `rbac/default_resources.py` | Built-in default RBAC resource definitions |
+| `rbac/default/*.yaml` | Built-in default RBAC data, loaded via `insert_default_resources` in `rbac/orm.py` |
 | `rbac/auth_context.py` | Authentication context handling |
 
 ---

@@ -21,6 +21,22 @@ For module overview and architecture, see [Remoted Module](index.html).
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
 
+### legacy.enabled
+
+Enable the classic TCP/UDP listener and every subsystem that only serves 4.x agents
+(the legacy `remote_upgrade` task-delivery poller, the `merged.mg` push, the
+control/event dispatch threads, the per-agent metadata cache cleanup thread, the
+message-handler worker pool, and the fd closer thread).
+
+- **Default value:** `yes` when `<legacy>` is present; absence of the whole `<legacy>`
+  block is equivalent to `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** With `no`, remoted binds no legacy socket and starts no legacy thread; only
+  5.x agents (served over `<https>`) can connect. `merged.mg`/group generation stays on
+  regardless, since the HTTPS `/download` endpoint also serves it to 5.x agents.
+  Disabling this also causes `remote_upgrade` task creation for agents below v5.0.0 to be
+  rejected at creation time, since there is no delivery path for them anymore.
+
 ### legacy.port
 
 Listening port for agent connections.
@@ -122,7 +138,8 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 (the `IPV6_V6ONLY` socket option).
 
 - **Default value:** `no` (force IPv6-only)
-- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
+- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
+  rejected as a configuration error
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
   `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
@@ -131,6 +148,8 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
+- **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
+  so a silent outage for verifying agents can be prevented before it happens.
 
 ### https.key
 
@@ -170,8 +189,8 @@ Client-certificate verification strictness.
   connect from, not where agents may. It fits a direct deployment, or one where the balancer
   preserves the client address at network level. It also requires every agent certificate to
   carry the agent's address in its SAN, which has to be reissued whenever that address changes.
-- **Note:** any other value is ignored with a warning, leaving `verification_mode` as if it had
-  not been configured.
+- **Note:** any other value is rejected as a configuration error (the config test fails), so a
+  typo cannot silently leave client-certificate verification disabled.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
 
 ### https.ciphers
@@ -181,7 +200,10 @@ scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its min
 protocol version.
 
 - **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
-- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string. The value is validated at
+  configuration-parse time: a name that is not a TLS 1.3 suite (for example a TLS 1.2 string such
+  as `HIGH:!ADH`) is rejected so the config test catches it, instead of the listener failing to
+  start at runtime.
 
 ### https.max_body_size
 
@@ -209,8 +231,9 @@ Debug logging level for remoted module.
 - **Note:** Use `debug2` for troubleshooting; generates significant log volume
 - **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
   (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
-  controls how many it can trigger; conditions an operator can act on are logged as warnings
-  regardless of this setting. See
+  controls how many it can trigger; conditions an operator can act on are logged at info or warning
+  level regardless of this setting — including a rejection caused by the agent's registered address no
+  longer matching. See
   [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
 
 ### remoted.receive_chunk
@@ -310,7 +333,10 @@ introducing a second one for the same concept.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** Lower values detect new agents faster but increase I/O overhead
+- **Note:** Lower values detect new agents faster but increase I/O overhead. Whether the C++
+  keystore's reloads are actually happening (and succeeding) is visible as
+  `remoted.auth.keystore.*` in
+  [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore)
 
 ### remoted.rlimit_nofile
 
@@ -318,7 +344,7 @@ Maximum number of open file descriptors for the remoted process.
 
 - **Default value:** `458752`
 - **Allowed values:** Positive integer
-- **Note:** Increase for large agent counts (e.g., `131072` for >10K agents); default supports ~200K concurrent connections
+- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
 
 ### remoted.send_chunk
 
@@ -514,6 +540,9 @@ Number of worker threads that run endpoint handlers (auth + business logic), off
 - **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
   work can block on AES-CMAC verification and `client.keys` file I/O)
 - **Allowed values:** Integer from `0` to `256`
+- **Note:** Size it from the end-to-end latency histograms (`remoted.http.stateless.latency`,
+  `remoted.http.stateful.latency`) in
+  [`GET /metrics`](metrics.md#request-latency--remotedhttpendpointlatency)
 
 #### remoted.http_read_timeout
 
@@ -537,6 +566,9 @@ Seconds a request may take to be handled end-to-end.
 
 - **Default value:** `30`
 - **Allowed values:** Integer from `1` to `600`
+- **Note:** The end-to-end latency histograms in
+  [`GET /metrics`](metrics.md#request-latency--remotedhttpendpointlatency) are measured against
+  this cap: a p99 creeping toward it predicts request cutoffs before they happen
 
 #### remoted.http_max_url_size
 
@@ -595,6 +627,8 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
 - **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB)
 - **Note:** The C++ side clamps this up to at least one max-size request at startup, so a too-small
   value cannot reject everything. This is NOT `legacy.queue_size` (that is an event COUNT, not bytes).
+  Live occupancy and the cumulative shed count are visible as `remoted.server.budget.*` in
+  [`GET /metrics`](metrics.md#public-transport-backpressure--remotedserverbudget).
 
 #### remoted.max_parallel_connections
 
@@ -606,7 +640,9 @@ Maximum simultaneous HTTPS connections.
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a transfer open
   indefinitely and there is no per-stream limiter. A mass upgrade (the whole fleet fetching a WPK
-  at once, many over slow links) is therefore bounded only by this value.
+  at once, many over slow links) is therefore bounded only by this value. Started transfers and
+  offered bytes are visible as `remoted.download.*` in
+  [`GET /metrics`](metrics.md#downloads--remoteddownload).
 
 #### remoted.max_deferred_requests
 
@@ -616,7 +652,9 @@ Maximum requests parked awaiting a downstream service before replying with HTTP 
 - **Allowed values:** Integer from `1` to `65536`
 - **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
   see warnings about this limit being reached, consider increasing it or investigating why the
-  downstream service is slow.
+  downstream service is slow. Live occupancy and the cumulative shed count are visible as
+  `remoted.forwarder.deferred.*` in
+  [`GET /metrics`](metrics.md#deferred-forwarding--remotedforwarderdeferred).
 
 #### remoted.http_stream_chunk_size
 
@@ -634,7 +672,9 @@ Bytes per chunk when streaming a response body (`POST /download`).
 > downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request
 > down before the downstream deadline is ever reached. `remoted` logs a warning at startup when that
 > is the case. Each phase has its own log message naming its own setting, so the log tells you which
-> one elapsed.
+> one elapsed — and its own counter (`remoted.forwarder.error.*`) in
+> [`GET /metrics`](metrics.md#downstream-failures--remotedforwarder), so the totals tell you which
+> one dominates.
 
 #### remoted.http_content_encoding_enabled
 
@@ -721,6 +761,10 @@ as expired.
 
 - **Default value:** `300`
 - **Allowed values:** Integer from `1` to `3600`
+- **Note:** Rejections against this window (either direction) are visible as
+  `remoted.auth.reject.clock_skew` in
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A moving counter
+  usually means unsynchronized agent clocks — fix NTP before widening the window.
 
 #### remoted.auth_max_future_skew
 
@@ -729,6 +773,8 @@ it.
 
 - **Default value:** `30`
 - **Allowed values:** Integer from `1` to `300`
+- **Note:** Shares the `remoted.auth.reject.clock_skew` counter with
+  `remoted.auth_max_request_age` (see above).
 
 #### remoted.auth_max_body_size
 
@@ -738,10 +784,141 @@ not an internal option).
 
 Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
 once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
-see [HTTPS Events API](https-events-api.md#content-encoding-zstd).
+see [HTTPS Events API](https-events-api.md#content-encoding-zstd). Rejections against either cap
+are visible as `remoted.auth.reject.body_too_large` in
+[`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+
+#### remoted.control_keepalive_throttle
+
+Minimum seconds between two wazuh-db keepalive writes for the same agent. `notify` requests
+arriving faster than this are answered normally but absorbed in memory without touching the
+database.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** This must stay at or above the agent's notify cadence, or every notify becomes a
+  database write. It must also stay well below `<global><agents_disconnection_time>` (default
+  `15m`), since a throttled notify is what refreshes `last_keepalive` -- set the throttle above
+  the disconnection time and active agents are reported as disconnected.
+
+#### remoted.control_groups_refresh_interval
+
+Seconds between refreshes of the cached shared-group listing used to answer `/control`.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** This is the propagation latency an agent sees for a centralised-configuration change.
+
+#### remoted.control_wdb_request_connections
+
+Size of the wazuh-db connection pool the control plane uses.
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+- **Note:** Size it from the successful round-trip time: `remoted.control.wdb.latency` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol) times the keepalive arrival rate
+  tells you how many round trips must be in flight at once.
+
+#### remoted.control_wdb_roundtrip_deadline
+
+Milliseconds a single wazuh-db round-trip may take before the control handler gives up.
+
+- **Default value:** `2000`
+- **Allowed values:** Integer from `100` to `30000`
+- **Note:** Exceeding it surfaces to the agent as a `503` on `/control`, and counts as
+  `remoted.control.wdb_error` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
+  distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
+  deliberately excluded from the histogram).
+
+#### remoted.control_wdb_max_queue_size
+
+High-water mark for queued wazuh-db requests; over it the handler reports QueueFull.
+
+- **Default value:** `10000`
+- **Allowed values:** Integer from `100` to `1000000`
+- **Note:** Queue-full failures also count as `remoted.control.wdb_error` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+
+#### remoted.control_tm_concurrency
+
+Concurrent task-manager requests the control plane may have in flight.
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.control_tm_deadline
+
+Milliseconds a single task-manager round-trip may take.
+
+- **Default value:** `2000`
+- **Allowed values:** Integer from `100` to `30000`
+- **Note:** Failures are visible as `remoted.control.task_fetch_error` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+
+#### remoted.control_tm_max_queue_size
+
+High-water mark for queued task-manager requests.
+
+- **Default value:** `10000`
+- **Allowed values:** Integer from `100` to `1000000`
+
+#### remoted.enroll_password_refresh_interval
+
+Seconds between polls of `etc/authd.pass` for Password-mode `POST /enroll`.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** Until a change is picked up, Password-mode enrollment keeps failing with the old
+  key; those rejections count as `remoted.auth.reject.enrollment_key_unavailable` in
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
+
+#### remoted.authd_connect_timeout
+
+Seconds `remoted` waits to connect to `authd`'s local enrollment socket.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `60`
+- **Note:** Exhausting it answers the agent `503` and counts as
+  `remoted.enroll.authd_unavailable`; size it against
+  [`remoted.http.enroll.latency`](metrics.md#request-latency--remotedhttpendpointlatency), the
+  only measurement that spans the hop to `authd`.
+
+#### remoted.authd_response_timeout
+
+Seconds `remoted` waits for `authd`'s answer once connected.
+
+- **Default value:** `0` (worker-aware default: short on the master, long enough on a worker to
+  outlast `authd`'s own worker-to-master cluster retry budget)
+- **Allowed values:** Integer from `0` to `120`
+- **Note:** Same evidence as `authd_connect_timeout`; together they must stay under
+  [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout), which the
+  module warns about at startup.
+
+#### remoted.authd_max_queue_size
+
+Enrollment requests that may wait for an `authd` worker before further ones are refused.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** Visible as
+  [`remoted.enroll.authd.queue.{depth,capacity}`](metrics.md#agent-enrollment--remotedenroll);
+  refusals count in `remoted.enroll.authd.queue.rejected.total`, which is the saturation share
+  of `remoted.enroll.authd_unavailable`.
+
+#### remoted.authd_worker_threads
+
+Concurrent connections `remoted` keeps to `authd` for enrollment.
+
+- **Default value:** `8`
+- **Allowed values:** Integer from `1` to `32`
+- **Note:** Capped well under `authd`'s own local-socket listen backlog (128), so a larger pool
+  gains nothing. Raise it when
+  [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
+  its capacity at peak.
 
 ---
 
@@ -803,8 +980,11 @@ Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
 ```conf
 remoted.control_msg_queue_size=32768
 remoted.keyupdate_interval=30
-remoted.rlimit_nofile=131072
+remoted.rlimit_nofile=524288
 ```
+
+Only raise `rlimit_nofile` above its default (`458752`) if you observe file-descriptor exhaustion
+under very large fleets; do not set it lower than the default for a scale-up scenario.
 
 ### High Throughput (>50K events/sec)
 
@@ -1062,6 +1242,19 @@ Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_d
 
 ## Monitoring
 
+### HTTPS agent server metrics (`GET /metrics`)
+
+The C++ module keeps its own metric registry — request outcomes and latency per endpoint,
+authentication-rejection and downstream-failure taxonomies, backpressure occupancy, keystore
+health — served as a JSON dump on the module's local admin socket:
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
+The full catalog, with each metric linked back to the setting it helps size, is in
+[Metrics](metrics.md). These are separate from (and additive to) the legacy statistics below.
+
 ### View Statistics
 
 Query remoted's statistics on demand via the API:
@@ -1098,7 +1291,9 @@ grep "discarded_count" /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 
 ## See Also
 
-- [Remoted Module](index.html) - Module overview and architecture
+- [Remoted Module](README.md) - Module overview and architecture
+- [Metrics](metrics.md) - The HTTPS agent server's metric catalog, linked back to these settings
+- [HTTPS Events API](https-events-api.md) - The HTTPS transport, protocol and endpoints
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata caching system
 - [Event Protocol](event-protocol.md) - Agent-manager communication protocol
 - [Architecture](architecture.md) - Module design and implementation

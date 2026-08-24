@@ -113,13 +113,7 @@ If the configuration is valid, the output confirms success. If there are syntax 
 
 ## Applying changes
 
-After editing `agent.conf`, restart the Wazuh manager so the new configuration is distributed to agents:
-
-```bash
-systemctl restart wazuh-manager
-```
-
-Agents receive the updated configuration automatically on their next connection to the manager.
+Changes to `agent.conf` are picked up automatically and do not require restarting the Wazuh manager. remoted watches the shared configuration directory (and the resulting `merged.mg` files) for changes, recomputes the affected hashes, and serves the updated `merged.mg` the next time an agent polls via `/control` and `/download`. Agents typically receive the update within moments of the file being saved.
 
 ## Precedence rules
 

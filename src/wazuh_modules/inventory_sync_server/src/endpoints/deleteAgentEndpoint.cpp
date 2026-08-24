@@ -11,10 +11,10 @@
 
 #include "deleteAgentEndpoint.hpp"
 
-#include "common/logThrottle.hpp"
 #include "endpoints/syncEndpoint.hpp" // agentIdHeader() -- one header name for every route
 #include "loggerHelper.h"
 #include "sync/fullSessionValidator.hpp" // isNumericAgentId(), padAgentId()
+#include <uds_http_server/logThrottle.hpp>
 
 #include <string>
 #include <utility>
@@ -29,9 +29,9 @@ namespace
         return instance;
     }
 
-    invsync::http::HttpResponse errorResponse(int status, const std::string& reason)
+    wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return invsync::http::HttpResponse::json(
+        return wazuh::uds_http::HttpResponse::json(
             status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
     }
 } // namespace
@@ -39,13 +39,16 @@ namespace
 namespace invsync::endpoints::delete_agent
 {
 
-    http::RouteHandler makeHandler(Dependencies dependencies)
+    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies)
     {
-        return [deps = std::move(dependencies)](std::shared_ptr<const http::HttpRequest> request,
-                                                std::shared_ptr<http::IHttpResponder> responder)
+        return [deps = std::move(dependencies)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                                std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             if (!request)
             {
+                // Each inline rejection is counted here, the site that sends it; an enqueued
+                // deletion's terminal response is the pipeline's to count (see Dependencies).
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Empty request"));
                 return;
             }
@@ -56,6 +59,7 @@ namespace invsync::endpoints::delete_agent
             const auto agentIdIt = request->headers.find(sync::agentIdHeader());
             if (agentIdIt == request->headers.end() || !invsync::sync::isNumericAgentId(agentIdIt->second))
             {
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Missing or non-numeric agent id header"));
                 return;
             }
@@ -66,6 +70,7 @@ namespace invsync::endpoints::delete_agent
             const auto indexer = deps.indexer.lock();
             if (!indexer || !indexer->isAvailable())
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
             }
@@ -73,6 +78,7 @@ namespace invsync::endpoints::delete_agent
             const auto pipeline = deps.pipeline.lock();
             if (!pipeline)
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
             }
@@ -90,6 +96,7 @@ namespace invsync::endpoints::delete_agent
 
             if (!pipeline->enqueue(std::move(item)))
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
             }
         };

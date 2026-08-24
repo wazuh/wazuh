@@ -45,7 +45,8 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid",
     [WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE] = "The manager's HTTPS verification_mode is not 'none'; a just-upgraded agent may be unable to reconnect. Use the force option to proceed anyway.",
-    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start"
+    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start",
+    [WM_UPGRADE_LEGACY_DELIVERY_DISABLED] = "The agent is below v5.0.0 and the manager's '<remote><legacy>' delivery is disabled; the upgrade task could never be delivered."
 };
 
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {

@@ -82,7 +82,10 @@ class TestWazuhDBHTTPClient:
         result = await module_instance.get_agent_groups(agent_id)
         assert result == expected_result
         client_mock.assert_has_calls([
-            call.get(url=f'http://localhost/v1/agents/{agent_id}/groups', headers={'Accept': APPLICATION_JSON}),
+            call.get(
+                url='http://localhost/v1/agents/groups',
+                headers={'Accept': APPLICATION_JSON, 'X-Wazuh-Agent-Id': str(agent_id)},
+            ),
             call.get().json()
         ])
 

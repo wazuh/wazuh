@@ -503,6 +503,11 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
+    auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
+
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
     m_persistDiffFunction = std::move(persistDiffFunction);
@@ -522,11 +527,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_users = users;
     m_services = services;
     m_browserExtensions = browserExtensions;
-
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
-    auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
-
-    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -2587,7 +2587,7 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         else if (indexIt != INDEX_MAP.end())
         {
             const std::string& index = indexIt->second;
-            size_t documentLimit = m_documentLimits[index];
+            size_t documentLimit = getDocumentLimit(index);
 
             if (documentLimit > 0)
             {
@@ -4530,6 +4530,12 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
     }
 }
 
+size_t Syscollector::getDocumentLimit(const std::string& index)
+{
+    std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+    return m_documentLimits[index];
+}
+
 // LCOV_EXCL_START
 bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
@@ -4543,7 +4549,7 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
     if (indexIt != INDEX_MAP.end())
     {
         const std::string& index = indexIt->second;
-        size_t documentLimit = m_documentLimits[index];
+        size_t documentLimit = getDocumentLimit(index);
 
         if (documentLimit > 0)
         {
@@ -4781,7 +4787,7 @@ void Syscollector::runRecoveryProcess()
                 // Determine if we need to filter by sync=1
                 // Only filter when document limits are configured (limit > 0)
                 // If limit == 0 (unlimited), recover all items without filtering
-                size_t documentLimit = m_documentLimits[index];
+                size_t documentLimit = getDocumentLimit(index);
                 std::string rowFilterClause;
 
                 try

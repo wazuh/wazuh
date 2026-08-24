@@ -10,7 +10,7 @@ The main loop runs every second and checks four timers:
 
 | Check | Trigger | Action |
 |-------|---------|--------|
-| Disconnection check | Every cycle | Query Wazuh DB for agents with `last_keepalive` older than `agents_disconnection_time` (default 900 s / 15m); add them to the alert hash table |
+| Disconnection check | Once per `agents_disconnection_time` interval (default 900 s / 15m) | Query Wazuh DB for agents with `last_keepalive` older than `agents_disconnection_time`; add them to the alert hash table |
 | Alert check | After `agents_disconnection_alert_time` (default 0 s) | Generate a disconnection alert for each agent in the hash table |
 | Deletion check | Configurable | Delete agents that remain disconnected beyond the retention threshold |
 | Log rotation | Daily or size threshold | Rotate and compress `/var/wazuh-manager/logs/wazuh-manager.log` |

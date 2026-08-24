@@ -39,6 +39,18 @@ EXPORTED void agent_info_stop();
 
 EXPORTED void agent_info_cleanup();
 
+/**
+ * @brief Close the module's database and sync-protocol connections, keeping the
+ *        instance alive.
+ *
+ * Unlike agent_info_cleanup(), which destroys the instance, this only releases what it
+ * holds. Safe to call from the module thread while other threads may still dispatch
+ * into the module: the readers null-check the instance without a lock, so destroying
+ * it underneath them is a use-after-free, whereas the resources themselves are
+ * released under the mutexes those readers take. Idempotent.
+ */
+EXPORTED void agent_info_release_resources();
+
 EXPORTED void agent_info_set_log_function(log_callback_t log_callback);
 
 EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
@@ -233,6 +245,7 @@ EXPORTED void agent_info_ensure_database(void);
 typedef void (*agent_info_start_func)(const struct wm_agent_info_t* agent_info_config);
 typedef void (*agent_info_stop_func)();
 typedef void (*agent_info_cleanup_func)();
+typedef void (*agent_info_release_resources_func)();
 typedef void (*agent_info_set_log_function_func)(log_callback_t log_callback);
 typedef void (*agent_info_set_report_function_func)(report_callback_t report_callback);
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name);

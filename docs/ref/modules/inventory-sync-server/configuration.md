@@ -204,7 +204,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 
 - **Default value:** `1024`
 - **Allowed values:** 0 to 65536
-- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached.
+- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter — a hit shows in the logs and as `live` pinned at the cap).
 
 ### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
@@ -216,7 +216,43 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 
 - **Default value:** `268435456` (256 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
-- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything.
+- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server) (levels only — budget sheds have no cumulative counter).
+
+### wazuh_modules.inventory_sync_server_reserved_control_connections
+
+Accept headroom the data plane can never consume.
+
+```ini
+wazuh_modules.inventory_sync_server_reserved_control_connections=64
+```
+
+- **Default value:** `64`
+- **Allowed values:** 0 to 256 (`0`/absent: the default; clamped to at most a quarter of `max_parallel_connections`)
+- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
+
+### wazuh_modules.inventory_sync_server_control_max_body_bytes
+
+Declared-length cap of control-class requests; over it `413`.
+
+```ini
+wazuh_modules.inventory_sync_server_control_max_body_bytes=65536
+```
+
+- **Default value:** `65536` (64 KiB)
+- **Allowed values:** 0 to 1048576 (`0`/absent: the default)
+- **Note:** Control-class requests (the agent-deletion routes) carry their identity in a header and an empty body by contract, so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
+
+### wazuh_modules.inventory_sync_server_control_max_sessions
+
+Concurrent control-class sessions; over it `503`.
+
+```ini
+wazuh_modules.inventory_sync_server_control_max_sessions=256
+```
+
+- **Default value:** `256`
+- **Allowed values:** 0 to 1024 (`0`/absent: the default)
+- **Note:** Bounds the control class's own concurrency (its exemption from the byte budget must not become unbounded admission). Sized an order of magnitude above the realistic concurrency of the manager-local clients; a persistent hit means a client is leaking connections — watch `server.sessions.control` in [`GET /metrics`](metrics.md#transport--server).
 
 ---
 
@@ -236,7 +272,10 @@ wazuh_modules.inventory_sync_server_sync_workers=0
 - **Default value:** `0` (half the host's cores, minimum 1)
 - **Allowed values:** 0 to 64
 - **Note:** Sessions land on `hash(agentId) % workers`, so one agent's sessions are always applied in
-  order by the same worker. More workers spread distinct agents, not one agent's backlog.
+  order by the same worker. More workers spread distinct agents, not one agent's backlog. Sizing
+  evidence in [`GET /metrics`](metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration):
+  the per-shard `sync.shard.<i>.depth`/`.bytes` gauges show skew, and the
+  `sync.session.duration.*` histograms show queue wait.
 
 ### wazuh_modules.inventory_sync_server_sync_queue_bytes
 
@@ -251,7 +290,8 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 - **Note:** A single GLOBAL byte counter across all shards, checked at enqueue: a session that would
   push the total over the cap is shed with a bare `503` (expected backpressure — the agent retries).
   This is a second, smaller gate behind `max_inflight_bytes`: the transport budget bounds bytes being
-  READ, this bounds bytes WAITING for a worker.
+  READ, this bounds bytes WAITING for a worker. Sheds count as `sync.pipeline.shed.total` in
+  [`GET /metrics`](metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration).
 
 ### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
 
@@ -264,7 +304,10 @@ wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=60
 - **Default value:** `60`
 - **Allowed values:** 10 to 1800
 - **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
-  The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint.
+  The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint. This
+  setting fixes the header **value** only — how often it fires is driven by the CVE-feed download
+  state and is visible as `vd.retry_after.total` in
+  [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
 ### wazuh_modules.inventory_sync_server_vd_workers
 
@@ -277,7 +320,8 @@ wazuh_modules.inventory_sync_server_vd_workers=0
 - **Default value:** `0` (resolves to 1)
 - **Allowed values:** 0 to 16
 - **Note:** The scanner serializes scans internally today, so values above 1 only help once the
-  scanner gains real scan parallelism.
+  scanner gains real scan parallelism. Lane occupancy and end-to-end time are `vd.lane.depth` and
+  `vd.lane.time` in [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
 ### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
@@ -291,7 +335,23 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 - **Allowed values:** 0 to 256
 - **Note:** A VD session arriving with the queue full is answered `503` ("scan capacity exhausted") —
   scans run synchronously inside the request, so queueing more than the lane can drain only trades a
-  fast `503` for a slow timeout.
+  fast `503` for a slow timeout. Refusals count as `vd.capacity.503.total` in
+  [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
+
+---
+
+### wazuh_modules.inventory_sync_server_session_query_batch_size
+
+Indexer search page size used while draining a session.
+
+```ini
+wazuh_modules.inventory_sync_server_session_query_batch_size=0
+```
+
+- **Default value:** `0` (1000 documents)
+- **Allowed values:** 0 to 100000
+- **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
+  per query.
 
 ---
 
@@ -315,7 +375,11 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** Forwarded to the Indexer Connector as `max_bulk_size`.
+- **Note:** Forwarded to the Indexer Connector as `max_bulk_size` — and it plays a second role: the
+  ingestion pipeline uses the same value as its group-commit threshold, measured in **request
+  payload bytes** (wire FlatBuffer size), which is a different byte measure than the connector's
+  serialized bulk. The group-commit behavior it drives is visible as `sync.bulk.*` in
+  [`GET /metrics`](metrics.md#group-commit--syncbulk).
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
@@ -458,13 +522,18 @@ and that the indexer is running. This is expected while the indexer starts up af
 
 ### Requests are answered 503 under load
 
-Four gates shed with a `503`, in the order a request meets them:
+Four gates shed with a `503`, in the order a request meets them — each with its own evidence in
+[`GET /metrics`](metrics.md):
 
-1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections.
+1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections. No shed
+   counter; `server.sessions.live` pinned at the cap is the signature.
 2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
+   No shed counter either; watch the `server.budget.*` levels (available near 0, inflight near
+   the cap).
 3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
-   worker exceed the global byte cap; visible as `sync.pipeline.shed.total` in `GET /metrics`.
-4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full.
+   worker exceed the global byte cap; counted as `sync.pipeline.shed.total`.
+4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
+   counted as `vd.capacity.503.total`.
 
 All four are logged, throttled, with the current counts. Raise the matching option — but see the
 descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_workers` over
@@ -478,14 +547,17 @@ are also reported by `getconfig wmodules` on the modulesd socket.
 ## Related options in other daemons
 
 The ingress side of the same pipeline is tuned in remoted: see
-[`remoted.downstream_stateful_response_timeout`](../remoted/configuration.md) (how long remoted
-waits for this module's answer to a relayed `/stateful` request — sessions are indexed and flushed
-within the request, so it is deliberately longer than remoted's global downstream default) and the
-`remoted.downstream_*` family it belongs to.
+[`remoted.downstream_stateful_response_timeout`](../remoted/configuration.md#remoteddownstream_stateful_response_timeout)
+(how long remoted waits for this module's answer to a relayed `/stateful` request — sessions are
+indexed and flushed within the request, so it is deliberately longer than remoted's global
+downstream default) and the `remoted.downstream_*` family it belongs to. Remoted's view of the
+same requests — what the agent was actually answered, and its end-to-end latency — is in
+[remoted's metrics page](../remoted/metrics.md).
 
 ## See Also
 
 - [Architecture](architecture.md)
 - [API Reference](api-reference.md)
+- [Metrics](metrics.md) - The module's metric catalog, linked back to these settings
 - [Schemas](flatbuffers.md)
 - [Test Tools](test-tools.md)

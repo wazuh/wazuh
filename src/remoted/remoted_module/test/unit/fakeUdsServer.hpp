@@ -114,6 +114,18 @@ namespace remoted::test
             m_dropResponses.store(drop);
         }
 
+        // When true, the connection is closed right after the reply is written, instead of
+        // looping to await another request on it. Off by default so existing persistent-connection
+        // clients (WazuhDBClient, TaskClient) keep serving many requests over one connection; turn
+        // this on to emulate authd's real local socket, which closes after every single reply (see
+        // run_local_server's accept loop, os_auth/src/local-server.c) -- AuthdClient relies on that
+        // close to distinguish "got the reply" from "waiting out the full response timeout" (its
+        // read() call's inner loop otherwise blocks on a next frame that will never arrive).
+        void setCloseAfterReply(bool close)
+        {
+            m_closeAfterReply.store(close);
+        }
+
         size_t requestCount() const
         {
             return m_requestCount.load();
@@ -176,6 +188,10 @@ namespace remoted::test
                 {
                     break;
                 }
+                if (m_closeAfterReply.load())
+                {
+                    break;
+                }
             }
             ::close(fd);
         }
@@ -234,6 +250,7 @@ namespace remoted::test
         std::thread m_thread;
         std::atomic<bool> m_stopping {false};
         std::atomic<bool> m_dropResponses {false};
+        std::atomic<bool> m_closeAfterReply {false};
         std::atomic<size_t> m_requestCount {0};
     };
 

@@ -21,6 +21,7 @@ Three documentation layers cover this module, each with its own job:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
   [API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md),
   [configuration](../../../docs/ref/modules/inventory-sync-server/configuration.md),
+  [metrics](../../../docs/ref/modules/inventory-sync-server/metrics.md),
   [schemas](../../../docs/ref/modules/inventory-sync-server/flatbuffers.md),
   [test tools](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
 - **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
@@ -613,20 +614,31 @@ What it pins about THIS module (scenario map in
 The facade owns one `wazuh::metrics::Manager` (`src/shared_modules/metrics/`, linked as the
 `wazuh_metrics` target) created ONCE and never reset in `stop()` — counters must survive the HTTP
 server's restart retries. Everything downstream resolves its instruments from it at construction
-(`common/metricNames.hpp` is the catalog): the pipeline (request counters by code, shed total,
-bulk-flush counters, per-shard depth/bytes gauges, session-duration histograms), the session
-processor (docs indexed/skipped, bytes ingested), the VD lane (lane depth/time, scan duration,
-scans ok/failed/skipped, capacity and Retry-After totals, `vd.offset_mismatch.total` for the
-`feed_offset` gate above) and the sync endpoint (its inline rejections). Constructors take the manager as an optional trailing parameter; a null falls back
-to a private disconnected manager, so instrumentation stays branch-free and tests need no change.
+(`src/common/metricNames.hpp` is the catalog): the pipeline (request counters by code, shed
+total, bulk-flush counters, per-shard depth/bytes gauges, session-duration histograms), the
+session processor (docs indexed/skipped, bytes ingested), the VD lane (lane depth/time, scan
+duration, scans ok/failed/skipped, capacity total, `vd.offset_mismatch.total` for the
+`feed_offset` gate above), and the endpoints — the sync endpoint's and delete endpoint's inline
+rejections count into the same request family, and `vd.retry_after.total` is incremented at BOTH
+feed gates (the sync endpoint's strand-side check and the lane's dispatch-time re-check),
+resolved through the single `makeVdRetryAfterCounter()` helper so its metadata has one source.
+The facade additionally registers seven `server.*` PULL metrics over
+`IUdsHttpServer::diagnostics()` (the transport's budget/session levels, U10) — registered once
+per process, behind a weak target that quiesces to 0 after `stop()`. Constructors take the
+manager as an optional trailing parameter; a null falls back to a private disconnected manager,
+so instrumentation stays branch-free and tests need no change. The operator-facing catalog —
+every metric with the internal option it helps size — is
+[docs/ref/modules/inventory-sync-server/metrics.md](../../../docs/ref/modules/inventory-sync-server/metrics.md).
 
-Three invariants worth keeping: every response is counted exactly ONCE, at the site that sends it
-(a refusal counted by `enqueue()`/`tryEnqueue()` is only the *cause* counter — `shed`/`capacity`
-— never the request counter, which the endpoint counts when it answers); shard/lane depths are
-GAUGES the workers update, never pull metrics (a pull would capture a `this` that dies in
-`stop()` while the manager persists — there is no `remove()`); and `Item::enqueuedAt` is stamped
-by the endpoint, so a default (epoch) timestamp means "no duration sample", which keeps
-hand-built test items out of the histograms.
+Three invariants worth keeping: every HANDLER-SENT response is counted exactly ONCE, at the site
+that sends it (a refusal counted by `enqueue()`/`tryEnqueue()` is only the *cause* counter —
+`shed`/`capacity` — never the request counter, which the sender of the response counts; answers
+the shared transport produces on its own — 413/504/malformed, budget/cap 503s — are outside the
+family by design); shard/lane depths are GAUGES the workers update, never pull metrics (a pull
+would capture a `this` that dies in `stop()` while the manager persists — there is no
+`remove()`; the facade-owned `server.*` pulls are the exception, safe behind their weak
+target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch) timestamp means
+"no duration sample", which keeps hand-built test items out of the histograms.
 
 ## Developer FAQ
 

@@ -108,7 +108,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection.
 
     const auto result = m_agentInfo->observeVdFeedOffset(100);
     EXPECT_FALSE(result.changed);
@@ -119,7 +119,7 @@ TEST_F(AgentInfoVdOffsetTest, ClearPendingFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     EXPECT_FALSE(m_agentInfo->clearVdRescanPending(100));
 }
@@ -128,7 +128,7 @@ TEST_F(AgentInfoVdOffsetTest, GetStateFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     const auto state = m_agentInfo->getVdFeedState();
     EXPECT_FALSE(state.hasOffset);

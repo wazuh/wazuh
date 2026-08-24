@@ -791,3 +791,31 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteAllUnsynced)
         cJSON_Delete(docs);
     });
 }
+
+static bool g_teardownHookCalled = false;
+
+static bool teardownHookRefusing()
+{
+    g_teardownHookCalled = true;
+    return false;
+}
+
+TEST_F(DBTestFixture, TestTeardownHookRefusalKeepsTheDatabaseUp)
+{
+    g_teardownHookCalled = false;
+    fim_db_set_teardown_hook(teardownHookRefusing);
+
+    const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+    ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+    ASSERT_EQ(fim_db_get_count_file_entry(), 1);
+
+    fim_db_teardown();
+
+    // Restored before asserting: a failed assertion returns, and a hook left in place would gate
+    // every teardown that follows, including the fixture's.
+    fim_db_set_teardown_hook(nullptr);
+
+    // The hook ran and refused, so the database is still there for the fixture to tear down.
+    ASSERT_TRUE(g_teardownHookCalled);
+    ASSERT_EQ(fim_db_get_count_file_entry(), 1);
+}

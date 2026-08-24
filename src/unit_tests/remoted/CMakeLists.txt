@@ -60,9 +60,11 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
+                            -Wl,--wrap,rem_inc_recv_upgrade_ack \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
-                            -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS}")
+                            -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
+                            -Wl,--wrap,ReadConfig")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \

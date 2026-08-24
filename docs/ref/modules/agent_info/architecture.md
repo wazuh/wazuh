@@ -23,6 +23,7 @@ The module gathers information from several sources:
 *   **SysInfo**: Collects operating system details like OS name, version, architecture, and hostname.
 *   **`client.keys` file**: Reads the agent's unique ID and name.
 *   **`merged.mg` file**: Reads the agent's group memberships.
+*   **`agent_info_get_cluster_name()`**: Retrieves the name of the manager cluster node the agent is currently connected to, feeding `cluster_name` into the metadata blob. This value is compared each cycle, and a change triggers a groups-sync.
 
 ### **Database Integration (DBSync)**
 

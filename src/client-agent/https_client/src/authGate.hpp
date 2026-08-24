@@ -22,8 +22,9 @@
  * @brief The 401 -> re-enrollment latch (#37828). Any endpoint that gets a
  *        401 has a dead credential, so it reports here: all outbound traffic
  *        pauses and, once per incident, the consumer is asked to re-enroll
- *        (on_reenroll_required). hc_set_agent_key() -> release() swaps the key
- *        and un-pauses, re-arming the latch so a later dead key fires again.
+ *        (on_reenroll_required). hc_set_agent_identity() -> release() swaps
+ *        the id/key and un-pauses, re-arming the latch so a later dead key
+ *        fires again.
  *
  * Reversible (unlike RegistrationGate). Lock-free through a SINGLE atomic
  * state (not two independent flags): "paused" and "already fired for this

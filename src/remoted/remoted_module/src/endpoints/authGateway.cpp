@@ -11,9 +11,10 @@
 
 #include "authGateway.hpp"
 
+#include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
-#include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -22,6 +23,8 @@
 #include <string_view>
 #include <utility>
 #include <variant>
+
+using remoted::http::headerValue;
 
 namespace
 {
@@ -70,32 +73,6 @@ namespace
         return "GET";
     }
 
-    // Case-insensitive header lookup (HTTP header names are case-insensitive).
-    std::string headerValue(const std::unordered_map<std::string, std::string>& headers, const std::string& lowerName)
-    {
-        for (const auto& [name, value] : headers)
-        {
-            if (name.size() != lowerName.size())
-            {
-                continue;
-            }
-            bool equal = true;
-            for (std::size_t i = 0; i < name.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) != lowerName[i])
-                {
-                    equal = false;
-                    break;
-                }
-            }
-            if (equal)
-            {
-                return value;
-            }
-        }
-        return {};
-    }
-
 } // namespace
 
 namespace remoted::endpoints
@@ -137,6 +114,11 @@ namespace remoted::endpoints
                 // responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
+                    // Stamped ONCE, before the CMAC pipeline: this is the origin of the
+                    // remoted.http.<endpoint>.latency measurement (gateway receipt -> response
+                    // delivery). One clock read per authenticated request, no atomics.
+                    const auto receivedAt = std::chrono::steady_clock::now();
+
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
                     // Parsed once here, acted on only AFTER authentication succeeds (see below): the
@@ -149,6 +131,7 @@ namespace remoted::endpoints
                                                           authorization,
                                                           methodStr,
                                                           request->target,
+                                                          request->remoteIp,
                                                           static_cast<std::int64_t>(std::time(nullptr)));
 
                     if (std::holds_alternative<remoted::auth::AuthError>(begin))
@@ -190,6 +173,7 @@ namespace remoted::endpoints
                     // -- dropping it (or calling payload.release()) then frees the buffer
                     // and restores the budget while the responder lives on to reply.
                     auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
+                    authRequest.receivedAt = receivedAt;
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
 

@@ -15,8 +15,6 @@
 
 namespace
 {
-    constexpr uint32_t STATELESS_MAX_ATTEMPTS = 5;
-
     /// Builds the H metadata line that opens every /stateless body (#37732).
     ///
     /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
@@ -132,7 +130,7 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     // waits and retries on this stream's own thread; the next flush is thus
     // naturally deferred while the accumulator (fed by the intake thread) keeps
     // absorbing (D5/D6).
-    if (flushDue(force) && flushOnce(waiter, m_config.requestTimeoutMs, STATELESS_MAX_ATTEMPTS)
+    if (flushDue(force) && flushOnce(waiter, m_config.requestTimeoutMs, m_config.statelessMaxAttempts)
             && flushDue(false))
     {
         // Keep draining back-to-back while a backlog stays above the threshold.

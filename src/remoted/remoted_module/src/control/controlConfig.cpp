@@ -58,6 +58,11 @@ namespace remoted::control
             cfg.tmMaxQueueSize = static_cast<uint32_t>(c.tm_max_queue_size);
         }
 
+        if (c.keepalive_throttle_sec > 0)
+        {
+            cfg.keepaliveThrottleSec = static_cast<uint32_t>(c.keepalive_throttle_sec);
+        }
+
         if (std::strlen(c.limits_json) > 0)
         {
             try

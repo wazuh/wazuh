@@ -10,8 +10,6 @@
  */
 
 #include "action_test.hpp"
-#include "IURLRequest.hpp"
-#include "UNIXSocketRequest.hpp"
 #include "action.hpp"
 #include "actionOrchestrator.hpp"
 #include "contentManager.hpp"

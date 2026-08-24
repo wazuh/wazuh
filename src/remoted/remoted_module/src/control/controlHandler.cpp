@@ -14,12 +14,10 @@
 #include "common/vdClient.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
-#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -68,54 +66,6 @@ namespace remoted::control
         {
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                 .count();
-        }
-
-        // Numeric-only version comparison of MAJOR.MINOR.PATCH[.EXTRA]. Everything
-        // after '-'/'+' is discarded, matching the legacy behavior of
-        // compare_wazuh_versions(..., ignore_stage=false).
-        int compareVersions(const std::string& v1, const std::string& v2)
-        {
-            auto parseParts = [](const std::string& v) -> std::array<int, 4>
-            {
-                std::array<int, 4> parts {0, 0, 0, 0};
-                // Strip leading 'v' or 'V' if present
-                std::string version = v;
-                if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
-                {
-                    version = version.substr(1);
-                }
-
-                size_t pos = version.find_first_of("+-");
-                std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
-
-                std::istringstream iss(numericPart);
-                std::string token;
-                int i = 0;
-                while (std::getline(iss, token, '.') && i < static_cast<int>(parts.size()))
-                {
-                    try
-                    {
-                        parts[i++] = std::stoi(token);
-                    }
-                    catch (...)
-                    {
-                        break;
-                    }
-                }
-                return parts;
-            };
-
-            auto p1 = parseParts(v1);
-            auto p2 = parseParts(v2);
-
-            for (size_t i = 0; i < p1.size(); ++i)
-            {
-                if (p1[i] < p2[i])
-                    return -1;
-                if (p1[i] > p2[i])
-                    return 1;
-            }
-            return 0;
         }
 
         // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
@@ -181,9 +131,8 @@ namespace remoted::control
             incStartup(m_metrics);
 
             const bool versionMalformed = !isValidVersion(data.version);
-            const bool versionTooHigh =
-                !versionMalformed && !m_config.allowHigherVersions &&
-                compareVersions(m_config.managerVersion, data.version) < 0;
+            const bool versionTooHigh = !versionMalformed && !m_config.allowHigherVersions &&
+                                        compareVersions(m_config.managerVersion, data.version) < 0;
 
             if (versionMalformed || versionTooHigh)
             {
@@ -208,7 +157,7 @@ namespace remoted::control
                 // this manager's policy is safe to persist as-is and worth keeping visible.
                 const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, versionToStore, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
                 HttpResponse response;
                 response.status = 400;
@@ -269,9 +218,16 @@ namespace remoted::control
                                                                    return updated;
                                                                });
 
+                                            // A single write persists the accepted version together with the
+                                            // pending keepalive. The version is not left to the notify path:
+                                            // notify only writes it alongside host metadata, which the agent
+                                            // omits until agent_info populates it, so the agent would otherwise
+                                            // be visible through the API without a version for the first
+                                            // keepalives.
                                             const std::string syncStatus =
                                                 m_config.isWorkerNode ? "syncreq_status" : "synced";
-                                            m_wdbClient->updateKeepalive(id, "pending", syncStatus, [](SocketError) {});
+                                            m_wdbClient->updateStatusCode(
+                                                id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
 
                                             nlohmann::json response;
                                             response["limits"] = m_config.limits;
@@ -431,10 +387,15 @@ namespace remoted::control
 
                     if (data.host)
                     {
-                        // Always write host info if throttle has expired
-                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        // The first host-carrying notify bypasses the throttle: the agent may
+                        // send its first notifies without host metadata (agent_info populates
+                        // it asynchronously), and those lightweight writes must not delay the
+                        // first full update, or the agent stays without os data in the API for
+                        // a whole throttle window.
+                        if (!e->hostPersisted || now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
                         {
                             e->lastKeepaliveUpdateSec = now;
+                            e->hostPersisted = true;
                             doWrite = true;
                             doFullUpdate = true;
                         }
