@@ -15,7 +15,6 @@
 #include <memory>
 
 extern volatile bool event_received;
-extern volatile bool ebpf_hc_created;
 
 class fimebpf
 {

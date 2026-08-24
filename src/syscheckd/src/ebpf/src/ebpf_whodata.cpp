@@ -36,7 +36,6 @@
 
 // Global
 volatile bool event_received = false;
-volatile bool ebpf_hc_created = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
 
