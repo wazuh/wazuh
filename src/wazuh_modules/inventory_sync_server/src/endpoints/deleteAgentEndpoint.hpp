@@ -29,8 +29,15 @@ namespace invsync::endpoints::delete_agent
      * client.keys and wazuh-db. The target agent travels in the same `X-Wazuh-Agent-Id` header the
      * sync route uses; the body is ignored. The deletion is DEFERRED to the SyncPipeline on the
      * agent's shard, so it orders FIFO against any in-flight session of that same agent -- the
-     * legacy path raced them on a lock (RF-10's footgun), and lost deletions were silent. Here the
-     * caller sees the result: 200 means the delete-by-query was flushed; 503/500 mean "retry".
+     * legacy path raced them on a lock (RF-10's footgun), and lost deletions were silent.
+     *
+     * ANSWERED AT ADMISSION: the 200 means "recorded and queued, it WILL be purged", not "already
+     * purged". Waiting for the flush is what wedged the caller: authd relays deletions from the one
+     * thread that persists client.keys, and on populated wazuh-states-* a single delete-by-query
+     * legitimately outlives authd's 30 s budget -- so it timed out, retried into the very same
+     * running purge, and blocked every key write meanwhile (no new agent could enroll). The purge's
+     * own outcome stays observable in this module's log, never on this wire; the same contract
+     * POST /vulnerability-detector/scan already moved to, for the same reason.
      */
 
     /// @brief The verb of the canonical route.
@@ -67,10 +74,11 @@ namespace invsync::endpoints::delete_agent
      * worker re-checks its own at dispatch.
      *
      * requestCounters is the same sync.requests.total.* family the sync route holds (dedupe by
-     * name on one manager): the handler counts its own inline 400/503 rejections here, while an
-     * enqueued deletion's terminal response is counted by the pipeline -- each response counted
-     * exactly once, at the site that sends it. Default-constructed it counts nothing (the null
-     * object the tests rely on).
+     * name on one manager). This route answers AT ADMISSION, so every response it produces is sent
+     * from here -- the inline 400/503 rejections and the 200 that accepts the deletion alike; the
+     * queued item carries no responder, so the pipeline counts nothing for it. Each response is
+     * still counted exactly once, at the site that sends it. Default-constructed it counts nothing
+     * (the null object the tests rely on).
      */
     struct Dependencies
     {
@@ -80,8 +88,8 @@ namespace invsync::endpoints::delete_agent
     };
 
     /**
-     * @brief Build the route handler: validate the header (400), gate on availability (503), and
-     *        enqueue a DeleteAgent item on the agent's shard; the worker answers.
+     * @brief Build the route handler: validate the header (400), gate on availability (503),
+     *        enqueue a DeleteAgent item on the agent's shard and answer 200 right there.
      */
     wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies);
 

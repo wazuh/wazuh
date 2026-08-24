@@ -57,6 +57,9 @@ typedef struct authd_config_t {
     bool ipv6;
     bool allow_higher_versions;
     unsigned int max_agents;
+    /// Seconds a deletion waits before its indexer purge is relayed (internal option
+    /// `authd.purge_delay`). 0 relays immediately, which is only meant for tests.
+    int purge_delay;
 } authd_config_t;
 
 /**

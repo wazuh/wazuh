@@ -24,8 +24,10 @@
 #include <json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <string>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -308,11 +310,29 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
                                    "Content-Length: 0\r\nConnection: close\r\n\r\n";
     const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteHead);
     EXPECT_EQ(200, response.status) << response.body;
-    EXPECT_EQ(R"({"status":"ok"})", response.body);
+    // Answered at admission: "queued" is the wire saying the purge has not run yet.
+    EXPECT_EQ(R"({"status":"queued"})", response.body);
 
     const std::string aliasHead = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 10\r\n"
                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
     EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, aliasHead).status);
+
+    // Both callers are already free, so the purges have to be waited for: 2 deletions x 3 indices.
+    const auto deleteByQueries = [this]
+    {
+        std::size_t count = 0;
+        for (const auto& op : m_events->syncOps())
+        {
+            count += (std::get<0>(op) == "deleteByQuery") ? 1 : 0;
+        }
+        return count;
+    };
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (deleteByQueries() < 6U && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(6U, deleteByQueries()) << "both queued deletions must still reach the indexer";
 
     // Each deletion deletes across its whole scope: wazuh-states-* plus the two wazuh-agent-*
     // indices, which live outside the state family and used to outlive the agent.
@@ -333,7 +353,7 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
     EXPECT_EQ(expectedIndices, deletedIndices);
     // Padded like every document _id: the first deletion is agent 9, the second agent 10.
     EXPECT_EQ(std::vector<std::string>({"009", "009", "009", "010", "010", "010"}), deletedAgents);
-    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each 200 means its delete was flushed";
+    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each queued delete must end in its own flush";
 
     const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
                                 "Content-Length: 0\r\nConnection: close\r\n\r\n";

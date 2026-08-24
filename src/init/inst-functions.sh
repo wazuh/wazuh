@@ -1547,6 +1547,9 @@ InstallServer()
     GenerateHttpsManagerCert
     SetIndexerCertsOwnership
 
+    # authd's durable state: the agent deletions whose indexer purge is still pending
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/authd
+
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore

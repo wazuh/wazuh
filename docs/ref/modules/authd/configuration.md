@@ -245,7 +245,35 @@ auth.timeout_microseconds=0
 
 # Maximum number of agents allowed (0 = unlimited)
 authd.max_agents=0
+
+# Seconds a deletion waits before its indexer purge is relayed (0 = immediate)
+authd.purge_delay=120
 ```
+
+### authd.purge_delay
+
+How long an agent's deletion waits before authd asks the Inventory Sync Server to purge that agent's
+documents from the indexer. The deletion itself is never delayed: `client.keys` and wazuh-db are
+updated immediately, and only the indexer purge is held back.
+
+- **Default value:** `120`
+- **Allowed values:** `0` to `3600` (seconds)
+
+The default is chosen from the three intervals the purge has to outlast, because **whatever a purge
+misses survives forever** — the agent is gone, so nothing will overwrite those documents again:
+
+| Interval | Why it matters |
+|---|---|
+| index refresh, ~1 s | a `_delete_by_query` is a *search*: it cannot match documents the indexer has not made searchable yet |
+| cluster integrity sync, 9 s | until a worker node pulls the new `client.keys`, it keeps accepting that agent's data and writing it |
+| keepalive tolerance, 120 s | the longest a worker can be out of touch and still be considered alive, so the longest it can legitimately be behind |
+
+120 seconds covers the widest of the three. **A single-node manager** only faces the first one and can
+lower this to a few seconds safely. `0` relays immediately and exists for tests; raising it beyond a
+couple of minutes only makes documents linger longer.
+
+Pending purges are persisted, so the wait survives a restart: see
+[Agent removal and the indexer](README.md#agent-removal-and-the-indexer).
 
 **Note:** Use `wazuh-manager-internal-options.conf` to preserve settings across upgrades.
 

@@ -11,8 +11,11 @@
 
 // Unit-tests the DELETE /agents route policy (design doc 04): header validation, the admission
 // availability gate, and the deferred execution on the target agent's pipeline shard -- with a
-// REAL SyncPipeline over the fake connector, so "200" here means the same thing it means in
-// production: delete-by-query flushed.
+// REAL SyncPipeline over the fake connector, so what runs here is what runs in production.
+//
+// The route answers AT ADMISSION: "200" means the deletion was queued and WILL be purged, not that
+// the delete-by-query already flushed. These tests pin both halves of that contract -- the caller
+// is released immediately, and the purge still happens afterwards.
 #include "endpoints/deleteAgentEndpoint.hpp"
 
 #include "sync/syncPipeline.hpp"
@@ -24,9 +27,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -89,6 +95,21 @@ namespace
             handler = delete_agent::makeHandler(delete_agent::Dependencies {pipeline, admissionConnector});
         }
     };
+
+    /// The response no longer waits for the purge, so the purge has to be waited for explicitly.
+    bool waitFor(const std::function<bool()>& condition)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + WAIT;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        }
+        return false;
+    }
 
     std::shared_ptr<HttpRequest> deleteRequest(const std::string& agentId)
     {
@@ -164,7 +185,7 @@ TEST(DeleteAgentEndpoint, StoppedPipelineRefusesTheEnqueueWith503)
 // accepted deletion -- the terminal response is the pipeline's to count, so a request is never
 // counted twice. The fixture's pipeline carries no metrics manager (null-object), so any count
 // landing in OUR family can only have come from the endpoint.
-TEST(DeleteAgentEndpoint, InlineRejectionsCountIntoTheSharedFamilyAcceptedDeletionsDoNot)
+TEST(DeleteAgentEndpoint, EveryResponseCountsIntoTheSharedFamilyExactlyOnce)
 {
     auto metrics = std::make_shared<wazuh::metrics::Manager>();
     const auto counters = invsync::metrics::RequestCounters::make(*metrics);
@@ -191,17 +212,22 @@ TEST(DeleteAgentEndpoint, InlineRejectionsCountIntoTheSharedFamilyAcceptedDeleti
     EXPECT_EQ(1U, counters.c503->get());
     fixture.events->m_syncAvailable.store(true);
 
-    // Accepted deletion: the endpoint hands over to the pipeline and counts nothing -- the 200
-    // is the pipeline's to count (invisible here: the fixture pipeline has its own private,
-    // unwired registry), so the family must not move.
+    // Accepted deletion: the route answers AT ADMISSION, so the 200 is sent -- and therefore
+    // counted -- right here. The queued item carries no responder, so the pipeline has nothing to
+    // count for it and the cell cannot be double-counted when the purge later completes.
     {
         auto responder = std::make_shared<FutureResponder>();
         handler(deleteRequest("7"), responder);
         EXPECT_EQ(200, responder->get().status);
     }
-    EXPECT_EQ(0U, counters.c200->get());
+    EXPECT_EQ(1U, counters.c200->get());
     EXPECT_EQ(1U, counters.c400->get());
     EXPECT_EQ(1U, counters.c503->get());
+
+    // Still one after the purge has run: the pipeline answering a responder-less item must not add
+    // a second count for the same request.
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_syncFlushes.load() >= 1; }));
+    EXPECT_EQ(1U, counters.c200->get());
 }
 
 TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)
@@ -213,7 +239,11 @@ TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)
 
     const auto response = responder->get();
     EXPECT_EQ(200, response.status);
-    EXPECT_EQ(R"({"status":"ok"})", response.body);
+    EXPECT_EQ(R"({"status":"queued"})", response.body) << "the body must not read as a completion";
+
+    // The 200 no longer implies the purge ran, so wait for it before inspecting the connector.
+    ASSERT_TRUE(waitFor([&] { return fixture.events->syncOps().size() >= 3U; }))
+        << "the queued deletion must still reach the indexer";
 
     // The full scope is pinned by the pipeline suite; what this one owns is the id the endpoint
     // hands over -- every deletion must carry the SAME padded form the documents were written with.
@@ -232,5 +262,32 @@ TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)
     // Counted, not just inspected: without this, three ops of any other kind would satisfy the size
     // assertion above while the per-delete expectations never ran at all.
     EXPECT_EQ(3U, deletes) << "one deleteByQuery per index of the deletion scope";
-    EXPECT_GE(fixture.events->m_syncFlushes.load(), 1);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_syncFlushes.load() >= 1; }))
+        << "the purge is only durable once it is flushed";
+}
+
+// The regression this whole change exists for: authd relays deletions from the one thread that
+// persists client.keys, so the answer must not wait for the indexer. With the fake parked inside
+// flush(), a caller that is already released proves the wait is gone.
+TEST(DeleteAgentEndpoint, AnswersWhileThePurgeIsStillRunning)
+{
+    EndpointUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_flushGateClosed = true;
+    }
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(deleteRequest("7"), responder);
+
+    // Answered even though the worker cannot get past its flush.
+    const auto response = responder->get();
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ(R"({"status":"queued"})", response.body);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }))
+        << "the purge must be parked in flush() while the caller is already free";
+
+    // And the promise the 200 made is kept once the indexer lets go.
+    fixture.events->openFlushGate();
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_syncFlushes.load() >= 1; }));
 }
