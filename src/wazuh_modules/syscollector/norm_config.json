@@ -11,24 +11,6 @@
             "data_type": "packages",
             "field_name": "name",
             "pattern": "(iCloud)"
-        },
-        {
-            "target": "linux",
-            "data_type": "processes",
-            "field_name": "name",
-            "pattern": "(wazuh|ossec)-.*"
-        },
-        {
-            "target": "windows",
-            "data_type": "processes",
-            "field_name": "name",
-            "pattern": "(wazuh|ossec)-.*"
-        },
-        {
-            "target": "macos",
-            "data_type": "processes",
-            "field_name": "name",
-            "pattern": "(wazuh|ossec)-.*"
         }
     ],
     "dictionary": [
