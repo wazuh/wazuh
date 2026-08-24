@@ -384,8 +384,12 @@ namespace remoted::enrollment
                 remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
-            const auto authErr = authenticator.authenticate(
-                headerValue(request->headers, "authorization"), "POST", request->target, request->body, now);
+            const auto authErr = authenticator.authenticate(headerValue(request->headers, "protocol-version"),
+                                                            headerValue(request->headers, "authorization"),
+                                                            "POST",
+                                                            request->target,
+                                                            request->body,
+                                                            now);
             if (authErr)
             {
                 incRejectedAuth(metrics);

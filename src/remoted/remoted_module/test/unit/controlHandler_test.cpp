@@ -217,7 +217,7 @@ namespace
 // handleStartup
 // =============================================================================
 
-TEST(ControlHandlerTest, StartupInvalidVersionReturns400AndUpdatesStatusCode)
+TEST(ControlHandlerTest, StartupMalformedVersionReturns400AndUpdatesStatusCode)
 {
     auto wdb = std::make_shared<WdbRouter>();
     HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
@@ -256,7 +256,7 @@ TEST(ControlHandlerTest, StartupInvalidVersionReturns400AndUpdatesStatusCode)
     EXPECT_TRUE(sawStatusCode);
 }
 
-TEST(ControlHandlerTest, StartupHigherVersionRejectedWhenAllowHigherFalse)
+TEST(ControlHandlerTest, StartupHigherVersionReturns409WhenAllowHigherFalse)
 {
     auto wdb = std::make_shared<WdbRouter>();
     HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
@@ -268,7 +268,11 @@ TEST(ControlHandlerTest, StartupHigherVersionRejectedWhenAllowHigherFalse)
     h.handler->handleStartup(1, data, [&](const HttpResponse& r) { w.complete(r); });
 
     ASSERT_TRUE(w.wait(3000ms));
-    EXPECT_EQ(w.value.status, 400);
+    // 409, NOT 400: the version is well-formed, so this is a policy conflict the agent can recover
+    // from without changing anything it sends. The agent's client maps 409 to VersionRejected, which
+    // is what drives its REJECTED state and the slow Startup retry; a 400 here would classify as
+    // Permanent and leave that state unreachable. Malformed versions keep 400 -- see the test above.
+    EXPECT_EQ(w.value.status, 409);
     EXPECT_NE(w.value.body.find("invalid_version"), std::string::npos);
 
     // The reported version is well-formed -- just too high for this manager's policy -- so it's
@@ -346,8 +350,7 @@ TEST(ControlHandlerTest, StartupPersistsAcceptedVersionWithOkStatusCode)
         // persists it together with host metadata, which the agent may take a
         // while to report, and GET /agents must not show a versionless agent.
         if (c.find("global update-status-code") != std::string::npos &&
-            c.find("\"status_code\":0") != std::string::npos &&
-            c.find("\"version\":\"5.0.0\"") != std::string::npos &&
+            c.find("\"status_code\":0") != std::string::npos && c.find("\"version\":\"5.0.0\"") != std::string::npos &&
             c.find("\"connection_status\":\"pending\"") != std::string::npos)
         {
             sawVersionPersist = true;

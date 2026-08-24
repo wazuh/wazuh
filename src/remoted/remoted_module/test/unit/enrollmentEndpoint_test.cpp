@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
@@ -79,6 +80,10 @@ namespace
         req.target = "/enroll";
         req.body = body;
         req.remoteIp = remoteIp;
+        // Required on /enroll like on every other authenticated route: without it the endpoint
+        // answers 400 before it looks at anything else. Set here so each test exercises what it is
+        // actually about, rather than re-failing this one check.
+        req.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
         return req;
     }
 

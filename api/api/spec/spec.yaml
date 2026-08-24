@@ -6042,16 +6042,19 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        legacy:
-                          port: 1514
-                          protocol:
-                            - tcp
-                          queue_size: 131072
-                        https:
-                          port: 1517
-                          bind_addr: "127.0.0.1"
-                          certificate: "etc/remoted-https/server.crt"
-                          key: "etc/remoted-https/server.key"
+                        - legacy:
+                            enabled: "yes"
+                            port: "1514"
+                            protocol:
+                              - tcp
+                            local_ip: "127.0.0.1"
+                          https:
+                            port: "1517"
+                            bind_addr: "127.0.0.1"
+                            certificate: "etc/certs/remoted.pem"
+                            key: "etc/certs/remoted-key.pem"
+                          agents:
+                            allow_higher_versions: "no"
                       syscollector:
                         disabled: no
                         interval: "1h"

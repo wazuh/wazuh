@@ -174,7 +174,7 @@ src/http_server/
        internally. `downstream_io_threads`/`downstream_post_process_threads` are thread-count
        fields (`cpp_get_nproc()` on `<=0`, same as group 1). See *Deferred forwarding* and
        *Agent<->manager auth middleware* below.
-  See [HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#configuration) for
+  See [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#configuration) for
   the full reference (defaults, allowed ranges).
 - **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
   (`acceptor_options_setter`), so a manager restart rebinds the port immediately instead of
@@ -198,7 +198,7 @@ src/endpoints/
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
-└── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
+└── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
 └── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
 ```
 
@@ -237,28 +237,37 @@ src/endpoints/
   `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
   `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
-- **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`) — DUMMIES.** Same authenticated
+- **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`).** Same authenticated
   pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
-  (`queue/sockets/inventory-sync.sock`) instead of the engine. Everything around them is real —
-  AES-CMAC auth, admission control, deferred forwarding, the UDS round trip, the response mapping —
-  but neither side interprets the document yet: modulesd only checks it is a JSON object and stamps
-  `wazuh.agent.id` and `@timestamp` onto it. Three things differ from `/stateless`:
+  (`queue/sockets/inventory-sync.sock`) instead of the engine. Nothing on THIS side interprets either
+  document — but the far side does, and no longer trivially: it validates a specific shape
+  (`/stats` an object keyed by module, `/config` an array of `{module, config}` pairs), rebuilds it
+  into an indexable document, and writes one document per agent keyed by the agent id into
+  `wazuh-agent-stats` / `wazuh-agent-config`
+  (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
+  report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
+  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed* —
+  `wazuh-agent-stats` is `dynamic: strict`, so an undeclared metric is dropped silently at the
+  indexer. Three things differ from `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
     these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
     That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
     Authorization header the gateway already verified, never from the body, so a document claiming a
     different agent cannot override it.
-  - **`postProcess` passes the downstream body through on success** (`200` + modulesd's JSON), unlike
-    `/stateless` which discards it. Failure statuses are still collapsed to fixed local messages, so an
-    arbitrary downstream string is never reflected back to an agent.
+  - **They differ from each other only in what a success carries back.** `/config`'s `postProcess`
+    passes the downstream body through (`200` + modulesd's JSON), unlike `/stateless` which discards it;
+    `/stats` answers a fixed `{}` instead, since the agent has nothing to read back and a constant keeps
+    an arbitrary downstream string off the wire. Failure statuses are collapsed to fixed local messages
+    on both, so an arbitrary downstream string is never reflected back to an agent either way.
   - **The only endpoint-level validation is "body is not empty" → `400`.** Parsing is modulesd's job;
     doing it on both sides would walk the payload twice on the hot path. Rejecting an empty body here
     still saves a deferred-work slot and a UDS round trip.
 
-  They are **deliberate near-duplicates** rather than one shared unit registered on two paths. They are
-  the same shape only because both are dummies; their real payloads, validation and downstream
-  semantics will diverge, and separating them now makes that divergence a change to one file. Keep them
-  in sync until they must not be.
+  They are **deliberate near-duplicates** rather than one shared unit registered on two paths. They
+  are the same shape only because this side does the same thing for both -- authenticate, forward,
+  map the answer. Their payloads, downstream validation and index mappings already differ (see the
+  sync server's own endpoints), and the rest will diverge too; separating them keeps that divergence a
+  change to one file. Keep them in sync until they must not be.
 - **`POST /stateful` (`statefulEndpoint`) — inventory synchronization sessions.** Same authenticated
   pipeline, same downstream service as `/stats`/`/config`, but the body is the agent's FlatBuffer
   `Message{FullSession}` (`application/octet-stream`) and remoted treats it as **opaque** — no
@@ -355,15 +364,20 @@ sequenceDiagram
      ```json
      {
        "limits": {
-         "fim": {"file": 100000, "registry_key": 100000, "registry_value": 100000},
-         "syscollector": {"packages": 50000, "processes": 50000, ...},
-         "sca": {"checks": 10000}
+         "fim": {"file": 30000, "registry_key": 30000, "registry_value": 30000},
+         "syscollector": {"hotfixes": 30000, "packages": 30000, "processes": 30000, ...},
+         "sca": {"checks": 30000}
        },
        "cluster": {"name": "wazuh-cluster"},
        "agent": {"groups": ["default", "web-servers"]}
      }
      ```
-   - On version mismatch: updates wazuh-db status_code to `invalid_version` and returns `400 {"error":"invalid_version"}`
+   - On version rejection: updates wazuh-db status_code to `invalid_version` and answers
+     `{"error":"invalid_version"}` with **`409`** when the version is well-formed but higher than
+     this manager's policy allows, or **`400`** when it is malformed. Two statuses because they are
+     two different failures: the agent's client maps `409` to `VersionRejected` (REJECTED state, slow
+     `startup` retry — a policy rejection can start succeeding with no change on the agent's side)
+     and `400` to `Permanent` (resending the same bytes can never succeed)
 
 2. **`notify`** — periodic keepalive (agent polls every 10 seconds; hot path)
    - **Request**:
@@ -386,21 +400,26 @@ sequenceDiagram
        host-carrying notify bypasses the throttle, so host/os data lands as soon as the agent reports it
        even if an earlier metadata-less notify already consumed the window
      - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
-   - Calculates `settings_hash` (SHA256 of limits + cluster + groups from agent's startup data)
-   - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file)
+   - Calculates `settings_hash` (SHA256 of `limits` + `cluster.name` **only** -- NOT groups; see
+     `hashCache.cpp`'s `getSettingsHash()`, which caches one value for the whole process, so it is
+     necessarily agent-independent)
+   - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file); the literal `"0"`
+     when the selector resolves to no file or it cannot be hashed -- never absent, never empty
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
      module has never completed a feed update or is temporarily unreachable
-   - **Response (no tasks)**:
+   - **Response** (every field always present -- `tasks` is `[]` when there is no work, never an
+     absent key):
      ```json
      {
        "agent": {"groups": ["web-servers"], "config_hash": "e3b0c44..."},
        "settings_hash": "d7a8fbb...",
+       "tasks": [],
        "vd_feed_offset": 12345678
      }
      ```
-   - **Response (with tasks)**: same as above plus `"tasks": [{"task_id":"...","task_type":"active_response","payload":{...}}]`
+   - **With tasks**: same shape, `tasks` populated -- `[{"task_id":"...","task_type":"active_response","payload":{...}}]`
    - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`), processes tasks, compares `vd_feed_offset`
      against its stored value (if strictly higher → request a re-scan via `POST /scan/vd`, see below)
    - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
@@ -525,7 +544,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `taskSocketPath` | `/queue/tasks/task` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
-| `keepaliveThrottleSec` | 60 s | — (fixed) |
+| `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
 
 ### Metrics
 
@@ -555,7 +574,7 @@ families, lives in **Metrics catalog** below.
 
 ### Error handling
 
-- **Version rejection**: `400 {"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`)
+- **Version rejection**: `{"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`); `409` when too high for policy, `400` when malformed
 - **Database errors**: `500 {"error":"database_error"}` (wazuh-db down or timeout)
 - **Queue full** (wazuh-db or task-manager): drops the operation, logs warning (throttled), continues
 - **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
@@ -764,8 +783,18 @@ each other**:
   (`<mac>` = 32 lowercase hex chars, AES-256-CMAC = 16 bytes), verified against the canonical string:
 
   ```
-  "WAZUH-ENROLL\n" + "1" + "\n" + METHOD + "\n" + requestTarget + "\n" + timestamp + "\n" + <raw wire body bytes>
+  "WAZUH-ENROLL\n" + protocolVersion + "\n" + METHOD + "\n" + requestTarget + "\n" + timestamp + "\n" + <raw wire body bytes>
   ```
+
+  `protocolVersion` is the **validated `protocol-version` header**, not a literal.
+  `EnrollmentAuthenticator::authenticate()` checks that header first — before the body-size cap and
+  before any credential, in **every** mode including the credential-less one — and rejects anything
+  other than `remoted::auth::kSupportedProtocolVersion` with `MissingProtocolVersion` /
+  `UnsupportedProtocolVersion` (both `400`), the same errors `AuthMiddleware::beginSession()` raises
+  at its own step 1. Feeding the header's value into the MAC rather than a constant is what keeps
+  the two the same field by construction: with a literal, `/enroll` verified against `"1"` no matter
+  what the request declared, so a version mismatch surfaced as an opaque `401` MAC failure — and, in
+  the credential-less mode, was not noticed at all.
 
   Deliberately shaped like the existing `Wazuh <agent-id>:<ts>:<mac>` scheme used everywhere else in
   this module — same freshness windows (300 s max age, 30 s max future skew), same incremental-CMAC
@@ -1196,7 +1225,7 @@ The facade composes a `BodyDecoder` into the gateway's constructor as a **requir
 it is configured **once per gateway rather than per route**: every authenticated endpoint gets
 decoding and none can accidentally opt out. `zstd` is the only accepted encoding (**gzip is not
 supported** — see the benchmark note in
-[HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd));
+[HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd));
 anything else, including `zstd` when `remoted.http_content_encoding_enabled` is off, is `415`. A body
 that isn't a valid/complete zstd frame is `400`.
 - **Runs strictly AFTER the MAC is verified.** The AES-CMAC covers the exact wire bytes (the
@@ -1682,7 +1711,7 @@ post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cp
 forwarding endpoints, one file each mirroring their near-duplicate implementations: the target's
 socket/path/content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the
 full `postProcess` mapping table, **that no downstream body is ever reflected to an agent** — `/stats`
-answers a fixed `{}`, `/config` still passes its dummy's enriched echo through — and that an empty body
+answers a fixed `{}`, `/config` passes the sync server's enriched document through — and that an empty body
 answers 400 without ever reaching `forward()`),
 `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
 **and that caller-supplied headers are actually serialized onto the wire without displacing

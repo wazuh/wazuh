@@ -381,15 +381,24 @@ Get-Service -Name wazuh
 Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server.
 
 **`WAZUH_MANAGER_PORT`**\
-Defines the port used to communicate with the Wazuh server. Default: `1514`.
+Defines the port used to communicate with the Wazuh server. Default: `1517`.
 
 #### Enrollment configuration
 
-**`WAZUH_REGISTRATION_SERVER`**\
-Specifies the IP address or hostname of the enrollment server. When not specified, the value of `WAZUH_MANAGER` is used.
+A 5.0 agent enrolls over the **same** connection and TLS configuration it uses for everything else —
+`POST /enroll` on the server's HTTPS port (`1517` by default). It no longer opens a separate
+connection to the legacy `authd` listener on port `1515`, so enrollment needs no address, port or
+certificate settings of its own.
 
-**`WAZUH_REGISTRATION_PORT`**\
-Defines the port used for agent enrollment. Default: `1515`.
+> The four variables below are still accepted so an existing deployment script keeps working, but a
+> 5.0 agent **ignores** them: they write `<enrollment>` options that were removed in 5.0. Point
+> `WAZUH_MANAGER` at the server and configure TLS once, for the whole connection.
+
+**`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
+Formerly the address of a separate enrollment server. Enrollment now always targets `WAZUH_MANAGER`.
+
+**`WAZUH_REGISTRATION_PORT`** *(ignored in 5.0)*\
+Formerly the port of the legacy enrollment listener (`1515`). Enrollment now uses `WAZUH_MANAGER_PORT`.
 
 **`WAZUH_REGISTRATION_PASSWORD`**\
 Sets the password required for agent enrollment. This password must match the one configured on the server. Enrollment password protection is enabled by default, so retrieve the auto-generated password from the manager before enrolling agents:
@@ -400,14 +409,15 @@ sudo cat /var/wazuh-manager/etc/authd.pass
 
 Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
 
-**`WAZUH_REGISTRATION_CA`**\
-Specifies the path to the CA certificate used to verify the manager's identity during enrollment.
+**`WAZUH_REGISTRATION_CA`** *(ignored in 5.0)*\
+Formerly the CA used to verify the manager during enrollment. Configure the CA once for the whole
+connection, under `<agent><ssl><certificate_authorities>`.
 
-**`WAZUH_REGISTRATION_CERTIFICATE`**\
-Specifies the path to the agent's certificate for enrollment authentication.
+**`WAZUH_REGISTRATION_CERTIFICATE`** *(ignored in 5.0)*\
+Formerly the agent's certificate for enrollment authentication. Use `<agent><ssl><certificate>`.
 
-**`WAZUH_REGISTRATION_KEY`**\
-Specifies the path to the agent's private key for enrollment authentication.
+**`WAZUH_REGISTRATION_KEY`** *(ignored in 5.0)*\
+Formerly the agent's private key for enrollment authentication. Use `<agent><ssl><key>`.
 
 #### Agent identity
 
@@ -422,8 +432,9 @@ Assigns the agent to a specific group upon enrollment. Default: `default`.
 **`WAZUH_KEEP_ALIVE_INTERVAL`**\
 Defines the interval in seconds between keep-alive messages sent to the server. When not specified, system defaults apply.
 
-**`WAZUH_TIME_RECONNECT`**\
-Forces the agent to reconnect to the server every N seconds. Default: disabled.
+**`WAZUH_TIME_RECONNECT`** *(ignored in 5.0)*\
+Formerly forced the agent to reconnect every N seconds. There is no persistent connection to
+re-establish over HTTPS, so `<agent><time-reconnect>` is accepted and ignored.
 
 **`ENROLLMENT_DELAY`**\
 Sets a delay in seconds between agent enrollment and the first connection attempt. When not specified, system defaults apply.

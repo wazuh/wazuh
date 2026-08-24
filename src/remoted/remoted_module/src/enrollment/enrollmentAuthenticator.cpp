@@ -92,13 +92,38 @@ namespace remoted::enrollment
     }
 
     std::optional<remoted::auth::AuthError>
-    EnrollmentAuthenticator::authenticate(std::string_view authorizationHeader,
+    EnrollmentAuthenticator::authenticate(std::string_view protocolVersionHeader,
+                                          std::string_view authorizationHeader,
                                           std::string_view method,
                                           std::string_view requestTarget,
                                           std::string_view body,
                                           std::int64_t currentUnixTimeSeconds) const
     {
-        // Checked first, in EVERY mode (including Open): otherwise an unauthenticated peer could
+        // Step 1, exactly as AuthMiddleware::beginSession() does for every other authenticated
+        // route: a request naming a protocol version this manager does not implement is not one it
+        // can process at all, so nothing else is worth looking at. Enforced in EVERY mode,
+        // including Open -- the version is a property of the protocol, not of the credential, so
+        // whether a password is configured has no bearing on it.
+        //
+        // An empty value means absent (or present but empty) -- the caller reads the header through
+        // the same case-insensitive headerValue() the AuthGateway uses, so /enroll sees exactly what
+        // every other route sees, including how the transport's header map treats a repeated field.
+        //
+        // This also keeps the signed canonical sequence honest. The version line below is written
+        // from this validated value rather than a hardcoded literal, so the bytes covered by the MAC
+        // are always the version the request actually declared -- a literal would keep verifying
+        // against "1" even for a request that said otherwise, turning a version mismatch into an
+        // opaque MAC failure instead of the 400 every other route returns.
+        if (protocolVersionHeader.empty())
+        {
+            return remoted::auth::AuthError::MissingProtocolVersion;
+        }
+        if (protocolVersionHeader != m_config.supportedProtocolVersion)
+        {
+            return remoted::auth::AuthError::UnsupportedProtocolVersion;
+        }
+
+        // Checked next, in EVERY mode (including Open): otherwise an unauthenticated peer could
         // make this endpoint hold an arbitrarily large body -- up to the transport's own cap, not
         // this class's -- in the in-flight budget shared with every other route, for however long
         // parseAndValidateBody() takes to notice and reject it. Checking here also means an
@@ -113,11 +138,13 @@ namespace remoted::enrollment
         {
             return std::nullopt;
         }
-        return authenticatePassword(authorizationHeader, method, requestTarget, body, currentUnixTimeSeconds);
+        return authenticatePassword(
+            protocolVersionHeader, authorizationHeader, method, requestTarget, body, currentUnixTimeSeconds);
     }
 
     std::optional<remoted::auth::AuthError>
-    EnrollmentAuthenticator::authenticatePassword(std::string_view authorizationHeader,
+    EnrollmentAuthenticator::authenticatePassword(std::string_view protocolVersionHeader,
+                                                  std::string_view authorizationHeader,
                                                   std::string_view method,
                                                   std::string_view requestTarget,
                                                   std::string_view body,
@@ -185,7 +212,13 @@ namespace remoted::enrollment
         }
 
         cmac->update("WAZUH-ENROLL\n");
-        cmac->update("1\n");
+        // The version as the request declared it, not a literal -- authenticate() has already
+        // rejected anything other than m_config.supportedProtocolVersion, so this is provably that
+        // value for every request that reaches here. Reading it from the request anyway is what
+        // keeps the MAC's second line and the validated header the same thing by construction,
+        // instead of two constants that have to be kept equal by hand.
+        cmac->update(protocolVersionHeader);
+        cmac->update("\n");
         cmac->update(toUpper(method));
         cmac->update("\n");
         cmac->update(requestTarget);

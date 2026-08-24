@@ -181,6 +181,18 @@ namespace remoted::auth
     PublicError publicErrorFor(AuthError err);
 
     /**
+     * @brief The only `protocol-version` header value this manager accepts.
+     *
+     * A protocol constant, not an ops tuning knob -- which is why it is not C-ABI driven. Named
+     * here rather than spelled inline so that EVERY authenticated scheme reads the same value:
+     * both the agent<->manager AES-CMAC middleware (AuthConfig below) and the enrollment scheme
+     * (EnrollmentAuthConfig) default to it, so the two can never drift into accepting different
+     * versions -- and neither can hardcode a literal that silently disagrees with what it
+     * validates.
+     */
+    inline constexpr std::string_view kSupportedProtocolVersion {"1"};
+
+    /**
      * @brief Auth-protocol tunables shared by every transport.
      *
      * Every transport implementation must configure the exact same knobs the
@@ -188,7 +200,7 @@ namespace remoted::auth
      */
     struct AuthConfig
     {
-        std::string supportedProtocolVersion = "1"; ///< Expected value of the protocol-version header.
+        std::string supportedProtocolVersion {kSupportedProtocolVersion}; ///< Expected protocol-version header.
         std::int64_t maxRequestAgeSeconds = 300;    ///< How far in the past a request timestamp may be.
         std::int64_t maxFutureSkewSeconds = 30;     ///< How far in the future a request timestamp may be.
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).

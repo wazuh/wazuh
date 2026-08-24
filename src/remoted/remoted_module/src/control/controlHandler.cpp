@@ -160,7 +160,16 @@ namespace remoted::control
                     id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
                 HttpResponse response;
-                response.status = 400;
+                // The two rejection causes are not the same kind of failure, so they don't share a
+                // status. A malformed version is a bad request: resending the same bytes can never
+                // succeed, and the agent's client must treat it as terminal (Permanent). A
+                // well-formed version that is merely higher than this manager's policy allows is a
+                // CONFLICT, not a malformed request -- it can start succeeding with no change on the
+                // agent's side at all (an operator flips <allow_higher_versions>, or this manager is
+                // upgraded). That is why the agent's client maps 409 to VersionRejected, which drives
+                // its REJECTED state and re-tries Startup on the slow cadence instead of giving up.
+                // Answering 400 here left that state unreachable.
+                response.status = versionTooHigh ? 409 : 400;
                 response.body = R"({"error":"invalid_version"})";
                 callback(response);
                 return;

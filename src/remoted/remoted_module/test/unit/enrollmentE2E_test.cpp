@@ -32,6 +32,7 @@
 
 #include <gtest/gtest.h>
 
+#include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
 #include "auth/cmac.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
@@ -179,6 +180,7 @@ TEST(EnrollmentE2ETest, PasswordModeCorrectlySignedRequestEnrollsSuccessfully)
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
     request.headers.emplace("authorization", signWazuhEnroll(*key, "/enroll", kBody, nowTs()));
 
@@ -204,6 +206,7 @@ TEST(EnrollmentE2ETest, PasswordModeWrongSignatureIsRejected)
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
     request.headers.emplace("authorization", "WazuhEnroll " + std::to_string(nowTs()) + ":" + std::string(32, 'a'));
 
@@ -230,6 +233,7 @@ TEST(EnrollmentE2ETest, OpenModeUnauthenticatedRequestEnrollsSuccessfully)
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
     // No Authorization header at all -- Open mode requires none.
 
@@ -253,6 +257,7 @@ TEST(EnrollmentE2ETest, AuthdDownMapsTo503)
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
 
     const auto response = dispatch(handler, request);
@@ -297,6 +302,7 @@ TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedIt
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
     request.headers.emplace("authorization", signWazuhEnroll(*key, "/enroll", kBody, nowTs()));
 
