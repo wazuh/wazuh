@@ -540,13 +540,14 @@ void audit_rules_to_realtime();
 int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
 
 /**
- * @brief Move the configuration already on disk to the front of the candidate list
+ * @brief Whether the audisp plugin configuration on disk is one of the known templates
  *
  * @param plugin_dir Directory holding the audisp plugin configuration files
- * @param templates Candidate list to reorder in place
- * @param count Number of candidates in the list
+ * @param templates Known configuration templates
+ * @param count Number of templates
+ * @return 1 when the file on disk matches one of them, 0 otherwise
  */
-void audisp_prefer_configuration_on_disk(const char *plugin_dir, const char **templates, int count);
+int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count);
 
 /**
  * @brief Configure the audisp plugin and connect to the who-data socket, probing the known

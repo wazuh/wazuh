@@ -27,6 +27,7 @@
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
 #define AUDIT_SOCKET_WAIT_MS 5000   // Max time to wait for the audisp plugin to create the socket
 #define AUDIT_SOCKET_POLL_MS 100    // Polling interval while waiting for the socket
+#define AUDIT_SOCKET_CONNECT_RETRIES 3  // Connection attempts before deeming the socket stale
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -190,10 +191,10 @@ int audisp_get_candidates(const char **plugin_dir, const char **templates, int m
             mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
 
             if (vcode < VERCODE(3, 1, 1)) {
-                // Before audit version 3.1.1 old code worked with builtin_af_unix. The event format
-                // argument only exists from 3.1.5 on, so it is not offered as a fallback here.
+                // Before audit version 3.1.1 af_unix is builtin into Auditd and /sbin/audisp-af_unix
+                // does not exist, so the standalone configurations are not offered as fallbacks:
+                // probing them would only cost a useless Auditd restart.
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_0);
-                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
             } else if (vcode < VERCODE(3, 1, 5)) {
                 // Audit version 3.1.1 includes changes for audispd af_unix plugin to a standalone program
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
@@ -252,52 +253,40 @@ static int audisp_configuration_matches(const char *audisp_config, const char *a
 }
 
 /**
- * @brief Move the configuration already on disk to the front of the candidate list.
+ * @brief Whether the audisp plugin configuration on disk is one of the known templates.
  *
- * Whichever configuration a previous probe settled on is the one Auditd is currently running, so
- * trying it first means no Auditd restart on subsequent agent starts. A file that matches none of
- * the known templates -- tampered with, or written by an older agent -- is deliberately left
- * behind the version order, so that the normal flow rewrites it.
+ * Used to decide if a socket that is already up can be trusted: Auditd serving a socket with a
+ * configuration this agent could have written is a working setup and must not be disturbed, while
+ * a file that matches nothing -- tampered with, or written by an older agent -- has to be rewritten.
  *
  * @param plugin_dir Directory holding the audisp plugin configuration files.
- * @param templates Candidate list to reorder in place.
- * @param count Number of candidates in the list.
+ * @param templates Known configuration templates.
+ * @param count Number of templates.
+ * @return 1 when the file on disk matches one of them, 0 otherwise.
  */
-void audisp_prefer_configuration_on_disk(const char *plugin_dir, const char **templates, int count) {
+int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count) {
     char audisp_path[PATH_MAX] = {'\0'};
     char abs_path_socket[PATH_MAX] = {'\0'};
     os_sha1 file_sha1;
     int i;
 
     if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
-        return; // LCOV_EXCL_LINE
+        return 0; // LCOV_EXCL_LINE
     }
 
     if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
-        // No configuration in place yet: keep the order the audit version dictates
-        return;
+        return 0;
     }
 
     abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
 
     for (i = 0; i < count; i++) {
-        if (audisp_configuration_matches(templates[i], abs_path_socket, file_sha1) == 0) {
-            continue;
+        if (audisp_configuration_matches(templates[i], abs_path_socket, file_sha1)) {
+            return 1;
         }
-
-        if (i > 0) {
-            const char *in_place = templates[i];
-
-            for (; i > 0; i--) {
-                templates[i] = templates[i - 1];
-            }
-
-            templates[0] = in_place;
-            mdebug1("The audisp plugin configuration already in place will be tried first.");
-        }
-
-        return;
     }
+
+    return 0;
 }
 
 // Write the given audisp plugin configuration and restart Auditd if it changed
@@ -503,6 +492,32 @@ void audit_rules_to_realtime() {
 }
 
 /**
+ * @brief Connect to the who-data socket, retrying a few times before giving up.
+ *
+ * A socket that refuses connections is usually one left behind by a plugin that is no longer
+ * running, but a transient failure -- no file descriptors left, a saturated backlog -- looks the
+ * same from here, and the caller unlinks the socket on failure. A single refusal is not enough.
+ *
+ * @return The connected socket descriptor, or -1 if every attempt failed.
+ */
+static int audit_socket_connect_retry(void) {
+    int attempt;
+    int sfd;
+
+    for (attempt = 0; attempt < AUDIT_SOCKET_CONNECT_RETRIES; attempt++) {
+        if (sfd = audit_socket_connect(1), sfd >= 0) {
+            return sfd;
+        }
+
+        if (attempt + 1 < AUDIT_SOCKET_CONNECT_RETRIES) {
+            usleep(AUDIT_SOCKET_POLL_MS * 1000);
+        }
+    }
+
+    return -1;
+}
+
+/**
  * @brief Wait for the audisp plugin to create the who-data socket.
  *
  * configure_audisp() removes the socket before rewriting the plugin configuration, so its
@@ -549,19 +564,22 @@ int configure_and_connect_audit_socket(void) {
         return init_auditd_socket();
     }
 
-    // A socket left behind by a dead plugin would make the probe believe a candidate took effect,
-    // so it is removed before configuring anything.
     if (IsSocket(AUDIT_SOCKET) == 0) {
-        if (sfd = audit_socket_connect(1), sfd >= 0) {
+        if (sfd = audit_socket_connect_retry(), sfd >= 0) {
+            // Auditd is already serving the socket. A configuration this agent could have written
+            // is a working setup, and restarting Auditd to rewrite it would be gratuitous.
+            if (audisp_configuration_is_known(plugin_dir, templates, count)) {
+                return sfd;
+            }
+
             close(sfd);
+            mdebug1("The audisp plugin configuration in place is not one of the known ones. Rewriting it.");
         } else if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT) {
+            // Nothing is listening: the socket was left behind by a plugin that is gone, and it
+            // would otherwise make a candidate look like it took effect.
             merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno)); // LCOV_EXCL_LINE
         }
     }
-
-    // Trying whatever is already in place first keeps Auditd untouched when it is already serving
-    // the socket, while a configuration that matches no known template is rewritten below.
-    audisp_prefer_configuration_on_disk(plugin_dir, templates, count);
 
     for (i = 0; i < count; i++) {
         if (i > 0) {
