@@ -54,6 +54,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 | `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
 | `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`20MB`) |
 | `WAZUH_REMOTE_HTTPS_DUAL_STACK` | `remote.https.dual_stack` | not set (`no`) |
+| `WAZUH_REMOTE_LEGACY_ENABLED` | `remote.legacy.enabled` | `yes` |
 | `WAZUH_REMOTE_LEGACY_PORT` | `remote.legacy.port` | `1514` |
 | `WAZUH_REMOTE_LEGACY_PROTOCOL` | `remote.legacy.protocol` | `tcp` |
 | `WAZUH_REMOTE_LEGACY_LOCAL_IP` | `remote.legacy.local_ip` | `127.0.0.1` |

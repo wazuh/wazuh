@@ -73,9 +73,10 @@ bool hc_set_config_hash(void *handle, const char *config_hash)
     return false;
 }
 
-bool hc_set_agent_key(void *handle, const char *key_hex)
+bool hc_set_agent_identity(void *handle, const char *agent_id, const char *key_hex)
 {
     (void)handle;
+    (void)agent_id;
     (void)key_hex;
     return false;
 }
@@ -84,4 +85,12 @@ int hc_get_state(const void *handle)
 {
     (void)handle;
     return 0;
+}
+
+bool hc_enroll(const void *config, const void *request, void *result)
+{
+    (void)config;
+    (void)request;
+    (void)result;
+    return false;
 }

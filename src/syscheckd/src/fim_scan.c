@@ -71,7 +71,7 @@ time_t fim_scan() {
     fim_file_scan();
 
     // Check if a second file scan is needed
-    if (syscheck.file_limit_enabled) {
+    if (syscheck.file_limit_enabled && !fim_shutdown_process_on()) {
         nodes_count = fim_db_get_count_file_entry();
 
         if (nodes_count >= syscheck.file_entry_limit) {
@@ -80,19 +80,22 @@ time_t fim_scan() {
     }
 
 #ifdef WIN32
-    fim_registry_scan();
+    // The file scan above can take minutes, so the stop may well have arrived during it.
+    if (!fim_shutdown_process_on()) {
+        fim_registry_scan();
+    }
 #endif
 
     gettime(&end);
     end_of_scan = time(NULL);
 
-    if (syscheck.file_limit_enabled) {
+    if (syscheck.file_limit_enabled && !fim_shutdown_process_on()) {
         int files_count = fim_db_get_count_file_entry();
         fim_check_db_state(syscheck.file_entry_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
     }
 
 #ifdef WIN32
-    if (syscheck.registry_limit_enabled) {
+    if (syscheck.registry_limit_enabled && !fim_shutdown_process_on()) {
         fim_check_db_state(syscheck.db_entry_registry_limit,
                            fim_db_get_count_registry_key(),
                            &_registry_key_state,
@@ -122,7 +125,7 @@ time_t fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
 
-    if (isDebug()) {
+    if (isDebug() && !fim_shutdown_process_on()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
     audit_queue_full_reported = 0;

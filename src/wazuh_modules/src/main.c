@@ -149,7 +149,10 @@ int main(int argc, char **argv)
         }
     }
 
-    startup_gate_wait_for_ready(ARGV0);
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+        mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
+        exit(0);
+    }
 
     // Run modules
 

@@ -315,16 +315,19 @@ the response timeout.
 
 The module keeps lock-free runtime statistics (the shared `wazuh_metrics` library,
 `src/shared_modules/metrics/` — relaxed-atomic counters and gauges, log-linear histograms for
-percentiles) and dumps them on `GET /metrics` over the same local socket — see the
-[API Reference](api-reference.md#get-metrics). What is measured, by stage:
+percentiles) and dumps them on `GET /metrics` over the same local socket — envelope and route
+contract in the [API Reference](api-reference.md#get-metrics); the **full catalog, with each
+metric linked to the setting it helps size, is in [Metrics](metrics.md)**. What is measured,
+by stage:
 
 | Stage | Metrics |
 |---|---|
-| Responses | `sync.requests.total.<code>` — one counter per contract status, counted exactly once at the send site (endpoint rejection, pipeline, or scan lane), plus a `sync.requests.total.other` catch-all for any status outside the contract |
-| Pipeline | `sync.pipeline.shed.total` (queue-full refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
+| Responses | `sync.requests.total.<code>` — one counter per handler-sent status (`200/400/403/409/500/503` + an `other` catch-all), counted exactly once at the send site (endpoint rejection, pipeline, or scan lane). Transport-level answers — the contract's `413`, `504`, malformed-HTTP rejections, and the byte-budget/connection-cap 503s — are sent before any handler runs and are **not** in this family |
+| Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
 | Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total` |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
-| VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (queue+scan+index histogram), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
+| VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (enqueue-to-response histogram, all outcomes), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.offset_mismatch.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
+| Transport | `server.budget.{available.bytes, inflight.bytes, inflight.requests}` and `server.sessions.{live, data, control, liveness}` — pull metrics over the shared transport's diagnostics, the only visibility into the transport-side 503 gates |
 
 Counters survive the module's internal restart retries on purpose (the registry is created once
 per process and never reset), so totals read across a retry are cumulative.

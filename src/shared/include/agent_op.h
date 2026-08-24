@@ -83,6 +83,10 @@ int w_request_agent_add_local(int sock,
  * @param key KEY of the newly generated key.
  * @param force Force option to be used during the registration. -1 means disabled. 0 or a positive value means enabled.
  * @param agent_id ID of the agent when requesting a new key for a specific ID.
+ * @param master_error_code If not NULL, receives the master's own numeric error code when it responds with a
+ *        well-formed business rejection (e.g. duplicate name/IP). Left untouched on success, on a transport
+ *        failure, or on a malformed/unparseable response from the master -- callers must not assume it was
+ *        written unless the return value indicates that specific case.
  * @return 0 on success or a negative code on error.
  */
 int w_request_agent_add_clustered(char *err_response,
@@ -93,7 +97,8 @@ int w_request_agent_add_clustered(char *err_response,
                                   char **id,
                                   char **key,
                                   authd_force_options_t *force_options,
-                                  const char *agent_id);
+                                  const char *agent_id,
+                                  int *master_error_code);
 
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);

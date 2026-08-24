@@ -193,6 +193,22 @@ cJSON* local_add(const char *id,
                         authd_force_options_t *force_options);
 
 /**
+ * @brief Forwards an "add" request to the master node over the cluster (worker nodes only).
+ *        Any caller-supplied id/key/force are ignored -- the master always assigns the ID,
+ *        generates the key, and decides force-replace using its own configuration, matching
+ *        the network (port 1515) enrollment path's worker behavior.
+ * @param name Name of the agent to be registered
+ * @param ip IP of the agent to be registered
+ * @param groups Groups to which the agent belongs
+ * @param key_hash Hash of the agent key, used for the force/key-mismatch decision
+ * @return JSON object with the response
+ * */
+cJSON* local_add_clustered(const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key_hash);
+
+/**
  * @brief Returns a MD5 hash of some random data collected from different sources.
  *        The result must be freed by the caller.
  *

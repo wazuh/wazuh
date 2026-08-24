@@ -11,16 +11,21 @@
 
 #include "retrySender.hpp"
 
-#include <algorithm>
-#include <vector>
+#include "bodyCompressor.hpp"
 
-#include <zstd.h>
+#include <algorithm>
+#include <cstdlib>
+#include <vector>
 
 namespace
 {
-    // Matches the level the manager's own test-only compressor
-    // (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
-    constexpr int kCompressionLevel = 3;
+    // Below this, a Date-vs-local gap is plausibly network latency or Date's
+    // 1 s granularity, not real clock skew -- applying a correction for noise
+    // this small would only ever matter within the 300 s CMAC window this
+    // agent already tolerates, so it is not worth perturbing signing over.
+    // The clock-skew failures this targets (VM snapshot restore, dead CMOS
+    // battery, no NTP) are minutes to hours off, far above this floor.
+    constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
 } // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
@@ -57,12 +62,17 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         // skip its own auth grace-retry and escalate straight to reportAuthFailure().
         for (;;)
         {
-            // One-shot 401 retry: a 401 can be a just-expired/edge timestamp as
-            // easily as a dead key. Resign with a fresh timestamp (attemptOnce
-            // re-signs) and try once more; only a second 401 escalates below.
+            // One-shot 401 retry: a 401 can be a just-expired/edge timestamp,
+            // a clock-skewed agent, or a dead key -- the manager deliberately
+            // answers all three identically (#37828). Correct for
+            // measurable skew (if the response carried the manager's Date)
+            // and resign with a fresh timestamp (attemptOnce re-signs); only
+            // a second 401 -- now on a timestamp already skew-corrected --
+            // escalates below as a genuine credential failure.
             if (result.outcome == OutcomeClass::AuthFail && !authRetried)
             {
                 authRetried = true;
+                correctClockIfSkewed(result.response);
                 result = attemptOnce(base);
                 continue;
             }
@@ -128,13 +138,9 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 
     if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
     {
-        compressedBody.resize(ZSTD_compressBound(attempt.bodyLength));
-        const size_t written = ZSTD_compress(compressedBody.data(), compressedBody.size(), attempt.body,
-                                             attempt.bodyLength, kCompressionLevel);
-
-        if (!ZSTD_isError(written))
+        if (auto compressed = compressBody(attempt.body, attempt.bodyLength))
         {
-            compressedBody.resize(written);
+            compressedBody = std::move(*compressed);
             attempt.body = compressedBody.data();
             attempt.bodyLength = compressedBody.size();
             attempt.headers.push_back("Content-Encoding: zstd");
@@ -160,7 +166,10 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
     }
 
     const auto timestamp = m_clock.wallSeconds();
-    const auto headers =
+    // Bind by reference: both branches return std::optional<SignedHeaders> by
+    // value, and `headers` is only read locally below, well within the
+    // ternary temporary's extended lifetime -- no need to copy it. (CID 562606)
+    const auto& headers =
         attempt.bodyFilePath.empty()
         ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
         : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
@@ -197,4 +206,40 @@ bool RetrySender::isRetryable(OutcomeClass outcome)
 {
     return outcome == OutcomeClass::Unreachable || outcome == OutcomeClass::ServerError ||
            outcome == OutcomeClass::BackPressure;
+}
+
+void RetrySender::correctClockIfSkewed(const HttpResponse& response)
+{
+    // Date is not itself authenticated (it isn't covered by any signature),
+    // so this trusts whoever answered the TLS handshake -- no different from
+    // trusting the 401 status/body it arrived with. Under the required TLS
+    // verification modes this is the real manager; under verify_mode=none
+    // (opt-in, insecure) a MITM could already forge the entire response, so
+    // feeding it a bogus Date is not a new capability, only a new use of an
+    // existing one.
+    if (response.serverDateSeconds == 0)
+    {
+        return; // No Date captured/parsed: nothing to measure skew against.
+    }
+
+    // This read is only a heuristic pre-check (noise floor + log message):
+    // it can race against another sender's concurrent correction and see a
+    // stale wallSeconds(), but that only risks skipping/duplicating a log
+    // line or a redundant call below -- m_clock.correctToServerTime()
+    // recomputes the actual offset itself, from its own raw clock read
+    // taken at commit time, so a stale `delta` here never corrupts the
+    // applied correction (see IClock::correctToServerTime's contract).
+    const auto delta = static_cast<std::int64_t>(response.serverDateSeconds) -
+                       static_cast<std::int64_t>(m_clock.wallSeconds());
+
+    if (std::abs(delta) < kSkewNoiseFloorSeconds)
+    {
+        return; // Aligned enough: leave the clock alone, the 401 is likely a dead key.
+    }
+
+    m_clock.correctToServerTime(response.serverDateSeconds);
+    LOGFN_INFO(m_logFn,
+               "https_client: clock skew of %lld s detected against the manager's response "
+               "(Date header); correcting the signing timestamp for this and future requests.",
+               static_cast<long long>(delta));
 }

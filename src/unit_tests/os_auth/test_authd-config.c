@@ -147,6 +147,88 @@ static void test_authd_ciphers_default_is_tls13(void **state) {
     os_free(local_config.manager_key);
 }
 
+// Test <legacy_enrollment> parsing/defaults
+
+static void test_authd_legacy_enrollment_default(void **state) {
+    authd_config_t local_config = {0};
+
+    /* With no <auth> children, legacy_enrollment defaults to enabled -- unlike use_password,
+     * nothing should change for a deployment that never touches this new setting. */
+    assert_int_equal(Read_Authd(NULL, NULL, &local_config, NULL), 0);
+    assert_int_equal(local_config.flags.legacy_enrollment, 1);
+
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+static void test_read_authd_legacy_enrollment_yes(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("legacy_enrollment", node[0]->element);
+    os_strdup("yes", node[0]->content);
+    node[1] = NULL;
+
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), 0);
+    assert_int_equal(local_config.flags.legacy_enrollment, 1);
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+static void test_read_authd_legacy_enrollment_no(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("legacy_enrollment", node[0]->element);
+    os_strdup("no", node[0]->content);
+    node[1] = NULL;
+
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), 0);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+static void test_read_authd_legacy_enrollment_invalid(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("legacy_enrollment", node[0]->element);
+    os_strdup("invalid_value", node[0]->content);
+    node[1] = NULL;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'legacy_enrollment': invalid_value.");
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), OS_INVALID);
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
 // Test ssl_auto_negotiate removal (issue #38091)
 
 static void test_read_authd_ssl_auto_negotiate_removed(void **state) {
@@ -260,6 +342,10 @@ int main(void)
         cmocka_unit_test(test_w_authd_parse_agents_invalid_element),
         cmocka_unit_test(test_authd_use_password_default),
         cmocka_unit_test(test_authd_ciphers_default_is_tls13),
+        cmocka_unit_test(test_authd_legacy_enrollment_default),
+        cmocka_unit_test(test_read_authd_legacy_enrollment_yes),
+        cmocka_unit_test(test_read_authd_legacy_enrollment_no),
+        cmocka_unit_test(test_read_authd_legacy_enrollment_invalid),
         cmocka_unit_test(test_read_authd_ssl_auto_negotiate_removed),
         cmocka_unit_test(test_read_authd_ciphers_valid),
         cmocka_unit_test(test_read_authd_ciphers_invalid),

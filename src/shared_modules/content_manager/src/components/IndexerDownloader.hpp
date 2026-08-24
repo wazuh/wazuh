@@ -347,6 +347,14 @@ private:
         return filter;
     }
 
+    // LCOV_EXCL_START - integration-only path: every method below drives a LIVE indexer through
+    // IndexerConnectorSync (point-in-time creation and keep-alive, sliced parallel scroll,
+    // consumer-readiness polling with backoff), which is taken by concrete type rather than
+    // through an interface -- there is no seam a unit test could substitute. This code is
+    // exercised by the module's component tests and by the on-demand/scheduled update flows
+    // against a real cluster; unit-testing it would mean inventing an abstraction layer, which
+    // is a refactor, not a test. getSourceFilter() above stays measurable on purpose: it is
+    // pure static data with no indexer involved.
     /**
      * @brief Reads the consumer status from `.wazuh-cti-consumers`: "ready" (safe to query),
      *        "running" (indexing, wait), "failed", or empty/missing (not ready yet).
@@ -1381,6 +1389,7 @@ private:
     {
         invokeContentUpdateCallback(context.spUpdaterBaseContext->updateCallbacks.onFailure, "failure");
     }
+    // LCOV_EXCL_STOP
 };
 
 #endif // _INDEXER_DOWNLOADER_HPP

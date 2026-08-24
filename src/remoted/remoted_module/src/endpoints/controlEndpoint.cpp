@@ -146,10 +146,12 @@ namespace remoted::endpoints::control
         }
     } // namespace
 
-    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::control::ControlHandler& handler)
+    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::control::ControlHandler& handler,
+                                                         remoted::control::ControlMetrics metrics)
     {
-        return [&handler](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                          std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return
+            [&handler, metrics = std::move(metrics)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                                     std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             const auto body = authReq->payload.bytes();
             if (body.empty() || body.size() > kMaxControlBodySize)
@@ -164,6 +166,7 @@ namespace remoted::endpoints::control
                                throttle.total,
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
+                remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_body"));
                 return;
             }
@@ -183,6 +186,7 @@ namespace remoted::endpoints::control
                                throttle.total,
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
+                remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_json"));
                 return;
             }
@@ -200,6 +204,7 @@ namespace remoted::endpoints::control
                         throttle.total,
                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
+                remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_agent_id"));
                 return;
             }
@@ -236,6 +241,7 @@ namespace remoted::endpoints::control
                         throttle.total,
                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
+                remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "unknown_message_type"));
             }
         };

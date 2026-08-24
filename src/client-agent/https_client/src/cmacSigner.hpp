@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -56,6 +57,13 @@ class CmacSigner final : public ISigner
     public:
         CmacSigner(std::string agentId, const IKeyProvider& keyProvider);
 
+        /// Re-enrollment (#38465) can hand back a different numeric id along
+        /// with a new key -- hc_set_agent_identity() calls this so every
+        /// subsequently-signed request (from whichever sender thread is
+        /// active) uses it. Guarded: sign()/signFile() may run concurrently
+        /// with this from another thread.
+        void setAgentId(std::string agentId);
+
         std::optional<SignedHeaders> sign(const std::string& method, const std::string& target,
                                           const uint8_t* body, size_t bodyLength,
                                           std::time_t timestamp) const override;
@@ -70,8 +78,11 @@ class CmacSigner final : public ISigner
                                                  const uint8_t* message, size_t messageLength);
 
     private:
-        SignedHeaders makeHeaders(std::time_t timestamp, const std::string& macHexDigest) const;
+        SignedHeaders makeHeaders(const std::string& agentId, std::time_t timestamp,
+                                  const std::string& macHexDigest) const;
+        std::string agentId() const;
 
+        mutable std::mutex m_agentIdMutex;
         std::string m_agentId;
         const IKeyProvider& m_keyProvider;
 };

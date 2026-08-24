@@ -47,6 +47,7 @@ target_link_libraries(
   agent_sync_protocol_tests
   PRIVATE agent_sync_protocol
           agent_metadata
+          wazuhext
           debug
           gtestd
           debug

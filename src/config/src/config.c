@@ -124,7 +124,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             /* Accepted and ignored rather than rejected (an unknown element is
              * fatal here), so an ossec.conf or a pushed agent.conf still
              * carrying it does not stop the agent from starting. */
-            mwarn("'%s' is no longer used and will be ignored. Event batching is configured "
+            minfo("'%s' is no longer used and will be ignored. Event batching is configured "
                   "under <client><batch>.", node[i]->element);
         }
         else if (strcmp(node[i]->element, oswmodule) == 0) {

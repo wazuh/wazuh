@@ -339,3 +339,71 @@ TEST(ZstdDecoder, AFrameWithoutADeclaredSizeIsCutOffWhenTheBudgetRefusesMidway)
     ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result));
     EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::TooLarge);
 }
+
+TEST(ZstdDecoder, ACeilingSmallerThanTheGrowthStepStillAcceptsABodyThatFitsUnderIt)
+{
+    // Regression guard. The block-growth path asks for kChunkSize (64 KiB) on its FIRST growth,
+    // whatever the frame really decodes to, because doubling from a smaller base would mean a
+    // reservation call per chunk. A caller whose ceiling is smaller than that step -- /enroll caps
+    // the decoded body at 16 KiB -- must not have every streaming-compressed request rejected
+    // because of the step size: when the doubling target is refused, zstdDecode() retries at
+    // exactly the bytes needed. Without that retry this body (a few hundred bytes) came back
+    // TooLarge, surfacing as a 413 no matter how small it was.
+    const std::string plain(200, 'z');
+    const auto compressed = remoted::testutil::zstdCompressWithoutDeclaredSize(plain);
+
+    const auto result = zstdDecode(compressed, alwaysReserve, reserveUpTo(16 * 1024));
+
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    EXPECT_EQ(std::get<std::string>(result), plain);
+}
+
+TEST(ZstdDecoder, ACeilingSmallerThanTheGrowthStepStillRejectsABodyOverIt)
+{
+    // The other half of the guard above: the retry must not turn the ceiling into a suggestion.
+    // 64 KiB of output against a 16 KiB ceiling still has to be refused.
+    const std::string plain(64 * 1024, 'z');
+    const auto compressed = remoted::testutil::zstdCompressWithoutDeclaredSize(plain);
+
+    const auto result = zstdDecode(compressed, alwaysReserve, reserveUpTo(16 * 1024));
+
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result));
+    EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::TooLarge);
+}
+
+TEST(ZstdDecoder, AFrameDeclaringAWindowOverTheHardCeilingIsRefusedWithoutReserving)
+{
+    // The window size is attacker-chosen in a ~50-byte header and drives the decoder's up-front
+    // allocation, so it is bounded by a hard constant (kMaxDeclaredWindowSize, 8 MiB) rather than
+    // by whatever budget happens to be free. windowLog 24 = 16 MiB, over that ceiling.
+    const std::string plain(128, 'q');
+    const auto compressed = remoted::testutil::zstdCompressWithDeclaredWindowLog(plain, 24);
+
+    bool reserveWindowCalled = false;
+    const auto result = zstdDecode(
+        compressed,
+        [&reserveWindowCalled](std::size_t)
+        {
+            reserveWindowCalled = true;
+            return true;
+        },
+        alwaysReserve);
+
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result));
+    EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::TooLarge);
+    // Rejected from the header alone -- the budget is never even consulted.
+    EXPECT_FALSE(reserveWindowCalled);
+}
+
+TEST(ZstdDecoder, AFrameDeclaringAWindowUnderTheHardCeilingIsStillAccepted)
+{
+    // The ceiling has to sit above what real compressors emit: windowLog 23 (8 MiB) is what zstd
+    // itself uses at its highest normal levels, so it must round-trip.
+    const std::string plain(128, 'q');
+    const auto compressed = remoted::testutil::zstdCompressWithDeclaredWindowLog(plain, 23);
+
+    const auto result = zstdDecode(compressed, alwaysReserve, alwaysReserve);
+
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    EXPECT_EQ(std::get<std::string>(result), plain);
+}

@@ -98,7 +98,7 @@ In-memory cache storing agent metadata extracted from keep-alive messages:
 
 Forwards enriched event batches to analysisd:
 - **Transport**: HTTP over Unix domain socket
-- **Socket Path**: `/var/wazuh-manager/queue/sockets/queue`
+- **Socket Path**: `/var/wazuh-manager/queue/sockets/queue-http.sock`
 - **Protocol**: x-wev1 (custom event framing)
 
 ### 6. HTTPS Events Listener (C++ module) — *experimental*
@@ -106,10 +106,16 @@ Forwards enriched event batches to analysisd:
 A self-contained C++ module (`remoted_module`) embedded in `remoted` runs a separate **HTTPS
 listener** (RESTinio + OpenSSL, default `127.0.0.1:1517`) for agent-authenticated event ingestion,
 independent of the AES-encrypted TCP/UDP channel above. Each request is authenticated with a
-per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`). It is
-Linux-manager only and starts lazily (retried on the module's 60 s heartbeat) only when a TLS
-certificate/key are present. Currently it authenticates and validates requests but does not yet
-parse or ingest the payload. See [HTTPS Events API](https-events-api.md).
+per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`), and the
+connecting address is matched against the agent's `ip` column in `client.keys`, the same restriction
+the classic listener applies. It is
+Linux-manager only and starts **synchronously** as part of `remoted`'s startup, with **no retry**:
+if the TLS certificate/key are missing or invalid, starting the module fails and `remoted` itself
+does not start. It fully authenticates, parses, and forwards the payload: once the AES-CMAC
+signature is verified, `POST /stateless` forwards the request's H/E event batch to the engine's
+event ingress (`POST /events/enriched` over a Unix-domain socket) and maps the downstream result to
+`202 Accepted` (enqueued), `400` (rejected), `413` (too large), or `503` (out of capacity or
+unreachable). See [HTTPS Events API](https-events-api.md).
 
 ## Data Flow
 

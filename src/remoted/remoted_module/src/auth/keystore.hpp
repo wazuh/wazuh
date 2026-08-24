@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -18,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "addressRule.hpp"        // Value type only; pulls no I/O headers.
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "iAgentKeystore.hpp"
 
@@ -47,7 +49,13 @@ namespace remoted::auth
      * manage_agents/authd); it is hex-decoded into raw bytes and used as-is,
      * with no further derivation. It must decode to 16, 24 or 32 bytes to be
      * usable as an AES-CMAC key; AuthMiddleware reports AuthError::MissingKey
-     * for an agent whose key does not (see keyFor()).
+     * for an agent whose key does not (see lookup()).
+     *
+     * The ip column is parsed into an AddressRule and enforced through
+     * lookup(), replicating the legacy remoted's own check so one
+     * client.keys authorizes the same peers on both pipelines. A line whose ip
+     * column does not parse is skipped, like the other malformed-line cases
+     * above -- it is not fatal to the load (see reload()).
      *
      * Hot-reload: a background thread watches the file (inotify, with a
      * periodic fallback poll -- see the classic pipeline's equivalent,
@@ -105,16 +113,65 @@ namespace remoted::auth
         static constexpr int kReloadUnstable {-2};   ///< Kept changing across every read attempt.
 
         /**
-         * @brief Look up an agent's key in the in-memory copy of client.keys.
+         * @brief Look up an agent in the in-memory copy of client.keys.
          *
          * @param agentId Agent id, as it appears (numerically) in client.keys' first column.
-         * @return std::nullopt if the id is not present (including removed/disabled
-         *         entries, and entries whose id column isn't numeric -- see reload()).
-         *         Otherwise the agent's key, empty if the on-disk key column failed to hex-decode.
+         * @param peerIp  Textual peer address as observed on the socket.
+         * @return std::nullopt if the id is not present (including removed/disabled entries, entries
+         *         whose id column isn't numeric, and entries whose ip column didn't parse -- see
+         *         reload()). Otherwise the agent's key, empty if the key column failed to hex-decode,
+         *         plus whether @p peerIp satisfies the ip column.
          */
-        std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
+        std::optional<AgentLookup> lookup(AgentId agentId, std::string_view peerIp) const override;
+
+        // Health counters behind the remoted.auth.keystore.* pull metrics (registered by the
+        // facade -- this class stays metrics-library-free, the same constraint that keeps
+        // loggerHelper.h out of this header). Plain relaxed atomics: reload() maintains them,
+        // any thread may read them at dump cadence.
+
+        /// @brief Agents with a usable key after the last SUCCESSFUL reload (reload()'s return).
+        std::size_t agentsLoaded() const noexcept
+        {
+            return m_agentsLoaded.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Successful reloads since construction (startup load included).
+        /**
+         * @brief client.keys lines the last adopted load could not use.
+         *
+         * A level, like agentsLoaded(): it describes the file as it stands now, which is the
+         * question an operator asks ("is my client.keys healthy?"). Counts the unusable lines --
+         * fewer than four fields, a non-numeric id, an ip column that does not parse, and a key
+         * column that does not decode -- and deliberately NOT comments, blanks or entries marked
+         * as removed, which are normal states rather than defects. Each one is also logged.
+         */
+        std::size_t entriesSkipped() const noexcept
+        {
+            return m_entriesSkipped.load(std::memory_order_relaxed);
+        }
+
+        std::uint64_t reloadsTotal() const noexcept
+        {
+            return m_reloadsTotal.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Failed reloads since construction (unreadable file or torn-read give-up).
+        std::uint64_t reloadFailuresTotal() const noexcept
+        {
+            return m_reloadFailuresTotal.load(std::memory_order_relaxed);
+        }
 
     private:
+        /// One client.keys line's worth of state.
+        struct AgentEntry
+        {
+            /// Raw AES key bytes; empty when the key column did not hex-decode -- that distinction is
+            /// what lets AuthMiddleware answer MissingKey instead of UnknownAgent (see lookup()).
+            std::vector<std::uint8_t> key;
+            /// Parsed ip column. Always present: a line whose column failed to parse is not loaded.
+            AddressRule address;
+        };
+
         /// Watcher thread entry point: an exception barrier around watcherLoopBody(). A throw
         /// escaping a bare std::thread would terminate the whole remoted daemon.
         void watcherLoop();
@@ -140,7 +197,7 @@ namespace remoted::auth
 
         std::string m_path;
         mutable std::mutex m_mutex;
-        std::unordered_map<AgentId, std::vector<std::uint8_t>> m_keys;
+        std::unordered_map<AgentId, AgentEntry> m_keys;
 
         // Hot-reload: background watcher (inotify + periodic fallback poll via poll()'s timeout).
         int m_refreshIntervalSeconds;
@@ -148,6 +205,14 @@ namespace remoted::auth
         int m_watchDescriptor {-1};
         int m_stopEventFd {-1}; ///< Written by the destructor for an immediate cooperative wakeup.
         std::thread m_watcherThread;
+
+        /// Fallback stop signal, checked every loop iteration independent of m_stopEventFd: if
+        /// eventfd() failed at construction (m_stopEventFd stays -1), poll() has no fd to wake it
+        /// early, but this flag still gets noticed the next time poll()'s own timeout elapses (at
+        /// most m_refreshIntervalSeconds later) -- so the watcher thread is always joinable within
+        /// a bounded time, never permanently, which the destructor's join() would otherwise wait
+        /// on forever.
+        std::atomic<bool> m_stopping {false};
 
         // Serializes reload() (so at most one parse runs at a time, whether triggered by the
         // watcher or called directly) and guards the last-known content hash below, which
@@ -161,6 +226,12 @@ namespace remoted::auth
         /// Throttles the "client.keys is unreadable" warning: the watcher retries every
         /// m_refreshIntervalSeconds, so an unreadable file would otherwise flood wazuh-manager.log .
         remoted::common::LogThrottle m_unreadableThrottle;
+
+        // See the public accessors; maintained exclusively by reload().
+        std::atomic<std::size_t> m_agentsLoaded {0};
+        std::atomic<std::size_t> m_entriesSkipped {0};
+        std::atomic<std::uint64_t> m_reloadsTotal {0};
+        std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
     };
 
 } // namespace remoted::auth

@@ -100,6 +100,8 @@ DELETE /groups?groups_list=<GROUP_NAME>
 
 Agents can belong to multiple groups simultaneously. When an agent is in multiple groups, the configurations from all groups are merged.
 
+An agent can belong to at most 128 groups simultaneously. Attempting to assign an agent to an additional group beyond this limit fails with an error.
+
 ### Configuration merge order
 
 When an agent belongs to multiple groups, the configurations are merged in alphabetical order by group name. If a conflict occurs (the same setting defined in multiple groups), the value from the group that appears first alphabetically takes precedence.

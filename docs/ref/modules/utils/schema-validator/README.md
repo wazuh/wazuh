@@ -81,14 +81,26 @@ The validator supports schemas for all Wazuh state indices:
 
 - `wazuh-states-inventory-hardware`
 - `wazuh-states-inventory-system`
-- `wazuh-states-inventory-network`
+- `wazuh-states-inventory-networks`
 - `wazuh-states-inventory-packages`
 - `wazuh-states-inventory-hotfixes`
 - `wazuh-states-inventory-ports`
 - `wazuh-states-inventory-processes`
+- `wazuh-states-inventory-protocols`
+- `wazuh-states-inventory-interfaces`
+- `wazuh-states-inventory-users`
+- `wazuh-states-inventory-groups`
+- `wazuh-states-inventory-services`
+- `wazuh-states-inventory-browser-extensions`
 - `wazuh-states-sca`
-- `wazuh-states-fim-file`
-- `wazuh-states-fim-registry`
+- `wazuh-states-fim-files`
+- `wazuh-states-fim-registry-keys`
+- `wazuh-states-fim-registry-values`
+
+> **Note:** This list is cross-referenced against [`docs/ref/modules/indexer_connector/README.md`](../../indexer_connector/README.md#indices)
+> rather than the ground-truth schema JSON, since the `indexer-plugins` submodule
+> (`src/external/indexer-plugins`) is not checked out in this working tree. Re-verify
+> against the actual schema definitions there once available.
 
 ## Documentation Structure
 

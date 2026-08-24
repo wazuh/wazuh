@@ -18,21 +18,23 @@
 namespace invsync::endpoints::metrics
 {
 
-    http::RouteHandler makeHandler(std::weak_ptr<wazuh::metrics::IManager> manager)
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<wazuh::metrics::IManager> manager)
     {
-        return [weakManager = std::move(manager)](std::shared_ptr<const http::HttpRequest>,
-                                                  std::shared_ptr<http::IHttpResponder> responder)
+        return [weakManager = std::move(manager)](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                                                  std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             const auto metricsManager = weakManager.lock();
             if (!metricsManager)
             {
-                responder->send(http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                responder->send(
+                    wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
                 return;
             }
 
             wazuh::metrics::DumpOptions options;
             options.daemonName = "inventory_sync_server";
-            responder->send(http::HttpResponse::json(200, wazuh::metrics::dumpJson(*metricsManager, options)));
+            responder->send(
+                wazuh::uds_http::HttpResponse::json(200, wazuh::metrics::dumpJson(*metricsManager, options)));
         };
     }
 

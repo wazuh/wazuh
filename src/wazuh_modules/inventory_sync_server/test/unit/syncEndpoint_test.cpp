@@ -26,13 +26,13 @@
 #include <thread>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
-using invsync::http::Method;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
 using invsync::test::SessionSpec;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
+using wazuh::uds_http::Method;
 
 namespace
 {
@@ -97,7 +97,7 @@ namespace
         std::shared_ptr<invsync::vd::IVdScanner> scanner {std::make_shared<invsync::test::FakeVdScanner>(events)};
         std::shared_ptr<invsync::sync::SyncPipeline> pipeline;
         std::shared_ptr<invsync::vd::VdScanLane> lane;
-        invsync::http::RouteHandler handler;
+        wazuh::uds_http::RouteHandler handler;
 
         explicit HandlerUnderTest(invsync::sync::SyncPipelineConfig config = {},
                                   int retryAfter = 60,

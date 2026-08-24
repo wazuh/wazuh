@@ -235,6 +235,12 @@ set(CURL_DEP wazuhext)
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/utils)
+# Before wazuh_modules: inventory_sync_server links it, and registering it here (rather than via
+# that module's standalone-build guard) keeps one canonical configuration. Manager-only, like its
+# ext_asio/ext_llhttp dependencies.
+if(IS_LINUX AND NOT IS_AGENT)
+  add_subdirectory(shared_modules/uds_http_server)
+endif()
 add_subdirectory(wazuh_modules)
 
 # Agent-only modules

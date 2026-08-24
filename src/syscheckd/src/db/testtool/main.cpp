@@ -54,10 +54,10 @@ int main(int argc, const char* argv[])
 
             try
             {
-                DB::instance().init(storageType,
-                                    callbackLogWrapper,
-                                    fileLimit,
-                                    registryLimit);
+                DB::init(storageType,
+                         callbackLogWrapper,
+                         fileLimit,
+                         registryLimit);
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();
@@ -74,7 +74,7 @@ int main(int argc, const char* argv[])
                     action->execute(testContext, jsonAction.at("body"));
                 }
 
-                DB::instance().teardown();
+                DB::teardown();
                 std::cout << "Resulting files are located in the "
                           << cmdLineArgs.outputFolder() << " folder" << std::endl;
             }

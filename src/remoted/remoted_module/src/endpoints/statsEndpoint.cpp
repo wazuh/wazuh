@@ -60,17 +60,23 @@ namespace remoted::endpoints::stats
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
-                                                         std::string socketPath)
+                                                         std::string socketPath,
+                                                         const remoted::metrics::EndpointHttpMetrics* metrics)
     {
-        return [&forwarder,
-                socketPath = std::move(socketPath)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                                                    std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [&forwarder, socketPath = std::move(socketPath), metrics](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             // The only content check done here. Parsing is modulesd's job -- doing it on both sides
             // would walk the whole payload twice on the hot path -- but an empty body cannot possibly
             // be a JSON object, and rejecting it here saves a deferred-work slot and a UDS round trip.
             if (authReq->payload.bytes().empty())
             {
+                // Sent here, so counted here (the single accounting point for this response).
+                if (metrics != nullptr)
+                {
+                    metrics->responses.count(400);
+                }
                 responder->send(remoted::http::HttpResponse::json(400, R"({"error":"Empty request body","code":400})"));
                 return;
             }
@@ -78,6 +84,7 @@ namespace remoted::endpoints::stats
             // Built BEFORE the move: argument evaluation order is unspecified, so reading
             // authReq->agentId in the same call that moves authReq could dereference a null pointer.
             auto downstreamTarget = target(socketPath, authReq->agentId);
+            downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
         };
     }

@@ -897,25 +897,21 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_revoke_all_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
+async def test_revoke_all_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                  mock_request):
     """Verify 'revoke_all_tokens' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=mock_snodes):
-        result = await revoke_all_tokens()
-        mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
-                                          f_kwargs=mock_remove.return_value,
-                                          request_type='distributed_master' if mock_snodes is not None else 'local_any',
-                                          is_async=False,
-                                          broadcasting=mock_snodes is not None,
-                                          logger=ANY,
-                                          wait_for_complete=True,
-                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                          nodes=mock_snodes
-                                          )
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        mock_remove.assert_called_once_with({})
-        assert isinstance(result, ConnexionResponse)
+    result = await revoke_all_tokens()
+    mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      logger=ANY,
+                                      wait_for_complete=True,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with({})
+    assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
@@ -928,23 +924,20 @@ async def test_revoke_all_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                     mock_request):
     """Verify 'revoke_all_tokens' endpoint is handling WazuhPermissionError as expected."""
-    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=AsyncMock()) as mock_snodes:
-        result = await revoke_all_tokens()
-        mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
-                                          f_kwargs=mock_remove.return_value,
-                                          request_type='distributed_master',
-                                          is_async=False,
-                                          broadcasting=True,
-                                          logger=ANY,
-                                          wait_for_complete=True,
-                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                          nodes=mock_snodes.return_value
-                                          )
-        mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                   call(WazuhPermissionError(4000, mock_exc.return_value.message))])
-        assert mock_exc.call_count == 2
-        mock_remove.assert_called_once_with({})
-        assert isinstance(result, ConnexionResponse)
+    result = await revoke_all_tokens()
+    mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      logger=ANY,
+                                      wait_for_complete=True,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                               call(WazuhPermissionError(4000, mock_exc.return_value.message))])
+    assert mock_exc.call_count == 2
+    mock_remove.assert_called_once_with({})
+    assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
@@ -972,20 +965,16 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_security_revoke_tokens(mock_exc, mock_dapi, mock_dfunc, mock_snodes):
+async def test_security_revoke_tokens(mock_exc, mock_dapi, mock_dfunc):
     """Verify 'security_revoke_tokens' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=mock_snodes):
-        await security_revoke_tokens()
-        mock_dapi.assert_called_once_with(f=security.revoke_tokens,
-                                          request_type='distributed_master' if mock_snodes is not None else 'local_any',
-                                          is_async=False,
-                                          wait_for_complete=True,
-                                          broadcasting=mock_snodes is not None,
-                                          logger=ANY,
-                                          nodes=mock_snodes
-                                          )
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    await security_revoke_tokens()
+    mock_dapi.assert_called_once_with(f=security.revoke_tokens,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=True,
+                                      logger=ANY
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
 
 
 @pytest.mark.asyncio

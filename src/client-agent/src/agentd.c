@@ -51,7 +51,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+    if (agt->enrollment.enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
     } else {

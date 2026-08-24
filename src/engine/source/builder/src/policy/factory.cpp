@@ -164,6 +164,13 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 
             if (!syntax::asset::isEnabledResource(decoder))
             {
+                if (decUUID == policy.getRootDecoderUUID())
+                {
+                    throw std::runtime_error(
+                        fmt::format("The root decoder '{}' [id: '{}'] is disabled; enable it before using this policy",
+                                    rootDecoderName.toStr(),
+                                    decUUID));
+                }
                 continue;
             }
 
@@ -220,6 +227,36 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             auto& decodersData = builtAssets[AssetPipelineStage::DECODERS_TREE];
             decodersData.orderedAssets.push_back(asset.name());
             decodersData.assets.emplace(asset.name(), std::move(asset));
+        }
+    }
+
+    // Decoders that declare no parent of their own were attached above to the integration default
+    // parent or, failing that, to the policy root decoder. If any decoder ended up depending on the
+    // root but the root itself never made it into the tree, the graph is unbuildable.
+    // Reachable when the root decoder is disabled, belongs only to disabled
+    // integrations, or is not referenced by any integration of the policy.
+    // Policies whose decoders all declare explicit parents never depend on the root, so they are left
+    // alone: the root decoder is legitimately absent from the tree there.
+    const auto decodersIt = builtAssets.find(AssetPipelineStage::DECODERS_TREE);
+    if (decodersIt != builtAssets.end() && !isAlreadyBuilt(rootDecoderName.toStr(), AssetPipelineStage::DECODERS_TREE))
+    {
+        const auto& decoders = decodersIt->second.assets;
+        const bool rootIsRequired =
+            std::any_of(decoders.cbegin(),
+                        decoders.cend(),
+                        [&rootDecoderName](const auto& entry)
+                        {
+                            const auto& parents = entry.second.parents();
+                            return std::find(parents.cbegin(), parents.cend(), rootDecoderName) != parents.cend();
+                        });
+
+        if (rootIsRequired)
+        {
+            throw std::runtime_error(fmt::format(
+                "The root decoder '{}' [id: '{}'] is required by the policy decoders but is not part of its enabled "
+                "content; it must be enabled and belong to an enabled integration of the policy",
+                rootDecoderName.toStr(),
+                policy.getRootDecoderUUID()));
         }
     }
 

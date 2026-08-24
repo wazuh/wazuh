@@ -64,6 +64,15 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr);
  */
 STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len);
 
+/**
+ * @brief validates <remote><https><ciphers> as a TLS 1.3 suite list, so 'remoted -t' rejects a
+ *        TLS 1.2 string instead of the HTTPS server failing to start at runtime.
+ *
+ * @param ciphers raw <ciphers> content
+ * @return OS_SUCCESS when every element is a known suite, OS_INVALID otherwise
+ */
+STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers);
+
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -85,6 +94,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcasecmp(node[i]->element, xml_remote_legacy) == 0) {
+            logr->legacy_enabled = true;
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children != NULL) {
                 int ret = w_remoted_parse_legacy(children, logr);
@@ -115,19 +125,29 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         i++;
     }
 
-    /* Set port in here */
-    if (logr->port == 0) {
-        logr->port = DEFAULT_REMOTE_PORT;
-    }
+    /* These settings only make sense for the classic listener; keeping them at their
+     * disabled state (0/NULL) when <legacy> is absent or disabled is what keeps
+     * HandleRemote() from binding it and secure.c's protocol-gated wnotify_add() from
+     * touching a socket that was never bound. */
+    if (logr->legacy_enabled) {
+        /* Set port in here */
+        if (logr->port == 0) {
+            logr->port = DEFAULT_REMOTE_PORT;
+        }
 
-    /* Set protocol in here */
-    if (logr->proto == 0) {
-        logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
-    }
+        /* Set protocol in here */
+        if (logr->proto == 0) {
+            logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
+        }
 
-    /* Set local ip in here */
-    if (logr->lip == NULL && !logr->ipv6) {
-        os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
+        /* Set local ip in here */
+        if (logr->lip == NULL && !logr->ipv6) {
+            os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
+        }
+    } else {
+        logr->port = 0;
+        logr->proto = 0;
+        os_free(logr->lip);
     }
 
     return (0);
@@ -141,6 +161,7 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
+    const char *xml_remote_enabled = "enabled";
 
     int i = 0;
 
@@ -224,6 +245,14 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
                     logr->connection_overtake_time = connection_overtake_time;
                 }
             }
+        } else if (strcasecmp(node[i]->element, xml_remote_enabled) == 0) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                logr->legacy_enabled = true;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->legacy_enabled = false;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_remote_enabled);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -306,10 +335,16 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
             } else if (strcasecmp(node[i]->content, "full") == 0) {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
             } else {
-                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_verification_mode);
+                // Reject, don't fall back: a typo must not silently disable certificate verification.
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_https_ciphers) == 0) {
             if (w_remoted_https_check_max_len(xml_https_ciphers, node[i]->content, REMOTED_HTTPS_CIPHERS_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
+            if (w_remoted_validate_tls13_ciphers(node[i]->content) == OS_INVALID) {
                 return (OS_INVALID);
             }
 
@@ -330,7 +365,8 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
             } else if (strcasecmp(node[i]->content, "no") == 0) {
                 logr->https.dual_stack = REMOTED_HTTPS_DUAL_STACK_NO;
             } else {
-                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_dual_stack);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -368,6 +404,56 @@ STATIC int w_remoted_https_check_max_len(const char * element, const char * cont
     }
 
     return OS_SUCCESS;
+}
+
+STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers) {
+    // Same TLS 1.3 suite names OpenSSL's SSL_CTX_set_ciphersuites() accepts (RFC 8446 section B.4).
+    static const char * VALID_TLS13_CIPHERSUITES[] = {
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256",
+        "TLS_AES_128_CCM_SHA256",
+        "TLS_AES_128_CCM_8_SHA256",
+        NULL
+    };
+
+    if (ciphers == NULL || *ciphers == '\0') {
+        merror("Invalid '<remote><https><ciphers>' option: expected TLS 1.3 cipher suite names.");
+        return (OS_INVALID);
+    }
+
+    // Hand-walked, not strtok: strtok collapses separators, so ':X' and 'X::Y' would wrongly pass.
+    const char * element = ciphers;
+
+    for (;;) {
+        const char * separator = strchr(element, ':');
+        const size_t length = separator ? (size_t)(separator - element) : strlen(element);
+
+        if (length == 0) {
+            merror("Invalid '<remote><https><ciphers>' option: '%s' has an empty cipher suite name.", ciphers);
+            return (OS_INVALID);
+        }
+
+        int valid = 0;
+        for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
+            if (strlen(VALID_TLS13_CIPHERSUITES[i]) == length &&
+                strncmp(element, VALID_TLS13_CIPHERSUITES[i], length) == 0) {
+                valid = 1;
+                break;
+            }
+        }
+
+        if (!valid) {
+            merror("Invalid TLS 1.3 cipher suite '%.*s' in the '<remote><https><ciphers>' option.", (int)length, element);
+            return (OS_INVALID);
+        }
+
+        if (!separator) {
+            return OS_SUCCESS;
+        }
+
+        element = separator + 1;
+    }
 }
 
 STATIC int w_remoted_get_net_protocol(const char * content) {

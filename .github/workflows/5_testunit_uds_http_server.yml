@@ -1,0 +1,104 @@
+name: 5.X - UDS HTTP Server library - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_uds_http_server.yml"
+      - "src/shared_modules/uds_http_server/**"
+      - "src/shared_modules/utils/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  udshttpserver-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The test target is pinned to C++17: this job is what enforces the library's dual-standard
+      # floor (its consumers include a strict-C++17 module), so a C++20-ism fails here, not in a
+      # consumer's build.
+      - name: UDS HTTP server - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "uds_http_server_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is deliberately off, same reasoning as the inventory sync server suite this
+      # transport was extracted from: the tests drive a real Unix-domain-socket server with
+      # concurrent connections and timing-sensitive shutdown cases; under Valgrind's serialized
+      # execution those exceed their deadlines and fail for the wrong reason. The ASAN job below
+      # covers the memory-safety surface, which is the one that matters (teardown ORDER, not leaks).
+      - name: UDS HTTP server - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "uds_http_server_utest"
+
+      - name: UDS HTTP server - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/uds_http_server
+          test_directory: src/shared_modules/uds_http_server
+          id: uds_http_server
+          validate_function_coverage: "false"
+
+  udshttpserver-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: UDS HTTP server - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "uds_http_server_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is the point of the workflow, not a redundant second run: the shutdown tests are
+      # only real regression checks under a sanitizer. Without one, an asio object destroyed while
+      # the reactor is being torn down -- or a responder touching a freed session -- usually still
+      # passes.
+      - name: UDS HTTP server - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "uds_http_server_utest"
+          valgrind: "false"

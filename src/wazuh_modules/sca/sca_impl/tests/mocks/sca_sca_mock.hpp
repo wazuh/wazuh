@@ -59,4 +59,11 @@ class SCAMock : public SecurityConfigurationAssessment
         {
             return executeFlushSync();
         }
+
+        /// @brief Whether a scan has ever completed (issue 38428's persisted
+        /// "first scan owed" tracking) -- exposed for tests.
+        bool getFirstScanCompletedForTest() const
+        {
+            return m_firstScanCompleted.load();
+        }
 };

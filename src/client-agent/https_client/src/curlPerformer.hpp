@@ -35,7 +35,10 @@ class CurlPerformer final : public IHttpPerformer
                            std::FILE** fileOut) const;
         bool configureResponseSink(ICurlHandle& handle, const HttpRequestSpec& spec,
                                    HttpResponse& response, std::FILE** fileOut) const;
-        void configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
+        /// @return false if capturing Retry-After or wiring the abort flag was
+        ///         rejected by the handle; the caller must not proceed to
+        ///         perform() in that case.
+        bool configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
                               HttpResponse& response) const;
 
         /// @return false as soon as one option is rejected; the caller must not

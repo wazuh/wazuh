@@ -72,6 +72,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
@@ -954,9 +955,12 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
  * @param [in] id The agent ID.
  * @param [in] status_code The status code to be set.
  * @param [in] version The agent version to be set.
+ * @param [in] connection_status The connection status to be set. When not NULL, the last keepalive
+ *                               is stamped and the disconnection time is reset as well.
+ * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *connection_status, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.

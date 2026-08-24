@@ -296,6 +296,14 @@ class EXPORTED Syscollector final
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
         /**
+         * @brief Get the configured document limit for a given index, thread-safely.
+         *
+         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
+         * @return The configured limit, or 0 if unlimited/not configured.
+         */
+        size_t getDocumentLimit(const std::string& index);
+
+        /**
          * @brief Validates a JSON message against schema and logs validation errors
          *
          * This helper function encapsulates the common pattern of schema validation
@@ -431,7 +439,7 @@ class EXPORTED Syscollector final
 
         AgentdQueryFunc                                                          m_agentdQuery;
         unsigned int                                                             m_intervalValue;
-        uint32_t                                                                 m_integrityIntervalValue;
+        std::atomic<uint32_t>                                                    m_integrityIntervalValue;
         bool                                                                     m_scanOnStart;
         bool                                                                     m_hardware;
         bool                                                                     m_os;
@@ -451,8 +459,8 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
-        unsigned int                                                             m_dataCleanRetries;
-        bool                                                                     m_allCollectorsDisabled;
+        std::atomic<unsigned int>                                                m_dataCleanRetries;
+        std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;

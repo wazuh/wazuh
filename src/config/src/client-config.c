@@ -829,163 +829,98 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
 int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     /* XML definitions */
     const char *xml_enabled = "enabled";
-    const char *xml_manager_addr = "manager_address";
-    const char *xml_port = "port";
-    const char *xml_interface = "interface_index";
     const char *xml_agent_name = "agent_name";
     const char *xml_groups = "groups";
     const char *xml_agent_addr = "agent_address";
+    const char *xml_auth_password_path = "authorization_pass_path";
+    const char *xml_delay_after_enrollment = "delay_after_enrollment";
+    const char *xml_use_source_ip = "use_source_ip";
+
+    /* Superseded by <agent><server>/<agent><ssl> (#38465): enrollment now
+     * dials the same target and presents the same TLS material as every
+     * other HTTPS endpoint, so a second address/port/interface/cert/key/CA
+     * for it is redundant by design. Recognized-but-ignored rather than
+     * rejected: an in-place 4.x->5.x upgrade never rewrites ossec.conf, so a
+     * config still carrying these is the expected post-upgrade state, not an
+     * operator mistake. */
+    const char *xml_manager_addr = "manager_address";
+    const char *xml_port = "port";
+    const char *xml_interface = "interface_index";
     const char *xml_ssl_cipher = "ssl_cipher";
     const char *xml_server_ca_path = "server_ca_path";
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
-    const char *xml_auth_password_path = "authorization_pass_path";
-    const char *xml_delay_after_enrollment = "delay_after_enrollment";
-    const char *xml_use_source_ip = "use_source_ip";
-    char * remote_ip = NULL;
-    int port = 0;
+
     int j;
-    char f_ip[128];
-
-
-    w_enrollment_cert *cert_cfg = logr->enrollment_cfg->cert_cfg;
-    w_enrollment_target *target_cfg = logr->enrollment_cfg->target_cfg;
 
     for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
             merror(XML_ELEMNULL);
-            w_enrollment_target_destroy(target_cfg);
-            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
         } else if (!node[j]->content) {
             merror(XML_VALUENULL, node[j]->element);
-            w_enrollment_target_destroy(target_cfg);
-            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
-        } else if (!strcmp(node[j]->element, xml_enabled)) {
-            if (!strcmp(node[j]->content, "yes"))
-                logr->enrollment_cfg->enabled = true;
-            else if (!strcmp(node[j]->content, "no")) {
-                logr->enrollment_cfg->enabled = false;
+        } else if (strcmp(node[j]->element, xml_enabled) == 0) {
+            if (strcmp(node[j]->content, "yes") == 0) {
+                logr->enrollment.enabled = true;
+            } else if (strcmp(node[j]->content, "no") == 0) {
+                logr->enrollment.enabled = false;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return OS_INVALID;
-            }
-        }
-        else if (strcmp(node[j]->element, xml_manager_addr) == 0) {
-            if (OS_IsValidIP(node[j]->content, NULL) == 1) {
-                remote_ip = node[j]->content;
-            } else if (strchr(node[j]->content, '/') ==  NULL) {
-                snprintf(f_ip, 127, "%s", node[j]->content);
-                remote_ip = f_ip;
-            } else {
-                merror(AG_INV_HOST, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
-            os_free(target_cfg->manager_name);
-            os_strdup(remote_ip, target_cfg->manager_name);
-            if (strchr(target_cfg->manager_name, ':') != NULL) {
-                os_realloc(target_cfg->manager_name, IPSIZE + 1, target_cfg->manager_name);
-                OS_ExpandIPv6(target_cfg->manager_name, IPSIZE);
-            }
-        } else if (strcmp(node[j]->element, xml_port) == 0) {
-            if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return (OS_INVALID);
-            }
-            if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return (OS_INVALID);
-            }
-            target_cfg->port = port;
-        } else if (strcmp(node[j]->element, xml_interface) == 0) {
-            if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return (OS_INVALID);
-            }
-            int interface_numeric = atoi(node[j]->content);
-            if (interface_numeric <= 0) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return (OS_INVALID);
-            }
-            target_cfg->network_interface = (uint32_t)interface_numeric;
         } else if (strcmp(node[j]->element, xml_agent_name) == 0) {
-            os_free(target_cfg->agent_name);
-            os_strdup(node[j]->content, target_cfg->agent_name);
+            os_free(logr->enrollment.agent_name);
+            os_strdup(node[j]->content, logr->enrollment.agent_name);
         } else if (strcmp(node[j]->element, xml_groups) == 0) {
-            os_free(target_cfg->centralized_group);
-            os_strdup(node[j]->content, target_cfg->centralized_group);
+            os_free(logr->enrollment.groups);
+            os_strdup(node[j]->content, logr->enrollment.groups);
         } else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) != 0) {
-                os_free(target_cfg->sender_ip);
-                os_strdup(node[j]->content, target_cfg->sender_ip);
-                if (strchr(target_cfg->sender_ip, ':') != NULL) {
-                    os_realloc(target_cfg->sender_ip, IPSIZE + 1, target_cfg->sender_ip);
-                    OS_ExpandIPv6(target_cfg->sender_ip, IPSIZE);
+                os_free(logr->enrollment.agent_address);
+                os_strdup(node[j]->content, logr->enrollment.agent_address);
+                if (strchr(logr->enrollment.agent_address, ':') != NULL) {
+                    os_realloc(logr->enrollment.agent_address, IPSIZE + 1, logr->enrollment.agent_address);
+                    OS_ExpandIPv6(logr->enrollment.agent_address, IPSIZE);
                 }
             } else {
                 merror(AG_INV_HOST, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[j]->element, xml_ssl_cipher) == 0) {
-            os_free(cert_cfg->ciphers);
-            os_strdup(node[j]->content, cert_cfg->ciphers);
-        } else if (strcmp(node[j]->element, xml_server_ca_path) == 0) {
-            os_free(cert_cfg->ca_cert);
-            os_strdup(node[j]->content, cert_cfg->ca_cert);
-        } else if (strcmp(node[j]->element, xml_agent_certif_path) == 0) {
-            os_free(cert_cfg->agent_cert);
-            os_strdup(node[j]->content, cert_cfg->agent_cert);
-        } else if (strcmp(node[j]->element, xml_agent_key_path) == 0) {
-            os_free(cert_cfg->agent_key);
-            os_strdup(node[j]->content, cert_cfg->agent_key);
         } else if (strcmp(node[j]->element, xml_auth_password_path) == 0) {
-            os_free(cert_cfg->authpass_file);
-            os_strdup(node[j]->content, cert_cfg->authpass_file);
+            os_free(logr->enrollment.authorization_pass_path);
+            os_strdup(node[j]->content, logr->enrollment.authorization_pass_path);
         } else if (strcmp(node[j]->element, xml_delay_after_enrollment) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
             int delay_after_enrollment;
             if (delay_after_enrollment = atoi(node[j]->content), delay_after_enrollment <= 0) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
-            logr->enrollment_cfg->delay_after_enrollment = delay_after_enrollment;
+            logr->enrollment.delay_after_enrollment = delay_after_enrollment;
         } else if (strcmp(node[j]->element, xml_use_source_ip) == 0) {
-            if (!strcmp(node[j]->content, "yes")) {
-                target_cfg->use_src_ip = 1;
-            } else if (!strcmp(node[j]->content, "no")) {
-                target_cfg->use_src_ip = 0;
+            if (strcmp(node[j]->content, "yes") == 0) {
+                logr->enrollment.use_source_ip = true;
+            } else if (strcmp(node[j]->content, "no") == 0) {
+                logr->enrollment.use_source_ip = false;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return OS_INVALID;
+                return (OS_INVALID);
             }
+        } else if (strcmp(node[j]->element, xml_manager_addr) == 0 ||
+                   strcmp(node[j]->element, xml_port) == 0 ||
+                   strcmp(node[j]->element, xml_interface) == 0 ||
+                   strcmp(node[j]->element, xml_ssl_cipher) == 0 ||
+                   strcmp(node[j]->element, xml_server_ca_path) == 0 ||
+                   strcmp(node[j]->element, xml_agent_certif_path) == 0 ||
+                   strcmp(node[j]->element, xml_agent_key_path) == 0) {
+            minfo("<%s> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
-            w_enrollment_target_destroy(target_cfg);
-            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
         }
     }
@@ -1057,6 +992,11 @@ void Free_Agent(agent * config){
         os_free(config->ssl.key);
         os_free(config->ssl.certificate_authorities);
         os_free(config->ssl.ciphers);
+
+        os_free(config->enrollment.agent_name);
+        os_free(config->enrollment.groups);
+        os_free(config->enrollment.agent_address);
+        os_free(config->enrollment.authorization_pass_path);
     }
 }
 

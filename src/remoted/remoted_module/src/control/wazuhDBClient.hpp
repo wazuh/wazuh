@@ -48,9 +48,12 @@ namespace remoted::control
                              const std::string& syncStatus,
                              std::function<void(SocketError)> callback);
 
+        /// When connectionStatus is non-empty, the same write also updates the connection
+        /// status, stamps the last keepalive and resets the disconnection time.
         void updateStatusCode(AgentId id,
                               AgentStatusCode statusCode,
                               const std::string& version,
+                              const std::string& connectionStatus,
                               const std::string& syncStatus,
                               std::function<void(SocketError)> callback);
 

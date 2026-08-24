@@ -175,8 +175,8 @@ INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
 
 # ================================================ Wazuh path - Sockets ================================================
 ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
+VD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'vd.sock')
 MODULESD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'modulesd')
-AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'ar')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control')
 UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
