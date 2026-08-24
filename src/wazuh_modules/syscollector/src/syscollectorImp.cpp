@@ -1963,6 +1963,15 @@ void Syscollector::scan()
     {
         m_logFunction(LOG_DEBUG, "Initial Syscollector scan starting.");
     }
+    else
+    {
+        // This device has already completed a first scan in a previous run: whatever restarted this
+        // process (service restart, shared-config reload, upgrade) is not an enrollment, so there is no
+        // "flood of created events" risk to guard against. Restoring m_notify here, instead of waiting
+        // for this scan to finish, closes the window where a change detected before that point would be
+        // silently absorbed into the baseline (marked as known in DBSync) without ever being notified.
+        m_notify = true;
+    }
 
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
