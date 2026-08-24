@@ -28,7 +28,16 @@ bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
         }
         else
         {
-            path.append("/").append(name.as_string());
+            // Make sure the parent node is an object before adding the member: a JSON pointer token
+            // is only guaranteed to be read as a member name when the node it is resolved against
+            // already is an object. Otherwise an all-decimal Name is taken as an array index and the
+            // pointer reserves index + 1 elements.
+            if (!docJson.isObject(path))
+            {
+                docJson.setObject(path);
+            }
+
+            path.append(json::Json::formatJsonPath(name.as_string(), true));
             docJson.setString(node.text().as_string(), path);
         }
 

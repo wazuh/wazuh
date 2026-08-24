@@ -57,6 +57,12 @@ xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog" /></UserData
                67,
                getXMLParser,
                {NAME, TARGET, {""}, {}}),
+        ParseT(SUCCESS,
+               R"(<EventData><Data Name="x/3~label">value</Data></EventData>)",
+               j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), R"({"EventData":{"x/3~label":"value"}})")),
+               58,
+               getXMLParser,
+               {NAME, TARGET, {""}, {"windows"}}),
         ParseT(
             SUCCESS,
             R"(<EventData><Data
@@ -256,4 +262,25 @@ Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)",
 )")),
                1573,
                getXMLParser,
-               {NAME, TARGET, {""}})));
+               {NAME, TARGET, {""}}),
+        // An all-decimal Data name must stay a member name even when there is no enclosing object
+        ParseT(SUCCESS,
+               R"(<Event><Data Name="3">v</Data></Event>)",
+               j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), R"({"3":"v"})")),
+               38,
+               getXMLParser,
+               {NAME, TARGET, {""}, {"windows"}}),
+        // ... and when the enclosing node was turned into an array by a previous unnamed Data
+        ParseT(SUCCESS,
+               R"(<EventData><Data>a</Data><Data Name="3">v</Data></EventData>)",
+               j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), R"({"EventData":{"3":"v"}})")),
+               60,
+               getXMLParser,
+               {NAME, TARGET, {""}, {"windows"}}),
+        // Same as a name that cannot be read as an index: the named Data replaces the array
+        ParseT(SUCCESS,
+               R"(<EventData><Data>a</Data><Data Name="b">v</Data></EventData>)",
+               j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), R"({"EventData":{"b":"v"}})")),
+               60,
+               getXMLParser,
+               {NAME, TARGET, {""}, {"windows"}})));
