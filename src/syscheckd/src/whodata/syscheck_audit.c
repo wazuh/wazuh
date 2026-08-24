@@ -25,6 +25,8 @@
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
+#define AUDIT_SOCKET_WAIT_MS 5000   // Max time to wait for the audisp plugin to create the socket
+#define AUDIT_SOCKET_POLL_MS 100    // Polling interval while waiting for the socket
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -156,51 +158,156 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
     }
 }
 
-// Set Auditd socket configuration
-int set_auditd_config(void) {
+/**
+ * @brief Build the list of audisp plugin configurations to try, ordered by preference.
+ *
+ * The installed audit version tells which configuration is the most likely to work, but it cannot
+ * tell a vendor rebuild that lacks the event format propagation apart from the upstream release it
+ * is based on: Amazon Linux 2023 ships an audit 3.1.5 whose audisp-af_unix still takes two
+ * arguments, so the three argument form rendered for that version makes the plugin fall back to
+ * its own default socket. The configurations that were not selected are appended as fallbacks so
+ * the caller can probe them when the preferred one does not yield a working socket.
+ *
+ * @param plugin_dir [out] Directory holding the audisp plugin configuration files.
+ * @param templates [out] Array to fill with the configuration templates, most preferred first.
+ * @param max Size of the templates array.
+ * @return Number of candidates written to templates, 0 if no known plugins directory was found.
+ */
+int audisp_get_candidates(const char **plugin_dir, const char **templates, int max) {
+    int count = 0;
+
+#define ADD_CANDIDATE(template) do { if (count < max) { templates[count++] = (template); } } while (0)
+
+    if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
+        unsigned vcode;
+        *plugin_dir = PLUGINS_DIR_AUDIT;
+
+        if (get_audit_version_code(&vcode) != 0) {
+            mdebug2("Could not get audit version code. Using default configuration.");
+            ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
+            ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+        } else {
+            mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
+
+            if (vcode < VERCODE(3, 1, 1)) {
+                // Before audit version 3.1.1 old code worked with builtin_af_unix. The event format
+                // argument only exists from 3.1.5 on, so it is not offered as a fallback here.
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_0);
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+            } else if (vcode < VERCODE(3, 1, 5)) {
+                // Audit version 3.1.1 includes changes for audispd af_unix plugin to a standalone program
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
+            } else if (vcode < VERCODE(4, 0, 0)) {
+                // Audit version 3.1.5 includes changes to propagate event format to the audisp-af_unix plugin
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+            } else if (vcode < VERCODE(4, 0, 3)) {
+                // From audit version 4.0.0 to 4.0.2 format changes are not included
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
+            } else {
+                // From audit version 4.0.3 format changes are included
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
+                ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
+            }
+        }
+    } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
+        *plugin_dir = PLUGINS_OLD_DIR_AUDISP;
+        ADD_CANDIDATE(AUDISP_CONFIGURATION_0);
+    }
+
+#undef ADD_CANDIDATE
+
+    return count;
+}
+
+/**
+ * @brief Render an audisp plugin configuration and report whether it matches a given SHA1.
+ *
+ * @param audisp_config Configuration template to render.
+ * @param abs_path_socket Absolute path of the who-data socket, rendered into the template.
+ * @param sha1 Digest to compare the rendered configuration against.
+ * @return 1 when the rendered configuration matches, 0 otherwise.
+ */
+static int audisp_configuration_matches(const char *audisp_config, const char *abs_path_socket, const char *sha1) {
+    char *configuration = NULL;
+    os_sha1 configuration_sha1;
+    int configuration_length;
+    int matches;
+
+    configuration_length = snprintf(NULL, 0, audisp_config, abs_path_socket);
+    if (configuration_length <= 0) {
+        return 0; // LCOV_EXCL_LINE
+    }
+
+    os_calloc((size_t)configuration_length + 1, sizeof(char), configuration);
+    snprintf(configuration, (size_t)configuration_length + 1, audisp_config, abs_path_socket);
+    OS_SHA1_Str(configuration, configuration_length, configuration_sha1);
+    os_free(configuration);
+
+    matches = strcmp(sha1, configuration_sha1) == 0;
+
+    return matches;
+}
+
+/**
+ * @brief Move the configuration already on disk to the front of the candidate list.
+ *
+ * Whichever configuration a previous probe settled on is the one Auditd is currently running, so
+ * trying it first means no Auditd restart on subsequent agent starts. A file that matches none of
+ * the known templates -- tampered with, or written by an older agent -- is deliberately left
+ * behind the version order, so that the normal flow rewrites it.
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files.
+ * @param templates Candidate list to reorder in place.
+ * @param count Number of candidates in the list.
+ */
+void audisp_prefer_configuration_on_disk(const char *plugin_dir, const char **templates, int count) {
+    char audisp_path[PATH_MAX] = {'\0'};
+    char abs_path_socket[PATH_MAX] = {'\0'};
+    os_sha1 file_sha1;
+    int i;
+
+    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
+        return; // LCOV_EXCL_LINE
+    }
+
+    if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
+        // No configuration in place yet: keep the order the audit version dictates
+        return;
+    }
+
+    abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
+
+    for (i = 0; i < count; i++) {
+        if (audisp_configuration_matches(templates[i], abs_path_socket, file_sha1) == 0) {
+            continue;
+        }
+
+        if (i > 0) {
+            const char *in_place = templates[i];
+
+            for (; i > 0; i--) {
+                templates[i] = templates[i - 1];
+            }
+
+            templates[0] = in_place;
+            mdebug1("The audisp plugin configuration already in place will be tried first.");
+        }
+
+        return;
+    }
+}
+
+// Write the given audisp plugin configuration and restart Auditd if it changed
+int set_auditd_config_template(const char *plugin_dir, const char *audisp_config) {
     char audisp_path[PATH_MAX] = {'\0'};
     char abs_path_socket[PATH_MAX] = {'\0'};
     char *configuration = NULL;
     int configuration_length;
     int retval = 1;
     os_sha1 file_sha1, configuration_sha1;
-    const char *plugin_dir = NULL;
-    const char *audisp_config = NULL;
-
-    if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
-        unsigned vcode;
-        plugin_dir = PLUGINS_DIR_AUDIT;
-
-        if (get_audit_version_code(&vcode) != 0) {
-            mdebug2("Could not get audit version code. Using default configuration.");
-            audisp_config = AUDISP_CONFIGURATION_2;
-        } else {
-            mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
-
-            if (vcode < VERCODE(3, 1, 1)) {
-                // Before audit version 3.1.1 old code worked with builtin_af_unix
-                audisp_config = AUDISP_CONFIGURATION_0;
-            } else if (vcode < VERCODE(3, 1, 5)) {
-                // Audit version 3.1.1 includes changes for audispd af_unix plugin to a standalone program
-                audisp_config = AUDISP_CONFIGURATION_1;
-            } else if (vcode < VERCODE(4, 0, 0)) {
-                // Audit version 3.1.5 includes changes to propagate event format to the audisp-af_unix plugin
-                audisp_config = AUDISP_CONFIGURATION_2;
-            } else if (vcode < VERCODE(4, 0, 3)) {
-                // From audit version 4.0.0 to 4.0.2 format changes are not included
-                audisp_config = AUDISP_CONFIGURATION_1;
-            } else {
-                // From audit version 4.0.3 format changes are included
-                audisp_config = AUDISP_CONFIGURATION_2;
-            }
-        }
-    } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
-        plugin_dir = PLUGINS_OLD_DIR_AUDISP;
-        audisp_config = AUDISP_CONFIGURATION_0;
-    } else {
-        // No known plugins directory found
-        return 0;
-    }
 
     // Build the config file path safely
     if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
@@ -254,17 +361,23 @@ end:
     return retval;
 }
 
-
-// Init Audit events socket
-int init_auditd_socket(void) {
+// Connect to the Audit events socket
+static int audit_socket_connect(int quiet) {
     int sfd;
 
     if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        if (!quiet) {
+            merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        }
         return (-1);
     }
 
     return sfd;
+}
+
+// Init Audit events socket
+int init_auditd_socket(void) {
+    return audit_socket_connect(0);
 }
 
 void audit_create_rules_file() {
@@ -389,6 +502,102 @@ void audit_rules_to_realtime() {
     }
 }
 
+/**
+ * @brief Wait for the audisp plugin to create the who-data socket.
+ *
+ * configure_audisp() removes the socket before rewriting the plugin configuration, so its
+ * reappearance is what tells that Auditd came back with a plugin that honoured the configured
+ * path. A misconfigured plugin binds its own default path instead and the socket never shows up.
+ *
+ * @return 0 if the socket is present, -1 if it did not appear before the timeout.
+ */
+static int wait_for_audit_socket(void) {
+    int waited_ms;
+
+    for (waited_ms = 0; waited_ms < AUDIT_SOCKET_WAIT_MS; waited_ms += AUDIT_SOCKET_POLL_MS) {
+        if (IsSocket(AUDIT_SOCKET) == 0) {
+            return 0;
+        }
+
+        usleep(AUDIT_SOCKET_POLL_MS * 1000);
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Configure the audisp plugin and connect to the who-data socket.
+ *
+ * The configuration expected for the installed audit version is applied first. If it does not
+ * yield a socket that can be connected to, the remaining known configurations are probed, since
+ * the audit version alone cannot tell whether the installed audisp-af_unix understands the event
+ * format argument.
+ *
+ * @return The connected socket descriptor, or -1 if no configuration worked.
+ */
+int configure_and_connect_audit_socket(void) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+    int sfd;
+    int i;
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    if (count == 0) {
+        // No known plugins directory found, so there is nothing to configure
+        return init_auditd_socket();
+    }
+
+    // A socket left behind by a dead plugin would make the probe believe a candidate took effect,
+    // so it is removed before configuring anything.
+    if (IsSocket(AUDIT_SOCKET) == 0) {
+        if (sfd = audit_socket_connect(1), sfd >= 0) {
+            close(sfd);
+        } else if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT) {
+            merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno)); // LCOV_EXCL_LINE
+        }
+    }
+
+    // Trying whatever is already in place first keeps Auditd untouched when it is already serving
+    // the socket, while a configuration that matches no known template is rewritten below.
+    audisp_prefer_configuration_on_disk(plugin_dir, templates, count);
+
+    for (i = 0; i < count; i++) {
+        if (i > 0) {
+            mdebug1("Could not establish the who-data socket '%s' with the current audisp plugin "
+                    "configuration. Trying an alternative one.", AUDIT_SOCKET);
+        }
+
+        switch (set_auditd_config_template(plugin_dir, templates[i])) {
+        case -1:
+            // This candidate could not be written or Auditd failed to restart with it. The next
+            // one may still work, which is the whole point of probing.
+            mdebug1(FIM_AUDIT_NOCONF);
+            continue;
+        case 0:
+            break;
+        default:
+            // Auditd cannot be restarted, so no configuration can be probed
+            return -1;
+        }
+
+        if (wait_for_audit_socket() != 0) {
+            continue;
+        }
+
+        if (sfd = audit_socket_connect(1), sfd >= 0) {
+            if (i > 0) {
+                minfo(FIM_AUDIT_FALLBACK_CONFIGURATION, AUDIT_SOCKET);
+            }
+            return sfd;
+        }
+    }
+
+    merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+    return -1;
+}
+
 // LCOV_EXCL_START
 int audit_init(void) {
     static audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
@@ -403,19 +612,8 @@ int audit_init(void) {
         return (-1);
     }
 
-    // Check audit socket configuration
-    switch (set_auditd_config()) {
-    case -1:
-        mdebug1(FIM_AUDIT_NOCONF);
-        return (-1);
-    case 0:
-        break;
-    default:
-        return (-1);
-    }
-
-    // Initialize Audit socket
-    audit_data.socket = init_auditd_socket();
+    // Check audit socket configuration and initialize the Audit socket
+    audit_data.socket = configure_and_connect_audit_socket();
     if (audit_data.socket < 0) {
         merror("Can't init auditd socket in 'init_auditd_socket()'");
         return -1;

@@ -530,11 +530,40 @@ void audit_create_rules_file();
 void audit_rules_to_realtime();
 
 /**
- * @brief Set Auditd socket configuration
+ * @brief Build the list of audisp plugin configurations to try, ordered by preference
  *
- * @return 0 on success, -1 on error
+ * @param plugin_dir [out] Directory holding the audisp plugin configuration files
+ * @param templates [out] Array to fill with the configuration templates, most preferred first
+ * @param max Size of the templates array
+ * @return Number of candidates written to templates, 0 if no known plugins directory was found
  */
-int set_auditd_config(void);
+int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
+
+/**
+ * @brief Move the configuration already on disk to the front of the candidate list
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param templates Candidate list to reorder in place
+ * @param count Number of candidates in the list
+ */
+void audisp_prefer_configuration_on_disk(const char *plugin_dir, const char **templates, int count);
+
+/**
+ * @brief Configure the audisp plugin and connect to the who-data socket, probing the known
+ *        configurations until one of them yields a socket that can be connected to
+ *
+ * @return File descriptor of the connected socket, -1 on error
+ */
+int configure_and_connect_audit_socket(void);
+
+/**
+ * @brief Write the given audisp plugin configuration and restart Auditd if it changed
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param audisp_config Configuration template to render
+ * @return 0 on success, -1 on error, 1 if Auditd could not be restarted
+ */
+int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
 
 /**
  * @brief Initialize Audit evsents socket
