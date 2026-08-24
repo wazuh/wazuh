@@ -1799,12 +1799,21 @@ void Syscollector::scanProcesses()
             checksumInput.erase("stime");
             rawData["checksum"] = getItemChecksum(checksumInput);
 
-            input["table"] = PROCESSES_TABLE;
-            input["data"] = nlohmann::json::array( { rawData } );
-            input["options"]["return_old_data"] = true;
-            input["options"]["ignore"] = PROCESSES_IGNORED_FIELDS;
+            // Wazuh's own daemons churn PIDs on every agent restart (old ones exit, new ones start),
+            // which would otherwise surface as a created/deleted flood of no security value each time
+            // the agent restarts. Excluded here, not just at notify time, so they never enter the
+            // baseline either.
+            m_spNormalizer->removeExcluded("processes", rawData);
 
-            txn.syncTxnRow(input);
+            if (!rawData.empty())
+            {
+                input["table"] = PROCESSES_TABLE;
+                input["data"] = nlohmann::json::array( { rawData } );
+                input["options"]["return_old_data"] = true;
+                input["options"]["ignore"] = PROCESSES_IGNORED_FIELDS;
+
+                txn.syncTxnRow(input);
+            }
         });
         txn.getDeletedRows(callback);
 
