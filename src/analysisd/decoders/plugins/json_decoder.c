@@ -22,6 +22,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         return;
 
     if (strcmp(key, "srcip") == 0){
+        os_free(lf->srcip);
         os_strdup(value, lf->srcip);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -43,6 +44,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstip") == 0){
+        os_free(lf->dstip);
         os_strdup(value, lf->dstip);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -63,6 +65,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstport") == 0){
+        os_free(lf->dstport);
         os_strdup(value, lf->dstport);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -73,6 +76,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "srcport") == 0){
+        os_free(lf->srcport);
         os_strdup(value, lf->srcport);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -83,6 +87,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "protocol") == 0){
+        os_free(lf->protocol);
         os_strdup(value, lf->protocol);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -93,6 +98,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "action") == 0){
+        os_free(lf->action);
         os_strdup(value, lf->action);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -103,6 +109,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "srcuser") == 0){
+        os_free(lf->srcuser);
         os_strdup(value, lf->srcuser);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -131,6 +138,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     */
     if (strcmp(key, "user") == 0){
         if (!lf->dstuser || !*lf->dstuser) {
+            os_free(lf->dstuser);
             os_strdup(value, lf->dstuser);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -142,6 +150,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "id") == 0){
+        os_free(lf->id);
         os_strdup(value, lf->id);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -152,6 +161,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "status") == 0){
+        os_free(lf->status);
         os_strdup(value, lf->status);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -162,6 +172,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "url") == 0){
+        os_free(lf->url);
         os_strdup(value, lf->url);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -172,6 +183,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "data") == 0){
+        os_free(lf->data);
         os_strdup(value, lf->data);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -182,6 +194,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "extra_data") == 0){
+        os_free(lf->extra_data);
         os_strdup(value, lf->extra_data);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -192,6 +205,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "systemname") == 0){
+        os_free(lf->systemname);
         os_strdup(value, lf->systemname);
 #ifdef TESTRULE
         if (!alert_only) {
