@@ -681,15 +681,14 @@ namespace chrome
 
 #if defined(_WIN32) || defined(_WIN64)
 
-            for (const auto& browser : WINDOWS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : WINDOWS_PATH_LIST)
 #elif defined(__APPLE__) && defined(__MACH__)
 
-            for (const auto& browser : MACOS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : MACOS_PATH_LIST)
 #elif defined(__linux__)
-            for (const auto& browser : LINUX_PATH_LIST)
+            for (const auto& [browserType, browserPath] : LINUX_PATH_LIST)
 #endif
             {
-                std::string browserPath = std::get<1>(browser);
                 const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
 
                 if (!Utils::existsDir(profilePath))
@@ -698,7 +697,7 @@ namespace chrome
                     continue;
                 }
 
-                m_currentBrowserType = CHROME_BROWSER_TYPES.at(std::get<0>(browser));
+                m_currentBrowserType = CHROME_BROWSER_TYPES.at(browserType);
 
                 // The profile path exists, now let's find the profile.
                 if (isValidChromeProfile(profilePath))
