@@ -15,10 +15,14 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 add_executable(bounded_queue_test bounded_queue_test.cpp)
 
 target_link_libraries(bounded_queue_test
-    gtest_main
-    gmock_main
-    gtest
-    gmock
+    debug gtestd
+    debug gmockd
+    debug gtest_maind
+    debug gmock_maind
+    optimized gtest
+    optimized gmock
+    optimized gtest_main
+    optimized gmock_main
     pthread
     -fsanitize=address
     -fsanitize=undefined

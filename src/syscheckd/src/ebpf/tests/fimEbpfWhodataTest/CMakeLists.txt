@@ -26,10 +26,14 @@ foreach(TEST_FILE ${TEST_FILES})
     get_filename_component(TEST_NAME "${TEST_FILE}" NAME_WE)
     add_executable("${TEST_NAME}" "${TEST_FILE}")
     target_link_libraries(${TEST_NAME}
-        gtest
-        gmock
-        gtest_main
-        gmock_main
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
         pthread
         fimebpf
         -fsanitize=address
