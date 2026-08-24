@@ -346,7 +346,7 @@ These rules say what sums to what — read them before comparing families:
 
 - [Configuration](configuration.md#internal-options) — every `remoted.*` setting linked from
   the Tuning columns above
-- [HTTPS Events API — Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems)
+- [HTTPS Agent API — Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems)
 - [Module overview — Local admin socket](README.md#local-admin-socket)
 - Developer-level detail (where each metric is counted, hot-path cost, test coverage):
   `src/remoted/remoted_module/README.md`, section *Metrics catalog* (in-repo, outside this book)

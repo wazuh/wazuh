@@ -51,6 +51,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DEFAULT_PASSWORD_FILE = "/var/wazuh-manager/etc/authd.pass"
 HKDF_INFO = b"WAZUH-ENROLL-CMAC-KEY" + bytes([1])
 
+# The only value the manager accepts (remoted::auth::kSupportedProtocolVersion). Sent as the
+# protocol-version header AND covered by the CMAC's second line -- the same field in both places.
+PROTOCOL_VERSION = "1"
+
 # Must match EnrollmentAuthConfig's defaults (enrollmentAuthenticator.hpp) unless the manager
 # overrides them via remoted.auth_max_request_age/_future_skew -- only used to pick timestamps
 # that reliably land on the wrong side of each window.
@@ -68,7 +72,9 @@ def sign_request(key: bytes, method: str, request_target: str, timestamp: int, b
     """Builds the WazuhEnroll canonical byte sequence and returns its lowercase-hex AES-CMAC."""
     c = cmac.CMAC(algorithms.AES(key))
     c.update(b"WAZUH-ENROLL\n")
-    c.update(b"1\n")
+    # Same value as the protocol-version header, which the manager validates before checking this
+    # MAC -- the two are the same field, not a literal that happens to match.
+    c.update(PROTOCOL_VERSION.encode() + b"\n")
     c.update(method.upper().encode() + b"\n")
     c.update(request_target.encode() + b"\n")
     c.update(str(timestamp).encode() + b"\n")
@@ -111,7 +117,12 @@ DEFAULT_TIMEOUT_SECONDS = 20
 
 def send(base_url, body, headers, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     url = base_url.rstrip("/") + "/enroll"
-    headers = {**headers, "Content-Type": "application/json"}
+    # protocol-version first so a scenario can override it (pass a different value) or drop it
+    # (pass None) -- every other scenario gets the valid one without having to say so. /enroll
+    # validates this header before anything else, so omitting it here would turn every scenario
+    # into the same 400.
+    headers = {"protocol-version": PROTOCOL_VERSION, **headers, "Content-Type": "application/json"}
+    headers = {k: v for k, v in headers.items() if v is not None}
     return requests.post(url, headers=headers, data=body, cert=cert, verify=False, timeout=timeout)
 
 
@@ -180,6 +191,24 @@ def scenario_malformed_json(key, _name, timestamp):
     return headers, body
 
 
+def scenario_missing_protocol_version(key, name, timestamp):
+    # Otherwise a fully valid request: None drops the header in send(). Rejected before the
+    # credential check, so this is a 400 in every mode -- including Open, where there is no
+    # credential to check at all.
+    body = build_body(name, "5.0.0")
+    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    return {**headers, "protocol-version": None}, body
+
+
+def scenario_unsupported_protocol_version(key, name, timestamp):
+    # A version this manager does not implement. Must be its own 400, never an opaque 401: the
+    # signature below is valid, so a MAC failure here would mean the version is being checked as
+    # part of the credential instead of on its own.
+    body = build_body(name, "5.0.0")
+    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    return {**headers, "protocol-version": "999"}, body
+
+
 AUTH_SCENARIOS = [
     ("valid_signature", 200, scenario_valid),
     ("tampered_body", 401, scenario_tampered_body),
@@ -194,6 +223,8 @@ VALIDATION_SCENARIOS = [
     ("missing_name", 400, scenario_missing_name),
     ("invalid_ip", 400, scenario_invalid_ip),
     ("malformed_json", 400, scenario_malformed_json),
+    ("missing_protocol_version", 400, scenario_missing_protocol_version),
+    ("unsupported_protocol_version", 400, scenario_unsupported_protocol_version),
 ]
 
 

@@ -35,6 +35,7 @@
 
 #include <gtest/gtest.h>
 
+#include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
 #include "auth/cmac.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
@@ -178,6 +179,9 @@ namespace
             std::string request = "POST /enroll HTTP/1.1\r\n";
             request += "Host: 127.0.0.1\r\n";
             request += "Content-Type: application/json\r\n";
+            // Required on /enroll like on every other authenticated route; without it the endpoint
+            // answers 400 before reaching the mTLS behavior these tests are about.
+            request += "protocol-version: " + std::string {remoted::auth::kSupportedProtocolVersion} + "\r\n";
             if (!authorizationHeader.empty())
             {
                 request += "Authorization: " + authorizationHeader + "\r\n";

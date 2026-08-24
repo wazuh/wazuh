@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are transmitted from remoted to analysisd. This protocol ensures that every event carries complete agent metadata for stateless processing.
+The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are transmitted from remoted to the engine. This protocol ensures that every event carries complete agent metadata for stateless processing.
 
 ## Protocol Identifier
 

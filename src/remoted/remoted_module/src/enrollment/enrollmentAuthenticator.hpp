@@ -46,6 +46,11 @@ namespace remoted::enrollment
         /// that many in-flight bytes reserved, and so an oversized body gets the same 413 every
         /// other endpoint returns instead of falling through to parseAndValidateBody()'s 400.
         std::size_t maxBodySize {10U * 1024U * 1024U};
+
+        /// The accepted `protocol-version` header value, shared with the agent<->manager scheme via
+        /// remoted::auth::kSupportedProtocolVersion so the two can never accept different versions.
+        /// Validated in EVERY mode (including Open), for the reasons in authenticate()'s comment.
+        std::string supportedProtocolVersion {remoted::auth::kSupportedProtocolVersion};
     };
 
     /**
@@ -79,24 +84,30 @@ namespace remoted::enrollment
         /**
          * @brief Authenticate one /enroll request.
          *
+         * @param protocolVersionHeader  Value of the protocol-version header (empty if absent or
+         *                               duplicated -- the transport collapses both). Validated
+         *                               FIRST, in every mode including Open, exactly as
+         *                               AuthMiddleware::beginSession() does for every other route.
          * @param authorizationHeader    Value of the Authorization header (empty if absent).
          *                               Ignored when requirePassword is false.
          * @param method                 Raw HTTP method, as received (case-insensitive).
          * @param requestTarget          Raw path + query, exactly as received.
          * @param body                   Raw request body bytes, exactly as sent on the wire.
-         *                               Checked against maxBodySize FIRST, in every mode
-         *                               (including Open) -- see the field's own doc comment.
+         *                               Checked against maxBodySize once the version is accepted,
+         *                               in every mode -- see the field's own doc comment.
          * @param currentUnixTimeSeconds Current time, for the timestamp-window check.
          * @return std::nullopt on success, or the AuthError that rejected the request.
          */
-        std::optional<remoted::auth::AuthError> authenticate(std::string_view authorizationHeader,
+        std::optional<remoted::auth::AuthError> authenticate(std::string_view protocolVersionHeader,
+                                                             std::string_view authorizationHeader,
                                                              std::string_view method,
                                                              std::string_view requestTarget,
                                                              std::string_view body,
                                                              std::int64_t currentUnixTimeSeconds) const;
 
     private:
-        std::optional<remoted::auth::AuthError> authenticatePassword(std::string_view authorizationHeader,
+        std::optional<remoted::auth::AuthError> authenticatePassword(std::string_view protocolVersionHeader,
+                                                                     std::string_view authorizationHeader,
                                                                      std::string_view method,
                                                                      std::string_view requestTarget,
                                                                      std::string_view body,

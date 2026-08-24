@@ -1,13 +1,15 @@
-# HTTPS Events API
+# HTTPS Agent API
 
-`remoted` embeds a self-contained C++ module (`remoted_module`) that runs an **HTTPS listener**
-for agent-authenticated event ingestion, in addition to the classic AES-encrypted TCP/UDP channel
-on port `1514`. The listener is built on RESTinio + OpenSSL and authenticates every request with a
-per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
+`remoted` embeds a self-contained C++ module (`remoted_module`) that runs an **HTTPS listener** on
+port `1517`. This is the agent-manager transport in 5.0: a 5.x agent enrolls, reports and receives
+work over it exclusively. The classic AES-encrypted TCP/UDP channel on port `1514` still exists, but
+only to keep serving 4.x agents, and only when it is explicitly enabled with `<remote><legacy>` —
+see [Configuration](configuration.md).
 
-> **Experimental / work in progress.** A successful request is authenticated, its H/E batch is
-> forwarded to the engine's event ingress, and the response reflects the downstream result (see
-> [Endpoints](#endpoints)). The listener **requires** a TLS certificate and key to be present (see
+The listener is built on RESTinio + OpenSSL and authenticates every request with a per-agent
+**AES-CMAC** signature derived from the agent's pre-shared key.
+
+> The listener **requires** a TLS certificate and key to be present (see
 > [Transport and TLS](#transport-and-tls)); a self-signed pair is generated automatically at
 > install time on manager packages, so this is satisfied on a default install.
 
@@ -266,7 +268,24 @@ unprocessed payload in memory, and the **deferred-work limiter** bounds how many
 awaiting the downstream service. The liveness `GET /` is exempt from the byte budget, so it stays
 `200` under pressure. See the memory settings below.
 
+The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/stateful`, a
+digits-only `Retry-After` from the inventory sync server is passed through, since there the
+downstream answer **is** the session result.
+
+**Statuses remoted never sends.** `429 Too Many Requests` is not part of this contract — capacity is
+shed with `503`, as above. Neither is `426 Upgrade Required`. The agent's client classifies both as
+retryable anyway, so an agent that logs one has been answered by something between it and the
+manager (a load balancer, a proxy, a WAF) rather than by remoted. Treat either as a sign to look at
+the intermediary — see [Load balancers](load-balancers/README.md).
+
 ## Endpoints
+
+The listener exposes **nine** agent-facing routes. Every one of them except `GET /` and
+`POST /enroll` is authenticated with the AES-CMAC scheme above.
+
+The module's own statistics are **not** served here: they live on a separate manager-local Unix
+socket (`GET /`, `GET /metrics` on `queue/sockets/remoted-module.sock`), so they are never reachable
+from an agent — see [the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
@@ -276,7 +295,9 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
-  return the errors above.
+  return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
+  the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
+  to the engine. Do not configure an intermediary to require or rewrite it.
 - **`POST /control`** — authenticated agent lifecycle and control messages. Once the signature is
   verified, the module processes the agent's control message (`startup`, `notify`, or `shutdown`),
   updates agent metadata in wazuh-db, retrieves pending tasks from task-manager, and returns
@@ -284,7 +305,8 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   limits, cluster info, and groups), periodic keepalive every 10 seconds (`notify` with hash-based
   change detection for config and settings), and clean disconnection (`shutdown`). Returns **`200
   OK`** with a JSON response on success, **`400`** on malformed requests, **`401`** on auth
-  failures, or **`503`** when wazuh-db/task-manager are unreachable. See
+  failures, **`409`** when the agent's version is higher than this manager allows, or **`503`** when
+  wazuh-db/task-manager are unreachable. See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
   the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
@@ -295,6 +317,20 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   answer is bounded by `remoted.downstream_stateful_response_timeout`
   (see [configuration](configuration.md)). Bodies may be zstd-compressed
   (`Content-Encoding: zstd`); remoted decompresses before relaying.
+- **`POST /download`** — authenticated retrieval of a centralized configuration (`merged.mg`) or a
+  WPK upgrade package. The only route that answers with a **streamed** body: HTTP chunked transfer
+  encoding, so memory does not grow with file size. Returns **`200 OK`** with
+  `Content-Type: application/octet-stream`, **`400`** on a malformed request or a rejected
+  identifier, **`404`** when the resource does not exist, or **`500`**. See
+  [Download endpoint](#download-endpoint-post-download) below for details.
+- **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
+  its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
+  `queue/sockets/inventory-sync.sock`, stamping the authenticated identity as `X-Wazuh-Agent-Id`.
+  Returns **`200 OK`** with a fixed `{}`, **`400`** on an empty or rejected document, **`413`**, or
+  **`503`**. See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
+- **`POST /config`** — authenticated ingestion of the configuration document an agent reports.
+  Same pipeline as `/stats`; differs in that a successful answer carries the enriched document back.
+  See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
 - **`POST /scan/vd`** — authenticated on-demand Vulnerability Detection re-scan request, sent by an
   agent once it notices (via `notify`'s `vd_feed_offset`) that this node's feed has moved past what
   it last synced against. Returns **`200 OK`** when the request's `feed_offset` matches this node's
@@ -311,8 +347,8 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
   [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
-The machine-readable contract is published as OpenAPI — see the
-[endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
+The machine-readable contract is published as OpenAPI, covering all nine routes — see the
+[endpoint reference](agent-api-reference.html) (source: [`agent-api.yaml`](agent-api.yaml)).
 
 ## Configuration
 
@@ -564,9 +600,14 @@ No hashes are included in the startup response.
 ```json
 {
   "limits": {
-    "fim": {"file": 100000, "registry_key": 100000, "registry_value": 100000},
-    "syscollector": {"packages": 50000, "processes": 50000, "ports": 50000},
-    "sca": {"checks": 10000}
+    "fim": {"file": 30000, "registry_key": 30000, "registry_value": 30000},
+    "syscollector": {
+      "hotfixes": 30000, "packages": 30000, "processes": 30000, "ports": 30000,
+      "network_iface": 30000, "network_protocol": 30000, "network_address": 30000,
+      "hardware": 30000, "os_info": 30000, "users": 30000, "groups": 30000,
+      "services": 30000, "browser_extensions": 30000
+    },
+    "sca": {"checks": 30000}
   },
   "cluster": {
     "name": "wazuh-cluster"
@@ -577,15 +618,50 @@ No hashes are included in the startup response.
 }
 ```
 
+Every entry under `limits` is the per-module inventory cap the agent must apply, and every one of
+them defaults to **30000**. They are not `remoted.*` settings: each is its own internal option under
+its module's own namespace — `fim.file_limit`, `fim.registry_key_limit`,
+`fim.registry_value_limit`, `syscollector.<name>_limit` for each of the thirteen keys above, and
+`sca.checks_limit` — read once at startup from
+`wazuh-manager-internal-options.conf` (range `0` to `INT_MAX`). The object is sent verbatim as the
+manager built it, so an operator who raises one of those options sees the new value in the next
+`startup` response, and a limit renamed or added there appears here with no change to this endpoint.
+
+**Version rejection.** `startup` is the only message whose `version` is validated — `notify`
+deliberately skips the check to keep the hot path fast. A rejection also writes
+`status_code = invalid_version` to global.db, and answers one of two statuses:
+
+| Cause | HTTP | wazuh-db `version` column |
+| --- | --- | --- |
+| Version is malformed (not `MAJOR.MINOR.PATCH`) | `400` | `N/A` sentinel — the framework's version parser raises on anything else, which would break the whole agent listing |
+| Version is well-formed but higher than the manager's, and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
+
+The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
+re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
+change on the agent's side.
+
 #### Notify (keepalive)
 
 Sent every 10 seconds. The agent includes metadata (version) and optionally host information
-(hostname, architecture, IP, OS details). The manager calculates two hashes: `settings_hash` (SHA-256
-of limits + cluster + groups from the startup data) and `config_hash` (SHA-256 of the agent's
-`merged.mg` file), queries task-manager for pending tasks, and returns the hashes along with any
-tasks.
+(hostname, architecture, IP, OS details). The manager calculates two hashes, queries task-manager for
+pending tasks, and returns the hashes along with any tasks.
 
-The manager throttles wazuh-db writes per agent (default 300s): when the throttle window has expired,
+The two hashes cover different things, and the difference matters to an agent implementer:
+
+- **`settings_hash`** — SHA-256 over the manager's `limits` object and `cluster.name` **only**. It is
+  a property of the manager, not of the agent: it does **not** include the agent's groups, and it is
+  computed once and cached for the process's lifetime, so it is byte-identical in every agent's
+  response. A change means the manager was reconfigured and restarted, which is why the agent's
+  response to a mismatch is a fresh `startup` (to pick up the new limits and cluster name).
+- **`config_hash`** — SHA-256 of the `merged.mg` this agent's group selector resolves to, so it *is*
+  per-agent, and it moves whenever that file changes.
+
+A group change therefore does **not** move `settings_hash`. Groups are delivered directly, in
+`agent.groups` of this same response, and a group change surfaces to the agent as a `config_hash`
+mismatch, since it resolves to a different `merged.mg`.
+
+The manager throttles wazuh-db writes per agent (`remoted.control_keepalive_throttle`, default 60s —
+see [Configuration](configuration.md#remotedcontrol_keepalive_throttle)): when the window has expired,
 it writes a full update (`updateAgentData`) if host metadata is present in the request, or a
 lightweight keepalive (`updateKeepalive`) otherwise.
 
@@ -636,9 +712,15 @@ update), which had no equivalent once agent-manager connections became stateless
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+  "tasks": [],
   "vd_feed_offset": 12345678
 }
 ```
+
+Every field above is **always present**, `tasks` included — it is an empty array when the manager has
+no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
+selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
+rather than omitting the field or sending an empty string.
 
 **Response with tasks (`200 OK`):**
 ```json
@@ -721,9 +803,17 @@ Control-specific conditions:
 | Malformed JSON body                        | `400` | `invalid_json`         |
 | Invalid agent ID format                    | `400` | `invalid_agent_id`     |
 | Unknown message type                       | `400` | `unknown_message_type` |
-| Invalid agent version (startup only)       | `400` | `invalid_version`      |
+| Malformed agent version (startup only)     | `400` | `invalid_version`      |
+| Agent version higher than allowed (startup only) | `409` | `invalid_version` |
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
 | wazuh-db error during startup (get groups) | `500` | `database_error`       |
+
+The two version rejections deliberately carry different statuses even though they share an `error`
+message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
+agent treats it as terminal. A version that is merely **higher than this manager allows** is a
+`409 Conflict` — it can start succeeding without the agent changing anything (an operator sets
+`<remote><agents><allow_higher_versions>` to `yes`, or the manager is upgraded), so the agent enters
+its `REJECTED` state and re-tries `startup` on a slow cadence instead of giving up.
 
 Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the same responses as
 `/stateless`. Throttled logging (one message per 90 seconds per condition) prevents log flooding
@@ -886,7 +976,7 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
 
   ```text
   WAZUH-ENROLL\n
-  1\n
+  <protocol-version>\n    (the header's value, already validated -- today always 1)
   <uppercase-method>\n
   <request-target>\n      (raw path + query, exactly as sent)
   <unix-timestamp>\n
@@ -902,6 +992,13 @@ configuration.
 
 Every auth rejection collapses to the same generic response, so a client cannot tell which check
 failed: `401` with `{"error":{"code":0,"message":"Invalid client authentication"}}`.
+
+The `1` on the second line of the canonical sequence is the `protocol-version` header's value, not a
+literal — the same field, in both places. `/enroll` validates that header first, exactly as every
+other authenticated route does, so a missing or unsupported version is rejected with its own `400`
+(`Missing required header: protocol-version` / `Unsupported protocol-version`) before any credential
+is examined. That check applies in **every** mode, including the credential-less one: the version is
+a property of the protocol, not of the credential.
 
 **Worked example** (verified known-answer vector, useful as a cross-implementation test):
 
@@ -969,8 +1066,9 @@ Verbatim from `authd` — the `key` the agent must store and use to sign every s
 | Condition | HTTP | Notes |
 | --- | --- | --- |
 | Enrollment administratively disabled | `403` | Route always exists; see above. |
+| Missing or unsupported `protocol-version` | `400` | Validated FIRST, in every mode -- before the credential check and before the body-size cap, matching every other authenticated route. |
 | Missing/invalid credential | `401` | Collapsed to one generic message; see Authentication above. |
-| Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked BEFORE the CMAC runs (and before a credential check, in Open mode too) -- an oversized body is rejected without ever being hashed or reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
+| Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the CMAC runs (and before a credential check, in Open mode too) -- an oversized body is rejected without ever being hashed or reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
 | Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
@@ -991,6 +1089,211 @@ first, in the same flat shape it uses for every route, `/enroll` included: an un
 (`500`), capacity-based load shedding once the module's in-flight byte budget is exhausted (`503`),
 or (mTLS mode) a client certificate that doesn't match the connecting peer's address (`403`). These
 are the exception to the "always nested" rule above, not a second business-error shape.
+
+## Download endpoint (`POST /download`)
+
+`/download` serves the two files an agent has to pull from the manager: its **centralized
+configuration** (`merged.mg`, fetched when `/control`'s `config_hash` stops matching what the agent
+holds) and a **WPK upgrade package** (fetched when a `remote_upgrade` task is dispatched). It replaces
+the legacy push, where the manager wrote both down the agent's persistent TCP connection; with
+stateless HTTPS there is no connection to push into, so the agent pulls instead.
+
+It is the only route that answers with a **streamed** body. A WPK can be hundreds of megabytes, so
+the response uses HTTP chunked transfer encoding with memory that does not grow with file size:
+one chunk is resident at a time and a worker slot is held only for the duration of a single read.
+
+### Request
+
+```json
+{
+  "resource_type": "config",
+  "resource_id": "web-servers"
+}
+```
+
+Exactly two members, both strings — an unknown extra member is a rejection, not something skipped,
+so a field a newer agent adds can never be silently ignored by an older manager. The body is capped
+at **4 KiB** before parsing (a real request is about 80 bytes), well below the authenticated-body
+limit, so an oversized or deeply nested blob costs nothing proportional to its size.
+
+| `resource_type` | `resource_id` | Resolves to |
+| --- | --- | --- |
+| `config` | one group name | `etc/shared/<group>/merged.mg` |
+| `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..8)>/merged.mg` |
+| `wpk` | a package filename | `var/upgrade/<filename>` |
+
+The comma-separated form is wazuh's own multigroup selector, and it is what lets an agent in several
+groups fetch its **effective** configuration rather than one member group's. It needs no database
+lookup: the directory name is the first **8 hex characters** (the first four digest bytes) of the
+SHA-256 of the selector verbatim, exactly how wazuh-db names the directory (`WDB_GROUP_HASH_SIZE`).
+
+Accepted identifiers:
+
+- **Group name** — non-empty, at most 255 bytes, not exactly `.` or `..`, and drawn from wazuh's own
+  group-name set (`a-z A-Z 0-9 . : ; _ - = + ! @ ( )`; note the absence of `/`). In a multigroup
+  selector every entry must be valid on its own, which is what rejects a leading, trailing or
+  doubled comma. The whole selector is capped at 4096 bytes.
+- **WPK filename** — non-empty, at most 255 bytes, must **not** begin with a dot, must end in
+  `.wpk`, and is drawn from a stricter set (`a-z A-Z 0-9 . _ -`).
+
+> **There is no group-membership check.** Any authenticated agent can fetch any group's or
+> multigroup's merged configuration (protocol decision on #38022). Authentication proves *an* agent
+> is asking; it does not constrain *which* configuration it may ask for.
+
+Containment differs per form, by design. The multigroup selector is **hashed, never joined**, so it
+cannot traverse by construction. The single-group and WPK forms *do* join agent input into a path, so
+there the grammars are the boundary: with no separator admitted, the joined path has exactly one
+component below its base directory, and the open is `O_NOFOLLOW` so that component cannot be a
+symlink. Loosening either grammar would break that and require a `realpath()` containment check
+instead.
+
+### Responses
+
+**`200 OK`** — `Content-Type: application/octet-stream`, body sent with chunked transfer encoding in
+`remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
+
+### Error handling
+
+| Condition | HTTP | `error` message |
+| --- | --- | --- |
+| Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
+| `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
+| `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
+| Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
+| Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
+
+A symlink is deliberately indistinguishable from an absent file to the agent. Auth failures reuse the
+same responses as `/stateless`.
+
+### Transfer integrity
+
+Two properties matter more than throughput here, because the agent installs what it receives.
+
+**A failed transfer is a truncation, never a short success.** A read error propagates out and the
+response builder is dropped *without* being finished, so the terminating `0\r\n\r\n` chunk is never
+sent and the agent sees an incomplete body it will retry. Ending the stream cleanly instead would
+emit the terminator and hand over a truncated file that looks complete.
+
+**A file rewritten mid-transfer aborts the transfer.** After **every** chunk — not only at
+end-of-stream — the descriptor is re-`fstat`ed and its size and mtime compared against what they were
+at `open()`. A mismatch means what has been streamed so far is a mix of two versions: shorter is a
+truncating rewrite (`c_group()` regenerating `merged.mg`), longer is a package still being staged,
+and same-size-but-newer-mtime is a rewrite no byte count could see. Checking per chunk is what bounds
+the waste — a writer landing one second into a 1 GiB transfer would otherwise cost the whole
+gigabyte before the transfer was abandoned.
+
+This *detects* the modification, it does not prevent it: a rewrite with an identical length inside
+the same mtime granularity still slips through. Closing that needs writers to publish atomically by
+rename, not a tighter check here.
+
+### Coupling with `/control`
+
+`/control` must report `config_hash` over the file that `/download` resolves to **for the selector it
+hands that agent**. If the two disagree — a hash over one member group's `merged.mg` while the agent
+is given a multigroup selector, say — the agent re-downloads its configuration on every notify.
+
+## Reporting endpoints (`POST /stats` and `POST /config`)
+
+The agent periodically reports two aggregated documents: one carrying every module's **statistics**
+and one carrying its effective **configuration**. The two ship with **different** defaults (see the
+agent's [`<stats_report>` / `<config_report>`](../client/configuration.md)):
+
+| Route | Agent toggle | Enabled by default | Default interval |
+| --- | --- | --- | --- |
+| `POST /stats` | `<agent><stats_report>` | **no** | 60 s |
+| `POST /config` | `<agent><config_report>` | **yes** | 3600 s |
+
+`/config` ships on because the manager needs a configuration snapshot even from an agent whose
+configuration nobody has touched; `/stats` is opt-in. An explicit `<enabled>` always overrides the
+default. They
+replace the pull-style API endpoints of 4.x — the manager no longer asks an agent for its stats, the
+agent reports them and the manager indexes what arrives.
+
+**remoted itself does not interpret either document** — but the service behind it does. remoted
+authenticates the request and relays the body to the
+[Inventory Sync Server](../inventory-sync-server/README.md) over
+`queue/sockets/inventory-sync.sock`, which validates its shape, rebuilds it into an indexable
+document, and writes it: `/stats` into `wazuh-agent-stats` and `/config` into `wazuh-agent-config`.
+Both index **one document per agent, keyed by the agent id**, so each push replaces the previous
+report rather than appending.
+
+Both routes forward the **authenticated** agent id as an `X-Wazuh-Agent-Id` header. These documents
+do not carry a trustworthy id of their own, and the sync server is what writes the authoritative one
+in. The value comes from the `Authorization` header that was already verified, never from the body,
+so a document claiming a different agent cannot override it — anything the agent's own reporter puts
+at the document root is dropped rather than indexed next to it.
+
+### Request
+
+`application/json`, optionally zstd-compressed like any other route. remoted's **only**
+endpoint-level check is that the body is **not empty** — parsing is the sync server's job, and doing
+it on both sides would walk the payload twice on a periodic path. Rejecting an empty body here still
+saves a deferred-work slot and a UDS round trip.
+
+The two bodies have different, specific shapes, and a malformed one is rejected downstream with a
+`400` (see [Error handling](#error-handling-3)):
+
+**`POST /stats`** — an object keyed by module:
+
+```json
+{"modules": {"agent": {}, "logcollector": {}}}
+```
+
+`modules` is moved under `wazuh.agent.statistics` untouched: nothing renames a metric or reshapes a
+module's body, since only the agent knows which of its counters are cumulative.
+
+**`POST /config`** — an **array** of one `{module, config}` pair per module:
+
+```json
+[
+  {"module": "fim", "config": {}},
+  {"module": "logcollector", "config": {}}
+]
+```
+
+Each element is reduced to exactly those two keys — anything else the agent sent is dropped — and the
+array becomes an object keyed by module name under `wazuh.agent.configuration.content`, with
+`modules` derived from its keys so the two cannot drift apart.
+
+A report is **all or nothing** on both routes: one malformed module rejects the whole document rather
+than indexing a partial report the agent could not tell apart from a complete one.
+
+### Responses
+
+The two differ in exactly one way — what a success carries back:
+
+| | `POST /stats` | `POST /config` |
+| --- | --- | --- |
+| `200 OK` body | fixed `{}` | the sync server's enriched document, passed through |
+
+`/stats` answers a fixed body on purpose: the agent has nothing to read back, and a constant keeps an
+arbitrary downstream string off the wire. On **failure** neither route reflects the downstream body —
+both collapse to a fixed local message — so an arbitrary downstream string is never returned to an
+agent.
+
+> **A `200` means accepted, not indexed.** The sync server answers before the indexer write completes
+> (the write is fire-and-forget), so an indexer-side rejection is **silent** to the agent, which
+> already has its `200`. This matters most on `/stats`, whose `wazuh-agent-stats` mapping is
+> `dynamic: strict` with every leaf declared: a module or metric the template does not declare makes
+> the indexer reject the **whole** document with `strict_dynamic_mapping_exception`. So an agent-side
+> metric addition needs no change to this endpoint, but it does need one in the index template — and
+> if it is missed, statistics stop landing with nothing in the agent's logs to say so. `/config`'s
+> template is `dynamic: false` instead, which is far more forgiving: an unrecognized module, or an
+> undeclared key inside a known one, is still written and kept in `_source`, just not indexed for
+> search. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
+
+### Error handling
+
+| Condition | HTTP | `error` message |
+| --- | --- | --- |
+| Empty body, or the sync server rejected the document | `400` | `Invalid stats document` / `Invalid config document` |
+| Body over the auth body limit | `413` | `Request payload is too large` |
+| Sync server unreachable, no timely answer, or any 5xx/unexpected status | `503` | `Service unavailable` |
+
+Every `503` means the same thing to the agent: not accepted, retry on the next reporting interval.
+Auth failures reuse the same responses as `/stateless`. Neither route is timed in the
+`remoted.http.*.latency` histograms — they share `/stateful`'s downstream and produce no new answer of
+their own; see [Metrics](metrics.md).
 
 ## Testing
 
@@ -1028,6 +1331,42 @@ python3 send_scan_vd.py --all
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
+`src/remoted/remoted_module/tools/send_download.py` does the same for `POST /download`, and can
+resolve the agent's own group for you rather than making you name one:
+
+```bash
+# fetch the merged configuration of the agent's first group -> 200 + streamed body
+python3 send_download.py --agent-id 001
+
+# a staged WPK package
+python3 send_download.py --resource-type wpk --wpk wazuh_agent_v5.0.0_linux_x86_64.wpk
+
+# run every success/failure scenario (bad type, rejected identifier, unknown group -> 404, ...)
+python3 send_download.py --all
+
+# concurrency + memory check: N agents downloading at once, sampling remoted's RSS
+python3 send_download.py --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
+# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group
+```
+
+`src/remoted/remoted_module/tools/send_agent_json.py` covers the two reporting routes, `POST /stats`
+and `POST /config`, with the same signing:
+
+```bash
+# one signed /stats report -> 200 + {}
+python3 send_agent_json.py
+
+# the same against /config -> 200 + the enriched document
+python3 send_agent_json.py --endpoint config
+
+# tamper the body after signing -> 401 (invalid MAC)
+python3 send_agent_json.py --tamper
+
+# every scenario against BOTH routes
+python3 send_agent_json.py --all
+# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --body
+```
+
 `src/remoted/remoted_module/tools/send_enroll.py` does the same for `POST /enroll` — but since an
 enrolling agent has no `client.keys` entry to sign with, it works from whatever credential you give
 it directly (a password, a client certificate, or neither) rather than reading one from a file:
@@ -1060,5 +1399,5 @@ python3 send_enroll.py --password Secret123 --all
 - [Authd](../authd/README.md) / [Authd Configuration](../authd/configuration.md) — the enrollment
   service `/enroll` bridges to, and the `remote_enrollment`/`legacy_enrollment` flags that gate
   both enrollment paths.
-- Endpoint contract: [`stateless-api.yaml`](stateless-api.yaml) /
-  [ReDoc reference](stateless-api-reference.html).
+- Endpoint contract: [`agent-api.yaml`](agent-api.yaml) /
+  [ReDoc reference](agent-api-reference.html).

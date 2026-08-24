@@ -49,8 +49,9 @@ against its own version unless `allow_higher_versions` is set) and answers:
 }
 ```
 
-Errors: `400 {"error":"invalid_version"}` when the version is malformed or too new,
-`500 {"error":"database_error"}` when wazuh-db is unreachable.
+Errors: `400 {"error":"invalid_version"}` when the version is malformed,
+`409 {"error":"invalid_version"}` when it is well-formed but too new for the manager's
+`allow_higher_versions` policy, `500 {"error":"database_error"}` when wazuh-db is unreachable.
 
 `cluster` is where a REAL agent learns the values it later echoes in `Start` (it stores them as
 `agent_metadata_t.cluster_name`/`cluster_node`, "received during handshake"). The sender discards

@@ -347,7 +347,8 @@ SCENARIOS = [
     ("invalid_json", 400, scenario_invalid_json),
     ("empty_body", 400, scenario_empty_body),
     ("unknown_message_type", 400, scenario_unknown_message_type),
-    ("invalid_version_startup", 400, scenario_invalid_version_startup),
+    # A well-formed but too-high version is a conflict (409); a malformed one is a bad request (400).
+    ("invalid_version_startup", 409, scenario_invalid_version_startup),
     ("malformed_version", 400, scenario_malformed_version),
     ("oversized_hostname", 400, scenario_oversized_hostname),
     ("invalid_mac_tampered_body", 401, scenario_invalid_mac),

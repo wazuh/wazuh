@@ -4,7 +4,7 @@ Complete configuration reference for the Remoted module.
 
 The remoted module is responsible for managing secure communication between Wazuh agents and the manager. It handles agent connections, authentication, message routing, and event enrichment. This is a manager-only module.
 
-For module overview and architecture, see [Remoted Module](index.html).
+For module overview and architecture, see [Remoted Module](README.md).
 
 ---
 
@@ -129,7 +129,7 @@ Address the HTTPS listener binds to.
 - **Allowed values:** Valid IPv4 or IPv6 address
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
-  [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
+  [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
   for the full explanation.
 
 ### https.dual_stack
@@ -141,7 +141,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 - **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
   rejected as a configuration error
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
-  `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
+  `bind_addr`. See [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
 ### https.certificate
 
@@ -314,7 +314,7 @@ Interval in seconds between polls of the Task Manager's pending tasks on behalf 
 agents older than v5.0.0. Every cycle, `remoted` checks each connected agent's self-reported
 version and, for agents confirmed below v5.0.0, asks the Task Manager for pending tasks and
 delivers any `remote_upgrade` (WPK) one over the agent's existing session — see
-[Remote agent upgrade](/guide/migration/remote-agent-upgrade.md) for the full delivery flow.
+[Remote agent upgrade](../../../guide/migration/remote-agent-upgrade.md) for the full delivery flow.
 
 - **Default value:** `900` (15 minutes)
 - **Allowed values:** Integer from `300` to `86400`
@@ -326,7 +326,7 @@ delivers any `remote_upgrade` (WPK) one over the agent's existing session — se
 ### remoted.keyupdate_interval
 
 Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
-`remoted_module` C++ `Keystore` (see [HTTPS Events API](https-events-api.md)): it hot-reloads
+`remoted_module` C++ `Keystore` (see [HTTPS Agent API](https-events-api.md)): it hot-reloads
 `client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
 periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
 introducing a second one for the same concept.
@@ -516,12 +516,12 @@ Event count threshold for logging compression statistics.
 
 ### HTTPS Agent Server (`remoted_module`)
 
-Advanced tuning for the experimental HTTPS agent server (see
-[HTTPS Events API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
+Advanced tuning for the HTTPS agent server (see
+[HTTPS Agent API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
 downstream UDS client and auth middleware tunables (`remoted.downstream_*`, `remoted.auth_*`,
 further down this section). None of these are part of the regular `<remote>` configuration --
 bind address, port and max body size are regular `<remote>` settings instead (see
-[HTTPS Events API](https-events-api.md#configuration)). An option present in
+[HTTPS Agent API](https-events-api.md#configuration)). An option present in
 `wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
 `remoted` from starting, same as every other internal option.
 
@@ -784,7 +784,7 @@ not an internal option).
 
 Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
 once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
-see [HTTPS Events API](https-events-api.md#content-encoding-zstd). Rejections against either cap
+see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against either cap
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
@@ -1293,7 +1293,7 @@ grep "discarded_count" /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 
 - [Remoted Module](README.md) - Module overview and architecture
 - [Metrics](metrics.md) - The HTTPS agent server's metric catalog, linked back to these settings
-- [HTTPS Events API](https-events-api.md) - The HTTPS transport, protocol and endpoints
+- [HTTPS Agent API](https-events-api.md) - The HTTPS transport, protocol and endpoints
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata caching system
 - [Event Protocol](event-protocol.md) - Agent-manager communication protocol
 - [Architecture](architecture.md) - Module design and implementation
