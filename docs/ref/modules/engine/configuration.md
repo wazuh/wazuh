@@ -107,6 +107,8 @@ Configure bulk indexing and flush behavior:
 - **`analysisd.indexer_bulk_max_bytes`** - Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched (bytes, not event count; allowed range 64KB-100MB)
 - **`analysisd.indexer_flush_interval`** - Periodic flush interval (seconds)
 - **`analysisd.indexer_max_retry_delay`** - Maximum exponential-backoff retry delay in seconds (default: 15, range: 1-3600). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales between retries.
+- **`analysisd.indexer_request_timeout`** - Upper bound in seconds for one data request against the indexer (default: 60, range: 0-3600; 0 disables the bound). Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded.
+- **`analysisd.indexer_monitoring_interval`** - Polling period in seconds of the indexer health monitor that marks each host as available or unavailable (default: 10, range: 1-3600)
 
 #### Synchronization Intervals
 

@@ -407,6 +407,22 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds=15
 - **Allowed values:** 1 to 3600
 - **Note:** Forwarded as `max_retry_delay_seconds`. The minimum is 1 because the connector rejects anything below its base retry delay.
 
+#### wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Upper bound, in seconds, on one HTTP request against the indexer. This is what catches a
+  host that accepted the connection and then never answers, which otherwise blocks the caller
+  indefinitely. The connector reads `0` as "no bound" — exactly the unbounded blocking this option
+  exists to prevent — so `0` is rejected here rather than forwarded. A timed-out bulk request is
+  retried with backoff, not discarded.
+
 #### Asynchronous connector
 
 #### wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes
@@ -469,6 +485,20 @@ wazuh_modules.inventory_sync_server_indexer_async_logger_threads=1
 - **Allowed values:** 1 to 64
 - **Note:** Forwarded as `logger_threads`.
 
+#### wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Same meaning as the synchronous family's `request_timeout_seconds`, for the asynchronous
+  connector. `0` (the connector's "no bound") is rejected here rather than forwarded. A timed-out
+  batch is requeued and retried, not discarded.
+
 #### wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes
 
 Forwarded as `max_queue_bytes`.
@@ -480,6 +510,23 @@ wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes=67108864
 - **Default value:** `67108864` (64 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Forwarded as `max_queue_bytes`. An unbounded queue is the only unbounded allocation this module can be configured to make, so the shipped default is deliberately finite.
+
+#### Shared session
+
+#### wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds
+
+Forwarded to the shared indexer session as `monitoring_interval_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
+```
+
+- **Default value:** `10`
+- **Allowed values:** 1 to 3600
+- **Note:** Polling period of the health monitor that marks each indexer host as available or
+  unavailable. One option, not a sync/async pair: both connectors share the session's single
+  monitor, so there is exactly one polling cadence per module. The connector rejects `0` (a zero
+  period would busy-loop the monitor thread), so `0` is rejected here rather than forwarded.
 
 ---
 

@@ -2784,6 +2784,8 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.indexer_logger_queue_size` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` |
 | `analysisd.indexer_logger_threads` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` |
 | `analysisd.indexer_max_retry_delay` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` |
+| `analysisd.indexer_request_timeout` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` |
+| `analysisd.indexer_monitoring_interval` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` |
 
 ### Synchronization settings
 
