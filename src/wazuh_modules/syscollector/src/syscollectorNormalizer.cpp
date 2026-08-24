@@ -188,42 +188,50 @@ std::map<std::string, std::vector<SysNormalizer::DictionaryRule>> SysNormalizer:
     {
         for (const auto& dictItem : items)
         {
-            DictionaryRule rule;
-            const auto itFindPattern{dictItem.find("find_pattern")};
-            const auto itFindField{dictItem.find("find_field")};
-
-            if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
+            try
             {
-                rule.find = FindRule{std::regex{itFindPattern->get_ref<const std::string&>()},
-                                     itFindField->get_ref<const std::string&>()};
+                DictionaryRule rule;
+                const auto itFindPattern{dictItem.find("find_pattern")};
+                const auto itFindField{dictItem.find("find_field")};
+
+                if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
+                {
+                    rule.find = FindRule{std::regex{itFindPattern->get_ref<const std::string&>()},
+                                         itFindField->get_ref<const std::string&>()};
+                }
+                else if (itFindPattern != dictItem.end() || itFindField != dictItem.end())
+                {
+                    //incomplete find rule, this entry never matches: skip it entirely
+                    continue;
+                }
+
+                const auto itReplacePattern{dictItem.find("replace_pattern")};
+                const auto itReplaceField{dictItem.find("replace_field")};
+                const auto itReplaceValue{dictItem.find("replace_value")};
+
+                if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
+                {
+                    rule.replace = ReplaceRule{std::regex{itReplacePattern->get_ref<const std::string&>()},
+                                               itReplaceField->get_ref<const std::string&>(),
+                                               itReplaceValue->get_ref<const std::string&>()};
+                }
+
+                const auto itAddField{dictItem.find("add_field")};
+                const auto itAddValue{dictItem.find("add_value")};
+
+                if (itAddField != dictItem.end() && itAddValue != dictItem.end())
+                {
+                    rule.add = AddRule{itAddField->get_ref<const std::string&>(),
+                                       itAddValue->get_ref<const std::string&>()};
+                }
+
+                ret[type].push_back(std::move(rule));
             }
-            else if (itFindPattern != dictItem.end() || itFindField != dictItem.end())
-            {
-                //incomplete find rule, this entry never matches: skip it entirely
-                continue;
-            }
+            // LCOV_EXCL_START
+            catch (...)
+            {}
 
-            const auto itReplacePattern{dictItem.find("replace_pattern")};
-            const auto itReplaceField{dictItem.find("replace_field")};
-            const auto itReplaceValue{dictItem.find("replace_value")};
-
-            if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
-            {
-                rule.replace = ReplaceRule{std::regex{itReplacePattern->get_ref<const std::string&>()},
-                                           itReplaceField->get_ref<const std::string&>(),
-                                           itReplaceValue->get_ref<const std::string&>()};
-            }
-
-            const auto itAddField{dictItem.find("add_field")};
-            const auto itAddValue{dictItem.find("add_value")};
-
-            if (itAddField != dictItem.end() && itAddValue != dictItem.end())
-            {
-                rule.add = AddRule{itAddField->get_ref<const std::string&>(),
-                                   itAddValue->get_ref<const std::string&>()};
-            }
-
-            ret[type].push_back(std::move(rule));
+            // LCOV_EXCL_STOP
         }
     }
 
