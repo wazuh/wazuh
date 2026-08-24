@@ -112,12 +112,12 @@ def set_agent_config(request: pytest.FixtureRequest):
 
     configurations = getattr(request.module, "test_configuration")
     # <agent> is the 5.x name for what 4.x spelled <client> (#38103) -- the legacy tag is only
-    # read for <server><address> as a fallback, so <port> would be silently ignored under it.
+    # read for <client><server><address> as a fallback, so <port> would be silently ignored under it.
     agent_conf = {
         "section": "agent",
         "elements": [
             {
-                "server": {
+                "manager": {
                     "elements": [
                         {"address": {"value": "127.0.0.1"}},
                         {"port": {"value": 1517}},
