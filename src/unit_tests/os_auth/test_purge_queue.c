@@ -37,6 +37,11 @@
 /// Higher than any id these cases store, so loading never has to raise it.
 #define SETTLED_ID_COUNTER 9999
 
+/* The pending-removal queue add_remove() appends to. Declared here the way main-server.c does, since
+ * that file is deliberately left out of authd_lib and cannot set the tail up for us. */
+extern struct keynode *queue_remove;
+extern struct keynode * volatile *remove_tail;
+
 /* Real files: these functions exist in order to persist, so stubbing the file away would leave
  * nothing worth testing. */
 static int setup_queue(void **state) {
@@ -107,6 +112,43 @@ static void test_push_marks_the_id_as_pending_and_persists_it(void **state) {
     purge_queue_drop_head();
     assert_false(purge_is_pending("004"));
     assert_null(strstr(read_purge_file(), "purge 004"));
+}
+
+static void test_an_id_is_pending_from_the_moment_the_agent_leaves_the_keystore(void **state) {
+    (void)state;
+
+    /* add_remove() is the one point both the local socket and a force-replacement funnel through, and
+     * it runs before the deletion is answered -- while the purge is only queued later, by the writer.
+     * If the id were only refused from the queue onward, an insertion naming it inside that window
+     * would take an id whose purge is already on its way, and that purge would delete the new agent's
+     * documents. So the reservation has to start here. */
+    struct keynode *node;
+    os_ip entry_ip = { .ip = "any" };
+    keyentry entry = { .id = "007", .name = "removed-agent", .ip = &entry_ip };
+
+    remove_tail = &queue_remove;
+    assert_false(purge_is_pending("007"));
+
+    add_remove(&entry);
+    assert_true(purge_is_pending("007"));
+
+    /* The writer takes over: still pending, now durably. */
+    purge_queue_push("007");
+    assert_true(purge_is_pending("007"));
+    assert_non_null(strstr(read_purge_file(), "purge 007 "));
+
+    /* And only the relay's confirmation frees the id. */
+    purge_queue_drop_head();
+    assert_false(purge_is_pending("007"));
+
+    while ((node = queue_remove) != NULL) {
+        queue_remove = node->next;
+        os_free(node->id);
+        os_free(node->name);
+        os_free(node->ip);
+        os_free(node);
+    }
+    remove_tail = &queue_remove;
 }
 
 static void test_a_due_entry_is_handed_over_without_being_removed(void **state) {
@@ -228,6 +270,8 @@ static void test_stopping_releases_the_relay(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_push_marks_the_id_as_pending_and_persists_it, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_an_id_is_pending_from_the_moment_the_agent_leaves_the_keystore,
+                                        setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_a_due_entry_is_handed_over_without_being_removed, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_the_id_counter_only_ever_grows, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_loading_raises_the_id_counter_past_every_stored_id, setup_queue, teardown_queue),

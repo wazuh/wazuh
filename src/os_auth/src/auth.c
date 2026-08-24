@@ -87,6 +87,66 @@ static int purge_last_id = 0;
 /// of authd_lib, so depending on it here would make this code impossible to unit-test.
 static bool purge_stopping = false;
 
+/// An id that has left the keystore but whose purge the writer has not queued yet.
+///
+/// The delete response goes out as soon as the key is dropped from memory, while the purge is only
+/// queued by the writer, after it has rewritten client.keys. Without this list an insertion naming
+/// that same id would find it free in both guards -- gone from the keystore, not yet in the queue --
+/// and the purge, queued a moment later, would delete the NEW agent's documents. Under a bulk
+/// deletion the writer takes seconds to reach the last entry, so the window is not theoretical.
+///
+/// In memory only, on purpose: nothing about a removal is persisted before client.keys is rewritten,
+/// and a crash in that window leaves the agent still listed there, holding its id legitimately.
+typedef struct purge_reserved {
+    char *id;
+    struct purge_reserved *next;
+} purge_reserved_t;
+
+/// Guarded by mutex_purge, like the queue it feeds.
+static purge_reserved_t *purge_reserved = NULL;
+
+/// Reserve an id at removal time. Idempotent: an id cannot leave the keystore twice without the
+/// writer running in between, but a repeat must not grow the list either way.
+static void purge_reserve_id(const char *agent_id) {
+    purge_reserved_t *node;
+
+    if (!agent_id) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (node = purge_reserved; node; node = node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            w_mutex_unlock(&mutex_purge);
+            return;
+        }
+    }
+
+    os_calloc(1, sizeof(purge_reserved_t), node);
+    os_strdup(agent_id, node->id);
+    node->next = purge_reserved;
+    purge_reserved = node;
+
+    w_mutex_unlock(&mutex_purge);
+}
+
+/// Drop a reservation, with mutex_purge already held. Called once the id's fate is settled: either
+/// the queue owns it now, or it was refused and will never be purged at all.
+static void purge_unreserve_id_locked(const char *agent_id) {
+    purge_reserved_t **prev;
+    purge_reserved_t *node;
+
+    for (prev = &purge_reserved; (node = *prev) != NULL; prev = &node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            *prev = node->next;
+            os_free(node->id);
+            os_free(node);
+            return;
+        }
+    }
+}
+
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
 static bool w_auth_group_regex_compiled = false;
@@ -118,6 +178,10 @@ void add_remove(const keyentry *entry) {
 
     (*remove_tail) = node;
     remove_tail = &node->next;
+
+    // Before this returns, and therefore before the caller answers the deletion: from here on an
+    // insertion naming this id is refused until the writer has queued the purge for real.
+    purge_reserve_id(entry->id);
 }
 
 
@@ -825,6 +889,8 @@ void purge_queue_push(const char *agent_id) {
     w_mutex_lock(&mutex_purge);
 
     if (purge_queue_size >= PURGE_QUEUE_MAX_ENTRIES) {
+        // Nothing will ever purge this id, so it must not stay reserved either.
+        purge_unreserve_id_locked(agent_id);
         w_mutex_unlock(&mutex_purge);
         mwarn("The pending deletion queue is full (%d entries); the documents of agent '%s' were not "
               "queued for deletion. Repeat the deletion once the inventory sync server catches up.",
@@ -837,6 +903,9 @@ void purge_queue_push(const char *agent_id) {
     (*purge_tail) = node;
     purge_tail = &node->next;
     purge_queue_size++;
+
+    // The queue is the durable owner of this id now; the removal-time reservation can go.
+    purge_unreserve_id_locked(agent_id);
 
     // Persisted BEFORE the relay is woken: if this crashed in between, the next start would replay
     // an entry that was never sent, which is exactly the direction we want to fail in.
@@ -877,6 +946,19 @@ bool purge_is_pending(const char *agent_id) {
         if (!strcmp(node->id, agent_id)) {
             pending = true;
             break;
+        }
+    }
+
+    // Also the ids still on their way to the queue, or the window between the delete response and
+    // the writer's pass would let an insertion reuse the id -- see purge_reserved.
+    if (!pending) {
+        purge_reserved_t *reserved;
+
+        for (reserved = purge_reserved; reserved; reserved = reserved->next) {
+            if (!strcmp(reserved->id, agent_id)) {
+                pending = true;
+                break;
+            }
         }
     }
 
@@ -1148,6 +1230,15 @@ void purge_queue_discard(void) {
     purge_queue = NULL;
     purge_tail = &purge_queue;
     purge_queue_size = 0;
+
+    // Reservations die with the process: they were never persisted, and the agents they refer to are
+    // still in client.keys unless the writer got to them (in which case they are in `node` above).
+    while (purge_reserved) {
+        purge_reserved_t *stale = purge_reserved;
+        purge_reserved = stale->next;
+        os_free(stale->id);
+        os_free(stale);
+    }
 
     w_mutex_unlock(&mutex_purge);
 

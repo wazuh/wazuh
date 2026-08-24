@@ -77,7 +77,7 @@ A removal touches four places, and only the first three are immediate.
 flowchart LR
     D1["DELETE /agents\n(server API)"] --> ADD
     D2["enrollment with a name\nthat already exists"] --> ADD
-    D3["POST /agents/insert\nwith an explicit id"] -->|"refused if the id\nis not free to reuse"| REJ[["9012 Duplicate ID\n9016 pending deletion"]]
+    D3["POST /agents/insert\nwith an explicit id"] -->|"refused if the id\nis not free to reuse"| REJ[["9012 Duplicate ID\n9018 pending deletion"]]
 
     ADD["add_remove + OS_DeleteKey"] --> M1["1. in-memory keystore\n(immediate)"]
     ADD --> Q[queue_remove]
@@ -97,8 +97,10 @@ Two of those doors are worth calling out:
   one deletion per agent without anyone touching the API. Any reasoning about deletion load has to
   account for it.
 - **An insertion that names an id explicitly is refused rather than served** when that id belongs to
-  an existing agent (`9012`) or still owes a purge (`9016`, reported as `1763` by the server API). A
-  queued purge always runs; cancelling it is never the answer.
+  an existing agent (`9012`) or still owes a purge (`9018`, reported as `1763` by the server API). A
+  queued purge always runs; cancelling it is never the answer. The id stops being reusable the moment
+  the agent is deleted, not when the writer gets around to queueing the purge: it is reserved in memory
+  in between, or an insertion arriving inside that window would take an id whose purge is on its way.
 
 ### Why the purge waits
 

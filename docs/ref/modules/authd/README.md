@@ -144,7 +144,7 @@ persistence above apply to enrollment just as much as to `DELETE /agents`.
 id; the replaced id is not handed out again. The one case where a caller can name an id is
 `POST /agents/insert`, and there authd refuses rather than replacing: an id that belongs to an
 existing agent answers `9012 Duplicate ID`, and one whose purge is still pending answers
-`9016 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
+`9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
 
 ## Local socket enrollment protocol

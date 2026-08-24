@@ -36,12 +36,12 @@ typedef enum auth_local_err {
     ENOID,
     ENOAGENT,
     EDUPID,
-    EPENDINGPURGE,
     EAGLIM,
     EINVGROUP,
     ENOMASTER,
     ENOMASTERCOMM,
-    EINVALIDNAME // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDNAME,
+    EPENDINGPURGE // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -61,14 +61,14 @@ static const struct {
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
     { 9012, "Duplicate ID" },
-    { 9016, "Agent ID has a pending deletion" },
     { 9013, "Maximum number of agents reached" },
     { 9014, "Invalid Group(s) Name(s)" },
     { 9015, "Cannot execute this request on a worker node" },
     { 9016, "Cannot communicate with master node" },
     // A name that IS present but not storable in client.keys (see is_storable_agent_name()), as
     // opposed to 9005 "No such name", which means the argument was missing.
-    { 9017, "Invalid agent name" }
+    { 9017, "Invalid agent name" },
+    { 9018, "Agent ID has a pending deletion" }
 };
 
 // Dispatch local request

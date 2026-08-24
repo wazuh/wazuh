@@ -180,9 +180,19 @@ merely does not fully understand.
 Ordering is load-bearing: the `purge` line is written **after** `client.keys` has been rewritten,
 never before. Failing the other way would leave a queued purge for an agent that is still alive.
 
+That ordering leaves a window, though: the deletion is answered as soon as the key leaves memory, while
+the `purge` line only appears once the writer has run. An insertion naming that id in between would find
+it free in both checks — gone from the keystore, not yet in the queue. So the id is **reserved in
+memory** by `add_remove()`, the single point both the local socket and a force-replacement go through,
+and the writer hands that reservation over to the queue when it pushes the real entry. The reservation
+is deliberately not persisted: if the process dies before the writer runs, `client.keys` was never
+rewritten either, so the agent is still listed there and holds its id legitimately.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> Queued: writer pushes the id\n(after client.keys is rewritten)
+    [*] --> Reserved: add_remove() reserves the id\n(before the deletion is answered)
+    Reserved --> Queued: writer pushes the id\n(after client.keys is rewritten)
+    Reserved --> [*]: crash - nothing was persisted\nand client.keys still lists the agent
     Queued --> Due: authd.purge_delay elapsed\n(monotonic clock)
     Due --> Sent: relay POSTs /agents/delete
     Sent --> [*]: 200 - dropped from the queue\nand from the file
@@ -196,6 +206,9 @@ stateDiagram-v2
 distinguishes one owner of an id from the next: the documents carry no timestamp, and two of the three
 indices in the deletion scope carry no agent name either. So a purge that arrives while a new agent
 holds the same id would delete that agent's documents.
+
+An id is therefore refused from the instant the agent is deleted, not from the instant the purge is
+queued — see the reservation above.
 
 Within one run the counter only increments, so an id cannot be reused. Across a restart the counter is
 rebuilt from `client.keys` — which no longer lists the agents that were just deleted — so it could
@@ -214,7 +227,7 @@ served when the id is not free to reuse:
 
 | Situation | Error |
 |---|---|
-| the id still owes a purge | `9016 Agent ID has a pending deletion` (`1763` through the server API) |
+| the id still owes a purge | `9018 Agent ID has a pending deletion` (`1763` through the server API) |
 | the id belongs to an existing agent | `9012 Duplicate ID` |
 
 The second one is a **behaviour change**: `force` no longer replaces an agent when the id is given
@@ -273,7 +286,7 @@ The ones that shape the behaviour described here:
 | `The deletion of agent 'N' could not be relayed ... will be retried in S s` | first failure for that entry; later ones are debug |
 | `The pending deletion queue is full` | the cap was hit; that deletion has to be repeated |
 | `Shutting down with N pending agent deletion(s)` | they stay in the file and are retried on the next start |
-| `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9016` path |
+| `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9018` path |
 
 ## Tests
 
