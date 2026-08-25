@@ -6,6 +6,7 @@ import contextlib
 import asyncio
 import datetime
 import json
+import logging
 import re
 import socket
 import struct
@@ -16,6 +17,8 @@ from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
 from wazuh.core.exception import WazuhInternalError, WazuhError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
+
+logger = logging.getLogger('wazuh')
 
 
 class AsyncWazuhDBConnection:
@@ -212,6 +215,8 @@ class WazuhDBConnection:
         ------
         WazuhInternalError(2009)
             Pagination error. Response from wazuh-manager-db was over the maximum socket buffer size.
+        WazuhInternalError(2010)
+            The response header could not be read in full (connection closed/reset by wazuh-manager-db).
         WazuhError(2003)
             Error in wdb request.
 
@@ -226,8 +231,13 @@ class WazuhDBConnection:
         self.__conn.send(packed_msg)
 
         # Get the data size (4 bytes)
-        data = self.__conn.recv(4)
-        data_size = struct.unpack('<I', data[0:4])[0]
+        try:
+            data = self.__conn.recv(4, socket.MSG_WAITALL)
+            if len(data) < 4:
+                raise OSError("Connection closed by wazuh-manager-db while reading the response header")
+            data_size = struct.unpack('<I', data[0:4])[0]
+        except (OSError, struct.error) as e:
+            raise WazuhInternalError(2010, extra_message=e)
 
         data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
@@ -236,7 +246,8 @@ class WazuhDBConnection:
             raise WazuhInternalError(2009)
 
         if data[0] == "err":
-            raise WazuhError(2003, data[1])
+            logger.error(f"wazuh-db returned an error: {data[1]}")
+            raise WazuhError(2003)
         elif raw:
             return data
         else:

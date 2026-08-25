@@ -3070,6 +3070,7 @@ components:
       schema:
         type: string
         format: search
+        maxLength: 1024
     select:
       in: query
       name: select
