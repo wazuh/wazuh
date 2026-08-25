@@ -386,6 +386,9 @@ Specifies the IP address or hostname of the Wazuh server. The agent uses this to
 **`WAZUH_MANAGER_PORT`**\
 Defines the port used to communicate with the Wazuh server. Default: `1517`.
 
+**`WAZUH_MANAGER_ENDPOINT`**\
+Optional reverse-proxy path segment the agent prepends to every request sent to the server (for example `wazuh-manager`, to send requests under `/wazuh-manager/...`). Must match the server's own configured prefix. Unset by default, which sends unprefixed requests.
+
 #### Enrollment configuration
 
 A 5.0 agent enrolls over the **same** connection and TLS configuration it uses for everything else —

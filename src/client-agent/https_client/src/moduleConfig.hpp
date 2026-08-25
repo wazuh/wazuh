@@ -33,10 +33,12 @@ struct ModuleConfig
         uint16_t serverPort {443};
         /// Optional reverse-proxy path segment, <endpoint> (#38492), already
         /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
-        /// today's unprefixed behavior. baseUrl() inserts it between the
-        /// authority and every endpoint's bare target; it is never part of
-        /// what the CMAC signs (retrySender.cpp signs HttpRequestSpec::target
-        /// alone).
+        /// today's unprefixed behavior. baseUrl() does NOT insert it: the
+        /// manager's auth middleware CMACs the literal wire request-target,
+        /// prefix included, so callers fold it into HttpRequestSpec::target
+        /// (via prefixedTarget(), retrySender.cpp/enrollClient.cpp) before
+        /// signing, and baseUrl() only ever sees that already-prefixed target
+        /// appended to it afterward.
         std::string serverEndpoint;
         std::string agentId;
         std::string agentKeyHex;

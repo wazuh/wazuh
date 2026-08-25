@@ -115,8 +115,10 @@ typedef struct hc_config_t
     uint16_t server_port;          ///< Manager HTTPS port.
     char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
     ///< prepended to every request target (e.g. "/endpoint/stateless");
-    ///< empty -> unprefixed, today's behavior. Never fed to the CMAC signer,
-    ///< which signs the bare HttpRequestSpec::target only.
+    ///< empty -> unprefixed, today's behavior. The manager's auth middleware
+    ///< CMACs the literal wire request-target, prefix included, so this is
+    ///< folded into HttpRequestSpec::target (via prefixedTarget()) before
+    ///< signing -- the CMAC covers the prefixed target, not the bare one.
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
     char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
     ///< AES-128/192/256-CMAC by byte length

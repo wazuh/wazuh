@@ -185,6 +185,23 @@ check "the commented-out block is left alone" \
 check "the commented-out block does not absorb the insertion" \
       "" "$(missing_lines "${COMMENTED_CONF}" "${actual}")"
 
+unset WAZUH_REGISTRATION_SERVER
+
+# WAZUH_MANAGER_ENDPOINT (#38492): the optional reverse-proxy prefix, written inside
+# the freshly-built <manager> block only when the installer's caller set it -- unlike
+# <port>, there is no non-empty default to fall back to.
+export WAZUH_MANAGER="10.0.0.5"
+export WAZUH_MANAGER_ENDPOINT="wazuh-manager"
+actual="$(run_target "${NO_ENROLLMENT_CONF}")"
+check "WAZUH_MANAGER_ENDPOINT is written inside <manager>" \
+      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>wazuh-manager</endpoint>")"
+
+unset WAZUH_MANAGER_ENDPOINT
+actual="$(run_target "${NO_ENROLLMENT_CONF}")"
+check "no WAZUH_MANAGER_ENDPOINT leaves <endpoint> out of the rebuilt <manager> block" \
+      "0" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>")"
+unset WAZUH_MANAGER
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]
