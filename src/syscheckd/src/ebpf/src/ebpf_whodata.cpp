@@ -518,31 +518,17 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     }
 }
 
-int init_bpfobj()
+/*
+ * Open the object, select the program set (LSM or kprobe), load and attach.
+ * When use_lsm is true the bpf_d_path variants are tried first and, on load
+ * failure, the manual-walker variants (dpath -> walk). Returns 0 on success
+ * (with global_obj set) or 1 on any failure (object closed, global_obj null).
+ */
+static int load_and_attach(const char* bpfobj_path, bool use_lsm)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
-    auto abspathFn = fimebpf::instance().m_abspath;
-    char bpfobj_path[PATH_MAX] = {0};
-
-    if (!logFn || !abspathFn)
-    {
-        return 1;
-    }
-    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
-
-    g_bpf_lsm_active = is_bpf_lsm_active();
-    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
-
-    /*
-     * Prefer the bpf_d_path-based LSM variants (they give namespace-aware
-     * paths). If load fails — typically because bpf_d_path is not allowed
-     * for the target LSM hook on this kernel (e.g. Amazon Linux 2 / 2023
-     * reject it for bpf_lsm_path_unlink) — close, reopen, and retry with
-     * the manual-walker variants. We only fall back once.
-     */
     bpf_object* obj = nullptr;
-    bool prefer_dpath = g_bpf_lsm_active; /* only meaningful when LSM is active */
-    int err = 0;
+    bool prefer_dpath = use_lsm; /* only meaningful when LSM is active */
 
     while (true)
     {
@@ -555,17 +541,16 @@ int init_bpfobj()
             return 1;
         }
 
-        select_programs(obj, g_bpf_lsm_active, prefer_dpath);
+        select_programs(obj, use_lsm, prefer_dpath);
 
-        err = bpf_helpers->bpf_object_load(obj);
-        if (!err)
+        if (!bpf_helpers->bpf_object_load(obj))
         {
             break;
         }
 
         bpf_helpers->bpf_object_close(obj);
 
-        if (g_bpf_lsm_active && prefer_dpath)
+        if (use_lsm && prefer_dpath)
         {
             logFn(LOG_INFO, FIM_EBPF_LSM_DPATH_FALLBACK);
             prefer_dpath = false;
@@ -610,6 +595,45 @@ int init_bpfobj()
     }
 
     return 0;
+}
+
+int init_bpfobj()
+{
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char bpfobj_path[PATH_MAX] = {0};
+
+    if (!logFn || !abspathFn)
+    {
+        return 1;
+    }
+    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
+
+    g_bpf_lsm_active = is_bpf_lsm_active();
+    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
+
+    if (load_and_attach(bpfobj_path, g_bpf_lsm_active) == 0)
+    {
+        return 0;
+    }
+
+    /*
+     * The LSM path can fail to load or attach on kernels that advertise BPF
+     * LSM but lack the required support (e.g. arm64 < 6.8: bpf_d_path is
+     * rejected at load and the LSM trampoline attach returns -ENOTSUPP).
+     * kprobes need none of that, so fall back to them before giving up and
+     * letting FIM drop to audit.
+     */
+    if (g_bpf_lsm_active)
+    {
+        logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
+        if (load_and_attach(bpfobj_path, false) == 0)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
