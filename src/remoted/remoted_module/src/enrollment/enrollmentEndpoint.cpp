@@ -354,6 +354,7 @@ namespace remoted::enrollment
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                                            KeyUpsertFn keyUpsert,
                                             remoted::metrics::EndpointHttpMetrics httpMetrics)
     {
         return [&authenticator,
@@ -361,6 +362,7 @@ namespace remoted::enrollment
                 config,
                 &metrics,
                 bodyDecoder = std::move(bodyDecoder),
+                keyUpsert = std::move(keyUpsert),
                 httpMetrics = std::move(httpMetrics)](std::shared_ptr<const remoted::http::HttpRequest> request,
                                                       std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
@@ -443,8 +445,24 @@ namespace remoted::enrollment
             addRequest.keyHash = parsed.keyHash;
 
             authdClient.addAgent(std::move(addRequest),
-                                 [responder, &metrics](AuthdResult result)
-                                 { responder->send(mapAuthdResult(result, metrics)); });
+                                 [responder, &metrics, keyUpsert](AuthdResult result)
+                                 {
+                                     // Adopted BEFORE the 200 leaves: the agent may use the key the
+                                     // instant it has it, and this manager's own keystore must honor
+                                     // it by then -- waiting for the client.keys reload leaves a
+                                     // window where the fresh credential answers 401 and the agent's
+                                     // recovery re-enrollment collides with its own registration.
+                                     if (result.errorCode == 0 && keyUpsert &&
+                                         !keyUpsert(result.id, result.ip, result.key))
+                                     {
+                                         LOGFN_WARN(logFn(),
+                                                    "Enrolled agent %s but its credential could not be adopted into "
+                                                    "the keystore; it will authenticate after the next client.keys "
+                                                    "reload.",
+                                                    result.id.c_str());
+                                     }
+                                     responder->send(mapAuthdResult(result, metrics));
+                                 });
         };
     }
 

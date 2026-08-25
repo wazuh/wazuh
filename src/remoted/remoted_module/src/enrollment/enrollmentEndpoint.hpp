@@ -20,7 +20,9 @@
 #include "metrics.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <memory>
+#include <string>
 
 namespace remoted::enrollment
 {
@@ -31,6 +33,16 @@ namespace remoted::enrollment
     /// size cap on the dedicated BodyDecoder instance /enroll uses -- see makeHandler()'s doc
     /// comment on why /enroll needs its own (smaller) cap there, unlike AuthGateway's shared one.
     inline constexpr std::size_t kMaxEnrollBodySize = 16U * 1024U;
+
+    /**
+     * @brief Adopts one issued credential (id, ip column, key column) into remoted's own keystore.
+     *
+     * Wired to Keystore::upsert() by the facade. Returns whether the entry was adopted; a false is
+     * an anomaly worth logging (authd issued a credential this manager cannot parse), never a
+     * reason to fail the enrollment -- the agent's copy is valid and the keystore's file reload
+     * remains the fallback.
+     */
+    using KeyUpsertFn = std::function<bool(const std::string& id, const std::string& ip, const std::string& keyHex)>;
 
     /**
      * @brief Builds the `POST /enroll` route handler.
@@ -71,6 +83,11 @@ namespace remoted::enrollment
      * -- including the one authd's callback delivers on another thread. Defaulted, so a caller that
      * does not care (the module's own tests) counts nothing.
      *
+     * @p keyUpsert, when set, is invoked on every accepted enrollment with the id/ip/key authd
+     * answered, BEFORE the 200 is sent: the credential must be honored by the time the agent can
+     * first use it, or the file-reload lag turns the manager's own answer into a 401 (see
+     * Keystore::upsert()). Captured by value; a default-constructed one disables the step.
+     *
      * @warning The returned handler stores references to @p authenticator, @p authdClient and
      * @p metrics. The caller must guarantee all three outlive every route registered with this
      * handler, exactly like controlEndpoint::makeHandler()'s ControlHandler& contract. @p
@@ -82,6 +99,7 @@ namespace remoted::enrollment
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                                            KeyUpsertFn keyUpsert = {},
                                             remoted::metrics::EndpointHttpMetrics httpMetrics = {});
 
 } // namespace remoted::enrollment

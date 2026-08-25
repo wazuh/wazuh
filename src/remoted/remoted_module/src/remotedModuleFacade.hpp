@@ -554,12 +554,18 @@ private:
 
         m_httpServer->addRoute(remoted::http::Method::Post,
                                "/enroll",
-                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                *m_authdClient,
-                                                                enrollConfig,
-                                                                m_enrollmentMetrics,
-                                                                enrollBodyDecoder,
-                                                                m_enrollHttpMetrics));
+                               remoted::enrollment::makeHandler(
+                                   *m_enrollmentAuthenticator,
+                                   *m_authdClient,
+                                   enrollConfig,
+                                   m_enrollmentMetrics,
+                                   enrollBodyDecoder,
+                                   // Strong capture on purpose: m_httpServer (and with it every
+                                   // route) is reset before m_keystore in stop(), so this only
+                                   // extends the keystore's life until the routes are gone.
+                                   [keystore](const std::string& id, const std::string& ip, const std::string& key)
+                                   { return keystore->upsert(id, ip, key); },
+                                   m_enrollHttpMetrics));
 
         // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
         // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those

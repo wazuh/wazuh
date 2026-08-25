@@ -363,6 +363,79 @@ namespace
     }
 
     // ---------------------------------------------------------------------------
+    // upsert(): a just-issued enrollment credential is honored without a reload
+    // ---------------------------------------------------------------------------
+
+    TEST_F(KeystoreTest, UpsertMakesTheEntryVisibleToLookupImmediately)
+    {
+        Keystore keystore(m_path); // No file at all: the store starts empty.
+
+        ASSERT_TRUE(keystore.upsert("067", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+
+        const auto key = keyOf(keystore, 67);
+        ASSERT_TRUE(key.has_value());
+        EXPECT_EQ(key->size(), 32u);
+        EXPECT_TRUE(allowed(keystore, 67, "10.0.0.9"));
+        EXPECT_EQ(keystore.agentsLoaded(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertHonorsTheAddressColumn)
+    {
+        Keystore keystore(m_path);
+
+        ASSERT_TRUE(
+            keystore.upsert("067", "10.0.0.7", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+
+        EXPECT_TRUE(allowed(keystore, 67, "10.0.0.7"));
+        EXPECT_FALSE(allowed(keystore, 67, "10.0.0.8"));
+    }
+
+    TEST_F(KeystoreTest, UpsertReplacesAnExistingEntry)
+    {
+        writeFile("67 agent1 any 00000000000000000000000000000000000000000000000000000000000000ff\n");
+        Keystore keystore(m_path);
+        const auto before = keyOf(keystore, 67);
+        ASSERT_TRUE(before.has_value());
+
+        ASSERT_TRUE(keystore.upsert("67", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+
+        const auto after = keyOf(keystore, 67);
+        ASSERT_TRUE(after.has_value());
+        EXPECT_NE(*after, *before);
+        // Overwriting a usable key does not double-count the agent.
+        EXPECT_EQ(keystore.agentsLoaded(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertRejectsUnparseableColumnsAndStoresNothing)
+    {
+        Keystore keystore(m_path);
+
+        EXPECT_FALSE(
+            keystore.upsert("abc", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        EXPECT_FALSE(keystore.upsert(
+            "067", "not-an-address", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        EXPECT_FALSE(keystore.upsert("067", "any", "not-hex"));
+
+        EXPECT_FALSE(keystore.lookup(67, "127.0.0.1").has_value());
+        EXPECT_EQ(keystore.agentsLoaded(), 0u);
+    }
+
+    TEST_F(KeystoreTest, ReloadRemainsTheSourceOfTruthAfterAnUpsert)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        ASSERT_TRUE(keystore.upsert("067", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        ASSERT_TRUE(keyOf(keystore, 67).has_value());
+
+        // The file never held agent 67, so a reload drops it: upserts only ever bridge the gap
+        // until the next adopted snapshot, they do not fork the table away from the file.
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
+        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
+    }
+
+    // ---------------------------------------------------------------------------
     // Hot-reload: background watcher (inotify + fallback poll)
     // ---------------------------------------------------------------------------
 

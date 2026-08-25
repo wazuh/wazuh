@@ -106,6 +106,29 @@ namespace remoted::auth
          */
         int reload();
 
+        /**
+         * @brief Adopt one just-issued enrollment credential without waiting for a reload.
+         *
+         * The /enroll endpoint answers with a key authd has already persisted to client.keys,
+         * but this table only learns it when the watcher next adopts a stable snapshot -- and
+         * reload() deliberately refuses snapshots caught mid-write, so under enrollment churn
+         * (many agents re-enrolling, the file rewritten continuously) that can take long enough
+         * for the manager to 401 the very credential it just issued; the agent's recovery
+         * re-enrollment is then rejected as a duplicate of itself. Upserting the issued entry
+         * here closes that window. File reloads and upserts converge: authd wrote the entry
+         * before replying, so the next adopted snapshot contains it too.
+         *
+         * Columns are validated exactly like reload() validates a file line; nothing is stored
+         * unless all three parse -- an entry that cannot authenticate is not worth adopting early,
+         * and the file remains the source of truth for it.
+         *
+         * @param id     Agent id, as authd returned it (numeric string).
+         * @param ip     The entry's ip column ("any", a fixed address, or a range).
+         * @param keyHex The key column: lowercase hex decoding to 16, 24 or 32 bytes.
+         * @return true if the entry was adopted; false if any column failed to parse.
+         */
+        bool upsert(const std::string& id, const std::string& ip, const std::string& keyHex);
+
         /// reload() failure reasons. Distinguished because they need different operator messages:
         /// an unreadable file is an install/permissions problem the caller must report, while an
         /// unstable one is transient and already reported by reload() itself.

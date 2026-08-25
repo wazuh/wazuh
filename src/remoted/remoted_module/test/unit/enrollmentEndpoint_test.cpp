@@ -17,6 +17,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <memory>
+#include <atomic>
 #include <mutex>
 #include <string>
 
@@ -229,7 +230,7 @@ TEST(EnrollmentEndpointTest, HttpMetricsCountEveryStatusAndTimeEveryAnswer)
         EnrollmentMetrics outcomes = makeEnrollmentMetrics(outcomeManager);
         AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, /*connectTimeoutMs=*/0, 300, /*maxQueueSize=*/0);
 
-        auto handler = makeHandler(authenticator, authdClient, config, outcomes, passthroughDecoder(), http);
+        auto handler = makeHandler(authenticator, authdClient, config, outcomes, passthroughDecoder(), {}, http);
         auto request = std::make_shared<const HttpRequest>(makeRequest(body, ""));
         auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
@@ -690,4 +691,94 @@ TEST(EnrollmentEndpointTest, AuthdUnreachableMapsTo503)
     EXPECT_EQ(response.status, 503);
     const auto j = parseBody(response);
     EXPECT_EQ(j["error"]["code"], -1);
+}
+
+// -----------------------------------------------------------------------------
+// Keystore upsert -- an accepted enrollment is adopted before the 200 is sent,
+// so the manager honors the credential the instant the agent holds it.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    // Builds a handler wired with `keyUpsert` and runs one dispatch, mirroring run() above.
+    HttpResponse runWithUpsert(const Config& config, const std::string& authdPath, KeyUpsertFn keyUpsert)
+    {
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
+        wazuh::metrics::Manager metricsManager;
+        EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+
+        AuthdClient authdClient(authdPath,
+                                /*isWorkerNode=*/false,
+                                /*connectTimeoutMs=*/0,
+                                config.authdResponseTimeoutMs,
+                                /*maxQueueSize=*/0);
+
+        auto handler = makeHandler(
+            authenticator, authdClient, config, metrics, passthroughDecoder(), std::move(keyUpsert));
+
+        auto request = std::make_shared<const HttpRequest>(makeRequest(R"({"name":"agent1","version":"5.0.0"})", ""));
+        auto responder = std::make_shared<CapturingResponder>();
+        handler(request, responder);
+        return responder->wait();
+    }
+} // namespace
+
+TEST(EnrollmentEndpointTest, AcceptedEnrollmentIsUpsertedWithAuthdsIdIpAndKey)
+{
+    auto stub = fixedAuthdServer(
+        R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":"ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"}})");
+
+    std::mutex mu;
+    int calls = 0;
+    std::string id, ip, key;
+    const auto response = runWithUpsert(openModeConfig(),
+                                        stub.path,
+                                        [&](const std::string& i, const std::string& a, const std::string& k)
+                                        {
+                                            std::lock_guard<std::mutex> lock(mu);
+                                            ++calls;
+                                            id = i;
+                                            ip = a;
+                                            key = k;
+                                            return true;
+                                        });
+
+    EXPECT_EQ(response.status, 200);
+    std::lock_guard<std::mutex> lock(mu);
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(id, "067");
+    EXPECT_EQ(ip, "any");
+    EXPECT_EQ(key, "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751");
+}
+
+TEST(EnrollmentEndpointTest, RejectedEnrollmentNeverReachesTheUpsert)
+{
+    auto stub = fixedAuthdServer(R"({"error":9008,"message":"ERROR: Duplicate agent name: agent1"})");
+
+    std::atomic<int> calls {0};
+    const auto response = runWithUpsert(openModeConfig(),
+                                        stub.path,
+                                        [&](const std::string&, const std::string&, const std::string&)
+                                        {
+                                            ++calls;
+                                            return true;
+                                        });
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_EQ(calls.load(), 0);
+}
+
+TEST(EnrollmentEndpointTest, UpsertFailureStillAnswers200)
+{
+    // The agent's copy of the key is valid and the file reload remains the fallback, so a keystore
+    // that cannot adopt the entry must never turn a successful enrollment into an error.
+    auto stub = fixedAuthdServer(
+        R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":"ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"}})");
+
+    const auto response = runWithUpsert(openModeConfig(),
+                                        stub.path,
+                                        [](const std::string&, const std::string&, const std::string&)
+                                        { return false; });
+
+    EXPECT_EQ(response.status, 200);
 }

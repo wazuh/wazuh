@@ -577,6 +577,38 @@ namespace remoted::auth
         return kReloadUnstable;
     }
 
+    bool Keystore::upsert(const std::string& id, const std::string& ip, const std::string& keyHex)
+    {
+        const auto agentId = parseAgentId(id);
+        if (!agentId)
+        {
+            return false;
+        }
+
+        auto addressRule = AddressRule::parse(ip);
+        if (!addressRule)
+        {
+            return false;
+        }
+
+        auto decoded = decodeKey(keyHex);
+        if (decoded.empty())
+        {
+            return false;
+        }
+
+        std::lock_guard<std::mutex> lock(m_mutex);
+        // The level tracks agents with a USABLE key (see agentsLoaded()); a brand-new entry and a
+        // previously key-less one both gain one here, an overwrite of a usable key changes nothing.
+        const auto it = m_keys.find(*agentId);
+        if (it == m_keys.end() || it->second.key.empty())
+        {
+            m_agentsLoaded.fetch_add(1, std::memory_order_relaxed);
+        }
+        m_keys.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
+        return true;
+    }
+
     std::optional<AgentLookup> Keystore::lookup(AgentId agentId, std::string_view peerIp) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
