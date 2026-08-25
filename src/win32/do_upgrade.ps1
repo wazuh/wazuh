@@ -357,12 +357,14 @@ if ([string]::IsNullOrEmpty($server_address)) {
 
 write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 
-if (-Not (probe_server $server_address $server_port)) {
+if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
+    write-output "$(Get-Date -format u) - Manager connectivity check skipped (test mode)." >> .\upgrade\upgrade.log
+} elseif (-Not (probe_server $server_address $server_port)) {
     write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
     abort_upgrade "2"
+} else {
+    write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 }
-
-write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 
 # Ensure no other instance of msiexec is running by stopping them
 try {
