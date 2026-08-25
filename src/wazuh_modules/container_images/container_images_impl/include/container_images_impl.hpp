@@ -27,9 +27,9 @@ namespace containerimages
 {
     /// @brief Builds the reader used to gather the inventory for a scan.
     ///
-    /// Single seam through which future source types are selected. At this stage it
-    /// returns the temporary in-memory stub reader, so the persistence and sync path
-    /// can be exercised before real package extraction lands.
+    /// Single seam through which future source types are selected. At this stage every
+    /// configured source is a local on-disk image layout, so it returns a LocalImageReader
+    /// bound to the given path.
     std::unique_ptr<IImageReader> makeReader(const std::string& path);
 
     /// @brief Orchestrates the module: owns the configuration, the scan loop and the local
@@ -56,13 +56,23 @@ namespace containerimages
             /// Latches the request, so a stop that arrives before run() is not lost.
             void stop();
 
-            /// @brief Run a single discovery + persistence pass. Returns the package count.
+            /// @brief Run a single discovery + persistence pass over the configured sources.
+            /// @return Number of image references discovered across every configured source.
             std::size_t scanOnce();
 
             /// @brief Remove the persisted inventory, keeping the schema.
+            ///
+            /// Provided for the module disable / uninstall work, which is a follow-up issue:
+            /// nothing in the module lifecycle calls it yet.
             void clearInventory();
 
         private:
+            /// @brief Run a scan, absorbing and logging any failure.
+            ///
+            /// An exception escaping a scan would unwind out of the module thread, which then
+            /// exits for the lifetime of the agent. A failing scan must cost one scan only.
+            void scanSafely();
+
             /// @brief Report one already-extracted delta.
             ///
             /// Logging only at this stage. Handing deltas to the manager is the job of the

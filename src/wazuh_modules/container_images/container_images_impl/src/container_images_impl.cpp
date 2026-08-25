@@ -9,10 +9,11 @@
  */
 
 #include "container_images_impl.hpp"
-#include "stub_image_reader.hpp"
+#include "local_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
 #include <chrono>
+#include <exception>
 #include <utility>
 
 namespace
@@ -25,6 +26,11 @@ namespace
     void logDebug(const std::string& message)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, message);
+    }
+
+    void logError(const std::string& message)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, message);
     }
 
     std::string operationName(ReturnTypeCallback operation)
@@ -41,12 +47,9 @@ namespace
 
 namespace containerimages
 {
-    std::unique_ptr<IImageReader> makeReader(const std::string& /*path*/)
+    std::unique_ptr<IImageReader> makeReader(const std::string& path)
     {
-        // Real source selection (local OCI, registry, socket) lands in a later stage.
-        // Until then the stub reader feeds a fixed inventory through the storage and
-        // sync path so it can be validated end to end.
-        return std::make_unique<StubImageReader>();
+        return std::make_unique<LocalImageReader>(path);
     }
 
     ContainerImagesImpl::ContainerImagesImpl(ContainerImagesConfig config,
@@ -79,16 +82,32 @@ namespace containerimages
 
     std::size_t ContainerImagesImpl::scanOnce()
     {
-        const auto reader {m_readerFactory("")};
-
-        if (!reader)
+        if (m_config.localPaths.empty())
         {
+            logInfo("No local sources configured, nothing to scan.");
             return 0;
         }
 
         logInfo("Scan started.");
 
-        const auto references {reader->discover()};
+        std::vector<ImageReferenceRecord> references;
+
+        for (const auto& path : m_config.localPaths)
+        {
+            const auto reader {m_readerFactory(path)};
+
+            if (!reader)
+            {
+                continue;
+            }
+
+            for (auto& reference : reader->discover())
+            {
+                logDebug("Discovered image reference " + reference.source.location + " (" + reference.source.sourceType +
+                         ") digest=" + reference.configDigest + ".");
+                references.push_back(std::move(reference));
+            }
+        }
 
         const auto deltaCallback = [this](ReturnTypeCallback operation,
                                           const std::string & table,
@@ -99,6 +118,8 @@ namespace containerimages
             onDelta(operation, table, id, data, version);
         };
 
+        // Every configured source is synced as one set, so a reference that disappeared
+        // since the last scan is reported as deleted instead of surviving as stale state.
         m_db->syncReferences(references, deltaCallback);
         m_db->syncPackages(references, deltaCallback);
 
@@ -112,7 +133,19 @@ namespace containerimages
         logInfo("Scan ended. " + std::to_string(references.size()) + " references, " +
                 std::to_string(packageCount) + " packages.");
 
-        return packageCount;
+        return references.size();
+    }
+
+    void ContainerImagesImpl::scanSafely()
+    {
+        try
+        {
+            scanOnce();
+        }
+        catch (const std::exception& ex)
+        {
+            logError(std::string {"Scan failed: "} + ex.what());
+        }
     }
 
     void ContainerImagesImpl::run()
@@ -138,7 +171,7 @@ namespace containerimages
         if (m_config.scanOnStart)
         {
             logDebug("Scan on start.");
-            scanOnce();
+            scanSafely();
         }
 
         std::unique_lock<std::mutex> lock {m_mutex};
@@ -151,7 +184,7 @@ namespace containerimages
             }
 
             lock.unlock();
-            scanOnce();
+            scanSafely();
             lock.lock();
         }
 

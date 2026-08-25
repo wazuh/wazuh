@@ -59,12 +59,17 @@ Add a `<container_images>` block to the agent `ossec.conf` file:
 Run the agent with debug logging enabled and check the `wazuh-modulesd:container_images` log entries:
 
 ```sql
+wazuh-modulesd:container_images: INFO: Configuration loaded: enabled=yes, scan_on_start=yes, interval=3600, local references=1.
+wazuh-modulesd:container_images: DEBUG: Local reference configured: '/path/to/oci/layout'.
 wazuh-modulesd:container_images: DEBUG: Module initialized.
 wazuh-modulesd:container_images: DEBUG: Scan on start.
 wazuh-modulesd:container_images: INFO: Scan started.
 wazuh-modulesd:container_images: DEBUG: Discovered image reference /path/to/oci/layout (local) digest=sha256:d529dd0c....
-wazuh-modulesd:container_images: INFO: Scan ended. Discovered 1 image references.
+wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 0 packages.
 ```
+
+Package counts stay at zero until extraction from image layers lands: the module discovers and
+stores image references, not their package contents.
 
 ## Current Limitations
 

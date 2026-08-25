@@ -87,15 +87,22 @@ cd tests/integration
 python -m pytest test_container_images -p no:cacheprovider -v
 ```
 
-## Current-branch caveat (stub reader)
+## What these tests prove today
 
-On this exploration branch the module's reader factory still returns the **stub reader**
-(`StubImageReader`), because real OCI/local-image package extraction is deferred. With the stub:
+The module reads the image **references** from the configured `<local>` layout and stores them,
+so both suites exercise the real path end to end: the parser and lifecycle logs in
+`test_configuration`, and discovery, storage and change detection in `test_inventory`.
 
-- The **configuration** suite is fully valid — it exercises the real parser and lifecycle logs.
-- The **inventory** suite's *control flow* (scan barrier, image-update detection via the
-  reference-modification log line, digest change) is exactly what the productized test will assert,
-  but the **rows** stored come from the stub fixture rather than from the configured `<local>` path.
-  Once the local reader is wired (follow-up issue), the same tests validate the real path with no
-  changes other than removing this caveat. The `prepare_local_image` fixture already writes a real
-  OCI layout at the configured path so the test is ready for that switch.
+Package **extraction** from image layers is a later stage, so a reference is stored with no
+packages and `dbsync_container_image_packages` stays empty. The inventory cases therefore assert
+on the references table only. The package side of the storage layer is covered by the C++ unit
+tests, which drive the database directly.
+
+## Running in CI
+
+Not integrated yet. Both test modules import from
+`wazuh_testing.modules.modulesd.container_images`, and those three framework files
+(`__init__.py`, `patterns.py`, `db.py`) still live in this directory rather than in the
+framework package, so the suite only runs after they are copied into the installed
+`wazuh_testing`. Landing them in the framework repository and registering the module in
+`.github/test_modules_linux.json` is what makes these run on a pull request.

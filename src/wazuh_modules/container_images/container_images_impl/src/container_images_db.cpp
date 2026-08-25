@@ -77,11 +77,15 @@ namespace
     // is what bumps the schema. The list is empty while the schema is on its first revision.
     //
     // Rule for any future schema change: append the migrating statement, never edit or
-    // reorder the existing entries, or already-deployed agents will skip a step.
+    // reorder the existing entries, or already-deployed agents will skip a step. The CREATE
+    // statements above must be updated in the same change: a database with no recorded
+    // version is built from them, while an existing one is migrated from this list, so
+    // updating only one of the two makes fresh and upgraded agents diverge.
     const std::vector<std::string> UPGRADE_STATEMENTS {};
 
-    // Row checksum drives MODIFIED detection: DBSync compares the stored checksum with
-    // the incoming one and reports a modification when they differ.
+    // Per-row checksum, stored like every other inventory table keeps one. DBSync compares
+    // every non-ignored column to detect a modification, so the checksum is one more column
+    // and excluding a field from it does not hide that field from change detection.
     std::string rowChecksum(const nlohmann::json& row)
     {
         const auto content {row.dump()};
@@ -181,9 +185,12 @@ namespace
         return Utils::asciiToHex(hash.hash());
     }
 
+    // DBSync writes the version as a signed integer on every path (insert, modify and the
+    // rows read back for deletion), so the guard must accept any number, not only an
+    // unsigned one, or every delta would report version 0.
     std::uint64_t rowVersion(const nlohmann::json& row)
     {
-        return (row.contains("version") && row["version"].is_number_unsigned())
+        return (row.contains("version") && row["version"].is_number())
                ? row["version"].get<std::uint64_t>()
                : 0ULL;
     }
@@ -196,12 +203,12 @@ namespace
     {
         if (result != INSERTED && result != MODIFIED && result != DELETED)
         {
+            // DBSync reports a row it could not write through this same callback. Dropping it
+            // silently would let a scan report success while part of the inventory was lost.
+            LoggingHelper::getInstance().log(LOG_ERROR, "Row not stored in " + table + ": " + data.dump());
             return;
         }
 
-        // Round-trip the foreign object through this TU's nlohmann::json first (dump() is the
-        // only safe operation on it across the DBSync module boundary), then unwrap and
-        // inspect the native copy.
         const auto& row {unwrapRow(result, data)};
         onDelta(result, table, documentId(table, row), row.dump(), rowVersion(row));
     }
@@ -233,8 +240,9 @@ namespace containerimages
 
     void ContainerImagesDB::dropTables()
     {
-        // Used when the module is disabled or uninstalled: the inventory it owns must not
-        // survive as stale state. Deleting the rows (rather than the tables) keeps the
+        // Meant for the module disable / uninstall path, so the inventory this module owns
+        // does not survive as stale state. That path is a follow-up issue and does not call
+        // this yet. Deleting the rows (rather than the tables) keeps the
         // schema and its recorded version intact, so a later re-enable reuses the same
         // database instead of triggering a recreate.
         for (const auto& table : {REFERENCES_TABLE, PACKAGES_TABLE})

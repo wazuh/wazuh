@@ -38,8 +38,7 @@ add_library(
   ContainerImagesImpl STATIC
   src/container_images_impl.cpp
   src/container_images_db.cpp
-  src/local_image_reader.cpp
-  src/stub_image_reader.cpp)
+  src/local_image_reader.cpp)
 
 set_target_properties(ContainerImagesImpl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -50,7 +49,6 @@ target_include_directories(
 target_link_libraries(
   ContainerImagesImpl
   PRIVATE ${DBSYNC_LIB}
-         
           wazuhext)
 
 if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL

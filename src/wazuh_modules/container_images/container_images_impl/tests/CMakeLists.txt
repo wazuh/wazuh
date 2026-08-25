@@ -42,7 +42,9 @@ if(NOT DBSYNC_LIB)
   set(DBSYNC_LIB dbsync)
 endif()
 
-add_executable(container_images_unit_test container_images_test.cpp)
+# stub_image_reader.cpp is a test double and is deliberately built here rather than into
+# the module library, so the shipped library cannot produce synthetic inventory.
+add_executable(container_images_unit_test container_images_test.cpp stub_image_reader.cpp)
 # The DB tests exercise a real DBSync instance, so the real libraries are linked
 # (not mocks). wazuhext provides the hash/string helpers.
 target_link_libraries(container_images_unit_test
