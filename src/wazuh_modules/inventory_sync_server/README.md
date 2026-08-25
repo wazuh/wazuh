@@ -94,7 +94,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-4 | No silent drop; degrade with explicit coalescing | **superseded by D22** — the lane is short and synchronous; a full lane answers `503` and the agent re-POSTs (nothing to coalesce) |
 | REQ-VDQ-5 | Redefine the ack contract for VD sessions (scan decoupled from ack) | **superseded by D22** — the OPPOSITE was chosen: the scan gates the response; `200` guarantees scan + ingest |
 | REQ-VDQ-6 | Two-phase shutdown: stop admitting → drain/abort → reset the orchestrator | kept (lane stop before scanner reset; coordinator unregisters first) |
-| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **pending** — `vd_workers` defaults to 1 until the scanner stops serializing scans globally |
+| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **kept** — `ScanOrchestrator` now takes a `shared_lock` and checks out a per-slot `Slot` (its own chains + its own `IndexerConnectorSync`) for each scan; `vd_workers`/the scanner's `scanWorkers` both default to half the host's cores (minimum 1) and can be overridden with an explicit value |
 | REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from lane + registry state) |
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
