@@ -25,9 +25,6 @@
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
-#define AUDIT_SOCKET_WAIT_MS 5000   // Max time to wait for the audisp plugin to create the socket
-#define AUDIT_SOCKET_POLL_MS 100    // Polling interval while waiting for the socket
-#define AUDIT_SOCKET_CONNECT_RETRIES 3  // Connection attempts before deeming the socket stale
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -608,8 +605,10 @@ int configure_and_connect_audit_socket(void) {
         case 0:
             previous_applied = 1;
             break;
+        case 1:
         default:
-            // Auditd cannot be restarted, so no configuration can be probed
+            // The configuration was written but Auditd was not restarted, because restart_audit is
+            // disabled, so no candidate can be probed.
             return -1;
         }
 

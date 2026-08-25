@@ -517,11 +517,10 @@ static void expect_audit_socket_connect(int ret) {
     will_return(__wrap_OS_ConnectUnixDomain, ret);
 }
 
-/* wait_for_audit_socket() polls IsSocket() every 100 ms for 5 s, so a timeout is 50 misses. The
-   calls to usleep() in between are ignored: how often it polls is an implementation detail. */
-#define AUDIT_SOCKET_POLL_ATTEMPTS 50
-/* audit_socket_connect_retry() attempts before treating the socket as stale. */
-#define AUDIT_SOCKET_CONNECT_ATTEMPTS 3
+/* Derived from the real constants in syscheck_audit.h: a timeout is a full sweep of the polling
+   window. The usleep() calls in between are ignored, since how often it polls is an
+   implementation detail. */
+#define AUDIT_SOCKET_POLL_ATTEMPTS (AUDIT_SOCKET_WAIT_MS / AUDIT_SOCKET_POLL_MS)
 
 static void expect_wait_for_audit_socket(int found) {
     int i;
@@ -680,7 +679,7 @@ void test_configure_and_connect_audit_socket_removes_stale_socket(void **state) 
     expect_audit_socket_connect(-1);
     expect_audit_socket_connect(-1);
     expect_audit_socket_connect(-1);
-    expect_function_calls(__wrap_usleep, AUDIT_SOCKET_CONNECT_ATTEMPTS - 1);
+    expect_function_calls(__wrap_usleep, AUDIT_SOCKET_CONNECT_RETRIES - 1);
 
     expect_string(__wrap_unlink, file, AUDIT_SOCKET);
     will_return(__wrap_unlink, 0);
