@@ -713,6 +713,29 @@ def test_plain_dict_to_nested_dict():
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
      False),
+
+    # Test case where the command log_format tag name is uppercased with a lowercase decoy (should raise when not allowed)
+    ("<ossec_config><localfile><log_format>syslog</log_format><LOG_FORMAT>full_command</LOG_FORMAT>"
+     "<command>id</command></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     True),
+
+    # Test case where the command log_format tag name uses mixed case (should raise when not allowed)
+    ("<ossec_config><localfile><log_format>syslog</log_format><Log_Format>command</Log_Format>"
+     "<command>echo test</command></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     True),
+
+    # Test case where the wodle command tag name is uppercased (should raise when not allowed)
+    ('<ossec_config><wodle name="command"><COMMAND>ls -la</COMMAND></wodle></ossec_config>',
+     '<ossec_config><wodle name="command"><tag>value</tag></wodle></ossec_config>',
+     {'localfile': {'allow': True, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
 ])
 def test_check_remote_commands(new_conf, original_conf, allow_config, should_raise):
     """Tests check_remote_commands with different remote command inputs."""
