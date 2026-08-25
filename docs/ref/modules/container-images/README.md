@@ -12,7 +12,7 @@ Container Images scans configured image sources and reports what it discovers in
 
 ### Key Features
 
-- **Agent-only module**: Available in agent builds and excluded from the server/manager build.
+- **Agent-only module**: The shared library that performs the scan is built for agent targets only. The C glue is compiled everywhere, so the manager validates the configuration but never runs the module.
 - **Periodic scanning**: Supports scan on start and interval-based rescans.
 - **Local OCI layout reader**: Reads OCI image layouts from configured local paths.
 - **Format detection**: Detects unsupported local formats, logs them, and skips them safely.

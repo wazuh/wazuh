@@ -23,7 +23,6 @@ extern "C" {
 #endif
 
 #include <functional>
-#include <stdexcept>
 #include <string>
 
 class LoggingHelper
@@ -40,14 +39,15 @@ class LoggingHelper
             getInstance().m_externalLogCallback = std::move(callback);
         }
 
+        // Dropping the message is deliberate: every catch handler on the C boundary logs
+        // through here, so throwing when no callback is set would take an exception out of
+        // an extern "C" function and terminate the process.
         void log(const modules_log_level_t level, const std::string& message) const
         {
-            if (!m_externalLogCallback)
+            if (m_externalLogCallback)
             {
-                throw std::runtime_error("Log callback not set.");
+                m_externalLogCallback(level, message.c_str());
             }
-
-            m_externalLogCallback(level, message.c_str());
         }
 
     private:

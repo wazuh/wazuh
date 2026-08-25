@@ -161,7 +161,7 @@ Package and layer data are not stored in this stage.
 
 - `src/wazuh_modules/container_images/CMakeLists.txt` builds `libcontainer_images.so`.
 - `src/wazuh_modules/container_images/container_images_impl/CMakeLists.txt` builds the implementation library and tests.
-- `src/wazuh_modules/CMakeLists.txt` adds the module to agent builds and excludes the C glue from server builds.
+- `src/wazuh_modules/CMakeLists.txt` builds the shared library for agent targets only. The C glue is compiled on every target, so the manager can parse and validate a `<container_images>` block.
 - `src/init/inst-functions.sh` installs the shared library into the agent library directory.
 
 ### **Test Coverage**

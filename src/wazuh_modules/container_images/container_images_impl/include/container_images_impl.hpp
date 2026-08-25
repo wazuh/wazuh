@@ -15,6 +15,7 @@
 #include "iimage_reader.hpp"
 
 #include <condition_variable>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -37,9 +38,15 @@ namespace containerimages
                                 std::function<std::unique_ptr<IImageReader>(const std::string&)> readerFactory = makeReader);
 
             /// @brief Run the scan loop until stop() is called. Blocks the caller.
+            ///
+            /// Returns without scanning when stop() was already called: the shutdown loop
+            /// signals every module before joining any of them, so a stop can arrive
+            /// before the module thread ever gets here.
             void run();
 
             /// @brief Signal the scan loop to finish and wake it up.
+            ///
+            /// Latches the request, so a stop that arrives before run() is not lost.
             void stop();
 
             /// @brief Run a single discovery pass and return the image count.
@@ -49,6 +56,7 @@ namespace containerimages
             ContainerImagesConfig m_config;
             std::function<std::unique_ptr<IImageReader>(const std::string&)> m_readerFactory;
             bool m_running {false};
+            bool m_stopRequested {false};
             std::mutex m_mutex;
             std::condition_variable m_condition;
     };

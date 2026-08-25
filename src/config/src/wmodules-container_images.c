@@ -11,6 +11,7 @@
 #include "wmodules.h"
 #include "wm_container_images.h"
 
+#include <errno.h>
 #include <limits.h>
 
 static const char *XML_ENABLED = "enabled";
@@ -48,7 +49,7 @@ static int parse_bool(const char *element, const char *content, unsigned int *ta
 // Append a local source path to the module configuration.
 static void add_local_path(wm_container_images_t *container_images, const char *path) {
     os_realloc(container_images->local_paths, (container_images->local_paths_count + 1) * sizeof(char *), container_images->local_paths);
-    container_images->local_paths[container_images->local_paths_count] = strdup(path);
+    os_strdup(path, container_images->local_paths[container_images->local_paths_count]);
     container_images->local_paths_count++;
 }
 
@@ -98,7 +99,7 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
         container_images->local_paths_count = 0;
 
         module->context = &WM_CONTAINER_IMAGES_CONTEXT;
-        module->tag = strdup(module->context->name);
+        os_strdup(module->context->name, module->tag);
         module->data = container_images;
     }
 
@@ -130,36 +131,50 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
             container_images->scan_on_start = value;
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
+            unsigned long interval;
+            unsigned long multiplier;
 
             if (!nodes[i]->content || !strlen(nodes[i]->content)) {
                 merror("Invalid interval at module '%s'.", WM_CONTAINER_IMAGES_CONTEXT.name);
                 return OS_INVALID;
             }
 
-            container_images->interval = strtoul(nodes[i]->content, &endptr, 0);
+            errno = 0;
+            interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (container_images->interval == 0 || container_images->interval == UINT_MAX) {
+            // strtoul returns an unsigned long: a value that does not fit the unsigned int
+            // field would be truncated into a small interval and the module would scan in
+            // a tight loop, so it is rejected rather than wrapped.
+            if (errno || interval == 0 || interval >= UINT_MAX) {
                 merror("Invalid interval at module '%s'.", WM_CONTAINER_IMAGES_CONTEXT.name);
                 return OS_INVALID;
             }
 
             switch (*endptr) {
             case 'd':
-                container_images->interval *= W_DAY_SECONDS;
+                multiplier = W_DAY_SECONDS;
                 break;
             case 'h':
-                container_images->interval *= W_HOUR_SECONDS;
+                multiplier = W_HOUR_SECONDS;
                 break;
             case 'm':
-                container_images->interval *= W_MINUTE_SECONDS;
+                multiplier = W_MINUTE_SECONDS;
                 break;
             case 's':
             case '\0':
+                multiplier = 1;
                 break;
             default:
                 merror("Invalid interval at module '%s'.", WM_CONTAINER_IMAGES_CONTEXT.name);
                 return OS_INVALID;
             }
+
+            if (interval > (unsigned long)UINT_MAX / multiplier) {
+                merror("Invalid interval at module '%s'.", WM_CONTAINER_IMAGES_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            container_images->interval = (unsigned int)(interval * multiplier);
         } else if (!strcmp(nodes[i]->element, XML_CI_REFERENCES)) {
             if (parse_references(xml, nodes[i], container_images) < 0) {
                 return OS_INVALID;

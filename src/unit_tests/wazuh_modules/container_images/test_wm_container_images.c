@@ -158,6 +158,24 @@ void test_read_invalid_interval(void **state) {
     assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), OS_INVALID);
 }
 
+void test_read_interval_overflows_unit_multiplier(void **state) {
+    const char *string = "<interval>100000000d</interval>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mterror, tag);
+    expect_string(__wrap__mterror, formatted_msg, "Invalid interval at module 'container_images'.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), OS_INVALID);
+}
+
+void test_read_interval_does_not_fit_unsigned_int(void **state) {
+    const char *string = "<interval>5000000000</interval>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mterror, tag);
+    expect_string(__wrap__mterror, formatted_msg, "Invalid interval at module 'container_images'.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), OS_INVALID);
+}
+
 void test_read_invalid_enabled(void **state) {
     const char *string = "<enabled>maybe</enabled>\n";
     test_structure *test = *state;
@@ -186,6 +204,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_disabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_hours, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_invalid_interval, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_interval_overflows_unit_multiplier, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_interval_does_not_fit_unsigned_int, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_invalid_enabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_unknown_tag, setup_test_read, teardown_test_read),
     };
