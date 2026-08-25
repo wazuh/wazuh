@@ -198,7 +198,7 @@
 #define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
 #define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
 #define EXEC_BAD_NAME   "(1318): Command name truncated %s"
-#define EXEC_MAX_AR     "(1319): Reached the maximum of %d active response commands. Ignoring the remaining entries of '%s'."
+#define EXEC_MAX_AR     "(1319): Reached the limit of %d active response commands. Ignoring the remaining entries of '%s'."
 
 #define AR_NOAGENT_ERROR                "(1320): Agent '%s' not found."
 #define EXEC_QUEUE_CONNECTION_ERROR     "(1321): Error communicating with queue '%s'."
