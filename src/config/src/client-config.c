@@ -346,7 +346,7 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 /**
  * @brief Validate and normalize an <endpoint> value (#38492).
  *
- * Strips one leading and one trailing '/' (so "/wazuh-manager/",
+ * Strips leading and trailing '/' characters (so "/wazuh-manager/",
  * "wazuh-manager", and "wazuh-manager/" all normalize the same way),
  * then rejects anything outside [A-Za-z0-9._-] plus '/' as an internal
  * segment separator, repeated '/' (an empty segment), and '.'/'..'
