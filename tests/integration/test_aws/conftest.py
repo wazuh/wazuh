@@ -658,17 +658,19 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client, create_test_bucke
                         "AWS_VPC_ID is not set. A pre-existing VPC ID is required "
                         "for VPC flow log tests. Set the IT_AWS_VPC_ID GitHub secret."
                     )
-                # The flow log's dedup key is (VPC, traffic type, destination), all shared across runs, so
-                # two concurrent runs (issue #38194) collide with FlowLogAlreadyExists. Reuse the existing
-                # one when that happens; only the run that actually created it deletes it in teardown. The
-                # flow_log_id is just used to name the synthetic S3 object, so a shared id is harmless.
+                # Per-run destination (issue #38194): garbage falls under '<run>/' so _delete_run_namespace
+                # removes it, and the dedup key (VPC, traffic type, destination) becomes unique per run so
+                # concurrent runs no longer collide with FlowLogAlreadyExists. '_flowlogs/' keeps it out of
+                # '<run>/AWSLogs/...' where the module reads. Root destination locally (no run id).
+                log_destination = (f'arn:aws:s3:::{bucket_name}/{_RUN_ID}/_flowlogs/'
+                                   if _RUN_ID else f'arn:aws:s3:::{bucket_name}')
                 try:
                     response = ec2_client.create_flow_logs(
                         ResourceIds=[vpc_id],
                         ResourceType='VPC',
                         TrafficType='REJECT',
                         LogDestinationType='s3',
-                        LogDestination=f'arn:aws:s3:::{bucket_name}'
+                        LogDestination=log_destination
                     )
                     unsuccessful = response.get('Unsuccessful', [])
                     if unsuccessful:
