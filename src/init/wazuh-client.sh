@@ -107,6 +107,9 @@ status()
         if [ $? = 0 ]; then
             RETVAL=1
             echo "${i} not running..."
+        elif [ -f ${DIR}/var/run/${i}.failed ]; then
+            RETVAL=1
+            echo "${i} is running... (configuration on disk is invalid, running with previous configuration)"
         else
             echo "${i} is running..."
         fi
@@ -120,6 +123,7 @@ testconfig()
         ${DIR}/bin/${i} -t;
         if [ $? != 0 ]; then
             echo "${i}: Configuration error. Exiting"
+            touch ${DIR}/var/run/${i}.failed
             unlock;
             exit 1;
         fi
@@ -187,6 +191,7 @@ start_service()
         pstatus ${i};
         if [ $? = 0 ]; then
             failed=false
+            rm -f ${DIR}/var/run/${i}.failed
 
             if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
                 if command -v systemd-run >/dev/null 2>&1; then

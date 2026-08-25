@@ -69,6 +69,7 @@
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
 | [#38511](https://github.com/wazuh/wazuh/issues/38511) | Fixed world-writable permissions on bundled Python files after DEB installation, caused by the permission restoration script following symlinks. |
 | [#38547](https://github.com/wazuh/wazuh/issues/38547) | Fixed the API serving its OpenAPI specification and exact version at `/openapi.json` and `/openapi.yaml` without authentication. |
+| [#38563](https://github.com/wazuh/wazuh/issues/38563) | Fixed the manager refusing to start when its configuration still carried a 4.x `<command>` (Active Response definition) or `<active-response>` block; both are now accepted with a warning instead of aborting startup or being silently ignored. `wazuh-manager-control status` also now reports the on-disk configuration as invalid after a failed restart, instead of reporting stale daemons as healthy. |
 
 ### Agent
 
@@ -139,4 +140,5 @@
 | [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
 | [#38065](https://github.com/wazuh/wazuh/issues/38065) | Fixed SCA and Syscollector sync threads not blocking `SIGTERM`, which could cause the shutdown handler to run on a module thread instead of the main thread and time out joining it. |
 | [#38212](https://github.com/wazuh/wazuh/issues/38212) | Fixed the Windows agent leaving the FIM synchronization database open when the service stopped, which left the `queue\` directory behind after an uninstall without purge. |
+| [#38563](https://github.com/wazuh/wazuh/issues/38563) | Fixed a 4.x `<labels>` block aborting an agent restart without stopping the running daemons: it is now accepted with a warning, and `wazuh-control status` reports the on-disk configuration as invalid after a failed restart instead of reporting stale daemons as healthy. |
 

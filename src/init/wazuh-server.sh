@@ -206,6 +206,13 @@ status()
                 echo "${i} not running..."
             fi
             RETVAL=1
+        elif [ -f ${DIR}/var/run/${i}.failed ]; then
+            if [ $USE_JSON = true ]; then
+                echo -n '{"daemon":"'${i}'","status":"running","configuration":"invalid"}'
+            else
+                echo "${i} is running... (configuration on disk is invalid, running with previous configuration)"
+            fi
+            RETVAL=1
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
@@ -231,9 +238,7 @@ testconfig()
             else
                 echo "${i}: Configuration error. Exiting"
             fi
-            if [ ! -f ${DIR}/var/run/.restart ]; then
-                touch ${DIR}/var/run/${i}.failed
-            fi
+            touch ${DIR}/var/run/${i}.failed
             rm -f ${DIR}/var/run/*.start
             rm -f ${DIR}/var/run/.restart
             unlock;
