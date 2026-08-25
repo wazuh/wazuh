@@ -1148,7 +1148,13 @@ void fim_file(const char *path,
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 
-        process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        // Most realtime/whodata events don't have anything to promote (the file was already
+        // synced, or this was a MODIFIED with no old.sync=0 to promote). Skip the call entirely
+        // in that case instead of logging "Processed 0 pending sync flag updates" on every single
+        // event — that line used to print once per full scan, not once per file.
+        if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
+            process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        }
         OSList_Destroy(pending_sync_updates);
 
         free_file_data(new_entry.file_entry.data);

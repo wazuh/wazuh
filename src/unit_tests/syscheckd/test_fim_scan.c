@@ -1146,7 +1146,7 @@ static void test_fim_file_add(void **state) {
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
@@ -1159,10 +1159,93 @@ static void test_fim_file_add(void **state) {
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
+}
+
+// Regression test for #38522, end-to-end through fim_file()'s non-transactional (realtime/
+// whodata) path itself — not through transaction_callback() called directly. The other tests in
+// this file only prove process_pending_sync_updates() gets called with whatever list fim_file()
+// built; since __wrap_fim_db_file_update() never drives its callback, that list is always empty,
+// so they can't tell a correctly-wired callback_ctx.pending_sync_updates apart from a NULL one
+// silently dropped by transaction_callback's own NULL guard — the exact regression this issue was
+// about. This test drives the mocked callback for real, so fim_file()'s own local
+// pending_sync_updates list gets genuinely populated by the same code fim_file() constructs,
+// and asserts process_pending_sync_updates() reports 1 processed item, not 0.
+static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM };
+#ifdef TEST_WINAGENT
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+#else
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
+#endif
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+
+    int original_synced_docs_files = synced_docs_files;
+    // send_syscheck_msg() only fires when notify_scan is set — true on a live agent past its
+    // first scan (this file's OTHER tests never reach this check, so nothing else in this group
+    // sets it; only the separate test_transaction_callback_* fixture does, for its own tests).
+    int original_notify_scan = notify_scan;
+    notify_scan = 1;
+
+    expect_get_data(strdup("user"), strdup("group"), file_path, 1);
+
+#ifdef TEST_WINAGENT
+    cJSON *result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"c:\\\\windows\\\\system32\\\\cmd.exe\","
+        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+#else
+    cJSON *result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file_38522.txt\","
+        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+#endif
+    assert_non_null(result);
+
+    expect_fim_db_file_update_invoking_callback();
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    will_return(__wrap_fim_db_file_update, INSERTED);
+    will_return(__wrap_fim_db_file_update, result);
+
+    // Inside transaction_callback's INSERTED branch (file_limit=0/unlimited in this test group).
+    expect_function_call(__wrap_send_syscheck_msg);
+    will_return(__wrap_validate_and_persist_fim_event, true);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\system32\\cmd.exe");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\system32\\cmd.exe (version: 1, sync: 1)");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file_38522.txt");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file_38522.txt (version: 1, sync: 1)");
+#endif
+
+    // process_pending_sync_updates() now genuinely has 1 item to process.
+    expect_function_call(__wrap_process_pending_sync_updates);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: c:\\windows\\system32\\cmd.exe");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /etc/a_test_file_38522.txt");
+#endif
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 1 pending sync flag updates");
+
+    fim_file(file_path, &configuration, &evt_data, NULL, NULL);
+
+    cJSON_Delete(result);
+    synced_docs_files = original_synced_docs_files;
+    notify_scan = original_notify_scan;
 }
 
 static void test_fim_file_modify_transaction(void **state) {
@@ -1178,7 +1261,7 @@ static void test_fim_file_modify_transaction(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup("file");
@@ -1239,7 +1322,7 @@ static void test_fim_file_modify(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup("file");
@@ -1279,8 +1362,6 @@ static void test_fim_file_modify(void **state) {
                                         0x400, 0);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1295,7 +1376,7 @@ static void test_fim_file_no_attributes(void **state) {
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[] = "/bin/ls";
+    char file_path[] = "/etc/a_test_file_38522.txt";
 #endif
 
     // Inside fim_get_data
@@ -1345,7 +1426,7 @@ static void test_fim_file_error_on_insert(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup(file_path);
@@ -1385,8 +1466,6 @@ static void test_fim_file_error_on_insert(void **state) {
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1573,8 +1652,6 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1610,8 +1687,6 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1796,8 +1871,6 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -2437,8 +2510,6 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
@@ -2532,8 +2603,6 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     will_return(__wrap_w_get_file_attrs, 123456);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-    expect_function_call(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
@@ -4436,6 +4505,7 @@ int main(void) {
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
+        cmocka_unit_test(test_fim_file_add_queues_sync_flag_update_end_to_end),
         cmocka_unit_test_setup_teardown(test_fim_file_modify, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_file_modify_transaction, setup_fim_entry, teardown_fim_entry),
 
