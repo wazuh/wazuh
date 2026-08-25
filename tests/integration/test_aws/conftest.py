@@ -38,11 +38,12 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.aws import US_EAST_1_REGION
 
 # Keys permanently seeded by DevOps in the shared bucket that tests must never delete.
+# Only the CloudTrail seed is mirrored: it already gives find_account_ids the AWSLogs/<acct>/
+# CommonPrefix. An ELB seed would land in elasticloadbalancing/.../2022/11/20/, the same prefix the
+# alb/clb/nlb tests read, inflating their event count (found 2, expected 1).
 _PERMANENT_SEED_KEYS = frozenset({
     'AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/'
     '819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json',
-    'AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/'
-    '819751203818_elasticloadbalancing_us-east-1_net.qatests_20221120T0000Z_1412953514070675864_29.145.39.119.log',
 })
 # VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
 _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
@@ -98,8 +99,7 @@ def _copy_seeds_into_namespace(s3_client, bucket_name):
                 CopySource={'Bucket': bucket_name, 'Key': key})
             copied += 1
         except Exception as exc:
-            # A single missing seed is tolerated (e.g. the ELB seed is not always present): any one seed
-            # under AWSLogs/ gives the module's check_bucket the CommonPrefix it needs.
+            # Tolerate a per-seed copy failure; the fail-fast below only triggers if nothing seeded.
             logger.warning("Could not copy seed '%s' into run namespace '%s/': %s", key, _RUN_ID, exc)
     if not copied:
         # Nothing seeded: the module's check_bucket/find_account_ids would find no AWSLogs/ structure and
