@@ -336,6 +336,17 @@ class IndexerConnectorSyncImpl final
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound). Unreachable hosts are the monitor's
+    /// job -- this bound is the only thing that catches a host that ACCEPTED the connection and
+    /// then never answers, which otherwise blocks the caller inside curl_easy_perform forever.
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
+    /// Fallback for 'monitoring_interval_seconds' when the configuration has no opinion. Kept
+    /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
+    /// template deliberately does not include.
+    static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
     void processBulk()
     {
@@ -413,9 +424,13 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
+                // Includes transport-level failures (timeout, connection refused: statusCode <= 0).
+                // Raise it and let the catch around the post drop the staged queries -- the caller
+                // retries by re-staging them. The staged BULK data is deliberately left alone: it
+                // has not been attempted yet (deletes go out before the bulk POST) and the next
+                // flush sends it; clearing it here without clearing m_boundaries desyncs the two
+                // and a later 413 split would then index past the end of the buffer.
                 LOGFN_WARN(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
-                m_bulkData.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
         };
@@ -437,7 +452,7 @@ class IndexerConnectorSyncImpl final
                     RequestParameters {
                         .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                    {});
+                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
             }
             catch (...)
             {
@@ -503,6 +518,17 @@ class IndexerConnectorSyncImpl final
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // No HTTP response at all (timeout, connection refused, TLS failure): the transport
+                // reports these as a negative status. Discarding here would turn every transient
+                // outage into silent data loss, so keep the batch and retry with backoff.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk request.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
@@ -525,6 +551,7 @@ class IndexerConnectorSyncImpl final
                     LOGFN_DEBUG2(m_logFn, "Stopping requested, aborting bulk processing");
                     return;
                 }
+                needToRetry = false;
 
                 std::string url;
                 url += m_selector->getNext();
@@ -536,7 +563,7 @@ class IndexerConnectorSyncImpl final
                                                        .data = m_bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
@@ -616,9 +643,6 @@ class IndexerConnectorSyncImpl final
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
     {
-        std::string url;
-        url += m_selector->getNext();
-        url += "/_bulk";
         bool needToRetry = false;
 
         const auto onSuccess = [this](const std::string& response)
@@ -667,6 +691,19 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                 needToRetry = true;
             }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry the
+                // chunk with backoff instead of throwing, which would abandon the whole split and
+                // resend the full oversized batch just to hit 413 and split again. The chunk views
+                // stay valid across retries: they point into m_bulkData, which is only cleared by
+                // splitAndProcessBulk() after every chunk went through.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk chunk.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
@@ -683,12 +720,18 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            // Resolved inside the loop so a retry rotates to the next healthy host -- and throws
+            // (batch retained, resent by a later flush) once the monitor marks every host down,
+            // instead of hammering the same dead host forever while holding m_mutex.
+            std::string url;
+            url += m_selector->getNext();
+            url += "/_bulk";
             LOGFN_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
@@ -757,8 +800,25 @@ public:
         m_secureCommunication =
             secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
-        m_selector =
-            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+        if (selector)
+        {
+            m_selector = std::move(selector);
+        }
+        else
+        {
+            // Health-monitor polling period, read only by whoever builds the monitor.
+            const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                    config.at("monitoring_interval_seconds").is_number_integer()
+                                                ? config.at("monitoring_interval_seconds").get<long>()
+                                                : DEFAULT_MONITORING_INTERVAL_SECONDS;
+            if (monitoringInterval < 1)
+            {
+                throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+            }
+
+            m_selector = std::make_unique<TSelector>(
+                config.at("hosts"), static_cast<uint32_t>(monitoringInterval), m_secureCommunication);
+        }
 
         m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
                             ? config.at("max_bulk_size").get<size_t>()
@@ -776,6 +836,15 @@ public:
         if (m_maxRetryDelay < RetryDelay)
         {
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
@@ -982,6 +1051,19 @@ public:
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry with
+                // backoff like a 429 -- `conflicts=proceed` makes the update idempotent to re-run.
+                // Failing here instead would clear m_notify and silently drop the pending session
+                // completion callbacks.
+                needToRetry = true;
+                LOGFN_DEBUG2(
+                    m_logFn,
+                    "Transport-level failure, no HTTP status received (code %ld): %s. Retrying update by query.",
+                    statusCode,
+                    error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
@@ -1013,7 +1095,7 @@ public:
                                                    .data = updateQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1091,7 +1173,7 @@ public:
                                                    .data = searchQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1256,7 +1338,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1296,7 +1378,7 @@ public:
                                                   .data = deleteBody.dump(),
                                                   .secureCommunication = m_secureCommunication},
                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                               {});
+                               ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     nlohmann::json search(const PointInTime& pit,
@@ -1391,7 +1473,7 @@ public:
                                                    .data = requestBody.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1608,7 +1690,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     bool isAvailable() const

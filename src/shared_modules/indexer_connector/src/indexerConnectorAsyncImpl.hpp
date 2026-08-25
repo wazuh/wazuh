@@ -126,6 +126,15 @@ class IndexerConnectorAsyncImpl final
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound).
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
+    /// Fallback for 'monitoring_interval_seconds' when the configuration has no opinion. Kept
+    /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
+    /// template deliberately does not include.
+    static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
@@ -209,8 +218,25 @@ public:
         m_secureCommunication =
             secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
-        m_selector =
-            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+        if (selector)
+        {
+            m_selector = std::move(selector);
+        }
+        else
+        {
+            // Health-monitor polling period, read only by whoever builds the monitor.
+            const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                    config.at("monitoring_interval_seconds").is_number_integer()
+                                                ? config.at("monitoring_interval_seconds").get<long>()
+                                                : DEFAULT_MONITORING_INTERVAL_SECONDS;
+            if (monitoringInterval < 1)
+            {
+                throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+            }
+
+            m_selector = std::make_unique<TSelector>(
+                config.at("hosts"), static_cast<uint32_t>(monitoringInterval), m_secureCommunication);
+        }
 
         // Read max queue size (in bytes) from config, default to unlimited if not specified
         m_maxQueueBytes = config.contains("max_queue_bytes") && config.at("max_queue_bytes").is_number_unsigned()
@@ -235,6 +261,15 @@ public:
         if (m_maxRetryDelay < RetryDelay)
         {
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
         // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
@@ -544,6 +579,17 @@ public:
                         LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
+                    else if (statusCode <= 0)
+                    {
+                        // No HTTP response at all (timeout, connection refused, TLS failure):
+                        // Discarding here would turn every transient outage into silent data loss.
+                        LOGFN_DEBUG2(m_logFn,
+                                     "Transport-level failure, no HTTP status received (code %ld): %s. "
+                                     "Requeueing the batch for retry.",
+                                     statusCode,
+                                     error.c_str());
+                        throw IndexerConnectorException(error);
+                    }
                     else
                     {
                         LOGFN_WARN(m_logFn,
@@ -562,7 +608,7 @@ public:
                                                        .data = bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
             },
             m_maxQueueBytes,
             m_bulkMaxBytes,
@@ -791,7 +837,7 @@ public:
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -837,7 +883,7 @@ public:
                                                       .data = deleteBody.dump(),
                                                       .secureCommunication = m_secureCommunication},
                                    PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                   {});
+                                   ConfigurationParameters {.timeout = m_requestTimeoutMs});
         }
         catch (const std::exception& e)
         {
@@ -928,7 +974,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1012,7 +1058,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
