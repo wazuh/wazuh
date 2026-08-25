@@ -886,8 +886,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     if item_key not in cluster_items['files']:
                         raise exception.WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
 
+                    # Workers may only send files whose cluster item is explicitly marked as extra valid.
+                    if not cluster_items['files'][item_key].get('extra_valid', False):
+                        raise exception.WazuhClusterError(3022,
+                            extra_message=f"File not allowed to be synced from worker: {file_path}")
+
                     # Only valid client.keys is the local one (master).
-                    if os.path.basename(file_path) == 'client.keys':
+                    if os.path.basename(full_path) == 'client.keys':
                         raise exception.WazuhClusterError(3007)
 
                     # If the file is merged, create individual files from it.
@@ -942,7 +947,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 raise exception.WazuhClusterError(3022,
                                     extra_message=f"File path outside allowed directory: {file_path}")
 
-                            file_basename = os.path.basename(file_path)
+                            file_basename = os.path.basename(full_path)
                             if file_basename in cluster_items['files'].get('excluded_files', []):
                                 raise exception.WazuhClusterError(3022,
                                     extra_message=f"File is in excluded list: {file_path}")
