@@ -247,7 +247,7 @@ src/endpoints/
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
 - **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`).** Same authenticated
   pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
-  (`queue/sockets/inventory-sync.sock`) instead of the engine. Nothing on THIS side interprets either
+  (`queue/sockets/inventory-sync-http.sock`) instead of the engine. Nothing on THIS side interprets either
   document — but the far side does, and no longer trivially: it validates a specific shape
   (`/stats` an object keyed by module, `/config` an array of `{module, config}` pairs), rebuilds it
   into an indexable document, and writes one document per agent keyed by the agent id into

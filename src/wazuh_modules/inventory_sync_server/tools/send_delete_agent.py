@@ -51,7 +51,7 @@ import socket
 import subprocess
 import sys
 
-DEFAULT_SOCKET = "queue/sockets/inventory-sync.sock"
+DEFAULT_SOCKET = "queue/sockets/inventory-sync-http.sock"
 # Mirror invsync::endpoints::delete_agent::path()/altPath(). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/endpoints/deleteAgentEndpoint.hpp
 DELETE_PATH = "/agents"

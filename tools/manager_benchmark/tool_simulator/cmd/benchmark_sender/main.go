@@ -32,7 +32,7 @@ func run() int {
 	var (
 		scenarioPath = flag.String("scenario", "", "path to the scenario JSON (required)")
 		mode         = flag.String("mode", "", "transport: uds | agent (overrides the scenario)")
-		socket       = flag.String("socket", "queue/sockets/inventory-sync.sock", "uds mode: module socket path")
+		socket       = flag.String("socket", "queue/sockets/inventory-sync-http.sock", "uds mode: module socket path")
 		manager      = flag.String("manager", "127.0.0.1", "agent mode: manager host")
 		port         = flag.Int("port", 1517, "agent mode: remoted HTTPS port")
 		regPort      = flag.Int("reg-port", 1515, "agent mode: authd enrollment port")

@@ -1,7 +1,7 @@
 # Inventory Sync Server Module
 
 Manager-side synchronization service for agent state data, exposed over an HTTP/1.1 Unix domain
-socket (`queue/sockets/inventory-sync.sock`) by `wazuh-manager-modulesd`. A whole synchronization
+socket (`queue/sockets/inventory-sync-http.sock`) by `wazuh-manager-modulesd`. A whole synchronization
 session travels as ONE FlatBuffers `Message{FullSession}` request through
 [Remoted](../remoted/README.md)'s authenticated `POST /stateful` route, and the HTTP response
 relayed back to the agent IS the session result — no acks, no retransmission, no session store.
@@ -110,7 +110,7 @@ agent's documents). The situations an operator will recognize:
   --verify` counts the agent's documents before and after, which is the quickest way to see what a
   `200` actually did.
 - **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
-  reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock
+  reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock
   http://localhost/metrics`. Shard depths/bytes tell you whether load is skewed;
   `sync.pipeline.shed.total` counts admission-queue sheds; `vd.lane.*` covers the scan lane;
   `server.*` the transport's own budget and session levels. The full catalog — each metric with

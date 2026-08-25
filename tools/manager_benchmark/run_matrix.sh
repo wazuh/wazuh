@@ -33,7 +33,7 @@ CLUSTER=""
 # The manager's <remote><https><global_prefix>, when it has one. Unlike the cluster name
 # it is never read from the config: pass it, or every agent-mode run in the matrix 404s.
 GLOBAL_PREFIX=""
-SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 SEED=4242
 # Agent-mode runs wait for remoted to load the fleet's keys before measuring. On the
 # reference manager that took ~100 s, so the budget is deliberately generous; a run

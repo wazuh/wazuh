@@ -320,7 +320,7 @@ from an agent — see [the admin socket](README.md#local-admin-socket) and [Metr
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
   the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
   to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
-  (`queue/sockets/inventory-sync.sock`) and returns the downstream answer verbatim — the response
+  (`queue/sockets/inventory-sync-http.sock`) and returns the downstream answer verbatim — the response
   IS the session result (see the server's
   [response contract](../inventory-sync-server/api-reference.md)). The wait for the downstream
   answer is bounded by `remoted.downstream_stateful_response_timeout`
@@ -334,7 +334,7 @@ from an agent — see [the admin socket](README.md#local-admin-socket) and [Metr
   [Download endpoint](#download-endpoint-post-download) below for details.
 - **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
   its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
-  `queue/sockets/inventory-sync.sock`, stamping the authenticated identity as `X-Wazuh-Agent-Id`.
+  `queue/sockets/inventory-sync-http.sock`, stamping the authenticated identity as `X-Wazuh-Agent-Id`.
   Returns **`200 OK`** with a fixed `{}`, **`400`** on an empty or rejected document, **`413`**, or
   **`503`**. See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
 - **`POST /config`** — authenticated ingestion of the configuration document an agent reports.
@@ -1221,7 +1221,7 @@ agent reports them and the manager indexes what arrives.
 **remoted itself does not interpret either document** — but the service behind it does. remoted
 authenticates the request and relays the body to the
 [Inventory Sync Server](../inventory-sync-server/README.md) over
-`queue/sockets/inventory-sync.sock`, which validates its shape, rebuilds it into an indexable
+`queue/sockets/inventory-sync-http.sock`, which validates its shape, rebuilds it into an indexable
 document, and writes it: `/stats` into `wazuh-agent-stats` and `/config` into `wazuh-agent-config`.
 Both index **one document per agent, keyed by the agent id**, so each push replaces the previous
 report rather than appending.

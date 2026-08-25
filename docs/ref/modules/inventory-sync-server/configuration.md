@@ -14,7 +14,7 @@ tuned through internal options.
 
 Two values are deliberately NOT configurable:
 
-- **The socket path** is fixed at `queue/sockets/inventory-sync.sock`, relative to the installation
+- **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
   resolves the same relative path through its chroot.
 - **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a

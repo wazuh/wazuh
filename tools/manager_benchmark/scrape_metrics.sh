@@ -19,7 +19,7 @@ set -euo pipefail
 # Stops on SIGTERM/SIGINT (the orchestrator kills it when the sender exits).
 # ---------------------------------------------------------------------------
 
-SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 OUT="server_metrics.csv"
 INTERVAL=1
 

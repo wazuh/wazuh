@@ -22,7 +22,7 @@ namespace
     // relative path is the only form both peers resolve to the same file. The name is the SERVICE's,
     // not this transitional module's, so remoted's downstream configuration is written once and does
     // not have to change again when this module replaces inventory_sync.
-    constexpr auto DEFAULT_SOCKET_PATH {"queue/sockets/inventory-sync.sock"};
+    constexpr auto DEFAULT_SOCKET_PATH {"queue/sockets/inventory-sync-http.sock"};
 
     // bind() applies the umask, so the mode is always set explicitly afterwards. 0660 is what the
     // manager's other Unix sockets use, and it is what lets remoted -- which runs under the wazuh

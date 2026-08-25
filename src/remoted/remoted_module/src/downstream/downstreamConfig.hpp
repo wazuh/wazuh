@@ -35,7 +35,7 @@ namespace remoted::downstream
         /**
          * @brief Default UDS for modulesd's inventory sync server; /stats and /config target it.
          */
-        std::string inventorySyncSocketPath {"queue/sockets/inventory-sync.sock"};
+        std::string inventorySyncSocketPath {"queue/sockets/inventory-sync-http.sock"};
         int connectTimeoutMs {2000};  ///< Connect timeout per request.
         int writeTimeoutMs {5000};    ///< Write (request body send) timeout per request.
         int responseTimeoutMs {5000}; ///< Response (post-send) timeout per request.

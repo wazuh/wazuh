@@ -72,7 +72,7 @@ extern "C"
          * NOT CONFIGURABLE, and modulesd always leaves it empty: internal options can only carry
          * ints, so there is no mechanism to set a path. The field stays because it is how a test --
          * or a future caller with a real string source -- points the server somewhere else.
-         * empty -> module default ("queue/sockets/inventory-sync.sock").
+         * empty -> module default ("queue/sockets/inventory-sync-http.sock").
          */
         char socket_path[512];
         /**

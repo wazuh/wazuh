@@ -76,7 +76,7 @@ REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
-DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 INVSYNC_STATS_CSV = "stats-api-inventory-sync.csv"
 INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
