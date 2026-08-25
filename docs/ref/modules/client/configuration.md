@@ -482,7 +482,7 @@ Automatic agent registration:
 </agent>
 ```
 
-Enrollment dials the address/port from `<server>` above (and, if configured,
+Enrollment dials the address/port from `<manager>` above (and, if configured,
 presents the TLS material from `<ssl>`) — there is no separate
 `manager_address`/`port` to set under `<enrollment>` any more.
 

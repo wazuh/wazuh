@@ -159,7 +159,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 
     // Fail closed (H1): a verifying mode without a readable CA never sends. This can never
     // self-resolve without an operator fixing the config (mirrors main.c's hard exit on a
-    // missing/invalid <server><address>) -- CRITICAL terminates the daemon via the bridge's log
+    // missing/invalid <manager><address>) -- CRITICAL terminates the daemon via the bridge's log
     // callback instead of leaving it running with a permanently dead transport.
     if (caPath.empty() || !fsProbe.isReadableFile(caPath))
     {

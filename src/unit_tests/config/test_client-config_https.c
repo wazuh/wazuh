@@ -253,7 +253,7 @@ static void test_ssl_system_verification_mode(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
         "<ssl><verification_mode>system</verification_mode></ssl>";
 
     expect_valid_ip("10.0.0.1");
