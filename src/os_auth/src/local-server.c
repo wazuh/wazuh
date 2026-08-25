@@ -663,12 +663,6 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check whether the agent name is the same as the manager */
-    if (!strcmp(name, shost)) {
-        ierror = EDUPNAME;
-        goto fail;
-    }
-
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
         os_free(str_result); // see the duplicate-ID check above
