@@ -29,6 +29,7 @@ Examples:
   python3 send_stateless.py --all                 # run every success/failure scenario below
 """
 import argparse
+import re
 import sys
 import time
 
@@ -64,6 +65,59 @@ TRANSPORT_MAX_BODY_SIZE = 20 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX
 # every AuthError case above, which always gets a clean JSON response.
 CONN_CLOSED = "CONN_CLOSED"
 
+
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
+
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
 
 def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
     """Parses client.keys the same way Keystore does: 'id name ip key'
@@ -118,14 +172,14 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 # CONN_CLOSED.
 
 def scenario_valid(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
 
 
 def scenario_missing_protocol_version(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     del headers["protocol-version"]
@@ -133,24 +187,24 @@ def scenario_missing_protocol_version(agent_id, agent_key):
 
 
 def scenario_unsupported_protocol_version(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "2", "POST", target, int(time.time()), body)
     return headers, body, target
 
 
 def scenario_missing_authorization(_agent_id, _agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     return {"protocol-version": "1"}, DEFAULT_BODY, target
 
 
 def scenario_malformed_authorization(_agent_id, _agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     return {"protocol-version": "1", "Authorization": "Wazuh not-even-close"}, DEFAULT_BODY, target
 
 
 def scenario_unknown_agent(_agent_id, _agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     fake_id, fake_key = "999999", bytes(32)  # an id that (almost certainly) isn't enrolled
     headers = _auth_header(fake_id, fake_key, "1", "POST", target, int(time.time()), body)
@@ -158,7 +212,7 @@ def scenario_unknown_agent(_agent_id, _agent_key):
 
 
 def scenario_expired_request(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
@@ -166,7 +220,7 @@ def scenario_expired_request(agent_id, agent_key):
 
 
 def scenario_future_request(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
@@ -174,7 +228,7 @@ def scenario_future_request(agent_id, agent_key):
 
 
 def scenario_invalid_mac(agent_id, agent_key):
-    target = "/stateless"
+    target = prefixed("/stateless")
     signed_body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
     return headers, b"tampered!", target  # transmit different bytes than what was signed
@@ -185,7 +239,7 @@ def scenario_body_too_large(agent_id, agent_key):
     # (16 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
     # to reject it with a clean 413, not so big RESTinio drops the connection
     # first with no response at all.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = b"A" * (MAX_BODY_SIZE + 1024 * 1024)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
@@ -194,7 +248,7 @@ def scenario_body_too_large(agent_id, agent_key):
 def scenario_url_too_large(agent_id, agent_key):
     # max_url_size is 2048 -- this target (path+query) is comfortably over it,
     # so the parser must abort before routing/auth ever run.
-    target = "/stateless?pad=" + ("a" * (MAX_URL_SIZE + 100))
+    target = prefixed("/stateless?pad=" + ("a" * (MAX_URL_SIZE + 100)))
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
@@ -202,7 +256,7 @@ def scenario_url_too_large(agent_id, agent_key):
 
 def scenario_header_name_too_large(agent_id, agent_key):
     # max_field_name_size is 256.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     headers["X-" + ("n" * (MAX_FIELD_NAME_SIZE + 50))] = "value"
@@ -211,7 +265,7 @@ def scenario_header_name_too_large(agent_id, agent_key):
 
 def scenario_header_value_too_large(agent_id, agent_key):
     # max_field_value_size is 8192.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     headers["X-Test"] = "v" * (MAX_FIELD_VALUE_SIZE + 500)
@@ -221,7 +275,7 @@ def scenario_header_value_too_large(agent_id, agent_key):
 def scenario_too_many_headers(agent_id, agent_key):
     # max_field_count is 64; protocol-version + Authorization already count as
     # 2, so this many extra custom headers comfortably pushes the total over.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     for i in range(MAX_FIELD_COUNT + 10):
@@ -233,7 +287,7 @@ def scenario_payload_agent_mismatch(agent_id, agent_key):
     # The Authorization header (and its MAC) are for the real, signing agent; the H line's
     # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
     # plain 400 before ever forwarding the batch to the engine.
-    target = "/stateless"
+    target = prefixed("/stateless")
     claimed_id = str(int(agent_id) + 1)
     body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
@@ -245,7 +299,7 @@ def scenario_transport_body_too_large(agent_id, agent_key):
     # see scenario_body_too_large): this one must never reach AuthMiddleware
     # at all, so it gets no clean 413 -- RESTinio drops the connection as
     # soon as it sees a too-large Content-Length, before any body is read.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = b"A" * (TRANSPORT_MAX_BODY_SIZE + 1024 * 1024)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     return headers, body, target
@@ -254,7 +308,7 @@ def scenario_transport_body_too_large(agent_id, agent_key):
 def scenario_zstd_encoded(agent_id, agent_key):
     # Content-Encoding: zstd -- sign over the COMPRESSED (wire) bytes, exactly like the manager
     # does: the MAC always covers what was actually sent, compressed or not.
-    target = "/stateless"
+    target = prefixed("/stateless")
     plain = DEFAULT_BODY
     compressed = zstandard.ZstdCompressor().compress(plain)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
@@ -265,7 +319,7 @@ def scenario_zstd_encoded(agent_id, agent_key):
 def scenario_unsupported_content_encoding(agent_id, agent_key):
     # gzip was intentionally dropped -- zstd is the only supported Content-Encoding now. Any other
     # value, including a once-supported one, must be rejected as 415.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = DEFAULT_BODY
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     headers["Content-Encoding"] = "gzip"
@@ -274,7 +328,7 @@ def scenario_unsupported_content_encoding(agent_id, agent_key):
 
 def scenario_malformed_zstd(agent_id, agent_key):
     # Claims zstd, but the body is not a zstd frame at all.
-    target = "/stateless"
+    target = prefixed("/stateless")
     body = b"definitely not a zstd frame"
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     headers["Content-Encoding"] = "zstd"
@@ -292,7 +346,7 @@ def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
     # mean making the manager allocate hundreds of MiB. Both 413 paths (the decoder's buffers and
     # the growing output) are covered by bodyDecoder_test.cpp, and the concurrent-pressure case by
     # authGateway_test.cpp's 50-request test.
-    target = "/stateless"
+    target = prefixed("/stateless")
     event = b"E 1:/var/log/syslog:" + b"x" * 1000 + b"\n"
     header = b'H {"wazuh":{"agent":{"id":"1001"}}}\n'
     plain = header + event * ((MAX_BODY_SIZE + 1024 * 1024) // len(event) + 1)
@@ -363,6 +417,12 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path. Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--body", default=DEFAULT_BODY.decode(), help="Raw request body to sign and send.")
@@ -373,13 +433,17 @@ def main():
                          help="Ignore --body/--tamper and run every success/failure scenario "
                               "(one per distinct AuthError reachable through this endpoint).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
     if args.all:
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1
 
-    method, target, protocol_version = "POST", "/stateless", "1"
+    method, target, protocol_version = "POST", prefixed("/stateless"), "1"
     signed_body = args.body.encode()
     timestamp = int(time.time())
     headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)

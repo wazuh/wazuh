@@ -15,9 +15,14 @@ info:
     All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` MUST carry the
     `protocol-version` header. Every route except `GET /` and `POST /enroll` is
     authenticated with AES-CMAC and the agent's pre-shared AES key; the key is never transmitted.
-    The MAC covers the protocol version, HTTP method, request target, agent id, timestamp and the
-    exact request body as sent on the wire (the compressed bytes, when `Content-Encoding: zstd` is
-    used).
+    The MAC covers the protocol version, HTTP method, request target (the full path exactly as
+    sent — global endpoint prefix included), agent id, timestamp and the exact request body as
+    sent on the wire (the compressed bytes, when `Content-Encoding: zstd` is used).
+
+    Every path below is the endpoint's logical path, served under the configured
+    `<remote><https><global_prefix>` (the `globalPrefix` server variable). With a prefix in
+    effect the unprefixed paths answer `404`, and any proxy in between must forward the path
+    untouched: rewriting it breaks the request signature.
 
     `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses a distinct
     `WazuhEnroll` scheme (or no credential at all, depending on the manager's configuration).
@@ -30,8 +35,19 @@ info:
     socket (`queue/sockets/remoted-module.sock`), unreachable from an agent.
 
 servers:
-  - url: https://127.0.0.1:1517
+  - url: "https://{host}:{port}{globalPrefix}"
     description: Default local bind (configurable via <remote><https>)
+    variables:
+      host:
+        default: "127.0.0.1"
+      port:
+        default: "1517"
+      globalPrefix:
+        default: "/wazuh-manager"
+        description: >
+          Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
+          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
+          string here). The signed request target includes this prefix.
 
 tags:
   - name: Health

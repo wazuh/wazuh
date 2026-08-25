@@ -74,7 +74,15 @@ src/http_server/
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
 
-- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`.
+- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
+  **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
+  (`<remote><https><global_prefix>`; `""` == `/` == no prefix). With a prefix in effect the
+  unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
+  `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
+  auth layer signs the raw (prefixed) target, so agents send and sign the full prefixed path and
+  proxies must forward it untouched. Canonicalization lives in one place
+  (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
+  a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
   while deliberately leaving the I/O runtime alive (so an in-flight deferred reply can still be
   delivered); `stop()` calls `stopAccepting()` first, then releases the I/O runtime. See *Deferred
@@ -1756,12 +1764,17 @@ Signs and sends `POST /stateless` requests exactly as `AuthMiddleware` expects (
 canonical byte sequence, agent key read straight from `client.keys`). Requires
 `pip install requests cryptography`.
 
+Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
+flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
+a default installation needs no flag. The prefix is applied to the target **before** signing, since
+the MAC covers the request target as it travels; pass `/` to force the unprefixed paths.
+
 ```bash
 python3 tools/send_stateless.py            # one valid signed request -> 200
 python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
-# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys
+# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
 ```
 
 ### Manual / end-to-end (`tools/send_agent_json.py`)
@@ -1790,7 +1803,7 @@ python3 tools/send_agent_json.py --endpoint config        # same, against /confi
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
 python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
-# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
+# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
 ```
 
 `--all` runs every scenario against **both** endpoints on purpose: they are deliberate near-duplicates
@@ -1819,7 +1832,7 @@ python3 tools/send_scan_vd.py --auto-offset                 # looks up the curre
 python3 tools/send_scan_vd.py --feed-offset 1                # a deliberately wrong offset -> 409,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --all                          # every /scan/vd success/failure scenario
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
+# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --global-prefix
 ```
 
 `send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling

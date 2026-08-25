@@ -213,7 +213,7 @@ Run `./run_issue_checks.sh` to reproduce every row.
 | **Modes** — unsafe combinations | above | `certificate` under termination gives a false sense of security: it authenticates the balancer |
 | **Modes** — which certificates go where | `generate_test_certificates.sh` is the inventory: `load_balancer` (validated by the agent under termination), `manager_node1/2` (validated under passthrough), `agent` (client, mTLS), `proxy_client` (what NGINX presents to remoted), and the two controls for `full`: `agent_wrong_ip` and `proxy_client_wrong_ip`, identical to their counterparts except that their SAN holds an address the peer does not connect from | — |
 | **Proxy** — HTTP method | signed; NGINX does not rewrite methods | no impact |
-| **Proxy** — raw request target | `breaks_signature_path_rewrite.conf` | 🔴 rewriting the path → `401` on every request. **remoted cannot be published under a path prefix.** The rule is `proxy_pass https://backend;` with no URI component |
+| **Proxy** — raw request target | `breaks_signature_path_rewrite.conf` + `works_prefix_passthrough.conf` | 🔴 rewriting the path → `401` on every request; the rule is `proxy_pass https://backend;` with no URI component. ✅ Publishing under a prefix IS supported the other way around: `<remote><https><global_prefix>` on the manager + the same prefix signed and sent by the client, proxy in pure passthrough (`location /<prefix>/` with no URI on `proxy_pass`) |
 | **Proxy** — query string | `--target '/stateless?foo=bar&x=1'` | preserved verbatim → `202` |
 | **Proxy** — request body | `--tamper`, every topology | rejected with `401` ✅ (explicit acceptance criterion) |
 | **Proxy** — transfer encoding | only bytes are signed, not framing | no impact |
@@ -258,7 +258,8 @@ which is commented line by line and is where the deployment rules actually live.
 | `two_nodes_no_retry.conf` | Two nodes, retries off — to observe real balancing and the lost request on failover. |
 | `two_nodes_with_retry.conf` | Two nodes, retries on — to observe failover with nothing lost. |
 | `duplicates_non_idempotent.conf` | Adds the `non_idempotent` value, which is what actually opts POSTs into being retried **after delivery** — the only way to get real duplicate delivery out of NGINX. |
-| `breaks_signature_path_rewrite.conf` | **Meant to fail.** Publishes remoted under a path prefix. |
+| `breaks_signature_path_rewrite.conf` | **Meant to fail.** REWRITES the path to publish remoted under a prefix — the unsupported way. |
+| `works_prefix_passthrough.conf` | The SUPPORTED way to publish under a prefix: manager configured with `global_prefix` (`./set_manager_global_prefix.sh /wazuh-manager/`), `location` scoped to it, `proxy_pass` with no URI component. |
 | `breaks_handshake_proxy_protocol.conf` | **Meant to fail.** Passthrough with `proxy_protocol on;` — proves why it must never be enabled. |
 | `safe_merge_slashes_on.conf` | Proves `merge_slashes on` does *not* break the signature. |
 | `termination_without_client_cert.conf` | Termination where NGINX presents no client certificate of its own. |
@@ -277,6 +278,7 @@ Each one is the twin of the NGINX scenario with the same name, so results are di
 | `two_nodes.cfg` | Two nodes: balancing, **active** health checks and failover on HAProxy's own defaults (which lose nothing and duplicate nothing). |
 | `duplicates_retry_on_503.cfg` | Opts into duplicate delivery with `retry-on 503` — the twin of `nginx/duplicates_non_idempotent.conf`. |
 | `breaks_signature_path_rewrite.cfg` | **Meant to fail.** An explicit `http-request set-path`; note how deliberate it has to be here, versus one stray slash in NGINX. |
+| `works_prefix_passthrough.cfg` | The SUPPORTED way to publish under a prefix: `global_prefix` on the manager, an ACL scoping the frontend to it, target forwarded verbatim. |
 | `breaks_handshake_proxy_protocol.cfg` | **Meant to fail.** `send-proxy` breaks every agent's handshake, exactly as NGINX's `proxy_protocol on` does. |
 | `termination_http2.cfg` | h2 to the agent, HTTP/1.1 to remoted (`alpn h2,http/1.1`). |
 | `termination_idle_timeout.cfg` | 3 s idle timeout (`timeout client`). |

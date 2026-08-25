@@ -20,6 +20,13 @@ set -euo pipefail
 # answers 403 to a foreign cluster); --cluster overrides it, and a remote --manager
 # must pass it explicitly. There is no node knob: a session declares no cluster node.
 #
+# --global-prefix (agent mode only): the manager's <remote><https><global_prefix>. It is
+# part of the request target, so it is SIGNED as well as sent and must match the manager
+# exactly. Against a prefixed manager without it, every request answers 404 and the run
+# reads as a broken manager. Read from the LOCAL manager's config exactly like the
+# cluster name, so a default installation needs no flag; a REMOTE --manager must pass
+# it. "/" forces the unprefixed paths against a manager that does have one configured.
+#
 # Agent mode needs the manager configured for open enrollment first:
 #   sudo ./prepare_manager.sh
 #
@@ -45,6 +52,7 @@ PORT=1517
 REG_PORT=1515
 SEED=""
 CLUSTER=""
+GLOBAL_PREFIX=""
 MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
 ENROLL_SETTLE=""
 DO_METRICS=true
@@ -74,6 +82,15 @@ cluster_name_from_conf() {
         | sed -n "s:.*<name>\(.*\)</name>.*:\1:p" | head -1
 }
 
+# Same idea for <remote><https><global_prefix>, scoped to the <https> block. An absent tag
+# prints nothing, which is not an error here: it is exactly what "no prefix" means to the
+# manager too.
+global_prefix_from_conf() {
+    [[ -r "$MANAGER_CONF" ]] || return 0
+    sed -n '/<https>/,/<\/https>/p' "$MANAGER_CONF" 2>/dev/null \
+        | sed -n "s:.*<global_prefix>\(.*\)</global_prefix>.*:\1:p" | head -1
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --scenario)     SCENARIO="$2"; shift 2 ;;
@@ -85,6 +102,7 @@ while [[ $# -gt 0 ]]; do
         --reg-port)     REG_PORT="$2"; shift 2 ;;
         --seed)         SEED="$2"; shift 2 ;;
         --cluster)      CLUSTER="$2"; shift 2 ;;
+        --global-prefix) GLOBAL_PREFIX="$2"; shift 2 ;;
         --conf)         MANAGER_CONF="$2"; shift 2 ;;
         --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
@@ -142,6 +160,14 @@ if [[ -z "$CLUSTER" ]]; then
     exit 1
 fi
 
+# Same resolution for the global endpoint prefix, with one deliberate difference: not
+# finding it is a valid outcome (no prefix), so it never aborts the run. Only agent mode
+# speaks HTTP to the manager; the UDS path never sees a URL.
+if [[ -z "$GLOBAL_PREFIX" ]] && $IS_LOCAL_MANAGER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
+    GLOBAL_PREFIX="$(global_prefix_from_conf)"
+    [[ -n "$GLOBAL_PREFIX" ]] && echo "Global prefix not given; using '$GLOBAL_PREFIX' from $MANAGER_CONF"
+fi
+
 # Build the sender if the binary is missing or stale.
 if [[ ! -x "$GO_BIN" || -n "$(find "$TS_DIR" -name '*.go' -newer "$GO_BIN" -print -quit 2>/dev/null)" ]]; then
     echo "Building the sender..."
@@ -178,6 +204,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "port": $PORT,
     "socket": "$SOCKET",
     "cluster": "$CLUSTER",
+    "global_prefix": "$GLOBAL_PREFIX",
     "seed": "$SEED",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
@@ -251,6 +278,7 @@ GO_ARGS=(
 )
 [[ -n "$SEED" ]] && GO_ARGS+=( --seed "$SEED" )
 [[ -n "$CLUSTER" ]] && GO_ARGS+=( --cluster "$CLUSTER" )
+[[ -n "$GLOBAL_PREFIX" ]] && GO_ARGS+=( --global-prefix "$GLOBAL_PREFIX" )
 [[ -n "$ENROLL_SETTLE" ]] && GO_ARGS+=( --enroll-settle "$ENROLL_SETTLE" )
 SENDER_RC=0
 "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?

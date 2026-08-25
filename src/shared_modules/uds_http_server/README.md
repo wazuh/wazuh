@@ -12,6 +12,10 @@ What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol P
 library, not a layer of it), and not a general web framework — one request per connection,
 exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
+Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (status semantics,
+architecture, integration guide). This library has no standalone configuration — the
+transport knobs are documented in each consumer's `configuration.md`.
+
 ## Requirements
 
 ### Functional

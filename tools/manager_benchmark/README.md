@@ -43,6 +43,16 @@ A **remote** `--manager` is deliberately never auto-detected: the local config w
 different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass
 `--cluster` explicitly; the effective value is recorded in each run's `params.json`.
 
+If the manager configures a **global endpoint prefix** (`<remote><https><global_prefix>`), agent mode
+needs it too — and, exactly like the cluster name, it is read from the local manager's config when
+`--global-prefix` is not given, so a default installation needs no flag. A **remote** `--manager` is
+not auto-detected for the same reason, and `/` forces the unprefixed paths against a manager that
+does have one configured. Getting it wrong is not a soft failure: the prefix is part of the signed
+request target, so every request answers `404` and the run looks like a broken manager. A malformed
+prefix (an empty segment, a character the manager rejects) is warned about but still sent, so the
+tool can reproduce one on purpose. The effective value is recorded in `params.json` and in
+`sender_summary.json` under `meta.global_prefix`. The uds transport is never prefixed.
+
 Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts,
 retrying within `--enroll-settle`. That is not a formality: remoted only knows a freshly enrolled agent
 after it reloads `client.keys`, and that took **~100 s** on the reference manager — nothing like the

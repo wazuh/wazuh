@@ -141,38 +141,49 @@ namespace remoted::test
         return remoted::auth::toLowerHex(mac.data(), mac.size());
     }
 
-    /// Builds the signed request bytes an agent would put on the wire.
+    /// Builds signed request bytes where the MAC'd target and the request-line target are chosen
+    /// INDEPENDENTLY. The global-prefix tests need the split: the feature's contract is that the
+    /// agent signs the full prefixed target (wireTarget == signedTarget, the 3-arg overload), and
+    /// its failure mode -- a client that signs the unprefixed path but sends the prefixed one --
+    /// is exactly wireTarget != signedTarget.
     inline std::string signedRequest(const std::vector<std::uint8_t>& key,
-                                     const std::string& target,
+                                     const std::string& wireTarget,
+                                     const std::string& signedTarget,
                                      const std::string& body)
     {
         const auto ts = static_cast<std::int64_t>(std::time(nullptr));
-        const std::string mac = canonicalMac(key, "1", "POST", target, std::to_string(kTestAgentId), ts, body);
+        const std::string mac = canonicalMac(key, "1", "POST", signedTarget, std::to_string(kTestAgentId), ts, body);
 
-        std::string request = "POST " + target + " HTTP/1.1\r\n";
+        std::string request = "POST " + wireTarget + " HTTP/1.1\r\n";
         request += "Host: 127.0.0.1\r\n";
         request += "protocol-version: 1\r\n";
-        request += "Authorization: Wazuh " + std::to_string(kTestAgentId) + ":" + std::to_string(ts) + ":" + mac +
-                   "\r\n";
+        request +=
+            "Authorization: Wazuh " + std::to_string(kTestAgentId) + ":" + std::to_string(ts) + ":" + mac + "\r\n";
         request += "Content-Length: " + std::to_string(body.size()) + "\r\n";
         request += "Connection: close\r\n\r\n";
         request += body;
         return request;
     }
 
+    /// Builds the signed request bytes an agent would put on the wire (signs the sent target).
+    inline std::string
+    signedRequest(const std::vector<std::uint8_t>& key, const std::string& target, const std::string& body)
+    {
+        return signedRequest(key, target, target, body);
+    }
+
     /**
-     * @brief Sends one signed request and reads the response.
+     * @brief Sends pre-built request bytes over a fresh TLS connection and reads the response.
+     *
+     * The raw building block under every send helper here; also used directly for
+     * unauthenticated requests (e.g. the health probe, or the global-prefix 404 checks).
      *
      * @param readLimit 0 reads until the server closes (a whole response). A positive value stops
      *                  after roughly that many bytes and CLOSES the connection -- which is how a
      *                  test reproduces an agent walking away mid-transfer.
      * @return Whatever was read; empty when the connection could not be established.
      */
-    inline std::string sendSignedRequest(std::uint16_t port,
-                                         const std::vector<std::uint8_t>& key,
-                                         const std::string& target,
-                                         const std::string& body,
-                                         std::size_t readLimit = 0)
+    inline std::string sendRawOverTls(std::uint16_t port, const std::string& requestBytes, std::size_t readLimit = 0)
     {
         std::string received;
         try
@@ -187,7 +198,7 @@ namespace remoted::test
             asio::connect(stream.next_layer(), endpoints);
             stream.handshake(asio::ssl::stream_base::client);
 
-            asio::write(stream, asio::buffer(signedRequest(key, target, body)));
+            asio::write(stream, asio::buffer(requestBytes));
 
             std::vector<char> buffer(64 * 1024);
             while (readLimit == 0 || received.size() < readLimit)
@@ -207,6 +218,32 @@ namespace remoted::test
             // Best-effort: what matters is what the SERVER does, not a clean client teardown.
         }
         return received;
+    }
+
+    /// Sends an unauthenticated GET (no body, no Authorization) and returns the raw response.
+    inline std::string sendGetRequest(std::uint16_t port, const std::string& target)
+    {
+        return sendRawOverTls(port, "GET " + target + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    }
+
+    /// Signed send where the MAC'd target and the wire target differ (see the 4-arg
+    /// signedRequest above for when that split is the point of the test).
+    inline std::string sendSignedRequest(std::uint16_t port,
+                                         const std::vector<std::uint8_t>& key,
+                                         const std::string& wireTarget,
+                                         const std::string& signedTarget,
+                                         const std::string& body)
+    {
+        return sendRawOverTls(port, signedRequest(key, wireTarget, signedTarget, body));
+    }
+
+    inline std::string sendSignedRequest(std::uint16_t port,
+                                         const std::vector<std::uint8_t>& key,
+                                         const std::string& target,
+                                         const std::string& body,
+                                         std::size_t readLimit = 0)
+    {
+        return sendRawOverTls(port, signedRequest(key, target, body), readLimit);
     }
 
     /// Sends a signed request and returns immediately, without reading any reply.

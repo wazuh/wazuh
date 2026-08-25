@@ -150,6 +150,8 @@ extern "C"
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
         char bind_address[256];        ///< HTTPS listen address (empty -> module default).
+        char global_prefix[256];       ///< URL path prefix every route is registered under
+                                       ///< (empty -> "/", endpoints served unprefixed).
         char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
                                        ///< empty -> library default).

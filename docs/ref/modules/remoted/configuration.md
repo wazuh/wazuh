@@ -132,6 +132,30 @@ Address the HTTPS listener binds to.
   [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
   for the full explanation.
 
+### https.global_prefix
+
+URL path prefix every HTTPS endpoint is served under: with `/wazuh-manager/` configured,
+`POST /stateless` is exposed as `POST /wazuh-manager/stateless` and the health probe as
+`GET /wazuh-manager/`. With a prefix in effect, the unprefixed paths answer `404`.
+
+This is a **URL path**, unrelated to the installation directory `/var/wazuh-manager` despite the
+similar spelling: nothing on disk is looked up under it.
+
+- **Default value:** `/` (no prefix) when the tag is absent — an upgraded configuration keeps
+  serving today's unprefixed endpoints. Freshly generated configurations ship
+  `/wazuh-manager/`.
+- **Allowed values:** `/` (explicit "no prefix"), or `/segment[/segment...]` with an optional
+  trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
+  segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
+  configuration error (`wazuh-manager-remoted -t` reports it).
+- **Note:** the request signature (the AES-CMAC scheme, and `/enroll`'s own CMAC) covers the
+  request target exactly as sent — prefix included — so agents must send **and sign** the full
+  prefixed path, and any proxy in between must forward the path untouched (rewriting it breaks
+  the signature). A prefix mismatch between agent and manager surfaces as `404`. The prefix
+  counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
+  local admin socket is not. See
+  [HTTPS Events API](https-events-api.md#authentication-aes-cmac).
+
 ### https.dual_stack
 
 Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
@@ -1119,6 +1143,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
     <https>
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
+      <global_prefix>/wazuh-manager/</global_prefix>
       <certificate>etc/certs/remoted.pem</certificate>
       <key>etc/certs/remoted-key.pem</key>
       <ca>etc/certs/root-ca.pem</ca>

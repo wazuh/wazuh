@@ -187,10 +187,19 @@ longer matches, which means `401` on **every** request:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh/stateless'"] --> N["location /wazuh/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 401"]
+    A["agent signs<br/>'/wazuh-manager/stateless'"] --> N["location /wazuh-manager/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 401"]
 ```
 
-Consequence: remoted cannot be published under a path prefix. Use its own port or hostname.
+Consequence: a path prefix is never something the proxy adds or strips. To publish remoted under
+one, configure [`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the
+manager and the same prefix on the agents, and keep `proxy_pass` **without** a URI component so
+the prefixed target passes through untouched:
+
+```nginx
+location /wazuh-manager/ {
+    proxy_pass https://remoted_nodes_http;   # no trailing slash: target forwarded unchanged
+}
+```
 
 Related, and safe: `merge_slashes` (on by default, collapses `//` into `/`) does **not** break the
 signature as long as `proxy_pass` has no URI component. There is no need to turn it off.

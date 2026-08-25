@@ -36,6 +36,7 @@ Examples:
 """
 import argparse
 import json
+import re
 import sys
 import time
 
@@ -67,6 +68,59 @@ def derive_key(password: str) -> bytes:
     hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=b"", info=HKDF_INFO)
     return hkdf.derive(password.encode())
 
+
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
+# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
+# manager's configured prefix surfaces as 404 (route not found), not 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
+
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
 
 def sign_request(key: bytes, method: str, request_target: str, timestamp: int, body: bytes) -> str:
     """Builds the WazuhEnroll canonical byte sequence and returns its lowercase-hex AES-CMAC."""
@@ -116,7 +170,7 @@ DEFAULT_TIMEOUT_SECONDS = 20
 
 
 def send(base_url, body, headers, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
-    url = base_url.rstrip("/") + "/enroll"
+    url = base_url.rstrip("/") + prefixed("/enroll")
     # protocol-version first so a scenario can override it (pass a different value) or drop it
     # (pass None) -- every other scenario gets the valid one without having to say so. /enroll
     # validates this header before anything else, so omitting it here would turn every scenario
@@ -135,12 +189,12 @@ def scenario_valid(key, name, timestamp):
     # a tool meant for repeatable testing must not require a fresh client.keys between runs.
     unique_name = f"{name}-{timestamp}"
     body = build_body(unique_name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", timestamp, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), timestamp, body), body
 
 
 def scenario_tampered_body(key, name, timestamp):
     signed_body = build_body(name, "5.0.0")
-    headers = _auth_header(key, "POST", "/enroll", timestamp, signed_body)
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, signed_body)
     tampered_body = build_body(name + "-tampered", "5.0.0")
     return headers, tampered_body
 
@@ -148,7 +202,7 @@ def scenario_tampered_body(key, name, timestamp):
 def scenario_wrong_key(_key, name, timestamp):
     wrong_key = bytes(32)  # all-zero key -- never the real derived key
     body = build_body(name, "5.0.0")
-    return _auth_header(wrong_key, "POST", "/enroll", timestamp, body), body
+    return _auth_header(wrong_key, "POST", prefixed("/enroll"), timestamp, body), body
 
 
 def scenario_missing_authorization(_key, name, _timestamp):
@@ -164,30 +218,30 @@ def scenario_malformed_authorization(_key, name, _timestamp):
 def scenario_expired(key, name, _timestamp):
     ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 5)
     body = build_body(name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", ts, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), ts, body), body
 
 
 def scenario_future(key, name, _timestamp):
     ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 5)
     body = build_body(name, "5.0.0")
-    return _auth_header(key, "POST", "/enroll", ts, body), body
+    return _auth_header(key, "POST", prefixed("/enroll"), ts, body), body
 
 
 def scenario_missing_name(key, _name, timestamp):
     body = json.dumps({"version": "5.0.0"}).encode()
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
 def scenario_invalid_ip(key, name, timestamp):
     body = build_body(name, "5.0.0", ip="not-an-ip")
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
 def scenario_malformed_json(key, _name, timestamp):
     body = b"not valid json{{{"
-    headers = _auth_header(key, "POST", "/enroll", timestamp, body) if key else {}
+    headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, body) if key else {}
     return headers, body
 
 
@@ -247,7 +301,7 @@ def run_all(base_url, key, name, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
               "doesn't itself require a credential.\n")
     if cert:
         print(f"Presenting client certificate {cert[0]} on every request (mTLS mode).\n")
-    print(f"Running {len(scenarios)} scenario(s) against {base_url}/enroll\n")
+    print(f"Running {len(scenarios)} scenario(s) against {base_url}{prefixed('/enroll')}\n")
     results = [run_scenario(base_url, key, name, scenario_name, expected, build, cert=cert, timeout=timeout)
                for scenario_name, expected, build in scenarios]
     passed, total = sum(results), len(results)
@@ -258,6 +312,12 @@ def run_all(base_url, key, name, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
+                             "signing: the MAC covers the full prefixed path. Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--name", default="test-agent", help="Agent name to enroll.")
     parser.add_argument("--version", default="5.0.0", help="Agent version to report.")
     parser.add_argument("--groups", help="Comma-separated centralized group(s).")
@@ -284,6 +344,10 @@ def main():
                              "default of 15s -- raise this if the manager's authd_connect_timeout/"
                              "authd_response_timeout were themselves raised).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     if args.password_file and args.password is not None:
         parser.error("--password and --password-file are mutually exclusive")
@@ -306,7 +370,7 @@ def main():
 
     headers = {}
     if key:
-        headers = _auth_header(key, "POST", "/enroll", timestamp, signed_body)
+        headers = _auth_header(key, "POST", prefixed("/enroll"), timestamp, signed_body)
 
     sent_body = signed_body
     if args.tamper:
@@ -314,7 +378,7 @@ def main():
             parser.error("--tamper only makes sense with --password (nothing to tamper against otherwise)")
         sent_body = build_body(args.name + "-tampered", args.version, args.groups, args.ip, args.key_hash)
 
-    print(f"--> POST {args.url.rstrip('/')}/enroll")
+    print(f"--> POST {args.url.rstrip('/')}{prefixed('/enroll')}")
     if headers:
         print(f"    Authorization: {headers['Authorization']}")
     elif cert:

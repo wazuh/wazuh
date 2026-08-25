@@ -17,6 +17,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/runner"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/verdict"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
 // senderVersion is stamped into the artifacts; overridden at build time with
@@ -42,7 +43,11 @@ func run() int {
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
 			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
-		cluster     = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
+		cluster      = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
+		globalPrefix = flag.String("global-prefix", "", "agent mode: the manager's <remote><https><global_prefix>. "+
+			"It is part of the request target, so it is SIGNED as well as sent and must match the manager "+
+			"exactly -- against a prefixed manager without it every request answers 404. \"\" and \"/\" both "+
+			"mean no prefix. Never applied in uds mode: the module socket is not published under the prefix")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
 		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
@@ -89,6 +94,15 @@ func run() int {
 		return 2
 	}
 
+	// The global prefix is normalized ONCE here, not per client: buildAgents creates one
+	// client per agent, and normalizing there would let the value the clients use drift
+	// from the one recorded in meta. A malformed prefix warns but does not abort --
+	// reproducing one on purpose is a legitimate use of this tool.
+	prefix := wire.NormalizeGlobalPrefix(*globalPrefix)
+	if w := wire.GlobalPrefixWarning(prefix); w != "" {
+		fmt.Fprintf(os.Stderr, "warning: --global-prefix %s\n", w)
+	}
+
 	// --validate loads and strictly checks the scenario (unknown fields, unknown
 	// step kinds, mode/kind constraints, expected block) and exits without
 	// sending anything. This is what the orchestration and CI use to gate the
@@ -109,6 +123,7 @@ func run() int {
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
 		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
+		GlobalPrefix: prefix,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

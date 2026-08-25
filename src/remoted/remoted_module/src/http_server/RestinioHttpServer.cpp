@@ -11,6 +11,7 @@
 
 #include "RestinioHttpServer.hpp"
 #include "common/logThrottle.hpp"
+#include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
 
@@ -913,6 +914,10 @@ namespace remoted::http
         {
             auto requestRouter = std::make_unique<Router>();
 
+            // Already normalized by start() (empty == no prefix, else "/seg[/seg]" with no
+            // trailing '/'), so plain concatenation below can never produce "//".
+            const std::string& prefix = m_config.globalPrefix;
+
             for (const auto& route : m_routes)
             {
                 auto* pool = m_workerPool.get();
@@ -925,9 +930,21 @@ namespace remoted::http
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
 
+                // The pattern actually handed to the router is the route's logical path served
+                // under the global prefix. The "/" route (the health probe) is registered as the
+                // BARE prefix on purpose: path2regex's trailing-slash tolerance is
+                // one-directional -- a pattern ending in '/' does NOT match the bare spelling,
+                // while a bare pattern matches both -- so "/wazuh-manager" answers
+                // GET /wazuh-manager and GET /wazuh-manager/ alike (LB health checks use
+                // either), where "/wazuh-manager/" would 404 the former. Pinned by
+                // routerSemanticsSpike_test.cpp (S2/S9).
+                const std::string routePath = prefix.empty()      ? route.path
+                                              : route.path == "/" ? prefix
+                                                                  : prefix + route.path;
+
                 requestRouter->add_handler(
                     toRestinioMethod(method),
-                    route.path,
+                    routePath,
                     [pool,
                      budget,
                      budgetThrottle,
@@ -1165,6 +1182,12 @@ namespace remoted::http
 
         m_impl->m_config = config;
 
+        // Canonicalize the global endpoint prefix ("" == "/" == no prefix; else leading '/',
+        // no trailing '/'). May throw std::invalid_argument -- like the TLS throws below, this
+        // fires before any worker thread or budget is allocated, so no cleanup is needed. The
+        // stored (normalized) value is what buildRouter() and the log line below consume.
+        m_impl->m_config.globalPrefix = normalizeGlobalPrefix(config.globalPrefix);
+
         // Build the TLS context first: it validates cert/key and may throw before we
         // allocate any worker threads.
         auto tlsContext = createTlsContext(config);
@@ -1285,6 +1308,21 @@ namespace remoted::http
                    maxInFlight,
                    maxInFlight == 0 ? " (disabled)" : "",
                    config.maxParallelConnections);
+
+        // Only when a prefix is in effect, so the identity configuration keeps today's log
+        // output byte for byte. Reads the NORMALIZED value (m_impl->m_config), not the caller's.
+        const std::string& effectivePrefix = m_impl->m_config.globalPrefix;
+        if (!effectivePrefix.empty())
+        {
+            LOGFN_INFO(logFn(),
+                       "All HTTP endpoints are served under the global prefix '%s' (e.g. "
+                       "https://%s:%u%s/stateless); unprefixed paths answer 404; agents must send and sign the "
+                       "full prefixed target.",
+                       effectivePrefix.c_str(),
+                       displayAddress.c_str(),
+                       static_cast<unsigned int>(config.port),
+                       effectivePrefix.c_str());
+        }
     }
 
     void RestinioHttpServer::stopAccepting() noexcept

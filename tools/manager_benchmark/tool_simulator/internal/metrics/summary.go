@@ -14,6 +14,7 @@ type Meta struct {
 	Port              int     `json:"port"`
 	RegPort           int     `json:"reg_port"`
 	Target            string  `json:"target"`
+	GlobalPrefix      string  `json:"global_prefix"`
 	ClusterName       string  `json:"cluster_name"`
 	AgentsRequested   int     `json:"agents_requested"`
 	AgentsEnrolled    int     `json:"agents_enrolled"`

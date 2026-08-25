@@ -208,6 +208,11 @@ def parse_arguments():
     parser.add_argument("--agent-id", default="1001")
     parser.add_argument("--target", default="/stateless",
                         help="request target, signed AND sent verbatim (default: %(default)s)")
+    parser.add_argument("--signed-target",
+                        help="sign THIS target instead of the one sent (unsigned it stays "
+                             "--target). A deliberate mismatch, like the other after-signing "
+                             "knobs: reproduces a legacy client that signs the bare path while "
+                             "sending the prefixed one (global_prefix deployments) -> 401")
     parser.add_argument("--method", default="POST")
     parser.add_argument("--protocol-version", default="1")
     parser.add_argument("--body", default=DEFAULT_BODY)
@@ -280,7 +285,7 @@ def main() -> int:
     else:
         key = read_agent_key(args.client_keys, args.agent_id)
         # Signed HERE. Anything after this point simulates what an intermediary could alter.
-        mac = sign(key, args.protocol_version, args.method, args.target,
+        mac = sign(key, args.protocol_version, args.method, args.signed_target or args.target,
                    args.agent_id, timestamp, body)
         if args.print_auth:
             print(f"Wazuh {args.agent_id}:{timestamp}:{mac}")
