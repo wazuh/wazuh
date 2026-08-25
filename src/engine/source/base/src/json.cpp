@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "rapidjson/memorystream.h"
 #include "rapidjson/schema.h"
 
 #include <base/logging.hpp>
@@ -13,6 +14,107 @@ namespace
 {
 constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path '{}'";
 constexpr auto PATH_NOT_FOUND_MSG = "Path '{}' not found";
+
+constexpr char UTF8_REPLACEMENT[] = "\xEF\xBF\xBD"; // UTF-8 encoding of U+FFFD
+
+struct FirstBadByte
+{
+    unsigned char value {0};
+    size_t offset {0};
+};
+
+// Replaces invalid UTF-8 (per the same rapidjson::UTF8<>::Decode() the Writer uses) with U+FFFD.
+// std::nullopt if `input` was already valid.
+std::optional<std::string> sanitizeUtf8(std::string_view input, FirstBadByte* firstBad = nullptr)
+{
+    rapidjson::MemoryStream is(input.data(), input.size());
+    std::string out;
+    out.reserve(input.size());
+    bool changed = false;
+
+    while (is.Tell() < input.size())
+    {
+        const size_t start = is.Tell();
+        unsigned codepoint = 0;
+        if (rapidjson::UTF8<>::Decode(is, &codepoint))
+        {
+            out.append(input.data() + start, is.Tell() - start);
+            continue;
+        }
+
+        if (!changed && firstBad)
+        {
+            *firstBad = FirstBadByte {static_cast<unsigned char>(input[start]), start};
+        }
+        changed = true;
+        out.append(UTF8_REPLACEMENT, sizeof(UTF8_REPLACEMENT) - 1);
+    }
+
+    return changed ? std::optional<std::string> {std::move(out)} : std::nullopt;
+}
+
+// Sanitizes every string leaf under `value`; records the first offending field's path into `report`.
+bool sanitizeInvalidUtf8(rapidjson::Value& value,
+                         rapidjson::Document::AllocatorType& alloc,
+                         std::string& pathAccum,
+                         json::SanitizeReport* report)
+{
+    bool changed = false;
+
+    if (value.IsObject())
+    {
+        for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
+        {
+            if (auto fixed = sanitizeUtf8({it->name.GetString(), it->name.GetStringLength()}))
+            {
+                it->name.SetString(fixed->data(), static_cast<rapidjson::SizeType>(fixed->size()), alloc);
+                changed = true;
+            }
+            const auto depth = pathAccum.size();
+            if (!pathAccum.empty())
+            {
+                pathAccum += '.';
+            }
+            pathAccum.append(it->name.GetString(), it->name.GetStringLength());
+            changed |= sanitizeInvalidUtf8(it->value, alloc, pathAccum, report);
+            pathAccum.resize(depth);
+        }
+    }
+    else if (value.IsArray())
+    {
+        rapidjson::SizeType idx = 0;
+        for (auto it = value.Begin(); it != value.End(); ++it, ++idx)
+        {
+            const auto depth = pathAccum.size();
+            if (!pathAccum.empty())
+            {
+                pathAccum += '.';
+            }
+            pathAccum += std::to_string(idx);
+            changed |= sanitizeInvalidUtf8(*it, alloc, pathAccum, report);
+            pathAccum.resize(depth);
+        }
+    }
+    else if (value.IsString())
+    {
+        FirstBadByte bad;
+        if (auto fixed = sanitizeUtf8({value.GetString(), value.GetStringLength()}, &bad))
+        {
+            value.SetString(fixed->data(), static_cast<rapidjson::SizeType>(fixed->size()), alloc);
+            changed = true;
+            if (report && !report->sanitized)
+            {
+                report->sanitized = true;
+                report->path = pathAccum;
+                report->badByte = bad.value;
+                report->byteOffset = bad.offset;
+            }
+        }
+    }
+
+    return changed;
+}
+
 } // namespace
 
 namespace json
@@ -623,9 +725,34 @@ std::string Json::prettyStr() const
 
 std::string Json::str() const
 {
+    SanitizeReport report;
+    return str(report);
+}
+
+std::string Json::str(SanitizeReport& report) const
+{
+    report = SanitizeReport {};
+
     rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(buffer);
-    this->m_document.Accept(writer);
+    {
+        rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
+            buffer);
+        if (m_document.Accept(writer))
+        {
+            return buffer.GetString();
+        }
+    }
+
+    // Accept() failed: invalid UTF-8 left `buffer` truncated (wazuh/wazuh#38561). Sanitize a copy and retry.
+    rapidjson::Document sanitizedDoc;
+    sanitizedDoc.CopyFrom(m_document, sanitizedDoc.GetAllocator());
+    std::string pathAccum;
+    sanitizeInvalidUtf8(sanitizedDoc, sanitizedDoc.GetAllocator(), pathAccum, &report);
+
+    buffer.Clear();
+    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> retryWriter(
+        buffer);
+    sanitizedDoc.Accept(retryWriter); // guaranteed to succeed: every string leaf was scanned/fixed above
     return buffer.GetString();
 }
 

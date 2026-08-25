@@ -3,6 +3,7 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
 
+#include <fastmetrics/mockCounter.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
 using namespace builder::builders;
@@ -458,6 +459,51 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     auto result = operation(event);
     ASSERT_TRUE(result.success());
     ASSERT_EQ(*result.payload(), *event);
+}
+
+// Regression test for wazuh/wazuh#38561: an event whose event.original contains a raw invalid UTF-8
+// byte must still be indexed (not lost), with the byte sanitized in the payload actually sent, and the
+// sanitization counted.
+TEST_F(IndexerOutputOperationTest, output_sanitizes_invalid_utf8_and_still_indexes)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
+
+    auto mockCounter = std::make_shared<fastmetrics::MockCounter>();
+    EXPECT_CALL(dynamic_cast<fastmetrics::MockManager&>(fastmetrics::manager()),
+                getOrCreateCounter(std::string(fastmetrics::names::INDEXER_EVENTS_SANITIZED),
+                                   ::testing::_,
+                                   ::testing::_))
+        .WillOnce(::testing::Return(mockCounter));
+    EXPECT_CALL(*mockCounter, add(1)).Times(1);
+
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-applications"})");
+    auto expression = builder(definition, this->mocks->ctx);
+
+    // Raw invalid UTF-8 byte (0xFF) inside event.original, matching the reported failure mode.
+    const std::string badMessageStr {R"({"event":{"original":"bad-)"
+                                     "\xFF"
+                                     R"(-byte"}})"};
+    auto event = std::make_shared<json::Json>(badMessageStr.c_str());
+
+    auto term = expression->getPtr<base::Term<base::EngineOp>>();
+    auto operation = term->getFn();
+    ASSERT_TRUE(operation);
+
+    std::string indexedData;
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-applications", ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SaveArg<1>(&indexedData)));
+
+    auto result = operation(event);
+    ASSERT_TRUE(result.success());
+
+    ASSERT_NO_THROW(json::Json reparsed {indexedData.c_str()});
+    json::Json reparsed {indexedData.c_str()};
+    std::string original;
+    ASSERT_EQ(reparsed.getString(original, "/event/original"), json::RetGet::Success);
+    ASSERT_EQ(original.find('\xFF'), std::string::npos);
 }
 
 } // namespace indexeroutputtest

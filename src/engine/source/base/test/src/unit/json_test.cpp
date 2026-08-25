@@ -758,6 +758,72 @@ TEST_F(JsonRuntime, strFromPathNestedObjects)
     ASSERT_EQ(doc.str("/D"), std::nullopt);
 }
 
+// Regression tests for wazuh/wazuh#38561: an invalid UTF-8 byte in a field must not make str() return a
+// truncated JSON fragment. It must be sanitized (replaced with U+FFFD) so the event still serializes.
+
+TEST_F(JsonRuntime, StrSanitizesInvalidUtf8AndReportsIt)
+{
+    Json doc {"{}"};
+    doc.setString(std::string {"before-\xFF"
+                               "-after"},
+                  "/event/original");
+
+    SanitizeReport report;
+    const auto out = doc.str(report);
+
+    ASSERT_TRUE(report.sanitized);
+    ASSERT_EQ(report.badByte, 0xFF);
+    ASSERT_EQ(report.byteOffset, 7u);
+    ASSERT_EQ(report.path, "event.original");
+
+    ASSERT_NO_THROW(Json reparsed {out.c_str()});
+    Json reparsed {out.c_str()};
+    std::string original;
+    ASSERT_EQ(reparsed.getString(original, "/event/original"), RetGet::Success);
+    ASSERT_EQ(original, "before-\xEF\xBF\xBD-after");
+}
+
+TEST_F(JsonRuntime, StrNoArgOverloadNeverReturnsTruncatedJson)
+{
+    Json doc {"{}"};
+    doc.setString(std::string {"before-\xFF"
+                               "-after"},
+                  "/event/original");
+
+    ASSERT_NO_THROW(Json reparsed {doc.str().c_str()});
+}
+
+// [label, shouldSanitize, raw bytes to embed in a field] -- mirrors the issue's own OK/MISSING probe table.
+using StrSanitizeCaseT = std::tuple<std::string, bool, std::string>;
+class StrSanitizeCaseTest : public ::testing::TestWithParam<StrSanitizeCaseT>
+{
+};
+
+TEST_P(StrSanitizeCaseTest, Sanitizes)
+{
+    const auto& [label, shouldSanitize, rawBytes] = GetParam();
+    Json doc {"{}"};
+    doc.setString("X" + rawBytes + "X", "/field");
+
+    SanitizeReport report;
+    const auto out = doc.str(report);
+    ASSERT_EQ(report.sanitized, shouldSanitize) << label;
+    ASSERT_NO_THROW(Json reparsed {out.c_str()}) << label;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Json,
+    StrSanitizeCaseTest,
+    ::testing::Values(StrSanitizeCaseT("clean value", false, ""),
+                       StrSanitizeCaseT("control chars", false, "\x01\x02"),
+                       StrSanitizeCaseT("DEL", false, "\x7f"),
+                       StrSanitizeCaseT("valid 2-byte utf-8", false, "\xc3\xa9"),
+                       StrSanitizeCaseT("valid 3-byte utf-8", false, "\xe4\xb8\xad"),
+                       StrSanitizeCaseT("invalid byte 0xFF", true, "\xff"),
+                       StrSanitizeCaseT("overlong encoding", true, "\xc0\xaf"),
+                       StrSanitizeCaseT("encoded surrogate", true, "\xed\xa0\x80"),
+                       StrSanitizeCaseT("lone continuation byte", true, "\x80")));
+
 /****************************************************************************************/
 // QUERY
 /****************************************************************************************/

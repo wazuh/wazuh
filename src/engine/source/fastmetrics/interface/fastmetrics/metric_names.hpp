@@ -15,6 +15,7 @@ constexpr auto INDEXER_QUEUE_USAGE_PERCENT = "indexer.queue.usage.percent";
 
 // Indexer event metrics
 constexpr auto INDEXER_EVENTS_DROPPED = "indexer.events.dropped";
+constexpr auto INDEXER_EVENTS_SANITIZED = "indexer.events.sanitized";
 
 // Router queue metrics
 constexpr auto ROUTER_QUEUE_SIZE = "router.queue.size";

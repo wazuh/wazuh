@@ -4,6 +4,9 @@
 #include <regex>
 #include <stdexcept>
 
+#include <base/logging.hpp>
+#include <fastmetrics/registry.hpp>
+
 #include "builders/utils.hpp"
 
 namespace builder::builders
@@ -98,11 +101,16 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         throw std::runtime_error("Indexer connector is not available");
     }
 
+    // Counts events whose serialized JSON contained invalid UTF-8 and had to be sanitized before
+    // indexing (see wazuh/wazuh#38561).
+    auto sanitizedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::INDEXER_EVENTS_SANITIZED);
+
     return base::Term<base::EngineOp>::create(
         name,
         [indexName,
          placeholderPPVec,
          wic,
+         sanitizedCounter,
          successTrace,
          failureTrace,
          failureTrace2,
@@ -132,7 +140,22 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace3, finalIndexName));
             }
 
-            wic->index(finalIndexName, event->str());
+            json::SanitizeReport sanitizeReport;
+            const auto serializedEvent = event->str(sanitizeReport);
+            if (sanitizeReport.sanitized)
+            {
+                if (sanitizedCounter)
+                {
+                    sanitizedCounter->add(1);
+                }
+                LOG_WARNING("[indexerOutput] Sanitized invalid UTF-8 byte 0x{:02X} at offset {} in field '{}' "
+                            "before indexing into '{}'; event and alert were still indexed.",
+                            sanitizeReport.badByte,
+                            sanitizeReport.byteOffset,
+                            sanitizeReport.path,
+                            finalIndexName);
+            }
+            wic->index(finalIndexName, serializedEvent);
 
             RETURN_SUCCESS(isTestMode, event, successTrace);
         });

@@ -69,6 +69,7 @@
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
 | [#38511](https://github.com/wazuh/wazuh/issues/38511) | Fixed world-writable permissions on bundled Python files after DEB installation, caused by the permission restoration script following symlinks. |
 | [#38547](https://github.com/wazuh/wazuh/issues/38547) | Fixed the API serving its OpenAPI specification and exact version at `/openapi.json` and `/openapi.yaml` without authentication. |
+| [#38561](https://github.com/wazuh/wazuh/issues/38561) | Fixed events with invalid UTF-8 bytes being dropped, along with their alerts, when the indexer rejected the malformed JSON the manager sent. |
 
 ### Agent
 

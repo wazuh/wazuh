@@ -86,6 +86,18 @@ constexpr bool RECURSIVE {true};
 constexpr bool NOT_RECURSIVE {false};
 
 /**
+ * @brief Outcome of the invalid-UTF-8 sanitization Json::str() performs. Describes the first
+ * offending field found, not every occurrence.
+ */
+struct SanitizeReport
+{
+    bool sanitized {false};      ///< True if at least one invalid UTF-8 byte sequence was replaced.
+    std::string path;            ///< Dotted path to the first offending field (e.g. "event.original").
+    unsigned char badByte {0};   ///< First offending raw byte.
+    size_t byteOffset {0};       ///< Byte offset of that byte within the field's raw value.
+};
+
+/**
  * @brief JSON document wrapper around RapidJSON.
  *
  * Provides a high-level, type-safe API for creating, querying and manipulating
@@ -687,6 +699,14 @@ public:
      * @return std::string The Json string.
      */
     std::string str() const;
+
+    /**
+     * @brief Get Json string, reporting whether invalid UTF-8 bytes had to be sanitized.
+     *
+     * @param report Set to describe the first invalid-UTF-8 field found and fixed, if any.
+     * @return std::string The Json string. Always valid, parseable JSON.
+     */
+    std::string str(SanitizeReport& report) const;
 
     /**
      * @brief Get Json string from an object.
