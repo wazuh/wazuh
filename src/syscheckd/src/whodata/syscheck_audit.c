@@ -556,6 +556,7 @@ int configure_and_connect_audit_socket(void) {
     int count;
     int sfd;
     int i;
+    int previous_applied = 0;
 
     count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
 
@@ -574,18 +575,29 @@ int configure_and_connect_audit_socket(void) {
 
             close(sfd);
             mdebug1("The audisp plugin configuration in place is not one of the known ones. Rewriting it.");
-        } else if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT) {
+        } else if (syscheck.restart_audit) {
             // Nothing is listening: the socket was left behind by a plugin that is gone, and it
-            // would otherwise make a candidate look like it took effect.
-            merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno)); // LCOV_EXCL_LINE
+            // would otherwise make a candidate look like it took effect. It is only removed when
+            // Auditd can be restarted to recreate it, so that a connection failure this agent
+            // cannot recover from does not leave who-data permanently without a socket.
+            if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT) {
+                merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno)); // LCOV_EXCL_LINE
+            }
         }
     }
 
     for (i = 0; i < count; i++) {
         if (i > 0) {
-            mdebug1("Could not establish the who-data socket '%s' with the current audisp plugin "
-                    "configuration. Trying an alternative one.", AUDIT_SOCKET);
+            if (previous_applied) {
+                mdebug1("Could not establish the who-data socket '%s' with the current audisp plugin "
+                        "configuration. Trying an alternative one.", AUDIT_SOCKET);
+            } else {
+                mdebug1("The current audisp plugin configuration could not be applied. Trying an "
+                        "alternative one.");
+            }
         }
+
+        previous_applied = 0;
 
         switch (set_auditd_config_template(plugin_dir, templates[i])) {
         case -1:
@@ -594,6 +606,7 @@ int configure_and_connect_audit_socket(void) {
             mdebug1(FIM_AUDIT_NOCONF);
             continue;
         case 0:
+            previous_applied = 1;
             break;
         default:
             // Auditd cannot be restarted, so no configuration can be probed
@@ -604,7 +617,9 @@ int configure_and_connect_audit_socket(void) {
             continue;
         }
 
-        if (sfd = audit_socket_connect(1), sfd >= 0) {
+        // Retried for the same reason the stale socket check is: one refusal may be transient,
+        // and discarding a working candidate here would settle on the wrong configuration.
+        if (sfd = audit_socket_connect_retry(), sfd >= 0) {
             if (i > 0) {
                 minfo(FIM_AUDIT_FALLBACK_CONFIGURATION, AUDIT_SOCKET);
             }

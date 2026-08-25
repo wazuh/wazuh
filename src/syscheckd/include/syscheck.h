@@ -562,7 +562,9 @@ int configure_and_connect_audit_socket(void);
  *
  * @param plugin_dir Directory holding the audisp plugin configuration files
  * @param audisp_config Configuration template to render
- * @return 0 on success, -1 on error, 1 if Auditd could not be restarted
+ * @return 0 when the configuration is in place, 1 when it was written but Auditd was not
+ *         restarted because restart_audit is disabled, -1 on error (a failed Auditd restart
+ *         included)
  */
 int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
 

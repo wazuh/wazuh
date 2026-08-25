@@ -694,6 +694,56 @@ void test_configure_and_connect_audit_socket_removes_stale_socket(void **state) 
     assert_int_equal(ret, 77);
 }
 
+void test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled(void **state) {
+    int ret;
+
+    // Auditd cannot be restarted, so a socket removed here could never be recreated. Any call to
+    // __wrap_unlink in this test is unexpected and makes cmocka fail, which is the point.
+    syscheck.restart_audit = 0;
+
+    // A version with a single candidate keeps the probe short
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.0.6\n", "Audit version detected: 3.0.6");
+
+    // The socket is there but refuses every attempt
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+
+    // The configuration on disk already matches, so nothing is written
+    expect_abspath(AUDIT_SOCKET, 1);
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    will_return(__wrap_OS_SHA1_File, 0);
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    // wait_for_audit_socket() sees the socket that was never removed
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+
+    ignore_function_calls(__wrap_usleep);
+
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/sockets/audit'.");
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, -1);
+
+    syscheck.restart_audit = 1;
+}
+
 void test_configure_and_connect_audit_socket_probes_fallback(void **state) {
     int ret;
 
@@ -776,9 +826,10 @@ void test_configure_and_connect_audit_socket_keeps_probing_after_write_error(voi
     expect_candidate_written(-1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6273): Cannot apply Audit config.");
 
+    // The candidate was never applied, so the message must not claim it produced no socket
     expect_string(__wrap__mdebug1, formatted_msg,
-                  "Could not establish the who-data socket 'queue/sockets/audit' with the current "
-                  "audisp plugin configuration. Trying an alternative one.");
+                  "The current audisp plugin configuration could not be applied. Trying an "
+                  "alternative one.");
     expect_candidate_written(0);
     expect_wait_for_audit_socket(1);
     expect_audit_socket_connect(99);
@@ -2039,6 +2090,7 @@ int main(void) {
         cmocka_unit_test(test_audisp_configuration_is_known_no_file),
         cmocka_unit_test(test_configure_and_connect_audit_socket_no_plugins_dir),
         cmocka_unit_test(test_configure_and_connect_audit_socket_removes_stale_socket),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled),
         cmocka_unit_test(test_configure_and_connect_audit_socket_probes_fallback),
         cmocka_unit_test(test_configure_and_connect_audit_socket_all_candidates_fail),
         cmocka_unit_test(test_configure_and_connect_audit_socket_keeps_probing_after_write_error),
