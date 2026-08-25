@@ -132,15 +132,24 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AG_LOCAL_SOCK      "queue/sockets/agent"
 #define LC_LOCAL_SOCK      "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK     "queue/sockets/syscheck"
-#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote.sock"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/queue-http.sock"
 #define INV_SYNC_SOCK      "queue/sockets/inventory-sync.sock"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
-#define CONTROL_SOCK       "queue/sockets/control"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
+
+// Both products create these two from this same code. The manager carries the
+// standardized names; the agent keeps the legacy ones until the agent sockets are
+// renamed as a whole. Delete this fork then.
+#ifdef CLIENT
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
+#define CONTROL_SOCK       "queue/sockets/control"
+#else
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules.sock"
+#define CONTROL_SOCK       "queue/sockets/control.sock"
+#endif
 
 // Tasks socket
 #define TASK_QUEUE "queue/sockets/task.sock"

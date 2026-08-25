@@ -229,6 +229,9 @@ if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
   add_executable(test_task_registry_ipc_component test_task_registry_ipc_component.cpp)
+  # The linked agentd and wazuh_modules objects come from the product build, which
+  # defines CLIENT. The harness must agree or it binds the manager's socket name.
+  target_compile_definitions(test_task_registry_ipc_component PRIVATE CLIENT)
   target_include_directories(
       test_task_registry_ipc_component
       PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include/
@@ -259,6 +262,7 @@ if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # shape as test_task_registry_ipc_component above -- see
   # test_vd_offset_ipc_component.cpp's file banner for what is real vs. harness.
   add_executable(test_vd_offset_ipc_component test_vd_offset_ipc_component.cpp)
+  target_compile_definitions(test_vd_offset_ipc_component PRIVATE CLIENT)
   target_include_directories(
       test_vd_offset_ipc_component
       PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include/

@@ -408,7 +408,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('request', 'remote.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('wazuh-manager-db', 'wdb.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
+    ('wmodules', 'wmodules.sock', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
 ])
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')

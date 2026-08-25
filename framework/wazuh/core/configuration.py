@@ -970,7 +970,7 @@ def get_active_configuration(component: str, configuration: str) -> dict:
                                 'com': 'com', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
                                 'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',
-                                'wmodules': 'wmodules'}
+                                'wmodules': 'wmodules.sock'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
                                     'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
