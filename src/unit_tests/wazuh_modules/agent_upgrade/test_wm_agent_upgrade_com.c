@@ -233,8 +233,9 @@ void test_unsign_wpk_using_fail(void **state) {
 #else
     expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_filename");
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'var/incoming/test_filename'");
@@ -257,8 +258,9 @@ void test_unsign_temp_chmod_fail(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, -1);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, -1);
 
     expect_any_count(__wrap_unlink, file, 2);
     will_return_count(__wrap_unlink, 0, 2);
@@ -286,8 +288,9 @@ void test_unsign_success(void **state) {
     expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_filename");
 
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
 #endif
     will_return(__wrap_w_wpk_unsign, 0);
     expect_any(__wrap_unlink, file);
@@ -365,8 +368,9 @@ void test_uncompress_fopen_fail(void **state) {
     expect_w_fopen_nofollow(TMP_DIR, "test_filename.mg.XXXXXX", "wb", NULL);
 #else
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
     expect_fdopen(8, "wb", 0);
 
     expect_any(__wrap_unlink, file);
@@ -403,8 +407,9 @@ void test_uncompress_fwrite_fail(void **state) {
     expect_w_fopen_nofollow(TMP_DIR, "test_filename.mg.XXXXXX", "wb", (FILE *)5);
 #else
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
     expect_fdopen(8, "wb", (FILE *)5);
 #endif
 
@@ -450,8 +455,9 @@ void test_uncompress_gzread_fail(void **state) {
     expect_w_fopen_nofollow(TMP_DIR, "test_filename.mg.XXXXXX", "wb", (FILE *)5);
 #else
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
     expect_fdopen(8, "wb", (FILE *)5);
 #endif
 
@@ -494,8 +500,9 @@ void test_uncompress_success(void **state) {
     expect_w_fopen_nofollow(TMP_DIR, "test_filename.mg.XXXXXX", "wb", (FILE *)5);
 #else
     will_return(__wrap_mkstemp, 8);
-    expect_any(__wrap_chmod, path);
-    will_return(__wrap_chmod, 0);
+    expect_value(__wrap_fchmod, fd, 8);
+    expect_value(__wrap_fchmod, mode, 0640);
+    will_return(__wrap_fchmod, 0);
     expect_fdopen(8, "wb", (FILE *)5);
 #endif
 
@@ -963,8 +970,9 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1012,8 +1020,9 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1083,8 +1092,9 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1161,8 +1171,9 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1242,8 +1253,9 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1329,8 +1341,9 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1433,8 +1446,9 @@ void test_wm_agent_upgrade_com_success(void **state) {
             expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
-            expect_any(__wrap_chmod, path);
-            will_return(__wrap_chmod, 0);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
         #endif
         will_return(__wrap_w_wpk_unsign, 0);
         expect_any(__wrap_unlink, file);
@@ -1834,8 +1848,9 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
                 expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
                 will_return(__wrap_mkstemp, 8);
-                expect_any(__wrap_chmod, path);
-                will_return(__wrap_chmod, 0);
+                expect_value(__wrap_fchmod, fd, 8);
+                expect_value(__wrap_fchmod, mode, 0640);
+                will_return(__wrap_fchmod, 0);
             #endif
             will_return(__wrap_w_wpk_unsign, 0);
             expect_any(__wrap_unlink, file);

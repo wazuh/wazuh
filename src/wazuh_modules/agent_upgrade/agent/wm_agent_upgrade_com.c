@@ -463,12 +463,17 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     int fd;
 
     if (fd = mkstemp(dest), fd >= 0) {
-        close(fd);
-
-        if (chmod(dest, 0640) < 0) {
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
+            close(fd);
             unlink(dest);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "unsign()", dest);
             output = -1;
+        } else {
+            close(fd);
         }
     } else {
 #else
@@ -551,7 +556,11 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
             return -1;
         }
 
-        if (chmod(dest, 0640) < 0) {
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
             unlink(dest);
             close(fd);
             gzclose(fsource);
