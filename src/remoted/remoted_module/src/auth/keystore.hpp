@@ -122,6 +122,13 @@ namespace remoted::auth
          * unless all three parse -- an entry that cannot authenticate is not worth adopting early,
          * and the file remains the source of truth for it.
          *
+         * Known benign race: a reload that READ the file before authd wrote this entry but adopts
+         * its table after this upsert drops the entry until the next reload -- which the file
+         * change that preceded this call has already triggered. The window is the tail of one
+         * in-flight reload, strictly smaller than the reload-lag window this method removes, and
+         * it self-heals; protecting against it would mean versioning every upsert against every
+         * snapshot for no observable gain.
+         *
          * @param id     Agent id, as authd returned it (numeric string).
          * @param ip     The entry's ip column ("any", a fixed address, or a range).
          * @param keyHex The key column: lowercase hex decoding to 16, 24 or 32 bytes.
