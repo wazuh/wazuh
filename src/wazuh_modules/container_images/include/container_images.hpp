@@ -15,6 +15,7 @@
 #include "container_images_impl.hpp"
 #include "logging_helper.h"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -55,6 +56,9 @@ class EXPORTED ContainerImages final
         ContainerImages& operator=(const ContainerImages&) = delete;
 
         std::unique_ptr<containerimages::ContainerImagesImpl> m_impl;
+        // Latches a stop that arrives before init() built m_impl, so the later start()
+        // does not run a module that was already told to shut down.
+        std::atomic<bool> m_stopRequested {false};
 };
 
 #endif // _CONTAINER_IMAGES_HPP

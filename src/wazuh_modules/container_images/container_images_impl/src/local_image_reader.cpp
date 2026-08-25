@@ -11,6 +11,9 @@
 #include "local_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
+#include <algorithm>
+#include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <utility>
@@ -27,6 +30,11 @@ namespace
     // Markers used to recognize formats that are detected but not yet supported.
     const std::string DOCKER_ARCHIVE_MARKER {"manifest.json"};
     const std::string CONTAINERD_MARKER {"io.containerd.content.v1.content"};
+
+    // Largest file the reader will parse. An OCI index or configuration blob is a few
+    // kilobytes, so anything past this ceiling is not something this module should read
+    // into memory.
+    constexpr std::uintmax_t MAX_JSON_FILE_SIZE {16 * 1024 * 1024};
 
     void logDebug(const std::string& message)
     {
@@ -83,8 +91,41 @@ namespace
     }
 
     /// @brief Read and parse a JSON file, returning an empty object on failure.
+    ///
+    /// The file type is checked before opening: the path is built from on-disk data and
+    /// opening a FIFO with no writer would block the module thread indefinitely, past
+    /// the point where a stop can reach it.
     nlohmann::json readJsonFile(const std::filesystem::path& path)
     {
+        std::error_code errorCode;
+
+        if (!std::filesystem::exists(path, errorCode))
+        {
+            logDebug("File does not exist: " + path.string());
+            return nlohmann::json::object();
+        }
+
+        if (!std::filesystem::is_regular_file(path, errorCode))
+        {
+            logWarn("Not a regular file, skipping: " + path.string());
+            return nlohmann::json::object();
+        }
+
+        const auto size = std::filesystem::file_size(path, errorCode);
+
+        if (errorCode)
+        {
+            logWarn("Could not get the size of file: " + path.string());
+            return nlohmann::json::object();
+        }
+
+        if (size > MAX_JSON_FILE_SIZE)
+        {
+            logWarn("File is larger than the " + std::to_string(MAX_JSON_FILE_SIZE) + " byte limit, skipping: " +
+                    path.string());
+            return nlohmann::json::object();
+        }
+
         std::ifstream stream(path);
 
         if (!stream.is_open())
@@ -93,27 +134,61 @@ namespace
             return nlohmann::json::object();
         }
 
-        return nlohmann::json::parse(stream, nullptr, false);
-    }
+        // Non-throwing parse: a discarded value is returned on malformed input, and it is
+        // not an object, so it would fail every accessor below.
+        auto content = nlohmann::json::parse(stream, nullptr, false);
 
-    /// @brief True if a digest component is safe to use as a path segment.
-    ///
-    /// The component is read from on-disk JSON that may be attacker-controlled, so
-    /// anything that could escape the layout directory (path separators, parent
-    /// references, empty) is rejected.
-    bool isSafeDigestComponent(const std::string& component)
-    {
-        if (component.empty() || component == "." || component == "..")
+        if (!content.is_object())
         {
-            return false;
+            logWarn("Could not parse a JSON object from file: " + path.string());
+            return nlohmann::json::object();
         }
 
-        return component.find('/') == std::string::npos &&
-               component.find('\\') == std::string::npos;
+        return content;
+    }
+
+    /// @brief Read a string field, or an empty string when the node is not an object, the
+    /// field is missing, or the field is not a string.
+    ///
+    /// Every field below comes from on-disk JSON that may be attacker-influenced, so no
+    /// accessor may assume a type: nlohmann::json::value() throws on both counts.
+    std::string stringField(const nlohmann::json& node, const std::string& key)
+    {
+        if (!node.is_object())
+        {
+            return {};
+        }
+
+        const auto field = node.find(key);
+
+        return (field != node.end() && field->is_string()) ? field->get<std::string>() : std::string {};
+    }
+
+    /// @brief True if a digest algorithm matches the OCI character set `[a-z0-9]+`.
+    bool isSafeDigestAlgorithm(const std::string& algorithm)
+    {
+        return !algorithm.empty() && std::all_of(algorithm.begin(), algorithm.end(), [](const char character)
+        {
+            return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9');
+        });
+    }
+
+    /// @brief True if a digest encoded part matches the OCI character set `[a-zA-Z0-9=_-]+`.
+    bool isSafeDigestEncoded(const std::string& encoded)
+    {
+        return !encoded.empty() && std::all_of(encoded.begin(), encoded.end(), [](const char character)
+        {
+            return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+                   (character >= '0' && character <= '9') || character == '=' || character == '_' || character == '-';
+        });
     }
 
     /// @brief Resolve a digest ("sha256:abc...") to its blob path under the layout.
     /// Returns an empty path for malformed or unsafe digests.
+    ///
+    /// Both components are whitelisted rather than filtered for known-bad characters: a
+    /// blacklist still lets through things such as a Windows drive-relative "C:foo",
+    /// which operator/ would use to replace the layout path entirely.
     std::filesystem::path blobPath(const std::filesystem::path& layoutPath, const std::string& digest)
     {
         const auto separator = digest.find(':');
@@ -126,7 +201,7 @@ namespace
         const auto algorithm = digest.substr(0, separator);
         const auto value = digest.substr(separator + 1);
 
-        if (!isSafeDigestComponent(algorithm) || !isSafeDigestComponent(value))
+        if (!isSafeDigestAlgorithm(algorithm) || !isSafeDigestEncoded(value))
         {
             logDebug("Rejected unsafe digest: " + digest);
             return {};
@@ -138,10 +213,10 @@ namespace
     /// @brief Fill platform metadata from a parsed configuration blob.
     void applyConfigMetadata(const nlohmann::json& config, containerimages::ImageReferenceRecord& record)
     {
-        record.os = config.value("os", "");
-        record.architecture = config.value("architecture", "");
-        record.variant = config.value("variant", "");
-        record.osVersion = config.value("os.version", "");
+        record.os = stringField(config, "os");
+        record.architecture = stringField(config, "architecture");
+        record.variant = stringField(config, "variant");
+        record.osVersion = stringField(config, "os.version");
     }
 } // namespace
 
@@ -159,27 +234,41 @@ namespace containerimages
 
     std::vector<ImageReferenceRecord> LocalImageReader::discover()
     {
-        std::vector<ImageReferenceRecord> records;
-
-        std::error_code errorCode;
-        const std::filesystem::path path {m_layoutPath};
-
-        if (m_layoutPath.empty() || !std::filesystem::is_directory(path, errorCode))
+        // Nothing below may escape: this runs on the module thread, and an exception here
+        // unwinds the whole scan loop and takes the module down for the lifetime of the
+        // process. One unreadable source costs that source only.
+        try
         {
-            logWarn("Local path is not a directory: " + m_layoutPath);
-            return records;
+            std::error_code errorCode;
+            const std::filesystem::path path {m_layoutPath};
+
+            if (m_layoutPath.empty() || !std::filesystem::is_directory(path, errorCode))
+            {
+                logWarn("Local path is not a directory: " + m_layoutPath);
+                return {};
+            }
+
+            const auto format = detectFormat(path);
+
+            if (format != LocalFormat::OciLayout)
+            {
+                logWarn("NOT IMPLEMENTED: local format '" + formatName(format) + "' at '" + m_layoutPath +
+                        "' is not supported yet, skipping.");
+                return {};
+            }
+
+            return readOciLayout(path);
+        }
+        catch (const std::exception& ex)
+        {
+            logWarn("Could not read the local path '" + m_layoutPath + "': " + ex.what());
+        }
+        catch (...)
+        {
+            logWarn("Could not read the local path '" + m_layoutPath + "': unknown error.");
         }
 
-        const auto format = detectFormat(path);
-
-        if (format != LocalFormat::OciLayout)
-        {
-            logWarn("NOT IMPLEMENTED: local format '" + formatName(format) + "' at '" + m_layoutPath +
-                    "' is not supported yet, skipping.");
-            return records;
-        }
-
-        return readOciLayout(path);
+        return {};
     }
 
     std::vector<ImageReferenceRecord> LocalImageReader::readOciLayout(const std::filesystem::path& layoutPath)
@@ -187,44 +276,71 @@ namespace containerimages
         std::vector<ImageReferenceRecord> records;
 
         const auto index = readJsonFile(layoutPath / OCI_INDEX_FILE);
+        const auto manifests = index.find("manifests");
 
-        if (!index.contains("manifests") || !index["manifests"].is_array())
+        if (manifests == index.end() || !manifests->is_array())
         {
             logDebug("Index has no manifests at: " + layoutPath.string());
             return records;
         }
 
-        for (const auto& manifestRef : index["manifests"])
+        for (const auto& manifestRef : *manifests)
         {
-            const auto manifestDigest = manifestRef.value("digest", "");
-
-            if (manifestDigest.empty())
+            try
             {
-                continue;
+                const auto manifestDigest = stringField(manifestRef, "digest");
+
+                if (manifestDigest.empty())
+                {
+                    logDebug("Index entry without a digest at: " + layoutPath.string());
+                    continue;
+                }
+
+                const auto manifestPath = blobPath(layoutPath, manifestDigest);
+
+                if (manifestPath.empty())
+                {
+                    continue;
+                }
+
+                const auto manifest = readJsonFile(manifestPath);
+                const auto configNode = manifest.find("config");
+                const auto configDigest =
+                    configNode != manifest.end() ? stringField(*configNode, "digest") : std::string {};
+
+                if (configDigest.empty())
+                {
+                    logDebug("Manifest without config digest: " + manifestDigest);
+                    continue;
+                }
+
+                const auto configPath = blobPath(layoutPath, configDigest);
+
+                if (configPath.empty())
+                {
+                    continue;
+                }
+
+                ImageReferenceRecord record;
+                record.configDigest = configDigest;
+                record.manifestDigest = manifestDigest;
+
+                applyConfigMetadata(readJsonFile(configPath), record);
+
+                const auto annotations = manifestRef.find("annotations");
+
+                if (annotations != manifestRef.end())
+                {
+                    record.tag = stringField(*annotations, "org.opencontainers.image.ref.name");
+                }
+
+                record.source = {SOURCE_TYPE, layoutPath.string()};
+                records.push_back(std::move(record));
             }
-
-            const auto manifest = readJsonFile(blobPath(layoutPath, manifestDigest));
-            const auto configDigest = manifest.contains("config") ? manifest["config"].value("digest", "") : "";
-
-            if (configDigest.empty())
+            catch (const std::exception& ex)
             {
-                logDebug("Manifest without config digest: " + manifestDigest);
-                continue;
+                logWarn("Skipping a manifest entry at '" + layoutPath.string() + "': " + ex.what());
             }
-
-            ImageReferenceRecord record;
-            record.configDigest = configDigest;
-            record.manifestDigest = manifestDigest;
-
-            applyConfigMetadata(readJsonFile(blobPath(layoutPath, configDigest)), record);
-
-            if (manifestRef.contains("annotations") && manifestRef["annotations"].is_object())
-            {
-                record.tag = manifestRef["annotations"].value("org.opencontainers.image.ref.name", "");
-            }
-
-            record.source = {SOURCE_TYPE, layoutPath.string()};
-            records.push_back(std::move(record));
         }
 
         return records;

@@ -31,7 +31,7 @@ void ContainerImages::init(const containerimages::ContainerImagesConfig& config)
 
 void ContainerImages::start()
 {
-    if (m_impl)
+    if (m_impl && !m_stopRequested)
     {
         m_impl->run();
     }
@@ -39,6 +39,8 @@ void ContainerImages::start()
 
 void ContainerImages::stop()
 {
+    m_stopRequested = true;
+
     if (m_impl)
     {
         m_impl->stop();
@@ -57,11 +59,18 @@ void container_images_set_log_function(log_callback_t callback)
         return;
     }
 
-    ContainerImages::instance().setLogFunction(
-        [callback](const modules_log_level_t level, const std::string & log)
+    try
     {
-        callback(level, log.c_str(), "container_images");
-    });
+        ContainerImages::instance().setLogFunction(
+            [callback](const modules_log_level_t level, const std::string & log)
+        {
+            callback(level, log.c_str(), "container_images");
+        });
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
 }
 
 void container_images_init(const unsigned int interval,
