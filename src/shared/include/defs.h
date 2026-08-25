@@ -137,7 +137,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/engine-ingest-http.sock"
 #define INV_SYNC_SOCK      "queue/sockets/inventory-sync-http.sock"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
-#define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
+#define CLUSTER_SOCK       "queue/sockets/cluster-internal.sock"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
 // Both products create these two from this same code. The manager carries the
@@ -151,18 +151,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CONTROL_SOCK       "queue/sockets/control.sock"
 #endif
 
-// Tasks socket
-#define TASK_QUEUE "queue/sockets/task.sock"
-
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS 10
 
 // Database socket
 #define WDB_LOCAL_SOCK "queue/sockets/wdb.sock"
 
-// Tasks socket
+// Tasks sockets
 #define WM_UPGRADE_SOCK "queue/sockets/task-upgrade.sock"
-
 #define WM_TASK_MODULE_SOCK "queue/sockets/task.sock"
 
 /* Active Response files */

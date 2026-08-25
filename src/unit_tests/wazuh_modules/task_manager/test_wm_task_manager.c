@@ -136,7 +136,7 @@ void test_wm_task_manager_init_ok(void **state)
 
     expect_legacy_task_polling_interval(900);
 
-    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_TASK_MODULE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
@@ -161,7 +161,7 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     expect_legacy_task_polling_interval(900);
 
-    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_TASK_MODULE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
@@ -189,7 +189,7 @@ void test_wm_task_manager_init_polling_interval_safe(void **state)
 
     expect_legacy_task_polling_interval(500);
 
-    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_TASK_MODULE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
@@ -223,7 +223,7 @@ void test_wm_task_manager_init_polling_interval_equals_task_ttl(void **state)
         "remoted.legacy_task_polling_interval (900) is >= task-manager.task_ttl (900). "
         "A pending task may expire before the legacy task delivery poller ever gets a chance to see it.");
 
-    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_TASK_MODULE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
