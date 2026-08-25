@@ -270,9 +270,13 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
-int Read_ContainerImages(const OS_XML *xml, xml_node *node, void *d1)
+int Read_ContainerImages(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int *)d2 : 0;
+#ifdef CLIENT
+    (void)agent_cfg;
+#endif
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
@@ -313,14 +317,24 @@ int Read_ContainerImages(const OS_XML *xml, xml_node *node, void *d1)
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-#ifdef CLIENT
     if (!strcmp(node->element, WM_CONTAINER_IMAGES_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_container_images_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    }
+#else
+        // The manager does not run the module, but it must still validate a block pushed
+        // through a shared agent.conf instead of accepting it and letting the agent be
+        // the one to reject it.
+        if (agent_cfg) {
+            if (wm_container_images_read(xml, children, cur_wmodule) < 0) {
+                OS_ClearNode(children);
+                return OS_INVALID;
+            }
+        }
 #endif
+    }
     OS_ClearNode(children);
     return 0;
 }

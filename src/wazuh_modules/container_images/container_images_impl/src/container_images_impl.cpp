@@ -88,6 +88,13 @@ namespace containerimages
 
         {
             std::lock_guard<std::mutex> lock {m_mutex};
+
+            if (m_stopRequested)
+            {
+                logDebug("Stop requested before the module started, not scanning.");
+                return;
+            }
+
             m_running = true;
         }
 
@@ -118,6 +125,7 @@ namespace containerimages
     {
         {
             std::lock_guard<std::mutex> lock {m_mutex};
+            m_stopRequested = true;
             m_running = false;
         }
 
