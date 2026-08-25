@@ -2,6 +2,8 @@
 
 The Container Images module is configured in the agent `ossec.conf` file using the `<container_images>` section. The configuration is agent-only: the block is parsed in agent builds and ignored by the server/manager.
 
+Synchronization options are not available in this stage. State synchronization and manager-side cleanup are planned for later development stages; this stage stores the inventory locally on the agent.
+
 The block is optional. When the block is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
 
 > **Note:** This first development stage supports local OCI image layout paths through the `<local>` reference type. Other source types are reserved for later stages.

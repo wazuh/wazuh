@@ -15,16 +15,16 @@
 
 namespace containerimages
 {
-    /// @brief Temporary in-memory reader used to exercise the persistence and sync path.
+    /// @brief In-memory test double used to exercise the persistence path.
     ///
-    /// Real package extraction (OCI/local image reading) is deferred to a later stage.
-    /// Until then this reader returns a small fixed inventory so the DBSync storage and
-    /// the agent sync protocol can be validated end to end. The fixture mutates across
-    /// successive scans (a package is added, one is changed, one is removed) so that
-    /// create / modify / delete deltas are produced and can be observed.
+    /// It lives in the test tree on purpose: the shipped library must never produce
+    /// synthetic inventory. Tests reach it through the reader factory the orchestrator
+    /// takes as a constructor argument.
     ///
-    /// This class is the seam that the real readers will replace; nothing downstream
-    /// depends on it.
+    /// Package extraction from image layers is not implemented yet, so this reader returns
+    /// a small fixed inventory instead. The fixture mutates across successive scans (a
+    /// package is added, one is changed, one is removed) so that create / modify / delete
+    /// deltas are produced and can be observed.
     class StubImageReader final : public IImageReader
     {
         public:
