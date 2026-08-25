@@ -973,7 +973,12 @@ private:
                                                                 m_enrollmentMetrics,
                                                                 enrollBodyDecoder,
                                                                 m_enrollHttpMetrics,
-                                                                std::move(enrollRateGates)));
+                                                                std::move(enrollRateGates),
+                                                                // Strong capture on purpose: m_httpServer (and with it every route) is reset
+                                                                // before m_keystore in stop(), so this only extends the keystore's life until
+                                                                // the routes are gone.
+                                                                [keystore](const std::string& id, const std::string& ip, const std::string& key)
+                                                                { return keystore->upsert(id, ip, key); }));
 
         registerRateLimitDiagnostics();
 
