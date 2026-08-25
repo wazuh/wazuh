@@ -4634,6 +4634,14 @@ bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
 
 bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
 {
+    // See getMetadataValue()'s identical guard above: init() can leave m_spDBSync null (e.g. a
+    // locked/unopenable db), and a null dereference here raises an SEH access violation on
+    // Windows, which the catch below cannot handle, and it takes the whole agent process down.
+    if (!m_spDBSync)
+    {
+        return false;
+    }
+
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
     try

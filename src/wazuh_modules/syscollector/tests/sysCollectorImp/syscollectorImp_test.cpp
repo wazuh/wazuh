@@ -5818,3 +5818,84 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
 
     Syscollector::instance().destroy();
 }
+
+// Test-only access to Syscollector's private getMetadataValue()/updateMetadataValue(), without
+// modifying Syscollector itself. Naming a private member as the non-type template argument of an
+// explicit template instantiation is not access-checked at that point (a long-standing, widely
+// used C++ idiom for reaching private members from test code with zero production-code changes).
+namespace syscollector_test_access
+{
+    template <typename Tag, typename Tag::type Member>
+    struct Rob
+    {
+        friend typename Tag::type stealAccess(Tag)
+        {
+            return Member;
+        }
+    };
+
+    struct GetMetadataValueTag
+    {
+        using type = bool (Syscollector::*)(const std::string&, int64_t&);
+        friend type stealAccess(GetMetadataValueTag);
+    };
+
+    struct UpdateMetadataValueTag
+    {
+        using type = bool (Syscollector::*)(const std::string&, int64_t);
+        friend type stealAccess(UpdateMetadataValueTag);
+    };
+
+    template struct Rob<GetMetadataValueTag, &Syscollector::getMetadataValue>;
+    template struct Rob<UpdateMetadataValueTag, &Syscollector::updateMetadataValue>;
+}
+
+// init() leaves m_spDBSync null if constructing DBSync fails (e.g. an unopenable db path,
+// mirroring a locked database file in the field) -- its very first statement constructs DBSync,
+// before any member is assigned, so a throw there leaves the object in exactly that state.
+// Calling both metadata accessors directly here bypasses syncModule()/persistVDFirstSyncIfNeeded(),
+// their only two production callers -- both currently skip this path via m_stopping, but that's an
+// accidental side effect of init()'s statement order, not a deliberate safeguard.
+TEST_F(SyscollectorImpTest, updateMetadataValueNullDBSyncAfterFailedInit)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping updateMetadataValueNullDBSyncAfterFailedInit test on Windows: opening "
+                 "an unopenable db path crashes the process at a lower level than a catchable "
+                 "std::exception under Wine, instead of the clean throw this test relies on";
+#endif
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    bool initThrew = false;
+
+    try
+    {
+        Syscollector::instance().init(spInfoWrapper,
+                                      reportFunction,
+                                      persistFunction,
+                                      logFunction,
+                                      "/nonexistent-dir/local.db",
+                                      "",
+                                      "",
+                                      3600, false);
+    }
+    catch (const std::exception&)
+    {
+        initThrew = true;
+    }
+
+    ASSERT_TRUE(initThrew) << "Expected DBSync construction to throw for an unopenable db path";
+
+    // Unqualified on purpose: stealAccess() is a hidden friend, only reachable via ADL on its
+    // Tag argument's namespace -- explicit qualification (syscollector_test_access::stealAccess)
+    // does not find it.
+    const auto getMetadataValuePtr = stealAccess(syscollector_test_access::GetMetadataValueTag{});
+    const auto updateMetadataValuePtr = stealAccess(syscollector_test_access::UpdateMetadataValueTag{});
+
+    int64_t value = -1;
+    // Guarded: returns false safely instead of dereferencing a null m_spDBSync.
+    EXPECT_FALSE((Syscollector::instance().*getMetadataValuePtr)("test_key", value));
+
+    // Unguarded: dereferences a null m_spDBSync -- crashes without the fix applied above.
+    EXPECT_FALSE((Syscollector::instance().*updateMetadataValuePtr)("test_key", 1));
+}
