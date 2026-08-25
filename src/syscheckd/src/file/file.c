@@ -1149,9 +1149,12 @@ void fim_file(const char *path,
         OSList_Destroy(failed_paths);
 
         // Most realtime/whodata events don't have anything to promote (the file was already
-        // synced, or this was a MODIFIED with no old.sync=0 to promote). Skip the call entirely
-        // in that case instead of logging "Processed 0 pending sync flag updates" on every single
-        // event — that line used to print once per full scan, not once per file.
+        // synced, or this was a MODIFIED with no old.sync=0 to promote), so skip the call
+        // entirely when there's nothing to do. When there IS something to promote, still don't
+        // log a summary here (process_pending_sync_updates() no longer logs on its own) — a mass
+        // create/modify against a realtime-monitored directory calls this once per file, and a
+        // per-file "Processed N pending sync flag updates" line would flood debug=1. The
+        // per-scan summary (scheduled scan, registry scan) is logged by those callers instead.
         if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
             process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
         }
@@ -1405,8 +1408,11 @@ void fim_file_scan() {
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 
-        // Process pending sync flag updates now that transaction is committed
-        process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        // Process pending sync flag updates now that transaction is committed. This runs once
+        // per full scan (unlike the per-file realtime/whodata call site above), so it's the one
+        // that logs the summary.
+        int synced_count = process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        mdebug1("Processed %d pending sync flag updates", synced_count);
     }
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);

@@ -131,9 +131,9 @@ void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_va
     }
 }
 
-void process_pending_sync_updates(char* table_name, OSList *pending_items) {
+int process_pending_sync_updates(char* table_name, OSList *pending_items) {
     if (pending_items == NULL) {
-        return;
+        return 0;
     }
 
     int count = 0;
@@ -147,7 +147,7 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
             count++;
         }
     }
-    mdebug1("Processed %d pending sync flag updates", count);
+    return count;
 }
 
 /**
@@ -629,8 +629,10 @@ void fim_initialize() {
                             }
                         }
 
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        // Process pending sync updates. Runs once per table at startup, so log
+                        // the summary here (process_pending_sync_updates() itself doesn't).
+                        int synced_count = process_pending_sync_updates(table_name, pending_sync_updates);
+                        mdebug1("Processed %d pending sync flag updates", synced_count);
                         OSList_Destroy(pending_sync_updates);
                     }
                     cJSON_Delete(docs_to_promote);
@@ -655,8 +657,10 @@ void fim_initialize() {
                             (*synced_docs_ptr)--;
                         }
 
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        // Process pending sync updates. Runs once per table at startup, so log
+                        // the summary here (process_pending_sync_updates() itself doesn't).
+                        int synced_count = process_pending_sync_updates(table_name, pending_sync_updates);
+                        mdebug1("Processed %d pending sync flag updates", synced_count);
                         OSList_Destroy(pending_sync_updates);
                     }
                     cJSON_Delete(docs_to_demote);

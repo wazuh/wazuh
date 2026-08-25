@@ -117,17 +117,17 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
 }
 #endif
 
-extern void __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern int __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
 
 /* Snapshot of mutex_unlock_call_count taken inside the wrap below, used by the
  * regression test for issue #37824 (fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction). */
 static unsigned int unlock_count_at_pending_sync_updates = 0;
 
-void __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
+int __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
     function_called();
     unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
-    __real_process_pending_sync_updates(table_name, pending_items);
+    return __real_process_pending_sync_updates(table_name, pending_items);
 }
 
 static int setup_fim_data(void **state) {
@@ -1232,14 +1232,16 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file_38522.txt (version: 1, sync: 1)");
 #endif
 
-    // process_pending_sync_updates() now genuinely has 1 item to process.
+    // process_pending_sync_updates() now genuinely has 1 item to process. No "Processed N
+    // pending sync flag updates" log is expected here: that summary is only logged by callers
+    // that run once per full scan (fim_file_scan(), fim_registry_scan()) — logging it from this
+    // realtime/whodata call site too would flood debug=1 on a mass create/modify (#38537 review).
     expect_function_call(__wrap_process_pending_sync_updates);
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: c:\\windows\\system32\\cmd.exe");
 #else
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /etc/a_test_file_38522.txt");
 #endif
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 1 pending sync flag updates");
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 
