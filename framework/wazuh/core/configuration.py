@@ -965,8 +965,8 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     dict
         The active configuration the manager is currently using.
     """
-    sockets_json_protocol = {'remote.sock', 'analysis', 'wdb.sock'}
-    component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth.sock',
+    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    component_socket_mapping = {'agent': 'engine-api-http.sock', 'analysis': 'engine-api-http.sock', 'auth': 'auth.sock',
                                 'com': 'com', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
                                 'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',

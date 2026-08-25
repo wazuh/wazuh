@@ -398,8 +398,8 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {}}'),
-    ('agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('agent', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('analysis', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
     ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
@@ -417,7 +417,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote.sock', 'analysis', 'wdb.sock'}
+    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol else "WazuhSocketJSON"

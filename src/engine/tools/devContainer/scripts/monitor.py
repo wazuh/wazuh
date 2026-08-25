@@ -88,7 +88,7 @@ DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remote-admin-h
 REMOTED_MODULE_STATS_CSV = "stats-api-remoted-module.csv"
 REMOTED_MODULE_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
-DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
+DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/engine-api-http.sock"
 ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
 ANALYSISD_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 ANALYSISD_HEADER = [

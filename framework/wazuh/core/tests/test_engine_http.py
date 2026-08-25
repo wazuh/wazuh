@@ -24,7 +24,7 @@ METRICS_DUMP_RESPONSE = {
 
 
 def _make_client() -> EngineHTTPClient:
-    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/engine-api-http.sock'):
         with patch('httpx.HTTPTransport'), patch('httpx.Client'):
             client = EngineHTTPClient()
 
@@ -184,7 +184,7 @@ def test_get_status_request_error():
 
 def test_engine_http_client_init_error():
     """Test that the client raises WazuhInternalError(2018) if httpx instantiation fails."""
-    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/engine-api-http.sock'):
         # Simulate that httpx cannot open the Unix socket
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
             with pytest.raises(WazuhInternalError) as exc_info:

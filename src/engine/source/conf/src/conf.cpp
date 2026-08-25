@@ -104,7 +104,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Http server module
     addUnit<std::string>(
-        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/analysis").c_str());
+        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api-http.sock").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
     addUnit<int64_t>(key::SERVER_API_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_PAYLOAD_MAX_BYTES", 0);
 
