@@ -789,7 +789,7 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
-- **vulnerability_scanner module** (`queue/sockets/vd.sock`, `GET /vulnerability-detector/offset`):
+- **vulnerability_scanner module** (`queue/sockets/vd-http.sock`, `GET /vulnerability-detector/offset`):
   queried by `VdClient` (`remoted_module/src/common/vdClient.hpp`) to populate `vd_feed_offset`.
   Cached with a short TTL and a single-flight refresh (only one caller ever performs the actual UDS
   round trip; every concurrent caller gets the last-known-good value instead of blocking) so a slow

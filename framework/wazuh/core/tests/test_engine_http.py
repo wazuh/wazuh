@@ -204,7 +204,7 @@ VD_STATUS_RESPONSE = {
 
 
 def _make_modulesd_client() -> VdHTTPClient:
-    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd-http.sock'):
         with patch('httpx.HTTPTransport'), patch('httpx.Client'):
             client = VdHTTPClient()
 
@@ -280,7 +280,7 @@ def test_modulesd_get_status_request_error():
 
 
 def test_modulesd_http_client_init_error():
-    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd-http.sock'):
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
             with pytest.raises(WazuhInternalError) as exc_info:
                 VdHTTPClient()

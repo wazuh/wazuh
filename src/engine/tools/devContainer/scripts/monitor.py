@@ -1640,7 +1640,7 @@ _THROTTLED_EVENTS: dict[str, re.Pattern] = {
     # lane queue" vs "scan dispatch queue") because one column mixing both would be useless.
     "vd_lane_full_503": re.compile(
         r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
-    # --- bounded lanes behind vd.sock ----------------------------------------------------
+    # --- bounded lanes behind vd-http.sock ----------------------------------------------------
     "vd_scan_dispatch_full_503": re.compile(
         r"Rejected (\d+) scan request\(s\) with 503 .*scan dispatch queue is full"),
     # remoted's relay leg failing for NON-capacity reasons (VD unreachable / not ready):

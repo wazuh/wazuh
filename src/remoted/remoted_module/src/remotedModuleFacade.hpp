@@ -498,7 +498,7 @@ private:
             remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics));
 
         // /scan/vd: agent-initiated VD scans. Offset queries and scan triggers both travel to
-        // VD's socket (queue/sockets/vd.sock -- see ScanVdHandlerImpl's and VdClient's default
+        // VD's socket (queue/sockets/vd-http.sock -- see ScanVdHandlerImpl's and VdClient's default
         // arguments): since the socket unification, /offset starvation is prevented by the
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.

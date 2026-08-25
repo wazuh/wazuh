@@ -132,7 +132,7 @@ A VDFirst/VDSync session's `Start.feed_offset` MUST match the manager's current 
 it is rejected with `409 version_mismatch` before ever reaching the scanner. `--mode agent` learns
 the offset live from remoted's `/control` (the same signal a real agent uses); `--mode uds` has no
 `/control` to learn it from, so pass `--vd-feed-offset <value>` explicitly — query the live value
-with `curl --unix-socket queue/sockets/vd.sock http://localhost/vulnerability-detector/offset` —
+with `curl --unix-socket queue/sockets/vd-http.sock http://localhost/vulnerability-detector/offset` —
 against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
 instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
 

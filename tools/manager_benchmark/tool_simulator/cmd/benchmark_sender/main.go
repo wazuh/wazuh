@@ -56,7 +56,7 @@ func run() int {
 		vdFeedOffset = flag.Uint64("vd-feed-offset", 0, "VDFirst/VDSync sessions declare this Start.feed_offset "+
 			"unless a step overrides it; a mismatch against the target's real current offset answers 409 "+
 			"version_mismatch instead of scanning. In uds mode this is the ONLY way to set it correctly (there is "+
-			"no /control to learn it from -- query it with 'curl --unix-socket queue/sockets/vd.sock "+
+			"no /control to learn it from -- query it with 'curl --unix-socket queue/sockets/vd-http.sock "+
 			"http://localhost/vulnerability-detector/offset'); in agent mode it defaults to whatever the agent's "+
 			"own keepalive loop learns from /control's vd_feed_offset")
 	)
