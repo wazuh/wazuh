@@ -277,10 +277,14 @@ TEST(CurlPerformerTest, RejectedTlsOptionAbortsBeforePerforming)
     // What a backend that does not implement the option answers.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslVersion, _)).WillOnce(Return(false));
     EXPECT_CALL(*handle, perform()).Times(0);
+    EXPECT_CALL(*handle, curlError()).Times(0);
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    // Nothing ran, so there is no libcurl reason: the log sites must render a
+    // bare outcome rather than a dangling separator.
+    EXPECT_TRUE(response.curlError.empty());
 }
 
 TEST(CurlPerformerTest, RejectedCipherListAbortsBeforePerforming)

@@ -373,7 +373,10 @@ typedef struct hc_callbacks_t
     /// number of consecutive attempts (paused=true), or has succeeded again
     /// (paused=false). The consumer arms/disarms its producer lock so modules
     /// stop generating events they cannot deliver.
-    void (*on_producer_pause)(bool paused, void* user_data);
+    /// reason: why the transport failed, in libcurl's own words. Empty when
+    /// there is none to give -- always on paused=false, and whenever the manager
+    /// answered and refused rather than going silent.
+    void (*on_producer_pause)(bool paused, const char* reason, void* user_data);
     void* user_data;
 } hc_callbacks_t;
 
@@ -482,6 +485,10 @@ HC_EXPORTED int hc_get_state(const hc_handle* handle);
 
 #define HC_MAX_ENROLL_BODY 4096
 #define HC_MAX_ENROLL_PASSWORD 256
+/// Sized so a transport reason never needs truncating: libcurl's longest error
+/// string is around 60 bytes and the detail it appends is capped by
+/// CURL_ERROR_SIZE (256), leaving room to spare.
+#define HC_MAX_TRANSPORT_ERROR 512
 
 /**
  * @brief One /enroll request (#38438's contract), built entirely by the C
@@ -507,6 +514,11 @@ typedef struct hc_enroll_result_t
     ///< failure -- see hc_enroll()'s return value).
     long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
     char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
+    /// Why the request never reached the manager, in libcurl's own words (same
+    /// contract as on_producer_pause's reason). Only ever set alongside
+    /// http_code == 0, and empty even then when the attempt never got as far as
+    /// libcurl -- notably a transport config the fail-closed TLS policy rejected.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
 } hc_enroll_result_t;
 
 /**

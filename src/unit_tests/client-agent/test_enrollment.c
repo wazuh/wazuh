@@ -254,8 +254,25 @@ static void test_process_response_no_http_status_is_transport_error(void **state
     hc_enroll_result_t result = {0};
     result.http_code = 0;
 
+    /* No transport_error: the attempt never reached libcurl, so the module has
+     * already logged the real reason and the coarse wording is all that is left. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment request could not be sent (transport or configuration error).");
+                  "Enrollment request could not be sent: transport or configuration error");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
+}
+
+static void test_process_response_transport_error_names_the_cause(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 0;
+    strncpy(result.transport_error, "(60) SSL peer certificate or SSH remote key was not OK",
+            sizeof(result.transport_error) - 1);
+
+    /* The whole point: a misconfigured CA and an unreachable manager are both
+     * http_code == 0, and only this string tells them apart. */
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment request could not be sent: (60) SSL peer certificate or SSH remote key was not OK");
 
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
 }
@@ -348,6 +365,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_build_request_reads_password_from_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_build_request_no_password_file_yields_null_password, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_no_http_status_is_transport_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_transport_error_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_400_is_invalid_request, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_is_auth_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),

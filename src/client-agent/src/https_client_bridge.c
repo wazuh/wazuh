@@ -1261,12 +1261,16 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
-static void bridge_on_producer_pause(bool paused, void *user_data)
+static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
 {
     (void)user_data;
 
     if (paused) {
-        mwarn(SERVER_UNAV);
+        if (reason && *reason) {
+            mwarn(SERVER_UNAV " Reason: %s", reason);
+        } else {
+            mwarn(SERVER_UNAV);
+        }
         os_setwait();
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
     } else {

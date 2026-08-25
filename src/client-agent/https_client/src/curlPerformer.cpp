@@ -140,6 +140,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     response.status = handle->perform();
     response.httpCode = handle->responseCode();
     response.localIp = handle->localIp();
+    response.curlError = handle->curlError();
     return response;
 }
 

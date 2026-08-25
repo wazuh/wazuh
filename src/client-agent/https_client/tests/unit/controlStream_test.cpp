@@ -34,13 +34,14 @@ using ::testing::Return;
 namespace
 {
     HttpResponse response(TransportStatus status, long code, const std::string& body = {},
-                          const std::string& localIp = {})
+                          const std::string& localIp = {}, const std::string& curlError = {})
     {
         HttpResponse value;
         value.status = status;
         value.httpCode = code;
         value.body = body;
         value.localIp = localIp;
+        value.curlError = curlError;
         return value;
     }
 
@@ -1029,7 +1030,7 @@ TEST_F(ControlStreamTest, ASingleUnreachableStepDoesNotPauseProducers)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
     .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
-    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(_, _)).Times(0);
     m_waiter.script({true, true, true});
 
     m_stream.step(m_waiter); // Startup.
@@ -1067,13 +1068,13 @@ TEST_F(ControlStreamTest, ThresholdPausesOnceAndRecoveryReleasesWithoutAStateCha
 
     ::testing::InSequence sequence;
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED)).Times(1);
-    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
-    .WillOnce(Invoke([&](bool)
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
     {
         pauses++;
     }));
-    EXPECT_CALL(m_sink, onProducerPause(false)).Times(1)
-    .WillOnce(Invoke([&](bool)
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
     {
         resumes++;
     }));
@@ -1104,7 +1105,7 @@ TEST_F(ControlStreamTest, SelfClearingFailuresNeverPauseProducers)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
     .WillRepeatedly(Return(response(TransportStatus::Ok, 500)));
-    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(_, _)).Times(0);
     m_waiter.script({true, true, true, true, true, true, true, true, true});
 
     m_stream.step(m_waiter); // Startup.
@@ -1121,13 +1122,62 @@ TEST_F(ControlStreamTest, VersionRejectionPausesProducers)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
     .WillRepeatedly(Return(response(TransportStatus::Ok, 409)));
-    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1);
-    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(0);
 
     m_stream.step(m_waiter); // Startup accepted.
     m_stream.step(m_waiter); // 409: 1/2.
     m_stream.step(m_waiter); // 409: 2/2 -> pause.
     m_stream.step(m_waiter); // Still rejected: announced once only.
+}
+
+TEST_F(ControlStreamTest, PauseCarriesTheTransportReasonToTheConsumer)
+{
+    // Unreachable covers timeout/connect/DNS/TLS alike, so the consumer's own
+    // warning can only name the cause if the reason travels with the callback.
+    const std::string curlError = "(60) SSL peer certificate or SSH remote key was not OK";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::TlsFail, 0, {}, {}, curlError)));
+
+    std::string reported;
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string & reason)
+    {
+        reported = reason;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 1/2.
+    m_stream.step(m_waiter); // 2/2 -> pause.
+
+    // Verbatim: the reason crosses as plain data, and each consumer decides how
+    // to word it into its own message.
+    EXPECT_EQ(curlError, reported);
+}
+
+TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
+{
+    // A 409 means the manager answered, so any curl error still on the response
+    // is from an earlier, unrelated attempt -- quoting it would misattribute the
+    // pause to a transport problem that is not happening.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 409, {}, {}, "(7) Couldn't connect")));
+
+    std::string reported {"unset"};
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string & reason)
+    {
+        reported = reason;
+    }));
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 409: 1/2.
+    m_stream.step(m_waiter); // 409: 2/2 -> pause.
+
+    EXPECT_TRUE(reported.empty());
 }
 
 TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
@@ -1143,12 +1193,12 @@ TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
     // is the whole claim: without counting gated cycles the streak would freeze
     // at 1 and never arm, and a total of one would not distinguish the two.
     int pauses = 0;
-    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
-    .WillOnce(Invoke([&](bool)
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
     {
         pauses++;
     }));
-    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(0);
 
     m_stream.step(m_waiter); // Startup accepted.
 
@@ -1180,9 +1230,9 @@ TEST_F(ControlStreamTest, ANewKeyClearsTheAuthPauseAndResumesProducers)
     int resumes = 0;
 
     ::testing::InSequence sequence;
-    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1);
-    EXPECT_CALL(m_sink, onProducerPause(false)).Times(1)
-    .WillOnce(Invoke([&](bool)
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
     {
         resumes++;
     }));
@@ -1207,7 +1257,7 @@ TEST_F(ControlStreamTest, AnInterruptedAttemptIsNotAConfirmedDisconnect)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
     .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
-    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(_, _)).Times(0);
 
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Interrupted.
@@ -1229,12 +1279,12 @@ TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
     .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
-    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
-    .WillOnce(Invoke([&](bool)
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
     {
         pauses++;
     }));
-    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(0);
     m_waiter.script({true, true, true, true, true, true});
 
     m_stream.step(m_waiter);      // Startup accepted.

@@ -242,8 +242,9 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s).",
-                   outcomeName(result.outcome));
+        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s)%s",
+                   outcomeName(result.outcome),
+                   transportReason(result.response.curlError).c_str());
     }
     else
     {
@@ -274,7 +275,7 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       m_config.controlMaxAttempts);
-    updateLocalIp(result.response);
+    updateConnectionInfo(result.response);
 
     if (result.outcome == OutcomeClass::Ok)
     {
@@ -336,7 +337,7 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       m_config.controlMaxAttempts);
-    updateLocalIp(result.response);
+    updateConnectionInfo(result.response);
     const auto effects = m_machine.onEvent(eventFor(result.outcome));
     applyEffects(effects, {});
 
@@ -598,7 +599,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
             // Debug: the consumer emits the operator-facing line, so logging
             // louder here would double every transition.
             LOGFN_DEBUG1(m_logFn, "/control deliverable again; releasing the producer pause.");
-            m_sink.onProducerPause(false);
+            m_sink.onProducerPause(false, {}); // Nothing failed: no 'reason' to carry.
         }
 
         return;
@@ -629,19 +630,29 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
+    // Only Unreachable has a transport reason behind it: the other two mean the
+    // manager answered, so a stored curl error there is from an earlier and
+    // unrelated incident -- and the auth-gate path reaches here having sent
+    // nothing at all.
+    const std::string reason = (outcome == OutcomeClass::Unreachable)
+                               ? m_lastCurlError
+                               : std::string();
+
     if (++m_undeliverableStreak < m_config.producerPauseThreshold)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u).",
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u)%s",
                      outcomeName(outcome), m_undeliverableStreak,
-                     m_config.producerPauseThreshold);
+                     m_config.producerPauseThreshold, transportReason(reason).c_str());
         return;
     }
 
     m_producersPaused = true;
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production.",
+    // Debug: the consumer emits the operator-facing line, and the reason rides
+    // along so that line can name the cause instead of just "unreachable".
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production%s",
                  outcomeName(outcome), m_undeliverableStreak,
-                 m_config.producerPauseThreshold);
-    m_sink.onProducerPause(true);
+                 m_config.producerPauseThreshold, transportReason(reason).c_str());
+    m_sink.onProducerPause(true, reason);
 }
 
 void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter)
@@ -736,7 +747,9 @@ void ControlStream::joinUpgradeWork()
     }
 }
 
-void ControlStream::updateLocalIp(const HttpResponse& response)
+/* What one attempt told us about the connection itself, kept for the next Notify
+ * and for the pause decision -- neither of which still has the response. */
+void ControlStream::updateConnectionInfo(const HttpResponse& response)
 {
     // curl reports the local address only after a connection was established;
     // keep the last known value so a transient failure does not blank host.ip.
@@ -744,6 +757,11 @@ void ControlStream::updateLocalIp(const HttpResponse& response)
     {
         m_localIp = response.localIp;
     }
+
+    // Overwritten on every attempt, success included: the pause is armed off a
+    // streak of failures, so a stale reason from an earlier incident would be
+    // more misleading than none at all.
+    m_lastCurlError = response.curlError;
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
