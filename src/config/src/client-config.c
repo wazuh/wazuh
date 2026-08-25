@@ -213,6 +213,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
             os_strdup(rip, logr->server[logr->server_count].rip);
             logr->server[logr->server_count].port = 0;
+            logr->server[logr->server_count].endpoint = NULL; // os_realloc() does not zero new memory.
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
@@ -337,6 +338,96 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
     return (0);
 }
 
+/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+ * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
+ * that passed validation here. */
+#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
+
+/**
+ * @brief Validate and normalize an <endpoint> value (#38492).
+ *
+ * Strips leading and trailing '/' characters (so "/wazuh-manager/",
+ * "wazuh-manager", and "wazuh-manager/" all normalize the same way),
+ * then rejects anything outside [A-Za-z0-9._-] plus '/' as an internal
+ * segment separator, repeated '/' (an empty segment), and '.'/'..'
+ * segments. An endpoint that normalizes to empty (absent, "/", or "")
+ * means "no endpoint configured" -- today's unprefixed behavior.
+ *
+ * The manager-side sister issue must accept exactly the same charset,
+ * or an endpoint this agent accepts could still fail to route once it
+ * reaches the manager's reverse proxy.
+ *
+ * @param raw Raw XML content (never NULL).
+ * @param out Buffer to receive the normalized value.
+ * @param out_size Size of out, including the terminating NUL.
+ * @return 0 on success (out holds the normalized value, possibly ""), OS_INVALID on error.
+ */
+static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_size)
+{
+    size_t start = 0;
+    size_t end = strlen(raw);
+
+    while (start < end && raw[start] == '/') {
+        start++;
+    }
+
+    while (end > start && raw[end - 1] == '/') {
+        end--;
+    }
+
+    size_t len = end - start;
+
+    if (len == 0) {
+        out[0] = '\0';
+        return 0;
+    }
+
+    if (len >= out_size) {
+        merror("Invalid endpoint '%s': longer than %zu characters.", raw, out_size - 1);
+        return OS_INVALID;
+    }
+
+    memcpy(out, raw + start, len);
+    out[len] = '\0';
+
+    bool previous_was_slash = false;
+    size_t segment_start = 0;
+
+    for (size_t i = 0; i <= len; i++) {
+        if (i < len) {
+            char c = out[i];
+            bool is_slash = (c == '/');
+
+            if (!(isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || is_slash)) {
+                merror("Invalid endpoint '%s': only letters, digits, '-', '_', '.', and '/' "
+                       "(as a segment separator) are allowed.", raw);
+                return OS_INVALID;
+            }
+
+            if (is_slash && previous_was_slash) {
+                merror("Invalid endpoint '%s': empty path segment (repeated '/').", raw);
+                return OS_INVALID;
+            }
+
+            previous_was_slash = is_slash;
+        }
+
+        if (i == len || out[i] == '/') {
+            size_t segment_len = i - segment_start;
+
+            if ((segment_len == 1 && out[segment_start] == '.') ||
+                    (segment_len == 2 && out[segment_start] == '.' && out[segment_start + 1] == '.')) {
+                merror("Invalid endpoint '%s': '.' and '..' are not allowed path segments.", raw);
+                return OS_INVALID;
+            }
+
+            segment_start = i + 1;
+        }
+    }
+
+    return 0;
+}
+
 /**
  * @brief Read the <agent><manager> block: the single manager endpoint.
  *
@@ -349,6 +440,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     /* XML definitions */
     const char *xml_agent_addr = "address";
     const char *xml_agent_port = "port";
+    const char *xml_agent_endpoint = "endpoint";
     const char *xml_interface = "interface_index";
     const char *xml_protocol = "protocol";
     const char *xml_max_retries = "max_retries";
@@ -357,6 +449,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     int j;
     char f_ip[128];
     char * rip = NULL;
+    char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
     /* Default values */
     uint32_t network_interface = 0;
     int port = DEFAULT_HTTPS_REMOTE_PORT;
@@ -397,6 +490,10 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             }
 
             port_set = true;
+        } else if (strcmp(node[j]->element, xml_agent_endpoint) == 0) {
+            if (w_normalize_agent_endpoint(node[j]->content, endpoint, sizeof(endpoint)) == OS_INVALID) {
+                return (OS_INVALID);
+            }
         } else if (strcmp(node[j]->element, xml_interface) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -436,6 +533,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         }
         for (int k = 0; logr->server[k].rip; k++) {
             os_free(logr->server[k].rip);
+            os_free(logr->server[k].endpoint);
         }
         os_free(logr->server);
         logr->server = NULL;
@@ -447,6 +545,13 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     if (strchr(logr->server[0].rip, ':') != NULL) {
         os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
         OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+    }
+
+    /* endpoint[0] == '\0' (absent, or normalized away to nothing) leaves
+     * .endpoint NULL -- os_calloc() already zeroed it -- reproducing today's
+     * unprefixed behavior. */
+    if (endpoint[0] != '\0') {
+        os_strdup(endpoint, logr->server[0].endpoint);
     }
     logr->server[0].network_interface = network_interface;
     logr->server[0].port = port;
@@ -981,6 +1086,7 @@ void Free_Agent(agent * config){
         if (config->server) {
             for (i = 0; config->server[i].rip; i++) {
                 free(config->server[i].rip);
+                free(config->server[i].endpoint);
             }
 
             free(config->server);

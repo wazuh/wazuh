@@ -360,6 +360,7 @@ static int teardown_test(void **state)
     if (agt) {
         if (agt->server) {
             os_free(agt->server[0].rip);
+            os_free(agt->server[0].endpoint);
             os_free(agt->server);
         }
         os_free(agt->profile);
@@ -511,6 +512,56 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     w_https_client_stop();
 }
 
+/* #38492: the reverse-proxy path segment, <endpoint>, plumbed through the
+ * same bridge_build_transport_config() every other field above already goes
+ * through -- so it reaches /enroll for free, proven below. */
+
+static void test_configured_endpoint_reaches_the_module(void **state)
+{
+    (void)state;
+    os_strdup("wazuh-manager", agt->server[0].endpoint);
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_true(g_captured_config_valid);
+    assert_string_equal(g_captured_config.server_endpoint, "wazuh-manager");
+
+    w_https_client_stop();
+}
+
+static void test_absent_endpoint_leaves_the_field_empty(void **state)
+{
+    (void)state;
+    /* setup_test()'s add_server_config() never sets .endpoint -- it stays NULL. */
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_true(g_captured_config_valid);
+    assert_string_equal(g_captured_config.server_endpoint, "");
+
+    w_https_client_stop();
+}
+
 /* w_https_client_enroll() / bridge_build_transport_config() (#38465): /enroll
  * must dial the exact same server/TLS material as every other endpoint, and
  * must never carry the agent's identity (agent_id/agent_key) -- an enrolling
@@ -545,6 +596,22 @@ static void test_enroll_reuses_transport_config_not_identity(void **state)
      * populated a syntactically valid client.keys entry via set_agent_key(). */
     assert_string_equal(g_captured_enroll_config.agent_id, "");
     assert_string_equal(g_captured_enroll_config.agent_key, "");
+}
+
+static void test_enroll_reuses_the_configured_endpoint(void **state)
+{
+    (void)state;
+    os_strdup("wazuh-manager", agt->server[0].endpoint);
+
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "", &result);
+
+    assert_true(g_captured_enroll_valid);
+    assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
 }
 
 static void test_enroll_passes_body_and_password_through(void **state)
@@ -2266,7 +2333,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_configured_endpoint_reaches_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),

@@ -1562,6 +1562,13 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->server && agt->server[0].rip) {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
+
+        /* #38492: shared with w_https_client_enroll() via this same function,
+         * so the /enroll request target gets the configured <endpoint> path
+         * segment exactly like every other request. */
+        if (agt->server[0].endpoint) {
+            strncpy(config->server_endpoint, agt->server[0].endpoint, sizeof(config->server_endpoint) - 1);
+        }
     }
 
     config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);

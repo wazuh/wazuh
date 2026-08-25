@@ -156,6 +156,9 @@ add_adress_block() {
         echo "    <manager>"
         echo "      <address>${ADDRESSES[last_index]}</address>"
         echo "      <port>1517</port>"
+        if [ -n "${WAZUH_MANAGER_ENDPOINT}" ]; then
+            echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT}</endpoint>"
+        fi
         echo "    </manager>"
     } >> "${TMP_SERVER}"
 
@@ -210,6 +213,7 @@ set_vars () {
 
     export WAZUH_MANAGER
     export WAZUH_MANAGER_PORT
+    export WAZUH_MANAGER_ENDPOINT
     export WAZUH_REGISTRATION_SERVER
     export WAZUH_REGISTRATION_PORT
     export WAZUH_REGISTRATION_PASSWORD
@@ -241,7 +245,7 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \

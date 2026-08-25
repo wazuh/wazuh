@@ -49,3 +49,23 @@ TEST(CanonicalRequestTest, BinaryBodyWithEmbeddedNulsIsPreserved)
     ASSERT_EQ(head.size() + sizeof(body), canonical.size());
     EXPECT_EQ(0, std::memcmp(body, canonical.data() + head.size(), sizeof(body)));
 }
+
+// #38492/#38491: prefixedTarget() -- the manager's auth middleware CMACs the
+// literal wire request-target, prefix included, so this is what gets fed
+// into canonicalRequestHead()/enrollCanonicalRequestHead() instead of the
+// bare target whenever an endpoint is configured.
+
+TEST(PrefixedTargetTest, EmptyEndpointLeavesTheTargetUnchanged)
+{
+    EXPECT_EQ("/stateless", prefixedTarget("", "/stateless"));
+}
+
+TEST(PrefixedTargetTest, JoinsTheNormalizedEndpointAndTheBareTarget)
+{
+    EXPECT_EQ("/wazuh-manager/stateless", prefixedTarget("wazuh-manager", "/stateless"));
+}
+
+TEST(PrefixedTargetTest, ComposesWithAMultiSegmentEndpoint)
+{
+    EXPECT_EQ("/gateway/wazuh/enroll", prefixedTarget("gateway/wazuh", "/enroll"));
+}

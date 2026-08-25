@@ -788,3 +788,96 @@ TEST_F(RetrySenderTest, FileBackedSenderSkipsCompressionOnceTheSharedGateIsAlrea
     const auto result = compressing.send(spec, m_waiter, 1);
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
 }
+
+// #38492/#38491: the configured endpoint. The manager's own auth middleware
+// CMACs the literal wire request-target (prefix included) -- confirmed
+// end-to-end against the real manager PR (#38542) -- so unlike compression
+// (transport-only, never signed), the endpoint must be folded into the
+// target BEFORE signing, and the exact same (already-prefixed) string must
+// be what reaches the wire.
+
+TEST_F(RetrySenderTest, NoEndpointConfiguredLeavesTheTargetBare)
+{
+    // m_sender (the fixture default) is built with no serverEndpoint --
+    // every other test in this file already relies on this being a no-op.
+    HttpRequestSpec seenSpec;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenSpec = attempt;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ("/stateless", seenSpec.target);
+}
+
+TEST_F(RetrySenderTest, ConfiguredEndpointIsFoldedIntoTheWireTargetAndTheSignature)
+{
+    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                              "wazuh-manager"};
+
+    HttpRequestSpec seenSpec;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenSpec = attempt;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = withEndpoint.send(makeSpec(), m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    // The wire target carries the prefix...
+    ASSERT_EQ("/wazuh-manager/stateless", seenSpec.target);
+
+    // ...and the Authorization header is a signature over that exact
+    // (prefixed) target, not the bare one -- re-signing the prefixed target
+    // at the same timestamp must reproduce it; re-signing the bare target
+    // must not.
+    const auto expectedPrefixed =
+        m_signer.sign("POST", "/wazuh-manager/stateless", seenSpec.body, seenSpec.bodyLength, m_clock.wallSeconds());
+    ASSERT_TRUE(expectedPrefixed.has_value());
+    EXPECT_THAT(seenSpec.headers, Contains(expectedPrefixed->authorization));
+
+    const auto signedIfBare =
+        m_signer.sign("POST", "/stateless", seenSpec.body, seenSpec.bodyLength, m_clock.wallSeconds());
+    ASSERT_TRUE(signedIfBare.has_value());
+    EXPECT_THAT(seenSpec.headers, Not(Contains(signedIfBare->authorization)));
+}
+
+TEST_F(RetrySenderTest, ConfiguredEndpointComposesWithFileBackedTargets)
+{
+    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                              "wazuh-manager"};
+
+    const std::string path = writeTempFile("hc_rs_endpoint_stateful.bin", "the body");
+
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = path;
+    spec.bodyFileSize = 8;
+
+    HttpRequestSpec seenSpec;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenSpec = attempt;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = withEndpoint.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    ASSERT_EQ("/wazuh-manager/stateful", seenSpec.target);
+
+    const auto expectedPrefixed =
+        m_signer.signFile("POST", "/wazuh-manager/stateful", path, m_clock.wallSeconds());
+    ASSERT_TRUE(expectedPrefixed.has_value());
+    EXPECT_THAT(seenSpec.headers, Contains(expectedPrefixed->authorization));
+}

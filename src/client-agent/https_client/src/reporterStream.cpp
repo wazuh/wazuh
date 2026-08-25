@@ -36,7 +36,8 @@ ReporterStream::ReporterStream(const ModuleConfig& config, IHttpPerformer& perfo
                                ClusterIdentity& cluster, ICollectorSource& collectors)
     : m_config(config)
     , m_sendBackoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_sendBackoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
+    , m_sender(performer, signer, clock, m_sendBackoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+               config.serverEndpoint)
     , m_clock(clock)
     , m_authGate(authGate)
     , m_cluster(cluster)

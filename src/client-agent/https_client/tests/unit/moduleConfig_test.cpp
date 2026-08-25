@@ -130,6 +130,26 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
     EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
 }
 
+// #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
+// deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
+// the manager's auth middleware CMACs the literal wire request-target
+// (prefix included), so the prefix is folded into HttpRequestSpec::target
+// before signing instead (RetrySender::attemptOnce, EnrollClient::performOnce),
+// not into the authority baseUrl() builds. See retrySender_test.cpp for the
+// URL/signature composition tests.
+
+TEST(ModuleConfigTest, ServerEndpointIsEmptyByDefault)
+{
+    EXPECT_EQ("", ModuleConfig::fromC(minimalConfig()).serverEndpoint);
+}
+
+TEST(ModuleConfigTest, ServerEndpointIsKeptVerbatimWhenConfigured)
+{
+    auto config = minimalConfig();
+    std::strncpy(config.server_endpoint, "wazuh-manager", sizeof(config.server_endpoint) - 1);
+    EXPECT_EQ("wazuh-manager", ModuleConfig::fromC(config).serverEndpoint);
+}
+
 TEST(ModuleConfigTest, ValidateRejectsMissingHostOrId)
 {
     NiceMock<MockFsProbe> fsProbe;

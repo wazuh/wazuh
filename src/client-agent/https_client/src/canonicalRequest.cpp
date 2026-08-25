@@ -35,6 +35,16 @@ std::vector<uint8_t> buildCanonicalRequest(const std::string& method, const std:
     return buffer;
 }
 
+std::string prefixedTarget(const std::string& endpoint, const std::string& target)
+{
+    if (endpoint.empty())
+    {
+        return target;
+    }
+
+    return "/" + endpoint + target;
+}
+
 std::string enrollCanonicalRequestHead(const std::string& method, const std::string& target,
                                        std::time_t timestamp)
 {

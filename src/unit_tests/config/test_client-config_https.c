@@ -417,6 +417,165 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+/* <agent><manager><endpoint> (#38492) */
+
+static void test_agent_manager_endpoint_is_absent_by_default(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><address>10.0.0.5</address></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><port> is not configured. Using the default port 1517.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_null(cfg.server[0].endpoint);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_is_parsed(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>wazuh-manager</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_strips_leading_and_trailing_slashes(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint>/</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_null(cfg.server[0].endpoint);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>gateway/wazuh-manager</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].endpoint, "gateway/wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_an_invalid_character(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>wazuh manager</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint 'wazuh manager': only letters, digits, '-', '_', '.', "
+                  "and '/' (as a segment separator) are allowed.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_a_doubled_slash(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>gateway//wazuh</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint 'gateway//wazuh': empty path segment (repeated '/').");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_a_dot_dot_segment(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>../etc</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint '../etc': '.' and '..' are not allowed path segments.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+    char long_endpoint[130];
+    char xml_str[256]; // Must fit the whole fragment; long_endpoint alone is 129 chars.
+    char expected_msg[256];
+
+    memset(long_endpoint, 'a', sizeof(long_endpoint) - 1);
+    long_endpoint[sizeof(long_endpoint) - 1] = '\0';
+    snprintf(xml_str, sizeof(xml_str),
+             "<manager><address>10.0.0.5</address><port>1517</port><endpoint>%s</endpoint></manager>",
+             long_endpoint);
+    // Built from the same long_endpoint, not hand-typed, so the 'a' count can never drift from it.
+    snprintf(expected_msg, sizeof(expected_msg), "Invalid endpoint '%s': longer than 128 characters.",
+             long_endpoint);
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__merror, formatted_msg, expected_msg);
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_legacy_client_address_is_the_fallback(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -1290,6 +1449,15 @@ int main(void) {
         cmocka_unit_test(test_second_manager_block_prevails_with_warning),
         cmocka_unit_test(test_agent_manager_address_and_port_are_parsed),
         cmocka_unit_test(test_agent_manager_port_defaults_to_1517),
+        cmocka_unit_test(test_agent_manager_endpoint_is_absent_by_default),
+        cmocka_unit_test(test_agent_manager_endpoint_is_parsed),
+        cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
+        cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
+        cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_dot_dot_segment),
+        cmocka_unit_test(test_agent_manager_endpoint_too_long_is_rejected),
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
         cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address),
         cmocka_unit_test(test_legacy_client_takes_the_last_address),
