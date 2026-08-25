@@ -32,7 +32,7 @@ info:
     remoted.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
-    socket (`queue/sockets/remoted-module.sock`), unreachable from an agent.
+    socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
 
 servers:
   - url: "https://{host}:{port}{globalPrefix}"

@@ -1659,7 +1659,7 @@ the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by di
 per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
 catalogs consume.
 
-## Local admin socket — `queue/sockets/remoted-module.sock`
+## Local admin socket — `queue/sockets/remote-admin-http.sock`
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
@@ -1674,9 +1674,9 @@ byte budget):
 
 Contract points:
 
-- **Fixed path, no knob**: the constant `queue/sockets/remoted-module.sock` is **relative** on
+- **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
   purpose — remoted `chroot()`s into the install dir, so the socket lands at
-  `$WAZUH_HOME/queue/sockets/remoted-module.sock` (mode 0660). Internal options only carry ints,
+  `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
   admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
@@ -1692,7 +1692,7 @@ Contract points:
   `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 ## Integration in remoted

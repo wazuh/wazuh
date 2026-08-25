@@ -69,7 +69,7 @@ including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row p
 [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
 The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
-`GET /metrics` over its admin socket (`queue/sockets/remoted-module.sock`): the `remoted.control.*`
+`GET /metrics` over its admin socket (`queue/sockets/remote-admin-http.sock`): the `remoted.control.*`
 and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
 is what a saturation run is read on — an admission split, `scanvd_queue_full` and
 `scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many

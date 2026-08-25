@@ -84,7 +84,7 @@ INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 # the same shared HTTP-over-UDS transport inventory_sync_server uses. This is ADDITIVE to the
 # legacy framed `getstats` above: that one carries remoted's C statistics, which stay where
 # they are. The C++ module's counters exist nowhere else.
-DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remoted-module.sock"
+DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remote-admin-http.sock"
 REMOTED_MODULE_STATS_CSV = "stats-api-remoted-module.csv"
 REMOTED_MODULE_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 

@@ -293,7 +293,7 @@ prefix — `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health
 covers: agents send **and sign** the full prefixed target.
 
 The module's own statistics are **not** served here: they live on a separate manager-local Unix
-socket (`GET /`, `GET /metrics` on `queue/sockets/remoted-module.sock`), so they are never reachable
+socket (`GET /`, `GET /metrics` on `queue/sockets/remote-admin-http.sock`), so they are never reachable
 from an agent — see [the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with

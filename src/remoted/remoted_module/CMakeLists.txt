@@ -32,7 +32,7 @@ target_include_directories(
 # and scanvd/scanVdMetrics.hpp. Defined later in the top-level configure (this module never
 # configures standalone), which is fine: CMake resolves link targets at generate time.
 # wazuh_uds_http_server: the shared HTTP-over-UDS server behind the module's LOCAL admin socket
-# (queue/sockets/remoted-module.sock, see startAdminServer() in remotedModuleFacade.hpp). Also
+# (queue/sockets/remote-admin-http.sock, see startAdminServer() in remotedModuleFacade.hpp). Also
 # registered by the top-level configure; its asio/llhttp deps stay PRIVATE inside the archive,
 # and it compiles the same vendored standalone asio (ASIO_STANDALONE) ext_restinio already uses.
 target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd wazuh_metrics

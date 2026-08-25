@@ -90,7 +90,7 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
 // sync's socket path.
-constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remoted-module.sock"};
+constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remote-admin-http.sock"};
 
 /**
  * @brief Internal engine of the remoted module.

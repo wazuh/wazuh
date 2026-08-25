@@ -15,7 +15,7 @@ connection, exact-match routing, no TLS, no keep-alive, no chunked encoding.
 | Consumer | Socket | Configuration |
 |---|---|---|
 | Inventory Sync Server | `queue/sockets/inventory-sync-http.sock` | [inventory-sync-server/configuration.md](../../inventory-sync-server/configuration.md) |
-| Remoted module admin socket (`GET /`, `GET /metrics`) | `queue/sockets/remoted-module.sock` | [remoted/configuration.md](../../remoted/configuration.md) |
+| Remoted module admin socket (`GET /`, `GET /metrics`) | `queue/sockets/remote-admin-http.sock` | [remoted/configuration.md](../../remoted/configuration.md) |
 
 This library has **no standalone configuration**: each consumer exposes the transport
 knobs (I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
