@@ -3,9 +3,10 @@
 This document describes how the Container Images module stores the package inventory it
 discovers, and the technical decisions behind the storage model.
 
-> **Status:** package **extraction** is still stubbed. A temporary in-memory reader feeds a
-> fixed inventory so the storage layer can be built and validated end to end. Real OCI /
-> local-image reading replaces the stub later without changing the storage layer.
+> **Status:** image **references** are read from the configured on-disk layouts and stored.
+> Package **extraction** from image layers is a later stage, so the packages table stays empty
+> on a real scan today. The package path is exercised by the unit tests, which drive the
+> storage layer directly, and extraction will fill it without changing this layer.
 
 Synchronizing this inventory with the manager is a separate concern and is not part of this
 layer. The delta callback described below is the seam it attaches to.
@@ -72,8 +73,11 @@ reference's packages.
 
 - **Document id**: `sha1(table + primary-key fields)`. For packages the reference fields are
   always part of the key, since the reference owns the inventory.
-- **Change detection**: a per-row `checksum` (sha1 of the row content) is stored; DBSync
-  reports a row as MODIFIED when the incoming checksum differs. A change to a primary-key
+- **Change detection**: DBSync compares every non-ignored column and reports a row as
+  MODIFIED when any of them differs. The per-row `checksum` (sha1 of the row content) is
+  stored like every other inventory table keeps one, but it holds no special status in that
+  comparison, so leaving a field out of the checksum does not hide it from change detection.
+  A change to a primary-key
   field (e.g. a package `version_`) is a different identity, so it surfaces as a delete of the
   old row plus a create of the new one, not a modify. This matches the host package inventory
   behavior.
@@ -96,14 +100,30 @@ and its recorded version, so the inventory this module owns does not survive as 
 when the module is disabled or uninstalled, and a later re-enable reuses the same database
 instead of triggering a recreate.
 
-### 5. Stub inventory source (extraction deferred)
+### 5. Inventory source (extraction deferred)
 
-The reader factory (`makeReader`) returns a `StubImageReader` that emits one reference
-(`debian:12`) with a handful of packages. The fixture **mutates across scans** (a package is
-added, one changes version, one is removed) so that create / modify / delete deltas are
-produced and can be observed. This is the seam the real readers replace; nothing downstream
-depends on it. A deterministic mutating fixture validates all three delta types without
-needing real image parsing.
+The reader factory (`makeReader`) returns a `LocalImageReader` bound to each configured
+`<local>` path, so what is stored comes from the layouts the user configured. Package
+extraction from image layers is not implemented yet, so those references carry no packages
+and the packages table stays empty on a real scan.
+
+The three delta types are exercised by a test double (`stub_image_reader`) that mutates its
+inventory across scans. It is built into the test binary only, never into the shipped
+library, so an agent can never persist synthetic inventory.
+
+### 6. Image identity on the package row
+
+A package row carries `reference_type` and `reference_value`, which identify the source type
+and the path it was found under. It deliberately does **not** repeat the image digest, name,
+tags or platform: those live once on the reference row, and duplicating them onto every
+package is what the storage analysis behind this model set out to avoid.
+
+The consequence for the stage that follows: the synchronization layer must **join the
+reference row** to build a package document, because a raw package row alone does not carry
+the digest, the image name or the OS that Vulnerability Detector needs to select a feed.
+Issue #37529's scope asks for that metadata in the package state; this model answers it by
+reference rather than by duplication, and the choice needs confirming on the objective before
+the sync layer is built.
 
 ---
 
@@ -112,7 +132,7 @@ needing real image parsing.
 | File | Role |
 |------|------|
 | `container_images_impl/include/image_inventory_types.hpp` | Adds `ImagePackageRecord`; references carry their packages. |
-| `container_images_impl/{include,src}/stub_image_reader.*` | Temporary mutating inventory source. |
+| `container_images_impl/tests/stub_image_reader.*` | Test double: a mutating inventory source, built into the test binary only. |
 | `container_images_impl/{include,src}/container_images_db.*` | Owns DBSync, holds the CREATE TABLE statements and the upgrade list, runs the transactions, emits deltas. |
 | `container_images_impl/{include,src}/container_images_impl.*` | Orchestrator: scan -> DB -> delta callback. |
 | `container_images/{include,src}/container_images.{h,hpp,cpp}` | C ABI + facade; initializes DBSync. |
@@ -137,7 +157,7 @@ its own callback.
 
 ## Open items
 
-- Replace the stub reader with real package extraction (dpkg / apk / rpm).
+- Add package extraction from image layers (dpkg / apk / rpm), which is what fills the packages table on a real scan.
 - Manager synchronization: index names and indexer templates, ECS field mapping for the event
   payload, and whether a document limit / promotion is needed. The `sync` column already
   exists so a limit can be layered on without a migration.

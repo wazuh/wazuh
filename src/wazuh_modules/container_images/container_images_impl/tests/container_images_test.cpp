@@ -2,6 +2,7 @@
 #include "container_images_db.hpp"
 #include "container_images_impl.hpp"
 #include "local_image_reader.hpp"
+#include "stub_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
 #include "dbsync.hpp"
@@ -9,12 +10,14 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 #include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
@@ -343,6 +346,49 @@ namespace
                 ("ci_db_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".db"))
                .string();
     }
+
+    /// @brief Reads @p columns back from @p table of an existing database.
+    ///
+    /// Opening the file again at the same schema version reuses it, so this reads exactly
+    /// what the module stored. Selecting a column the CREATE statement does not define
+    /// makes DBSync throw, which is what pins the created schema.
+    std::vector<std::map<std::string, std::string>> storedRows(const std::string& dbPath,
+                                                               const std::string& table,
+                                                               const std::vector<std::string>& columns)
+    {
+        DBSync db {HostType::AGENT,
+                   DbEngineType::SQLITE3,
+                   dbPath,
+                   ContainerImagesDB::getCreateStatement(),
+                   DbManagement::PERSISTENT,
+                   ContainerImagesDB::getUpgradeStatements()};
+
+        std::vector<std::map<std::string, std::string>> rows;
+
+        const auto callback = [&rows](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result != SELECTED)
+            {
+                return;
+            }
+
+            std::map<std::string, std::string> row;
+
+            for (const auto& field : data.items())
+            {
+                row[field.key()] = field.value().is_string()
+                                   ? field.value().get<std::string>()
+                                   : field.value().dump();
+            }
+
+            rows.push_back(std::move(row));
+        };
+
+        auto query = SelectQuery::builder().table(table).columnList(columns).build();
+        db.selectRows(query.query(), callback);
+
+        return rows;
+    }
 }
 
 class ContainerImagesDBTest : public ContainerImagesTest
@@ -400,7 +446,7 @@ TEST_F(ContainerImagesDBTest, UnchangedSecondSyncReportsNoDeltas)
     EXPECT_EQ(second.deleted, 0);
 }
 
-TEST_F(ContainerImagesDBTest, PackageVersionChangeReportsModified)
+TEST_F(ContainerImagesDBTest, PackageVersionChangeReportsDeleteAndCreate)
 {
     ContainerImagesDB db(m_dbPath);
 
@@ -453,52 +499,191 @@ TEST_F(ContainerImagesDBTest, AttributeChangeReportsModified)
     EXPECT_EQ(second.deleted, 0);
 }
 
+TEST_F(ContainerImagesDBTest, DeltaCarriesTheStoredDocumentVersion)
+{
+    // The version is what lets the manager order and deduplicate documents once the
+    // synchronization layer attaches to this callback. DBSync stores it as a signed
+    // integer, so a guard that only accepts an unsigned one reports 0 for every row.
+    ContainerImagesDB db(m_dbPath);
+
+    std::vector<std::uint64_t> versions;
+
+    const auto capture = [&versions](ReturnTypeCallback, const std::string&, const std::string&,
+                                     const std::string&, std::uint64_t version)
+    {
+        versions.push_back(version);
+    };
+
+    auto withSize = [](long long size)
+    {
+        auto package = makePackage("apt", "2.6.1");
+        package.size = size;
+        return std::vector<ImageReferenceRecord> {makeReference("debian:12", {package})};
+    };
+
+    db.syncPackages(withSize(100), capture); // create
+    ASSERT_EQ(versions.size(), 1U);
+    EXPECT_EQ(versions.front(), 1U);
+
+    versions.clear();
+
+    db.syncPackages(withSize(200), capture); // modify, same primary key
+    ASSERT_EQ(versions.size(), 1U);
+    EXPECT_EQ(versions.front(), 2U);
+}
+
 // ---------------------------------------------------------------------------
-// Orchestrator — scanOnce drives the stub reader through the DB.
+// Orchestrator — scanOnce reads the configured sources and stores what it finds.
 // ---------------------------------------------------------------------------
+//
+// Every case here injects the temporary database, so no test writes under the agent
+// installation path.
+
+TEST_F(ContainerImagesDBTest, ImplScanOnceReturnsReferenceCount)
+{
+    const auto fixture = buildSingleImageLayout();
+
+    ContainerImagesConfig config;
+    config.localPaths = {fixture->path()};
+
+    ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
+    EXPECT_EQ(impl.scanOnce(), 1U);
+}
+
+TEST_F(ContainerImagesDBTest, ImplScanOnceAggregatesMultipleSources)
+{
+    const auto first = buildSingleImageLayout();
+    const auto second = buildSingleImageLayout();
+
+    ContainerImagesConfig config;
+    config.localPaths = {first->path(), second->path()};
+
+    ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
+    EXPECT_EQ(impl.scanOnce(), 2U);
+}
+
+TEST_F(ContainerImagesDBTest, ImplNoSourcesScansNothing)
+{
+    ContainerImagesConfig config; // no localPaths
+
+    int factoryCalls = 0;
+    ContainerImagesImpl impl(config, [&factoryCalls](const std::string&)
+    {
+        ++factoryCalls;
+        return std::unique_ptr<IImageReader>(nullptr);
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    EXPECT_EQ(impl.scanOnce(), 0U);
+    EXPECT_EQ(factoryCalls, 0);
+}
+
+TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
+{
+    std::vector<std::string> factoryPaths;
+
+    ContainerImagesConfig config;
+    config.localPaths = {"/some/path"};
+
+    ContainerImagesImpl impl(config, [&factoryPaths](const std::string & path)
+    {
+        factoryPaths.push_back(path);
+        return std::unique_ptr<IImageReader>(nullptr);
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    EXPECT_EQ(impl.scanOnce(), 0U);
+
+    // The factory is driven by the configured path, not by a fixed one.
+    ASSERT_EQ(factoryPaths.size(), 1U);
+    EXPECT_EQ(factoryPaths.front(), "/some/path");
+}
+
+TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)
+{
+    // The stored digest must be the one the configured layout actually holds: the module
+    // ships the real reader, so nothing synthetic can reach the database.
+    const auto fixture = buildSingleImageLayout();
+
+    ContainerImagesConfig config;
+    config.localPaths = {fixture->path()};
+
+    {
+        ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
+        ASSERT_EQ(impl.scanOnce(), 1U);
+    }
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value", "image_config_digest"})};
+
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("reference_type"), "local");
+    EXPECT_EQ(rows.front().at("reference_value"), fixture->path());
+    EXPECT_EQ(rows.front().at("image_config_digest"), "sha256:" + CONFIG_DIGEST);
+}
 
 TEST_F(ContainerImagesDBTest, ScanOnceWithStubReaderPersistsPackages)
 {
+    // The stub reader is a test double injected through the factory seam. It carries
+    // packages, which the on-disk reader cannot produce yet, so it is what proves the
+    // scan-to-storage path end to end for the packages table.
     ContainerImagesConfig config;
     config.dbPath = m_dbPath;
+    config.localPaths = {"/stubbed/source"};
 
-    // Default reader factory yields the stub reader; inject the temp DB so nothing is
-    // written under the working directory. No sync protocol is injected, so persistence
-    // is exercised without requiring the manager transport.
-    auto db = std::make_shared<ContainerImagesDB>(m_dbPath);
-    ContainerImagesImpl impl(config, makeReader, db);
+    ContainerImagesImpl impl(config, [](const std::string&)
+    {
+        return std::unique_ptr<IImageReader>(new StubImageReader());
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
 
-    EXPECT_GT(impl.scanOnce(), 0U);
+    EXPECT_EQ(impl.scanOnce(), 1U);
+    EXPECT_FALSE(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).empty());
 }
 
-TEST_F(ContainerImagesTest, ImplDisabledDoesNotScan)
+TEST_F(ContainerImagesDBTest, ImplDisabledDoesNotScan)
 {
     int factoryCalls = 0;
 
     ContainerImagesConfig config;
     config.enabled = false;
     config.scanOnStart = true;
-
-    auto db = std::make_shared<ContainerImagesDB>(
-                  (std::filesystem::temp_directory_path() / "ci_disabled.db").string());
+    config.localPaths = {"/some/path"};
 
     ContainerImagesImpl impl(config, [&factoryCalls](const std::string&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
-    }, db);
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
 
     impl.run();
     EXPECT_EQ(factoryCalls, 0);
 }
 
-TEST_F(ContainerImagesTest, ImplRunStopsPromptly)
+TEST_F(ContainerImagesDBTest, ImplFailingScanDoesNotEndTheModule)
+{
+    // A reader that throws must cost one scan, not the module: run() has to return through
+    // stop(), not through the exception.
+    ContainerImagesConfig config;
+    config.scanOnStart = true;
+    config.interval = 1;
+    config.localPaths = {"/some/path"};
+
+    ContainerImagesImpl impl(config, [](const std::string&) -> std::unique_ptr<IImageReader>
+    {
+        throw std::runtime_error("reader failure");
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    std::thread runner([&impl] { ASSERT_NO_THROW(impl.run()); });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    impl.stop();
+    runner.join();
+}
+
+TEST_F(ContainerImagesDBTest, ImplRunStopsPromptly)
 {
     ContainerImagesConfig config;
     config.scanOnStart = false;
     config.interval = 3600;
 
-    ContainerImagesImpl impl(config);
+    ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
 
     std::thread runner([&impl] { impl.run(); });
 
@@ -512,7 +697,7 @@ TEST_F(ContainerImagesTest, ImplRunStopsPromptly)
     EXPECT_LT(std::chrono::steady_clock::now() - stopRequested, std::chrono::seconds(5));
 }
 
-TEST_F(ContainerImagesTest, ImplStopBeforeRunDoesNotScan)
+TEST_F(ContainerImagesDBTest, ImplStopBeforeRunDoesNotScan)
 {
     // The shutdown loop signals every module before joining any of them, so a stop
     // can land before the module thread ever reaches run(). It must be honoured.
@@ -527,7 +712,7 @@ TEST_F(ContainerImagesTest, ImplStopBeforeRunDoesNotScan)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
-    });
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
 
     impl.stop();
 
@@ -538,17 +723,67 @@ TEST_F(ContainerImagesTest, ImplStopBeforeRunDoesNotScan)
     EXPECT_EQ(factoryCalls, 0);
 }
 
-TEST_F(ContainerImagesDBTest, SchemaDoesNotCollideWithHostPackageInventory)
+TEST_F(ContainerImagesDBTest, HostPackageInventoryIsNotTouchedByAContainerImageSync)
 {
-    const auto statement {ContainerImagesDB::getCreateStatement()};
+    // Stand-in for the host package inventory: the table name Syscollector owns, in its own
+    // database file. What must hold is that a container image scan cannot reach it.
+    const auto hostDbPath {m_dbPath + "_host.db"};
+    constexpr auto HOST_TABLE {"dbsync_packages"};
+    const std::string hostSchema {R"(CREATE TABLE IF NOT EXISTS dbsync_packages (
+        name TEXT, version TEXT, checksum TEXT, PRIMARY KEY (name)) WITHOUT ROWID;)"};
 
-    EXPECT_NE(statement.find(REFERENCES_TABLE), std::string::npos);
-    EXPECT_NE(statement.find(PACKAGES_TABLE), std::string::npos);
+    nlohmann::json hostRows = nlohmann::json::array();
+    hostRows.push_back({{"name", "apt"}, {"version", "2.6.1"}, {"checksum", "host-checksum"}});
 
-    // The host package inventory owns dbsync_packages. Creating or writing that table here
-    // would let container image packages overwrite host packages.
-    EXPECT_EQ(statement.find("dbsync_packages("), std::string::npos);
-    EXPECT_EQ(statement.find("dbsync_packages "), std::string::npos);
+    DBSync hostDb {HostType::AGENT, DbEngineType::SQLITE3, hostDbPath, hostSchema, DbManagement::PERSISTENT};
+
+    const auto syncHost = [&hostDb, &hostRows, HOST_TABLE](DeltaTally & tally)
+    {
+        const auto callback = [&tally](ReturnTypeCallback result, const nlohmann::json&)
+        {
+            if (result == INSERTED) ++tally.created;
+            else if (result == MODIFIED) ++tally.modified;
+            else if (result == DELETED) ++tally.deleted;
+        };
+
+        nlohmann::json input;
+        input["table"] = HOST_TABLE;
+        input["data"] = hostRows;
+
+        DBSyncTxn txn {hostDb.handle(), nlohmann::json {HOST_TABLE}, 0, 4096, callback};
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+    };
+
+    DeltaTally hostFirst;
+    syncHost(hostFirst);
+    ASSERT_EQ(hostFirst.created, 1);
+
+    // A container image inventory carrying a package with the same name and version.
+    const std::vector<ImageReferenceRecord> references {
+        makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+
+    ContainerImagesDB db(m_dbPath);
+    DeltaTally imageTally;
+    db.syncReferences(references, imageTally.callback());
+    db.syncPackages(references, imageTally.callback());
+    ASSERT_EQ(imageTally.created, 2);
+
+    // The host row is still there, unchanged: re-syncing the same content yields no delta.
+    DeltaTally hostSecond;
+    syncHost(hostSecond);
+    EXPECT_EQ(hostSecond.created, 0);
+    EXPECT_EQ(hostSecond.modified, 0);
+    EXPECT_EQ(hostSecond.deleted, 0);
+
+    // The two inventories live in different files, and the module's database has no host
+    // package table to write to.
+    EXPECT_NE(hostDbPath, m_dbPath);
+    EXPECT_TRUE(std::filesystem::exists(hostDbPath));
+    EXPECT_TRUE(std::filesystem::exists(m_dbPath));
+    EXPECT_ANY_THROW(storedRows(m_dbPath, HOST_TABLE, {"name"}));
+
+    std::filesystem::remove(hostDbPath);
 }
 
 TEST_F(ContainerImagesDBTest, SamePackageInTwoImagesIsStoredIndependently)
@@ -679,9 +914,73 @@ TEST_F(ContainerImagesDBTest, ReopeningAPersistedDatabaseKeepsItsRows)
     EXPECT_EQ(second.deleted, 0);
 }
 
-TEST_F(ContainerImagesDBTest, UpgradeStatementsDefineTheSchemaVersion)
+TEST_F(ContainerImagesDBTest, CreatedTablesCarryTheDocumentedColumns)
 {
-    // DBSync derives the current schema version from this list (size + 1). The list is empty
-    // while the schema is on its first revision; each later schema change appends one entry.
-    EXPECT_TRUE(ContainerImagesDB::getUpgradeStatements().empty());
+    ContainerImagesDB db(m_dbPath);
+
+    auto package {makePackage("apt", "2.6.1")};
+    package.size = 4276224;
+    const std::vector<ImageReferenceRecord> references {makeReference("debian:12", {package})};
+
+    db.syncReferences(references, DeltaTally().callback());
+    db.syncPackages(references, DeltaTally().callback());
+
+    // Selecting a column the CREATE statement does not define makes DBSync throw, so this
+    // asserts the created tables, not the string the module holds.
+    const auto storedReferences {storedRows(m_dbPath, REFERENCES_TABLE,
+    {
+        "reference_type", "reference_value", "image_config_digest", "manifest_digest", "image_name",
+        "tag", "tags", "platform_os", "platform_architecture", "platform_variant",
+        "platform_os_version", "checksum", "version", "sync"
+    })};
+
+    ASSERT_EQ(storedReferences.size(), 1U);
+    EXPECT_EQ(storedReferences.front().at("reference_type"), "local");
+    EXPECT_EQ(storedReferences.front().at("platform_architecture"), "amd64");
+
+    const auto storedPackages {storedRows(m_dbPath, PACKAGES_TABLE,
+    {
+        "reference_type", "reference_value", "name", "version_", "architecture", "type", "vendor",
+        "installed", "path", "category", "description", "size", "priority", "multiarch", "source",
+        "package_db_path", "checksum", "version", "sync"
+    })};
+
+    ASSERT_EQ(storedPackages.size(), 1U);
+    EXPECT_EQ(storedPackages.front().at("name"), "apt");
+    EXPECT_EQ(storedPackages.front().at("version_"), "2.6.1");
+    EXPECT_EQ(storedPackages.front().at("size"), "4276224");
+}
+
+TEST_F(ContainerImagesDBTest, CreatedTablesEnforceTheDocumentedPrimaryKeys)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    auto packageWithSize = [](const std::string& version, long long size)
+    {
+        auto package = makePackage("apt", version);
+        package.size = size;
+        return package;
+    };
+
+    // A change outside the key updates the stored row in place.
+    db.syncPackages({makeReference("debian:12", {packageWithSize("2.6.1", 100)})}, DeltaTally().callback());
+    db.syncPackages({makeReference("debian:12", {packageWithSize("2.6.1", 200)})}, DeltaTally().callback());
+    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_", "size"}).size(), 1U);
+
+    // A change inside the key is a different row, and so is the owning reference.
+    db.syncPackages({makeReference("debian:12", {packageWithSize("2.6.1", 200), packageWithSize("2.6.2", 200)})},
+                    DeltaTally().callback());
+    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 2U);
+
+    // References are keyed on (reference_type, reference_value): the digest is a change
+    // signal carried as a column, not part of the identity.
+    auto reference {makeReference("debian:12", {})};
+    db.syncReferences({reference}, DeltaTally().callback());
+
+    reference.configDigest = "sha256:rebuilt";
+    db.syncReferences({reference}, DeltaTally().callback());
+    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value", "image_config_digest"}).size(), 1U);
+
+    db.syncReferences({reference, makeReference("ubuntu:24.04", {})}, DeltaTally().callback());
+    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value"}).size(), 2U);
 }

@@ -83,9 +83,8 @@ def test_container_images_deactivation(test_configuration, test_metadata, set_wa
 
     assertions:
         - The disabled-module message is logged.
-        - No "Scan started." message is logged.
 
-    expected_result: PASS when the module logs that it is disabled and never scans.
+    expected_result: PASS when the module logs that it is disabled.
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 

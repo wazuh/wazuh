@@ -37,7 +37,7 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.modules.modulesd.container_images import patterns
-from wazuh_testing.modules.modulesd.container_images.db import query_table, REFERENCES_TABLE, PACKAGES_TABLE
+from wazuh_testing.modules.modulesd.container_images.db import query_table, REFERENCES_TABLE
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
