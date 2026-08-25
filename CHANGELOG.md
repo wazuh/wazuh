@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
+- Added some hardening missing flags to the agent binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
 
 #### Fixed
 

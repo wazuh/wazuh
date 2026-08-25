@@ -185,8 +185,14 @@ ifeq (${CHECK_CENTOS5},YES)
 else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
 endif
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		HARDENING_FLAGS := -fstack-protector-strong
+ifeq (,$(filter ${DEBUG},YES yes y Y 1))
+		HARDENING_FLAGS += -D_FORTIFY_SOURCE=2
+endif
+		OSSEC_CFLAGS+=$(HARDENING_FLAGS) -fPIE
+		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib' -Wl,-z,relro -Wl,-z,now -pie
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib' -Wl,-z,relro -Wl,-z,now -pie
+		CMAKE_OPTS+=-DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_CXX_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_EXE_LINKER_FLAGS="-Wl,-z,relro -Wl,-z,now" -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,relro -Wl,-z,now"
 ifeq (${CHECK_ALPINE},YES)
 		OSSEC_LIBS+=-lintl
 		DEFINES+=-DALPINE
@@ -194,7 +200,6 @@ endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
-		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -1770,7 +1775,11 @@ build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
+ifeq (${uname_S},Linux)
+build_sysinfo: $(WAZUHEXT_LIB) $(DB_LIB)
+else
 build_sysinfo: $(WAZUHEXT_LIB)
+endif
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
@@ -1948,7 +1957,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -lm
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,-z,relro -Wl,-z,now ${OSSEC_LIBS}
 endif
 endif
 endif
@@ -2152,7 +2161,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@ -static-libgcc
 else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,-z,relro -Wl,-z,now ${OSSEC_LIBS}
 endif
 endif
 endif
@@ -2208,7 +2217,7 @@ librootcheck.a: ${rootcheck_o_lib}
 #### FIM ######
 
 wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
-	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
+	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
 
 #### Monitor #######
 
