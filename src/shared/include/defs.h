@@ -125,7 +125,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYNCQUEUE "queue/sockets/queue-sync"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "queue/sockets/auth"
+#define AUTH_LOCAL_SOCK "queue/sockets/auth.sock"
 
 // Local requests socket
 #define COM_LOCAL_SOCK     "queue/sockets/com"
@@ -133,28 +133,28 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define LC_LOCAL_SOCK      "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK     "queue/sockets/syscheck"
 #define WM_LOCAL_SOCK      "queue/sockets/wmodules"
-#define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
+#define REMOTE_LOCAL_SOCK  "queue/sockets/remote.sock"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/queue-http.sock"
 #define INV_SYNC_SOCK      "queue/sockets/inventory-sync.sock"
-#define MON_LOCAL_SOCK     "queue/sockets/monitor"
+#define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK       "queue/sockets/control"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
 // Tasks socket
-#define TASK_QUEUE "queue/tasks/task"
+#define TASK_QUEUE "queue/sockets/task.sock"
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS 10
 
 // Database socket
-#define WDB_LOCAL_SOCK "queue/db/wdb"
+#define WDB_LOCAL_SOCK "queue/sockets/wdb.sock"
 
 // Tasks socket
-#define WM_UPGRADE_SOCK "queue/tasks/upgrade"
+#define WM_UPGRADE_SOCK "queue/sockets/task-upgrade.sock"
 
-#define WM_TASK_MODULE_SOCK "queue/tasks/task"
+#define WM_TASK_MODULE_SOCK "queue/sockets/task.sock"
 
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"

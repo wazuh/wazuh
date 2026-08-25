@@ -46,7 +46,7 @@ Each task carries a free-form JSON `payload` whose contents are defined by the p
 
 ## IPC interface
 
-The Task Manager listens on the Unix domain socket `queue/tasks/task` (`TASK_QUEUE` / `WM_TASK_MODULE_SOCK`). Messages are JSON documents; the socket uses the Wazuh secure TCP framing (`OS_SendSecureTCP` / `OS_RecvSecureTCP`).
+The Task Manager listens on the Unix domain socket `queue/sockets/task.sock` (`TASK_QUEUE` / `WM_TASK_MODULE_SOCK`). Messages are JSON documents; the socket uses the Wazuh secure TCP framing (`OS_SendSecureTCP` / `OS_RecvSecureTCP`).
 
 Two actions are accepted:
 

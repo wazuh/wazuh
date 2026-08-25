@@ -43,7 +43,7 @@ For configuration options see [Authd Configuration](configuration.md).
 | Thread | Role |
 |--------|------|
 | Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
-| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth` |
+| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
 | Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and hands the indexer purge of every removed agent to the relay. It never waits on the network |
 | Purge relay | Sends the queued indexer purges to the [Inventory Sync Server](../inventory-sync-server/README.md), after the configured delay, and owns every retry |
 
@@ -150,7 +150,7 @@ its purge finish, and then the id can be reused.
 ## Local socket enrollment protocol
 
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
-the Unix domain socket `queue/sockets/auth`. This is what `manage_agents`, the API's agent
+the Unix domain socket `queue/sockets/auth.sock`. This is what `manage_agents`, the API's agent
 registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
 [HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
 remove, and query agents without going through TLS or the enrollment password directly.

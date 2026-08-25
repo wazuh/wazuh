@@ -781,11 +781,11 @@ agent status in global.db to "disconnected" and records the disconnection time.
 
 The `/control` endpoint integrates with two backend services over Unix-domain sockets:
 
-- **wazuh-db** (`queue/db/wdb`): Agent metadata storage. The handler writes agent info (OS, version,
+- **wazuh-db** (`queue/sockets/wdb.sock`): Agent metadata storage. The handler writes agent info (OS, version,
   hostname, etc.) via `agent <id> set <field> <value>` commands, updates connection status, and
   reads back the agent's groups. Dedicated worker threads with bounded request queues and async I/O
   prevent blocking the HTTP worker threads.
-- **task-manager** (`queue/tasks/task`): Task delivery. The handler queries pending tasks for the
+- **task-manager** (`queue/sockets/task.sock`): Task delivery. The handler queries pending tasks for the
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
@@ -941,7 +941,7 @@ else afterward, instead of falling back to legacy `authd` on port 1515. It is a 
 second implementation**: `authd` keeps 100% of enrollment business logic (name/version/group
 validation, key generation, duplicate handling, cluster forwarding on a worker); this endpoint only
 authenticates the request and relays it to `authd`'s existing local socket
-(`queue/sockets/auth`) — the same interface `manage_agents` and the API's agent-registration
+(`queue/sockets/auth.sock`) — the same interface `manage_agents` and the API's agent-registration
 endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
 that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
 operator can retire port 1515 while keeping `/enroll` (or disable both together via

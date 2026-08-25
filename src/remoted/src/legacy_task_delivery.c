@@ -17,7 +17,7 @@
  *
  * Every legacy_task_polling_interval seconds, this thread walks the set of currently-connected
  * agents; for each one confirmed to be below v5.0.0, it asks the Task Manager for its pending
- * tasks (over the existing, unmodified `queue/tasks/task` socket) and pushes any `remote_upgrade`
+ * tasks (over the existing, unmodified `queue/sockets/task.sock` socket) and pushes any `remote_upgrade`
  * task to the agent using the same six-step wire protocol (lock_restart / open / write / close /
  * sha1 / upgrade) the agent-side handlers in wm_agent_upgrade_com.c already understand.
  *
@@ -198,7 +198,7 @@ STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version
 /**
  * @brief Ask the Task Manager for an agent's pending tasks.
  *
- * Read-only client of the existing, unmodified `queue/tasks/task` socket
+ * Read-only client of the existing, unmodified `queue/sockets/task.sock` socket
  * (`get_pending_tasks` action). As a side effect of the call (server-side, not something this
  * poller controls), every returned task is marked `delivered` in tasks.db regardless of task
  * type -- callers must only invoke this once the agent has been confirmed eligible (see

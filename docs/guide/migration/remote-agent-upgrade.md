@@ -106,7 +106,7 @@ The `agent_upgrade` module on the manager downloads the WPK from the Wazuh repos
 
 ```
 API request or agent_upgrade binary (target: an agent below v5.0.0)
-    └─► Agent Upgrade module (queue/tasks/upgrade)
+    └─► Agent Upgrade module (queue/sockets/task-upgrade.sock)
             ├─► validates version requirements and downloads/validates WPK
             └─► creates a remote_upgrade task in the Task Manager
                     └─► Task Manager stores the task in tasks.db
@@ -120,7 +120,7 @@ API request or agent_upgrade binary (target: an agent below v5.0.0)
 
 ```
 API request or agent_upgrade binary
-    └─► Agent Upgrade module (queue/tasks/upgrade)
+    └─► Agent Upgrade module (queue/sockets/task-upgrade.sock)
             ├─► validates version requirements and downloads/validates WPK
             └─► creates a remote_upgrade task in the Task Manager
                     └─► Task Manager stores the task in tasks.db

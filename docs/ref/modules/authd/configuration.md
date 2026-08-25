@@ -109,7 +109,7 @@ Master switch for **all** remote (network) self-enrollment — both this daemon'
 listener on port 1515 and the HTTPS `POST /enroll` bridge served by `remoted_module` (see
 [HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Disabling it
 turns off both at once; use [`legacy_enrollment`](#legacy_enrollment) to turn off only port 1515
-while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth`) used by
+while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth.sock`) used by
 `manage_agents`/the API stays available regardless of this setting.
 
 - **Default value:** `yes`

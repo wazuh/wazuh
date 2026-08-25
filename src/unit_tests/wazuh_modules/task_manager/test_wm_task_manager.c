@@ -171,7 +171,7 @@ void test_wm_task_manager_init_bind_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, OS_INVALID);
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue 'queue/tasks/task' not accessible: 'Success'. Exiting...");
+    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue 'queue/sockets/task.sock' not accessible: 'Success'. Exiting...");
 
     expect_assert_failure(wm_task_manager_init(config));
 }

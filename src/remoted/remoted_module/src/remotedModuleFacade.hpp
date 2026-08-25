@@ -87,7 +87,7 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
 // remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
-// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote". No
+// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
 // sync's socket path.
 constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remoted-module.sock"};

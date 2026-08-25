@@ -548,8 +548,8 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
-| `wdbSocketPath` | `/queue/db/wdb` | — (fixed) |
-| `taskSocketPath` | `/queue/tasks/task` | — (fixed) |
+| `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
+| `taskSocketPath` | `/queue/sockets/task.sock` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -751,7 +751,7 @@ sequenceDiagram
     participant EA as EnrollmentAuthenticator
     participant PK as PasswordKeySource<br/>(etc/authd.pass)
     participant AC as AuthdClient
-    participant AD as authd<br/>(queue/sockets/auth UDS)
+    participant AD as authd<br/>(queue/sockets/auth.sock UDS)
 
     Ag->>EP: POST /enroll {"name":...,"version":...,"groups":...}
     Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
@@ -913,7 +913,7 @@ privilege boundary — it joins the same trust domain `manage_agents` already si
 
 #### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
 
-The bridge to authd's local socket `queue/sockets/auth`, framed with `shared_modules/utils`'s
+The bridge to authd's local socket `queue/sockets/auth.sock`, framed with `shared_modules/utils`'s
 `Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
 `OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
 it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the

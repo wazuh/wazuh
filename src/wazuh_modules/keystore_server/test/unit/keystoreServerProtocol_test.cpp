@@ -26,7 +26,7 @@
 #include <unistd.h>
 
 /*
- * The pipe protocol on `queue/sockets/keystore` is a live contract with the Python framework's
+ * The pipe protocol on `queue/sockets/keystore.sock` is a live contract with the Python framework's
  * KeystoreClient (framework/wazuh/core/indexer/credential_manager.py fetches the indexer
  * credentials through it), and it had ZERO tests while it lived inside inventory_sync. These pin
  * it byte-for-byte as it moves into its own module -- including the deliberate oddity that a GET

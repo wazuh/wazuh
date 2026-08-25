@@ -71,7 +71,7 @@ DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/",
 ]
 
-DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
+DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote.sock"
 REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024

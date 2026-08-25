@@ -21,7 +21,7 @@ An HTTP API endpoint (`queue/sockets/wdb-http.sock`) is also exposed for interna
 
 ## Socket protocol
 
-Socket: `/var/wazuh-manager/queue/db/wdb` (Unix stream)
+Socket: `/var/wazuh-manager/queue/sockets/wdb.sock` (Unix stream)
 
 Queries are plain-text strings terminated by a null byte or newline. The first token selects the target database; the rest is the command and its arguments.
 
