@@ -527,6 +527,11 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
 static int load_and_attach(const char* bpfobj_path, bool use_lsm)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
+    if (!logFn || !bpf_helpers)
+    {
+        return 1;
+    }
+
     bpf_object* obj = nullptr;
     bool prefer_dpath = use_lsm; /* only meaningful when LSM is active */
 
