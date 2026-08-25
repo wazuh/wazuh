@@ -156,6 +156,7 @@ STATIC char * wm_agent_upgrade_com_clear_result();
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+STATIC const char * _tmpBareName(const char * path);
 
 size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
@@ -487,6 +488,25 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     return output;
 }
 
+// _jailfile() always builds its output as TMP_DIR followed by a path separator and a bare filename;
+// this recovers that bare filename instead of blindly skipping strlen(TMP_DIR) + 1 bytes, which would
+// walk past the string's NUL terminator (and hand a garbage pointer to w_gzopen_nofollow/w_fopen_nofollow)
+// for any path that turns out not to actually start with that prefix.
+STATIC const char * _tmpBareName(const char * path) {
+    const size_t prefixLen = strlen(TMP_DIR) + 1;
+#ifndef WIN32
+    const char SEP = '/';
+#else
+    const char SEP = '\\';
+#endif
+
+    if (strlen(path) <= prefixLen || strncmp(path, TMP_DIR, strlen(TMP_DIR)) != 0 || path[strlen(TMP_DIR)] != SEP) {
+        return NULL;
+    }
+
+    return path + prefixLen;
+}
+
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".mg.XXXXXX";
     char buffer[4096];
@@ -510,7 +530,9 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
     }
 
     // Not gzopen(): a symlink left at source would be followed, disclosing whatever it points to.
-    if (fsource = w_gzopen_nofollow(TMP_DIR, source + strlen(TMP_DIR) + 1, "rb"), !fsource) {
+    const char * sourceBareName = _tmpBareName(source);
+
+    if (!sourceBareName || (fsource = w_gzopen_nofollow(TMP_DIR, sourceBareName, "rb"), !fsource)) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", source);
         return -1;
     }
@@ -552,7 +574,9 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
         return -1;
     }
 
-    if (ftarget = w_fopen_nofollow(TMP_DIR, dest + strlen(TMP_DIR) + 1, "wb"), !ftarget) {
+    const char * destBareName = _tmpBareName(dest);
+
+    if (!destBareName || (ftarget = w_fopen_nofollow(TMP_DIR, destBareName, "wb"), !ftarget)) {
         gzclose(fsource);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;
