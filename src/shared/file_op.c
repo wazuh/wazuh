@@ -2755,6 +2755,134 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 }
 
 
+gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (!basedir || !mode || (strcmp(mode, "r") && strcmp(mode, "rb")) || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    char final_path[PATH_MAX + 1];
+    BY_HANDLE_FILE_INFORMATION file_info;
+    HANDLE hFile;
+    int fd;
+    gzFile gzfp;
+
+    if (snprintf(final_path, sizeof(final_path), "%s\\%s", basedir, filename) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+    // FILE_FLAG_OPEN_REPARSE_POINT makes the handle refer to a symlink or junction itself instead of to
+    // its target, so a planted symlink is never followed for reading either.
+    hFile = wCreateFile(final_path, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = w_win32_to_errno(GetLastError());
+        return NULL;
+    }
+
+    if (!GetFileInformationByHandle(hFile, &file_info)) {
+        errno = w_win32_to_errno(GetLastError());
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        CloseHandle(hFile);
+        errno = ELOOP;
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        CloseHandle(hFile);
+        errno = EISDIR;
+        return NULL;
+    }
+
+    // Same reasoning as w_fopen_nofollow(): an NTFS hard link needs no privilege to create and carries
+    // neither attribute checked above, so the link count is what gives it away.
+    if (file_info.nNumberOfLinks != 1) {
+        CloseHandle(hFile);
+        errno = EMLINK;
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle: closing it through zlib/CRT is enough, CloseHandle()
+    // would release the handle while leaving the descriptor allocated forever.
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        _close(fd);
+        return NULL;
+    }
+
+    return gzfp;
+#else
+    struct stat statbuf;
+    gzFile gzfp;
+    int dirfd;
+    int fd;
+    int saved_errno;
+    int flags;
+
+    if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+        return NULL;
+    }
+
+    // O_NOFOLLOW makes the open fail with ELOOP if the target is a symlink, and O_NONBLOCK keeps it from
+    // blocking on a FIFO waiting for a writer.
+    fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+    saved_errno = errno;
+    close(dirfd);
+
+    if (fd < 0) {
+        errno = saved_errno;
+        return NULL;
+    }
+
+    // Rules out anything O_NOFOLLOW does not, such as a block or character device.
+    if (fstat(fd, &statbuf) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        close(fd);
+        errno = EINVAL;
+        return NULL;
+    }
+
+    // A hard link is a regular file by every other measure; the link count is what gives it away.
+    if (statbuf.st_nlink != 1) {
+        close(fd);
+        errno = EMLINK;
+        return NULL;
+    }
+
+    // O_NONBLOCK only mattered while checking for a FIFO above; clear it so reads behave normally.
+    if (flags = fcntl(fd, F_GETFL), flags != -1) {
+        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    }
+
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    return gzfp;
+#endif
+}
+
+
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;
