@@ -174,7 +174,7 @@ batch from the metadata cache, and forwards it to the engine.
 ### 5. Engine client
 
 - **Transport** — HTTP over a Unix-domain socket
-- **Socket** — `queue/sockets/queue-http.sock`
+- **Socket** — `queue/sockets/engine-ingest-http.sock`
 - **Route** — `POST /events/enriched`
 - **Framing** — `x-wev1` (see [Event Protocol](event-protocol.md))
 

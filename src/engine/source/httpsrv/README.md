@@ -157,7 +157,7 @@ Eight API sub-modules register handlers on the API server, plus one direct route
 | `analysisd.server_api_socket` | `WAZUH_SERVER_API_SOCKET` | `$WAZUH_HOME/queue/sockets/analysis` | UDS path for API server |
 | `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | `5000` | Server timeout (ms) |
 | `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | `0` (unlimited) | Max payload size for API server |
-| `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | `$WAZUH_HOME/queue/sockets/queue-http.sock` | UDS path for event server |
+| `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | `$WAZUH_HOME/queue/sockets/engine-ingest-http.sock` | UDS path for event server |
 
 ## Integration in `main.cpp`
 

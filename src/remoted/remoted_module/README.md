@@ -1262,7 +1262,7 @@ that isn't a valid/complete zstd frame is `400`.
 
 Endpoints process a request, forward it to another service over a Unix-domain HTTP socket, and reply
 to the agent once that service answers. First target: the engine's event ingress —
-`queue/sockets/queue-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
+`queue/sockets/engine-ingest-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
 `400` bad batch / `500` orchestrator down) — and a `/stateless` body already **is** the H/E batch it
 expects, so the forwarder is near pass-through with auth in front.
 

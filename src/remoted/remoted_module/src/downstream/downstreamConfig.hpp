@@ -31,7 +31,7 @@ namespace remoted::downstream
     struct DownstreamConfig
     {
         /// Default UDS for the engine event ingress; the facade builds the /stateless target from it.
-        std::string eventsSocketPath {"queue/sockets/queue-http.sock"};
+        std::string eventsSocketPath {"queue/sockets/engine-ingest-http.sock"};
         /**
          * @brief Default UDS for modulesd's inventory sync server; /stats and /config target it.
          */

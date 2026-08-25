@@ -111,7 +111,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Event server - enriched (http)
     addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
-                         (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+                         (wazuhRoot / "queue/sockets/engine-ingest-http.sock").c_str());
 
     // Enable or disable server event processing
     addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);

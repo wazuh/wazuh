@@ -33,7 +33,7 @@ TEST(DownstreamConfigTest, DefaultsWhenEmpty)
 {
     const auto config = buildDownstreamConfig(zeroedConfig());
 
-    EXPECT_EQ(config.eventsSocketPath, "queue/sockets/queue-http.sock");
+    EXPECT_EQ(config.eventsSocketPath, "queue/sockets/engine-ingest-http.sock");
     // Wire contract with modulesd's inventory sync server, which hardcodes the same literal in its
     // own default (different binary, no shared header). Pinned on both sides so a drift fails a test
     // instead of producing connect failures at runtime.
