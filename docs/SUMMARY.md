@@ -165,6 +165,7 @@
   - [Wazuh DB](ref/modules/wazuh_db/README.md)
     - [Configuration](ref/modules/wazuh_db/configuration.md)
   - [Authd](ref/modules/authd/README.md)
+    - [Architecture](ref/modules/authd/architecture.md)
     - [Configuration](ref/modules/authd/configuration.md)
   - [Content Manager](ref/modules/content_manager/README.md)
   - [Database Sync](ref/modules/database-sync/README.md)

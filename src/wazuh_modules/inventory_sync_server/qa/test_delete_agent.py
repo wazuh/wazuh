@@ -55,9 +55,10 @@ def test_delete_agent_wipes_only_that_agent(client, cluster, indexer, agent_id):
 
     response = client.delete_agent(agent_id)
     assert response.status == 200, response.body
-    assert json.loads(response.body) == {"status": "ok"}
+    # Answered at admission: the body says "queued", not "ok", so nobody reads it as a completion.
+    assert json.loads(response.body) == {"status": "queued"}
 
-    # 200 means the delete-by-query was FLUSHED, across every wazuh-states-* index.
+    # And the queued purge does reach every wazuh-states-* index -- this wait is the proof.
     assert indexer.wait_for_docs(agent_id, 0) == []
     assert len(indexer.agent_docs(survivor)) == 2
 
@@ -77,7 +78,7 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
 
     assert client.delete_agent(agent_id).status == 200
 
-    for pattern, docs in indexer.agent_docs_in_scope(agent_id).items():
+    for pattern, docs in indexer.wait_for_empty_scope(agent_id).items():
         assert docs == [], f"agent {agent_id} still has documents in {pattern}"
 
     # Scoped: the deletion is per agent, not a wipe of the shared indices.
@@ -107,7 +108,7 @@ def test_delete_sees_documents_written_inside_the_refresh_interval(client, clust
 
     assert client.delete_agent(agent_id).status == 200
 
-    assert indexer.agent_docs(agent_id) == [], \
+    assert indexer.wait_for_docs(agent_id, 0) == [], \
         "the deletion missed state documents that were flushed but not yet refreshed"
 
 

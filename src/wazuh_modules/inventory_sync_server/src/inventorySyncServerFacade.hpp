@@ -437,8 +437,9 @@ namespace invsync
             // capacity control stays in the pipeline.
             {
                 // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
-                // name): the deletion plane's inline 400/503 rejections count into the same
-                // sync.requests.total.* cells its pipeline-answered responses already use.
+                // name): the deletion plane answers at admission, so all of its responses -- the
+                // inline 400/503 rejections and the 200 that accepts -- count into the same
+                // sync.requests.total.* cells the sync route already uses.
                 const invsync::endpoints::delete_agent::Dependencies deleteDeps {
                     m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),

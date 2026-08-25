@@ -27,6 +27,8 @@ Three documentation layers cover this module, each with its own job:
 - **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
   contract harness that measures this module end to end (see
   [Load & benchmarking](#load--benchmarking)).
+- **[`os_auth`](../../os_auth/README.md)** — the caller on the other side of `DELETE /agents`: why it
+  queues deletions, why it delays them, and what it does with the `200`.
 
 ## Requirements
 
@@ -433,9 +435,18 @@ a `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET agent's shard — 
 FIFO against that agent's in-flight sessions, and respects a scan in flight through the same
 registry. The worker treats it like an immediate: batch cut, then one
 `deleteByQuery(index, agent, cluster)` for every index in `AGENT_DELETION_SCOPE`
-(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()` →
-`200 {"status":"ok"}`. A missing index counts as success inside the connector, so repeating a
-deletion is harmless and stays quiet, which is the callers' whole retry contract.
+(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()`. A missing index
+counts as success inside the connector, so repeating a deletion is harmless and stays quiet, which
+is the callers' whole retry contract.
+
+**This route answers at ADMISSION: `200 {"status":"queued"}` means "recorded and queued, it WILL be
+purged".** Unlike `/stateful`, the caller is released as soon as the item is on the shard queue, and
+the purge's own outcome is reported only in this module's log. Answering after the flush is what
+wedged the caller: authd relays deletions from the single thread that persists `client.keys`, and on
+populated `wazuh-states-*` one `delete_by_query` legitimately outlives authd's 30 s budget — so it
+timed out, retried into the very same running purge, and blocked every key write in between, which
+meant no agent could enroll until the batch drained. `POST /vulnerability-detector/scan` moved to
+this same contract for the same reason.
 
 **Two windows where a document can outlive the deletion.** Both are known, both are recorded by a
 skipped test in `qa/test_delete_agent.py`, and repeating the deletion clears either one (it is
@@ -687,7 +698,9 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - **Why is the store path hyphenated (`queue/inventory-sync-server`)?** The legacy module
   recursively removed `queue/inventory_sync` at startup, and an underscored sibling would match an
   `inventory_sync*` glob on upgraded installs. Reserved, currently unused.
-- **Why does `200` mean FLUSHED and not queued?** Because the agent deletes its outbox on `200`.
+- **Why does `200` mean FLUSHED and not queued on `/stateful`?** Because the agent deletes its
+  outbox on `200`. (`DELETE /agents` is the deliberate exception: nobody's outbox depends on it, so
+  it answers at admission — see its section above.)
   Anything weaker (accepted, staged, timer-flushed-later) makes data loss invisible to the only
   party that can retry — that is also why the connectors' timer flush is overridden
   ([the flush-interval override](#the-connector-flush-interval-override)).

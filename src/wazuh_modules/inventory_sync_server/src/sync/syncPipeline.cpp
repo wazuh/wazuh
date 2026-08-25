@@ -418,6 +418,11 @@ namespace invsync::sync
 
             if (item.kind == Item::Kind::DeleteAgent)
             {
+                // Nobody is waiting on this one: the endpoint answered at admission, so the item
+                // carries no responder and respond() below only releases the agent from the
+                // registry. The purge's outcome reaches the operator through the log lines here,
+                // which is why the failure paths log before responding.
+                //
                 // Same batch-cut rule as an Immediate session: the deletion executes its own I/O
                 // now, and staged writes of an EARLIER session of this agent must reach the indexer
                 // first or the delete-then-reinsert order would invert.

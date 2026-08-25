@@ -224,6 +224,11 @@ class WazuhException(Exception):
                           'version lower than 5.0; agents on 5.0 or higher report their own '
                           'statistics over HTTPS instead.'
                },
+        1763: {'message': 'The agent ID cannot be reused yet',
+               'remediation': 'The documents of the agent that previously used this ID are still '
+                              'being deleted from the indexer. Retry in a few seconds, or use a '
+                              'different agent ID'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

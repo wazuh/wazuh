@@ -198,27 +198,35 @@ after it removes the agent from `client.keys` and Wazuh DB.
 The deletion is not executed inline: it is enqueued on the TARGET agent's pipeline shard as a
 special item kind, so it orders FIFO against any in-flight session of that same agent — a
 delete-then-reenroll can never resurrect state, and a scan in flight for that agent is respected
-through the same registry. The HTTP status makes the outcome visible: `200` means every
-delete-by-query in the scope was flushed (an index that does not exist counts as success, so
-repeating a deletion is harmless); `503`/`500` tell the caller to retry. A `200` also means no
-delete-by-query left documents behind: a per-shard failure or a skipped document (a version
-conflict, which `conflicts: "proceed"` counts separately) fails the deletion instead of passing as
-success, because with the agent gone nothing would ever overwrite what was missed.
+through the same registry.
 
-authd retries up to three times with a widening pause (0 s, 1 s, 3 s), logging each pause at info
-level because its writer thread is blocked meanwhile, and, when it gives up, logs a `WARNING` naming
-the agent — separately for a request that never completed (no HTTP status: modulesd down or the
-transfer timed out) and for one the server refused with a status. A warning, not an error: the agent
-is already gone and cannot reconnect, so what is left behind is orphaned documents. It abandons the
-retries if the daemon is shutting down, and the operator's recovery is to repeat the deletion.
+**The route answers at admission.** `200 {"status":"queued"}` means the deletion was recorded and
+queued, not that the documents are gone; the item travels without a responder and the purge's own
+outcome is reported in this module's log. `503` means "not admitted, come back" — no indexer host is
+healthy, the pipeline is stopping, or the queue is full — and it is the only status the caller has to
+act on. Waiting for the flush instead is what wedged the caller: authd relays deletions from the one
+thread that persists `client.keys`, and on populated `wazuh-states-*` a single delete-by-query
+legitimately outlives authd's request budget, so it timed out, retried into the very same running
+purge, and blocked every key write in between — no agent could enroll until the batch drained. This
+is the same contract `POST /vulnerability-detector/scan` already moved to, for the same reason.
 
-Two windows this does NOT cover, both of which leave a document behind while still answering `200`,
-and both cleared by repeating the deletion:
+A queued deletion still has to be complete when it runs: an index that does not exist counts as
+success (so repeating a deletion is harmless), while a per-shard failure or a skipped document (a
+version conflict, which `conflicts: "proceed"` counts separately) fails it instead of passing as
+success, because with the agent gone nothing would ever overwrite what was missed. A failure is
+logged, and authd — which keeps the deletion queued and persisted until it is accepted — retries it.
+
+Two windows this does NOT cover on its own, both of which leave a document behind while still
+reporting success:
 
 - The **index refresh interval**: a delete-by-query is a search, so documents the agent's last session
   wrote before the index refreshed are invisible to it. Refreshing each index first closed this, but
   `_refresh` needs the `indices:admin/refresh` privilege that the manager's least-privilege indexer
   role does not grant — every deletion failed with `403` — so it was removed pending that privilege.
+  **This is why the caller delays the purge**: authd holds each deletion for `authd.purge_delay`
+  seconds before relaying it, so the refresh (and, in a cluster, the worker nodes' `client.keys`
+  reload) has already happened by the time the query runs. See
+  [authd's architecture](../authd/architecture.md).
 - The **asynchronous write queue**: `POST /config` and `POST /stats` are written through the
   asynchronous connector, whose queue the deletion cannot drain, so a report still queued when the
   deletion runs lands after it and recreates that agent's document.

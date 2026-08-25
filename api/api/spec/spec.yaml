@@ -4321,8 +4321,11 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using the `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name or the
+      same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
+      an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
+      owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
+      the agent and let its deletion complete before reusing its ID"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'

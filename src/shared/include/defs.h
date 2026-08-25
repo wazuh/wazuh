@@ -270,6 +270,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Timestamp file */
 #define TIMESTAMP_FILE "queue/agents-timestamp"
 
+/* authd's own durable state: the agent deletions whose indexer purge it still owes. Kept out of
+ * client.keys on purpose -- that file is read by other daemons and its format is a contract. */
+#define AUTHD_QUEUE_DIR     "queue/authd"
+#define PENDING_PURGES_FILE "queue/authd/pending-purges"
+
 /* Shared config directory */
 #ifndef WIN32
 #define SHAREDCFG_DIR "etc/shared"
