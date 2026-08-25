@@ -28,7 +28,7 @@ StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& perfo
     , m_compressionGate(compressionGate)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
-              config.serverEndpoint)
+               config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
     , m_fileCompressor(fileCompressor)
     , m_sink(sink)

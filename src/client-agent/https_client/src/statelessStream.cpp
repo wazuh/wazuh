@@ -91,7 +91,7 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
     , m_payload(config.batchSizeBytes)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
-              config.serverEndpoint)
+               config.serverEndpoint)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
     , m_headerLine(buildHeaderLine(config.agentId, m_collectHost))
