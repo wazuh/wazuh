@@ -58,6 +58,10 @@ INSTANTIATE_TEST_SUITE_P(
         EventParserParam{"1:|:|:ffff|:0.0.0.0:3", R"({"agent":{"name":"test"}})", R"({"wazuh":{"protocol":{"queue":49,"location":"::ffff:0.0.0.0"}},"agent":{"name":"test"},"event":{"original":"3"}})"},
         // Empty agent metadata
         EventParserParam{"1:loc:msg", R"({})", R"({"wazuh":{"protocol":{"queue":49,"location":"loc"}},"event":{"original":"msg"}})"},
+        EventParserParam{
+            std::string("1:loc:valid") + '\0' + "X\xFF\xC0\xAF\xED\xA0\x80\x80\xC3\xA9\xE4\xB8\xAD",
+            R"({})",
+            R"({"wazuh":{"protocol":{"queue":49,"location":"loc"}},"event":{"original":"valid\uFFFDX\uFFFD\uFFFD\uFFFD\uFFFD\uFFFD\uFFFD\uFFFDé中"}})"},
         // Agent metadata with extra fields
         EventParserParam{"1:loc:msg", R"({"agent":{"name":"test"},"extra":{"field":"value"}})", R"({"wazuh":{"protocol":{"queue":49,"location":"loc"}},"agent":{"name":"test"},"extra":{"field":"value"},"event":{"original":"msg"}})"},
         // Invalid format

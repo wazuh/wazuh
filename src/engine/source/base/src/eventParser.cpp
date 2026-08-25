@@ -18,6 +18,69 @@ namespace
 
 constexpr size_t LOCATION_OFFSET = 2; // Given the "q:" prefix.
 
+constexpr std::string_view UTF8_REPLACEMENT = "\xEF\xBF\xBD";
+
+std::string sanitizeUtf8(std::string_view input)
+{
+    std::string output;
+    output.reserve(input.size());
+
+    for (size_t i = 0; i < input.size();)
+    {
+        const auto byte = static_cast<unsigned char>(input[i]);
+        size_t length = 0;
+
+        if (byte > 0 && byte <= 0x7F)
+        {
+            length = 1;
+        }
+        else if (byte >= 0xC2 && byte <= 0xDF && i + 1 < input.size() &&
+                 (static_cast<unsigned char>(input[i + 1]) & 0xC0) == 0x80)
+        {
+            length = 2;
+        }
+        else if (byte >= 0xE0 && byte <= 0xEF && i + 2 < input.size())
+        {
+            const auto second = static_cast<unsigned char>(input[i + 1]);
+            const auto third = static_cast<unsigned char>(input[i + 2]);
+            if ((third & 0xC0) == 0x80 &&
+                ((byte == 0xE0 && second >= 0xA0 && second <= 0xBF) ||
+                 (byte == 0xED && second >= 0x80 && second <= 0x9F) ||
+                 (((byte >= 0xE1 && byte <= 0xEC) || (byte >= 0xEE && byte <= 0xEF)) &&
+                  (second & 0xC0) == 0x80)))
+            {
+                length = 3;
+            }
+        }
+        else if (byte >= 0xF0 && byte <= 0xF4 && i + 3 < input.size())
+        {
+            const auto second = static_cast<unsigned char>(input[i + 1]);
+            const auto third = static_cast<unsigned char>(input[i + 2]);
+            const auto fourth = static_cast<unsigned char>(input[i + 3]);
+            if ((third & 0xC0) == 0x80 && (fourth & 0xC0) == 0x80 &&
+                ((byte == 0xF0 && second >= 0x90 && second <= 0xBF) ||
+                 (byte == 0xF4 && second >= 0x80 && second <= 0x8F) ||
+                 (byte >= 0xF1 && byte <= 0xF3 && (second & 0xC0) == 0x80)))
+            {
+                length = 4;
+            }
+        }
+
+        if (length > 0)
+        {
+            output.append(input.substr(i, length));
+            i += length;
+        }
+        else
+        {
+            output.append(UTF8_REPLACEMENT);
+            ++i;
+        }
+    }
+
+    return output;
+}
+
 } // namespace
 
 Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadata)
@@ -83,11 +146,11 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
         throw std::runtime_error(fmt::format("Agent metadata merge failed: {}", ex.what()));
     }
 
-    parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
+    parseEvent->setString(sanitizeUtf8(rawLocation), EVENT_LOCATION_ID);
 
     // Set the original event message.
     auto msgView = rawEvent.substr(separatorPos + 1);
-    parseEvent->setString(msgView, EVENT_MESSAGE_ID);
+    parseEvent->setString(sanitizeUtf8(msgView), EVENT_MESSAGE_ID);
 
     return parseEvent;
 }
@@ -113,10 +176,10 @@ Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view me
         throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
     }
 
-    parseEvent->setString(location, EVENT_LOCATION_ID);
+    parseEvent->setString(sanitizeUtf8(location), EVENT_LOCATION_ID);
 
     // Raw message/payload.
-    parseEvent->setString(message, EVENT_MESSAGE_ID);
+    parseEvent->setString(sanitizeUtf8(message), EVENT_MESSAGE_ID);
 
     return parseEvent;
 }

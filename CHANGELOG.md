@@ -21,6 +21,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38561](https://github.com/wazuh/wazuh/issues/38561) | Preserve events containing invalid UTF-8 by replacing invalid bytes before JSON serialization. |
 
 ### Agent
 
