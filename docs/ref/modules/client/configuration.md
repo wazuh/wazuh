@@ -18,11 +18,11 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0. A configuration left by a 4.X agent still starts: `<server><address>` is read from `<client>` and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent>` to keep them all.
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts: `<client><server><address>` is read and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent><manager>` to keep them all.
 
-### server
+### manager
 
-Manager server configuration block.
+Manager connection configuration block.
 
 **Sub-options:**
 
@@ -30,7 +30,7 @@ Manager server configuration block.
 
 Manager IP address or hostname.
 
-- **Required:** Yes (at least one server must be defined)
+- **Required:** Yes (at least one manager must be defined)
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 - **Example:** `192.168.1.100`, `manager.example.com`, `::1`
 
@@ -129,7 +129,7 @@ Automatically restart agent when receiving configuration updates from manager.
 
 Agent auto-enrollment configuration block (optional). Since 5.0.0 (#38465),
 enrollment runs over the same HTTPS channel and TLS material as every other
-manager endpoint — it dials `<agent><server>` and presents `<agent><ssl>`,
+manager endpoint — it dials `<agent><manager>` and presents `<agent><ssl>`,
 instead of opening a second connection to `authd` on port 1515. There is no
 longer a separate address/port/certificate/key/CA/cipher configuration for
 enrollment: the options that used to duplicate that (see **Removed options**
@@ -195,7 +195,7 @@ Use agent's source IP address for enrollment instead of configured address.
 #### Removed options
 
 The following options are **no longer used**: `manager_address`, `port`,
-`interface_index` (superseded by `<agent><server>`) and `ssl_cipher`,
+`interface_index` (superseded by `<agent><manager>`) and `ssl_cipher`,
 `server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
 `<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
 `ossec.conf`, which an in-place upgrade does not rewrite — still starts the
@@ -383,11 +383,11 @@ Single manager, standard settings:
 
 ```xml
 <agent>
-  <server>
+  <manager>
     <address>10.0.0.10</address>
     <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
   <time-reconnect>60</time-reconnect>
@@ -408,11 +408,11 @@ Automatic agent registration:
     <groups>webservers,production</groups>
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
-  <server>
+  <manager>
     <address>manager.example.com</address>
     <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
 </agent>
 ```
 
@@ -450,10 +450,10 @@ Full example with all sections:
 ```xml
 <ossec_config>
   <agent>
-    <server>
+    <manager>
       <address>manager1.example.com</address>
       <port>1517</port>
-    </server>
+    </manager>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
     <time-reconnect>60</time-reconnect>

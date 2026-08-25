@@ -60,9 +60,9 @@ The following changes were identified during agent startup validation after upgr
 
 | 4.X configuration element | 5.0 status | Agent log message (observed) | Required action |
 |---|---|---|---|
-| `<client>...</client>` | Renamed | `INFO: <agent><server><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | Rename the block to `<agent>`. A 5.0 agent still starts without the rename: it reads `<server><address>` from the old block and defaults the port to `1517`. Nothing else inside `<client>` is read. |
-| `<client><manager>...</manager></client>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'manager'.` | Rename `<manager>` to `<server>` inside `<agent>`. The 4.14 templates already ship `<server>`. |
-| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
+| `<client>...</client>` | Renamed | — | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` is read out of a `<client>` block, so every other option in it (`<enrollment>`, `<config-profile>`, `<notify_time>`) stops taking effect until the block is renamed. |
+| `<client><server><address>` | Read as fallback | `INFO: <agent><manager><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | None, to keep connecting: this is the one value a 5.0 agent still takes from a legacy block, with the port defaulted to `1517`. Move it to `<agent><manager><address>` for the supported end state. |
+| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
 | `<syscheck><scan_on_start>...</scan_on_start></syscheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'scan_on_start'.` | Remove this element from `syscheck` (Always executed on start). |
@@ -106,17 +106,17 @@ After (5.0 compatible):
 
 ```xml
 <agent>
-	<server>
+	<manager>
 		<address>MANAGER_IP</address>
 		<port>1517</port>
-	</server>
+	</manager>
 </agent>
 ```
 
-`<client>` is renamed to `<agent>` in 5.0: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
+`<client>` is renamed to `<agent>` in 5.0 and its inner `<server>` to `<manager>`: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
 
-- **Leave it.** The agent reads `<server><address>` from `<client>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
-- **Rename it** to `<agent>`, which is what a fresh 5.0 install ships. Every option in the block is read again.
+- **Leave it.** The agent reads `<client><server><address>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
+- **Rename it** to `<agent><manager>`, which is what a fresh 5.0 install ships. Every option in the block is read again. Renaming only the root tag is not enough: `<agent><server>` is rejected.
 
 Recommended: rename it. The fallback exists so a remote upgrade cannot strand an agent, not as a configuration to keep.
 
@@ -190,7 +190,7 @@ Workaround checklist:
 - Confirm manager is up and reachable from the agent host.
 - Confirm manager has been migrated to a compatible 5.0 deployment.
 - Confirm firewall/network rules allow `1517/tcp` (agent to manager) and `1515/tcp` (enrollment).
-- Confirm the agent points to the correct manager address in `<agent><server><address>`.
+- Confirm the agent points to the correct manager address in `<agent><manager><address>`.
 - Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
 
 ## Remote upgrade (WPK)
@@ -206,7 +206,7 @@ Before installing anything, the WPK installer checks that the manager accepts co
 
 The abort happens before the package manager runs, so the agent stays on 4.14.X, keeps running, and the upgrade can be retried once `1517` is reachable. `upgrade_result` is `2`.
 
-The target address and port come from the same place the agent reads them: `<agent><server>` first, then `<client><server><address>`, with `1517` as the port default.
+The target address and port come from the same place the agent reads them: `<agent><manager>` first, then `<client><server><address>`, with `1517` as the port default.
 
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 
@@ -258,7 +258,7 @@ Migration is complete when all conditions below are met:
 
 - Agent was upgraded using the required version path.
 - No invalid `syscheck`/`rootcheck` element warnings remain.
-- The connection block is `<agent>`, and no `<client>` fallback message remains in `ossec.log`.
+- The connection block is `<agent><manager>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
 - No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-authd` or agent logs, and enrollment against the 5.0 manager succeeds.

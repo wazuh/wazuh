@@ -17,7 +17,7 @@
  * see w_https_client_start()'s comment) and no alternative transport is
  * offered.
  *
- * The config surface (<server>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
+ * The config surface (<manager>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
@@ -1548,7 +1548,7 @@ static bool bridge_key_is_valid(const char *raw_key)
 }
 
 /* Fills the transport-only fields of a hc_config_t from the parsed
- * <server>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
+ * <manager>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
  * needs (#38465) and nothing more: no identity (agent_id/agent_key, which an
  * enrolling agent has neither yet) and none of the full-client-only fields
  * (batch/stats/buffer ladder/sync_socket_path/config_checksum) bridge_build_

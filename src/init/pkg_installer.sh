@@ -100,14 +100,14 @@ probe_server() {
     return $?
 }
 
-# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-SERVER_ADDRESS=$(xml_value agent server address)
+# The 5x agent reads the manager address from <agent><manager>, falling back to <client><server> when upgrading from 4x versions.
+SERVER_ADDRESS=$(xml_value agent manager address)
 if [ -z "${SERVER_ADDRESS}" ]; then
     SERVER_ADDRESS=$(xml_value client server address)
 fi
 
-# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-SERVER_PORT=$(xml_value agent server port)
+# The 5x agent reads the manager port from <agent><manager>, falling back to 1517 when upgrading from 4x versions.
+SERVER_PORT=$(xml_value agent manager port)
 if [ -z "${SERVER_PORT}" ]; then
     SERVER_PORT=1517
 fi
