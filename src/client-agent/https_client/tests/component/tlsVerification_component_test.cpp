@@ -105,52 +105,52 @@ namespace
     // before any HTTP status.
     class TlsServer
     {
-    public:
-        TlsServer(X509* cert, EVP_PKEY* key, uint16_t port)
-            : m_server(cert, key)
-        {
-            m_server.Post("/stateless",
-                          [](const httplib::Request&, httplib::Response& response)
-                          {
-                              response.status = 200;
-                              response.set_content("ok", "text/plain");
-                          });
-            m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
-            waitUntilReady(port);
-        }
-
-        ~TlsServer()
-        {
-            m_server.stop();
-
-            if (m_thread.joinable())
+        public:
+            TlsServer(X509* cert, EVP_PKEY* key, uint16_t port)
+                : m_server(cert, key)
             {
-                m_thread.join();
-            }
-        }
-
-        TlsServer(const TlsServer&) = delete;
-        TlsServer& operator=(const TlsServer&) = delete;
-
-    private:
-        static void waitUntilReady(uint16_t port)
-        {
-            httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
-            probe.enable_server_certificate_verification(false);
-
-            for (int attempt = 0; attempt < 200; attempt++)
-            {
-                if (auto result = probe.Post("/stateless"))
+                m_server.Post("/stateless",
+                              [](const httplib::Request&, httplib::Response & response)
                 {
-                    return;
-                }
-
-                usleep(20 * 1000);
+                    response.status = 200;
+                    response.set_content("ok", "text/plain");
+                });
+                m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
+                waitUntilReady(port);
             }
-        }
 
-        httplib::SSLServer m_server;
-        std::thread m_thread;
+            ~TlsServer()
+            {
+                m_server.stop();
+
+                if (m_thread.joinable())
+                {
+                    m_thread.join();
+                }
+            }
+
+            TlsServer(const TlsServer&) = delete;
+            TlsServer& operator=(const TlsServer&) = delete;
+
+        private:
+            static void waitUntilReady(uint16_t port)
+            {
+                httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
+                probe.enable_server_certificate_verification(false);
+
+                for (int attempt = 0; attempt < 200; attempt++)
+                {
+                    if (auto result = probe.Post("/stateless"))
+                    {
+                        return;
+                    }
+
+                    usleep(20 * 1000);
+                }
+            }
+
+            httplib::SSLServer m_server;
+            std::thread m_thread;
     };
 
     ModuleConfig tlsFullConfig(uint16_t port, const std::string& caPath)

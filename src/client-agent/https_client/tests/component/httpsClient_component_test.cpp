@@ -82,31 +82,31 @@ namespace
 
     class ComponentTest : public ::testing::Test
     {
-    protected:
-        ComponentTest()
-            : m_config(componentConfig())
-            , m_keyProvider(KEY_HEX)
-            , m_signer("001", m_keyProvider)
-            , m_performer(m_config, defaultCurlHandleFactory())
-        {
-        }
+        protected:
+            ComponentTest()
+                : m_config(componentConfig())
+                , m_keyProvider(KEY_HEX)
+                , m_signer("001", m_keyProvider)
+                , m_performer(m_config, defaultCurlHandleFactory())
+            {
+            }
 
-        static void SetUpTestSuite()
-        {
-            s_manager = new FakeManager(FAKE_PORT, KEY_HEX);
-        }
+            static void SetUpTestSuite()
+            {
+                s_manager = new FakeManager(FAKE_PORT, KEY_HEX);
+            }
 
-        static void TearDownTestSuite()
-        {
-            delete s_manager;
-            s_manager = nullptr;
-        }
+            static void TearDownTestSuite()
+            {
+                delete s_manager;
+                s_manager = nullptr;
+            }
 
-        ModuleConfig m_config;
-        ConfigKeyProvider m_keyProvider;
-        JwtSigner m_signer;
-        CurlPerformer m_performer;
-        static FakeManager* s_manager;
+            ModuleConfig m_config;
+            ConfigKeyProvider m_keyProvider;
+            JwtSigner m_signer;
+            CurlPerformer m_performer;
+            static FakeManager* s_manager;
     };
 
     FakeManager* ComponentTest::s_manager = nullptr;
@@ -255,7 +255,7 @@ TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
     const auto spool = factory.spool(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
     ASSERT_NE(nullptr, spool);
 
-    auto sendSession = [&](const std::string& sessionId)
+    auto sendSession = [&](const std::string & sessionId)
     {
         const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
         HttpRequestSpec spec;
@@ -302,8 +302,10 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     spec.bodyFilePath = compressedSpool->path();
     spec.bodyFileSize = compressedSize;
     spec.timeoutMs = 3000;
-    spec.headers = {
-        "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion, headers->authorization};
+    spec.headers =
+    {
+        "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion, headers->authorization
+    };
 
     const auto response = m_performer.perform(spec);
 

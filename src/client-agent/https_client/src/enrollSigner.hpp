@@ -37,14 +37,14 @@ struct EnrollSignedHeaders
 /// and a fresh jti -- TLS protects the request; the body is not signed.
 class EnrollSigner
 {
-public:
-    /// One fresh token per attempt (new jti, iat = timestamp, exp = iat + 60).
-    /// @return nullopt for an empty password or an HKDF/CSPRNG failure.
-    static std::optional<EnrollSignedHeaders> sign(const std::string& password, std::time_t timestamp);
+    public:
+        /// One fresh token per attempt (new jti, iat = timestamp, exp = iat + 60).
+        /// @return nullopt for an empty password or an HKDF/CSPRNG failure.
+        static std::optional<EnrollSignedHeaders> sign(const std::string& password, std::time_t timestamp);
 
-    /// HKDF-SHA256 key derivation alone, exposed so tests can pin the frozen
-    /// known-answer vector directly.
-    static std::optional<jwt_profile::v1::SecureBytes> deriveKey(const std::string& password);
+        /// HKDF-SHA256 key derivation alone, exposed so tests can pin the frozen
+        /// known-answer vector directly.
+        static std::optional<jwt_profile::v1::SecureBytes> deriveKey(const std::string& password);
 };
 
 #endif // _HC_ENROLL_SIGNER_HPP

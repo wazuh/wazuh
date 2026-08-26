@@ -31,7 +31,7 @@ std::optional<EnrollSignedHeaders> EnrollSigner::sign(const std::string& passwor
     }
 
     const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::sign(
-        *key, std::chrono::system_clock::time_point {std::chrono::seconds {timestamp}});
+                           *key, std::chrono::system_clock::time_point {std::chrono::seconds {timestamp}});
 
     if (!token)
     {

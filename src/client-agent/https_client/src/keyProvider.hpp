@@ -21,10 +21,10 @@
 /// Source of the HS256 key the `wazuh-agent+jwt` bearer is signed with.
 class IKeyProvider
 {
-public:
-    virtual ~IKeyProvider() = default;
-    /// The 32-byte key, or nullopt when the material is unusable.
-    virtual std::optional<std::vector<uint8_t>> signingKey() const = 0;
+    public:
+        virtual ~IKeyProvider() = default;
+        /// The 32-byte key, or nullopt when the material is unusable.
+        virtual std::optional<std::vector<uint8_t>> signingKey() const = 0;
 };
 
 /**
@@ -38,17 +38,17 @@ public:
  */
 class ConfigKeyProvider final : public IKeyProvider
 {
-public:
-    explicit ConfigKeyProvider(std::string keyHex);
-    std::optional<std::vector<uint8_t>> signingKey() const override;
+    public:
+        explicit ConfigKeyProvider(std::string keyHex);
+        std::optional<std::vector<uint8_t>> signingKey() const override;
 
-    /// Replaces the key when the given hex is a valid 64-hex secret.
-    /// Returns false (keeping the previous key) otherwise.
-    bool setKey(const std::string& keyHex);
+        /// Replaces the key when the given hex is a valid 64-hex secret.
+        /// Returns false (keeping the previous key) otherwise.
+        bool setKey(const std::string& keyHex);
 
-private:
-    mutable std::mutex m_mutex;
-    std::string m_keyHex;
+    private:
+        mutable std::mutex m_mutex;
+        std::string m_keyHex;
 };
 
 #endif // _HC_KEY_PROVIDER_HPP

@@ -177,31 +177,32 @@ void HttpsClientFacade::startSyncIntake()
         return; // Large-session intake disabled; sessions arrive via the ABI only.
     }
 
-    const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} : m_config.spoolDir;
+    const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} :
+                                 m_config.spoolDir;
     m_syncIntake = std::make_unique<SyncIntake>(
-        m_config.syncSocketPath,
-        spoolDir,
-        [this](const std::string& sessionId, const std::string& path, uint64_t size)
+                       m_config.syncSocketPath,
+                       spoolDir,
+                       [this](const std::string & sessionId, const std::string & path, uint64_t size)
+    {
+        // The intake streamed the session to `path`; hand it to the stateful
+        // stream, which adopts and deletes it after sending — or right away if
+        // it cannot take it.
+        if (!m_stateful.submitFile(sessionId, path, size))
         {
-            // The intake streamed the session to `path`; hand it to the stateful
-            // stream, which adopts and deletes it after sending — or right away if
-            // it cannot take it.
-            if (!m_stateful.submitFile(sessionId, path, size))
-            {
-                // Say so on both channels: the producer is another process and only
-                // sees the intake's answer, while the outcome of every other session
-                // reaches this agent through on_sync_response.
-                LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.", sessionId.c_str());
-                // 503: the manager-not-ready code the sync protocol already knows how to
-                // handle (retry next cycle) - this is local backpressure, never a real HTTP
-                // response, but the semantics match.
-                m_dispatcher.onSyncResponse(sessionId, 503, "");
-                return false;
-            }
+            // Say so on both channels: the producer is another process and only
+            // sees the intake's answer, while the outcome of every other session
+            // reaches this agent through on_sync_response.
+            LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.", sessionId.c_str());
+            // 503: the manager-not-ready code the sync protocol already knows how to
+            // handle (retry next cycle) - this is local backpressure, never a real HTTP
+            // response, but the semantics match.
+            m_dispatcher.onSyncResponse(sessionId, 503, "");
+            return false;
+        }
 
-            m_statefulWaiter.notify();
-            return true;
-        });
+        m_statefulWaiter.notify();
+        return true;
+    });
 
     if (m_syncIntake->start())
     {

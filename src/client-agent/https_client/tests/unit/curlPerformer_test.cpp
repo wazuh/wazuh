@@ -55,9 +55,9 @@ namespace
         auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(handle));
         return CurlPerformer {config,
                               [shared]() -> std::unique_ptr<ICurlHandle>
-                              {
-                                  return std::move(*shared);
-                              }};
+        {
+            return std::move(*shared);
+        }};
     }
 
     /// Partial-expectation tests: absorb the option calls they do not assert
@@ -166,14 +166,14 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&captureOut), Return(true)));
     EXPECT_CALL(*handle, perform())
-        .WillOnce(Invoke(
-            [&]() -> TransportStatus
-            {
-                *bodyOut = "{\"ok\":true}";
-                *captureOut.retryAfter = 7;
-                *captureOut.serverDate = 1755000000;
-                return TransportStatus::Ok;
-            }));
+    .WillOnce(Invoke(
+                  [&]() -> TransportStatus
+    {
+        *bodyOut = "{\"ok\":true}";
+        *captureOut.retryAfter = 7;
+        *captureOut.serverDate = 1755000000;
+        return TransportStatus::Ok;
+    }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
@@ -441,9 +441,9 @@ TEST(CurlPerformerTest, FactoryFailureYieldsOtherError)
 {
     CurlPerformer performer {makeConfig(HC_VERIFY_NONE),
                              []() -> std::unique_ptr<ICurlHandle>
-                             {
-                                 return nullptr;
-                             }};
+    {
+        return nullptr;
+    }};
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::OtherError, response.status);
     EXPECT_EQ(0, response.httpCode);
@@ -458,20 +458,20 @@ TEST(CurlPerformerTest, ResponseFilePathStreamsToTheFileNotMemory)
 
     std::FILE* sink = nullptr;
     EXPECT_CALL(*handle, captureResponseToFile(NotNull(), _))
-        .WillOnce(Invoke(
-            [&](std::FILE* file, uint64_t) -> bool
-            {
-                sink = file;
-                return true;
-            }));
+    .WillOnce(Invoke(
+                  [&](std::FILE * file, uint64_t) -> bool
+    {
+        sink = file;
+        return true;
+    }));
     EXPECT_CALL(*handle, captureResponseBody(_)).Times(0);
     EXPECT_CALL(*handle, perform())
-        .WillOnce(Invoke(
-            [&]() -> TransportStatus
-            {
-                std::fwrite("CONFIG-BYTES", 1, 12, sink);
-                return TransportStatus::Ok;
-            }));
+    .WillOnce(Invoke(
+                  [&]() -> TransportStatus
+    {
+        std::fwrite("CONFIG-BYTES", 1, 12, sink);
+        return TransportStatus::Ok;
+    }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
     HttpRequestSpec spec;
@@ -518,21 +518,21 @@ TEST(CurlPerformerTest, RetryTruncatesThePreviousAttemptsPartialBody)
     {
         auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
         ON_CALL(*handle, captureResponseToFile(_, _))
-            .WillByDefault(Invoke(
-                [&](std::FILE* file, uint64_t) -> bool
-                {
-                    sink = file;
-                    return true;
-                }));
+        .WillByDefault(Invoke(
+                           [&](std::FILE * file, uint64_t) -> bool
+        {
+            sink = file;
+            return true;
+        }));
         ON_CALL(*handle, perform())
-            .WillByDefault(Invoke(
-                [&]() -> TransportStatus
-                {
-                    attempt++;
-                    const char* bytes = (attempt == 1) ? "PARTIAL-GARBAGE" : "FULL";
-                    std::fwrite(bytes, 1, std::strlen(bytes), sink);
-                    return (attempt == 1) ? TransportStatus::Timeout : TransportStatus::Ok;
-                }));
+        .WillByDefault(Invoke(
+                           [&]() -> TransportStatus
+        {
+            attempt++;
+            const char* bytes = (attempt == 1) ? "PARTIAL-GARBAGE" : "FULL";
+            std::fwrite(bytes, 1, std::strlen(bytes), sink);
+            return (attempt == 1) ? TransportStatus::Timeout : TransportStatus::Ok;
+        }));
         ON_CALL(*handle, responseCode()).WillByDefault(Return(attempt == 1 ? 0 : 200));
         return handle;
     };

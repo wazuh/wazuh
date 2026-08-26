@@ -58,11 +58,11 @@ namespace
 
     class StatefulStreamTest : public ::testing::Test
     {
-    protected:
-        StatefulStreamTest()
-            : m_signer("001", m_keyProvider)
-            , m_config(makeConfig())
-            , m_authGate(m_sink, [] {})
+        protected:
+            StatefulStreamTest()
+                : m_signer("001", m_keyProvider)
+                , m_config(makeConfig())
+                , m_authGate(m_sink, [] {})
             , m_stream(m_config,
                        m_performer,
                        m_signer,
@@ -73,52 +73,52 @@ namespace
                        m_authGate,
                        m_compressionGate,
                        m_fileCompressor)
-        {
-            // By default the spool factory writes the bytes to a unique temp
-            // file (submit spools now, so every submit needs a real file).
-            ON_CALL(m_spoolFactory, spool(_, _))
+            {
+                // By default the spool factory writes the bytes to a unique temp
+                // file (submit spools now, so every submit needs a real file).
+                ON_CALL(m_spoolFactory, spool(_, _))
                 .WillByDefault(Invoke(
-                    [this](const uint8_t* buffer, size_t length)
-                    {
-                        const std::string path =
-                            ::testing::TempDir() + "hc_sf_" + std::to_string(m_spoolCounter++) + ".tmp";
-                        return makeSpoolAt(path, std::string(reinterpret_cast<const char*>(buffer), length));
-                    }));
-        }
+                                   [this](const uint8_t* buffer, size_t length)
+                {
+                    const std::string path =
+                        ::testing::TempDir() + "hc_sf_" + std::to_string(m_spoolCounter++) + ".tmp";
+                    return makeSpoolAt(path, std::string(reinterpret_cast<const char*>(buffer), length));
+                }));
+            }
 
-        static ModuleConfig makeConfig()
-        {
-            hc_config_t config {};
-            std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
-            std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
-            config.verify_mode = HC_VERIFY_NONE;
-            return ModuleConfig::fromC(config);
-        }
+            static ModuleConfig makeConfig()
+            {
+                hc_config_t config {};
+                std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+                std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+                config.verify_mode = HC_VERIFY_NONE;
+                return ModuleConfig::fromC(config);
+            }
 
-        bool submit(const std::string& id, const std::string& body)
-        {
-            return m_stream.submit(id, reinterpret_cast<const uint8_t*>(body.data()), body.size());
-        }
+            bool submit(const std::string& id, const std::string& body)
+            {
+                return m_stream.submit(id, reinterpret_cast<const uint8_t*>(body.data()), body.size());
+            }
 
-        ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};
-        JwtSigner m_signer;
-        ModuleConfig m_config;
-        FakeClock m_clock;
-        ScriptedRandom m_random {{0.0}};
-        NiceMock<MockSpoolFactory> m_spoolFactory;
-        NiceMock<MockCallbackSink> m_sink;
-        MockHttpPerformer m_performer;
-        AuthGate m_authGate;
-        CompressionGate m_compressionGate;
-        NiceMock<MockFileCompressor> m_fileCompressor;
-        FakeWaiter m_waiter;
-        StatefulStream m_stream;
-        int m_spoolCounter {0};
+            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};
+            JwtSigner m_signer;
+            ModuleConfig m_config;
+            FakeClock m_clock;
+            ScriptedRandom m_random {{0.0}};
+            NiceMock<MockSpoolFactory> m_spoolFactory;
+            NiceMock<MockCallbackSink> m_sink;
+            MockHttpPerformer m_performer;
+            AuthGate m_authGate;
+            CompressionGate m_compressionGate;
+            NiceMock<MockFileCompressor> m_fileCompressor;
+            FakeWaiter m_waiter;
+            StatefulStream m_stream;
+            int m_spoolCounter {0};
 
-        void expectNoSend()
-        {
-            EXPECT_CALL(m_performer, perform(_)).Times(0);
-        }
+            void expectNoSend()
+            {
+                EXPECT_CALL(m_performer, perform(_)).Times(0);
+            }
     };
 } // namespace
 
@@ -149,15 +149,15 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAtSubmitAndStreamedWithSessionHeader)
 
     std::vector<std::string> headers;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                headers = spec.headers;
-                EXPECT_EQ("/stateful", spec.target);
-                EXPECT_EQ(path, spec.bodyFilePath); // Streamed from the spooled file.
-                EXPECT_EQ(8u, spec.bodyFileSize);
-                return response(TransportStatus::Ok, 200, R"({"itemsProcessed":42})");
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        headers = spec.headers;
+        EXPECT_EQ("/stateful", spec.target);
+        EXPECT_EQ(path, spec.bodyFilePath); // Streamed from the spooled file.
+        EXPECT_EQ(8u, spec.bodyFileSize);
+        return response(TransportStatus::Ok, 200, R"({"itemsProcessed":42})");
+    }));
     EXPECT_CALL(m_sink, onSyncResponse("sess-1", 200, R"({"itemsProcessed":42})"));
 
     ASSERT_TRUE(submit("sess-1", "12345678"));
@@ -181,13 +181,13 @@ TEST_F(StatefulStreamTest, SubmitFileAdoptsAnAlreadySpooledSessionAndDeletesIt)
 
     EXPECT_CALL(m_spoolFactory, spool(_, _)).Times(0); // submitFile never re-spools.
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                EXPECT_EQ(path, spec.bodyFilePath);
-                EXPECT_EQ(200000u, spec.bodyFileSize); // The full session, well past the 64 KB cap.
-                return response(TransportStatus::Ok, 200, R"({"itemsProcessed":199975})");
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(path, spec.bodyFilePath);
+        EXPECT_EQ(200000u, spec.bodyFileSize); // The full session, well past the 64 KB cap.
+        return response(TransportStatus::Ok, 200, R"({"itemsProcessed":199975})");
+    }));
     EXPECT_CALL(m_sink, onSyncResponse("intake-1", 200, _));
 
     ASSERT_TRUE(m_stream.submitFile("intake-1", path, 200000));
@@ -203,18 +203,18 @@ TEST_F(StatefulStreamTest, SameSessionIdAcrossRetries)
     std::vector<std::string> firstHeaders;
     std::vector<std::string> secondHeaders;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                firstHeaders = spec.headers;
-                return response(TransportStatus::Ok, 500);
-            }))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                secondHeaders = spec.headers;
-                return response(TransportStatus::Ok, 200);
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        firstHeaders = spec.headers;
+        return response(TransportStatus::Ok, 500);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        secondHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200);
+    }));
     m_waiter.script({true});
 
     submit("sess-retry", "body");
@@ -368,19 +368,19 @@ TEST_F(StatefulStreamTest, CompressionEnabledCompressesOnceAndCleansUpTheTempFil
         out << "Z"; // Placeholder compressed bytes; only the path/size matter to this test.
     }
     EXPECT_CALL(m_fileCompressor, compress(originalPath, 4u, _, _))
-        .WillOnce(Return(
-            ByMove(std::make_optional(std::make_pair(std::make_unique<SpoolFile>(compressedPath), uint64_t {1})))));
+    .WillOnce(Return(
+                  ByMove(std::make_optional(std::make_pair(std::make_unique<SpoolFile>(compressedPath), uint64_t {1})))));
 
     std::string seenBodyFilePath;
     std::vector<std::string> seenHeaders;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                seenBodyFilePath = spec.bodyFilePath;
-                seenHeaders = spec.headers;
-                return response(TransportStatus::Ok, 200, "{}");
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenBodyFilePath = spec.bodyFilePath;
+        seenHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
 
     ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
     EXPECT_TRUE(compressing.step(m_waiter));
@@ -412,13 +412,13 @@ TEST_F(StatefulStreamTest, CompressionFailureFallsBackToTheOriginalFileUncompres
     std::string seenBodyFilePath;
     std::vector<std::string> seenHeaders;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                seenBodyFilePath = spec.bodyFilePath;
-                seenHeaders = spec.headers;
-                return response(TransportStatus::Ok, 200, "{}");
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenBodyFilePath = spec.bodyFilePath;
+        seenHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
 
     ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
     EXPECT_TRUE(compressing.step(m_waiter));

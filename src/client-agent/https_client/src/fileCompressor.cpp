@@ -37,7 +37,7 @@ namespace
 } // namespace
 
 std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompressor::compress(
-    const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir, const std::atomic<bool>* abortFlag)
+                                                                const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir, const std::atomic<bool>* abortFlag)
 {
     const FilePtr source {std::fopen(sourcePath.c_str(), "rb"), std::fclose};
 
@@ -78,7 +78,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     const CCtxGuard guard {cctx};
 
     if (ZSTD_isError(ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, kCompressionLevel)) ||
-        ZSTD_isError(ZSTD_CCtx_setPledgedSrcSize(cctx, sourceSize)))
+            ZSTD_isError(ZSTD_CCtx_setPledgedSrcSize(cctx, sourceSize)))
     {
         (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: cannot fail on a freshly created CCtx.
@@ -88,7 +88,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     std::array<uint8_t, FILE_CHUNK> outChunk {};
     uint64_t compressedSize = 0;
 
-    auto flushOutput = [&](const ZSTD_outBuffer& output)
+    auto flushOutput = [&](const ZSTD_outBuffer & output)
     {
         if (output.pos == 0)
         {
@@ -152,7 +152,8 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
             (void)std::remove(destPath.c_str());
             return std::nullopt;
         }
-    } while (remaining != 0);
+    }
+    while (remaining != 0);
 
     dest.reset(); // Close (flush to disk) before handing the path off.
 

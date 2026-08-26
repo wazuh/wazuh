@@ -89,10 +89,10 @@ namespace
 
 class HcInterfaceTest : public ::testing::Test
 {
-protected:
-    Recorder m_recorder;
-    hc_config_t m_config {makeConfig()};
-    hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
+    protected:
+        Recorder m_recorder;
+        hc_config_t m_config {makeConfig()};
+        hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
 };
 
 TEST_F(HcInterfaceTest, CreateWithNullArgsReturnsNull)
@@ -272,15 +272,15 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
         std::atomic<int> submitted {0};
         std::thread producer(
             [&]
-            {
-                const uint8_t frame[] = "1:/var/log/syslog:churn";
+        {
+            const uint8_t frame[] = "1:/var/log/syslog:churn";
 
-                for (int n = 0; n < MAX_SUBMITS && submitting.load(); n++)
-                {
-                    hc_submit_event(handle, frame, sizeof(frame) - 1);
-                    submitted.fetch_add(1, std::memory_order_relaxed);
-                }
-            });
+            for (int n = 0; n < MAX_SUBMITS && submitting.load(); n++)
+            {
+                hc_submit_event(handle, frame, sizeof(frame) - 1);
+                submitted.fetch_add(1, std::memory_order_relaxed);
+            }
+        });
 
         // Stop only once submits are demonstrably in flight, so the race the
         // test exists for still happens without depending on the wall clock.

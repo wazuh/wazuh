@@ -125,7 +125,7 @@ StatelessStream::SubmissionResult StatelessStream::submit(const uint8_t* frame, 
 
     const bool isFlushDue = m_accumulator.flushDue(0, eventBudget);
     publishLevelLocked(!accepted);
-    return SubmissionResult {accepted, accepted && !wasFlushDue && isFlushDue};
+    return SubmissionResult {accepted, accepted&& !wasFlushDue&& isFlushDue};
 }
 
 std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
@@ -143,7 +143,7 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     // naturally deferred while the accumulator (fed by the intake thread) keeps
     // absorbing (D5/D6).
     if (flushDue(force) && flushOnce(waiter, m_config.requestTimeoutMs, m_config.statelessMaxAttempts) &&
-        flushDue(false))
+            flushDue(false))
     {
         // Keep draining back-to-back while a backlog stays above the threshold.
         // The size condition is edge-triggered in submit() (it fires once, as

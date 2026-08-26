@@ -84,12 +84,14 @@ TEST(EnrollSignerTest, WrongPasswordDoesNotVerify)
 TEST(EnrollSignerTest, EveryAttemptGetsAFreshToken)
 {
     std::set<std::string> tokens;
+
     for (int i = 0; i < 20; ++i)
     {
         const auto headers = EnrollSigner::sign(std::string {tv::kPassword}, tv::kIat);
         ASSERT_TRUE(headers.has_value());
         tokens.insert(tokenOf(*headers));
     }
+
     EXPECT_EQ(20u, tokens.size());
 }
 

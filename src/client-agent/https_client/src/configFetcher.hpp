@@ -37,27 +37,27 @@
  */
 class ConfigFetcher final
 {
-public:
-    ConfigFetcher(const ModuleConfig& config,
-                  IHttpPerformer& performer,
-                  const ISigner& signer,
-                  IClock& clock,
-                  IRandom& random,
-                  ISpoolFileFactory& spoolFactory,
-                  AuthGate& authGate,
-                  CompressionGate& compressionGate);
+    public:
+        ConfigFetcher(const ModuleConfig& config,
+                      IHttpPerformer& performer,
+                      const ISigner& signer,
+                      IClock& clock,
+                      IRandom& random,
+                      ISpoolFileFactory& spoolFactory,
+                      AuthGate& authGate,
+                      CompressionGate& compressionGate);
 
-    /// Downloads the config for `group`, expecting the given SHA-256.
-    /// Returns the verified spool file (deleted on drop) or nullptr on
-    /// any failure, already logged.
-    std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& group, Waiter& waiter);
+        /// Downloads the config for `group`, expecting the given SHA-256.
+        /// Returns the verified spool file (deleted on drop) or nullptr on
+        /// any failure, already logged.
+        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& group, Waiter& waiter);
 
-private:
-    const ModuleConfig& m_config;
-    Backoff m_backoff;
-    RetrySender m_sender;
-    ISpoolFileFactory& m_spoolFactory;
-    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+    private:
+        const ModuleConfig& m_config;
+        Backoff m_backoff;
+        RetrySender m_sender;
+        ISpoolFileFactory& m_spoolFactory;
+        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 
 #endif // _HC_CONFIG_FETCHER_HPP

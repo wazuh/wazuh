@@ -80,7 +80,9 @@ TEST(JwtSignerTest, TheConfiguredIdIsCanonicalised)
 {
     const ConfigKeyProvider provider {testAgentKeyHex()};
 
-    for (const auto* configured : {"1", "01", "001", "0001"})
+    for (const auto* configured :
+            {"1", "01", "001", "0001"
+            })
     {
         const JwtSigner signer {configured, provider};
         const auto headers = signer.sign(1700000000);

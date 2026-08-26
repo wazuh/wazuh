@@ -204,25 +204,25 @@ namespace
     /// leaks that hides it.
     class HandleGuard final
     {
-    public:
-        explicit HandleGuard(hc_handle* handle)
-            : m_handle(handle)
-        {
-        }
-
-        ~HandleGuard()
-        {
-            if (m_handle != nullptr)
+        public:
+            explicit HandleGuard(hc_handle* handle)
+                : m_handle(handle)
             {
-                hc_destroy(m_handle);
             }
-        }
 
-        HandleGuard(const HandleGuard&) = delete;
-        HandleGuard& operator=(const HandleGuard&) = delete;
+            ~HandleGuard()
+            {
+                if (m_handle != nullptr)
+                {
+                    hc_destroy(m_handle);
+                }
+            }
 
-    private:
-        hc_handle* m_handle;
+            HandleGuard(const HandleGuard&) = delete;
+            HandleGuard& operator=(const HandleGuard&) = delete;
+
+        private:
+            hc_handle* m_handle;
     };
 
     /// The manager runs in a forked process, so everything the test wants to
@@ -269,17 +269,17 @@ namespace
 
     class FacadeE2eTest : public ::testing::Test
     {
-    protected:
-        static void SetUpTestSuite()
-        {
-            s_manager = new FakeManager(TLS_PORT, KEY_HEX, /*tls=*/true);
-        }
-        static void TearDownTestSuite()
-        {
-            delete s_manager;
-            s_manager = nullptr;
-        }
-        static FakeManager* s_manager;
+        protected:
+            static void SetUpTestSuite()
+            {
+                s_manager = new FakeManager(TLS_PORT, KEY_HEX, /*tls=*/true);
+            }
+            static void TearDownTestSuite()
+            {
+                delete s_manager;
+                s_manager = nullptr;
+            }
+            static FakeManager* s_manager;
     };
 
     FakeManager* FacadeE2eTest::s_manager = nullptr;
@@ -593,7 +593,7 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
 
     const std::string session(256 * 1024, 'H');
     ASSERT_TRUE(hc_submit_sync_session(
-        handle, "held-session-1", reinterpret_cast<const uint8_t*>(session.data()), session.size()));
+                    handle, "held-session-1", reinterpret_cast<const uint8_t*>(session.data()), session.size()));
     std::this_thread::sleep_for(std::chrono::milliseconds {scaledTimeout(300)}); // Get inside the POST.
 
     // Stateless keeps going while the session is stuck mid-flight.

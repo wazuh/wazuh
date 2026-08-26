@@ -56,7 +56,7 @@ std::optional<SignedHeaders> JwtSigner::sign(std::time_t timestamp) const
 
     const jwt_profile::v1::SecureBytes secret {key->data(), key->size()};
     const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
-        *agent, secret, std::chrono::system_clock::time_point {std::chrono::seconds {timestamp}});
+                           *agent, secret, std::chrono::system_clock::time_point {std::chrono::seconds {timestamp}});
 
     if (!token)
     {

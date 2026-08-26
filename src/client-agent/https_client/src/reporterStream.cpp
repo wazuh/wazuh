@@ -20,8 +20,14 @@ namespace
     // Reporters never retry in the loop: a fresh snapshot is collected next
     // cycle, so a failed send just reschedules.
     constexpr uint32_t REPORTER_MAX_ATTEMPTS = 1;
-    constexpr auto MIN_SLEEP = std::chrono::milliseconds {100};
-    constexpr auto MAX_SLEEP = std::chrono::milliseconds {60000};
+    constexpr auto MIN_SLEEP = std::chrono::milliseconds
+    {
+        100
+    };
+    constexpr auto MAX_SLEEP = std::chrono::milliseconds
+    {
+        60000
+    };
 } // namespace
 
 ReporterStream::ReporterStream(const ModuleConfig& config,
