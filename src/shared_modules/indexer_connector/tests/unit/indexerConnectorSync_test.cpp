@@ -4785,6 +4785,54 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
     EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
 }
 
+/**
+ * A caller that staged data and then flushed must NEVER be told the flush succeeded unless it
+ * did. With flush_interval_seconds = 0 the caller is the ONLY flusher, so a failure cannot be
+ * consumed behind its back by a background thread with nobody to report to. The test asserts the
+ * contract, not the mechanism: nothing may POST before the caller flushes, and the failure must
+ * reach the caller.
+ */
+TEST_F(IndexerConnectorSyncTest, TimerFlushFailureIsReportedToTheOwningCaller)
+{
+    config["flush_interval_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Every attempt fails with a clearing error: the kind a background flush would swallow.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+    }
+
+    // A bounded quiet window: nobody but the owner may flush the staged batch.
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    ASSERT_EQ(callCount, 0) << "a background thread flushed the caller's staged batch";
+
+    // The owner flushes; the failure must reach it -- never a clean return over lost data.
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_GE(callCount, 1);
+}
+
 /// The counting companion of the test above: a non-zero interval starts exactly one flush thread,
 /// which pins that liveThreadCount() can tell the two configurations apart.
 TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)

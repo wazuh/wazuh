@@ -479,3 +479,45 @@ TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableConnectorConfig)
         EXPECT_TRUE(recorded.contains("hosts")) << "a connector was handed a config with no hosts: " << recorded.dump();
     }
 }
+
+/**
+ * Every sync connector the module builds -- the admission slot, the pipeline workers' and the VD
+ * lane's -- must be configured with flush_interval_seconds = 0: the workers own every flush, and
+ * a timer flush failure would have no responder to report to.
+ */
+TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithNoFlushTimer)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+
+    auto recordedConfigs = std::make_shared<std::vector<nlohmann::json>>();
+    auto recordedMutex = std::make_shared<std::mutex>();
+    invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+        [events, recordedConfigs, recordedMutex](
+            const nlohmann::json& config,
+            const invsync::indexer::IIndexerSession&,
+            LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+        {
+            {
+                std::lock_guard<std::mutex> lock(*recordedMutex);
+                recordedConfigs->push_back(config);
+            }
+            events->m_syncBuilds.fetch_add(1);
+            return std::make_unique<invsync::test::FakeIndexerConnectorSync>(events, "sync");
+        });
+
+    const auto path = uniqueSocketPath("notimer");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    std::lock_guard<std::mutex> lock(*recordedMutex);
+    // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's worker.
+    ASSERT_EQ(2U, recordedConfigs->size());
+    for (const auto& recorded : *recordedConfigs)
+    {
+        ASSERT_TRUE(recorded.contains("flush_interval_seconds")) << recorded.dump();
+        EXPECT_EQ(0, recorded.at("flush_interval_seconds").get<int>())
+            << "a pipeline connector was built with a live flush timer: " << recorded.dump();
+    }
+}
