@@ -15,11 +15,10 @@ Source of truth: `src/remoted/remoted_module/src/endpoints/controlEndpoint.cpp` 
 therefore **MUST**, for every control request:
 
 - send `protocol-version: 1`;
-- send `Authorization: Wazuh <agent-id>:<unix-timestamp>:<aes-cmac-hex>`, signing the canonical
-  string described in [04-wire-protocol.md](04-wire-protocol.md) over the request target `/control`
-  and the exact body bytes.
+- send `Authorization: Bearer <wazuh-agent+jwt token>`, a fresh token per request minted with the
+  agent's key as described in [04-wire-protocol.md](04-wire-protocol.md).
 
-The **agent id the manager uses comes from the `Authorization` header**, not from the JSON body. The
+The **agent id the manager uses is the token's verified `sub`**, not anything in the JSON body. The
 body carries no identity field at all, so a sender that signs with agent A's key while describing
 agent B in the payload is simply agent A as far as the manager is concerned.
 

@@ -7,17 +7,13 @@ import (
 
 // Global endpoint prefix (<remote><https><global_prefix>) support.
 //
-// The prefix is part of the request target, so it is SIGNED as well as sent: remoted
-// does not strip it before verifying the MAC (authMiddleware.cpp builds the canonical
-// string from the target verbatim). That gives two distinct failure modes worth knowing
-// when a run goes wrong:
+// The prefix is part of the request target the manager ROUTES on; it plays no part in
+// authentication (the wazuh-agent+jwt bearer binds the agent's identity, not the URL).
+// So the one failure mode worth knowing when a run goes wrong is a prefix mismatch:
+// sending the bare target against a prefixed manager (or the wrong prefix) -> 404, the
+// route does not exist and auth is never reached. A 401 is never about the prefix.
 //
-//   - sending the bare target against a prefixed manager -> 404, the route does not
-//     exist and auth is never reached;
-//   - signing the bare target while sending the prefixed one -> 401.
-//
-// Client.Do therefore prefixes ONE local variable and feeds it to both the URL and the
-// signature; see client.go.
+// Client.Do prepends the prefix to the URL only; see client.go.
 
 // NormalizeGlobalPrefix mirrors, byte for byte, normalize_global_prefix() in the manual
 // senders (src/remoted/remoted_module/tools/send_control.py and the five other
