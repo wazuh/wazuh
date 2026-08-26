@@ -110,7 +110,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     if (result->http_code == 0) {
         /* Enrollment is the first thing an agent does, so a misconfigured CA or an
          * unreachable manager surfaces here before anything else. */
-        merror("Enrollment request could not be sent: %s",
+        merror("Enrollment request could not be sent: %s.",
                result->transport_error[0] != '\0' ? result->transport_error
                                                  : "transport or configuration error");
         return W_ENROLL_ERR_TRANSPORT;

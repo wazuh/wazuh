@@ -257,7 +257,7 @@ static void test_process_response_no_http_status_is_transport_error(void **state
     /* No transport_error: the attempt never reached libcurl, so the module has
      * already logged the real reason and the coarse wording is all that is left. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment request could not be sent: transport or configuration error");
+                  "Enrollment request could not be sent: transport or configuration error.");
 
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
 }
@@ -272,7 +272,7 @@ static void test_process_response_transport_error_names_the_cause(void **state) 
     /* The whole point: a misconfigured CA and an unreachable manager are both
      * http_code == 0, and only this string tells them apart. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment request could not be sent: (60) SSL peer certificate or SSH remote key was not OK");
+                  "Enrollment request could not be sent: (60) SSL peer certificate or SSH remote key was not OK.");
 
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
 }

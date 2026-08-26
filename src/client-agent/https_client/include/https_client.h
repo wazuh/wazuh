@@ -514,10 +514,11 @@ typedef struct hc_enroll_result_t
     ///< failure -- see hc_enroll()'s return value).
     long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
     char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
-    /// Why the request never reached the manager, in libcurl's own words (same
-    /// contract as on_producer_pause's reason). Only ever set alongside
-    /// http_code == 0, and empty even then when the attempt never got as far as
-    /// libcurl -- notably a transport config the fail-closed TLS policy rejected.
+    /// Why the request failed below HTTP, in libcurl's own words (same contract as
+    /// on_producer_pause's reason). Usually paired with http_code == 0, but a
+    /// failure after the status line (a dropped body, a response-size cap) leaves
+    /// both this and a real http_code set. Empty when the attempt never got as far
+    /// as libcurl -- notably a transport config the fail-closed TLS policy rejected.
     char transport_error[HC_MAX_TRANSPORT_ERROR];
 } hc_enroll_result_t;
 

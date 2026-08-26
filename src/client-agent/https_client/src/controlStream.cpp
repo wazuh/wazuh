@@ -242,7 +242,7 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s)%s",
+        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s)%s.",
                    outcomeName(result.outcome),
                    transportReason(result.response.curlError).c_str());
     }
@@ -640,7 +640,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
 
     if (++m_undeliverableStreak < m_config.producerPauseThreshold)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u)%s",
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u)%s.",
                      outcomeName(outcome), m_undeliverableStreak,
                      m_config.producerPauseThreshold, transportReason(reason).c_str());
         return;
@@ -649,7 +649,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     m_producersPaused = true;
     // Debug: the consumer emits the operator-facing line, and the reason rides
     // along so that line can name the cause instead of just "unreachable".
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production%s",
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production%s.",
                  outcomeName(outcome), m_undeliverableStreak,
                  m_config.producerPauseThreshold, transportReason(reason).c_str());
     m_sink.onProducerPause(true, reason);
@@ -747,8 +747,9 @@ void ControlStream::joinUpgradeWork()
     }
 }
 
-/* What one attempt told us about the connection itself, kept for the next Notify
- * and for the pause decision -- neither of which still has the response. */
+/* What the last attempt of one send told us about the connection itself, kept for
+ * the next Notify and for the pause decision -- neither of which still has the
+ * response. */
 void ControlStream::updateConnectionInfo(const HttpResponse& response)
 {
     // curl reports the local address only after a connection was established;
@@ -758,9 +759,9 @@ void ControlStream::updateConnectionInfo(const HttpResponse& response)
         m_localIp = response.localIp;
     }
 
-    // Overwritten on every attempt, success included: the pause is armed off a
-    // streak of failures, so a stale reason from an earlier incident would be
-    // more misleading than none at all.
+    // Overwritten on every step, success included, and always before that step's
+    // outcome reaches updateProducerPause() -- so the pause never quotes a reason
+    // from an earlier incident.
     m_lastCurlError = response.curlError;
 }
 

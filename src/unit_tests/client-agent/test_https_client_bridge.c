@@ -998,8 +998,9 @@ static void test_registered_state_twice_clears_wait_file_each_time(void **state)
 }
 
 /* on_producer_pause: the confirmed-disconnect pause. Both directions move the
- * lock and the .state status together. */
-static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **state)
+ * lock and the .state status together; the two pause cases below differ only in
+ * whether the module handed over a transport reason to name. */
+static void test_producer_pause_with_a_reason_names_the_cause(void **state)
 {
     (void)state;
     start_client_successfully();
@@ -2402,7 +2403,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_producer_pause_arms_the_lock_and_reports_disconnected, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_with_a_reason_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_without_a_reason_logs_the_bare_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
