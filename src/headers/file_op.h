@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <cJSON.h>
 #include <dirent.h>
+#include "../external/zlib/zlib.h"
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -524,6 +525,27 @@ FILE * wfopen(const char * pathname, const char * mode);
  * @return File pointer on success, NULL on error (sets errno).
  */
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
+
+
+/**
+ * @brief Open a compressed file inside a base directory for reading, without following symlinks.
+ *
+ * Read-side counterpart of w_fopen_nofollow(): intended for directories that may contain files planted
+ * by another party (var/incoming and friends), where a symlink, hard link, FIFO, device or directory
+ * found at the target path must be rejected instead of read through. @p filename must be a bare file
+ * name; it is rejected if it is empty, "." or "..", if it refers to a parent folder, or if it contains a
+ * path separator, so the resulting open cannot escape @p basedir.
+ *
+ * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; on Windows it
+ * skips reparse-point processing. In both cases the descriptor must turn out to be a regular file with a
+ * link count of exactly 1 before it is handed to zlib.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @param mode Open mode, either "r" or "rb".
+ * @return Compressed file handle on success, NULL on error (sets errno).
+ */
+gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode);
 
 
 /**
