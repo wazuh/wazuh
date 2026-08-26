@@ -187,9 +187,8 @@ check "the commented-out block does not absorb the insertion" \
 
 unset WAZUH_REGISTRATION_SERVER
 
-# WAZUH_MANAGER_ENDPOINT (#38492): the optional reverse-proxy prefix, written inside
-# the freshly-built <manager> block only when the installer's caller set it -- unlike
-# <port>, there is no non-empty default to fall back to.
+# WAZUH_MANAGER_ENDPOINT (#38492): the reverse-proxy prefix, written inside the
+# freshly-built <manager> block, defaulting like <port> to what the manager serves.
 export WAZUH_MANAGER="10.0.0.5"
 export WAZUH_MANAGER_ENDPOINT="wazuh-manager"
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
@@ -198,8 +197,8 @@ check "WAZUH_MANAGER_ENDPOINT is written inside <manager>" \
 
 unset WAZUH_MANAGER_ENDPOINT
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "no WAZUH_MANAGER_ENDPOINT leaves <endpoint> out of the rebuilt <manager> block" \
-      "0" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>")"
+check "no WAZUH_MANAGER_ENDPOINT falls back to the manager's own default prefix" \
+      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>/wazuh-manager/</endpoint>")"
 unset WAZUH_MANAGER
 
 echo

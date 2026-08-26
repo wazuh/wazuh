@@ -156,9 +156,7 @@ add_adress_block() {
         echo "    <manager>"
         echo "      <address>${ADDRESSES[last_index]}</address>"
         echo "      <port>1517</port>"
-        if [ -n "${WAZUH_MANAGER_ENDPOINT}" ]; then
-            echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT}</endpoint>"
-        fi
+        echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT:-/wazuh-manager/}</endpoint>"
         echo "    </manager>"
     } >> "${TMP_SERVER}"
 

@@ -435,7 +435,7 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
 
 /* <agent><manager><endpoint> (#38492) */
 
-static void test_agent_manager_endpoint_is_absent_by_default(void **state) {
+static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
@@ -447,7 +447,7 @@ static void test_agent_manager_endpoint_is_absent_by_default(void **state) {
                   "<agent><manager><port> is not configured. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
-    assert_null(cfg.server[0].endpoint);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -490,6 +490,25 @@ static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **st
     agent cfg;
 
     const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint>/</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_null(cfg.server[0].endpoint);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_explicit_empty_endpoint_is_an_opt_out(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* An explicitly present but empty <endpoint> is a deliberate opt-out of
+     * prefixing, distinct from the tag being absent entirely (which now
+     * defaults to "wazuh-manager" -- see
+     * test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent). */
+    const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint></endpoint></manager>";
 
     expect_valid_ip("10.0.0.5");
 
@@ -601,7 +620,7 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &xml, &nodes, &cfg), 0);
@@ -609,6 +628,7 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -629,11 +649,15 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
+    /* The XML's own <port>1514</port> (the old 4.x connection port) must never be
+     * honored -- a WPK-upgraded agent always reconnects on the 5.x HTTPS port with
+     * the manager's default reverse-proxy prefix, not the stale 4.x port. */
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
     assert_int_equal(cfg.notify_time, 0);
     assert_null(cfg.profile);
     /* The legacy <client> parser must not touch <enrollment> at all: despite
@@ -657,7 +681,7 @@ static void test_legacy_client_takes_the_last_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.2' with the default port 1517.");
+                  "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -694,7 +718,7 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
@@ -1466,10 +1490,11 @@ int main(void) {
         cmocka_unit_test(test_second_manager_block_prevails_with_warning),
         cmocka_unit_test(test_agent_manager_address_and_port_are_parsed),
         cmocka_unit_test(test_agent_manager_port_defaults_to_1517),
-        cmocka_unit_test(test_agent_manager_endpoint_is_absent_by_default),
+        cmocka_unit_test(test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent),
         cmocka_unit_test(test_agent_manager_endpoint_is_parsed),
         cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
+        cmocka_unit_test(test_agent_manager_explicit_empty_endpoint_is_an_opt_out),
         cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),

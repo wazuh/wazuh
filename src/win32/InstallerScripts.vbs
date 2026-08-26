@@ -98,6 +98,7 @@ public function config()
                         formatted_list = formatted_list & "    <" & inner_tag & ">" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
+                        formatted_list = formatted_list & "      <endpoint>/wazuh-manager/</endpoint>" & vbCrLf
                         if i = UBound(ip_list) then
                             formatted_list = formatted_list & "    </" & inner_tag & ">"
                         Else

@@ -385,6 +385,7 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1517</port>" >> $NEWCONFIG
+    echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT:-/wazuh-manager/}</endpoint>" >> $NEWCONFIG
     echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
