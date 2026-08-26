@@ -155,8 +155,19 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to reach the sync intake socket.", shouldStop()};
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. It shares the same restart-hiccup-vs-lasting-problem
+        // shape (the module started before wazuh-agentd's https_client finished binding
+        // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
+        // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
+        return {false, "Failed to reach the sync intake socket.", shouldStop(), false,
+                trackLocalTransportFailure(), false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     // Guard against concurrent calls. The timer thread and the AsyncFlushController
     // background thread may both call this method on the same instance. When a sync is
@@ -332,7 +343,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -351,6 +362,18 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
     }
 
     return m_consecutiveSyncFailures.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+unsigned int AgentSyncProtocol::trackLocalTransportFailure()
+{
+    // Mirrors trackSyncOutcome()'s stopped guard: a stop in progress says nothing about the local
+    // transport itself, so it must not count towards this streak either.
+    if (shouldStop())
+    {
+        return m_consecutiveLocalTransportFailures.load(std::memory_order_relaxed);
+    }
+
+    return m_consecutiveLocalTransportFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
@@ -452,8 +475,19 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to reach the sync intake socket.", shouldStop()};
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. It shares the same restart-hiccup-vs-lasting-problem
+        // shape (the module started before wazuh-agentd's https_client finished binding
+        // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
+        // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
+        return {false, "Failed to reach the sync intake socket.", shouldStop(), false,
+                trackLocalTransportFailure(), false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     clearSyncState();
 
@@ -499,7 +533,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,

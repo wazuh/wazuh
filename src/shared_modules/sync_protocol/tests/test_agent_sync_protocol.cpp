@@ -196,7 +196,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
 }
 
 // A local transport failure is not a "manager not ready yet" condition, so it must not be reported as
-// manager-not-ready: the calling module keeps it at WARNING.
+// manager-not-ready -- nothing was sent, so this says nothing about the manager. It is reported via
+// localTransportUnavailable instead (see SynchronizeModuleTransportFailureReportsLocalTransportUnavailable),
+// which the calling module demotes to INFO the same way, just under a distinct, accurate label.
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnTransportFailure)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -211,6 +213,28 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnTransport
 
     EXPECT_FALSE(result.success);
     EXPECT_FALSE(result.managerNotReady);
+}
+
+// Companion to SynchronizeModuleDoesNotReportTransientOnTransportFailure: checkStatus() failing never
+// reaches the handshake, so it is classified as localTransportUnavailable, on its own streak separate
+// from the manager-facing m_consecutiveSyncFailures -- and that streak grows across repeated failures.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportFailureReportsLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    SyncModuleResult first = protocol->synchronizeModule(Mode::DELTA);
+    EXPECT_FALSE(first.success);
+    EXPECT_FALSE(first.managerNotReady);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1U);
+
+    SyncModuleResult second = protocol->synchronizeModule(Mode::DELTA);
+    EXPECT_TRUE(second.localTransportUnavailable);
+    EXPECT_EQ(second.consecutiveFailures, 2U);
 }
 
 // Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
