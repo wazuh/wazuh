@@ -12,49 +12,39 @@
 #ifndef _HC_ENROLL_SIGNER_HPP
 #define _HC_ENROLL_SIGNER_HPP
 
-#include <cstddef>
-#include <cstdint>
+#include "jwt/secureBytes.hpp"
+
 #include <ctime>
 #include <optional>
 #include <string>
-#include <vector>
 
-/// The two headers of one password-mode /enroll attempt (#38438):
+/// The two headers of one password-mode /enroll attempt (#38582):
 ///   protocol-version: 1
-///   Authorization: WazuhEnroll <unix-ts>:<mac>
+///   Authorization: Bearer <wazuh-enroll+jwt>
 struct EnrollSignedHeaders
 {
     std::string protocolVersion;
     std::string authorization;
 };
 
-/// Derives and applies the password-mode enrollment signature (#38438).
-///
-/// Recipe: HKDF-SHA256(IKM=password, salt=32 zero bytes [RFC 5869's default
-/// for an omitted salt], info="WAZUH-ENROLL-CMAC-KEY"+0x01, L=32) once to get
-/// a 32-byte key, then AES-256-CBC-CMAC(that key, canonical string) for the
-/// mac. Stateless (no per-agent identity): unlike JwtSigner, which mints the
-/// agent's bearer with its own client.keys secret, this signs with a secret
-/// derived from the authd password, since an enrolling agent has no key yet.
-///
-/// Uses cmacPrimitive.hpp for the CMAC step. Transitional: the only remaining
-/// CMAC in the module, until /enroll moves to its own JWT profile.
+/// Mints the password-mode enrollment credential: the `wazuh-enroll+jwt`
+/// bearer (shared_modules/utils/jwt/jwtEnrollProfileV1.hpp), HS256 over a key
+/// derived once per call from the authd password with the shared HKDF
+/// (jwt/enrollKeyDerivation.hpp -- the manager's PasswordKeySource runs the
+/// exact same construction). Stateless and identity-free: unlike JwtSigner,
+/// which mints the agent's own bearer with its client.keys secret, an
+/// enrolling agent has no key yet. The token binds nothing but time (iat/exp)
+/// and a fresh jti -- TLS protects the request; the body is not signed.
 class EnrollSigner
 {
 public:
-    /// @return nullopt if the HKDF or CMAC step fails (not observed in
-    ///         practice for a non-empty password and a 32-byte derived key).
-    static std::optional<EnrollSignedHeaders> sign(const std::string& password,
-                                                   const std::string& method,
-                                                   const std::string& target,
-                                                   const uint8_t* body,
-                                                   size_t bodyLength,
-                                                   std::time_t timestamp);
+    /// One fresh token per attempt (new jti, iat = timestamp, exp = iat + 60).
+    /// @return nullopt for an empty password or an HKDF/CSPRNG failure.
+    static std::optional<EnrollSignedHeaders> sign(const std::string& password, std::time_t timestamp);
 
-    /// HKDF-SHA256 key derivation alone, exposed so tests can pin the
-    /// #38438 known-answer vector directly.
-    /// @return nullopt on a provider/allocation failure.
-    static std::optional<std::vector<uint8_t>> deriveKey(const std::string& password);
+    /// HKDF-SHA256 key derivation alone, exposed so tests can pin the frozen
+    /// known-answer vector directly.
+    static std::optional<jwt_profile::v1::SecureBytes> deriveKey(const std::string& password);
 };
 
 #endif // _HC_ENROLL_SIGNER_HPP

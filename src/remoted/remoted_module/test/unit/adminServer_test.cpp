@@ -78,7 +78,7 @@ namespace
     }
 
     /// Whether a plain TCP connect to 127.0.0.1:port succeeds -- enough to prove the public
-    /// HTTPS listener is accepting, without dragging the TLS/CMAC client machinery in here.
+    /// HTTPS listener is accepting, without dragging the TLS/bearer client machinery in here.
     bool publicListenerAccepts(std::uint16_t port)
     {
         const int fd = ::socket(AF_INET, SOCK_STREAM, 0);

@@ -22,6 +22,11 @@ A password-protected authd expects `OSSEC PASS: <password> OSSEC A:'<name>'` ins
 shared secret to the run. If the manager rejects enrollment, the run **MUST** fail loudly with the
 manager's own answer rather than retrying blindly.
 
+The real agent enrolls over remoted's HTTPS `POST /enroll` instead, whose Password mode carries a
+`wazuh-enroll+jwt` bearer (HS256 with the HKDF-SHA256 key of the password; vectors under `"enroll"`
+in `internal/wire/testdata/jwt_vectors.json`). The simulator keeps the authd TCP path: it needs no
+password and exercises the same `client.keys` outcome.
+
 The fleet **SHOULD** be named with a stable prefix (`bench-<n>`) so cleanup can find it, and
 enrollment **SHOULD** be bounded in concurrency: authd is a single-threaded acceptor, and 2000
 simultaneous enrollments measure authd, not the sync path.

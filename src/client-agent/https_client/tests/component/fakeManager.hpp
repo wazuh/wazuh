@@ -13,7 +13,8 @@
 #define _HC_FAKE_MANAGER_HPP
 
 #include "digest.hpp"
-#include "enrollSigner.hpp"
+#include "jwt/enrollKeyDerivation.hpp"
+#include "jwt/jwtEnrollTokenVerifier.hpp"
 #include "jwt/jwtKeyDecoder.hpp"
 #include "jwt/jwtRequestTokenVerifier.hpp"
 #include "jwt/secureBytes.hpp"
@@ -99,12 +100,11 @@ public:
     /// enrollPassword empty (default): /enroll accepts any request whose
     /// protocol-version header is present, no signature required (open
     /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
-    /// Authorization: WazuhEnroll <ts>:<mac> header whose mac verifies
-    /// against this password via the module's own EnrollSigner (the same
-    /// reuse-the-production-signer idiom the rest of this fake manager
-    /// already uses for the bearer verifier on /control et al -- the independent
-    /// cross-implementation proof of the HKDF/CMAC algorithm itself lives
-    /// in enrollSigner_test.cpp's Python-derived KAT, not here).
+    /// `Authorization: Bearer <wazuh-enroll+jwt>` header that verifies with the
+    /// manager's own shared JwtEnrollTokenVerifier against the HKDF key of
+    /// this password (jwt/enrollKeyDerivation.hpp -- the same construction
+    /// remoted's PasswordKeySource runs; the frozen KAT lives in
+    /// enrollSigner_test.cpp and jwt_vectors.json).
     /// enrollForcedStatus non-zero: /enroll always answers that status
     /// with a generic error body instead of running the real flow, so a
     /// test can drive the 400/401/403/409/500/503 mapping in
@@ -591,37 +591,25 @@ private:
             }
 
             const auto auth = request.get_header_value("Authorization");
-            const std::string prefix = "WazuhEnroll ";
+            const std::string prefix = "Bearer ";
 
             if (auth.rfind(prefix, 0) != 0)
             {
                 return false;
             }
 
-            const std::string token = auth.substr(prefix.size());
-            const auto colon = token.find(':');
+            const auto key = jwt_profile::v1::enroll::deriveEnrollKey(enrollPassword);
 
-            if (colon == std::string::npos)
+            if (!key)
             {
-                return false;
+                return false; // LCOV_EXCL_LINE: HKDF cannot fail for a non-empty password.
             }
 
-            const std::time_t timestamp =
-                static_cast<std::time_t>(std::strtoll(token.substr(0, colon).c_str(), nullptr, 10));
-            const auto expected = EnrollSigner::sign(enrollPassword,
-                                                     "POST",
-                                                     "/enroll",
-                                                     reinterpret_cast<const uint8_t*>(request.body.data()),
-                                                     request.body.size(),
-                                                     timestamp);
-
-            if (!expected)
-            {
-                return false; // LCOV_EXCL_LINE: HKDF/CMAC cannot fail here.
-            }
-
-            const std::string authPrefix = "Authorization: ";
-            return expected->authorization.substr(authPrefix.size()) == auth;
+            return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(auth.substr(prefix.size()),
+                                                                           *key,
+                                                                           jwt_profile::v1::TimePolicy {},
+                                                                           std::chrono::system_clock::now()) ==
+                   jwt_profile::v1::VerifyError::None;
         };
 
         server.Post(

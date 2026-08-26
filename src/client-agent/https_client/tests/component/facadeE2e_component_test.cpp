@@ -333,7 +333,7 @@ TEST_F(FacadeE2eTest, GracefulStopSendsControlShutdown)
 TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
 {
     // The full lifecycle against a real TLS listener: STARTING -> REGISTERED
-    // (accepted startup, CMAC verified server-side) -> STOPPED on destroy.
+    // (accepted startup, bearer verified server-side) -> STOPPED on destroy.
     Recorder recorder;
     hc_config_t config = tlsConfig();
     hc_callbacks_t callbacks {};
@@ -957,7 +957,7 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
 }
 
 // Issue #38204: a real notify carrying vd_feed_offset must drive a real
-// POST /scan/vd over the wire (real TLS, real AES-CMAC signing verified
+// POST /scan/vd over the wire (real TLS, real bearer token verified
 // server-side), and a 200 must clear the pending flag through the real
 // callback -- this is the one thing the mocked-transport unit tests
 // (controlStream_test.cpp) cannot prove by themselves.

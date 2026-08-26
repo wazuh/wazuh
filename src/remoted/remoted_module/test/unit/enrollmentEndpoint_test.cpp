@@ -10,7 +10,7 @@
  *
  * Exercises the JSON/validation/IP-resolution/authd-error-mapping layer of `POST /enroll`, with a
  * real AuthdClient wired to FakeUdsServer instances standing in for authd. The auth-rejection
- * matrix itself (mode pass/deny, CMAC tamper scenarios) is covered by enrollmentAuthenticator_test.cpp;
+ * matrix itself (mode pass/deny, bearer negative scenarios) is covered by enrollmentAuthenticator_test.cpp;
  * these tests all use Open mode so the handler's OWN logic is what's under test.
  */
 

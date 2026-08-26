@@ -12,8 +12,8 @@
 /*
  * End-to-end over the REAL curl path (CurlPerformer + CurlHandle) against a
  * fork-based plaintext fake manager. This is what exercises curlHandle.cpp
- * for coverage and proves cross-implementation AES-CMAC interop: the server
- * recomputes the MAC with the shared key, so a 200 means the two independent
+ * for coverage and proves cross-implementation bearer interop: the server
+ * verifies the token with the shared key, so a 200 means the two independent
  * implementations agree. Plaintext + HC_VERIFY_NONE by design; the TLS matrix
  * is pinned at the option level in curlPerformer_test.
  */

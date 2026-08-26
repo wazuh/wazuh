@@ -25,7 +25,7 @@ target_include_directories(
           ${SRC_FOLDER}/external/cpp-httplib # httplib.h (for UDS HTTP client)
           ${SRC_FOLDER}/external/nlohmann) # nlohmann/json.hpp
 
-# ext_restinio pulls in ssl/crypto transitively (cmac.cpp's EVP_MAC), so no explicit OpenSSL link
+# ext_restinio pulls in ssl/crypto transitively (the shared jwt/ headers' EVP_MAC/EVP_KDF), so no explicit OpenSSL link
 # is needed here. ext_rapidjson: header-only, used to parse the /stateless payload's H line.
 # ext_zstd: zstdDecoder.cpp, for Content-Encoding: zstd request bodies.
 # ext_jwt_cpp: header-only JWT (HS256) library behind the agent authentication profile.

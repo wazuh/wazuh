@@ -13,6 +13,7 @@
 
 #include "enrollSigner.hpp"
 #include "fakeSysSeams.hpp"
+#include "jwt/jwtEnrollTokenVerifier.hpp"
 #include "mockFsProbe.hpp"
 #include "mockHttpPerformer.hpp"
 
@@ -20,6 +21,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <ctime>
 
 using ::testing::_;
 using ::testing::Invoke;
@@ -48,11 +51,28 @@ namespace
 
     bool hasHeader(const std::vector<std::string>& headers, const std::string& prefix)
     {
-        return std::any_of(headers.begin(), headers.end(),
-                           [&](const std::string & header)
+        return std::any_of(
+            headers.begin(), headers.end(), [&](const std::string& header) { return header.rfind(prefix, 0) == 0; });
+    }
+
+    // Verifies the `Authorization: Bearer <wazuh-enroll+jwt>` header the client attached with the
+    // manager's own shared verifier and the HKDF key of `password`, at wall time `at`.
+    jwt_profile::v1::VerifyError
+    verifyBearer(const std::vector<std::string>& headers, const std::string& password, std::time_t at)
+    {
+        const std::string prefix = "Authorization: Bearer ";
+        const auto bearer =
+            std::find_if(headers.begin(), headers.end(), [&](const std::string& h) { return h.rfind(prefix, 0) == 0; });
+        const auto key = EnrollSigner::deriveKey(password);
+        if (bearer == headers.end() || !key)
         {
-            return header.rfind(prefix, 0) == 0;
-        });
+            return jwt_profile::v1::VerifyError::InvalidToken;
+        }
+        return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(
+            bearer->substr(prefix.size()),
+            *key,
+            jwt_profile::v1::TimePolicy {},
+            std::chrono::system_clock::time_point {std::chrono::seconds {at}});
     }
 
     HttpResponse okResponse(long code = 200)
@@ -73,24 +93,24 @@ TEST(EnrollClientTest, OpenModeSendsOnlyProtocolVersion)
     EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_EQ("/enroll", spec.target);
-        EXPECT_EQ("application/json", spec.contentType);
-        EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
-        EXPECT_FALSE(hasHeader(spec.headers, "Authorization:"));
-        EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
-        EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
-        return okResponse();
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_EQ("/enroll", spec.target);
+                EXPECT_EQ("application/json", spec.contentType);
+                EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
+                EXPECT_FALSE(hasHeader(spec.headers, "Authorization:"));
+                EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
+                EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
+                return okResponse();
+            }));
 
     const auto response = client.enroll(BODY, "");
     EXPECT_EQ(TransportStatus::Ok, response.status);
     EXPECT_EQ(200, response.httpCode);
 }
 
-TEST(EnrollClientTest, PasswordModeAddsAuthorizationHeaderMatchingEnrollSigner)
+TEST(EnrollClientTest, PasswordModeAddsABearerTheSharedVerifierAccepts)
 {
     NiceMock<MockFsProbe> fsProbe;
     NiceMock<MockHttpPerformer> performer;
@@ -98,29 +118,23 @@ TEST(EnrollClientTest, PasswordModeAddsAuthorizationHeaderMatchingEnrollSigner)
     clock.setWall(1700000000);
     EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
 
-    const auto expected = EnrollSigner::sign("s3cr3t", "POST", "/enroll",
-                                             reinterpret_cast<const uint8_t*>(BODY.data()), BODY.size(),
-                                             1700000000);
-    ASSERT_TRUE(expected.has_value());
-
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
-        EXPECT_TRUE(std::find(spec.headers.begin(), spec.headers.end(), expected->authorization)
-                    != spec.headers.end());
-        return okResponse();
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
+                EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(spec.headers, "s3cr3t", 1700000000));
+                return okResponse();
+            }));
 
     client.enroll(BODY, "s3cr3t");
 }
 
-// #38492/#38491: the manager's auth middleware CMACs the literal wire
-// request-target (prefix included), so /enroll's password signature must
-// cover the prefixed target too, exactly like every other endpoint
-// (RetrySender::attemptOnce carries the equivalent test).
-TEST(EnrollClientTest, ConfiguredEndpointIsFoldedIntoTheTargetAndTheSignature)
+// #38492/#38491: the manager routes on the literal wire request-target
+// (prefix included), so /enroll must be sent under the prefixed target too,
+// exactly like every other endpoint (RetrySender::attemptOnce carries the
+// equivalent test); the bearer does not bind the target.
+TEST(EnrollClientTest, ConfiguredEndpointIsFoldedIntoTheTarget)
 {
     NiceMock<MockFsProbe> fsProbe;
     NiceMock<MockHttpPerformer> performer;
@@ -130,20 +144,14 @@ TEST(EnrollClientTest, ConfiguredEndpointIsFoldedIntoTheTargetAndTheSignature)
     config.serverEndpoint = "wazuh-manager";
     EnrollClient client {config, performer, fsProbe, clock, TEST_LOG};
 
-    const auto expected = EnrollSigner::sign("s3cr3t", "POST", "/wazuh-manager/enroll",
-                                             reinterpret_cast<const uint8_t*>(BODY.data()), BODY.size(),
-                                             1700000000);
-    ASSERT_TRUE(expected.has_value());
-
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_EQ("/wazuh-manager/enroll", spec.target);
-        EXPECT_TRUE(std::find(spec.headers.begin(), spec.headers.end(), expected->authorization)
-                    != spec.headers.end());
-        return okResponse();
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_EQ("/wazuh-manager/enroll", spec.target);
+                EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(spec.headers, "s3cr3t", 1700000000));
+                return okResponse();
+            }));
 
     client.enroll(BODY, "s3cr3t");
 }
@@ -166,12 +174,12 @@ TEST(EnrollClientTest, CertAndPasswordCoexistNoPrecedence)
     EnrollClient client {config, performer, fsProbe, clock, TEST_LOG};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_TRUE(hasHeader(spec.headers, "Authorization: WazuhEnroll"));
-        return okResponse();
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_TRUE(hasHeader(spec.headers, "Authorization: Bearer "));
+                return okResponse();
+            }));
 
     client.enroll(BODY, "s3cr3t");
 }
@@ -188,27 +196,19 @@ TEST(EnrollClientTest, CompressesBodyWhenEnabledAndSignsTheCompressedBytes)
     EnrollClient client {config, performer, fsProbe, clock, TEST_LOG};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_TRUE(hasHeader(spec.headers, "Content-Encoding: zstd"));
-        // The body actually on the wire must differ from the plain JSON...
-        EXPECT_NE(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_TRUE(hasHeader(spec.headers, "Content-Encoding: zstd"));
+                // The body actually on the wire must differ from the plain JSON...
+                EXPECT_NE(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
 
-        // ...and the CMAC must cover exactly those compressed bytes, not the
-        // original JSON (a signature over the wrong bytes would 401 forever).
-        const auto expected = EnrollSigner::sign("s3cr3t", "POST", "/enroll", spec.body, spec.bodyLength,
-                                                 1700000000);
-        EXPECT_TRUE(expected.has_value());
+                // ...and a bearer minted from the password at the clock's time still accompanies
+                // it: the token binds time and jti, never the body, so compression cannot break it.
+                EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(spec.headers, "s3cr3t", 1700000000));
 
-        if (expected)
-        {
-            EXPECT_TRUE(std::find(spec.headers.begin(), spec.headers.end(), expected->authorization)
-                        != spec.headers.end());
-        }
-
-        return okResponse();
-    }));
+                return okResponse();
+            }));
 
     client.enroll(BODY, "s3cr3t");
 }
@@ -221,13 +221,13 @@ TEST(EnrollClientTest, DoesNotCompressWhenDisabled)
     EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
-        EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
-        return okResponse();
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
+                EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
+                return okResponse();
+            }));
 
     client.enroll(BODY, "");
 }
@@ -245,21 +245,21 @@ TEST(EnrollClientTest, RetriesOnceUncompressedOn415)
     ::testing::InSequence sequence;
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_TRUE(hasHeader(spec.headers, "Content-Encoding: zstd"));
-        return okResponse(415);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_TRUE(hasHeader(spec.headers, "Content-Encoding: zstd"));
+                return okResponse(415);
+            }));
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
-        EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
-        return okResponse(200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
+                EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
+                return okResponse(200);
+            }));
 
     const auto response = client.enroll(BODY, "");
     EXPECT_EQ(200, response.httpCode);
@@ -292,35 +292,27 @@ TEST(EnrollClientTest, CorrectsSkewedClockAndRetriesOnceOn401WithDate)
     ::testing::InSequence sequence;
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec&)
-    {
-        HttpResponse response;
-        response.status = TransportStatus::Ok;
-        response.httpCode = 401;
-        response.serverDateSeconds = serverNow;
-        return response;
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec&)
+            {
+                HttpResponse response;
+                response.status = TransportStatus::Ok;
+                response.httpCode = 401;
+                response.serverDateSeconds = serverNow;
+                return response;
+            }));
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        // Re-signed with the now-corrected clock: matches a signature
-        // computed against the manager's time, not the original skewed one.
-        const auto expected = EnrollSigner::sign("s3cr3t", "POST", "/enroll",
-                                                 reinterpret_cast<const uint8_t*>(BODY.data()), BODY.size(),
-                                                 serverNow);
-        EXPECT_TRUE(expected.has_value());
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                // Re-minted with the now-corrected clock: valid at the manager's time, and NOT at the
+                // original skewed local time (an hour behind -> "issued in the future" there).
+                EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(spec.headers, "s3cr3t", serverNow));
+                EXPECT_EQ(jwt_profile::v1::VerifyError::StaleToken, verifyBearer(spec.headers, "s3cr3t", 1700000000));
 
-        if (expected)
-        {
-            EXPECT_TRUE(std::find(spec.headers.begin(), spec.headers.end(), expected->authorization)
-                        != spec.headers.end());
-        }
-
-        return okResponse(200);
-    }));
+                return okResponse(200);
+            }));
 
     const auto response = client.enroll(BODY, "s3cr3t");
     EXPECT_EQ(200, response.httpCode);
@@ -395,7 +387,7 @@ TEST(EnrollClientTest, DoesNotRetryOn401InOpenModeEvenWithADate)
 
 TEST(EnrollClientTest, RejectsWithoutSendingWhenTransportConfigIsInvalid)
 {
-    ::testing::StrictMock<MockFsProbe> fsProbe; // Must not even be asked.
+    ::testing::StrictMock<MockFsProbe> fsProbe;         // Must not even be asked.
     ::testing::StrictMock<MockHttpPerformer> performer; // Must never be called.
     FakeClock clock;
 

@@ -2,8 +2,8 @@
 """
 The `wazuh-agent+jwt` bearer token every remoted HTTPS request carries, in pure stdlib -- the shared
 signer behind send_stateless.py, send_control.py, send_agent_json.py, send_scan_vd.py,
-send_download.py and load_balancer/send_signed_request.py (send_enroll.py keeps the WazuhEnroll
-scheme until /enroll moves to its own JWT profile).
+send_download.py and load_balancer/send_signed_request.py -- plus the sibling `wazuh-enroll+jwt`
+bearer of send_enroll.py (HKDF-SHA256 of the enrollment password, no identity claims).
 
   protocol-version: 1
   Authorization: Bearer <compact JWS>
@@ -24,7 +24,7 @@ needed -- reproduces the frozen vector byte for byte):
   python3 wire_jwt.py --self-test
 
 The frozen vectors live in tools/manager_benchmark/tool_simulator/internal/wire/testdata/
-jwt_vectors.json (mirror of src/shared_modules/utils/jwt/testVectors.hpp).
+jwt_vectors.json (mirror of src/shared_modules/utils/jwt/testVectors.hpp), agent and enroll profiles.
 """
 
 import argparse
@@ -53,6 +53,13 @@ EXPIRED_IAT_OFFSET = -(MAX_AGE_SECONDS + CLOCK_SKEW_SECONDS + 5)   # older than 
 FUTURE_IAT_OFFSET = CLOCK_SKEW_SECONDS + 5                          # issued further ahead than skew
 
 DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
+
+# The sibling profile POST /enroll requires in Password mode (jwtEnrollProfileV1.hpp): same HS256
+# core, key = HKDF-SHA256 of authd's enrollment password, header exactly {alg, typ} (no kid), claims
+# exactly {exp, iat, jti, nbf} (no iss/sub: there is no agent identity yet).
+ENROLL_TOKEN_TYPE = "wazuh-enroll+jwt"
+ENROLL_HKDF_INFO = b"WAZUH-ENROLL-JWT-KEY" + bytes([1])
+ENROLL_HKDF_SALT = bytes(32)  # RFC 5869: an omitted salt is HashLen zero bytes; spelled out.
 
 
 def b64url(raw: bytes) -> str:
@@ -102,6 +109,57 @@ def read_agent_key(agent_id: str, client_keys_path: str = DEFAULT_CLIENT_KEYS) -
 
 def new_jti() -> str:
     return b64url(secrets.token_bytes(JTI_BYTES))
+
+
+def hkdf_sha256(ikm: bytes, salt: bytes, info: bytes, length: int = 32) -> bytes:
+    """RFC 5869 extract-then-expand with the stdlib (hmac/hashlib), no `cryptography` needed."""
+    prk = hmac.new(salt, ikm, hashlib.sha256).digest()
+    okm, block, counter = b"", b"", 1
+    while len(okm) < length:
+        block = hmac.new(prk, block + info + bytes([counter]), hashlib.sha256).digest()
+        okm += block
+        counter += 1
+    return okm[:length]
+
+
+def derive_enroll_key(password: str) -> bytes:
+    """The 32-byte wazuh-enroll+jwt key of an enrollment password: HKDF-SHA256(password, salt = 32 x
+    0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01) -- byte-identical to the manager's PasswordKeySource
+    and the agent's EnrollSigner (shared jwt/enrollKeyDerivation.hpp)."""
+    if not password:
+        raise ValueError("the enrollment password must not be empty")
+    return hkdf_sha256(password.encode(), ENROLL_HKDF_SALT, ENROLL_HKDF_INFO, AGENT_KEY_BYTES)
+
+
+def make_enroll_jwt(password_or_key, now: int = None, jti: str = None, *,
+                    alg: str = ALGORITHM, typ: str = ENROLL_TOKEN_TYPE, lifetime: int = TOKEN_LIFETIME_SECONDS,
+                    nbf: int = None, extra_header: dict = None, extra_claims: dict = None, drop_claims=(),
+                    sign_with: bytes = None) -> str:
+    """Mints one wazuh-enroll+jwt token from the enrollment password (str) or its derived 32-byte key
+    (bytes). Defaults produce exactly the profile; every other keyword exists only to build the
+    negative scenarios (a token the manager must reject)."""
+    key_bytes = derive_enroll_key(password_or_key) if isinstance(password_or_key, str) else bytes(password_or_key)
+    iat = int(time.time()) if now is None else int(now)
+    header = {"alg": alg, "typ": typ}
+    header.update(extra_header or {})
+    claims = {"exp": iat + lifetime, "iat": iat, "jti": jti or new_jti(), "nbf": iat if nbf is None else nbf}
+    claims.update(extra_claims or {})
+    for name in drop_claims:
+        claims.pop(name, None)
+    signing_input = (b64url(json.dumps(header, separators=(",", ":"), sort_keys=True).encode()) + "."
+                     + b64url(json.dumps(claims, separators=(",", ":"), sort_keys=True).encode()))
+    if alg == "none":
+        return signing_input + "."
+    mac = hmac.new(sign_with if sign_with is not None else key_bytes, signing_input.encode(),
+                   hashlib.sha256).digest()
+    return signing_input + "." + b64url(mac)
+
+
+def enroll_auth_headers(password_or_key, now: int = None, protocol_version: str = PROTOCOL_VERSION,
+                        **jwt_kwargs) -> dict:
+    """The two headers of one Password-mode POST /enroll attempt (fresh token per call)."""
+    return {"protocol-version": protocol_version,
+            "Authorization": "Bearer " + make_enroll_jwt(password_or_key, now, **jwt_kwargs)}
 
 
 def make_jwt(agent_id: str, key, now: int = None, jti: str = None, *,
@@ -202,6 +260,26 @@ def self_test(vectors_path: str) -> int:
             check(f"decode_agent_key rejects {bad[:16]!r}...", False)
         except ValueError:
             check(f"decode_agent_key rejects {bad[:16]!r}...", True)
+    e = v["enroll"]
+    ekey = derive_enroll_key(e["hkdf"]["password"])
+    check("enroll HKDF matches the frozen KAT", ekey.hex() == e["hkdf"]["key_hex"])
+    check("enroll HKDF differs from the retired CMAC key of the same password",
+          ekey.hex() != e["hkdf"]["legacy_cmac_key_hex"])
+    etoken = make_enroll_jwt(e["hkdf"]["password"], now=e["iat"], jti=e["jti"])
+    check("enroll token reproduces the frozen vector byte for byte", etoken == e["token"])
+    check("enroll token from the derived key bytes is the same token",
+          make_enroll_jwt(ekey, now=e["iat"], jti=e["jti"]) == e["token"])
+    eh64, ep64, _ = etoken.split(".")
+    check("enroll header/claims texts are the vector's",
+          base64.urlsafe_b64decode(eh64 + "==").decode() == e["header_json"]
+          and base64.urlsafe_b64decode(ep64 + "==").decode() == e["payload_json"])
+    check("wrong password gives the frozen NEGATIVE enroll vector",
+          make_enroll_jwt("WrongPassword", now=e["iat"], jti=e["jti"]) == e["negative"]["wrong_password_token"]["token"])
+    check("adding kid gives the frozen kid-header enroll vector",
+          make_enroll_jwt(e["hkdf"]["password"], now=e["iat"], jti=e["jti"], extra_header={"kid": "001"})
+          == e["negative"]["kid_header_token"]["token"])
+    check("enroll header carries no kid and the two profiles never share a typ",
+          "kid" not in json.loads(base64.urlsafe_b64decode(eh64 + "==")) and ENROLL_TOKEN_TYPE != TOKEN_TYPE)
     print(f"\n{len(failures)} failure(s).")
     return 1 if failures else 0
 
@@ -212,9 +290,13 @@ def main() -> int:
     parser.add_argument("--vectors", default=_default_vectors_path(), help="Path to jwt_vectors.json.")
     parser.add_argument("--agent-id", default="1001", help="With --client-keys: print a fresh Bearer for this agent.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS)
+    parser.add_argument("--enroll-password", help="Print a fresh wazuh-enroll+jwt Bearer for this password instead.")
     args = parser.parse_args()
     if args.self_test:
         return self_test(args.vectors)
+    if args.enroll_password is not None:
+        print(enroll_auth_headers(args.enroll_password)["Authorization"])
+        return 0
     print(auth_headers(args.agent_id, read_agent_key(args.agent_id, args.client_keys))["Authorization"])
     return 0
 

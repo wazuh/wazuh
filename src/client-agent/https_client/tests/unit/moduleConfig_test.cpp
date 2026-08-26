@@ -132,9 +132,9 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
 
 // #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
 // deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
-// the manager's auth middleware CMACs the literal wire request-target
-// (prefix included), so the prefix is folded into HttpRequestSpec::target
-// before signing instead (RetrySender::attemptOnce, EnrollClient::performOnce),
+// the manager routes on the literal wire request-target (prefix included;
+// the bearer does not bind it), so the prefix is folded into
+// HttpRequestSpec::target instead (RetrySender::attemptOnce, EnrollClient::performOnce),
 // not into the authority baseUrl() builds. See retrySender_test.cpp for the
 // URL/signature composition tests.
 

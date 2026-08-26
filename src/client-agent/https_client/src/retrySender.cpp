@@ -23,8 +23,8 @@ namespace
 {
     // Below this, a Date-vs-local gap is plausibly network latency or Date's
     // 1 s granularity, not real clock skew -- applying a correction for noise
-    // this small would only ever matter within the 300 s CMAC window this
-    // agent already tolerates, so it is not worth perturbing the token's iat over.
+    // this small would only ever matter within the 30 s clock skew the manager
+    // already tolerates, so it is not worth perturbing the token's iat over.
     // The clock-skew failures this targets (VM snapshot restore, dead CMOS
     // battery, no NTP) are minutes to hours off, far above this floor.
     constexpr std::int64_t kSkewNoiseFloorSeconds = 5;

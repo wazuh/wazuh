@@ -45,7 +45,7 @@ int w_https_client_submit_event(const char *frame, size_t length);
  *        owns backoff/retry one layer up.
  * @param body_json The already-built, already-validated JSON body
  *        (enrollment.c's job; never inspected here).
- * @param password Empty/NULL means no WazuhEnroll header (mTLS/open
+ * @param password Empty/NULL means no `wazuh-enroll+jwt` bearer (mTLS/open
  *        enrollment); a client cert (if <agent><ssl> has one) and a password
  *        may both apply at once, with no precedence between them.
  * @param result Filled with the HTTP outcome; http_code stays 0 when nothing

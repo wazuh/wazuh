@@ -11,102 +11,102 @@
 
 #include "enrollSigner.hpp"
 
+#include "jwt/jwtEnrollTokenVerifier.hpp"
+#include "jwt/jwtKeyDecoder.hpp"
+#include "jwt/testVectors.hpp"
+
 #include <gtest/gtest.h>
+
+#include <chrono>
+#include <set>
+#include <string>
 
 namespace
 {
-    std::string toHex(const std::vector<uint8_t>& bytes)
+    namespace tv = jwt_profile::v1::test_vectors::enroll;
+    using jwt_profile::v1::TimePolicy;
+    using jwt_profile::v1::VerifyError;
+    using jwt_profile::v1::enroll::JwtEnrollTokenVerifier;
+
+    const std::string BEARER_PREFIX = "Authorization: Bearer ";
+
+    std::chrono::system_clock::time_point at(std::time_t ts)
     {
-        static const char* digits = "0123456789abcdef";
-        std::string hex;
-        hex.reserve(2 * bytes.size());
-
-        for (const auto byte : bytes)
-        {
-            hex.push_back(digits[byte >> 4]);
-            hex.push_back(digits[byte & 0x0f]);
-        }
-
-        return hex;
+        return std::chrono::system_clock::time_point {std::chrono::seconds {ts}};
     }
 
-    // The #38438 "Wire examples / Known-answer vector" section, verified
-    // independently against the raw issue text (not retyped from memory) with
-    // Python's hmac/hashlib (HKDF) and the `cryptography` package (CMAC)
-    // before this test was written.
-    const std::string KAT_PASSWORD = "MyEnrollmentSecret123";
-    const std::string KAT_DERIVED_KEY_HEX =
-        "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e";
-    const std::string KAT_METHOD = "POST";
-    const std::string KAT_TARGET = "/enroll";
-    const std::time_t KAT_TIMESTAMP = 1739999999;
-    const std::string KAT_BODY =
-        R"({"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"})";
-    const std::string KAT_MAC_HEX = "dc07d78fc156a1944f4fb02b91da7d01";
+    std::string tokenOf(const EnrollSignedHeaders& headers)
+    {
+        EXPECT_EQ(0u, headers.authorization.rfind(BEARER_PREFIX, 0));
+        return headers.authorization.substr(BEARER_PREFIX.size());
+    }
 } // namespace
 
-TEST(EnrollSignerTest, DeriveKeyMatchesTheContractKnownAnswerVector)
+TEST(EnrollSignerTest, DeriveKeyMatchesTheFrozenKnownAnswerVector)
 {
-    const auto key = EnrollSigner::deriveKey(KAT_PASSWORD);
+    // The same HKDF the manager's PasswordKeySource runs (jwt/enrollKeyDerivation.hpp), pinned to
+    // the vector every implementation shares (jwt_vectors.json "enroll.hkdf", stdlib oracle).
+    const auto key = EnrollSigner::deriveKey(std::string {tv::kPassword});
     ASSERT_TRUE(key.has_value());
-    ASSERT_EQ(32u, key->size());
-    EXPECT_EQ(KAT_DERIVED_KEY_HEX, toHex(*key));
+    const auto expected = jwt_profile::v1::JwtKeyDecoder::decode(tv::kKeyHex);
+    ASSERT_TRUE(expected.has_value());
+    EXPECT_TRUE(*key == *expected);
 }
 
-TEST(EnrollSignerTest, SignMatchesTheContractKnownAnswerVectorEndToEnd)
+TEST(EnrollSignerTest, SignMintsABearerTheSharedVerifierAcceptsWithTheVectorKey)
 {
-    const auto headers = EnrollSigner::sign(
-                             KAT_PASSWORD, KAT_METHOD, KAT_TARGET,
-                             reinterpret_cast<const uint8_t*>(KAT_BODY.data()), KAT_BODY.size(), KAT_TIMESTAMP);
-
+    const auto headers = EnrollSigner::sign(std::string {tv::kPassword}, tv::kIat);
     ASSERT_TRUE(headers.has_value());
     EXPECT_EQ("protocol-version: 1", headers->protocolVersion);
-    EXPECT_EQ("Authorization: WazuhEnroll " + std::to_string(KAT_TIMESTAMP) + ":" + KAT_MAC_HEX,
-              headers->authorization);
+
+    const std::string token = tokenOf(*headers);
+    // Header segment identical to the frozen vector's (no kid, exact {alg, typ}); the payload
+    // only differs by the fresh jti.
+    const std::string vector {tv::kToken};
+    EXPECT_EQ(vector.substr(0, vector.find('.')), token.substr(0, token.find('.')));
+
+    const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tv::kKeyHex);
+    ASSERT_TRUE(key.has_value());
+    EXPECT_EQ(VerifyError::None, JwtEnrollTokenVerifier::verify(token, *key, TimePolicy {}, at(tv::kIat + 10)));
+    EXPECT_EQ(VerifyError::StaleToken, JwtEnrollTokenVerifier::verify(token, *key, TimePolicy {}, at(tv::kIat + 91)));
 }
 
-TEST(EnrollSignerTest, DeriveKeyIsDeterministic)
+TEST(EnrollSignerTest, WrongPasswordDoesNotVerify)
 {
-    const auto first = EnrollSigner::deriveKey(KAT_PASSWORD);
-    const auto second = EnrollSigner::deriveKey(KAT_PASSWORD);
-    ASSERT_TRUE(first.has_value());
-    ASSERT_TRUE(second.has_value());
-    EXPECT_EQ(*first, *second);
-}
-
-TEST(EnrollSignerTest, DifferentPasswordsDeriveDifferentKeys)
-{
-    const auto first = EnrollSigner::deriveKey("password-one");
-    const auto second = EnrollSigner::deriveKey("password-two");
-    ASSERT_TRUE(first.has_value());
-    ASSERT_TRUE(second.has_value());
-    EXPECT_NE(*first, *second);
-}
-
-TEST(EnrollSignerTest, DifferentTimestampChangesTheMac)
-{
-    const uint8_t body[] = "abc";
-    const auto first = EnrollSigner::sign(KAT_PASSWORD, "POST", "/enroll", body, 3, 1700000000);
-    const auto second = EnrollSigner::sign(KAT_PASSWORD, "POST", "/enroll", body, 3, 1700000001);
-    ASSERT_TRUE(first.has_value());
-    ASSERT_TRUE(second.has_value());
-    EXPECT_NE(first->authorization, second->authorization);
-}
-
-TEST(EnrollSignerTest, DifferentBodyChangesTheMac)
-{
-    const uint8_t bodyA[] = "abc";
-    const uint8_t bodyB[] = "xyz";
-    const auto first = EnrollSigner::sign(KAT_PASSWORD, "POST", "/enroll", bodyA, 3, 1700000000);
-    const auto second = EnrollSigner::sign(KAT_PASSWORD, "POST", "/enroll", bodyB, 3, 1700000000);
-    ASSERT_TRUE(first.has_value());
-    ASSERT_TRUE(second.has_value());
-    EXPECT_NE(first->authorization, second->authorization);
-}
-
-TEST(EnrollSignerTest, EmptyBodyStillSigns)
-{
-    const auto headers = EnrollSigner::sign(KAT_PASSWORD, "POST", "/enroll", nullptr, 0, 1700000000);
+    const auto headers = EnrollSigner::sign("WrongPassword", tv::kIat);
     ASSERT_TRUE(headers.has_value());
-    EXPECT_EQ("protocol-version: 1", headers->protocolVersion);
+    const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tv::kKeyHex);
+    ASSERT_TRUE(key.has_value());
+    EXPECT_EQ(VerifyError::InvalidSignature,
+              JwtEnrollTokenVerifier::verify(tokenOf(*headers), *key, TimePolicy {}, at(tv::kIat + 10)));
+}
+
+TEST(EnrollSignerTest, EveryAttemptGetsAFreshToken)
+{
+    std::set<std::string> tokens;
+    for (int i = 0; i < 20; ++i)
+    {
+        const auto headers = EnrollSigner::sign(std::string {tv::kPassword}, tv::kIat);
+        ASSERT_TRUE(headers.has_value());
+        tokens.insert(tokenOf(*headers));
+    }
+    EXPECT_EQ(20u, tokens.size());
+}
+
+TEST(EnrollSignerTest, TimestampDrivesIatAndExp)
+{
+    const auto first = EnrollSigner::sign(std::string {tv::kPassword}, 1700000000);
+    ASSERT_TRUE(first.has_value());
+    const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tv::kKeyHex);
+    ASSERT_TRUE(key.has_value());
+    // Valid inside the accepted window around its own timestamp, stale far outside it.
+    EXPECT_EQ(VerifyError::None, JwtEnrollTokenVerifier::verify(tokenOf(*first), *key, TimePolicy {}, at(1700000030)));
+    EXPECT_EQ(VerifyError::StaleToken,
+              JwtEnrollTokenVerifier::verify(tokenOf(*first), *key, TimePolicy {}, at(1700000200)));
+}
+
+TEST(EnrollSignerTest, EmptyPasswordYieldsNothing)
+{
+    EXPECT_FALSE(EnrollSigner::deriveKey("").has_value());
+    EXPECT_FALSE(EnrollSigner::sign("", 1700000000).has_value());
 }

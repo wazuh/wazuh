@@ -143,20 +143,19 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
     }
 
-    // #38492/#38491: fold the configured endpoint into the target before
-    // signing -- the manager's auth middleware CMACs the literal wire
-    // request-target (prefix included), same reasoning as
-    // RetrySender::attemptOnce.
+    // #38492/#38491: fold the configured endpoint into the target -- a routing
+    // matter only (the manager routes on the literal wire request-target); the
+    // bearer below does not bind the target, same as RetrySender::attemptOnce.
     const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");
 
     // Password mode only (#38465 design): mTLS presents its credential at
     // the TLS layer (CurlPerformer::applyClientCertificate, already wired
-    // through m_config), open mode sends nothing else. Signed over whatever
-    // bytes are actually going on the wire, compressed or not -- the CMAC
-    // must cover what the manager will actually receive.
+    // through m_config), open mode sends nothing else. The `wazuh-enroll+jwt`
+    // bearer binds time and a fresh jti, not the body: compressed or not, the
+    // wire bytes travel under TLS and the same token accompanies them.
     if (!password.empty())
     {
-        const auto signature = EnrollSigner::sign(password, "POST", target, bodyPtr, bodyLength, m_clock.wallSeconds());
+        const auto signature = EnrollSigner::sign(password, m_clock.wallSeconds());
 
         if (signature)
         {
@@ -164,7 +163,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
         else
         {
-            LOGFN_ERROR(m_logFn, "https_client: enrollment password signature could not be computed.");
+            LOGFN_ERROR(m_logFn, "https_client: enrollment bearer token could not be minted.");
         }
     }
 

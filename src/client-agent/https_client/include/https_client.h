@@ -22,7 +22,7 @@
  * ever throws into C. agentd links the module directly (see
  * src/client-agent/CMakeLists.txt).
  *
- * The transport contract implemented behind this ABI covers AES-CMAC request signing, the
+ * The transport contract implemented behind this ABI covers the `wazuh-agent+jwt` bearer, the
  * H/E stateless format, status codes, task delivery via /control Notify, and single-request
  * /stateful sessions.
  */
@@ -497,7 +497,7 @@ HC_EXPORTED int hc_get_state(const hc_handle* handle);
 typedef struct hc_enroll_request_t
 {
     char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
-    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no WazuhEnroll header
+    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no `wazuh-enroll+jwt` bearer
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).

@@ -50,14 +50,15 @@ def human_size(n):
     return f"{n / (1024 * 1024):.2f} MB"
 
 
-def hkdf_sha256(password, length=32):
-    """HKDF-SHA256(IKM=password, salt=32 zero bytes, info="WAZUH-ENROLL-CMAC-KEY"+0x01)
-    via the stdlib hmac/hashlib, independent of the C++ EnrollSigner it verifies
-    (#38438's known-answer vector was itself derived this way -- see
-    enrollSigner_test.cpp -- so this is the same trusted reference, not a
-    reimplementation guess)."""
+ENROLL_HKDF_INFO = b"WAZUH-ENROLL-JWT-KEY" + b"\x01"
+
+
+def hkdf_sha256(password, length=32, info=ENROLL_HKDF_INFO):
+    """HKDF-SHA256(IKM=password, salt=32 zero bytes, info="WAZUH-ENROLL-JWT-KEY"+0x01): the
+    wazuh-enroll+jwt key, via the stdlib hmac/hashlib, independent of the C++
+    enrollKeyDerivation.hpp it verifies (the frozen KAT in jwt_vectors.json "enroll.hkdf" was
+    itself derived this way -- see enrollSigner_test.cpp)."""
     salt = bytes(32)
-    info = b"WAZUH-ENROLL-CMAC-KEY" + b"\x01"
     prk = hmac.new(salt, password, hashlib.sha256).digest()
     okm = b""
     previous = b""
@@ -71,26 +72,13 @@ def hkdf_sha256(password, length=32):
 
 def zstd_decompress(data):
     """Decompress a zstd frame via the `zstd` CLI (independent of the agent's
-    own libzstd linkage, same reuse-a-real-CLI idiom as cmac_hex()). Returns
+    own libzstd linkage, reuse-a-real-CLI idiom). Returns
     the original bytes, or None if `data` isn't a valid zstd frame."""
     try:
         out = subprocess.run(["zstd", "-d", "-c"], input=data, capture_output=True, check=True)
         return out.stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-
-
-def cmac_hex(key_hex, message):
-    """AES-CMAC(key, message) as lowercase hex, via the openssl CLI. The
-    cipher follows the key length (16/24/32 bytes -> AES-128/192/256), the
-    same rule as the manager's client.keys resolver."""
-    cipher = {32: "AES-128-CBC", 48: "AES-192-CBC", 64: "AES-256-CBC"}[len(key_hex)]
-    out = subprocess.run(
-        ["openssl", "mac", "-macopt", f"cipher:{cipher}",
-         "-macopt", f"hexkey:{key_hex}", "CMAC"],
-        input=message, capture_output=True, check=True,
-    )
-    return out.stdout.decode().strip().lower()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -126,8 +114,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # #38465: empty (default) -> /enroll accepts any request carrying
     # protocol-version, no signature required (open mode). Non-empty ->
-    # /enroll additionally requires Authorization: WazuhEnroll <ts>:<mac>
-    # verified against this password via HKDF+CMAC. ENROLL_STATUS != 0 forces
+    # /enroll additionally requires Authorization: Bearer <wazuh-enroll+jwt>
+    # verified against the HKDF key of this password. ENROLL_STATUS != 0 forces
     # every /enroll response to that status with a generic error body, so the
     # C-side 400/401/403/409/500/503 mapping (w_enrollment_process_response)
     # can be driven on demand without five separate mocks.
@@ -282,7 +270,7 @@ class Handler(BaseHTTPRequestHandler):
         # /enroll predates any client.keys identity (that is the whole point:
         # it is how one gets minted) -- it cannot go through the generic
         # Bearer _verify() below, which requires an id the
-        # agent does not have yet. It carries its own WazuhEnroll scheme.
+        # agent does not have yet. It carries its own wazuh-enroll+jwt bearer.
         if target == "/enroll":
             self._handle_enroll(body)
             return
@@ -430,24 +418,47 @@ class Handler(BaseHTTPRequestHandler):
     def _verify_enroll(self, body):
         """Returns None on success, or an error string. Open mode (no
         ENROLL_PASSWORD configured) accepts any request with protocol-version
-        present; password mode additionally checks Authorization: WazuhEnroll
-        <ts>:<mac> via an independently-derived HKDF+CMAC (see hkdf_sha256)."""
+        present; password mode additionally checks Authorization: Bearer
+        <wazuh-enroll+jwt> -- header exactly {alg: HS256, typ: wazuh-enroll+jwt}
+        (no kid), claims exactly {exp, iat, jti, nbf}, HS256 with the HKDF key
+        of the password (see hkdf_sha256), same time rules as the agent bearer."""
+        del body  # The token does not cover the body (TLS does).
         if self.headers.get("protocol-version", "") != "1":
             return "missing/!=1 protocol-version"
         if not Handler.ENROLL_PASSWORD:
             return None
         auth = self.headers.get("Authorization", "")
-        if not auth.startswith("WazuhEnroll "):
-            return "missing WazuhEnroll Authorization header"
+        if not auth.startswith("Bearer "):
+            return "missing Bearer Authorization header"
+        parts = auth[len("Bearer "):].split(".")
+        if len(parts) != 3 or not all(parts):
+            return "malformed token"
+
+        def b64d(segment):
+            return base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4))
+
         try:
-            ts, mac = auth[len("WazuhEnroll "):].split(":", 1)
-        except ValueError:
-            return "malformed Authorization"
-        canonical = (b"WAZUH-ENROLL\n1\nPOST\n/enroll\n" + ts.encode() + b"\n" + body)
+            header = json.loads(b64d(parts[0]))
+            claims = json.loads(b64d(parts[1]))
+            signature = b64d(parts[2])
+        except (ValueError, UnicodeDecodeError):
+            return "malformed token segments"
+        if header != {"alg": "HS256", "typ": "wazuh-enroll+jwt"}:
+            return f"header is not exactly the enroll profile: {header}"
         key = hkdf_sha256(Handler.ENROLL_PASSWORD.encode())
-        expected = cmac_hex(key.hex(), canonical)
-        if expected != mac.lower():
-            return f"CMAC mismatch (got {mac[:12]}.., want {expected[:12]}..)"
+        expected = hmac.new(key, (parts[0] + "." + parts[1]).encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(expected, signature):
+            return "signature mismatch (wrong password?)"
+        if set(claims) != {"exp", "iat", "jti", "nbf"}:
+            return f"claims are not exactly the enroll profile: {sorted(claims)}"
+        if not all(isinstance(claims[k], int) for k in ("exp", "iat", "nbf")):
+            return "non-integer time claim"
+        now = int(time.time())
+        if claims["nbf"] != claims["iat"] or not 0 < claims["exp"] - claims["iat"] <= 60:
+            return "structural time rule broken"
+        if claims["iat"] > now + 30 or now > claims["exp"] + 30 or now - claims["iat"] > 90:
+            return "token outside the accepted time window"
+        log(f"     /enroll     bearer ok iat={claims['iat']} jti={claims['jti'][:10]}..")
         return None
 
     def _handle_enroll(self, body):
@@ -581,9 +592,9 @@ def main():
                         help="Require a client certificate and verify it against this CA "
                              "(mutual TLS). Without it, client certs are not requested.")
     parser.add_argument("--enroll-password", default="",
-                        help="#38465: require this password on POST /enroll (Authorization: "
-                             "WazuhEnroll <ts>:<mac>, verified via HKDF+CMAC). Empty (default): "
-                             "open mode, no signature required.")
+                        help="#38465/#38582: require this password on POST /enroll (Authorization: "
+                             "Bearer <wazuh-enroll+jwt>, verified with the HKDF key of the password). "
+                             "Empty (default): open mode, no credential required.")
     parser.add_argument("--enroll-status", type=int, default=0,
                         help="#38465: force every POST /enroll response to this HTTP status "
                              "(e.g. 403/409/500/503), to demo the agent-side error mapping "
