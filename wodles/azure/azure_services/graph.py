@@ -10,6 +10,7 @@ import sys
 from hashlib import md5
 from json import dumps
 from os.path import abspath, dirname
+from urllib.parse import urlparse
 
 from dateutil.parser import parse
 from requests import HTTPError, get
@@ -217,6 +218,10 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
         next_url = response_json.get('@odata.nextLink')
 
         if next_url:
+            parsed_next_url = urlparse(next_url)
+            if parsed_next_url.scheme != 'https' or parsed_next_url.netloc != urlparse(URL_GRAPH).netloc:
+                logging.error(f'Graph: Rejecting pagination URL outside "{URL_GRAPH}": {next_url}')
+                return
             logging.info(f"Graph: Requesting data from next page")
             logging.debug(f"Iterating to next url: {next_url}")
             get_graph_events(
