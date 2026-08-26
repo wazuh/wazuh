@@ -27,7 +27,9 @@ target_link_libraries(
   ext_zstd
   # jwtSigner_test.cpp / enrollSigner_test.cpp check the minted bearers with the
   # shared verifiers (shared_modules/utils/jwt/, header-only over jwt-cpp +
-  # rapidjson + OpenSSL).
+  # rapidjson + OpenSSL). ext_jwt_cpp brings the static libcrypto.a (and, on
+  # winagent, its crypt32/ws2_32 system deps): unlike libhttps_client.dll this
+  # .exe does not link wazuhext, so OpenSSL resolves from the archive here.
   ext_jwt_cpp
   ext_rapidjson
   pthread)

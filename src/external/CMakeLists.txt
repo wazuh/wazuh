@@ -1432,6 +1432,13 @@ if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
                                        ${EXTERNAL_DIR})
   target_compile_definitions(ext_jwt_cpp INTERFACE JWT_DISABLE_PICOJSON)
   target_link_libraries(ext_jwt_cpp INTERFACE crypto)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    # `crypto` is the static libcrypto.a: on MinGW its winstore/bio_sock objects import
+    # crypt32 (Cert*) and ws2_32 (WSA*, sockets), so any consumer that resolves OpenSSL
+    # from this archive rather than from the wazuhext DLL (e.g. https_client_unit_test.exe)
+    # needs both -- same pairing as every other winagent target that links `crypto`.
+    target_link_libraries(ext_jwt_cpp INTERFACE crypt32 ws2_32)
+  endif()
 endif()
 
 # rapidjson (header-only; in the base EXTERNAL_RES list since #38582: the shared wazuh-agent+jwt
