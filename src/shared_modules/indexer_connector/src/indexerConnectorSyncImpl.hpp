@@ -848,6 +848,12 @@ public:
         }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
+
+        // 0 = no background flush thread; the caller owns every flush.
+        if (m_flushInterval == 0)
+        {
+            return;
+        }
         m_bulkThread = std::thread(
             [this]()
             {

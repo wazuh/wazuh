@@ -167,7 +167,8 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
-     *               the health monitor this constructor builds.
+     *               the health monitor this constructor builds. `flush_interval_seconds` = 0 starts
+     *               NO background flush thread at all: the caller owns every flush().
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
@@ -185,7 +186,9 @@ public:
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
      *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`,
-     *               `request_timeout_seconds`). `monitoring_interval_seconds` is IGNORED here --
+     *               `request_timeout_seconds`). `flush_interval_seconds` = 0 starts NO background
+     *               flush thread at all: the caller owns every flush(). `monitoring_interval_seconds`
+     *               is IGNORED here --
      *               the shared session's monitor was already built with the session's own value --
      *               just like the `ssl.*` and credential keys, which the session also supplies. Its
      *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
