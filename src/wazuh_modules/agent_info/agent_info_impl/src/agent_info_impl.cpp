@@ -901,7 +901,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            logDbSyncUnavailable("DBSync not available for table " + table);
             return false;
         }
 
@@ -2171,7 +2171,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                logDbSyncUnavailable("Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -2208,7 +2208,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                logDbSyncUnavailable("Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2290,7 +2290,7 @@ bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot check/record task " + taskId + ": DBSync not available");
+        logDbSyncUnavailable("Cannot check/record task " + taskId + ": DBSync not available");
         return false;
     }
 
@@ -2500,7 +2500,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 
         if (!m_dBSync)
         {
-            m_logFunction(LOG_WARNING, "Cannot observe VD feed offset: DBSync not available");
+            logDbSyncUnavailable("Cannot observe VD feed offset: DBSync not available");
             return result;
         }
 
@@ -2564,7 +2564,7 @@ bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot clear VD rescan pending: DBSync not available");
+        logDbSyncUnavailable("Cannot clear VD rescan pending: DBSync not available");
         return false;
     }
 
@@ -2700,7 +2700,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                logDbSyncUnavailable("Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
