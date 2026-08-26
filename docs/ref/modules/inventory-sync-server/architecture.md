@@ -13,7 +13,7 @@ flowchart TB
     subgraph Agent["Agent"]
         MOD[syscollector / FIM / SCA / agent-info] --> CLI[FullSession client]
     end
-    CLI -->|"POST /stateful (HTTPS + per-agent AES-CMAC)"| REME
+    CLI -->|"POST /stateful (HTTPS + per-agent JWT bearer)"| REME
 
     subgraph Manager
         subgraph remoted["wazuh-manager-remoted (HTTPS module)"]
@@ -362,5 +362,5 @@ answers to) lives in the module's in-tree developer README,
 | 11 | **A short scan-lane queue** with immediate `503` on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |
 | 12 | **The scanner boundary is a neutral view interface** — no FlatBuffers types cross between the modules, in either direction. | The schema can evolve without recompiling the scanner; the adapter is one translation unit. |
 | 13 | **Agent deletion is an endpoint with a visible result**, deferred to the agent's shard. | The caller can retry a failed deletion instead of losing it silently, and deletion orders correctly against the agent's in-flight sessions. |
-| 14 | **Ingress via remoted's authenticated `POST /stateful`** (per-agent AES-CMAC), with the authenticated id cross-checked against the session's claimed identity (`403` on mismatch). | Identity is enforced at the edge AND at the application layer; the body stays opaque to remoted. |
+| 14 | **Ingress via remoted's authenticated `POST /stateful`** (per-agent `wazuh-agent+jwt` bearer), with the authenticated id cross-checked against the session's claimed identity (`403` on mismatch). | Identity is enforced at the edge AND at the application layer; the body stays opaque to remoted. |
 | 15 | **The credential keystore socket lives in its own module** (`keystore_server`). | The manager API's indexer credentials do not depend on the ingestion module's lifecycle. |

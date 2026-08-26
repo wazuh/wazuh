@@ -148,13 +148,13 @@ similar spelling: nothing on disk is looked up under it.
   trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
   configuration error (`wazuh-manager-remoted -t` reports it).
-- **Note:** the request signature (the AES-CMAC scheme, and `/enroll`'s own CMAC) covers the
-  request target exactly as sent — prefix included — so agents must send **and sign** the full
-  prefixed path, and any proxy in between must forward the path untouched (rewriting it breaks
-  the signature). A prefix mismatch between agent and manager surfaces as `404`. The prefix
+- **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
+  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
+  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
   counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
   local admin socket is not. See
-  [HTTPS Events API](https-events-api.md#authentication-aes-cmac).
+  [HTTPS Events API](https-events-api.md#authentication-jwt-bearer).
 
 ### https.dual_stack
 
@@ -562,7 +562,7 @@ Number of I/O threads (accept + read/write) for the HTTPS agent server.
 Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
 
 - **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
-  work can block on AES-CMAC verification and `client.keys` file I/O)
+  work can block on token verification and `client.keys` file I/O)
 - **Allowed values:** Integer from `0` to `256`
 - **Note:** Size it from the end-to-end latency histograms (`remoted.http.stateless.latency`,
   `remoted.http.stateful.latency`) in

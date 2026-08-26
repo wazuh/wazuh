@@ -14,18 +14,19 @@ info:
 
     All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` MUST carry the
     `protocol-version` header. Every route except `GET /` and `POST /enroll` is
-    authenticated with AES-CMAC and the agent's pre-shared AES key; the key is never transmitted.
-    The MAC covers the protocol version, HTTP method, request target (the full path exactly as
-    sent — global endpoint prefix included), agent id, timestamp and the exact request body as
-    sent on the wire (the compressed bytes, when `Content-Encoding: zstd` is used).
+    authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
+    32-byte key its 64-hex `client.keys` secret decodes to; the key is never transmitted. The token
+    binds the agent's identity (`kid`/`sub`/`iss`) and its freshness (`iat`/`nbf`/`exp`, 60 s, fresh
+    `jti` per request) — not the method, the request target or the body, which TLS protects.
 
     Every path below is the endpoint's logical path, served under the configured
     `<remote><https><global_prefix>` (the `globalPrefix` server variable). With a prefix in
     effect the unprefixed paths answer `404`, and any proxy in between must forward the path
-    untouched: rewriting it breaks the request signature.
+    untouched: a rewritten path reaches no route and is answered `404` (the token does not bind it).
 
-    `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses a distinct
-    `WazuhEnroll` scheme (or no credential at all, depending on the manager's configuration).
+    `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses the sibling
+    `wazuh-enroll+jwt` bearer keyed by the enrollment password (or no credential at all, depending
+    on the manager's configuration).
 
     Statuses this API never returns: `429 Too Many Requests` and `426 Upgrade Required`. Capacity is
     shed with `503`. An agent that receives either has been answered by an intermediary, not by
@@ -100,26 +101,22 @@ paths:
 
         ```text
         protocol-version: 1
-        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        Authorization: Bearer <base64url(header)>.<base64url(claims)>.<base64url(signature)>
         ```
 
-        `mac` is the complete AES-CMAC (16 bytes, 32 lowercase hex chars) computed over the
-        following byte sequence (each line break is a single LF, `0x0A`):
-
-        ```text
-        WAZUH-REQUEST\n
-        <protocol-version>\n
-        <uppercase-method>\n
-        <request-target>\n
-        <agent-id>\n
-        <timestamp>\n
-        <request-body>
-        ```
+        The token follows the closed `wazuh-agent+jwt` profile: header exactly
+        `{"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}`, claims exactly `exp`, `iat`,
+        `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes, base64url), `nbf` (= `iat`) and
+        `sub` (= `<agent-id>`), `exp - iat = 60`, base64url without padding, at most 4096 bytes;
+        HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to. A token is
+        accepted while `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default) and is
+        never accepted more than `jwt_clock_skew` seconds before its `iat`. Anything outside the
+        profile (an extra member, a padded segment, a duplicate key, a string where an integer is
+        expected) is an invalid token.
 
         The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
-        reordering, no normalization). The body is authenticated using its exact bytes -- the exact
-        bytes as sent on the wire, i.e. the **compressed** bytes if `Content-Encoding: zstd` is set.
-        The timestamp must be within 300 s in the past and 30 s in the future.
+        reordering, no normalization) and is matched by the router as is; the token does not cover it,
+        nor the body.
 
         The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
         only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
@@ -146,9 +143,9 @@ paths:
               type: string
               minLength: 1
               description: |
-                Request payload. Authentication is independent of Content-Type; the exact wire bytes
-                (compressed, if `Content-Encoding: zstd` is set) are included in the AES-CMAC
-                calculation. The decompressed H/E batch is forwarded verbatim to the engine.
+                Request payload. Authentication is independent of Content-Type and of the body: the
+                bearer token does not cover the wire bytes (TLS protects them, compressed or not).
+                The decompressed H/E batch is forwarded verbatim to the engine.
             examples:
               singleLineEvents:
                 summary: H/E batch (two events)
@@ -771,11 +768,11 @@ paths:
         instead of the legacy `authd` listener on port 1515. It is a **bridge, not a second
         implementation**: `authd` keeps all enrollment business logic, reached over its local socket.
 
-        It does **not** use the agent AES-CMAC scheme -- an enrolling agent has no key yet. Two
-        credential checks apply independently, and an operator can require either, both or neither:
+        It does **not** use the agent's `wazuh-agent+jwt` bearer -- an enrolling agent has no key yet.
+        Two credential checks apply independently, and an operator can require either, both or neither:
         a TLS client certificate (a property of the listener's `verification_mode`, validated during
         the handshake before the request reaches this endpoint) and a password (required whenever
-        `authd`'s `use_password` is enabled, presented as the `WazuhEnroll` scheme). With neither
+        `authd`'s `use_password` is enabled, presented as the `wazuh-enroll+jwt` bearer). With neither
         configured, no credential is needed -- matching `authd`'s own behavior on port 1515 in that
         configuration.
 
@@ -861,8 +858,8 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "413":
           description: |
-            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the CMAC runs,
-            in every mode including the credential-less one.
+            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the bearer is
+            examined, in every mode including the credential-less one.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
@@ -887,49 +884,52 @@ components:
   securitySchemes:
     WazuhAuthentication:
       type: http
-      scheme: Wazuh
+      scheme: bearer
+      bearerFormat: wazuh-agent+jwt
       description: |
-        AES-CMAC authentication with a pre-shared per-agent AES key.
+        Bearer authentication with a self-signed JWT of the closed `wazuh-agent+jwt` profile
+        (RFC 7515 compact serialization, base64url without padding, at most 4096 bytes):
 
         ```text
-        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        Authorization: Bearer <header>.<claims>.<signature>
         ```
 
-        - `agent-id`: digits only -- an agent id is numeric by design, and anything else is rejected
-          at parse time before the keystore is consulted
-        - `timestamp`: UNIX seconds (window: -300 s .. +30 s)
-        - `mac`: 16-byte AES-CMAC, 32 lowercase hex characters
+        - header: exactly `{"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}` -- `kid` is
+          the canonical zero-padded agent id (digits only; the key is selected by it from
+          `client.keys` and is never sent)
+        - claims: exactly `exp`, `iat`, `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes,
+          base64url, fresh per request), `nbf` (= `iat`), `sub` (= `<agent-id>`); `exp - iat = 60`
+        - signature: HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to
+        - acceptance window: `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default,
+          `remoted.jwt_max_age` / `remoted.jwt_clock_skew`), never more than `jwt_clock_skew` s
+          before `iat`
 
-        The key is selected by `agent-id` from `client.keys` and is never sent in the request.
+        The token authenticates identity and freshness only: method, target and body are not signed
+        (TLS protects them). Every credential failure is the same `401` with
+        `WWW-Authenticate: Bearer`.
 
     WazuhEnrollAuthentication:
       type: http
-      scheme: WazuhEnroll
+      scheme: bearer
+      bearerFormat: wazuh-enroll+jwt
       description: |
-        Enrollment-only credential, used by `POST /enroll` because an enrolling agent has no
-        `client.keys` entry to sign with.
+        Enrollment-only bearer, used by `POST /enroll` because an enrolling agent has no
+        `client.keys` entry to sign with. Same core as `wazuh-agent+jwt`, different domain:
 
         ```text
-        Authorization: WazuhEnroll <timestamp>:<mac>
+        Authorization: Bearer <header>.<claims>.<signature>
         ```
 
-        - `timestamp`: UNIX seconds, same window as the agent scheme (-60 s .. +30 s), tunable with
-          the same `remoted.jwt_max_age` / `remoted.jwt_clock_skew`
-        - `mac`: 32 lowercase hex characters, AES-256-CMAC keyed by a 32-byte key derived from
-          `authd`'s enrollment password (`etc/authd.pass`) via HKDF-SHA256 -- empty salt,
-          `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`. The password bytes are never used directly.
+        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` -- no `kid`, there is one
+          shared key
+        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub`, there is no agent
+          identity yet; `exp - iat = 60`; same acceptance window and the same
+          `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
+        - key: `HKDF-SHA256(password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01,
+          32 bytes)` derived from `authd`'s enrollment password (`etc/authd.pass`). The password
+          bytes are never used directly.
 
-        The signed canonical sequence omits the agent-id field the agent scheme carries:
-
-        ```text
-        WAZUH-ENROLL\n
-        1\n
-        <uppercase-method>\n
-        <request-target>\n
-        <timestamp>\n
-        <request-body>
-        ```
-
+        A token of either profile presented to the other's endpoint is rejected on its header.
         Required only when `authd`'s `use_password` is enabled. A missing, unreadable or invalid
         password file fails **closed**: every request is rejected, never treated as if no password
         were required. When neither a password nor a client certificate is configured, `/enroll`
@@ -940,8 +940,8 @@ components:
       description: |
         Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
         header, an unknown agent, an unusable key, a peer address outside the one authorized for the
-        agent in `client.keys`, an out-of-window timestamp and an invalid MAC all return the same
-        response, so the specific reason is not exposed.
+        agent in `client.keys`, a malformed token, a stale token and an invalid signature all return
+        the same response (with `WWW-Authenticate: Bearer`), so the specific reason is not exposed.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }

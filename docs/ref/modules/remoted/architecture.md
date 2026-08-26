@@ -12,7 +12,7 @@ authentication, their threading, nor their code:
 | --- | --- | --- |
 | Port | `1517` | `1514` |
 | Transport | TLS 1.3 over TCP | TCP or UDP, AES-encrypted payloads |
-| Authentication | per-request AES-CMAC over the agent's pre-shared key | AES session key derived from `client.keys` |
+| Authentication | per-request `wazuh-agent+jwt` bearer token (HS256) self-signed with the agent's pre-shared key | AES session key derived from `client.keys` |
 | Direction | agent-initiated requests only; work is handed back in responses | persistent connection, manager can push |
 | Enabled | always | only when `<remote><legacy>` is present and enabled |
 | Serves | 5.x agents | 4.x agents |
@@ -33,7 +33,7 @@ flowchart LR
     subgraph MGR["Wazuh Manager — wazuh-manager-remoted"]
         direction TB
         subgraph HTTPS["HTTPS server (C++, remoted_module) — :1517"]
-            AUTH["Auth middleware<br/>AES-CMAC + registered address"]
+            AUTH["Auth middleware<br/>JWT bearer + registered address"]
             EP["Endpoints<br/>enroll · stateless · stateful · control<br/>download · stats · config · scan/vd"]
             BUD["In-flight byte budget<br/>+ deferred-work limiter"]
         end
@@ -84,10 +84,11 @@ when it silently is not.
 
 - **Transport** — RESTinio + OpenSSL, behind a transport-agnostic interface, so the HTTP library can
   be swapped without touching a single endpoint. Default bind `127.0.0.1:1517`.
-- **Auth middleware** — framework-agnostic AES-CMAC verification: canonical request construction,
-  incremental MAC over the exact wire bytes, timestamp window, constant-time comparison, and the
-  registered-address check against the agent's `ip` column in `client.keys` (the same restriction the
-  legacy listener applies). It streams the MAC and never buffers the body. The keystore hot-reloads
+- **Auth middleware** — framework-agnostic verification of the `wazuh-agent+jwt` bearer: compact
+  grammar, exact header/claim sets, HS256 with the agent's key (constant-time comparison), time rules,
+  identity, and the registered-address check against the agent's `ip` column in `client.keys` (the
+  same restriction the legacy listener applies). It authenticates from the headers alone — the body
+  is not part of the token — so nothing is decoded on behalf of an unauthenticated peer. The keystore hot-reloads
   on `inotify` plus a periodic poll, so an agent enrolled or removed after startup is picked up
   without a restart.
 - **Body decoding** — one cross-cutting step configured once for every authenticated route, so none

@@ -54,7 +54,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 ## Overview
 
 1. An agent POSTs a whole session to `wazuh-manager-remoted` over authenticated HTTPS
-   (`POST /stateful`, AES-CMAC per agent).
+   (`POST /stateful`, a `wazuh-agent+jwt` bearer per agent).
 2. Remoted forwards the FlatBuffer verbatim to this module's Unix socket, adding the authenticated
    agent id as the `X-Wazuh-Agent-Id` header.
 3. This module verifies the buffer, cross-checks the session's identity against that header (`403`

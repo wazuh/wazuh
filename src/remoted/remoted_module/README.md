@@ -20,8 +20,8 @@ remoted_module/
 ├── src/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
-│   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
-│   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF-CMAC key, see Agent enrollment below
+│   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
+│   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF key of wazuh-enroll+jwt, see Agent enrollment below
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
@@ -79,8 +79,8 @@ src/http_server/
   (`<remote><https><global_prefix>`; `""` == `/` == no prefix). With a prefix in effect the
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
-  auth layer signs the raw (prefixed) target, so agents send and sign the full prefixed path and
-  proxies must forward it untouched. Canonicalization lives in one place
+  router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
+  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Canonicalization lives in one place
   (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
   a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
@@ -138,7 +138,7 @@ src/http_server/
 - **Single-copy payload + early release:** the payload is copied exactly **once** — into the shared
   `RequestContext`. RESTinio's original buffer is freed on the I/O thread right after (the responder
   is a pre-created `response_builder` that no longer holds the request handle), the auth middleware
-  streams the AES-CMAC **without buffering** the body, and `AuthenticatedRequest::payload` is a
+  authenticates from the headers alone (the body is not part of the token), and `AuthenticatedRequest::payload` is a
   zero-copy `string_view` into that single copy (kept alive by a keep-alive to the context). A
   handler can therefore **forward the payload, release it + its budget, and still reply later**:
   `payload.release()` (or dropping the request) drops the buffer + reservation while the responder
@@ -219,8 +219,8 @@ src/endpoints/
   responder) once it has been forwarded — see *Single-copy payload* above.
 - **`AuthGateway`** owns one `AuthMiddleware` and exposes
   `addAuthenticatedRoute(IHttpServer&, Method, path, AuthenticatedHandler)`. It registers a raw
-  async route whose worker-thread body runs the full validation (`beginSession → update → finish`,
-  always synchronous — AES-CMAC over CPU, off the I/O threads), maps any `AuthError` through
+  async route whose worker-thread body runs the full validation (`AuthMiddleware::authenticate()`,
+  always synchronous — HMAC over CPU, off the I/O threads), maps any `AuthError` through
   `errorResponseFor()` (which wraps `publicErrorFor()`) to the client status/message on failure, and
   on success calls the handler with the verified `AuthenticatedRequest` and the responder. It is
   **authentication only**: body decoding is an `IBodyDecoder` handed to its constructor, so the gateway
@@ -756,11 +756,11 @@ sequenceDiagram
     Ag->>EP: POST /enroll {"name":...,"version":...,"groups":...}
     Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
     Note over EP: If the listener requires a client cert, TLS already rejected the<br/>connection before this request could ever arrive here
-    EP->>EA: authenticate(authorizationHeader, method, target, body, now)
+    EP->>EA: authenticate(protocolVersion, authorization, bodySize, now)
     alt requirePassword
         EA->>PK: currentKey()
-        PK-->>EA: HKDF-derived AES key (or nullopt)
-        Note over EA: recompute CMAC over WAZUH-ENROLL canonical string
+        PK-->>EA: HKDF-derived HS256 key (or nullopt)
+        Note over EA: verify the wazuh-enroll+jwt bearer (JwtEnrollTokenVerifier)
     else not requirePassword
         Note over EA: always-pass -- nothing left for THIS class to check
     end
@@ -787,63 +787,56 @@ each other**:
   authd's own `agent_ca`/`ssl_verify_host` mode.
 - **Password (`EnrollmentAuthConfig::requirePassword`)** — set whenever authd's `use_password`
   flag is on, regardless of whether the listener also requires a client certificate. When set, the
-  request must carry `Authorization: WazuhEnroll <unix-ts>:<mac>`
-  (`<mac>` = 32 lowercase hex chars, AES-256-CMAC = 16 bytes), verified against the canonical string:
+  request must carry `Authorization: Bearer <wazuh-enroll+jwt>`: a JWT of the closed enroll profile
+  (`shared_modules/utils/jwt/jwtEnrollProfileV1.hpp`) — header exactly `{alg: HS256, typ:
+  wazuh-enroll+jwt}` (no `kid`, one shared key), claims exactly `{exp, iat, jti, nbf}` (no
+  `iss`/`sub`, no identity yet), `exp - iat = 60`, verified by the shared
+  `JwtEnrollTokenVerifier` with the `TimePolicy` every route reads
+  (`remoted.jwt_max_age` / `remoted.jwt_clock_skew`).
 
-  ```
-  "WAZUH-ENROLL\n" + protocolVersion + "\n" + METHOD + "\n" + requestTarget + "\n" + timestamp + "\n" + <raw wire body bytes>
-  ```
+  `EnrollmentAuthenticator::authenticate()` checks the `protocol-version` header first — before the
+  body-size cap and before any credential, in **every** mode including the credential-less one — and
+  rejects anything other than `remoted::auth::kSupportedProtocolVersion` with
+  `MissingProtocolVersion` / `UnsupportedProtocolVersion` (both `400`), the same errors
+  `AuthMiddleware::authenticate()` raises at its own step 1.
 
-  `protocolVersion` is the **validated `protocol-version` header**, not a literal.
-  `EnrollmentAuthenticator::authenticate()` checks that header first — before the body-size cap and
-  before any credential, in **every** mode including the credential-less one — and rejects anything
-  other than `remoted::auth::kSupportedProtocolVersion` with `MissingProtocolVersion` /
-  `UnsupportedProtocolVersion` (both `400`), the same errors `AuthMiddleware::beginSession()` raises
-  at its own step 1. Feeding the header's value into the MAC rather than a constant is what keeps
-  the two the same field by construction: with a literal, `/enroll` verified against `"1"` no matter
-  what the request declared, so a version mismatch surfaced as an opaque `401` MAC failure — and, in
-  the credential-less mode, was not noticed at all.
+  Deliberately the same core as the agent<->manager `wazuh-agent+jwt` bearer used everywhere else
+  in this module — same compact grammar, HS256, time rules and `AuthError` taxonomy (shared
+  `jwtCompactGrammar.hpp`) — with a different `typ` and no identity claims, since an enrolling
+  agent doesn't have one. A token of either profile presented to the other's verifier fails on its
+  exact header set before the signature is even considered, so the two can never be confused.
 
-  Deliberately shaped like the existing `Wazuh <agent-id>:<ts>:<mac>` scheme used everywhere else in
-  this module — same freshness windows (300 s max age, 30 s max future skew), same incremental-CMAC
-  construction over the *wire* bytes, same `AuthError` taxonomy — minus the `agent-id` segment, since
-  an enrolling agent doesn't have one. A distinct scheme name (`WazuhEnroll` vs `Wazuh`) means the two
-  can never be confused by a parser.
+  The signing key is not the password itself: `PasswordKeySource` derives a 32-byte key from it
+  with the shared `enrollKeyDerivation.hpp` — **HKDF-SHA256**, salt 32 × 0x00,
+  `info = "WAZUH-ENROLL-JWT-KEY\x01"` — the single construction the agent's `EnrollSigner` runs
+  too, so the two cannot drift. HKDF is deterministic and salt-free on purpose (any implementation
+  reproduces it with a handful of standard-library calls); the version byte in `info` reserves room
+  to change the construction later without ambiguity, and the label separates this key from the
+  retired AES-CMAC key of the same password. A memory-hard KDF would add nothing here — the derived
+  key is never persisted, so the offline-guessing surface already matches authd's own
+  plaintext-password-over-TLS on 1515.
 
-  The signing key is not the password itself: `PasswordKeySource` derives a 32-byte AES key from it
-  via **HKDF-SHA256** (empty salt, `info = "WAZUH-ENROLL-CMAC-KEY\x01"`), because `Cmac` needs an
-  exact 16/24/32-byte key and a password is arbitrary length. HKDF is deterministic and salt-free on
-  purpose, so a future agent-side implementation can reproduce it in a handful of OpenSSL calls; the
-  version byte in `info` reserves room to change the construction later without ambiguity. A memory-
-  hard KDF would add nothing here — the derived key is never persisted, so the offline-guessing
-  surface already matches authd's own plaintext-password-over-TLS on 1515.
-
-  **Worked, verified example** (a real computed vector, not just an illustrative shape — useful as a
-  cross-implementation known-answer test for the agent team):
+  **Frozen known-answer vector** (shared by every implementation — `test_vectors::enroll` in
+  `shared_modules/utils/jwt/testVectors.hpp`, mirrored under `"enroll"` in
+  `tools/manager_benchmark/tool_simulator/internal/wire/testdata/jwt_vectors.json`, computed with
+  Python's standard library as an independent oracle):
   - Password: `MyEnrollmentSecret123`
-  - Canonical string:
-    ```
-    WAZUH-ENROLL
-    1
-    POST
-    /enroll
-    1739999999
-    {"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"}
-    ```
-  - HKDF-SHA256 derived key: `2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e`
-  - AES-256-CBC-CMAC of the canonical string: `dc07d78fc156a1944f4fb02b91da7d01`
-  - Resulting header: `Authorization: WazuhEnroll 1739999999:dc07d78fc156a1944f4fb02b91da7d01`
+  - HKDF-SHA256 derived key: `eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6`
+  - Header / claims (`iat` 1700000000, `jti` from bytes `00..0f`):
+    `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` /
+    `{"exp":1700000060,"iat":1700000000,"jti":"AAECAwQFBgcICQoLDA0ODw","nbf":1700000000}`
+  - Token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o`
 
-  (This vector is confirmed by three independent implementations: `PasswordKeySource`'s actual
-  C++/OpenSSL `EVP_KDF` code — see `passwordKeySource_test.cpp`'s
-  `HkdfMatchesTheVerifiedKnownAnswerVector` — Python's stdlib `hashlib`/`hmac` computing RFC 5869
-  HKDF-SHA256 from scratch, and the Python `cryptography` library's AES-CMAC. An earlier version of
-  this vector, computed via the `openssl kdf` CLI tool, did not match and has been corrected.)
+  (Pinned on the C++ side by `enrollKeyDerivation_test.cpp` / `jwtEnrollSignVerify_test.cpp` /
+  `passwordKeySource_test.cpp`, on the agent by `enrollSigner_test.cpp`, and in Python by
+  `wire_jwt.py --self-test`. The vector also records the retired CMAC key of the same password,
+  `2ea29504…5a9e`, as a negative: the new `info` must not reproduce it.)
 
-  There is no per-request nonce: a captured request could in principle be replayed inside its 300 s
-  window, bounded in practice by authd's own duplicate-name/IP rejection (unless force-replace is
-  configured to permit it). Accepted for v1 — the same threat model the existing agent CMAC scheme
-  already carries, with TLS protecting the transport — not something a nonce cache closes now.
+  The token does not cover the request body (TLS protects it), and there is no replay store: a
+  captured token could be replayed inside its window (`jwt_max_age + jwt_clock_skew`, 90 s by
+  default), bounded in practice by authd's own duplicate-name/IP rejection (unless force-replace is
+  configured to permit it). Accepted for v1 — the same threat model the agent bearer carries, with
+  TLS protecting the transport; `jti` lets a replay cache be added later without changing the wire.
 
 When `requirePassword` is false — whether because the listener requires a client certificate
 instead, or requires nothing at all — `EnrollmentAuthenticator` runs an always-pass check with no
@@ -874,7 +867,7 @@ worker only reads it, exactly as authd's own `run_authpass_watcher` does.
 
 #### `PasswordKeySource` (`auth/passwordKeySource.hpp/.cpp`)
 
-Turns the authd password file into a CMAC-usable key, hot-reloaded without a restart. Mirrors
+Turns the authd password file into the `wazuh-enroll+jwt` HS256 key (shared HKDF), hot-reloaded without a restart. Mirrors
 `Keystore`'s watcher exactly (inotify + a poll fallback + content-hash change detection, so a rewrite
 landing mid-read can never be adopted torn) — the two files have the same operational shape, an
 operator-managed secret a running process must notice without a bounce. Parsing must byte-match
@@ -888,14 +881,15 @@ request.
 Implements the Password gate above, and nothing about client certificates at all — that's the TLS
 listener's exclusive concern, checked before any handler runs, which is exactly why this class has
 no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
-`maxRequestAgeSeconds`/`maxFutureSkewSeconds`/`maxBodySize` (the freshness window and body-size cap,
-sourced from the SAME `jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal
-options the agent<->manager scheme reads, so the two never silently disagree). The body-size check
-runs first and unconditionally — in Open mode too — so an unauthenticated peer can never make this
-endpoint hash an arbitrarily large body before being rejected. Reuses `Cmac`, the timestamp/hex
-parsing, and the `AuthError` taxonomy from `auth/authTypes.hpp`, so a bad signature, a stale or
-future timestamp, and an oversized body all collapse through the same `publicErrorFor()` →
-`401`/`413` path every other route already uses. Because `AuthGateway` bakes the `client.keys`
+`timePolicy`/`maxBodySize` (the accepted token age + skew and the body-size cap, sourced from the
+SAME `jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal options the agent<->manager
+scheme reads, so the two never silently disagree). The body-size check runs first and
+unconditionally — in Open mode too — so an unauthenticated peer can never make this endpoint hold
+an arbitrarily large body before being rejected; the token itself is verified from the header
+alone. Reuses the shared `JwtEnrollTokenVerifier`, `toAuthError()` and the `AuthError` taxonomy
+from `auth/authTypes.hpp`, so a bad signature, a stale token, a malformed token and an oversized
+body all collapse through the same `publicErrorFor()` → `401`/`413` path every other route already
+uses — `401`s carry `WWW-Authenticate: Bearer` here too. Because `AuthGateway` bakes the `client.keys`
 `Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
 `AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
 unauthenticated `GET /` liveness probe already uses) and drives this authenticator itself, with
@@ -1236,9 +1230,9 @@ supported** — see the benchmark note in
 [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd));
 anything else, including `zstd` when `remoted.http_content_encoding_enabled` is off, is `415`. A body
 that isn't a valid/complete zstd frame is `400`.
-- **Runs strictly AFTER the MAC is verified.** The AES-CMAC covers the exact wire bytes (the
-  compressed body), which is what lets the signature be checked without decoding anything — so an
-  unauthenticated peer never reaches the decoder and cannot spend our CPU or memory on it.
+- **Runs strictly AFTER the bearer is verified.** The token is checked from the headers alone (the
+  body is not part of it — TLS protects the wire bytes), so an unauthenticated peer never reaches
+  the decoder and cannot spend our CPU or memory on it.
 - **Both of the decoder's memory costs are charged to the in-flight byte budget as real
   reservations, not merely capped** (see *Memory management* above). (1) The buffers zstd allocates
   before producing any output, reserved at exactly what *this* frame's header declares it needs
@@ -1334,7 +1328,7 @@ All four are thread-count fields: a caller value `<=0` resolves via `cpp_get_npr
 the pool sizes track the host/cgroup's available CPUs (`httpServerConfig.cpp::resolveThreadCount()`
 for **A**/**B**, `downstreamConfig.cpp`'s local `resolveThreadCount()` for **C**/**D**). **B** uses
 a `2x` multiplier because its own doc comment ("blocking work offload") means threads there can
-block (CMAC verification, `client.keys` file I/O), unlike the purely async I/O reactors **A**/**C**.
+block (token verification, `client.keys` file I/O), unlike the purely async I/O reactors **A**/**C**.
 
 ### End-to-end flow
 
@@ -1353,7 +1347,7 @@ sequenceDiagram
     Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder drop RESTinio's buffer
     A->>B: asio::post (worker queue)
     Note over A: return request_accepted() — I/O thread free
-    Note over B: AES-CMAC verify (beginSession→update→finish)<br/>build AuthenticatedRequest (payload = view + keep-alive)
+    Note over B: bearer verify (AuthMiddleware::authenticate)<br/>build AuthenticatedRequest (payload = view + keep-alive)
     B->>F: forward(authReq, responder, target, mapper)
     Note over F: limiter.tryAcquire() — plain 503 if full
     F->>C: client.sendAsync(req, keepAlive = authReq, onComplete)
@@ -1377,7 +1371,7 @@ sequenceDiagram
    body **once** into a shared `RequestContext` (with its `Reservation`), builds a `RestinioResponder`
    (`create_response()` moves the connection into a builder), and **drops the RESTinio handle** — freeing
    RESTinio's original buffer here. Then it `asio::post`s to the worker pool and returns immediately.
-2. **[B] Auth + handler.** A worker thread runs the `AuthGateway` wrapper: full AES-CMAC verification
+2. **[B] Auth + handler.** A worker thread runs the `AuthGateway` wrapper: full bearer-token verification
    (synchronous — CPU, off the I/O threads). On failure it replies `400`/`401`/`413`. On success it
    builds an `AuthenticatedRequest` whose `payload` is a **zero-copy view** into the single buffer plus
    a keep-alive to the context, and calls the `/stateless` handler (`stateless::makeHandler`'s
@@ -1405,7 +1399,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     facade["RemotedModuleFacade<br/>(owns everything; lifecycle)"]
-    gw["AuthGateway<br/>(AES-CMAC)"]
+    gw["AuthGateway<br/>(JWT bearer)"]
     fwd["DeferredForwarder<br/>(owns post-proc pool)"]
     lim["DeferredWorkLimiter<br/>(slot cap → 503)"]
     cli["AsioUdsHttpClient : IDownstreamClient<br/>(owns io_context + threads)"]
@@ -1458,19 +1452,27 @@ the **deferred limiter** bounds *the wait for the downstream*.
 
 ## Agent<->manager auth middleware (`src/auth/`)
 
-Framework-agnostic implementation of the agent<->manager request authentication protocol:
-canonical request construction, incremental AES-CMAC, timestamp window and constant-time
-comparison. Metrics: every client-visible rejection is counted with its pre-collapse cause as
+Framework-agnostic implementation of the agent<->manager request authentication protocol: the
+`wazuh-agent+jwt` bearer (issue #38582). The token itself — compact grammar, exact header/claim
+sets, HS256, time rules, identity — is verified by the shared `JwtRequestTokenVerifier` in
+`shared_modules/utils/jwt/` (header-only over jwt-cpp's base64url, rapidjson SAX for a strict
+pre-parse and OpenSSL's `EVP_Q_mac`; the same library the agent signs with and the fake managers
+of the agent's tests verify with). `AuthMiddleware::authenticate(protocolVersion, authorization,
+peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme, `peekKid()` to
+resolve the CANDIDATE key from the keystore (and the registered-address verdict in the same pass),
+then the verifier, then `AuthError`. Nothing from the token is trusted before its signature except
+the bounded `kid` used for the lookup, and the algorithm is fixed to HS256 — never read from the
+token. Metrics: every client-visible rejection is counted with its pre-collapse cause as
 `remoted.auth.reject.*` (catalog in `endpoints/endpoint.hpp`, counted at `errorResponseFor()`),
 and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
 [Metrics catalog](#metrics-catalog). `authTypes.hpp` holds the shared contract
-(`AuthenticatedRequest`/`Payload`/`AuthError`/
-`publicErrorFor`/`AuthConfig`) and `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`,
-`cmac`, `keystore` are the implementation. It knows nothing about RESTinio or sockets
--- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
-OpenSSL (linked into `remoted_module`). The middleware **streams** the AES-CMAC and never buffers the
-body: the verified body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from
-the transport's single request buffer.
+(`AuthenticatedRequest`/`Payload`/`AuthError`/`toAuthError`/`publicErrorFor`/`AuthConfig`) and
+`iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`, `keystore`, `addressRule` are the
+implementation. It knows nothing about RESTinio or sockets -- the `AuthGateway` (in `endpoints/`)
+is the only adapter between it and our transport. The token does **not** cover the body: the
+middleware authenticates from the headers alone, the gateway applies the body cap directly, and the
+body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from the transport's
+single request buffer. Every credential `401` carries `WWW-Authenticate: Bearer`.
 
 `AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
@@ -1479,8 +1481,8 @@ populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
 default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1"`) -- it's a
 protocol constant, not an ops tuning knob. See *Configuration* above.
 
-Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
-`keystore_test.cpp`, `addressRule_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware`
+Unit tests under `test/unit/` (`jwtVerify_test.cpp`, `jwtSigner_test.cpp`, `jwtEnrollSignVerify_test.cpp`,
+`authMiddleware_test.cpp`, `keystore_test.cpp`, `addressRule_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware`
 against a scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
 in-memory stand-in.
 
@@ -1489,17 +1491,19 @@ the same way the manager's own `OS_ReadKeys()` does (id/name/ip/key columns, `#`
 entries skipped), independent of remoted's C `keystore`. This was a deliberate choice over reaching
 into remoted's live `keystore`: remoted loads it in `W_ENCRYPTION_KEY` mode (see `secure.c`), which
 never keeps the raw pre-shared key in memory -- only a derived key for the legacy message cipher --
-so the raw key needed for signing has to come from the file itself. The key column is treated as
-lowercase hex and hex-decoded as-is (no further derivation); it must decode to 16, 24 or 32 bytes to
-work as an AES-CMAC key. client.keys has no "disabled but present" state -- a removed entry is simply
+so the raw key needed for verification has to come from the file itself. The key column is treated as
+lowercase hex and hex-decoded as-is (no further derivation) by the shared `JwtKeyDecoder`; it must be
+exactly 64 lowercase hex characters (32 bytes) to work as the HS256 key — the 16/24-byte keys the
+retired AES-CMAC protocol also accepted are reported as unusable (`MissingKey`), and the agent has to
+re-enroll. client.keys has no "disabled but present" state -- a removed entry is simply
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
 
 **Registered-address enforcement:** the `ip` column is parsed into an `AddressRule`
 (`auth/addressRule.hpp`) and evaluated by `IAgentKeystore::lookup()`, which resolves the agent's key
 and its address verdict in the same pass -- so the two answers always describe the same entry, even if
-the file is reloaded mid-request. `AuthMiddleware` acts on the verdict before initializing the
-AES-CMAC. An
+the file is reloaded mid-request. `AuthMiddleware` acts on the verdict before verifying the
+token's signature. An
 agent registered with a fixed address or a range authenticates only from it; `any` accepts every
 peer. The accepted forms match the manager's own `OS_IsValidIP()`/`OS_IPFound()`
 (`shared/src/validate_op.c`): `any`, an IPv4 address alone or with `/CIDR` (0-32) or a dotted
@@ -1512,8 +1516,8 @@ positively -- it is not a negation, matching the legacy keystore, where `OS_IsVa
 before storing the text so `OS_IPFound()`'s negation branch can never fire; keeping it identical is what
 lets a `client.keys` migrated from 4.x authorize the same agents it did there. A line whose `ip` column
 does not parse is skipped with a warning, like any other malformed line, rather than being loaded
-without a restriction. The peer address is **not** part of the signed canonical request, so a NAT rewrite
-between agent and manager does not invalidate a signature. A mismatch resolves to
+without a restriction. The peer address is **not** part of the token, so a NAT rewrite
+between agent and manager does not invalidate it. A mismatch resolves to
 `AuthError::AddressNotAllowed`, which `publicErrorFor()` folds into the same generic 401 as the other
 credential failures; `AuthMiddleware` reports it with a throttled warning naming the agent id and the
 peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
@@ -1541,11 +1545,10 @@ by design, so `Keystore`'s id→key table is keyed by `AgentId`, not by string. 
 whose id column doesn't parse as a non-negative integer (fully consuming the field, via
 `std::from_chars`) is skipped like any other malformed line -- it can never match a real lookup, and
 the rest of the file still loads normally. The `Authorization` header's `<agent-id>` segment is
-likewise restricted to digits at parse time (`parseAuthorization()`); anything else fails immediately
-as `AuthError::MalformedAuthorization`, before it ever reaches the Keystore. The **string** form of
-the agent id (as it appeared on the wire) still flows through unchanged where it matters --
-`AuthenticatedRequest::agentId` and the AES-CMAC canonical bytes are untouched by this -- only the
-Keystore's key type and the lookup argument are numeric.
+likewise restricted to the canonical zero-padded digits by `peekKid()` (`CanonicalAgentId::parseCanonical`);
+anything else fails immediately as `AuthError::InvalidToken`, before it ever reaches the Keystore.
+`AuthenticatedRequest::agentId` carries that canonical text -- only the Keystore's key type and the
+lookup argument are numeric.
 
 ## Contract
 
@@ -1633,7 +1636,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
-| `remoted.auth.reject.{unknown_agent, invalid_mac, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
@@ -1727,8 +1730,8 @@ Content-Type/Content-Length** — the assertion that the agent id really reaches
 `payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
-core `cmac_test.cpp`, `authMiddleware_test.cpp` (incl. a non-numeric `Authorization` agent-id →
-`MalformedAuthorization`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
+core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
+`kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
 skipped without blocking the rest of the file).
 
 VD re-scan coverage: `vdClient_test.cpp` (a real `httplib::Server` fake VD backend — cache hit
@@ -1760,18 +1763,19 @@ ctest --test-dir <build> -R remoted_module_utest -V
 
 ### Manual / end-to-end (`tools/send_stateless.py`, `tools/send_download.py`)
 
-Signs and sends `POST /stateless` requests exactly as `AuthMiddleware` expects (AES-CMAC over the
-canonical byte sequence, agent key read straight from `client.keys`). Requires
-`pip install requests cryptography`.
+Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
+expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
+`client.keys`; `python3 wire_jwt.py --self-test` reproduces the frozen vectors). Requires
+`pip install -r tools/requirements.txt`.
 
 Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
 flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
-a default installation needs no flag. The prefix is applied to the target **before** signing, since
-the MAC covers the request target as it travels; pass `/` to force the unprefixed paths.
+a default installation needs no flag. The prefix is a routing matter only (the bearer does not bind
+the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 
 ```bash
 python3 tools/send_stateless.py            # one valid signed request -> 200
-python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
+python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
@@ -1779,7 +1783,7 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
 
 ### Manual / end-to-end (`tools/send_agent_json.py`)
 
-Same signing, for `POST /stats` and `POST /config`. This one is the end-to-end check of the *whole*
+Same bearer, for `POST /stats` and `POST /config`. This one is the end-to-end check of the *whole*
 forwarding path.
 
 **It verifies the body, not just the status code.** Both endpoints now behave the same way: they
@@ -1801,7 +1805,7 @@ unreachable, which it also reports separately).
 python3 tools/send_agent_json.py                          # one signed /stats -> 200 + {}
 python3 tools/send_agent_json.py --endpoint config        # same, against /config -> 200 + {}
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
-python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
+python3 tools/send_agent_json.py --tamper                 # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
 # options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
 ```
@@ -1813,13 +1817,13 @@ round trip; non-object and malformed JSON → 400 from modulesd) plus every auth
 **not** repeat the transport-level limits (oversized URL/header/count → dropped connection) — those are
 endpoint-independent and already covered by `send_stateless.py --all`.
 
-> The signing helpers are duplicated between the two scripts rather than shared, so each stays a
-> single file you can copy onto a manager and run. If the canonical string ever changes on the C++
-> side, both copies fail loudly with `401 InvalidMac` rather than silently mis-signing.
+> The bearer comes from one shared module, `tools/wire_jwt.py` (copy it next to the script you take
+> onto a manager). It is pinned to the frozen vectors the C++ side is pinned to, so a profile change
+> on either side fails `--self-test` loudly rather than silently mis-signing.
 
 ### Manual / end-to-end (`tools/send_control.py`, `tools/send_scan_vd.py`)
 
-Same signing convention, for the VD re-scan pair: `send_control.py` covers `/control`
+Same bearer, for the VD re-scan pair: `send_control.py` covers `/control`
 (startup/notify/shutdown, including the auth-layer scenarios), and `send_scan_vd.py` covers
 `/scan/vd` specifically.
 

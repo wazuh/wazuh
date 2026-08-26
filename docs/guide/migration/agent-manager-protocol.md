@@ -65,30 +65,36 @@ Everything the legacy channel carried now maps onto a route. Full contracts in
 ### Authentication
 
 The pre-shared key in `client.keys` is still the credential, and **`client.keys` migrates as-is** —
-no re-enrollment is required for the key itself. What changed is how it is used: instead of deriving
-a session cipher, each request carries an AES-CMAC signature over a canonical byte sequence:
+**provided it is a 5.x key: exactly 64 hex characters (32 bytes)**. A 4.x `client.keys` entry with a
+16- or 24-byte key cannot authenticate and the agent must re-enroll once. What changed is how the key
+is used: instead of deriving a session cipher, each request carries a bearer token the agent signs
+with it — a JWT of the closed profile `wazuh-agent+jwt` (HS256, 60-second lifetime, fresh `jti` per
+request; see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md#authentication-jwt-bearer)):
 
 ```text
-Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+Authorization: Bearer <header>.<claims>.<signature>
 protocol-version: 1
 ```
 
-The key is never transmitted. The timestamp must be within 300 s in the past and 30 s in the future,
-so **the manager and its agents need roughly synchronized clocks** — a skewed agent clock is a new
-failure mode with no 4.x equivalent. It surfaces as `401 Invalid client authentication`.
+The key is never transmitted. A token is accepted while `now - iat <= 60 s + 30 s` of tolerated
+skew and is never accepted more than 30 s before it was issued, so **the manager and its agents need
+roughly synchronized clocks** — a skewed agent clock is a new failure mode with no 4.x equivalent. It
+surfaces as `401 Invalid client authentication` (the agent corrects itself from the manager's `Date`
+header once and retries). The token does not sign the method, path or body: TLS protects them, so a
+proxy that rewrites the path yields a `404`, not a `401`.
 
 The `ip` column of `client.keys` is enforced exactly as the legacy listener enforced it: `any`, a
 single address, a CIDR or dotted mask, an IPv6 prefix. A leading `!` is read positively, not as a
 negation, matching the legacy keystore — which is what lets a migrated `client.keys` authorize the
-same agents it did in 4.x. The peer address is deliberately **not** part of the signed bytes, so NAT
-between agent and manager does not invalidate a signature.
+same agents it did in 4.x. The peer address is deliberately **not** part of the token, so NAT
+between agent and manager does not invalidate it.
 
 ### Error semantics
 
 Two differences worth knowing before reading logs:
 
-- Every credential failure — unknown agent, key mismatch, address not allowed, bad MAC, stale
-  timestamp — collapses to a single generic **`401`**. The specific cause is deliberately not
+- Every credential failure — unknown agent, key mismatch, address not allowed, bad signature, stale
+  or malformed token — collapses to a single generic **`401`** (with `WWW-Authenticate: Bearer`). The specific cause is deliberately not
   exposed to the client; it is in the manager log and in the `remoted.auth.reject.*` metrics.
 - Capacity is shed with **`503`**, never `429`. The manager processes what it has capacity for
   instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this
