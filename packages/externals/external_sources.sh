@@ -106,6 +106,8 @@ _reg benchmark          "https://github.com/google/benchmark/archive/refs/tags/v
 _reg libbpf-bootstrap   "https://github.com/libbpf/libbpf-bootstrap/archive/refs/tags/v{version}.tar.gz"                          tar.gz  1  libbpf-bootstrap   true   "https://github.com/libbpf/libbpf-bootstrap"
 _reg dbus               "https://dbus.freedesktop.org/releases/dbus/dbus-{version}.tar.xz"                                        tar.xz  1  dbus               true   "https://gitlab.freedesktop.org/dbus/dbus"
 _reg flatbuffers        "https://github.com/google/flatbuffers/archive/refs/tags/v{version}.tar.gz"                               tar.gz  1  flatbuffers        false  "https://github.com/google/flatbuffers"
+# jwt-cpp is header-only (no build step); the vendored tree is the upstream source archive.
+_reg jwt-cpp            "https://github.com/Thalhammer/jwt-cpp/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  jwt-cpp            false  "https://github.com/Thalhammer/jwt-cpp"
 
 # ---------------------------------------------------------------------------
 # Manager-only additions.

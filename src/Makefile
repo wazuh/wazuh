@@ -476,7 +476,7 @@ endif
 #     shared by the unit-test CI, whose deps step runs `make deps TARGET=...`
 #     WITHOUT TEST=1 and only enables tests at build time. Gating these behind a
 #     TEST flag drops them from that bundle and breaks every test build (#36247).
-EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 zstd googletest benchmark
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 zstd googletest benchmark jwt-cpp
 
 # Linux unit-test wrapper dependencies (every Linux leg except the winagent
 # cross-compile). unit_tests/wrappers/externals/{audit,procpc} include

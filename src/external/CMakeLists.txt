@@ -1421,6 +1421,19 @@ add_library(ext_httplib INTERFACE)
 target_include_directories(ext_httplib SYSTEM
                            INTERFACE ${EXTERNAL_DIR}/cpp-httplib)
 
+# jwt-cpp (header-only; in the base EXTERNAL_RES list so agent, winagent and manager all get it).
+# ${EXTERNAL_DIR} is on the include path because traits/nlohmann-json/traits.h does
+# #include "nlohmann/json.hpp" and this tree vendors json.hpp directly under external/nlohmann/.
+# picojson is not vendored, so its default traits are disabled. HS256 needs libcrypto (EVP HMAC).
+if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
+  add_library(ext_jwt_cpp INTERFACE)
+  target_include_directories(ext_jwt_cpp SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/jwt-cpp/include
+                                       ${EXTERNAL_DIR})
+  target_compile_definitions(ext_jwt_cpp INTERFACE JWT_DISABLE_PICOJSON)
+  target_link_libraries(ext_jwt_cpp INTERFACE crypto)
+endif()
+
 # Header-only libs that are only downloaded for server builds
 if(NOT IS_AGENT)
   # rapidjson
