@@ -786,7 +786,6 @@ void fim_checker(const char *path,
 }
 
 
-// Build the full path for a directory entry and hand it to fim_checker.
 static void fim_process_dir_entry(const char *dir,
                                   const char *name,
                                   char *f_name,
@@ -797,7 +796,6 @@ static void fim_process_dir_entry(const char *dir,
     char *s_name;
     size_t path_size;
 
-    // Ignore . and ..
     if ((strcmp(name, ".") == 0) || (strcmp(name, "..") == 0)) {
         return;
     }
@@ -806,7 +804,6 @@ static void fim_process_dir_entry(const char *dir,
     path_size = strlen(dir);
     s_name = f_name + path_size;
 
-    // Check if the file name is already null terminated
     if (*(s_name - 1) != PATH_SEP) {
         *s_name++ = PATH_SEP;
     }
@@ -814,9 +811,7 @@ static void fim_process_dir_entry(const char *dir,
     path_size = strlen(f_name);
 
 #ifdef WIN32
-    // Check if the full path is too long if it is, skip this file
-    // and log a warning, PATH_MAX is 260 on windows, but reserves 1 char
-    // for the null terminator.
+    // PATH_MAX is 260 on Windows; reserve one char for the null terminator.
     if (path_size + strlen(name) >= PATH_MAX) {
         mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, name, PATH_MAX);
         return;
@@ -825,7 +820,6 @@ static void fim_process_dir_entry(const char *dir,
 
     snprintf(s_name, PATH_MAX + 2 - path_size, "%s", name);
 
-    // Process the event related to f_name
     fim_checker(f_name, evt_data, configuration, dbsync_txn, ctx);
 }
 
@@ -844,10 +838,8 @@ int fim_directory(const char *dir,
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
 
 #ifdef WIN32
-    // opendir()/readdir() convert names through the process ANSI code page, so
-    // file names with characters outside it (e.g. Turkish) are lost and the
-    // entries are silently dropped. Enumerate with the wide API and convert
-    // each name to UTF-8, consistent with the rest of the FIM file access path.
+    // opendir()/readdir() drop names with characters outside the process ANSI
+    // code page (e.g. Turkish); enumerate wide and convert each name to UTF-8.
     if (is_network_path(dir)) {
         mwarn(NETWORK_PATH_EXECUTED, dir);
         os_free(f_name);
@@ -874,21 +866,23 @@ int fim_directory(const char *dir,
     }
 
     do {
-        // Lowercase the wide name (Windows/NTFS is case-insensitive) using the
-        // invariant locale before converting; byte-wise str_lowercase would skip
-        // multi-byte UTF-8 characters and invoke tolower() on negative bytes.
-        wchar_t w_lower[MAX_PATH];
-        if (LCMapStringW(LOCALE_INVARIANT, LCMAP_LOWERCASE, fd.cFileName, -1, w_lower, MAX_PATH) == 0) {
-            wcsncpy(w_lower, fd.cFileName, MAX_PATH - 1);
-            w_lower[MAX_PATH - 1] = L'\0';
+        char *name = wide_to_utf8(fd.cFileName);
+
+        if (name == NULL) {
+            mdebug2("Cannot convert a directory entry under '%s' to UTF-8.", dir);
+            continue;
         }
 
-        char *name = wide_to_utf8(w_lower);
-
-        if (name != NULL) {
-            fim_process_dir_entry(dir, name, f_name, evt_data, configuration, dbsync_txn, ctx);
-            os_free(name);
+        // Lowercase ASCII only: keeps the on-disk bytes so stat resolves, and
+        // matches the ASCII canonicalization used by realtime/whodata.
+        for (char *p = name; *p != '\0'; p++) {
+            if (*p >= 'A' && *p <= 'Z') {
+                *p += 'a' - 'A';
+            }
         }
+
+        fim_process_dir_entry(dir, name, f_name, evt_data, configuration, dbsync_txn, ctx);
+        os_free(name);
     } while (FindNextFileW(hFind, &fd));
 
     FindClose(hFind);
@@ -896,7 +890,6 @@ int fim_directory(const char *dir,
     DIR *dp;
     struct dirent *entry;
 
-    // Open the directory given
     dp = wopendir(dir);
 
     if (!dp) {
