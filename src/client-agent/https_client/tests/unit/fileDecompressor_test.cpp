@@ -1,0 +1,260 @@
+/*
+ * Wazuh agent HTTPS client (C++ transport module)
+ * Copyright (C) 2015, Wazuh Inc.
+ * August 26, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "fileDecompressor.hpp"
+
+#include <gtest/gtest.h>
+
+// ZSTD_c_windowLog/streaming internals used here only to build fixtures (the inverse of
+// production's decompress()), not exercised by the production code under test -- same rationale
+// as the manager's own zstdTestHelper.hpp, which this file's window-log fixture mirrors.
+#include <zstd.h>
+
+#include <fstream>
+#include <string_view>
+
+namespace
+{
+    std::string writeTempFile(const std::string& name, const std::string& contents)
+    {
+        const std::string path = ::testing::TempDir() + name;
+        std::ofstream file {path, std::ios::binary};
+        file << contents;
+        file.close();
+        return path;
+    }
+
+    std::string readWholeFile(const std::string& path)
+    {
+        std::ifstream file {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
+    }
+
+    bool fileExists(const std::string& path)
+    {
+        return std::ifstream {path}.good();
+    }
+
+    std::string zstdCompress(std::string_view plain, int level = 3)
+    {
+        std::string out(ZSTD_compressBound(plain.size()), '\0');
+        const std::size_t written = ZSTD_compress(out.data(), out.size(), plain.data(), plain.size(), level);
+        EXPECT_FALSE(ZSTD_isError(written));
+        out.resize(written);
+        return out;
+    }
+
+    // Forces the frame header to DECLARE a window of 2^windowLog bytes, regardless of how little
+    // content actually needs it -- mirrors the manager's own zstdTestHelper.hpp
+    // (zstdCompressWithDeclaredWindowLog), used there to exercise the identical kMaxDeclaredWindowSize
+    // guard on the request-decoding side. Fed and ended in separate calls: the frame header must be
+    // written before zstd has seen the whole input, or it sizes the window down to match.
+    std::string zstdCompressWithDeclaredWindowLog(std::string_view plain, int windowLog)
+    {
+        ZSTD_CCtx* cctx = ZSTD_createCCtx();
+        EXPECT_NE(nullptr, cctx);
+        struct Guard
+        {
+            ZSTD_CCtx* ctx;
+            ~Guard()
+            {
+                ZSTD_freeCCtx(ctx);
+            }
+        } guard {cctx};
+
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_windowLog, windowLog);
+
+        std::string out(ZSTD_compressBound(plain.size()) + 1024, '\0');
+        ZSTD_outBuffer output {out.data(), out.size(), 0};
+
+        ZSTD_inBuffer in {plain.data(), plain.size(), 0};
+
+        while (in.pos < in.size)
+        {
+            const std::size_t ret = ZSTD_compressStream2(cctx, &output, &in, ZSTD_e_continue);
+            EXPECT_FALSE(ZSTD_isError(ret));
+        }
+
+        ZSTD_inBuffer end {nullptr, 0, 0};
+        std::size_t remaining = 0;
+
+        do
+        {
+            remaining = ZSTD_compressStream2(cctx, &output, &end, ZSTD_e_end);
+            EXPECT_FALSE(ZSTD_isError(remaining));
+        }
+        while (remaining != 0);
+
+        out.resize(output.pos);
+        return out;
+    }
+
+    class FileDecompressorTest : public ::testing::Test
+    {
+        protected:
+            ZstdFileDecompressor m_decompressor;
+            std::string m_spoolDir = ::testing::TempDir();
+    };
+} // namespace
+
+TEST_F(FileDecompressorTest, RoundTripDecompressesBackToTheSourceAndReplacesTheFileInPlace)
+{
+    const std::string plain(2000, 'a');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_roundtrip.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(plain.size(), *result);
+    EXPECT_EQ(plain, readWholeFile(path)); // Same path, now holding plain bytes.
+}
+
+TEST_F(FileDecompressorTest, MalformedHeaderReturnsNulloptAndLeavesTheOriginalUntouched)
+{
+    const std::string garbage = "not a zstd frame at all";
+    const std::string path = writeTempFile("hc_fd_malformed.bin", garbage);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(garbage, readWholeFile(path)); // Untouched: the caller discards it itself.
+}
+
+TEST_F(FileDecompressorTest, TruncatedFrameReturnsNullopt)
+{
+    const std::string plain(5000, 'b');
+    const std::string compressed = zstdCompress(plain);
+    // Cut off the back half: a valid header, an incomplete body.
+    const std::string truncated = compressed.substr(0, compressed.size() / 2);
+    const std::string path = writeTempFile("hc_fd_truncated.bin", truncated);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(FileDecompressorTest, DeclaredWindowOverTheHardCeilingIsRefused)
+{
+    // windowLog 24 = 16 MiB, over the 8 MiB ceiling -- mirrors the manager's own equivalent test
+    // for its request-side decoder (zstdDecoder_test.cpp).
+    const std::string plain(128, 'q');
+    const std::string compressed = zstdCompressWithDeclaredWindowLog(plain, 24);
+    const std::string path = writeTempFile("hc_fd_window_over.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(FileDecompressorTest, DeclaredWindowAtTheHardCeilingIsStillAccepted)
+{
+    // windowLog 23 (8 MiB) is what zstd itself uses at its highest normal levels -- the ceiling
+    // must not be tighter than that, or this feature's own legitimate 64 MiB merged.mg traffic
+    // would be refused (see fileDecompressor.cpp's kMaxDeclaredWindowSize comment).
+    const std::string plain(128, 'q');
+    const std::string compressed = zstdCompressWithDeclaredWindowLog(plain, 23);
+    const std::string path = writeTempFile("hc_fd_window_at.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(plain, readWholeFile(path));
+}
+
+TEST_F(FileDecompressorTest, OutputExceedingTheCapAbortsAsSoonAsItIsCrossed)
+{
+    const std::string plain(10000, 'c');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_overcap.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 100, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+    // The original (still-compressed) file is left in place for the caller to discard.
+    EXPECT_TRUE(fileExists(path));
+}
+
+TEST_F(FileDecompressorTest, OutputExactlyAtTheCapSucceeds)
+{
+    const std::string plain(1000, 'd');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_exactcap.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, plain.size(), m_spoolDir, nullptr);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(plain.size(), *result);
+}
+
+TEST_F(FileDecompressorTest, ZeroCapMeansUnlimited)
+{
+    const std::string plain(200000, 'e');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_nocap.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(plain.size(), *result);
+}
+
+TEST_F(FileDecompressorTest, UnreadableSourceReturnsNullopt)
+{
+    const auto result =
+        m_decompressor.decompress("/nonexistent/hc-spool/response.bin", 0, m_spoolDir, nullptr);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(FileDecompressorTest, UnwritableSpoolDirReturnsNullopt)
+{
+    const std::string compressed = zstdCompress(std::string(100, 'f'));
+    const std::string path = writeTempFile("hc_fd_unwritable_dir.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, "/nonexistent/hc-spool-dir", nullptr);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(compressed, readWholeFile(path)); // Untouched.
+}
+
+TEST_F(FileDecompressorTest, EmptySpoolDirFallsBackToADefaultTempDirectory)
+{
+    const std::string plain(500, 'g');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_empty_dir.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, "", nullptr);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(plain, readWholeFile(path));
+}
+
+TEST_F(FileDecompressorTest, EmptySourceFileReturnsNullopt)
+{
+    const std::string path = writeTempFile("hc_fd_empty_src.bin", "");
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(FileDecompressorTest, AbortFlagStopsDecompressionAndReturnsNullopt)
+{
+    const std::string plain(2000, 'h');
+    const std::string compressed = zstdCompress(plain);
+    const std::string path = writeTempFile("hc_fd_abort.bin", compressed);
+
+    const std::atomic<bool> abortFlag {true}; // Already set before the first chunk is read.
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, &abortFlag);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(compressed, readWholeFile(path)); // Untouched.
+}

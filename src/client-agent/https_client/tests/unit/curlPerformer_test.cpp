@@ -96,7 +96,9 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_CALL(*handle, captureResponseBody(NotNull()));
     EXPECT_CALL(*handle,
                 captureResponseHeaders(
-                    AllOf(Field(&HeaderCapture::retryAfter, NotNull()), Field(&HeaderCapture::serverDate, NotNull()))));
+                    AllOf(Field(&HeaderCapture::retryAfter, NotNull()),
+                          Field(&HeaderCapture::serverDate, NotNull()),
+                          Field(&HeaderCapture::contentEncodingZstd, NotNull()))));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 

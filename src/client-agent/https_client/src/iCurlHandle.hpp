@@ -70,6 +70,10 @@ struct HeaderCapture
 {
     long* retryAfter {nullptr};
     std::time_t* serverDate {nullptr};
+    /// Set true when the response carries a literal (trimmed, case-insensitive) "Content-Encoding:
+    /// zstd" -- the only signal that gates response decompression (#38514); never set on any other
+    /// value (absent, "gzip", garbage) so those are treated identically to "not compressed".
+    bool* contentEncodingZstd {nullptr};
 };
 
 /**
@@ -105,7 +109,11 @@ class ICurlHandle
         /// (0 = absent/unparsed) -- the manager's own transport stamps Date
         /// on every response it builds, including every 401, which is what
         /// lets the agent detect and correct clock skew instead of assuming
-        /// a 401 always means a dead credential.
+        /// a 401 always means a dead credential. capture.contentEncodingZstd
+        /// receives whether the response carried "Content-Encoding: zstd"
+        /// (#38514) -- the sole signal RetrySender uses to decide whether to
+        /// decompress a file-backed response, independent of what the request
+        /// advertised.
         /// @return false if the underlying option(s) were rejected by libcurl;
         ///         the caller must not proceed to perform() in that case.
         virtual bool captureResponseHeaders(HeaderCapture capture) = 0;
