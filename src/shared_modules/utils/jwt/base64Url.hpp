@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -51,15 +52,40 @@ namespace jwt_profile::v1
         return true;
     }
 
-    /// True iff `text` is the canonical unpadded base64url encoding of exactly `bytes` bytes:
-    /// right alphabet, right length, and the trailing bits of the last char are zero (so no two
-    /// different texts decode to the same bytes).
-    inline bool isCanonicalBase64UrlOf(std::string_view text, std::size_t bytes) noexcept
+    /// Sextet value of a base64url char; -1 outside the alphabet.
+    inline int base64UrlSextet(char c) noexcept
     {
-        const std::size_t fullGroups = bytes / 3;
-        const std::size_t rest = bytes % 3;
-        const std::size_t expectedLen = fullGroups * 4 + (rest == 0 ? 0 : rest + 1);
-        if (text.size() != expectedLen || !isBase64UrlAlphabet(text))
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        if (c >= 'a' && c <= 'z')
+        {
+            return c - 'a' + 26;
+        }
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0' + 52;
+        }
+        if (c == '-')
+        {
+            return 62;
+        }
+        if (c == '_')
+        {
+            return 63;
+        }
+        return -1;
+    }
+
+    /// True iff `text` is a canonical unpadded base64url encoding of SOME byte string: right
+    /// alphabet, `len % 4 != 1`, and the unused trailing bits of the last char are zero (so no two
+    /// different texts decode to the same bytes -- RFC 7515 §2, RFC 8725 §3.12). Empty is canonical
+    /// for zero bytes.
+    inline bool isCanonicalBase64Url(std::string_view text) noexcept
+    {
+        const std::size_t rest = text.size() % 4;
+        if (rest == 1 || !isBase64UrlAlphabet(text))
         {
             return false;
         }
@@ -67,26 +93,60 @@ namespace jwt_profile::v1
         {
             return true;
         }
-        const auto sextet = [](char c) -> int
+        // 2 chars -> 1 byte, last char carries 2 bits (low 4 must be zero); 3 chars -> 2 bytes,
+        // last char carries 4 bits (low 2 must be zero).
+        const int zeroBits = rest == 2 ? 4 : 2;
+        return (base64UrlSextet(text.back()) & ((1 << zeroBits) - 1)) == 0;
+    }
+
+    /// Number of bytes a canonical base64url text of `len` chars decodes to (len % 4 != 1 assumed).
+    constexpr std::size_t base64UrlDecodedSize(std::size_t len) noexcept
+    {
+        return (len / 4) * 3 + (len % 4 == 0 ? 0 : len % 4 - 1);
+    }
+
+    /// True iff `text` is the canonical encoding of exactly `bytes` bytes.
+    inline bool isCanonicalBase64UrlOf(std::string_view text, std::size_t bytes) noexcept
+    {
+        return text.size() % 4 != 1 && base64UrlDecodedSize(text.size()) == bytes && isCanonicalBase64Url(text);
+    }
+
+    /// Strict decoder: nullopt unless `text` is canonical (see isCanonicalBase64Url). Never pads,
+    /// never accepts '=' or percent-encoded fill, never ignores dirty trailing bits.
+    inline std::optional<std::string> base64UrlDecodeCanonical(std::string_view text)
+    {
+        if (!isCanonicalBase64Url(text))
         {
-            if (c >= 'A' && c <= 'Z')
-            {
-                return c - 'A';
-            }
-            if (c >= 'a' && c <= 'z')
-            {
-                return c - 'a' + 26;
-            }
-            if (c >= '0' && c <= '9')
-            {
-                return c - '0' + 52;
-            }
-            return c == '-' ? 62 : 63;
-        };
-        // 1 leftover byte -> 2 chars, last carries 2 bits (4 must be zero); 2 bytes -> 3 chars,
-        // last carries 4 bits (2 must be zero).
-        const int last = sextet(text.back());
-        const int zeroBits = rest == 1 ? 4 : 2;
-        return (last & ((1 << zeroBits) - 1)) == 0;
+            return std::nullopt;
+        }
+        std::string out;
+        out.reserve(base64UrlDecodedSize(text.size()));
+        std::size_t i = 0;
+        for (; i + 4 <= text.size(); i += 4)
+        {
+            const std::uint32_t triple = (static_cast<std::uint32_t>(base64UrlSextet(text[i])) << 18) |
+                                         (static_cast<std::uint32_t>(base64UrlSextet(text[i + 1])) << 12) |
+                                         (static_cast<std::uint32_t>(base64UrlSextet(text[i + 2])) << 6) |
+                                         static_cast<std::uint32_t>(base64UrlSextet(text[i + 3]));
+            out += static_cast<char>((triple >> 16) & 0xff);
+            out += static_cast<char>((triple >> 8) & 0xff);
+            out += static_cast<char>(triple & 0xff);
+        }
+        const std::size_t rest = text.size() - i;
+        if (rest == 2)
+        {
+            const std::uint32_t pair = (static_cast<std::uint32_t>(base64UrlSextet(text[i])) << 6) |
+                                       static_cast<std::uint32_t>(base64UrlSextet(text[i + 1]));
+            out += static_cast<char>((pair >> 4) & 0xff);
+        }
+        else if (rest == 3)
+        {
+            const std::uint32_t triple = (static_cast<std::uint32_t>(base64UrlSextet(text[i])) << 12) |
+                                         (static_cast<std::uint32_t>(base64UrlSextet(text[i + 1])) << 6) |
+                                         static_cast<std::uint32_t>(base64UrlSextet(text[i + 2]));
+            out += static_cast<char>((triple >> 10) & 0xff);
+            out += static_cast<char>((triple >> 2) & 0xff);
+        }
+        return out;
     }
 } // namespace jwt_profile::v1

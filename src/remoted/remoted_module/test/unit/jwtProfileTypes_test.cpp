@@ -173,3 +173,46 @@ TEST(JwtProfileTypes, CanonicalBase64UrlCheckRejectsPaddingAlphabetLengthAndDirt
     EXPECT_FALSE(isBase64UrlAlphabet("abc="));
     EXPECT_FALSE(isBase64UrlAlphabet("a b"));
 }
+
+TEST(JwtProfileTypes, Base64UrlDecodeCanonicalRoundTripsAndRejectsNonCanonicalText)
+{
+    ASSERT_TRUE(base64UrlDecodeCanonical(""));
+    EXPECT_EQ(*base64UrlDecodeCanonical(""), "");
+    EXPECT_EQ(*base64UrlDecodeCanonical("YQ"), "a");
+    EXPECT_EQ(*base64UrlDecodeCanonical("YWI"), "ab");
+    EXPECT_EQ(*base64UrlDecodeCanonical("YWJj"), "abc");
+    EXPECT_EQ(*base64UrlDecodeCanonical("YWJjZA"), "abcd");
+    const auto urlSafe = base64UrlDecodeCanonical("-_-_");
+    ASSERT_TRUE(urlSafe);
+    EXPECT_EQ(*urlSafe, std::string("\xfb\xff\xbf", 3));
+
+    EXPECT_FALSE(base64UrlDecodeCanonical("YR"));       // dirty trailing bits
+    EXPECT_FALSE(base64UrlDecodeCanonical("YWJ"));      // dirty trailing bits
+    EXPECT_FALSE(base64UrlDecodeCanonical("Y"));        // len % 4 == 1
+    EXPECT_FALSE(base64UrlDecodeCanonical("YQ=="));     // padding
+    EXPECT_FALSE(base64UrlDecodeCanonical("YQ%3d%3d")); // percent fill
+    EXPECT_FALSE(base64UrlDecodeCanonical("+/8"));      // standard alphabet
+    EXPECT_FALSE(base64UrlDecodeCanonical("YW Jj"));    // whitespace
+
+    // Every byte string round-trips through encode -> decode, including the whole byte range.
+    std::string all;
+    for (int i = 0; i < 256; ++i)
+    {
+        all += static_cast<char>(i);
+    }
+    for (std::size_t len = 0; len <= all.size(); len += 37)
+    {
+        const std::string in = all.substr(0, len);
+        const auto enc = base64UrlEncode(in);
+        EXPECT_TRUE(isCanonicalBase64UrlOf(enc, in.size()));
+        const auto dec = base64UrlDecodeCanonical(enc);
+        ASSERT_TRUE(dec) << enc;
+        EXPECT_EQ(*dec, in);
+    }
+    EXPECT_EQ(base64UrlDecodedSize(0), 0u);
+    EXPECT_EQ(base64UrlDecodedSize(2), 1u);
+    EXPECT_EQ(base64UrlDecodedSize(3), 2u);
+    EXPECT_EQ(base64UrlDecodedSize(4), 3u);
+    EXPECT_EQ(base64UrlDecodedSize(43), 32u);
+    EXPECT_EQ(base64UrlDecodedSize(22), 16u);
+}
