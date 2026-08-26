@@ -769,8 +769,8 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         {"sync", 1}
     });
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC))
-    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
     .WillOnce(testing::Invoke([](const std::string&,
                                  Operation,
@@ -815,8 +815,8 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult{true}));
     // After the first sync, periodic syncs call synchronizeModule() directly and never go
-    // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
-    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_))
+    // through the snapshot-rebuild path (notifyDataCleanResult + persistDifference per item).
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(testing::_, testing::_, testing::_))
     .Times(0);
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
     .Times(0);
@@ -913,6 +913,118 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA synchronization deferred: No groups available in metadata."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// The very first sync after an agent restart clears the manager's index before resending a full
+// snapshot. While the manager is briefly not ready for that DataClean (the common case right after
+// a restart/upgrade), it is reported at INFO as deferred, not as a WARNING -- same tolerance as the
+// periodic path above. (#38579)
+TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    // No "first_sync_completed" row: the module takes the initial full-snapshot path.
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .Times(0);
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("WARNING")));
+}
+
+// Past the tolerance, a DataClean that keeps failing before the initial sync escalates to a
+// WARNING naming the streak -- same as any other sync failure. (#38579)
+TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
+}
+
+// While the manager is briefly not ready (streak within tolerance), a DataClean failure during
+// recovery is reported at INFO as deferred too, not as an immediate WARNING -- same policy as the
+// periodic sync path, not just the past-tolerance escalation covered below. (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
+}
+
+// performRecovery() has no periodic-cycle caller to log its outcome for it (unlike syncModule()),
+// so a DataClean failure during recovery must still be visible on its own -- at the same tolerance
+// level as any other sync failure, not silently dropped. (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
 }
 
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as

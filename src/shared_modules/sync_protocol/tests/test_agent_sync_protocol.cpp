@@ -2305,6 +2305,55 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
     EXPECT_FALSE(result); // Should fail due to timeout
 }
 
+// notifyDataCleanResult() reports the same manager-not-ready detail synchronizeModule() does, so a
+// caller can tell a transient post-restart hiccup apart from a real failure instead of only getting
+// a bare bool. Passing trackConsecutiveFailures=true feeds the same streak synchronizeModule() uses
+// for its own tolerance window. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultReportsManagerNotReadyOnStartAckTimeout)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    // Should not call clearItemsByIndex when StartAck times out
+    EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
+    .Times(0);
+
+    SyncModuleResult result = protocol->notifyDataCleanResult(indices, Option::SYNC, true);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_EQ(result.consecutiveFailures, 1u);
+}
+
+// Without opting in, a notifyDataCleanResult() failure must NOT touch the streak
+// synchronizeModule() relies on: an ad hoc DataClean call (e.g. policy-removal cleanup) is not
+// part of the periodic sync cycle and must not skew its tolerance window. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
+    .Times(0);
+
+    SyncModuleResult untracked = protocol->notifyDataCleanResult(indices);
+    EXPECT_FALSE(untracked.success);
+    EXPECT_TRUE(untracked.managerNotReady);
+    EXPECT_EQ(untracked.consecutiveFailures, 0u);
+
+    // A later opted-in call must start its own streak at 1, unaffected by the untracked call above.
+    SyncModuleResult tracked = protocol->notifyDataCleanResult(indices, Option::SYNC, true);
+    EXPECT_FALSE(tracked.success);
+    EXPECT_TRUE(tracked.managerNotReady);
+    EXPECT_EQ(tracked.consecutiveFailures, 1u);
+}
+
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();

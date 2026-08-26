@@ -197,6 +197,12 @@ class SecurityConfigurationAssessment
         ///       deterministically without spinning the asynchronous flush controller.
         int executeFlushSync();
 
+        /// @brief Perform full recovery: load all checks and resync
+        /// @return true on success, false on failure.
+        /// @note Protected (rather than private) so test subclasses can drive recovery
+        ///       deterministically, same reason as executeFlushSync() above.
+        bool performRecovery();
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -257,9 +263,14 @@ class SecurityConfigurationAssessment
         /// @return SyncModuleResult with success flag and an optional failure reason string.
         SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
-        /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success, false on failure.
-        bool performRecovery();
+        /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
+        /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING otherwise. Shared
+        /// by syncModule() and performRecovery() so both apply the same tolerance policy to any
+        /// failure a sync/recovery attempt returns, including one from synchronizeDatabaseSnapshot()'s
+        /// DataClean step. (#38579)
+        /// @param result The failed result (caller must not call this when result.success is true).
+        /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
+        void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate

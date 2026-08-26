@@ -60,6 +60,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
 
+        /// @copydoc IAgentSyncProtocol::notifyDataCleanResult
+        SyncModuleResult notifyDataCleanResult(const std::vector<std::string>& indices,
+                                               Option option = Option::SYNC,
+                                               bool trackConsecutiveFailures = false) override;
+
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
 
