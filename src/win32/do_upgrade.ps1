@@ -323,13 +323,15 @@ public static class WazuhProbeTrust {
 "@
 }
 
-# Check the manager is up: GET / is remoted's health endpoint and answers 200.
+# Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
+# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s.
 # Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
-function probe_server($server, $port) {
+function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
-        $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
+        $path = if ([string]::IsNullOrEmpty($endpoint)) { "/" } else { "/$endpoint/" }
+        $response = Invoke-WebRequest -Uri "https://$($server):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
         return $false
@@ -350,20 +352,30 @@ if ([string]::IsNullOrEmpty($server_port)) {
     $server_port = "1517"
 }
 
+# The 5x agent reads the server endpoint from the <agent> block, defaulting to the manager's own
+# default reverse-proxy prefix when absent or empty -- e.g. when upgrading from a 4.x agent, whose
+# <client><server> block never had this tag at all (mirrors DEFAULT_AGENT_ENDPOINT_PREFIX,
+# src/config/include/client-config.h).
+$server_endpoint = get_conf_value "agent" "manager" "endpoint"
+if ([string]::IsNullOrEmpty($server_endpoint)) {
+    $server_endpoint = "wazuh-manager"
+}
+$server_endpoint = $server_endpoint.Trim('/')
+
 if ([string]::IsNullOrEmpty($server_address)) {
     write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
     abort_upgrade "2"
 }
 
-write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
 
 if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
     write-output "$(Get-Date -format u) - Manager connectivity check skipped (test mode)." >> .\upgrade\upgrade.log
-} elseif (-Not (probe_server $server_address $server_port)) {
-    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
+} elseif (-Not (probe_server $server_address $server_port $server_endpoint)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
     abort_upgrade "2"
 } else {
-    write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
 }
 
 # Ensure no other instance of msiexec is running by stopping them
