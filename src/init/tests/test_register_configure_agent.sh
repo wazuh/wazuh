@@ -199,6 +199,15 @@ unset WAZUH_MANAGER_ENDPOINT
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
 check "no WAZUH_MANAGER_ENDPOINT falls back to the manager's own default prefix" \
       "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>/wazuh-manager/</endpoint>")"
+
+# WAZUH_MANAGER_ENDPOINT="" (set, but empty) is a distinct case from unset: it is the
+# operator's own explicit opt-out and must reach the client parser as an empty
+# <endpoint></endpoint> tag, not silently fall back to the default like unset does.
+export WAZUH_MANAGER_ENDPOINT=""
+actual="$(run_target "${NO_ENROLLMENT_CONF}")"
+check "WAZUH_MANAGER_ENDPOINT='' is written as an empty <endpoint></endpoint> (opt-out), not the default" \
+      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint></endpoint>")"
+unset WAZUH_MANAGER_ENDPOINT
 unset WAZUH_MANAGER
 
 echo

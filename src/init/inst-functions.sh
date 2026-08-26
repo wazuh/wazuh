@@ -385,7 +385,16 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1517</port>" >> $NEWCONFIG
-    echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT:-/wazuh-manager/}</endpoint>" >> $NEWCONFIG
+    # Unset -> default to the manager's own default prefix. Explicitly set,
+    # even to an empty string, is the operator's own choice and is written
+    # verbatim -- including WAZUH_MANAGER_ENDPOINT="", which reaches the
+    # client parser's <endpoint></endpoint> opt-out (#38492). ${VAR:-x} alone
+    # can't tell those two cases apart, so check ${VAR+x} first.
+    if [ "X${WAZUH_MANAGER_ENDPOINT+x}" = "X" ]; then
+      echo "      <endpoint>/wazuh-manager/</endpoint>" >> $NEWCONFIG
+    else
+      echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT}</endpoint>" >> $NEWCONFIG
+    fi
     echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}

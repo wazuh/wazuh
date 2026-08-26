@@ -152,11 +152,23 @@ add_adress_block() {
     # comma-separated addresses, the last one prevails (server rotation was
     # removed, #37702 restrictions 2/3), matching the client parser.
     last_index=$(( ${#ADDRESSES[@]} - 1 ))
+
+    # Unset -> default to the manager's own default prefix. Explicitly set,
+    # even to an empty string, is the operator's own choice and is written
+    # verbatim -- including WAZUH_MANAGER_ENDPOINT="", which reaches the
+    # client parser's <endpoint></endpoint> opt-out (#38492). ${VAR:-x} alone
+    # can't tell those two cases apart, so check ${VAR+x} first.
+    if [ -z "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+        FINAL_ENDPOINT="/wazuh-manager/"
+    else
+        FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
+    fi
+
     {
         echo "    <manager>"
         echo "      <address>${ADDRESSES[last_index]}</address>"
         echo "      <port>1517</port>"
-        echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT:-/wazuh-manager/}</endpoint>"
+        echo "      <endpoint>${FINAL_ENDPOINT}</endpoint>"
         echo "    </manager>"
     } >> "${TMP_SERVER}"
 

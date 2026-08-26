@@ -120,6 +120,12 @@ public function config()
 
             End If
 
+            ' Unlike the shell installers, an MSI property has no "unset" state
+            ' distinct from empty -- WAZUH_MANAGER_ENDPOINT="" on the msiexec
+            ' command line is indistinguishable from not passing it at all, so
+            ' there is no way to reach the client parser's <endpoint></endpoint>
+            ' opt-out (#38492) through this installer. Only a non-empty value
+            ' is ever applied; leaving it out keeps the base block's default.
             If WAZUH_MANAGER_ENDPOINT <> "" Then ' manager reverse-proxy prefix (#38492)
                 If InStr(strText, "<endpoint>") > 0 Then
                     Set re = new regexp
