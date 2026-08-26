@@ -332,7 +332,7 @@ def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
     # authGateway_test.cpp's 50-request test.
     target = prefixed("/stateless")
     event = b"E 1:/var/log/syslog:" + b"x" * 1000 + b"\n"
-    header = b'H {"wazuh":{"agent":{"id":"1001"}}}\n'
+    header = b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\n'
     plain = header + event * ((MAX_BODY_SIZE + 1024 * 1024) // len(event) + 1)
     compressed = zstandard.ZstdCompressor().compress(plain)
     headers = auth_headers(agent_id, agent_key)
