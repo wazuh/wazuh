@@ -143,8 +143,9 @@ int try_enroll_to_server(void) {
 /* Populate shared memory with agent metadata so the first keepalive already
  * contains full agent info.
  *
- * Serialized: start_agent() publishes from the main thread while
- * bridge_on_startup_result() publishes from the module's dispatcher thread, and
+ * Serialized: start_agent() publishes from the main thread, bridge_on_startup_result()
+ * and bridge_on_control_response() from the module's dispatcher thread, and
+ * bridge_reenroll_thread() from the re-enrollment worker, while
  * metadata_provider_update() has no writer lock of its own -- it only raises an
  * `updating` flag readers poll, so two overlapping writers would clear it while
  * one is still copying and a reader would get a torn record. */
