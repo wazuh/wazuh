@@ -152,6 +152,11 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (!m_syncTransport->checkStatus())
     {
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
@@ -161,8 +166,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         // shape (the module started before wazuh-agentd's https_client finished binding
         // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
         // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
-        return {false, "Failed to reach the sync intake socket.", shouldStop(), false,
-                trackLocalTransportFailure(), false, true};
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                trackLocalTransportFailure(stopped), false, true};
     }
 
     // Reaching past the check above means the local transport is currently available; whatever
@@ -364,11 +369,14 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
     return m_consecutiveSyncFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-unsigned int AgentSyncProtocol::trackLocalTransportFailure()
+unsigned int AgentSyncProtocol::trackLocalTransportFailure(bool stopped)
 {
-    // Mirrors trackSyncOutcome()'s stopped guard: a stop in progress says nothing about the local
-    // transport itself, so it must not count towards this streak either.
-    if (shouldStop())
+    // Takes stopped as an already-computed parameter, mirroring trackSyncOutcome(): a stop in
+    // progress says nothing about the local transport itself, so it must not count towards this
+    // streak either. Reading shouldStop() again here (instead of reusing the caller's read) would
+    // race the single m_stopRequested load against a concurrent stop() -- the caller's "stopped"
+    // field and this streak could then disagree on whether a stop was in flight.
+    if (stopped)
     {
         return m_consecutiveLocalTransportFailures.load(std::memory_order_relaxed);
     }
@@ -472,6 +480,11 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 
     if (!m_syncTransport->checkStatus())
     {
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
@@ -481,8 +494,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         // shape (the module started before wazuh-agentd's https_client finished binding
         // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
         // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
-        return {false, "Failed to reach the sync intake socket.", shouldStop(), false,
-                trackLocalTransportFailure(), false, true};
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                trackLocalTransportFailure(stopped), false, true};
     }
 
     // Reaching past the check above means the local transport is currently available; whatever

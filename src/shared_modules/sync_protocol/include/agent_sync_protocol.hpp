@@ -155,11 +155,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Bumps (or, if a stop was requested, just reads) the consecutive-failure streak
         ///        for the local sync intake being unreachable.
+        /// @param stopped Whether it was aborted because a stop was requested. Takes this as an
+        ///        already-computed parameter, mirroring trackSyncOutcome(), instead of calling
+        ///        shouldStop() again here: a second, independent read of m_stopRequested could
+        ///        observe a stop() that landed after the caller's own read, leaving the returned
+        ///        SyncModuleResult's "stopped" field and this streak disagreeing about whether one
+        ///        was in flight.
         /// @return Consecutive checkStatus() failures in a row, including this one.
         ///
         /// Separate from @ref m_consecutiveSyncFailures: this fires before the handshake is even
         /// attempted, and that counter is reserved for outcomes that reach it.
-        unsigned int trackLocalTransportFailure();
+        unsigned int trackLocalTransportFailure(bool stopped);
 
         /// @brief Waits for agent metadata to become available - indefinitely,
         ///        unless a stop is requested - then builds the Start table into
