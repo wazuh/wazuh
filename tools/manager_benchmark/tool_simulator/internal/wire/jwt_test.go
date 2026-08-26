@@ -72,7 +72,7 @@ func TestDecodeAgentKeyRejectsEverythingButSixtyFourLowercaseHex(t *testing.T) {
 	v := loadVectors(t)
 	bad := []string{
 		"",
-		"2b7e151628aed2a6abf7158809cf4f3c", // 16-byte key of the retired AES-CMAC scheme
+		"2b7e151628aed2a6abf7158809cf4f3c", // 16 bytes
 		"2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6", // 24 bytes
 		v.Key.Hex[:63],
 		v.Key.Hex + "0",

@@ -65,9 +65,8 @@ Everything the legacy channel carried now maps onto a route. Full contracts in
 ### Authentication
 
 The pre-shared key in `client.keys` is still the credential, and **`client.keys` migrates as-is** —
-**provided it is a 5.x key: exactly 64 hex characters (32 bytes)**. A 4.x `client.keys` entry with a
-16- or 24-byte key cannot authenticate and the agent must re-enroll once. What changed is how the key
-is used: instead of deriving a session cipher, each request carries a bearer token the agent signs
+the 64-hex secret `authd` has always generated is exactly the 32-byte key the new scheme needs, so no
+re-enrollment is required for the key itself. What changed is how the key is used: instead of deriving a session cipher, each request carries a bearer token the agent signs
 with it — a JWT of the closed profile `wazuh-agent+jwt` (HS256, 60-second lifetime, fresh `jti` per
 request; see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md#authentication-jwt-bearer)):
 

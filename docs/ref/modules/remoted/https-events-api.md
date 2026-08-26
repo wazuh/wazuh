@@ -121,9 +121,8 @@ a token is either exactly this profile or it is rejected.
 
 The manager resolves the agent key by reading `etc/client.keys` directly (the same id/name/ip/key
 format `OS_ReadKeys()` uses); the key column must be exactly **64 lowercase hex characters**
-(32 bytes). A shorter or upper-case key — including the 16- and 24-byte keys the retired AES-CMAC
-scheme also accepted — cannot authenticate; the agent must re-enroll to obtain a 5.x key. A
-removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
+(32 bytes) — the form `authd` generates. A shorter or upper-case key cannot authenticate and the
+agent must re-enroll. A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
 
 Verification is fail-closed and happens in a fixed order: size and compact grammar → exact header →
 key lookup by `kid` (and the [registered address](#registered-address-ip-column) check) → signature →
@@ -1042,7 +1041,7 @@ protocol, not of the credential.
 | Resulting header | `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o` |
 
 The key derives from a human-chosen password: a captured token lets an attacker guess that password
-offline, exactly as with the retired scheme — HKDF adds no entropy. The defenses are TLS on the
+offline — HKDF adds no entropy. The defenses are TLS on the
 transport, a strong password and the short token lifetime, not the construction itself. There is no
 replay store either: a captured token could be replayed inside its window, bounded in practice by
 `authd`'s own duplicate-name/IP rejection (unless force-replace is configured to permit it).

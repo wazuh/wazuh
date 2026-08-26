@@ -214,10 +214,9 @@ namespace
         EXPECT_FALSE(keyOf(keystore, 3824).has_value());
     }
 
-    // The AES-CMAC protocol also took 16- and 24-byte keys; the bearer profile's HS256 key is exactly
-    // the 32 bytes of a 64-hex secret. Shorter legacy keys are PRESENT but unusable (-> MissingKey,
-    // "re-enroll"), and are not counted as loaded.
-    TEST_F(KeystoreTest, LegacyShortKeysResolveToAnEmptyKey)
+    // The bearer profile's HS256 key is exactly the 32 bytes of a 64-hex secret. A shorter key is
+    // PRESENT but unusable (-> MissingKey, "re-enroll"), and is not counted as loaded.
+    TEST_F(KeystoreTest, ShortKeysResolveToAnEmptyKey)
     {
         writeFile("1 agent-16 any 2b7e151628aed2a6abf7158809cf4f3c\n"
                   "2 agent-24 any 2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6\n"

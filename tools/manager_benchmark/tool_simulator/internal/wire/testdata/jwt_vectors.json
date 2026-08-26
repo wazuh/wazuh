@@ -57,9 +57,7 @@
       "salt_hex": "0000000000000000000000000000000000000000000000000000000000000000",
       "info_hex": "57415a55482d454e524f4c4c2d4a57542d4b455901",
       "info_note": "\"WAZUH-ENROLL-JWT-KEY\" || 0x01; digest SHA-256; L = 32",
-      "key_hex": "eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6",
-      "legacy_cmac_key_hex": "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e",
-      "legacy_note": "same password with info \"WAZUH-ENROLL-CMAC-KEY\" || 0x01 (the retired AES-CMAC key): must differ"
+      "key_hex": "eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6"
     },
     "iat": 1700000000,
     "nbf": 1700000000,

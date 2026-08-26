@@ -114,8 +114,7 @@ TEST_F(PasswordFixture, MissingAuthorizationHeaderIsRejected)
 
 TEST_F(PasswordFixture, NonBearerSchemesAreRejectedAsMalformed)
 {
-    // The retired `WazuhEnroll <ts>:<mac>` header included: there is no compatibility path (J3).
-    for (const auto* header : {"WazuhEnroll 1784238000:00112233445566778899aabbccddeeff",
+    for (const auto* header : {"Wazuh 001:1784238000:00112233445566778899aabbccddeeff",
                                "Basic dXNlcjpwYXNz",
                                "bearer abc.def.ghi",
                                "Bearer",

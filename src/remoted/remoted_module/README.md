@@ -811,8 +811,7 @@ each other**:
   `info = "WAZUH-ENROLL-JWT-KEY\x01"` — the single construction the agent's `EnrollSigner` runs
   too, so the two cannot drift. HKDF is deterministic and salt-free on purpose (any implementation
   reproduces it with a handful of standard-library calls); the version byte in `info` reserves room
-  to change the construction later without ambiguity, and the label separates this key from the
-  retired AES-CMAC key of the same password. A memory-hard KDF would add nothing here — the derived
+  to change the construction later without ambiguity. A memory-hard KDF would add nothing here — the derived
   key is never persisted, so the offline-guessing surface already matches authd's own
   plaintext-password-over-TLS on 1515.
 
@@ -829,8 +828,7 @@ each other**:
 
   (Pinned on the C++ side by `enrollKeyDerivation_test.cpp` / `jwtEnrollSignVerify_test.cpp` /
   `passwordKeySource_test.cpp`, on the agent by `enrollSigner_test.cpp`, and in Python by
-  `wire_jwt.py --self-test`. The vector also records the retired CMAC key of the same password,
-  `2ea29504…5a9e`, as a negative: the new `info` must not reproduce it.)
+  `wire_jwt.py --self-test`.)
 
   The token does not cover the request body (TLS protects it), and there is no replay store: a
   captured token could be replayed inside its window (`jwt_max_age + jwt_clock_skew`, 90 s by
@@ -1493,9 +1491,8 @@ into remoted's live `keystore`: remoted loads it in `W_ENCRYPTION_KEY` mode (see
 never keeps the raw pre-shared key in memory -- only a derived key for the legacy message cipher --
 so the raw key needed for verification has to come from the file itself. The key column is treated as
 lowercase hex and hex-decoded as-is (no further derivation) by the shared `JwtKeyDecoder`; it must be
-exactly 64 lowercase hex characters (32 bytes) to work as the HS256 key — the 16/24-byte keys the
-retired AES-CMAC protocol also accepted are reported as unusable (`MissingKey`), and the agent has to
-re-enroll. client.keys has no "disabled but present" state -- a removed entry is simply
+exactly 64 lowercase hex characters (32 bytes) to work as the HS256 key — the form `authd` generates;
+any other shape is reported as unusable (`MissingKey`) and the agent has to re-enroll. client.keys has no "disabled but present" state -- a removed entry is simply
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
 

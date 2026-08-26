@@ -71,9 +71,6 @@ namespace jwt_profile::v1::test_vectors::enroll
     constexpr std::string_view kPassword = "MyEnrollmentSecret123";
     /// HKDF-SHA256(kPassword, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01, L = 32).
     constexpr std::string_view kKeyHex = "eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6";
-    /// The historical AES-CMAC key of the same password (info "WAZUH-ENROLL-CMAC-KEY" || 0x01):
-    /// must differ from kKeyHex (domain separation).
-    constexpr std::string_view kLegacyCmacKeyHex = "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e";
     constexpr std::int64_t kIat = 1700000000;
     constexpr std::int64_t kExp = 1700000060;
     constexpr std::string_view kJti = "AAECAwQFBgcICQoLDA0ODw";

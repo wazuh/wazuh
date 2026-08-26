@@ -111,8 +111,7 @@ namespace
     // Frozen known-answer vector (jwt/testVectors.hpp, mirrored in jwt_vectors.json; computed with
     // Python's stdlib as an independent oracle) of the exact construction the shared
     // jwt/enrollKeyDerivation.hpp implements: HKDF-SHA256, salt 32 x 0x00,
-    // info = "WAZUH-ENROLL-JWT-KEY" + 0x01, 32-byte output. The retired AES-CMAC key of the same
-    // password (info "WAZUH-ENROLL-CMAC-KEY" + 0x01) must NOT come out: domain separation.
+    // info = "WAZUH-ENROLL-JWT-KEY" + 0x01, 32-byte output.
     TEST_F(PasswordKeySourceTest, HkdfMatchesTheVerifiedKnownAnswerVector)
     {
         writeFile("MyEnrollmentSecret123\n");
@@ -121,7 +120,6 @@ namespace
         const auto key = source.currentKey();
         ASSERT_TRUE(key.has_value());
         EXPECT_EQ(toLowerHex(key->data(), key->size()), jwt_profile::v1::test_vectors::enroll::kKeyHex);
-        EXPECT_NE(toLowerHex(key->data(), key->size()), jwt_profile::v1::test_vectors::enroll::kLegacyCmacKeyHex);
     }
 
     TEST_F(PasswordKeySourceTest, DifferentPasswordsProduceDifferentKeys)

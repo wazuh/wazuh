@@ -11,7 +11,7 @@
  * Drives a REAL TLS RestinioHttpServer + real AuthGateway with a global prefix configured, to
  * pin the feature's routing contract: routes live at the prefixed path, an unprefixed request is
  * a 404 (auth never runs), and -- since the bearer profile authenticates identity only -- the same
- * token is valid for any target the router accepts (the AES-CMAC target binding is gone by design).
+ * token is valid for any target the router accepts (the token does not bind the target, by design).
  * (the legacy-tooling failure mode); an unprefixed request never reaches auth at all (404).
  * GlobalPrefixTransportTest (httpServer_test.cpp) covers the routing-only side without auth.
  */
@@ -158,10 +158,9 @@ TEST_F(GlobalPrefixE2ETest, TheBearerDoesNotBindTheTargetOrTheQueryString)
 {
     startServer("/wazuh-manager/");
 
-    // The property change the JWT profile brings (documented, deliberate): the token authenticates
-    // identity only, so one token is valid for any target the router accepts -- prefix and query
-    // string included. Under AES-CMAC a mismatch between the signed and the sent target was a 401;
-    // now the target is purely a routing matter (an unprefixed target is a 404, see below).
+    // A documented, deliberate property of the profile: the token authenticates identity only, so one
+    // token is valid for any target the router accepts -- prefix and query string included. The
+    // target is purely a routing matter (an unprefixed target is a 404, see below).
     const auto key = remoted::test::testAgentKey();
     const auto plain = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(plain), 200) << plain;

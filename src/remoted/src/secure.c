@@ -318,7 +318,7 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->downstream_max_response_body_size =
         getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
 
-    // Auth middleware (AES-CMAC request verification) tunables.
+    // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
     // The wazuh-agent+jwt profile's maxima (60 s accepted age, 30 s skew) are the upper bounds: a value
     // above them is a configuration error and keeps remoted from starting, never silently widens the window.
     // A zero skew is a valid setting ("no tolerance"), which a zeroed struct could not express -- hence the

@@ -255,8 +255,8 @@ namespace
         }
     }
 
-    // Unlike the AES-CMAC header, a token whose `kid`/`sub` spell the id non-canonically is a
-    // protocol violation, not an alias: the profile fixes the spelling.
+    // A token whose `kid`/`sub` spell the id non-canonically is a protocol violation, not an
+    // alias: the profile fixes the spelling.
     TEST(Middleware, ANonCanonicalKidIsRejected)
     {
         Fixture f;
@@ -304,7 +304,7 @@ namespace
         Fixture f;
         const std::string token = bearer("001").substr(7);
         const std::vector<std::string> malformed {
-            "Wazuh 001:1784238000:00112233445566778899aabbccddeeff", // the retired scheme
+            "Wazuh 001:1784238000:00112233445566778899aabbccddeeff", // an unknown scheme
             "bearer " + token,                                       // wrong case
             "BEARER " + token,
             "Bearer",
@@ -340,9 +340,9 @@ namespace
         EXPECT_EQ(errorOf(f.run("1", bearer("4294967295"))), AuthError::UnknownAgent);
     }
 
-    // The AES-CMAC protocol also took 16- and 24-byte keys; the profile's HS256 key is exactly 32
-    // bytes. An agent still holding a short key is told MissingKey (re-enroll), never checked against.
-    TEST(Middleware, LegacyShortOrCorruptKeysAreUnusable)
+    // The profile's HS256 key is exactly the 32 bytes of a 64-hex secret. An agent whose entry holds
+    // a short or corrupt key is told MissingKey (re-enroll), never checked against.
+    TEST(Middleware, ShortOrCorruptKeysAreUnusable)
     {
         for (const auto* keyHex : {"2b7e151628aed2a6abf7158809cf4f3c",                 // 16 bytes
                                    "2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6", // 24 bytes

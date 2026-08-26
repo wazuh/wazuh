@@ -148,7 +148,7 @@ TEST(JwtSignerTest, UnusableKeyMaterialYieldsNoHeaders)
     const JwtSigner signer {"001", badProvider};
     EXPECT_FALSE(signer.sign(1).has_value());
 
-    // A 16-byte key (the retired AES-CMAC profile also accepted it) is unusable now.
+    // A 16-byte key is unusable: the profile key is exactly 32 bytes.
     const ConfigKeyProvider shortProvider {"000102030405060708090a0b0c0d0e0f"};
     const JwtSigner shortSigner {"001", shortProvider};
     EXPECT_FALSE(shortSigner.sign(1).has_value());

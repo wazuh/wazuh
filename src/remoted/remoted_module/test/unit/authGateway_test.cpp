@@ -648,8 +648,8 @@ TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
     EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
 }
 
-// The authenticated-body cap is the gateway's own check now (the CMAC session used to count bytes
-// while streaming): an oversized body is a 413 -- no challenge -- and the decoder never runs on it.
+// The authenticated-body cap is the gateway's own check: an oversized body is a 413 -- no
+// challenge -- and the decoder never runs on it.
 TEST(AuthGatewayTest, BodyOverTheCapIs413BeforeTheDecoder)
 {
     FakeHttpServer server;

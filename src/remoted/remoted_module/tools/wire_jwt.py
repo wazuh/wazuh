@@ -263,8 +263,6 @@ def self_test(vectors_path: str) -> int:
     e = v["enroll"]
     ekey = derive_enroll_key(e["hkdf"]["password"])
     check("enroll HKDF matches the frozen KAT", ekey.hex() == e["hkdf"]["key_hex"])
-    check("enroll HKDF differs from the retired CMAC key of the same password",
-          ekey.hex() != e["hkdf"]["legacy_cmac_key_hex"])
     etoken = make_enroll_jwt(e["hkdf"]["password"], now=e["iat"], jti=e["jti"])
     check("enroll token reproduces the frozen vector byte for byte", etoken == e["token"])
     check("enroll token from the derived key bytes is the same token",

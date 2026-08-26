@@ -38,7 +38,15 @@ import zstandard
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
-DEFAULT_BODY = b'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:hello from python'
+
+
+def default_body(agent_id: str) -> bytes:
+    """One H line naming `agent_id` + one event. The H line MUST name the authenticated agent: the
+    manager answers 400 (payload_agent_mismatch) to a batch that claims another id."""
+    return b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\nE 1:/var/log/syslog:hello from python'
+
+
+DEFAULT_BODY = default_body("1001")  # re-derived from --agent-id in main()
 
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
@@ -413,12 +421,13 @@ def main():
                          help="Ignore --body/--tamper and run every success/failure scenario "
                               "(one per distinct AuthError reachable through this endpoint).")
     args = parser.parse_args()
-    global GLOBAL_PREFIX
+    global GLOBAL_PREFIX, DEFAULT_BODY
     GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
     if args.global_prefix is None and GLOBAL_PREFIX:
         print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
+    DEFAULT_BODY = default_body(args.agent_id)
 
     if args.all:
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1

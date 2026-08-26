@@ -121,7 +121,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D10 | Whole-agent deletion becomes its own endpoint (revised by D21) |
 | D11 | The keystore socket moves to its own minimal module (`keystore_server`) |
 | D12 | The new schema lands even if it breaks the agent's build (parallel teams; `TARGET=manager` unaffected) |
-| D13 | Ingress via remoted's authenticated `POST /stateful` (AES-CMAC per agent, opaque forward) |
+| D13 | Ingress via remoted's authenticated `POST /stateful` (`wazuh-agent+jwt` bearer per agent, opaque forward) |
 | D14 | The server endpoint is `POST /stateful`, mirroring remoted's route name |
 | D15 | The deletion endpoint is NOT exposed through remoted: UDS-local consumers only |
 | D16 | Checksum verification is single-attempt — no retry loop (the legacy did 5×10 s) |
@@ -611,7 +611,7 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 ## Load & benchmarking
 
 [`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md) is the load harness that
-measures this module end to end — a Go sender reproducing the agent's wire (AES-CMAC signatures,
+measures this module end to end — a Go sender reproducing the agent's wire (`wazuh-agent+jwt` bearer tokens,
 `FullSession` buffers, zstd in agent mode) over two transports:
 
 - `--mode uds` POSTs straight to `queue/sockets/inventory-sync-http.sock`: the ingestion pipeline

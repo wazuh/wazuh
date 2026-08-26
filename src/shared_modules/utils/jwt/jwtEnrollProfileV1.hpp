@@ -28,9 +28,8 @@
 namespace jwt_profile::v1::enroll
 {
     constexpr std::string_view kTyp = "wazuh-enroll+jwt";
-    /// HKDF `info` = this label followed by the single version byte kHkdfInfoVersion. The label is
-    /// the domain separator from the historical AES-CMAC key ("WAZUH-ENROLL-CMAC-KEY"): the same
-    /// password yields an unrelated key here.
+    /// HKDF `info` = this label followed by the single version byte kHkdfInfoVersion: the domain
+    /// separator of this key (the same password fed to any other construction yields an unrelated key).
     constexpr std::string_view kHkdfInfoLabel = "WAZUH-ENROLL-JWT-KEY";
     constexpr std::uint8_t kHkdfInfoVersion = 0x01;
     /// RFC 5869: an omitted salt is HashLen zero bytes; spelled explicitly so no provider default

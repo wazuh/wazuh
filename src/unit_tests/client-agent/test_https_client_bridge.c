@@ -765,9 +765,8 @@ static void test_non_hex_key_refuses_to_start(void **state)
     w_https_client_start();
 }
 
-/* The retired AES-CMAC protocol also took 16- and 24-byte keys (32/48 hex chars); the
- * `wazuh-agent+jwt` key is exactly 32 bytes, so such a client.keys entry is refused at start
- * (the agent must re-enroll to get a 64-hex key) instead of failing every request later. */
+/* The `wazuh-agent+jwt` key is exactly 32 bytes (64 hex chars), so a client.keys entry of any
+ * other length is refused at start (the agent must re-enroll) instead of failing every request later. */
 static void test_48_char_key_is_refused(void **state)
 {
     (void)state;

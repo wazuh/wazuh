@@ -71,7 +71,7 @@ namespace invsync::endpoints::sync
                 return;
             }
 
-            // remoted sets this from the identity it AUTHENTICATED via AES-CMAC. Its absence means
+            // remoted sets this from the identity it AUTHENTICATED (bearer token). Its absence means
             // the request did not come through remoted's authenticated route -- a contract
             // violation, not agent input.
             const auto agentIdIt = request->headers.find(agentIdHeader());

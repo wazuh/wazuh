@@ -140,7 +140,7 @@ static void test_valid_agent_key_rejects_other_shapes(void **state) {
     (void) state;
     assert_false(OS_IsValidAgentKey(NULL));
     assert_false(OS_IsValidAgentKey(""));
-    /* 32 hex chars: the 16-byte key the retired AES-CMAC protocol also accepted. */
+    /* 32 hex chars: 16 bytes, half the required key. */
     assert_false(OS_IsValidAgentKey("2b7e151628aed2a6abf7158809cf4f3c"));
     /* 48 hex chars: 24 bytes. */
     assert_false(OS_IsValidAgentKey("2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6"));

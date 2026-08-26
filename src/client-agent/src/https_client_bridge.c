@@ -1532,8 +1532,7 @@ static int bridge_map_verify_mode(int agent_verify_mode)
  * provider re-derives the same check lazily at signing time (so a bad key
  * never crashes anything), but that means a misconfigured key otherwise fails
  * every request silently forever with no startup error. Validate it here so a
- * broken client.keys -- including the 16/24-byte keys of the retired protocol
- * -- is caught once, loudly, at start. */
+ * broken client.keys is caught once, loudly, at start. */
 static bool bridge_key_is_valid(const char *raw_key)
 {
     if (!raw_key) {

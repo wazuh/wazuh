@@ -178,9 +178,9 @@ def scenario_missing_authorization(_key, name, _timestamp):
 
 
 def scenario_malformed_authorization(_key, name, _timestamp):
-    # The retired `WazuhEnroll <ts>:<mac>` scheme included: not a Bearer -> MalformedAuthorization.
+    # Not a Bearer -> MalformedAuthorization.
     body = build_body(name, "5.0.0")
-    return {"Authorization": "WazuhEnroll 1700000000:00112233445566778899aabbccddeeff"}, body
+    return {"Authorization": "Basic dXNlcjpwYXNz"}, body
 
 
 def scenario_agent_profile_token(key, name, timestamp):

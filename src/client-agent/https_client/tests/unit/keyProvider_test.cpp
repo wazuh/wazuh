@@ -25,8 +25,8 @@ TEST(ConfigKeyProviderTest, DecodesASixtyFourHexSecretIntoThirtyTwoBytes)
 
 TEST(ConfigKeyProviderTest, RejectsEveryOtherShape)
 {
-    // The retired AES-CMAC profile also took 16- and 24-byte keys; the bearer profile's key is
-    // exactly the 32 bytes of a 64-hex secret, lowercase (the manager's keystore agrees).
+    // The bearer profile's key is exactly the 32 bytes of a 64-hex secret, lowercase (the manager's
+    // keystore agrees).
     EXPECT_FALSE(ConfigKeyProvider {""}.signingKey().has_value());
     EXPECT_FALSE(ConfigKeyProvider {std::string(32, 'a')}.signingKey().has_value()); // 16 bytes.
     EXPECT_FALSE(ConfigKeyProvider {std::string(48, 'b')}.signingKey().has_value()); // 24 bytes.

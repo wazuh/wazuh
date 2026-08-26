@@ -30,17 +30,6 @@ TEST(EnrollKeyDerivation, MatchesTheFrozenKnownAnswerVector)
     EXPECT_TRUE(*key == *expected);
 }
 
-TEST(EnrollKeyDerivation, DomainSeparatedFromTheRetiredCmacKey)
-{
-    // Same password, different `info`: the retired AES-CMAC key must not come out of this
-    // construction (a captured historical MAC key never verifies a bearer, and vice versa).
-    const auto key = enroll::deriveEnrollKey(tv::kPassword);
-    const auto legacy = JwtKeyDecoder::decode(tv::kLegacyCmacKeyHex);
-    ASSERT_TRUE(key.has_value());
-    ASSERT_TRUE(legacy.has_value());
-    EXPECT_TRUE(*key != *legacy);
-}
-
 TEST(EnrollKeyDerivation, DeterministicAndPasswordSensitive)
 {
     const auto a = enroll::deriveEnrollKey("correct horse battery staple");

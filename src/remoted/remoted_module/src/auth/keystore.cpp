@@ -63,8 +63,8 @@ namespace remoted::auth
         }
 
         // Exactly the key shape of the wazuh-agent+jwt profile: 64 lowercase hex chars -> 32 bytes.
-        // Anything else (the 16/24-byte keys the AES-CMAC protocol also accepted, uppercase, odd
-        // lengths, non-hex) decodes to an EMPTY key, so the agent is answered MissingKey -- "re-enroll"
+        // Anything else (uppercase, odd lengths, non-hex) decodes to an EMPTY key, so the agent is answered MissingKey
+        // -- "re-enroll"
         // -- instead of failing signature checks forever.
         std::vector<std::uint8_t> decodeKey(const std::string& hex)
         {
