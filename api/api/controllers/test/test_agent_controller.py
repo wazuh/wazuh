@@ -28,8 +28,9 @@ with patch('wazuh.common.wazuh_uid'):
             put_multiple_agent_single_group, put_upgrade_agents,
             put_upgrade_custom_agents, restart_agent,
             restart_agents, restart_agents_by_group,
-            reload_agent, reload_agents, reload_agents_by_group)
-        from wazuh import agent
+            reload_agent, reload_agents, reload_agents_by_group,
+            scan_agents)
+        from wazuh import agent, vulnerability_scan
         from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
 
@@ -167,6 +168,32 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                                       is_async=True,
                                       wait_for_complete=False,
                                       broadcasting=True,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_scan_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'scan_agents' endpoint is working as expected."""
+    result = await scan_agents()
+    f_kwargs = {'agent_list': '*'
+                }
+    mock_dapi.assert_called_once_with(f=vulnerability_scan.scan_agents,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=True,
+                                      wait_for_complete=False,
+                                      broadcasting=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
