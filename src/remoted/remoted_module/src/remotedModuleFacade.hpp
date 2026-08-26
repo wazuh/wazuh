@@ -537,8 +537,8 @@ private:
 
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
             remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
-                                                       enrollConfig.maxRequestAgeSeconds,
-                                                       enrollConfig.maxFutureSkewSeconds,
+                                                       enrollConfig.timePolicy.maxAgeSec(),
+                                                       enrollConfig.timePolicy.skewSec(),
                                                        enrollConfig.maxBodySize},
             enrollPasswordKeySource);
 

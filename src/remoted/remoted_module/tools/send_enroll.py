@@ -56,10 +56,10 @@ HKDF_INFO = b"WAZUH-ENROLL-CMAC-KEY" + bytes([1])
 # protocol-version header AND covered by the CMAC's second line -- the same field in both places.
 PROTOCOL_VERSION = "1"
 
-# Must match EnrollmentAuthConfig's defaults (enrollmentAuthenticator.hpp) unless the manager
-# overrides them via remoted.auth_max_request_age/_future_skew -- only used to pick timestamps
-# that reliably land on the wrong side of each window.
-MAX_REQUEST_AGE_SECONDS = 300
+# Must match the manager's time policy defaults (remoted.jwt_max_age / remoted.jwt_clock_skew,
+# profile maxima 60 / 30) unless the manager lowers them -- only used to pick timestamps that
+# reliably land on the wrong side of each window.
+MAX_REQUEST_AGE_SECONDS = 60
 MAX_FUTURE_SKEW_SECONDS = 30
 
 

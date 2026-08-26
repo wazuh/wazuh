@@ -13,6 +13,8 @@
 
 #include <gtest/gtest.h>
 
+#include <stdexcept>
+
 #include <cstring>
 
 using namespace remoted::enrollment;
@@ -46,10 +48,10 @@ TEST(EnrollmentConfigTest, ZeroedAbiMeansEverythingOffAndTimeoutsAtSentinel)
     EXPECT_EQ(cfg.authdMaxQueueSize, 0u);
     EXPECT_EQ(cfg.authdWorkerThreads, 0u);
 
-    // Same fallback defaults authTypes.cpp resolves for the agent<->manager scheme's AuthConfig --
-    // /enroll's WazuhEnroll freshness-window check must not silently diverge from them.
-    EXPECT_EQ(cfg.maxRequestAgeSeconds, 300);
-    EXPECT_EQ(cfg.maxFutureSkewSeconds, 30);
+    // Same time policy authTypes.cpp resolves for the agent<->manager scheme's AuthConfig --
+    // /enroll's freshness-window check must not silently diverge from it (profile maxima when unset).
+    EXPECT_EQ(cfg.timePolicy.maxAgeSec(), 60);
+    EXPECT_EQ(cfg.timePolicy.skewSec(), 30);
 }
 
 TEST(EnrollmentConfigTest, BooleanAndStringFieldsCopiedVerbatim)
@@ -113,30 +115,42 @@ TEST(EnrollmentConfigTest, NegativeAuthdKnobsFallBackToZeroSentinel)
     EXPECT_EQ(cfg.authdWorkerThreads, 0u);
 }
 
-TEST(EnrollmentConfigTest, ConfiguredRequestAgeAndFutureSkewArePassedThrough)
+TEST(EnrollmentConfigTest, ConfiguredTimePolicyIsPassedThrough)
 {
-    // Regression guard: buildEnrollmentConfig() used to drop these two entirely -- remoted's own
-    // `auth_max_request_age`/`auth_max_future_skew` internal options had no effect on /enroll at
-    // all, silently contradicting send_enroll.py/https-events-api.md, which both document them as
-    // applying here too.
+    // Regression guard: buildEnrollmentConfig() once dropped the window knobs entirely -- remoted's
+    // internal options had no effect on /enroll at all, silently contradicting send_enroll.py and
+    // https-events-api.md, which document them as applying here too. Same ABI fields, same
+    // resolution as AuthConfig -- zero skew included as a valid, configured value.
     auto c = zeroedConfig();
-    c.auth_max_request_age = 600;
-    c.auth_max_future_skew = 60;
+    c.jwt_max_age = 45;
+    c.jwt_clock_skew = 20;
+    c.jwt_clock_skew_set = 1;
 
-    const auto cfg = buildEnrollmentConfig(c);
-    EXPECT_EQ(cfg.maxRequestAgeSeconds, 600);
-    EXPECT_EQ(cfg.maxFutureSkewSeconds, 60);
+    auto cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.timePolicy.maxAgeSec(), 45);
+    EXPECT_EQ(cfg.timePolicy.skewSec(), 20);
+
+    c.jwt_clock_skew = 0;
+    cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.timePolicy.skewSec(), 0);
 }
 
-TEST(EnrollmentConfigTest, NonPositiveRequestAgeAndFutureSkewFallBackToDefaults)
+TEST(EnrollmentConfigTest, UnsetTimePolicyValuesFallBackToTheProfileMaxima)
 {
     auto c = zeroedConfig();
-    c.auth_max_request_age = -1;
-    c.auth_max_future_skew = 0;
+    c.jwt_max_age = -1;
+    c.jwt_clock_skew = 0; // without jwt_clock_skew_set this is "unset", not "zero tolerance"
 
     const auto cfg = buildEnrollmentConfig(c);
-    EXPECT_EQ(cfg.maxRequestAgeSeconds, 300);
-    EXPECT_EQ(cfg.maxFutureSkewSeconds, 30);
+    EXPECT_EQ(cfg.timePolicy.maxAgeSec(), 60);
+    EXPECT_EQ(cfg.timePolicy.skewSec(), 30);
+}
+
+TEST(EnrollmentConfigTest, TimePolicyAboveTheProfileMaximaThrows)
+{
+    auto c = zeroedConfig();
+    c.jwt_max_age = 61;
+    EXPECT_THROW(buildEnrollmentConfig(c), std::invalid_argument);
 }
 
 TEST(EnrollmentConfigTest, ConfiguredMaxBodySizeIsPassedThrough)

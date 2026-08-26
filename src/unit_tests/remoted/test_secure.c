@@ -3406,9 +3406,9 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_io_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_post_process_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 10485760);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 300);
-    will_return(__wrap_getDefine_Int_default, 30);
+    // jwt_* / auth_*
+    will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
 
     remoted_module_https_config(&rm_config);
@@ -3439,8 +3439,9 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.downstream_io_threads, 0);
     assert_int_equal(rm_config.downstream_post_process_threads, 0);
     assert_int_equal(rm_config.downstream_max_response_body_size, 10485760);
-    assert_int_equal(rm_config.auth_max_request_age, 300);
-    assert_int_equal(rm_config.auth_max_future_skew, 30);
+    assert_int_equal(rm_config.jwt_max_age, 60);
+    assert_int_equal(rm_config.jwt_clock_skew, 30);
+    assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 10485760);
     assert_true(rm_config.http_content_encoding_enabled);
 }
@@ -3482,9 +3483,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 600);
-    will_return(__wrap_getDefine_Int_default, 45);
+    // jwt_* / auth_* (in-range, non-default values: the profile caps jwt_max_age at 60, skew at 30)
+    will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);
 
     remoted_module_https_config(&rm_config);
@@ -3515,8 +3516,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.downstream_io_threads, 6);
     assert_int_equal(rm_config.downstream_post_process_threads, 9);
     assert_int_equal(rm_config.downstream_max_response_body_size, 20971520);
-    assert_int_equal(rm_config.auth_max_request_age, 600);
-    assert_int_equal(rm_config.auth_max_future_skew, 45);
+    assert_int_equal(rm_config.jwt_max_age, 45);
+    assert_int_equal(rm_config.jwt_clock_skew, 20);
+    assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
     assert_false(rm_config.http_content_encoding_enabled);
 }
@@ -3693,9 +3695,9 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 300);
-    will_return(__wrap_getDefine_Int_default, 30);
+    // jwt_* / auth_*
+    will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
 
     // remoted_enrollment_config(): ReadConfig(CAUTHD, ...) succeeds with a "normally enabled"

@@ -454,8 +454,8 @@ milliseconds internally.
 | Downstream client I/O threads      | `cpp_get_nproc()` | `remoted.downstream_io_threads`             |
 | Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads`   |
 | Max downstream response body       | `10 MiB`          | `remoted.downstream_max_response_body_size` |
-| Auth max request age               | `300 s`           | `remoted.auth_max_request_age`              |
-| Auth max future skew               | `30 s`            | `remoted.auth_max_future_skew`              |
+| JWT max accepted token age         | `60 s`            | `remoted.jwt_max_age`                       |
+| JWT clock skew                     | `30 s`            | `remoted.jwt_clock_skew`                    |
 | Auth max body size                 | `10 MiB`          | `remoted.auth_max_body_size`                |
 
 The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
@@ -535,7 +535,7 @@ the throttled log line can only sample:
 | Deferred-work slots exhausted | `remoted.max_deferred_requests` | `remoted.forwarder.deferred.rejected.total` (+ `deferred.inflight` vs `deferred.capacity`) |
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
-| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` | `remoted.auth.reject.clock_skew` |
+| Tokens outside the accepted time window (agent clock drift) | `remoted.jwt_max_age`, `remoted.jwt_clock_skew` | `remoted.auth.reject.clock_skew` |
 | Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `remoted.max_inflight_bytes` (`Content-Encoding: zstd`) | `remoted.auth.reject.body_too_large` |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` | `remoted.http.<endpoint>.latency` percentiles vs the cap |
 
@@ -975,8 +975,8 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
   `<mac>` is a 32-character lowercase-hex AES-256-CMAC, keyed by a 32-byte key derived from
   `authd`'s enrollment password (`etc/authd.pass`) via **HKDF-SHA256** (empty salt,
   `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`) — never the password bytes themselves. The timestamp
-  accepts the same window as the AES-CMAC scheme above (300 s past, 30 s future) -- tunable via the
-  SAME two internal options, `remoted.auth_max_request_age`/`remoted.auth_max_future_skew` (see the
+  accepts the same window as the agent bearer scheme above (60 s past, 30 s future) -- tunable via
+  the SAME two internal options, `remoted.jwt_max_age`/`remoted.jwt_clock_skew` (see the
   table under [Authentication (AES-CMAC)](#authentication-aes-cmac) above). The request body is
   also capped by the same `remoted.auth_max_body_size` (10 MiB default) that scheme enforces --
   checked before anything else, in **every** mode including Open, so an oversized body is rejected

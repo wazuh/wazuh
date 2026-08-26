@@ -359,11 +359,11 @@ note "No replay protection beyond the timestamp window. Already true on a single
 # clock about a second after the probe stamps the request, so -301 and +31 sit right on the edge
 # and flip between 202 and 401 from run to run. The window itself is exactly -300 / +30; these
 # checks confirm which side of it each request lands on, without being flaky.
-check "timestamp -290 s (inside the window)"        "202" "$(status --url "$NODE1" --timestamp-offset -290)"
-check "timestamp -320 s (expired)"                  "401" "$(status --url "$NODE1" --timestamp-offset -320)"
+check "timestamp -50 s (inside the window)"         "202" "$(status --url "$NODE1" --timestamp-offset -50)"
+check "timestamp -100 s (expired)"                  "401" "$(status --url "$NODE1" --timestamp-offset -100)"
 check "timestamp +20 s (inside the window)"         "202" "$(status --url "$NODE1" --timestamp-offset 20)"
 check "timestamp +45 s (too far ahead)"             "401" "$(status --url "$NODE1" --timestamp-offset 45)"
-note "Effective replay window: 330 s (auth_max_request_age 300 back, auth_max_future_skew 30 ahead)."
+note "Effective replay window: 90 s (jwt_max_age 60 back, jwt_clock_skew 30 ahead)."
 
 group "Duplicate delivery across manager nodes (issue: shared replay state in clusters?)"
 FIXED_TS=$("$PYTHON" -c 'import time; print(int(time.time()))')

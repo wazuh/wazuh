@@ -173,8 +173,8 @@ src/http_server/
     4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
        `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
        `downstream_post_process_threads`, `downstream_max_response_body_size`,
-       `auth_max_request_age`, `auth_max_future_skew`, `auth_max_body_size` -- populated from the
-       `remoted.downstream_*`/`remoted.auth_*` internal options in `secure.c` and translated by
+       `jwt_max_age`, `jwt_clock_skew`, `auth_max_body_size` -- populated from the
+       `remoted.downstream_*`/`remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c` and translated by
        `remoted::downstream::buildDownstreamConfig()` (`downstream/downstreamConfig.cpp`) and
        `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`) respectively; the facade calls
        both in `startHttpServer()` instead of default-constructing `DownstreamConfig{}`/
@@ -889,7 +889,7 @@ Implements the Password gate above, and nothing about client certificates at all
 listener's exclusive concern, checked before any handler runs, which is exactly why this class has
 no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
 `maxRequestAgeSeconds`/`maxFutureSkewSeconds`/`maxBodySize` (the freshness window and body-size cap,
-sourced from the SAME `auth_max_request_age`/`auth_max_future_skew`/`auth_max_body_size` internal
+sourced from the SAME `jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal
 options the agent<->manager scheme reads, so the two never silently disagree). The body-size check
 runs first and unconditionally — in Open mode too — so an unauthenticated peer can never make this
 endpoint hash an arbitrarily large body before being rejected. Reuses `Cmac`, the timestamp/hex
@@ -1472,9 +1472,9 @@ OpenSSL (linked into `remoted_module`). The middleware **streams** the AES-CMAC 
 body: the verified body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from
 the transport's single request buffer.
 
-`AuthConfig`'s tunables (`maxRequestAgeSeconds`, `maxFutureSkewSeconds`, `maxBodySize`) are
-populated from the matching C-ABI fields (`auth_max_request_age`, `auth_max_future_skew`,
-`auth_max_body_size`, in turn read from the `remoted.auth_*` internal options in `secure.c`) via
+`AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
+populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
+`auth_max_body_size`, in turn read from the `remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c`) via
 `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`), which the facade calls instead of
 default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1"`) -- it's a
 protocol constant, not an ops tuning knob. See *Configuration* above.
@@ -1571,7 +1571,7 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
 - **Operator-actionable → `LOGFN_WARN`, throttled.** Byte budget exhausted (`max_inflight_bytes`),
   deferred slots exhausted (`max_deferred_requests`), each downstream failure kind
   (`downstream_connect_timeout` / `_write_timeout` / `_response_timeout` /
-  `_max_response_body_size`), clock skew (`auth_max_request_age` / `auth_max_future_skew`), body cap
+  `_max_response_body_size`), clock skew (`jwt_max_age` / `jwt_clock_skew`), body cap
   (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent claiming a
   different agent id.
 - **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An

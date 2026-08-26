@@ -113,8 +113,7 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_CLOCK_SKEW,
                                        "Rejections: token issued in the future, expired, or older than the accepted "
-                                       "age (see the JWT time-policy internals; today "
-                                       "'remoted.auth_max_request_age'/'remoted.auth_max_future_skew' for /enroll)",
+                                       "age ('remoted.jwt_max_age' / 'remoted.jwt_clock_skew')",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_UNUSABLE_KEY,
                                        "Rejections: the agent's client.keys entry does not decode to a 32-byte key",

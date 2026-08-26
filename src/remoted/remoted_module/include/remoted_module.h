@@ -142,9 +142,16 @@ extern "C"
                                                      ///< cpp_get_nproc().
         long long downstream_max_response_body_size; ///< Cap on a downstream response body, bytes (<=0 -> default).
 
-        // Auth middleware (AES-CMAC request verification) tunables. <=0 -> module default (see remoted.auth_*).
-        int auth_max_request_age;     ///< Seconds a request timestamp may lag behind now.
-        int auth_max_future_skew;     ///< Seconds a request timestamp may lead ahead of now.
+        // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
+        int jwt_max_age;              ///< Max accepted token age, seconds: now - iat <= jwt_max_age + jwt_clock_skew.
+                                      ///< remoted.jwt_max_age, 1..60 (profile maximum 60); <=0 -> module default.
+                                      ///< The token's declared lifetime (exp - iat) is a fixed 60 s, NOT configurable.
+        int jwt_clock_skew;           ///< Tolerated agent/manager clock difference, seconds, both directions.
+                                      ///< remoted.jwt_clock_skew, 0..30 (profile maximum 30). Zero is a VALID
+                                      ///< setting ("no tolerance"), so this field is only read when
+                                      ///< jwt_clock_skew_set is non-zero; otherwise the module default applies.
+        int jwt_clock_skew_set;       ///< Non-zero when jwt_clock_skew carries a configured value (remoted always
+                                      ///< sets it). A zeroed struct therefore still means "module defaults".
         long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).

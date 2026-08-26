@@ -95,7 +95,7 @@ namespace
     enum class RejectionKind
     {
         ClientFault,              ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
-        ClockSkew,                ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
+        ClockSkew,                ///< Token outside the accepted window -> jwt_max_age / jwt_clock_skew.
         BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
         UnusableKey,              ///< The agent exists but its client.keys key does not decode.
         AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
@@ -143,9 +143,9 @@ namespace
                 if (const auto d = clockSkewThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) in the last %d s whose timestamp fell outside the accepted "
-                               "window (%s). Check clock synchronization between the agents and the manager; the "
-                               "window is set by 'auth_max_request_age' and 'auth_max_future_skew'.",
+                               "Rejected %llu request(s) in the last %d s whose token fell outside the accepted "
+                               "time window (%s). Check clock synchronization between the agents and the manager; "
+                               "the window is set by 'jwt_max_age' and 'jwt_clock_skew' (remoted internal options).",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                remoted::auth::toString(err));

@@ -913,8 +913,8 @@ components:
         Authorization: WazuhEnroll <timestamp>:<mac>
         ```
 
-        - `timestamp`: UNIX seconds, same window as the agent scheme (-300 s .. +30 s), tunable with
-          the same `remoted.auth_max_request_age` / `remoted.auth_max_future_skew`
+        - `timestamp`: UNIX seconds, same window as the agent scheme (-60 s .. +30 s), tunable with
+          the same `remoted.jwt_max_age` / `remoted.jwt_clock_skew`
         - `mac`: 32 lowercase hex characters, AES-256-CMAC keyed by a 32-byte key derived from
           `authd`'s enrollment password (`etc/authd.pass`) via HKDF-SHA256 -- empty salt,
           `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`. The password bytes are never used directly.

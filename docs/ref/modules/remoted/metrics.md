@@ -185,7 +185,7 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 |---|---|---|
 | `remoted.auth.reject.unknown_agent` | The agent id is not in `client.keys` | diagnostic — enroll the agent |
 | `remoted.auth.reject.invalid_mac` | The request's AES-CMAC did not verify (wrong key, or tampering) | diagnostic — re-enroll; scanners/noise on exposed listeners also land here |
-| `remoted.auth.reject.clock_skew` | Timestamp outside the accepted window | [`remoted.auth_max_request_age`](configuration.md#remotedauth_max_request_age), [`remoted.auth_max_future_skew`](configuration.md#remotedauth_max_future_skew) — but fix NTP first |
+| `remoted.auth.reject.clock_skew` | Token outside the accepted time window (too old, expired, or issued in the future) | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) — but fix NTP first |
 | `remoted.auth.reject.unusable_key` | The agent's `client.keys` entry does not decode to a usable AES key | diagnostic — re-enroll the agent |
 | `remoted.auth.reject.address_not_allowed` | The peer address does not satisfy the agent's [registered address](https-events-api.md#registered-address-ip-column) (`client.keys` `ip` column) | diagnostic — re-enroll the agent with the address it connects from, or with `any` |
 | `remoted.auth.reject.enrollment_key_unavailable` | Password-mode `/enroll` could not use the enrollment password key: `etc/authd.pass` missing, unreadable, invalid, or not yet synced to this worker — or AES-CMAC unavailable manager-wide. **Not** an agent credential fault: no agent exists yet, so re-enrolling fixes nothing | diagnostic — fix/sync `etc/authd.pass` |
