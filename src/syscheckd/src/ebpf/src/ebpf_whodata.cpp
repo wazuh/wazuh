@@ -522,12 +522,6 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     }
 }
 
-/*
- * Open the object, select the program set (LSM or kprobe), load and attach.
- * When use_lsm is true the bpf_d_path variants are tried first and, on load
- * failure, the manual-walker variants (dpath -> walk). Returns 0 on success
- * (with global_obj set) or 1 on any failure (object closed, global_obj null).
- */
 static int load_and_attach(const char* bpfobj_path, bool use_lsm)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
@@ -537,7 +531,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
     }
 
     bpf_object* obj = nullptr;
-    bool prefer_dpath = use_lsm; /* only meaningful when LSM is active */
+    bool prefer_dpath = use_lsm;
 
     while (true)
     {
@@ -576,9 +570,6 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj)
     {
-        /* Skip programs we explicitly disabled in select_programs;
-         * libbpf would otherwise return -EINVAL because they were
-         * never JIT'd. */
         if (!bpf_helpers->bpf_program_autoload(prog))
         {
             continue;
@@ -598,11 +589,6 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
                      strerror(saved_errno));
             logFn(LOG_ERROR, error_message);
             logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
-            /* Detach the links already installed in this attempt: a
-             * bpf_link created by bpf_program__attach outlives
-             * bpf_object__close, so without this a partially-attached set
-             * would leak and the kprobe fallback would stack a second,
-             * overlapping hook set on top of it. */
             for (struct bpf_link* installed : links)
             {
                 bpf_helpers->bpf_link_destroy(installed);
@@ -637,13 +623,6 @@ int init_bpfobj()
         return 0;
     }
 
-    /*
-     * The LSM path can fail to load or attach on kernels that advertise BPF
-     * LSM but lack the required support (e.g. arm64 < 6.8: bpf_d_path is
-     * rejected at load and the LSM trampoline attach returns -ENOTSUPP).
-     * kprobes need none of that, so fall back to them before giving up and
-     * letting FIM drop to audit.
-     */
     if (g_bpf_lsm_active)
     {
         logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
