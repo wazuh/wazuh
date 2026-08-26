@@ -129,7 +129,7 @@ agent runs its own retry/backoff. See [Configuration](configuration.md) for the 
 ### Local admin plane
 
 The module's own metrics are served on a manager-local Unix socket
-(`queue/sockets/remoted-module.sock`), never on the agent-facing listener — see
+(`queue/sockets/remote-admin-http.sock`), never on the agent-facing listener — see
 [the admin socket](README.md#local-admin-socket).
 
 ## Legacy pipeline (opt-in)
@@ -174,7 +174,7 @@ batch from the metadata cache, and forwards it to the engine.
 ### 5. Engine client
 
 - **Transport** — HTTP over a Unix-domain socket
-- **Socket** — `queue/sockets/queue-http.sock`
+- **Socket** — `queue/sockets/engine-ingest-http.sock`
 - **Route** — `POST /events/enriched`
 - **Framing** — `x-wev1` (see [Event Protocol](event-protocol.md))
 

@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-// End-to-end tests of the module's LOCAL admin socket (queue/sockets/remoted-module.sock),
+// End-to-end tests of the module's LOCAL admin socket (queue/sockets/remote-admin-http.sock),
 // brought up by RemotedModuleFacade::start() through the same C-ABI black-box route
 // remotedModule_test.cpp takes, and driven with a real httplib::Client over the UDS socket --
 // the inverse of fakeVdServer.hpp, where a real httplib::Server stands in for a module client's
@@ -46,7 +46,7 @@ namespace
     // install dir; here it simply resolves against the test process's cwd, the same convention
     // remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally so a
     // change of the facade's constant is a conscious test change too.
-    constexpr auto kAdminSocketPath {"queue/sockets/remoted-module.sock"};
+    constexpr auto kAdminSocketPath {"queue/sockets/remote-admin-http.sock"};
 
     // A port the OS says is free, asked for right before the module binds it -- same rationale
     // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.

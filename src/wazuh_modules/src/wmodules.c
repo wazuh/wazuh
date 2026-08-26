@@ -132,7 +132,7 @@ int wm_config() {
         wm_add(module);
     }
 
-    // Keystore server: hosts queue/sockets/keystore for the Python framework's credential
+    // Keystore server: hosts queue/sockets/keystore.sock for the Python framework's credential
     // manager, so the API's indexer access does not depend on any other module.
     if ((module = wm_keystore_server_read()))
         wm_add(module);

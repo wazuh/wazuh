@@ -52,7 +52,7 @@ thread instead of being called inline.
 | Thread | Runs on | Role |
 |---|---|---|
 | Remote server | any node with `remote_enrollment` | TLS enrollment on port 1515 |
-| Local server | every node | `queue/sockets/auth`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
+| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, queues indexer purges |
 | Purge relay | master only | sends queued purges after their delay, owns every retry |
 

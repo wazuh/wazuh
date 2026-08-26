@@ -247,7 +247,7 @@ src/endpoints/
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
 - **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`).** Same authenticated
   pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
-  (`queue/sockets/inventory-sync.sock`) instead of the engine. Nothing on THIS side interprets either
+  (`queue/sockets/inventory-sync-http.sock`) instead of the engine. Nothing on THIS side interprets either
   document — but the far side does, and no longer trivially: it validates a specific shape
   (`/stats` an object keyed by module, `/config` an array of `{module, config}` pairs), rebuilds it
   into an indexable document, and writes one document per agent keyed by the agent id into
@@ -548,8 +548,8 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
-| `wdbSocketPath` | `/queue/db/wdb` | — (fixed) |
-| `taskSocketPath` | `/queue/tasks/task` | — (fixed) |
+| `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
+| `taskSocketPath` | `/queue/sockets/task.sock` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -677,7 +677,7 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
   answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
   items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
@@ -751,7 +751,7 @@ sequenceDiagram
     participant EA as EnrollmentAuthenticator
     participant PK as PasswordKeySource<br/>(etc/authd.pass)
     participant AC as AuthdClient
-    participant AD as authd<br/>(queue/sockets/auth UDS)
+    participant AD as authd<br/>(queue/sockets/auth.sock UDS)
 
     Ag->>EP: POST /enroll {"name":...,"version":...,"groups":...}
     Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
@@ -913,7 +913,7 @@ privilege boundary — it joins the same trust domain `manage_agents` already si
 
 #### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
 
-The bridge to authd's local socket `queue/sockets/auth`, framed with `shared_modules/utils`'s
+The bridge to authd's local socket `queue/sockets/auth.sock`, framed with `shared_modules/utils`'s
 `Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
 `OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
 it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the
@@ -1262,7 +1262,7 @@ that isn't a valid/complete zstd frame is `400`.
 
 Endpoints process a request, forward it to another service over a Unix-domain HTTP socket, and reply
 to the agent once that service answers. First target: the engine's event ingress —
-`queue/sockets/queue-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
+`queue/sockets/engine-ingest-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
 `400` bad batch / `500` orchestrator down) — and a `/stateless` body already **is** the H/E batch it
 expects, so the forwarder is near pass-through with auth in front.
 
@@ -1659,7 +1659,7 @@ the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by di
 per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
 catalogs consume.
 
-## Local admin socket — `queue/sockets/remoted-module.sock`
+## Local admin socket — `queue/sockets/remote-admin-http.sock`
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
@@ -1674,9 +1674,9 @@ byte budget):
 
 Contract points:
 
-- **Fixed path, no knob**: the constant `queue/sockets/remoted-module.sock` is **relative** on
+- **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
   purpose — remoted `chroot()`s into the install dir, so the socket lands at
-  `$WAZUH_HOME/queue/sockets/remoted-module.sock` (mode 0660). Internal options only carry ints,
+  `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
   admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
@@ -1692,7 +1692,7 @@ Contract points:
   `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 ## Integration in remoted

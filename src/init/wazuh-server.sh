@@ -301,7 +301,7 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail --unix-socket ${DIR}/queue/sockets/engine-api-http.sock \
             -X POST -H "Content-Type: application/json" \
             -d '{}' \
             http://localhost/_internal/event-dumper/status \

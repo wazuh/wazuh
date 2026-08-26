@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for the keystore server (UDS at queue/sockets/keystore)
+ * Wazuh Module for the keystore server (UDS at queue/sockets/keystore.sock)
  * Copyright (C) 2015, Wazuh Inc.
  * August 5, 2026.
  *

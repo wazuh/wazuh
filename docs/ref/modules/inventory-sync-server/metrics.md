@@ -3,7 +3,7 @@
 The inventory sync server keeps its runtime statistics (D18) in a `wazuh_metrics` registry
 (the shared library at `src/shared_modules/metrics/` — the same one remoted's HTTPS agent
 server uses) and serves a JSON dump of the whole registry on **`GET /metrics` over its local
-socket**, `queue/sockets/inventory-sync.sock`. The route is UDS-local (agents can never reach
+socket**, `queue/sockets/inventory-sync-http.sock`. The route is UDS-local (agents can never reach
 it — remoted exposes nothing that forwards to it) and **budget-exempt**: reading metrics never
 consumes the `server.budget.*` it reports, so it keeps answering exactly when the byte budget
 is under pressure. Do not confuse it with `POST /stats`, which is the *ingest* of agent
@@ -18,7 +18,7 @@ the vulnerability-detection module, agent-driven volume, or nothing at all).
 ## Querying
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
 ```
 
 The dump is one JSON document: an envelope with the daemon name and a UTC timestamp, plus one

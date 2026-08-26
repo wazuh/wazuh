@@ -585,7 +585,7 @@ static keyentry **setup_single_task_poll_cycle(const char *agent_id, int agent_i
     cJSON_Delete(response_obj);
     *out_response = response;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/tasks/task");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, sock_id);
@@ -703,7 +703,7 @@ static void test_poll_cycle_permanent_failure_short_circuits_no_retry(void **sta
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/tasks/task");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 72);
@@ -787,7 +787,7 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     char *response_041 = cJSON_PrintUnformatted(response_041_obj);
     cJSON_Delete(response_041_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/tasks/task");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 50);
@@ -832,7 +832,7 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     char *response_042 = cJSON_PrintUnformatted(response_042_obj);
     cJSON_Delete(response_042_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/tasks/task");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 51);
@@ -899,7 +899,7 @@ static void test_poll_cycle_eligible_agent_zero_pending_tasks(void **state) {
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/tasks/task");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 60);

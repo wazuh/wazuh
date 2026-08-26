@@ -214,7 +214,7 @@ analysisd.geo_sync_interval=60
 
 ## API Configuration
 
-The engine exposes an internal HTTP API over a **Unix domain socket** (default: `/var/wazuh-manager/queue/sockets/analysis`, internal option `analysisd.server_api_socket`) — not a TCP port. Requests and responses are plain JSON, validated against protobuf schemas on both ends. It is used for content/policy management, testing, routing, and metrics.
+The engine exposes an internal HTTP API over a **Unix domain socket** (default: `/var/wazuh-manager/queue/sockets/engine-api-http.sock`, internal option `analysisd.server_api_socket`) — not a TCP port. Requests and responses are plain JSON, validated against protobuf schemas on both ends. It is used for content/policy management, testing, routing, and metrics.
 
 **Complete API documentation:** See [API Reference](api-reference.md)
 
@@ -232,7 +232,7 @@ Because the API is served over a Unix domain socket rather than a TCP port, it c
 Dump all current metrics:
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
   -X POST http://localhost/metrics/dump \
   -H "Content-Type: application/json" -d '{}'
 ```
@@ -240,7 +240,7 @@ curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
 Validate a policy configuration:
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
   -X POST http://localhost/content/validate/policy \
   -H "Content-Type: application/json" \
   -d @policy.json
@@ -308,7 +308,7 @@ ps aux | grep wazuh-manager-analysisd
 engine-public status get
 
 # Equivalent raw call over the Unix domain socket
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis http://localhost/status
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock http://localhost/status
 ```
 
 ### View Engine Logs
@@ -329,17 +329,17 @@ Query engine performance via the API (Unix domain socket, `--unix-socket`):
 
 ```bash
 # List all registered metric names
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
   -X POST http://localhost/metrics/list \
   -H "Content-Type: application/json" -d '{}'
 
 # Get a single metric's value, e.g. the global event-processing counter
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
   -X POST http://localhost/metrics/get \
   -H "Content-Type: application/json" -d '{"instrumentName": "router.events.processed"}'
 
 # Dump every metric (global + per-space) in one call
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/analysis \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
   -X POST http://localhost/metrics/dump \
   -H "Content-Type: application/json" -d '{}'
 ```

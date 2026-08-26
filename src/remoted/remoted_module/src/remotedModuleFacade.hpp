@@ -87,10 +87,10 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
 // remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
-// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote". No
+// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
 // sync's socket path.
-constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remoted-module.sock"};
+constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remote-admin-http.sock"};
 
 /**
  * @brief Internal engine of the remoted module.
@@ -498,7 +498,7 @@ private:
             remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics));
 
         // /scan/vd: agent-initiated VD scans. Offset queries and scan triggers both travel to
-        // VD's socket (queue/sockets/vd.sock -- see ScanVdHandlerImpl's and VdClient's default
+        // VD's socket (queue/sockets/vd-http.sock -- see ScanVdHandlerImpl's and VdClient's default
         // arguments): since the socket unification, /offset starvation is prevented by the
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.

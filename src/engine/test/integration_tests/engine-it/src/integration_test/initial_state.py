@@ -363,7 +363,7 @@ def init(env_path: Path, test_path: Path):
         print("Engine started.")
 
         # Create API client pointing to the engine socket in this env
-        socket_path = env_path / "queue" / "sockets" / "engine-api.socket"
+        socket_path = env_path / "queue" / "sockets" / "engine-api-http.sock"
         api_client = APIClient(str(socket_path))
 
         print("Initializing CM resources for tester (namespace 'testing')...")

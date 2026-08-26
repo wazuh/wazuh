@@ -4,7 +4,7 @@ The HTTPS agent server (`remoted_module`, the C++ module inside `wazuh-manager-r
 its statistics in a `wazuh_metrics` registry (the shared library at
 `src/shared_modules/metrics/` — the same one the inventory sync server uses) and serves a JSON
 dump of the whole registry on **`GET /metrics` over the module's local admin socket**,
-`queue/sockets/remoted-module.sock`. See the admin-socket contract in the
+`queue/sockets/remote-admin-http.sock`. See the admin-socket contract in the
 [module overview](README.md#local-admin-socket): the socket is local-only, optional
 (a failed bind is a warning, never fatal), and none of this is ever exposed on the public
 HTTPS listener. The legacy daemon statistics (`wazuh-manager-remoted.state`, the cluster
@@ -20,7 +20,7 @@ downstream service, agent enrollment, deployed content, or nothing at all).
 ## Querying
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 The dump is one JSON document: an envelope with the daemon name and a UTC timestamp, plus one

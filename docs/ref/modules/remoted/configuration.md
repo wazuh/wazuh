@@ -1274,7 +1274,7 @@ authentication-rejection and downstream-failure taxonomies, backpressure occupan
 health — served as a JSON dump on the module's local admin socket:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 The full catalog, with each metric linked back to the setting it helps size, is in

@@ -12,7 +12,7 @@ from the indexer.
   `inventorySync.fbs` (into `.generated/`, never committed) with `flatc`.
 - The server under test is the real module pair booted by
   `inventory_sync_server_testtool --serve --no-vd --config config.json` in a
-  temp directory; the suite talks to `queue/sockets/inventory-sync.sock` there.
+  temp directory; the suite talks to `queue/sockets/inventory-sync-http.sock` there.
   `--no-vd` keeps the vulnerability scanner facade down, which makes VD-flagged
   sessions take the scan lane and resolve as D22's *legitimate skip* (index +
   200) — deterministic, no CVE feed required. The scan-gating rows (failed

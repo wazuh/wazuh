@@ -71,12 +71,12 @@ DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/",
 ]
 
-DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
+DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote.sock"
 REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
-DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 INVSYNC_STATS_CSV = "stats-api-inventory-sync.csv"
 INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
@@ -84,11 +84,11 @@ INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 # the same shared HTTP-over-UDS transport inventory_sync_server uses. This is ADDITIVE to the
 # legacy framed `getstats` above: that one carries remoted's C statistics, which stay where
 # they are. The C++ module's counters exist nowhere else.
-DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remoted-module.sock"
+DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remote-admin-http.sock"
 REMOTED_MODULE_STATS_CSV = "stats-api-remoted-module.csv"
 REMOTED_MODULE_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
-DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
+DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/engine-api-http.sock"
 ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
 ANALYSISD_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 ANALYSISD_HEADER = [
@@ -1640,7 +1640,7 @@ _THROTTLED_EVENTS: dict[str, re.Pattern] = {
     # lane queue" vs "scan dispatch queue") because one column mixing both would be useless.
     "vd_lane_full_503": re.compile(
         r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
-    # --- bounded lanes behind vd.sock ----------------------------------------------------
+    # --- bounded lanes behind vd-http.sock ----------------------------------------------------
     "vd_scan_dispatch_full_503": re.compile(
         r"Rejected (\d+) scan request\(s\) with 503 .*scan dispatch queue is full"),
     # remoted's relay leg failing for NON-capacity reasons (VD unreachable / not ready):

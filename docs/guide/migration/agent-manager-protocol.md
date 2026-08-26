@@ -203,7 +203,7 @@ Per-endpoint outcomes, authentication rejections and back-pressure are exposed o
 admin socket:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 See [Metrics](../../ref/modules/remoted/metrics.md) for the catalog, and

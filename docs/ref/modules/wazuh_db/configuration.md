@@ -267,7 +267,7 @@ For deployments with large databases:
 systemctl status wazuh-manager | grep wazuh-db
 
 # Check wazuh-db socket
-ls -l /var/wazuh-manager/queue/db/wdb
+ls -l /var/wazuh-manager/queue/sockets/wdb.sock
 
 # Test database connection
 echo 'agent 000 sql SELECT name FROM sqlite_master' | \

@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-// Example: go run ./wazuh_sec_socket.go -f /var/wazuh-manager/queue/sockets/remote -m '{"command": "getstats"}'
+// Example: go run ./wazuh_sec_socket.go -f /var/wazuh-manager/queue/sockets/remote.sock -m '{"command": "getstats"}'
 
 func main() {
 

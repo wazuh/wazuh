@@ -20,7 +20,7 @@ measurement — it isolates the cost of the relay:
 
 ### `--mode uds` — the server alone
 
-Connects straight to the module's Unix socket (`queue/sockets/inventory-sync.sock`) and speaks the
+Connects straight to the module's Unix socket (`queue/sockets/inventory-sync-http.sock`) and speaks the
 bytes remoted would forward: `POST /stateful` with `X-Wazuh-Agent-Id`. No enrollment, no TLS, no
 signing. This is the mode that measures the ingestion pipeline itself (validation, sharded workers,
 group commit, the scan lane) with nothing else in the path.

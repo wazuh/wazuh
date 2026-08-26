@@ -16,8 +16,8 @@ dump, so tooling treats both alike. The planned unification is the engine aliasi
 
 | Module | Daemon | Serves the dump on |
 |---|---|---|
-| [Inventory Sync Server](../../inventory-sync-server/metrics.md) | wazuh-manager-modulesd | `queue/sockets/inventory-sync.sock` |
-| [Remoted module](../../remoted/metrics.md) | wazuh-manager-remoted | `queue/sockets/remoted-module.sock` |
+| [Inventory Sync Server](../../inventory-sync-server/metrics.md) | wazuh-manager-modulesd | `queue/sockets/inventory-sync-http.sock` |
+| [Remoted module](../../remoted/metrics.md) | wazuh-manager-remoted | `queue/sockets/remote-admin-http.sock` |
 
 Each module documents its own metric catalog (with the option that tunes each metric)
 in its `metrics.md` — this page is about the library and how to query any module.
@@ -28,8 +28,8 @@ One `GET /metrics` per module socket, served over HTTP-on-UDS by the
 [UDS HTTP Server](../uds-http-server/README.md):
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock  http://localhost/metrics
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock  http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock  http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock  http://localhost/metrics
 ```
 
 Properties that matter to an operator:

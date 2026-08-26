@@ -36,7 +36,7 @@ against (see [`CMakeLists.txt`](CMakeLists.txt)). Anything that needs coverage t
 
 | Thread | Role |
 |---|---|
-| Local server | serves `queue/sockets/auth`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route |
+| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route |
 | Remote server | TLS enrollment on port 1515, when `remote_enrollment` is enabled |
 | Writer | the only thread that persists `client.keys`; also removes rows from wazuh-db and hands indexer purges to the relay |
 | Purge relay | sends the queued purges to inventory-sync, after their delay, and owns every retry |

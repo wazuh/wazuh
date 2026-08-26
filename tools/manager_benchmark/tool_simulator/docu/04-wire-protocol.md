@@ -119,7 +119,7 @@ both are the same contract. `bytes_sent` counts the wire (compressed) bytes; `me
 
 ## HTTP over the Unix socket (`uds` mode)
 
-The module's socket is `queue/sockets/inventory-sync.sock`, relative to the manager's home. The
+The module's socket is `queue/sockets/inventory-sync-http.sock`, relative to the manager's home. The
 peer contract is narrow and the sender **MUST** follow it exactly:
 
 - HTTP/1.1, `Content-Length` delimited — chunked transfer encoding is answered `411`.

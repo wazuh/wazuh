@@ -614,7 +614,7 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 measures this module end to end — a Go sender reproducing the agent's wire (AES-CMAC signatures,
 `FullSession` buffers, zstd in agent mode) over two transports:
 
-- `--mode uds` POSTs straight to `queue/sockets/inventory-sync.sock`: the ingestion pipeline
+- `--mode uds` POSTs straight to `queue/sockets/inventory-sync-http.sock`: the ingestion pipeline
   alone (validation, sharded workers, group commit, the VD lane).
 - `--mode agent` enrolls a synthetic fleet and goes through remoted's relay, like a real fleet.
 
@@ -710,8 +710,8 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - Log tags: the module logs under `wazuh-manager-modulesd:inventory-sync-server` with `:sync`,
   `:endpoints`, `:server`, `:vd` and per-indexer-object suffixes, so a misbehaving stage names
   itself. The startup line to look for:
-  `inventory sync server listening on 'queue/sockets/inventory-sync.sock' (routes: ...)`.
-- The socket is `queue/sockets/inventory-sync.sock`, mode 0660, fixed by design (internal options
+  `inventory sync server listening on 'queue/sockets/inventory-sync-http.sock' (routes: ...)`.
+- The socket is `queue/sockets/inventory-sync-http.sock`, mode 0660, fixed by design (internal options
   carry only ints, so there is no path mechanism to misconfigure; tests override it through the
   C-ABI field).
 - The heartbeat logs indexer availability TRANSITIONS only (WARN gone / INFO back), and retries a

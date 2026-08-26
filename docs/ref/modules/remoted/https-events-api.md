@@ -293,7 +293,7 @@ prefix — `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health
 covers: agents send **and sign** the full prefixed target.
 
 The module's own statistics are **not** served here: they live on a separate manager-local Unix
-socket (`GET /`, `GET /metrics` on `queue/sockets/remoted-module.sock`), so they are never reachable
+socket (`GET /`, `GET /metrics` on `queue/sockets/remote-admin-http.sock`), so they are never reachable
 from an agent — see [the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
@@ -320,7 +320,7 @@ from an agent — see [the admin socket](README.md#local-admin-socket) and [Metr
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
   the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
   to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
-  (`queue/sockets/inventory-sync.sock`) and returns the downstream answer verbatim — the response
+  (`queue/sockets/inventory-sync-http.sock`) and returns the downstream answer verbatim — the response
   IS the session result (see the server's
   [response contract](../inventory-sync-server/api-reference.md)). The wait for the downstream
   answer is bounded by `remoted.downstream_stateful_response_timeout`
@@ -334,7 +334,7 @@ from an agent — see [the admin socket](README.md#local-admin-socket) and [Metr
   [Download endpoint](#download-endpoint-post-download) below for details.
 - **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
   its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
-  `queue/sockets/inventory-sync.sock`, stamping the authenticated identity as `X-Wazuh-Agent-Id`.
+  `queue/sockets/inventory-sync-http.sock`, stamping the authenticated identity as `X-Wazuh-Agent-Id`.
   Returns **`200 OK`** with a fixed `{}`, **`400`** on an empty or rejected document, **`413`**, or
   **`503`**. See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
 - **`POST /config`** — authenticated ingestion of the configuration document an agent reports.
@@ -781,15 +781,15 @@ agent status in global.db to "disconnected" and records the disconnection time.
 
 The `/control` endpoint integrates with two backend services over Unix-domain sockets:
 
-- **wazuh-db** (`queue/db/wdb`): Agent metadata storage. The handler writes agent info (OS, version,
+- **wazuh-db** (`queue/sockets/wdb.sock`): Agent metadata storage. The handler writes agent info (OS, version,
   hostname, etc.) via `agent <id> set <field> <value>` commands, updates connection status, and
   reads back the agent's groups. Dedicated worker threads with bounded request queues and async I/O
   prevent blocking the HTTP worker threads.
-- **task-manager** (`queue/tasks/task`): Task delivery. The handler queries pending tasks for the
+- **task-manager** (`queue/sockets/task.sock`): Task delivery. The handler queries pending tasks for the
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
-- **vulnerability_scanner module** (`queue/sockets/vd.sock`, `GET /vulnerability-detector/offset`):
+- **vulnerability_scanner module** (`queue/sockets/vd-http.sock`, `GET /vulnerability-detector/offset`):
   queried by `VdClient` (`remoted_module/src/common/vdClient.hpp`) to populate `vd_feed_offset`.
   Cached with a short TTL and a single-flight refresh (only one caller ever performs the actual UDS
   round trip; every concurrent caller gets the last-known-good value instead of blocking) so a slow
@@ -941,7 +941,7 @@ else afterward, instead of falling back to legacy `authd` on port 1515. It is a 
 second implementation**: `authd` keeps 100% of enrollment business logic (name/version/group
 validation, key generation, duplicate handling, cluster forwarding on a worker); this endpoint only
 authenticates the request and relays it to `authd`'s existing local socket
-(`queue/sockets/auth`) — the same interface `manage_agents` and the API's agent-registration
+(`queue/sockets/auth.sock`) — the same interface `manage_agents` and the API's agent-registration
 endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
 that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
 operator can retire port 1515 while keeping `/enroll` (or disable both together via
@@ -1221,7 +1221,7 @@ agent reports them and the manager indexes what arrives.
 **remoted itself does not interpret either document** — but the service behind it does. remoted
 authenticates the request and relays the body to the
 [Inventory Sync Server](../inventory-sync-server/README.md) over
-`queue/sockets/inventory-sync.sock`, which validates its shape, rebuilds it into an indexable
+`queue/sockets/inventory-sync-http.sock`, which validates its shape, rebuilds it into an indexable
 document, and writes it: `/stats` into `wazuh-agent-stats` and `/config` into `wazuh-agent-config`.
 Both index **one document per agent, keyed by the agent id**, so each push replaces the previous
 report rather than appending.

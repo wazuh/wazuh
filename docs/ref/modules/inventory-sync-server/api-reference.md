@@ -1,6 +1,6 @@
 # Inventory Sync Server API Reference
 
-All routes are served over a Unix domain socket at `queue/sockets/inventory-sync.sock`, relative to the
+All routes are served over a Unix domain socket at `queue/sockets/inventory-sync-http.sock`, relative to the
 installation directory. There is no TCP listener.
 
 The only production peer is [Remoted](../remoted/README.md), which authenticates the agent and forwards
@@ -197,7 +197,7 @@ The D18 statistics dump. UDS-local like every route here — remoted exposes not
 it, so agents cannot read it; the consumers are operators and the benchmark harness:
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
 ```
 
 ```json
@@ -256,13 +256,13 @@ transport level (health check, oversized bodies, malformed encodings) but does n
 route-specific payload. The liveness probe with curl:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/
+curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/
 ```
 
 A `/config` report, simulating what remoted forwards for an authenticated agent:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/config \
+curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/config \
   -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
   -d '{"modules":{"fim":{"frequency":43200},"logcollector":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}}'
 ```

@@ -46,7 +46,7 @@ GO_BIN="$TS_DIR/benchmark_sender"
 SCENARIO=""
 MODE=""                       # empty => take the scenario's own mode
 LABEL=""
-SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 MANAGER="127.0.0.1"
 PORT=1517
 REG_PORT=1515

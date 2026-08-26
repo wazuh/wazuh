@@ -327,7 +327,7 @@ empties the test `client.keys`. It does **not** stop node 1's daemons.
 
 - **`wazuh-manager-analysisd` *is* the engine** (identical binary to `src/build/engine/wazuh-engine`).
   There is no installed binary called `wazuh-engine`, which makes it look missing.
-- `remoted` takes **~15 s** to open the listener: it retries `queue/db/wdb` first. Not fatal.
+- `remoted` takes **~15 s** to open the listener: it retries `queue/sockets/wdb.sock` first. Not fatal.
 - Node 2 needs a **`queue/rids/<agent id>` file per agent** or it dies with `CRITICAL (1103)`.
 - Both nodes share the binary name, so `pkill -f wazuh-manager-remoted` **kills both**. The scripts
   scope the pattern to the full path.

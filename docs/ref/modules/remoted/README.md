@@ -42,7 +42,7 @@ keep-alives, enriches and batches events, and forwards them to the engine.
 ## Local admin socket
 
 The C++ module serves its own metrics over a manager-local Unix socket,
-`queue/sockets/remoted-module.sock` (fixed path, mode `0660`), separate by design from the
+`queue/sockets/remote-admin-http.sock` (fixed path, mode `0660`), separate by design from the
 agent-facing HTTPS endpoint — statistics are never exposed on the public listener.
 
 | Route | Response |
@@ -51,7 +51,7 @@ agent-facing HTTPS endpoint — statistics are never exposed on the public liste
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted

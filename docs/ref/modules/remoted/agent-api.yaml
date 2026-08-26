@@ -32,7 +32,7 @@ info:
     remoted.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
-    socket (`queue/sockets/remoted-module.sock`), unreachable from an agent.
+    socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
 
 servers:
   - url: "https://{host}:{port}{globalPrefix}"
@@ -402,7 +402,7 @@ paths:
       description: |
         Carries one whole inventory synchronization session as a FlatBuffer `Message{FullSession}`.
         remoted holds **no session state**: the body is opaque to it and is relayed verbatim to the
-        Inventory Sync Server over `queue/sockets/inventory-sync.sock`, stamped with the
+        Inventory Sync Server over `queue/sockets/inventory-sync-http.sock`, stamped with the
         authenticated identity as `X-Wazuh-Agent-Id`.
 
         Because the downstream answer **is** the session result, this is the one route whose
