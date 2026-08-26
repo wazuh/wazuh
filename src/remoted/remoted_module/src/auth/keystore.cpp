@@ -525,7 +525,8 @@ namespace remoted::auth
                     // instead of UnknownAgent. But do NOT count it as loaded -- it cannot
                     // authenticate anything, and counting it made a broken entry look healthy.
                     LOGFN_WARN(logFn(),
-                               "client.keys line %d: the key for agent %u does not decode to a valid AES key; that "
+                               "client.keys line %d: the key for agent %u does not decode to a valid 32-byte key (64 "
+                               "lowercase hex chars); that "
                                "agent's requests will be rejected. Re-enroll it.",
                                lineNumber,
                                *agentId);

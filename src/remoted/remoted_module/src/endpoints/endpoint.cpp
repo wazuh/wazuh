@@ -168,7 +168,8 @@ namespace
                 {
                     LOGFN_WARN(logFn(),
                                "Rejected %llu request(s) in the last %d s from agent(s) whose key could not be used: "
-                               "the key column in client.keys did not decode to a 16, 24 or 32-byte AES key. "
+                               "the key column in client.keys did not decode to the 32-byte key the bearer profile "
+                               "requires (64 lowercase hex chars). "
                                "Re-enroll the affected agent(s).",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
@@ -225,8 +226,8 @@ namespace remoted::endpoints
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds seven
-        // distinct credential failures into one generic 401 so a client cannot tell which check
+        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds every
+        // distinct credential failure into one generic 401 so a client cannot tell which check
         // failed -- but that also destroyed the distinction for the operator, since nothing
         // logged it. This is the single funnel every client-visible auth rejection passes
         // through, so one call here covers all of them.
@@ -238,7 +239,15 @@ namespace remoted::endpoints
         body += R"(","code":)";
         body += std::to_string(pe.status);
         body += "}";
-        return remoted::http::HttpResponse::json(pe.status, std::move(body));
+        auto response = remoted::http::HttpResponse::json(pe.status, std::move(body));
+        if (pe.status == 401)
+        {
+            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge. Uniform for
+            // every credential failure (it names the scheme, never the reason) and absent from the
+            // non-credential 400/413/415, which are not authentication failures.
+            response.headers.emplace_back("WWW-Authenticate", "Bearer");
+        }
+        return response;
     }
 
 } // namespace remoted::endpoints

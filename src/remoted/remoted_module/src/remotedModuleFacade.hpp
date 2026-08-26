@@ -314,7 +314,7 @@ private:
         m_httpServer = remoted::http::makeHttpServer();
 
         // Framework-agnostic auth layer: reads agent keys from client.keys and
-        // verifies the AES-CMAC of every authenticated request. Wired on top of
+        // verifies the bearer token of every authenticated request. Wired on top of
         // OUR transport, so swapping the HTTP library never touches it. The keystore
         // hot-reloads client.keys on its own (background watcher, see keystore.hpp) --
         const auto keystoreRefreshSeconds = m_config.keystore_refresh_interval > 0
@@ -378,7 +378,7 @@ private:
             { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
             /*countAgainstBudget=*/false);
 
-        // /stateless: the gateway runs the full AES-CMAC validation and only calls this handler once
+        // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
         // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
         // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
@@ -454,7 +454,7 @@ private:
                 inventorySyncSocketPath, "0", downstreamConfig.statefulResponseTimeoutMs));
 
         // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
-        // -- the gateway runs the full AES-CMAC validation and only calls this handler once auth
+        // -- the gateway runs the full bearer-token validation and only calls this handler once auth
         // succeeds. controlEndpoint::makeHandler() parses the JSON body's "type" field and
         // dispatches to ControlHandler::handleStartup/handleNotify/handleShutdown; ControlHandler
         // then talks to wazuh-db and the task manager over UDS (its own async clients, NOT the
@@ -512,7 +512,7 @@ private:
         // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
         // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
         // because an enrolling agent has no client.keys entry yet, so the agent<->manager
-        // AES-CMAC protocol cannot authenticate it. Always registered, regardless of
+        // bearer-token profile cannot authenticate it. Always registered, regardless of
         // enrollment_enabled: the handler itself answers 403 when enrollment is administratively
         // disabled, so the route is never a bare 404.
         //
@@ -760,8 +760,7 @@ private:
                 wazuh::uds_http::Method::Get,
                 "/",
                 [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
                     responder->send(
                         wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok","module":"remoted_module"})"));
                 },
@@ -1177,7 +1176,7 @@ private:
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
-    std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
+    std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
     std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).

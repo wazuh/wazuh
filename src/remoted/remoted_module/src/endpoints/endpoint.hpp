@@ -36,7 +36,7 @@ namespace remoted::endpoints
     /**
      * @brief Post-authentication endpoint handler.
      *
-     * Invoked only after the AES-CMAC validation succeeds, with the verified request
+     * Invoked only after the bearer-token validation succeeds, with the verified request
      * and the responder. Asynchronous by contract: the handler owns delivering the
      * response and may do so inline or later, from any thread (it runs on the
      * server's worker pool, so it never stalls the I/O threads). It must call
