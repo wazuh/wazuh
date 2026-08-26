@@ -181,7 +181,39 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option);
+    // A VD sync only makes sense against a manager whose VD module is running: when the
+    // manager explicitly reports vulnerability detection disabled (via /control's
+    // vd_enabled field, surfaced here through the metadata provider), downgrade to a
+    // plain SYNC so the inventory still reaches the indexer -- the server indexes non-VD
+    // sessions without scanning. Checked on the offset too, indirectly: a disabled
+    // manager reports offset 0, but a stale non-zero offset persisted from before VD was
+    // disabled must not keep the session on the VD path (the server would 409 it forever
+    // against its own offset of 0). Absent/unknown signal keeps the VD option: the
+    // feed-offset gate below decides, exactly as before this field existed.
+    bool vdDowngraded = false;
+
+    if (isUncappedSyncOption(option))
+    {
+        agent_metadata_t metadata {};
+
+        if (metadata_provider_get(&metadata) == 0)
+        {
+            if (metadata.vd_disabled == 1)
+            {
+                m_logger(LOG_DEBUG, "Manager reports vulnerability detection disabled; "
+                         "synchronizing with the plain SYNC option (inventory is indexed, "
+                         "no vulnerability scan).");
+                option = Option::SYNC;
+                vdDowngraded = true;
+            }
+
+            metadata_provider_free_metadata(&metadata);
+        }
+    }
+
+    SyncModuleResult result = synchronizeDeltaByBlocks(option);
+    result.vdDowngradedToSync = vdDowngraded;
+    return result;
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const

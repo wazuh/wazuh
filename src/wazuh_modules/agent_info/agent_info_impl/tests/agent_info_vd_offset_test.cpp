@@ -264,3 +264,34 @@ TEST_F(AgentInfoVdOffsetTest, GetVdFeedStateReturnsStoredValues)
     EXPECT_TRUE(state.pending);
     EXPECT_EQ(100u, state.pendingOffset);
 }
+
+// The manager's VD state signal: recorded as reported (live state, in memory), including on
+// the not-newer early return an offset of 0 takes on every observe after the first -- a
+// disabled manager reports offset 0 forever, and the signal must still land.
+TEST_F(AgentInfoVdOffsetTest, ObserveRecordsManagerVdStateEvenOnTheNotNewerPath)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+
+    EXPECT_EQ(-1, m_agentInfo->managerVdEnabled()); // Never reported yet.
+
+    // Offset 0 already stored: the observe takes the monotonic early return.
+    expectStoredState(m_mockDBSync, 0, false, 0);
+    m_agentInfo->observeVdFeedOffset(0, 0);
+    EXPECT_EQ(0, m_agentInfo->managerVdEnabled());
+
+    // -1 ("not reported", e.g. an older manager) leaves the stored knowledge untouched.
+    expectStoredState(m_mockDBSync, 0, false, 0);
+    m_agentInfo->observeVdFeedOffset(0, -1);
+    EXPECT_EQ(0, m_agentInfo->managerVdEnabled());
+
+    // Re-enabling flips it back: live state, not monotonic. The advancing offset takes the
+    // full path: initial read, then the re-read of the mark-pending branch (VDFirst done).
+    {
+        ::testing::InSequence seq;
+        expectStoredState(m_mockDBSync, 0, false, 0);
+        expectStoredState(m_mockDBSync, 5, false, 0);
+    }
+    m_agentInfo->observeVdFeedOffset(5, 1);
+    EXPECT_EQ(1, m_agentInfo->managerVdEnabled());
+}

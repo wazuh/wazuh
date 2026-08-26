@@ -478,8 +478,9 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
  * CONTROL thread (ControlStream::handleNotifyBody), once per accepted Notify
  * that carries a vd_feed_offset field. Same bounded-IPC-hop rationale as
  * bridge_check_and_record_task above. */
-static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out_pending,
-                                     uint64_t *out_pending_offset, void *user_data)
+static void bridge_vd_offset_observe(uint64_t offset, int vd_enabled, int *out_changed,
+                                     int *out_pending, uint64_t *out_pending_offset,
+                                     void *user_data)
 {
     (void)user_data;
 
@@ -490,7 +491,7 @@ static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out
     /* vd_offset_client_observe() already zero-initializes these on any error
      * path, so a failed round trip safely reports "no change, nothing
      * pending" rather than inventing a re-scan request. */
-    vd_offset_client_observe(offset, &changed, &pending, &pending_offset);
+    vd_offset_client_observe(offset, vd_enabled, &changed, &pending, &pending_offset);
 
     if (out_changed) {
         *out_changed = changed ? 1 : 0;

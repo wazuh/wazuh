@@ -84,7 +84,7 @@ static bool parse_error_field(const cJSON *root, int *out_error) {
     return true;
 }
 
-bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
+bool vd_offset_client_observe(uint64_t offset, int vd_enabled, bool *out_changed, bool *out_pending,
                               uint64_t *out_pending_offset) {
     char query[OS_MAXSTR];
     char response[OS_MAXSTR + 1] = {0};
@@ -102,12 +102,12 @@ bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pend
 
 #ifndef WIN32
     snprintf(query, sizeof(query),
-             "query agent-info {\"command\":\"vd_offset_observe\",\"offset\":%llu}",
-             (unsigned long long)offset);
+             "query agent-info {\"command\":\"vd_offset_observe\",\"offset\":%llu,\"vd_enabled\":%d}",
+             (unsigned long long)offset, vd_enabled);
 #else
     snprintf(query, sizeof(query),
-             "{\"command\":\"vd_offset_observe\",\"offset\":%llu}",
-             (unsigned long long)offset);
+             "{\"command\":\"vd_offset_observe\",\"offset\":%llu,\"vd_enabled\":%d}",
+             (unsigned long long)offset, vd_enabled);
 #endif
 
     if (!vd_offset_send_query(query, response, sizeof(response))) {

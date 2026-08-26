@@ -658,10 +658,20 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
         }
 
         uint64_t offset = (uint64_t)offset_item->valuedouble;
+
+        /* Optional: absent means "not reported" (-1), which leaves agent-info's stored
+         * knowledge of the manager's VD state untouched. */
+        int vd_enabled = -1;
+        cJSON* vd_enabled_item = cJSON_GetObjectItem(request, "vd_enabled");
+
+        if (vd_enabled_item && cJSON_IsNumber(vd_enabled_item)) {
+            vd_enabled = vd_enabled_item->valueint;
+        }
+
         int out_changed = 0;
         int out_pending = 0;
         uint64_t out_pending_offset = 0;
-        int result = agent_info_vd_offset_observe_ptr(offset, &out_changed, &out_pending, &out_pending_offset);
+        int result = agent_info_vd_offset_observe_ptr(offset, vd_enabled, &out_changed, &out_pending, &out_pending_offset);
         cJSON_Delete(request);
 
         if (result < 0)

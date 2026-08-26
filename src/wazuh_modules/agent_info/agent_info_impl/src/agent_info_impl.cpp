@@ -596,6 +596,18 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["vd_feed_offset"] = vdFeedState.offset;
     }
 
+    // The manager's VD module state, when it has been reported at all (see
+    // observeVdFeedOffset): lets the sync protocol downgrade a VDFirst/VDSync to a plain
+    // SYNC when VD is disabled on the manager, instead of waiting forever for a feed
+    // offset that will never arrive. Extra JSON keys are ignored by the agent_metadata
+    // dbsync table, same as vd_feed_offset above.
+    const int managerVdEnabled = m_managerVdEnabled.load(std::memory_order_relaxed);
+
+    if (managerVdEnabled != -1)
+    {
+        agentMetadata["vd_enabled"] = (managerVdEnabled == 1);
+    }
+
     // Update the global metadata provider BEFORE updateChanges
     // This ensures the metadata is available when syncProtocol is triggered
     updateMetadataProvider(agentMetadata, groups);
@@ -681,6 +693,13 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
     {
         metadata.vd_feed_offset = agentMetadata["vd_feed_offset"].get<uint64_t>();
+    }
+
+    // Only an explicit "disabled" sets the flag; enabled, not reported and unknown all
+    // read as 0 (zero-init), so consumers can never skip a VD sync on ignorance.
+    if (agentMetadata.contains("vd_enabled") && agentMetadata["vd_enabled"].is_boolean())
+    {
+        metadata.vd_disabled = agentMetadata["vd_enabled"].get<bool>() ? 0 : 1;
     }
 
     // Copy groups
@@ -2490,10 +2509,18 @@ void AgentInfoImpl::writeVdFeedStateLocked(const VdFeedState& state)
     }
 }
 
-AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t offset)
+AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t offset, int vdEnabled)
 {
     VdOffsetObserveResult result;
     VdFeedState state;
+
+    // Recorded before the monotonic offset check below: with VD disabled the manager keeps
+    // reporting offset 0, so every observe after the first takes the not-newer early return
+    // -- the enabled/disabled signal must still land.
+    if (vdEnabled == 0 || vdEnabled == 1)
+    {
+        m_managerVdEnabled.store(vdEnabled, std::memory_order_relaxed);
+    }
 
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);

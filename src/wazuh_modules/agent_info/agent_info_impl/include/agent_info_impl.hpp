@@ -179,9 +179,14 @@ class AgentInfoImpl
         /// get_vd_first_sync_completed) -- otherwise VDFirst's own full scan will cover the new
         /// offset (see Start.feed_offset), so no /scan/vd request is needed.
         /// @param offset The offset value received from the manager.
+        /// @param vdEnabled The manager's VD module state reported next to the offset: 1
+        ///        enabled, 0 disabled, -1 not reported (an older manager). -1 leaves the
+        ///        stored knowledge untouched; 0/1 record it as-is. Kept in memory only (see
+        ///        m_managerVdEnabled): it re-arrives with every notify, so after a restart it
+        ///        is simply unknown until the first notify lands.
         /// @return changed=true if the offset advanced; pending/pendingOffset reflect the
         ///         resulting state regardless of whether this call itself changed anything.
-        VdOffsetObserveResult observeVdFeedOffset(uint64_t offset);
+        VdOffsetObserveResult observeVdFeedOffset(uint64_t offset, int vdEnabled = -1);
 
         /// @brief Clear the pending re-scan flag, but only if it is still pending for exactly
         /// this offset. A stale confirmation (nothing pending, or a newer offset has since
@@ -190,6 +195,14 @@ class AgentInfoImpl
         /// @param offset The offset the caller's /scan/vd request succeeded for.
         /// @return true if the pending flag was actually cleared.
         bool clearVdRescanPending(uint64_t offset);
+
+        /// @brief The manager's VD module state as last reported through observeVdFeedOffset:
+        /// 1 enabled, 0 disabled, -1 never reported (also the state right after a restart,
+        /// until the first notify lands -- see m_managerVdEnabled).
+        int managerVdEnabled() const
+        {
+            return m_managerVdEnabled.load(std::memory_order_relaxed);
+        }
 
         /// @brief Current durable VD feed state. Used both to answer an IPC recovery query
         /// (agentd resuming a pending re-scan after its own restart) and internally by
@@ -478,6 +491,13 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
+
+        /// @brief The manager's VD module state as last reported next to the feed offset
+        /// (see observeVdFeedOffset): 1 enabled, 0 disabled, -1 never reported. In memory
+        /// only, on purpose: it re-arrives with every /control notify (seconds after any
+        /// restart), and persisting it would let a stale "disabled" from a previous run
+        /// suppress VD syncs against a manager that has since re-enabled it.
+        std::atomic<int> m_managerVdEnabled{-1};
 
         /// @brief Serializes destruction of m_spSyncProtocol in releaseResources()
         /// against the readers that run on other threads (parseResponseBuffer()).

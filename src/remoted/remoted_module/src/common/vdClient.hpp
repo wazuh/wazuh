@@ -66,18 +66,30 @@ namespace remoted::common
                           std::chrono::milliseconds failureRetryInterval = DEFAULT_FAILURE_RETRY_INTERVAL);
         ~VdClient() = default;
 
+        /// Offset + module state as reported by VD's offset endpoint. `enabled` defaults to
+        /// true when never obtained: an unknown state must read as "enabled" so agents keep
+        /// waiting for an offset instead of skipping their VD sync on ignorance.
+        struct VdState
+        {
+            uint64_t offset {0};
+            bool enabled {true};
+        };
+
         /**
-         * @brief Get the current VD feed offset.
+         * @brief Get the current VD feed offset and module state.
          *
          * Returns the cached value if still valid, otherwise triggers (or piggybacks on an
          * already in-flight) refresh from the VD module. On a failed refresh, falls back to the
-         * last successfully obtained value (stale-but-known) instead of discarding it; returns 0
-         * only if no value has ever been obtained. A failed refresh is retried at most once per
-         * failureRetryInterval, rather than on every single call, so a sustained VD outage
-         * doesn't turn every caller into a fresh query attempt.
+         * last successfully obtained value (stale-but-known) instead of discarding it; returns
+         * {0, enabled} only if no value has ever been obtained. A failed refresh is retried at
+         * most once per failureRetryInterval, rather than on every single call, so a sustained
+         * VD outage doesn't turn every caller into a fresh query attempt.
          *
-         * @return Current (or last known) VD feed offset, or 0 if never obtained.
+         * @return Current (or last known) VD state, or {0, true} if never obtained.
          */
+        VdState getState();
+
+        /// @brief Offset-only shorthand for getState().offset.
         uint64_t getOffset();
 
     private:
@@ -85,6 +97,7 @@ namespace remoted::common
         {
             bool success;
             uint64_t offset;
+            bool enabled;
         };
 
         QueryResult queryVdModule() const;
@@ -92,6 +105,7 @@ namespace remoted::common
         std::string m_socketPath;
         mutable std::mutex m_mutex;
         uint64_t m_cachedOffset;
+        bool m_cachedEnabled {true};
         bool m_hasValue;
         bool m_hasAttempted;
         bool m_lastAttemptFailed;

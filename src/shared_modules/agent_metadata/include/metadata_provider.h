@@ -38,6 +38,9 @@ typedef struct
     char** groups;                ///< Array of group names (NULL-terminated strings)
     size_t groups_count;          ///< Number of groups in the array
     uint64_t vd_feed_offset;      ///< Last observed VD feed offset (0 = not yet received from the manager)
+    int vd_disabled;              ///< 1 when the manager explicitly reported vulnerability detection
+    ///< disabled (via /control's vd_enabled field); 0 otherwise (enabled,
+    ///< not reported, or unknown). Zero-init deliberately means "no signal".
 } agent_metadata_t;
 
 /**

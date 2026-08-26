@@ -367,9 +367,9 @@ namespace remoted::control
         }
 
     private:
-        uint64_t getVdFeedOffset() const
+        remoted::common::VdClient::VdState getVdState() const
         {
-            return m_vdClient->getOffset();
+            return m_vdClient->getState();
         }
 
         void processNotify(AgentId id,
@@ -468,7 +468,12 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
-                    response["vd_feed_offset"] = this->getVdFeedOffset();
+                    const auto vdState = this->getVdState();
+                    response["vd_feed_offset"] = vdState.offset;
+                    // Lets agents tell "feed not ready yet" (offset 0, enabled true) apart from
+                    // "VD disabled on this manager": the latter must not gate their package
+                    // inventory sync (they fall back to a plain SYNC instead of waiting).
+                    response["vd_enabled"] = vdState.enabled;
 
                     HttpResponse httpResp;
                     httpResp.status = 200;

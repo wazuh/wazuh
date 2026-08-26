@@ -118,6 +118,7 @@ namespace
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
                 m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
+                m_shm->base_metadata.vd_disabled = metadata->vd_disabled;
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
@@ -190,6 +191,7 @@ namespace
                 out_metadata->cluster_name[sizeof(out_metadata->cluster_name) - 1] = '\0';
 
                 out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
+                out_metadata->vd_disabled = m_shm->base_metadata.vd_disabled;
 
                 // Copy groups
                 if (m_shm->groups_count > 0)

@@ -130,7 +130,8 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
                          static_cast<unsigned long long>(attemptOffset),
                          static_cast<unsigned long long>(currentVersion));
 
-            const VdOffsetObservation observation = m_store.observe(currentVersion);
+            // A 409 body carries no VD state, only the offset: -1, "no signal".
+            const VdOffsetObservation observation = m_store.observe(currentVersion, -1);
 
             if (!observation.pending)
             {

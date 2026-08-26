@@ -45,6 +45,54 @@ TEST(VdClientTest, FreshInstanceQueriesVdOnFirstCall)
     EXPECT_EQ(server.offsetRequestCount(), 1u);
 }
 
+// The offset endpoint reports the VD module state next to the offset; a disabled VD module
+// (offset 0 forever) must reach agents as an explicit enabled=false so they stop waiting for
+// a feed offset that will never arrive.
+TEST(VdClientTest, StateCarriesEnabledFalseFromADisabledVdModule)
+{
+    const auto socketPath = makeUniqueVdSocketPath("disabled");
+    FakeVdServer server(socketPath);
+    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
+    {
+        res.set_content(R"({"offset":0,"enabled":false})", "application/json");
+    });
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getState();
+    EXPECT_EQ(state.offset, 0u);
+    EXPECT_FALSE(state.enabled);
+}
+
+// An offset response without the enabled field (a VD module predating it) must read as
+// enabled: agents only skip their VD sync on an explicit "disabled", never on ignorance.
+TEST(VdClientTest, StateDefaultsToEnabledWhenTheFieldIsAbsent)
+{
+    const auto socketPath = makeUniqueVdSocketPath("noenabled");
+    FakeVdServer server(socketPath);
+    server.setOffset(777); // Responds {"offset": 777}, no enabled field.
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getState();
+    EXPECT_EQ(state.offset, 777u);
+    EXPECT_TRUE(state.enabled);
+}
+
+// A never-answered client must also read as enabled, for the same reason.
+TEST(VdClientTest, StateDefaultsToEnabledWhenVdWasNeverReached)
+{
+    const auto socketPath = makeUniqueVdSocketPath("neverup");
+    FakeVdServer server(socketPath);
+    server.setOffsetFailure();
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getState();
+    EXPECT_EQ(state.offset, 0u);
+    EXPECT_TRUE(state.enabled);
+}
+
 TEST(VdClientTest, CachedValueServedWithoutRequeryingWithinTtl)
 {
     const auto socketPath = makeUniqueVdSocketPath("cachehit");

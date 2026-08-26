@@ -45,7 +45,11 @@ class IVdOffsetStore
         /// newer than the stored value is a no-op that still reports the
         /// current pending state (this is what lets a restart resume an
         /// outstanding request for free -- see RescanRequester).
-        virtual VdOffsetObservation observe(uint64_t offset) = 0;
+        /// @param vdEnabled The manager's VD module state as reported next to
+        /// the offset: 1 enabled, 0 disabled, -1 not reported (an older
+        /// manager) -- -1 leaves the stored knowledge untouched. Not
+        /// monotonic, unlike the offset: it is live state, recorded as-is.
+        virtual VdOffsetObservation observe(uint64_t offset, int vdEnabled) = 0;
 
         /// Clear the pending flag, but only if it is still pending for exactly
         /// this offset. Call only after a /scan/vd request for `offset`

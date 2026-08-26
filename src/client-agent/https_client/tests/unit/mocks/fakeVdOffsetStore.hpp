@@ -25,9 +25,14 @@
 class FakeVdOffsetStore final : public IVdOffsetStore
 {
     public:
-        VdOffsetObservation observe(uint64_t offset) override
+        VdOffsetObservation observe(uint64_t offset, int vdEnabled) override
         {
             m_observeCalls.push_back(offset);
+
+            if (vdEnabled == 0 || vdEnabled == 1)
+            {
+                m_lastVdEnabled = vdEnabled;
+            }
 
             VdOffsetObservation result;
 
@@ -98,12 +103,19 @@ class FakeVdOffsetStore final : public IVdOffsetStore
             return m_clearPendingCalls;
         }
 
+        /// Last explicit (0/1) vd_enabled signal observed; -1 when none arrived.
+        int lastVdEnabled() const
+        {
+            return m_lastVdEnabled;
+        }
+
     private:
         bool m_hasOffset {false};
         uint64_t m_offset {0};
         bool m_vdFirstDone {true};
         bool m_pending {false};
         uint64_t m_pendingOffset {0};
+        int m_lastVdEnabled {-1};
         std::vector<uint64_t> m_observeCalls;
         std::vector<uint64_t> m_clearPendingCalls;
 };

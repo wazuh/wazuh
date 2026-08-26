@@ -234,12 +234,17 @@ typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data)
 /// carries the field. Must be fast and bounded (a local IPC round-trip with
 /// its own timeout).
 /// @param offset The offset value received from the manager.
+/// @param vd_enabled The manager's VD module state reported next to the
+///        offset (a Notify's vd_enabled field): 1 enabled, 0 disabled, -1 not
+///        reported (an older manager). -1 leaves the stored knowledge
+///        untouched; 0/1 record it as-is (live state, not monotonic).
 /// @param out_changed Set to 1 if the offset advanced, 0 otherwise.
 /// @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise.
 /// @param out_pending_offset Set to the offset a pending request refers to
 ///        (valid only when *out_pending is 1).
-typedef void (*hc_vd_offset_observe_fn)(uint64_t offset, int* out_changed, int* out_pending,
-                                        uint64_t* out_pending_offset, void* user_data);
+typedef void (*hc_vd_offset_observe_fn)(uint64_t offset, int vd_enabled, int* out_changed,
+                                        int* out_pending, uint64_t* out_pending_offset,
+                                        void* user_data);
 
 /// Clear the pending VD re-scan flag, but only if it is still pending for
 /// exactly this offset (a stale confirmation is a no-op). Call only after a

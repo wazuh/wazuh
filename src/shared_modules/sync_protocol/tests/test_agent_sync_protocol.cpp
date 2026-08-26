@@ -1026,6 +1026,96 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
     EXPECT_TRUE(result.success);
 }
 
+// A VDFirst/VDSync request against a manager that reported vulnerability detection disabled
+// must not wait for a feed offset that will never arrive: the protocol downgrades the session
+// to a plain SYNC (which the server indexes without scanning) and reports the downgrade, so
+// the caller does not record a completed VD first sync.
+TEST_F(AgentSyncProtocolTest, ManagerVdDisabledDowngradesVdSyncToPlainSync)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata.vd_feed_offset = 0; // A disabled manager reports offset 0 forever.
+    metadata.vd_disabled = 1;
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(200);
+
+    syncThread.join();
+
+    EXPECT_TRUE(result.success);
+    EXPECT_TRUE(result.vdDowngradedToSync);
+    EXPECT_FALSE(result.awaitingPrerequisite);
+
+    // On the wire the session is a plain SYNC carrying no feed_offset.
+    const auto raw = mockSyncTransport->lastMessage();
+    const auto* message = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(raw.data());
+    ASSERT_NE(message, nullptr);
+    const auto* fullSession = message->content_as_FullSession();
+    ASSERT_NE(fullSession, nullptr);
+    ASSERT_NE(fullSession->start(), nullptr);
+    EXPECT_EQ(fullSession->start()->option(), Wazuh::SyncSchema::Option::Sync);
+    EXPECT_EQ(fullSession->start()->feed_offset(), 0u);
+}
+
+// The downgrade requires an EXPLICIT "disabled" from the manager: with VD enabled (or with no
+// signal at all, covered by NoVdOffsetAbortsVDFirstSyncWithoutSendingStart's zero-initialized
+// metadata) an offset of 0 still means "wait for the feed", exactly as before.
+TEST_F(AgentSyncProtocolTest, ManagerVdEnabledWithoutOffsetStillDefersVdSync)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata.vd_feed_offset = 0;
+    metadata.vd_disabled = 0; // Enabled (or unreported): the offset gate stays in charge.
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(testData));
+
+    const int sendCountBefore = mockSyncTransport->sendCount();
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.vdDowngradedToSync);
+    EXPECT_TRUE(result.awaitingPrerequisite);
+    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore);
+}
+
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWhenPrefilterSelectedIt)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();

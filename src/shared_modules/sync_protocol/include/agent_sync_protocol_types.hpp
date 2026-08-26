@@ -56,4 +56,9 @@ struct SyncModuleResult
     /// since it is expected and normally clears within the next cycle or two (e.g. right after
     /// an agent restart, before the first /control round trip completes).
     bool awaitingPrerequisite{false};
+    /// @brief True when a VDFirst/VDSync request was downgraded to a plain SYNC because the
+    /// manager reported vulnerability detection disabled. The inventory was synchronized (and
+    /// the server indexes it without scanning), but no VD scan happened, so the caller must not
+    /// treat this as a completed VD first sync.
+    bool vdDowngradedToSync{false};
 };

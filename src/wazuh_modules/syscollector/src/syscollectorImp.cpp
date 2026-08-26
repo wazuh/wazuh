@@ -2453,7 +2453,15 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
 
         SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
+        // The VDFirst-completed marker gates the offset-change /scan/vd re-requests and the
+        // VDFIRST->VDSYNC switch, so it must only ever record a sync that actually ran a VD
+        // scan: not a plain SYNC (VD scanning disabled by the agent's own collectors), and not
+        // a VDFirst the protocol downgraded to SYNC because the manager reported vulnerability
+        // detection disabled. In both cases the first offset that arrives once VD is available
+        // must still trigger a full VDFIRST.
+        const bool vdScanApplied = m_vdSyncEnabled && !vdResult.vdDowngradedToSync;
+
+        persistVDFirstSyncIfNeeded(vdResult.success && vdScanApplied, firstSyncDone);
 
         if (!vdResult.success)
         {

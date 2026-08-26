@@ -44,6 +44,11 @@ namespace remoted::common
 
     uint64_t VdClient::getOffset()
     {
+        return getState().offset;
+    }
+
+    VdClient::VdState VdClient::getState()
+    {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -66,7 +71,7 @@ namespace remoted::common
             if (m_hasAttempted && elapsed < ttl)
             {
                 LOGFN_DEBUG2(logFn(), "Returning cached VD offset: %llu", m_cachedOffset);
-                return m_hasValue ? m_cachedOffset : 0;
+                return m_hasValue ? VdState {m_cachedOffset, m_cachedEnabled} : VdState {};
             }
 
             // The cache needs a refresh. If another thread is already querying VD, don't queue
@@ -75,7 +80,7 @@ namespace remoted::common
             if (m_refreshInProgress)
             {
                 LOGFN_DEBUG2(logFn(), "VD offset refresh already in progress, returning last known value");
-                return m_hasValue ? m_cachedOffset : 0;
+                return m_hasValue ? VdState {m_cachedOffset, m_cachedEnabled} : VdState {};
             }
             m_refreshInProgress = true;
         }
@@ -92,11 +97,12 @@ namespace remoted::common
         if (result.success)
         {
             m_cachedOffset = result.offset;
+            m_cachedEnabled = result.enabled;
             m_hasValue = true;
             m_lastAttemptFailed = false;
             m_cacheTime = std::chrono::steady_clock::now();
             LOGFN_DEBUG2(logFn(), "Queried VD module, offset: %llu", result.offset);
-            return result.offset;
+            return {result.offset, result.enabled};
         }
 
         // Keep serving the last known-good offset — a transient failure shouldn't make this node
@@ -105,7 +111,7 @@ namespace remoted::common
         m_lastAttemptFailed = true;
         m_cacheTime = std::chrono::steady_clock::now();
         LOGFN_DEBUG1(logFn(), "Failed to query VD module, returning last known offset: %llu", m_cachedOffset);
-        return m_hasValue ? m_cachedOffset : 0;
+        return m_hasValue ? VdState {m_cachedOffset, m_cachedEnabled} : VdState {};
     }
 
     VdClient::QueryResult VdClient::queryVdModule() const
@@ -126,25 +132,28 @@ namespace remoted::common
             if (!res || res->status != 200)
             {
                 LOGFN_DEBUG1(logFn(), "Failed to query VD offset: status=%d", res ? res->status : 0);
-                return {false, 0};
+                return {false, 0, true};
             }
 
             try
             {
                 const auto json = nlohmann::json::parse(res->body);
                 const uint64_t offset = json.value<uint64_t>("offset", 0);
-                return {true, offset};
+                // Absent (a VD module predating the field) defaults to enabled: agents must
+                // only skip their VD sync on an explicit "disabled", never on ignorance.
+                const bool enabled = json.value<bool>("enabled", true);
+                return {true, offset, enabled};
             }
             catch (const std::exception& e)
             {
                 LOGFN_DEBUG1(logFn(), "Failed to parse VD offset response: %s", e.what());
-                return {false, 0};
+                return {false, 0, true};
             }
         }
         catch (const std::exception& e)
         {
             LOGFN_DEBUG1(logFn(), "Failed to connect to VD module: %s", e.what());
-            return {false, 0};
+            return {false, 0, true};
         }
     }
 

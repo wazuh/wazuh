@@ -264,10 +264,11 @@ task_registry_result_t __wrap_task_registry_check_and_record(const char *task_id
  * does not need a will_return for its own return value; only the three out
  * params are test-controlled. bridge_vd_offset_clear_pending()'s return DOES
  * matter (it becomes the callback's own return value), so that wrap needs one. */
-bool __wrap_vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
+bool __wrap_vd_offset_client_observe(uint64_t offset, int vd_enabled, bool *out_changed, bool *out_pending,
                                      uint64_t *out_pending_offset)
 {
     check_expected(offset);
+    check_expected(vd_enabled);
 
     if (out_changed) {
         *out_changed = (bool)mock();
@@ -1761,6 +1762,7 @@ static void test_vd_offset_observe_forwards_changed_pending_and_offset(void **st
     start_client_successfully();
 
     expect_value(__wrap_vd_offset_client_observe, offset, 100);
+    expect_value(__wrap_vd_offset_client_observe, vd_enabled, 1);
     will_return(__wrap_vd_offset_client_observe, true);  /* *out_changed */
     will_return(__wrap_vd_offset_client_observe, true);  /* *out_pending */
     will_return(__wrap_vd_offset_client_observe, 100);   /* *out_pending_offset */
@@ -1768,7 +1770,7 @@ static void test_vd_offset_observe_forwards_changed_pending_and_offset(void **st
     int changed = -1;
     int pending = -1;
     uint64_t pending_offset = 0;
-    g_captured_callbacks.vd_offset_observe(100, &changed, &pending, &pending_offset,
+    g_captured_callbacks.vd_offset_observe(100, 1, &changed, &pending, &pending_offset,
                                            g_captured_callbacks.user_data);
 
     assert_int_equal(changed, 1);
@@ -1785,6 +1787,7 @@ static void test_vd_offset_observe_reports_no_change_when_not_newer(void **state
     start_client_successfully();
 
     expect_value(__wrap_vd_offset_client_observe, offset, 50);
+    expect_value(__wrap_vd_offset_client_observe, vd_enabled, -1);
     will_return(__wrap_vd_offset_client_observe, false); /* *out_changed */
     will_return(__wrap_vd_offset_client_observe, true);  /* *out_pending: unrelated pending state */
     will_return(__wrap_vd_offset_client_observe, 100);   /* *out_pending_offset */
@@ -1792,7 +1795,7 @@ static void test_vd_offset_observe_reports_no_change_when_not_newer(void **state
     int changed = -1;
     int pending = -1;
     uint64_t pending_offset = 0;
-    g_captured_callbacks.vd_offset_observe(50, &changed, &pending, &pending_offset,
+    g_captured_callbacks.vd_offset_observe(50, -1, &changed, &pending, &pending_offset,
                                            g_captured_callbacks.user_data);
 
     assert_int_equal(changed, 0);
@@ -1809,12 +1812,13 @@ static void test_vd_offset_observe_tolerates_null_out_params(void **state)
     start_client_successfully();
 
     expect_value(__wrap_vd_offset_client_observe, offset, 100);
+    expect_value(__wrap_vd_offset_client_observe, vd_enabled, 0);
     will_return(__wrap_vd_offset_client_observe, true);
     will_return(__wrap_vd_offset_client_observe, true);
     will_return(__wrap_vd_offset_client_observe, 100);
 
     /* Must not crash when the caller doesn't care about some outputs. */
-    g_captured_callbacks.vd_offset_observe(100, NULL, NULL, NULL, g_captured_callbacks.user_data);
+    g_captured_callbacks.vd_offset_observe(100, 0, NULL, NULL, NULL, g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();

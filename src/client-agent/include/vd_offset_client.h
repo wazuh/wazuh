@@ -30,6 +30,9 @@
  * re-scan request or an offset advance out of thin air.
  *
  * @param offset The offset value received from the manager.
+ * @param vd_enabled The manager's VD module state reported next to the offset:
+ *        1 enabled, 0 disabled, -1 not reported (an older manager). -1 leaves
+ *        agent-info's stored knowledge untouched.
  * @param out_changed Set to true if the offset advanced.
  * @param out_pending Set to true if a /scan/vd request is now outstanding.
  * @param out_pending_offset Set to the offset a pending request refers to
@@ -38,7 +41,7 @@
  *         changed/pending values); false on any error (unreachable,
  *         malformed/missing response, timeout).
  */
-bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
+bool vd_offset_client_observe(uint64_t offset, int vd_enabled, bool *out_changed, bool *out_pending,
                               uint64_t *out_pending_offset);
 
 /**

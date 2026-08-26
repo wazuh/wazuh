@@ -1264,6 +1264,42 @@ TEST_F(ControlStreamTest, NotifyWithVdFeedOffsetObservesIt)
 
     ASSERT_EQ(1u, m_vdOffsetStore.observeCalls().size());
     EXPECT_EQ(100u, m_vdOffsetStore.observeCalls()[0]);
+    // No vd_enabled field in the notify: "no signal" (-1), never a guessed 0/1.
+    EXPECT_EQ(-1, m_vdOffsetStore.lastVdEnabled());
+}
+
+TEST_F(ControlStreamTest, NotifyWithVdEnabledFalseForwardsTheSignalWithTheOffset)
+{
+    // A manager with VD disabled reports vd_feed_offset 0 and vd_enabled false: both must
+    // reach the store, so agent-info can tell "feed not ready yet" apart from "disabled"
+    // (the sync protocol downgrades VD syncs to plain SYNC on the latter).
+    const std::string notify = R"({"status":"ok","vd_feed_offset":0,"vd_enabled":false})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: carries vd_feed_offset + vd_enabled.
+
+    ASSERT_EQ(1u, m_vdOffsetStore.observeCalls().size());
+    EXPECT_EQ(0u, m_vdOffsetStore.observeCalls()[0]);
+    EXPECT_EQ(0, m_vdOffsetStore.lastVdEnabled());
+}
+
+TEST_F(ControlStreamTest, NotifyWithVdEnabledTrueForwardsTheSignalWithTheOffset)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100,"vd_enabled":true})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    ASSERT_EQ(1u, m_vdOffsetStore.observeCalls().size());
+    EXPECT_EQ(1, m_vdOffsetStore.lastVdEnabled());
 }
 
 TEST_F(ControlStreamTest, NotifyWithoutVdFeedOffsetFieldDoesNotObserve)

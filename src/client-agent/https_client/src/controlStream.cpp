@@ -457,25 +457,37 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
     }
 
     // Top-level (not nested under "agent"): the manager's current VD feed
-    // offset, when VD is enabled on the node that answered. Absent is left
-    // alone -- unlike config_hash/settings_hash, a missing field must NOT be
-    // treated as an observed 0; that would look like a confirmed "no offset"
-    // to agent-info instead of "the manager didn't report one this time".
+    // offset. Absent is left alone -- unlike config_hash/settings_hash, a
+    // missing field must NOT be treated as an observed 0; that would look
+    // like a confirmed "no offset" to agent-info instead of "the manager
+    // didn't report one this time".
     const auto vdFeedOffset = parsed.find("vd_feed_offset");
 
     if (vdFeedOffset != parsed.end() && vdFeedOffset->is_number_unsigned())
     {
-        maybeRequestVdRescan(vdFeedOffset->get<uint64_t>(), waiter);
+        // vd_enabled rides alongside the offset: false means VD is disabled on
+        // the manager, so syncs must not wait for an offset that will never
+        // arrive. Absent (an older manager) maps to -1, "no signal": the
+        // stored knowledge is left untouched, exactly like an absent offset.
+        int vdEnabled = -1;
+        const auto vdEnabledField = parsed.find("vd_enabled");
+
+        if (vdEnabledField != parsed.end() && vdEnabledField->is_boolean())
+        {
+            vdEnabled = vdEnabledField->get<bool>() ? 1 : 0;
+        }
+
+        maybeRequestVdRescan(vdFeedOffset->get<uint64_t>(), vdEnabled, waiter);
     }
 }
 
-void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
+void ControlStream::maybeRequestVdRescan(uint64_t offset, int vdEnabled, Waiter& waiter)
 {
     // observe() is called every Notify that carries the field, not only when
     // it looks new: its no-op path still reports the current pending state,
     // which is what lets a restart resume an outstanding request without any
     // separate recovery call (A10).
-    const VdOffsetObservation observation = m_vdOffsetStore.observe(offset);
+    const VdOffsetObservation observation = m_vdOffsetStore.observe(offset, vdEnabled);
 
     if (observation.pending)
     {

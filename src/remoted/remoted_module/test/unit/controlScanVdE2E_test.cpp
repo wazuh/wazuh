@@ -211,6 +211,10 @@ TEST(ControlScanVdE2ETest, NotifyResponseCarriesVdFeedOffsetOverRealHttp)
     const auto json = nlohmann::json::parse(respBody);
     ASSERT_TRUE(json.contains("vd_feed_offset")) << respBody;
     EXPECT_EQ(json.at("vd_feed_offset").get<uint64_t>(), 12345u);
+    // The VD state rides along; the fake's {"offset": N} body has no enabled field, which
+    // must surface as the enabled default (see VdClient) rather than being dropped.
+    ASSERT_TRUE(json.contains("vd_enabled")) << respBody;
+    EXPECT_TRUE(json.at("vd_enabled").get<bool>());
 
     // Sanity: the rest of the notify contract (unrelated to this feature) is intact too.
     ASSERT_TRUE(json.contains("agent"));

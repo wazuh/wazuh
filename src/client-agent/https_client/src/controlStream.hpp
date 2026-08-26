@@ -117,7 +117,7 @@ class ControlStream final
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
-        void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
+        void maybeRequestVdRescan(uint64_t offset, int vdEnabled, Waiter& waiter);
         void updateLocalIp(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 

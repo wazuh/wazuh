@@ -36,7 +36,7 @@ class VdOffsetStoreAdapter final : public IVdOffsetStore
         {
         }
 
-        VdOffsetObservation observe(uint64_t offset) override
+        VdOffsetObservation observe(uint64_t offset, int vdEnabled) override
         {
             VdOffsetObservation observation;
 
@@ -50,7 +50,7 @@ class VdOffsetStoreAdapter final : public IVdOffsetStore
             int changed = 0;
             int pending = 0;
             uint64_t pendingOffset = 0;
-            m_observeCallback(offset, &changed, &pending, &pendingOffset, m_userData);
+            m_observeCallback(offset, vdEnabled, &changed, &pending, &pendingOffset, m_userData);
             observation.changed = (changed != 0);
             observation.pending = (pending != 0);
             observation.pendingOffset = pendingOffset;

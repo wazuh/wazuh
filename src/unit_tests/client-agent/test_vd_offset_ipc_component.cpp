@@ -249,7 +249,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcPersistsOffsetAndMarksPending
     bool changed = false;
     bool pending = false;
     uint64_t pendingOffset = 0;
-    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+    ASSERT_TRUE(vd_offset_client_observe(100, -1, &changed, &pending, &pendingOffset));
     server.join();
 
     EXPECT_TRUE(changed);
@@ -268,7 +268,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcDoesNotMarkPendingWhenVDFirst
     bool changed = false;
     bool pending = true; // Deliberately wrong initial value: must be set to false.
     uint64_t pendingOffset = 999;
-    ASSERT_TRUE(vd_offset_client_observe(50, &changed, &pending, &pendingOffset));
+    ASSERT_TRUE(vd_offset_client_observe(50, -1, &changed, &pending, &pendingOffset));
     server.join();
 
     EXPECT_TRUE(changed);
@@ -282,7 +282,7 @@ TEST_F(VdOffsetIpcComponentTest, MonotonicOffsetOverRealIpc)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool changed = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, &changed, nullptr, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, -1, &changed, nullptr, nullptr));
         server.join();
         ASSERT_TRUE(changed);
     }
@@ -294,7 +294,7 @@ TEST_F(VdOffsetIpcComponentTest, MonotonicOffsetOverRealIpc)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool changed = true; // Deliberately wrong initial value: must become false.
-        ASSERT_TRUE(vd_offset_client_observe(50, &changed, nullptr, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(50, -1, &changed, nullptr, nullptr));
         server.join();
         EXPECT_FALSE(changed);
     }
@@ -309,7 +309,7 @@ TEST_F(VdOffsetIpcComponentTest, PendingRescanSurvivesARealRestartOfTheRegistry)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, -1, nullptr, &pending, nullptr));
         server.join();
         ASSERT_TRUE(pending);
     }
@@ -329,7 +329,7 @@ TEST_F(VdOffsetIpcComponentTest, PendingRescanSurvivesARealRestartOfTheRegistry)
         bool changed = true; // Deliberately wrong: must become false (no-op).
         bool pending = false;
         uint64_t pendingOffset = 0;
-        ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+        ASSERT_TRUE(vd_offset_client_observe(100, -1, &changed, &pending, &pendingOffset));
         server.join();
 
         EXPECT_FALSE(changed);
@@ -345,7 +345,7 @@ TEST_F(VdOffsetIpcComponentTest, ClearPendingOverRealIpcClearsOnlyMatchingOffset
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, -1, nullptr, &pending, nullptr));
         server.join();
         ASSERT_TRUE(pending);
     }
@@ -372,7 +372,7 @@ TEST_F(VdOffsetIpcComponentTest, ClearPendingOverRealIpcClearsOnlyMatchingOffset
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = true; // Deliberately wrong: must become false.
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, -1, nullptr, &pending, nullptr));
         server.join();
         EXPECT_FALSE(pending);
     }

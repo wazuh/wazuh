@@ -182,6 +182,10 @@ EXPORTED int agent_info_task_check_and_record(const char* task_id);
  * (see AgentInfoImpl::observeVdFeedOffset).
  *
  * @param offset The offset value received from the manager.
+ * @param vd_enabled The manager's VD module state reported next to the offset: 1 enabled,
+ *        0 disabled, -1 not reported (an older manager). -1 leaves the stored knowledge
+ *        untouched; 0/1 record it as-is (live state, kept in memory only -- it re-arrives
+ *        with every notify, so it needs no durability across restarts).
  * @param out_changed Set to 1 if the offset advanced, 0 otherwise. May be NULL.
  * @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise. May be NULL.
  * @param out_pending_offset Set to the offset a pending request refers to (valid only when
@@ -190,6 +194,7 @@ EXPORTED int agent_info_task_check_and_record(const char* task_id);
  *         output isn't the issue -- out_* pointers are all optional).
  */
 EXPORTED int agent_info_vd_offset_observe(uint64_t offset,
+                                          int vd_enabled,
                                           int* out_changed,
                                           int* out_pending,
                                           uint64_t* out_pending_offset);
@@ -261,6 +266,7 @@ typedef void (*agent_info_set_query_handshake_function_func)(query_handshake_cal
 typedef void (*agent_info_task_registry_init_func)(uint32_t max_entries, uint32_t ttl_seconds);
 typedef int (*agent_info_task_check_and_record_func)(const char* task_id);
 typedef int (*agent_info_vd_offset_observe_func)(uint64_t offset,
+                                                 int vd_enabled,
                                                  int* out_changed,
                                                  int* out_pending,
                                                  uint64_t* out_pending_offset);
