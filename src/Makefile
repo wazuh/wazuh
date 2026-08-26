@@ -182,12 +182,16 @@ ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 ifeq (${CHECK_CENTOS5},YES)
 		OSSEC_CFLAGS+=-pthread
+		HARDENING_STACK_FLAG := -fstack-protector
 else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
+		HARDENING_STACK_FLAG := -fstack-protector-strong
 endif
-		HARDENING_FLAGS := -fstack-protector-strong
+		HARDENING_FLAGS := $(HARDENING_STACK_FLAG)
 ifeq (,$(filter ${DEBUG},YES yes y Y 1))
+ifneq (${CHECK_CENTOS5},YES)
 		HARDENING_FLAGS += -D_FORTIFY_SOURCE=2
+endif
 endif
 		OSSEC_CFLAGS+=$(HARDENING_FLAGS) -fPIE
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib' -Wl,-z,relro -Wl,-z,now -pie
