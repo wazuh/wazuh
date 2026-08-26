@@ -55,6 +55,11 @@ typedef struct SyncModuleResult_t
     /// @brief True when the local sync intake itself could not be reached. See
     /// SyncModuleResult::localTransportUnavailable (agent_sync_protocol_types.hpp) for the full doc.
     bool local_transport_unavailable;
+    /// @brief True when at least one block of queued items was actually sent to the manager.
+    /// Lets a module log "nothing to send" instead of "finished successfully" for an empty
+    /// cycle, which `success` alone cannot express. Never use it to gate durable state -- see
+    /// SyncModuleResult::sentAnything (agent_sync_protocol_types.hpp) for why.
+    bool sent_anything;
 } SyncModuleResult_t;
 
 /// @brief Defines the type of modification operation.

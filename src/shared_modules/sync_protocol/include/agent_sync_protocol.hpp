@@ -81,6 +81,23 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
 
+        /// @brief Returns the agent id this process is currently synchronizing under.
+        ///
+        /// Reads the shared-memory metadata provider -- the same source, through the same call,
+        /// that stamps every outgoing session's `Start.agentid` (see buildFullSessionBuffer).
+        /// A module comparing against this value can therefore never force a resync stamped with
+        /// an id different from the one it compared against.
+        ///
+        /// Static, not a member of IAgentSyncProtocol: the agent id is process-global state
+        /// rather than per-instance, and keeping it off the interface leaves every existing mock
+        /// untouched. The C counterpart is asp_get_agent_id().
+        ///
+        /// @return The agent id as a positive integer, or 0 when the provider has published
+        ///         nothing yet or holds a value that is not a plain number. Callers must treat 0
+        ///         as "unknown", never as "changed": an unavailable provider, or one still
+        ///         holding the previous id, must not look like a new identity.
+        static long currentAgentId();
+
         /// @copydoc IAgentSyncProtocol::stop
         void stop() override;
 

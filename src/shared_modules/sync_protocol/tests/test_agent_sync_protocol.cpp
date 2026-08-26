@@ -342,6 +342,48 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
                               );
 
     EXPECT_TRUE(result.success);
+    // #38601: an empty queue is a success -- a routine "nothing changed" cycle is not a failure,
+    // and every module's log ladder and failure streak depend on that staying true. What it must
+    // NOT do is look like a cycle that reached the manager, because durable markers gated on a
+    // sync result would then record data the manager never received.
+    EXPECT_FALSE(result.sentAnything);
+}
+
+// The agent id every session is stamped with, read the way a module reads it before deciding
+// whether its own identity changed. Zero has to mean "nothing published yet": a module that read
+// an unavailable provider as a new identity would resynchronize on every cycle.
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdReportsThePublishedId)
+{
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroWhenNothingPublished)
+{
+    metadata_provider_reset();
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
+}
+
+// Zero-padding is presentational: "001" is agent 1, and the manager compares ids numerically for
+// the same reason (fullSessionValidator.cpp).
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIgnoresZeroPadding)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "007", sizeof(metadata.agent_id) - 1);
+    metadata_provider_update(&metadata);
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 7);
+}
+
+// Anything that is not a plain number reads as unknown rather than as an identity, so a corrupt
+// or unexpected value cannot trigger a resynchronization.
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroForANonNumericId)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "00x", sizeof(metadata.agent_id) - 1);
+    metadata_provider_update(&metadata);
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
 }
 
 // The consecutive-failure streak is what tells a brief post-restart hiccup apart from a lasting

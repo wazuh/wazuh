@@ -52,6 +52,10 @@ bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
     return mock_type(bool);
 }
 
+long __wrap_asp_get_agent_id(void) {
+    return mock_type(long);
+}
+
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length) {
     check_expected_ptr(handle);
     check_expected_ptr(data);

@@ -29,6 +29,12 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
 SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                                           int mode);
 
+/**
+ * @brief Wrapper for asp_get_agent_id. Scripted with will_return(): 0 means "the provider has
+ *        published nothing", which callers must read as unknown rather than as a new identity.
+ */
+long __wrap_asp_get_agent_id(void);
+
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
                                    const char* checksum);
