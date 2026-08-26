@@ -55,6 +55,7 @@ public function config()
     WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
     WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
     ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+    WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -72,7 +73,7 @@ public function config()
         strText = objFile.ReadAll
         objFile.Close
 
-        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
+        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
             If WAZUH_MANAGER <> "" Then
                 Set re = new regexp
                 re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
@@ -115,6 +116,16 @@ public function config()
                     re.Pattern = "<port>.*</port>"
                     re.Global = True
                     strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                End If
+
+            End If
+
+            If WAZUH_MANAGER_ENDPOINT <> "" Then ' manager reverse-proxy prefix (#38492)
+                If InStr(strText, "<endpoint>") > 0 Then
+                    Set re = new regexp
+                    re.Pattern = "<endpoint>.*</endpoint>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<endpoint>" & WAZUH_MANAGER_ENDPOINT & "</endpoint>")
                 End If
 
             End If
