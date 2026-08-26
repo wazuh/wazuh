@@ -65,7 +65,12 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # cpp-httplib SSLServer/SSLClient (the TLS fake manager) needs the OpenSSL
   # support macro and the vendored OpenSSL symbols linked directly (wazuhext
   # does not re-export them).
-  target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+  # CPPHTTPLIB_ZSTD_SUPPORT: cpp-httplib >= 0.20 answers 415 to any
+  # `Content-Encoding: zstd` request it cannot decode, so the fake manager
+  # decodes compressed /stateful sessions the way the real manager does
+  # (ext_zstd is linked below anyway).
+  target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT
+                                                                 CPPHTTPLIB_ZSTD_SUPPORT)
   target_link_libraries(
     https_client_component_test
     debug gtestd
@@ -74,6 +79,10 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gmock
     https_client
     ext_zstd
+    # The fake manager authenticates requests with the manager's own shared verifier
+    # (shared_modules/utils/jwt/: jwt-cpp + rapidjson, both header-only).
+    ext_jwt_cpp
+    ext_rapidjson
     ${SRC_FOLDER}/external/openssl/libssl.a
     ${SRC_FOLDER}/external/openssl/libcrypto.a
     pthread)

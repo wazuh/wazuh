@@ -13,15 +13,15 @@
  * Real TLS verification over the actual curl path: HC_VERIFY_FULL against a
  * CA file on disk, with a genuine handshake to an in-process TLS server whose
  * certificate carries a matching SAN. The rest of the component suite runs
- * plaintext + HC_VERIFY_NONE (to isolate the CMAC interop), so this is where
+ * plaintext + HC_VERIFY_NONE (to isolate the bearer interop), so this is where
  * the fail-closed TLS policy of #37828 is proven end to end -- both that a
  * trusted cert is accepted and that an untrusted one is rejected (so the
  * positive case cannot be passing with verification silently off).
  */
 
-#include "cmacSigner.hpp"
 #include "curlHandle.hpp"
 #include "curlPerformer.hpp"
+#include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "sysSeams.hpp"
@@ -44,7 +44,7 @@
 
 namespace
 {
-    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f";
+    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     void addExtension(X509* cert, int nid, const char* value)
     {
@@ -72,8 +72,8 @@ namespace
         X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
         X509_set_pubkey(cert, pkey);
         X509_NAME* name = X509_get_subject_name(cert);
-        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-                                   reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
         X509_set_issuer_name(cert, name);
         addExtension(cert, NID_basic_constraints, "critical,CA:TRUE");
         addExtension(cert, NID_subject_alt_name, "IP:127.0.0.1");
@@ -86,8 +86,7 @@ namespace
     // CA. Returns the path (empty on failure).
     std::string writeCertPem(X509* cert, const std::string& tag)
     {
-        const std::string path =
-            ::testing::TempDir() + "hc_tls_" + tag + "_" + std::to_string(::getpid()) + ".crt";
+        const std::string path = ::testing::TempDir() + "hc_tls_" + tag + "_" + std::to_string(::getpid()) + ".crt";
         std::FILE* file = std::fopen(path.c_str(), "wb");
 
         if (file == nullptr)
@@ -106,52 +105,52 @@ namespace
     // before any HTTP status.
     class TlsServer
     {
-        public:
-            TlsServer(X509* cert, EVP_PKEY* key, uint16_t port)
-                : m_server(cert, key)
+    public:
+        TlsServer(X509* cert, EVP_PKEY* key, uint16_t port)
+            : m_server(cert, key)
+        {
+            m_server.Post("/stateless",
+                          [](const httplib::Request&, httplib::Response& response)
+                          {
+                              response.status = 200;
+                              response.set_content("ok", "text/plain");
+                          });
+            m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
+            waitUntilReady(port);
+        }
+
+        ~TlsServer()
+        {
+            m_server.stop();
+
+            if (m_thread.joinable())
             {
-                m_server.Post("/stateless",
-                              [](const httplib::Request&, httplib::Response & response)
-                {
-                    response.status = 200;
-                    response.set_content("ok", "text/plain");
-                });
-                m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
-                waitUntilReady(port);
+                m_thread.join();
             }
+        }
 
-            ~TlsServer()
+        TlsServer(const TlsServer&) = delete;
+        TlsServer& operator=(const TlsServer&) = delete;
+
+    private:
+        static void waitUntilReady(uint16_t port)
+        {
+            httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
+            probe.enable_server_certificate_verification(false);
+
+            for (int attempt = 0; attempt < 200; attempt++)
             {
-                m_server.stop();
-
-                if (m_thread.joinable())
+                if (auto result = probe.Post("/stateless"))
                 {
-                    m_thread.join();
+                    return;
                 }
+
+                usleep(20 * 1000);
             }
+        }
 
-            TlsServer(const TlsServer&) = delete;
-            TlsServer& operator=(const TlsServer&) = delete;
-
-        private:
-            static void waitUntilReady(uint16_t port)
-            {
-                httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
-                probe.enable_server_certificate_verification(false);
-
-                for (int attempt = 0; attempt < 200; attempt++)
-                {
-                    if (auto result = probe.Post("/stateless"))
-                    {
-                        return;
-                    }
-
-                    usleep(20 * 1000);
-                }
-            }
-
-            httplib::SSLServer m_server;
-            std::thread m_thread;
+        httplib::SSLServer m_server;
+        std::thread m_thread;
     };
 
     ModuleConfig tlsFullConfig(uint16_t port, const std::string& caPath)
@@ -211,12 +210,9 @@ namespace
             std::string m_bundlePath;
     };
 
-    HttpResponse sendSigned(CurlPerformer& performer, const CmacSigner& signer,
-                            const std::string& body)
+    HttpResponse sendSigned(CurlPerformer& performer, const JwtSigner& signer, const std::string& body)
     {
-        const auto headers = signer.sign("POST", "/stateless",
-                                         reinterpret_cast<const uint8_t*>(body.data()), body.size(),
-                                         SystemClock {}.wallSeconds());
+        const auto headers = signer.sign(SystemClock {}.wallSeconds());
         HttpRequestSpec spec;
         spec.target = "/stateless";
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -242,7 +238,7 @@ TEST(TlsVerificationTest, FullVerificationAgainstAMatchingCaCompletesTheHandshak
 
     const auto config = tlsFullConfig(port, caPath);
     ConfigKeyProvider keyProvider {KEY_HEX};
-    CmacSigner signer {"001", keyProvider};
+    JwtSigner signer {"001", keyProvider};
     CurlPerformer performer {config, defaultCurlHandleFactory()};
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
@@ -276,7 +272,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
 
     const auto config = tlsFullConfig(port, wrongCaPath);
     ConfigKeyProvider keyProvider {KEY_HEX};
-    CmacSigner signer {"001", keyProvider};
+    JwtSigner signer {"001", keyProvider};
     CurlPerformer performer {config, defaultCurlHandleFactory()};
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
@@ -306,7 +302,7 @@ TEST(TlsVerificationTest, SystemVerificationAgainstAnOsTrustedCaCompletesTheHand
 
     const auto config = tlsSystemConfig(port);
     ConfigKeyProvider keyProvider {KEY_HEX};
-    CmacSigner signer {"001", keyProvider};
+    JwtSigner signer {"001", keyProvider};
     FixedFsProbe fsProbe {bundlePath};
     CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
 
@@ -344,7 +340,7 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
 
     const auto config = tlsSystemConfig(port);
     ConfigKeyProvider keyProvider {KEY_HEX};
-    CmacSigner signer {"001", keyProvider};
+    JwtSigner signer {"001", keyProvider};
     FixedFsProbe fsProbe {bundlePath};
     CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
 

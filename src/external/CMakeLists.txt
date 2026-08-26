@@ -1434,15 +1434,17 @@ if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
   target_link_libraries(ext_jwt_cpp INTERFACE crypto)
 endif()
 
+# rapidjson (header-only; in the base EXTERNAL_RES list since #38582: the shared wazuh-agent+jwt
+# verifier in shared_modules/utils/jwt/ parses tokens with its SAX reader, and the agent's
+# component tests run that verifier as their fake manager).
+if(EXISTS ${EXTERNAL_DIR}/rapidjson)
+  add_library(ext_rapidjson INTERFACE)
+  target_include_directories(ext_rapidjson SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
+endif()
+
 # Header-only libs that are only downloaded for server builds
 if(NOT IS_AGENT)
-  # rapidjson
-  if(EXISTS ${EXTERNAL_DIR}/rapidjson)
-    add_library(ext_rapidjson INTERFACE)
-    target_include_directories(ext_rapidjson SYSTEM
-                               INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
-  endif()
-
   # RxCpp
   if(EXISTS ${EXTERNAL_DIR}/RxCpp)
     add_library(ext_rxcpp INTERFACE)

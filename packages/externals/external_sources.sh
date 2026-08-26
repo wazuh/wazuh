@@ -108,6 +108,8 @@ _reg dbus               "https://dbus.freedesktop.org/releases/dbus/dbus-{versio
 _reg flatbuffers        "https://github.com/google/flatbuffers/archive/refs/tags/v{version}.tar.gz"                               tar.gz  1  flatbuffers        false  "https://github.com/google/flatbuffers"
 # jwt-cpp is header-only (no build step); the vendored tree is the upstream source archive.
 _reg jwt-cpp            "https://github.com/Thalhammer/jwt-cpp/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  jwt-cpp            false  "https://github.com/Thalhammer/jwt-cpp"
+# rapidjson is header-only too; base list since #38582 (the shared JWT verifier parses tokens with it).
+_reg rapidjson          "https://github.com/Tencent/rapidjson/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  rapidjson          false  "https://github.com/Tencent/rapidjson"
 
 # ---------------------------------------------------------------------------
 # Manager-only additions.
@@ -126,7 +128,6 @@ _reg fmt                "https://github.com/fmtlib/fmt/releases/download/{versio
 _reg abseil-cpp         "https://github.com/abseil/abseil-cpp/archive/refs/tags/{version}.tar.gz"                                 tar.gz  1  abseil-cpp         false  "https://github.com/abseil/abseil-cpp"
 _reg re2                "https://github.com/google/re2/archive/refs/tags/{version}.tar.gz"                                        tar.gz  1  re2                false  "https://github.com/google/re2"
 _reg protobuf           "https://github.com/protocolbuffers/protobuf/releases/download/v{version}/protobuf-{version}.tar.gz"      tar.gz  1  protobuf           false  "https://github.com/protocolbuffers/protobuf"
-_reg rapidjson          "https://github.com/Tencent/rapidjson/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  rapidjson          false  "https://github.com/Tencent/rapidjson"
 _reg taskflow           "https://github.com/taskflow/taskflow/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  taskflow           false  "https://github.com/taskflow/taskflow"
 _reg RxCpp              "https://github.com/ReactiveX/RxCpp/archive/refs/tags/v{version}.tar.gz"                                  tar.gz  1  RxCpp              false  "https://github.com/ReactiveX/RxCpp"
 _reg concurrentqueue    "https://github.com/cameron314/concurrentqueue/archive/refs/tags/v{version}.tar.gz"                       tar.gz  1  concurrentqueue    false  "https://github.com/cameron314/concurrentqueue"

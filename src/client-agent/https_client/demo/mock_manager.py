@@ -4,8 +4,9 @@
 #
 # A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
 # enough to watch the REAL https_client module communicate: it verifies the
-# AES-CMAC of every request (via the openssl CLI, so it is an independent
-# implementation), then answers /control, /stateless and /stateful. Every
+# wazuh-agent+jwt bearer token of every request (HS256 with the standard
+# library, so it is an independent implementation), then answers /control,
+# /stateless and /stateful. Every
 # request is logged so the conversation is visible. A /stateful session that
 # is larger than the legacy 64 KB DGRAM cap gets spotlighted, since arriving
 # whole in one signed POST is exactly what the new STREAM intake makes possible.
@@ -13,6 +14,7 @@
 # Not production code; a demo harness only.
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -93,7 +95,7 @@ def cmac_hex(key_hex, message):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"  # chunked /download needs 1.1
-    key_hex = "000102030405060708090a0b0c0d0e0f"
+    key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
     notify_count = 0
 
     # Timeline (driven by the notify counter): the config flips first (the
@@ -120,7 +122,7 @@ class Handler(BaseHTTPRequestHandler):
     # manager) that mints a fresh id on every /enroll regardless of key_hash
     # would silently desync the module's id from what's on disk.
     KEY_HASH_TO_ID = {}
-    ROTATED_KEY = "0f0e0d0c0b0a09080706050403020100"
+    ROTATED_KEY = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110"
 
     # #38465: empty (default) -> /enroll accepts any request carrying
     # protocol-version, no signature required (open mode). Non-empty ->
@@ -208,23 +210,41 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _verify(self, target, body):
+        """The manager's wazuh-agent+jwt check, in stdlib: Bearer HS256 over
+        exactly {alg,kid,typ} / {exp,iat,iss,jti,nbf,sub}, keyed with the 32
+        bytes the 64-hex client.keys secret decodes to. The target and the body
+        play no part (identity only)."""
+        del target, body
         auth = self.headers.get("Authorization", "")
         version = self.headers.get("protocol-version", "")
-        if not auth.startswith("Wazuh ") or version != "1":
+        if not auth.startswith("Bearer ") or version != "1":
             return None, "missing/!=1 protocol-version or Authorization"
-        try:
-            agent_id, ts, mac = auth[len("Wazuh "):].split(":", 2)
-        except ValueError:
-            return None, "malformed Authorization"
-        canonical = (b"WAZUH-REQUEST\n1\nPOST\n" + target.encode() + b"\n"
-                     + agent_id.encode() + b"\n" + ts.encode() + b"\n" + body)
         active_key = (Handler.ROTATED_KEY
                       if Handler.notify_count >= Handler.ROTATE_KEY_AT
                       else Handler.key_hex)
-        expected = cmac_hex(active_key, canonical)
-        if expected != mac.lower():
-            return None, f"CMAC mismatch (got {mac[:12]}.., want {expected[:12]}.. - rotated?)"
-        return (agent_id, ts, mac), None
+        try:
+            h64, p64, s64 = auth[len("Bearer "):].split(".")
+            pad = lambda x: x + "=" * (-len(x) % 4)
+            header = json.loads(base64.urlsafe_b64decode(pad(h64)))
+            claims = json.loads(base64.urlsafe_b64decode(pad(p64)))
+            sig = base64.urlsafe_b64decode(pad(s64))
+        except (ValueError, json.JSONDecodeError):
+            return None, "malformed Authorization"
+        if header != {"alg": "HS256", "kid": claims.get("sub"), "typ": "wazuh-agent+jwt"}:
+            return None, f"unexpected header {header}"
+        if set(claims) != {"exp", "iat", "iss", "jti", "nbf", "sub"}:
+            return None, f"unexpected claim set {sorted(claims)}"
+        expected = hmac.new(bytes.fromhex(active_key), f"{h64}.{p64}".encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(expected, sig):
+            return None, f"signature mismatch (kid {claims.get('sub')} - rotated?)"
+        now = int(time.time())
+        if not (claims["nbf"] == claims["iat"] and 0 < claims["exp"] - claims["iat"] <= 60):
+            return None, "structural time rules violated"
+        if claims["iat"] > now + 30 or now > claims["exp"] + 30 or now - claims["iat"] > 90:
+            return None, f"token outside the time window (iat {claims['iat']}, now {now})"
+        if claims["iss"] != "wazuh-agent/" + claims["sub"]:
+            return None, "iss/sub mismatch"
+        return (claims["sub"], claims["iat"], claims["jti"]), None
 
     def _reply(self, code, payload=None, headers=None):
         body = b"" if payload is None else json.dumps(payload).encode()
@@ -261,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
 
         # /enroll predates any client.keys identity (that is the whole point:
         # it is how one gets minted) -- it cannot go through the generic
-        # "Wazuh <id>:<ts>:<mac>" _verify() below, which requires an id the
+        # Bearer _verify() below, which requires an id the
         # agent does not have yet. It carries its own WazuhEnroll scheme.
         if target == "/enroll":
             self._handle_enroll(body)
@@ -273,9 +293,9 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(401, {"error": "unauthorized"})
             return
 
-        agent_id, ts, mac = identity
+        agent_id, ts, jti = identity
 
-        # The CMAC above covered the wire (possibly compressed) bytes, same
+        # Authentication never looked at the (possibly compressed) wire bytes, same
         # as /enroll -- decompress only now, for the handlers below, which
         # all expect plain JSON/text content.
         if self.headers.get("Content-Encoding", "") == "zstd":
@@ -287,7 +307,7 @@ class Handler(BaseHTTPRequestHandler):
             body = decompressed
 
         preview = body[:70].decode("latin-1", errors="replace").replace("\n", "\\n")
-        log(f"POST {target:<11} <- id={agent_id} ts={ts} mac={mac[:10]}.. "
+        log(f"POST {target:<11} <- id={agent_id} iat={ts} jti={jti[:10]}.. "
             f"auth OK ({len(body)} B) body='{preview}'")
 
         if target == "/control":
@@ -441,7 +461,7 @@ class Handler(BaseHTTPRequestHandler):
             log(f"     /enroll     -> {Handler.ENROLL_STATUS}  (forced by --enroll-status)")
             return
 
-        # The CMAC covers the wire bytes (compressed before signing, #38465
+        # The token does not cover the wire bytes (compressed or not, #38465
         # D7) -- verify against the raw body exactly as received, same as
         # every other endpoint. Only the JSON parsing below needs the
         # decompressed content.
@@ -475,7 +495,7 @@ class Handler(BaseHTTPRequestHandler):
             if key_hash:
                 Handler.KEY_HASH_TO_ID[key_hash] = agent_id
         name = request.get("name", "unknown")
-        # Must match whatever _verify()/CMAC checks against right now: if a
+        # Must match whatever _verify() checks the bearer against right now: if a
         # key rotation (ROTATE_KEY_AT) already happened, handing back the
         # pre-rotation key_hex would make the agent re-enroll, get the same
         # already-invalid key, 401 again, and loop forever -- indistinguishable
@@ -516,7 +536,7 @@ class Handler(BaseHTTPRequestHandler):
         size = len(body)
         chunks = -(-size // MAX_BATCH_PAYLOAD)  # ceil
         log("──[ LARGE SESSION ]── streamed whole over the new intake socket ──")
-        log(f"     {human_size(size)} ({size} B) arrived as ONE CMAC-signed POST")
+        log(f"     {human_size(size)} ({size} B) arrived as ONE bearer-authenticated POST")
         log(f"     = {size / OS_MAXSTR:.0f}x the 64 KB OS_MAXSTR DGRAM cap; the legacy")
         log(f"       chunked path would need {chunks} x 60 KB datagrams reassembled")
         if module == "fim":
