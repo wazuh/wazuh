@@ -21,6 +21,7 @@
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Added the `POST /stats` HTTPS endpoint, which persists the statistics an agent reports as one document per agent in the `wazuh-agent-stats` index, replacing the previous report on every push. |
 | [#38007](https://github.com/wazuh/wazuh/issues/38007) | Added legacy `remote_upgrade` task delivery in `remoted`: a polling thread pushes pending Task Manager tasks to connected agents older than v5.0.0 over their existing session using the legacy six-step WPK push, gated on `remoted`'s HTTPS `verification_mode`. |
 | [#38157](https://github.com/wazuh/wazuh/issues/38157) | Added installation-time variables to customize the default `<remote>` configuration on source, DEB, and RPM manager installations. |
+| [#38553](https://github.com/wazuh/wazuh/issues/38553) | Added the `PUT /agents/scan/vulnerability` endpoint to trigger an on-demand vulnerability scan for one agent, a list of agents, or all agents. |
 
 #### Changed
 
