@@ -11,8 +11,9 @@
 
 #pragma once
 
-#include "auth/authTypes.hpp" // remoted::auth::AuthError
+#include "auth/authTypes.hpp" // remoted::auth::AuthError, kSupportedProtocolVersion
 #include "auth/passwordKeySource.hpp"
+#include "jwt/jwtProfileV1.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,7 +27,7 @@ namespace remoted::enrollment
 
     struct EnrollmentAuthConfig
     {
-        /// Whether the WazuhEnroll CMAC header is required, mirroring authd's own <use_password>.
+        /// Whether the `wazuh-enroll+jwt` bearer is required, mirroring authd's own <use_password>.
         /// Deliberately independent of whatever client-certificate requirement the TLS listener
         /// separately enforces (HttpServerConfig::verificationMode) -- legacy authd already treats
         /// its own <ssl_verify_host> (cert) and <use_password> checks as two independent gates on
@@ -36,15 +37,17 @@ namespace remoted::enrollment
         /// "mode" (mTLS XOR Password) would have silently dropped the password check whenever a
         /// client certificate was also required -- this flag exists so that can't happen.
         bool requirePassword {false};
-        std::int64_t maxRequestAgeSeconds {300};
-        std::int64_t maxFutureSkewSeconds {30};
+
+        /// Accepted token age / clock skew of the bearer: the same `remoted.jwt_max_age` /
+        /// `remoted.jwt_clock_skew` policy the agent<->manager profile uses (enrollmentConfig.hpp).
+        jwt_profile::v1::TimePolicy timePolicy {};
 
         /// Same `auth_max_body_size` internal option (and the same 10 MiB default) the
-        /// agent<->manager AES-CMAC scheme's AuthConfig enforces (authTypes.cpp) -- checked BEFORE
-        /// the CMAC runs, in BOTH Open and Password mode, so an unauthenticated peer can't make
-        /// this endpoint hash an arbitrarily large body (up to the transport's own cap) and hold
-        /// that many in-flight bytes reserved, and so an oversized body gets the same 413 every
-        /// other endpoint returns instead of falling through to parseAndValidateBody()'s 400.
+        /// agent<->manager AuthConfig enforces (authTypes.cpp) -- checked BEFORE the credential, in
+        /// BOTH Open and Password mode, so an unauthenticated peer can't hold an arbitrarily large
+        /// body (up to the transport's own cap) in the in-flight budget, and so an oversized body
+        /// gets the same 413 every other endpoint returns instead of falling through to
+        /// parseAndValidateBody()'s 400.
         std::size_t maxBodySize {10U * 1024U * 1024U};
 
         /// The accepted `protocol-version` header value, shared with the agent<->manager scheme via
@@ -57,12 +60,13 @@ namespace remoted::enrollment
      * @brief Authenticates POST /enroll requests.
      *
      * /enroll is registered directly on IHttpServer, bypassing AuthGateway/AuthMiddleware: an
-     * enrolling agent has no client.keys entry yet, so the agent<->manager AES-CMAC protocol
-     * (keyed by an agent id) structurally cannot apply here. When requirePassword is set, this
-     * class runs a deliberately similar but distinct scheme -- same Cmac primitive, same
-     * freshness-window check, same remoted::auth::AuthError taxonomy (so it collapses through the
-     * same publicErrorFor()/errorResponseFor() as every other endpoint) -- but with no agent-id
-     * field, since the agent doesn't have one yet.
+     * enrolling agent has no client.keys entry yet, so the agent<->manager `wazuh-agent+jwt`
+     * bearer (keyed by an agent id) structurally cannot apply here. When requirePassword is set,
+     * this class requires the sibling profile `wazuh-enroll+jwt` (jwt/jwtEnrollProfileV1.hpp): the
+     * same HS256 core, keyed by the HKDF of authd's enrollment password (PasswordKeySource), with
+     * no `kid`/`sub`/`iss` since there is no identity to name yet. Failures collapse through the
+     * same remoted::auth::AuthError taxonomy -- and the same publicErrorFor()/errorResponseFor()
+     * uniform 401 -- as every other endpoint.
      *
      * A client-certificate requirement is NOT this class's concern at all: the TLS listener
      * enforces it (or doesn't) entirely on its own, before any handler -- including this one --
@@ -74,9 +78,8 @@ namespace remoted::enrollment
     {
     public:
         /**
-         * @param config    requirePassword + freshness window (same defaults as the agent<->manager
-         *                  scheme: 300s max age, 30s max future skew).
-         * @param keySource Password signing key; ignored (may be null) when requirePassword is false.
+         * @param config    requirePassword + time policy + body cap.
+         * @param keySource Enrollment key; ignored (may be null) when requirePassword is false.
          */
         EnrollmentAuthenticator(EnrollmentAuthConfig config,
                                 std::shared_ptr<remoted::auth::PasswordKeySource> keySource);
@@ -87,30 +90,24 @@ namespace remoted::enrollment
          * @param protocolVersionHeader  Value of the protocol-version header (empty if absent or
          *                               duplicated -- the transport collapses both). Validated
          *                               FIRST, in every mode including Open, exactly as
-         *                               AuthMiddleware::beginSession() does for every other route.
-         * @param authorizationHeader    Value of the Authorization header (empty if absent).
-         *                               Ignored when requirePassword is false.
-         * @param method                 Raw HTTP method, as received (case-insensitive).
-         * @param requestTarget          Raw path + query, exactly as received.
-         * @param body                   Raw request body bytes, exactly as sent on the wire.
-         *                               Checked against maxBodySize once the version is accepted,
-         *                               in every mode -- see the field's own doc comment.
-         * @param currentUnixTimeSeconds Current time, for the timestamp-window check.
+         *                               AuthMiddleware::authenticate() does for every other route.
+         * @param authorizationHeader    Value of the Authorization header (empty if absent or
+         *                               duplicated). Must be `Bearer <wazuh-enroll+jwt>` when
+         *                               requirePassword is set; ignored otherwise.
+         * @param bodySize               Size of the raw request body, checked against maxBodySize
+         *                               once the version is accepted, in every mode. The bearer does
+         *                               not cover the body (TLS protects it), so the bytes themselves
+         *                               are never needed here.
+         * @param currentUnixTimeSeconds Current time, for the token's time rules.
          * @return std::nullopt on success, or the AuthError that rejected the request.
          */
         std::optional<remoted::auth::AuthError> authenticate(std::string_view protocolVersionHeader,
                                                              std::string_view authorizationHeader,
-                                                             std::string_view method,
-                                                             std::string_view requestTarget,
-                                                             std::string_view body,
+                                                             std::size_t bodySize,
                                                              std::int64_t currentUnixTimeSeconds) const;
 
     private:
-        std::optional<remoted::auth::AuthError> authenticatePassword(std::string_view protocolVersionHeader,
-                                                                     std::string_view authorizationHeader,
-                                                                     std::string_view method,
-                                                                     std::string_view requestTarget,
-                                                                     std::string_view body,
+        std::optional<remoted::auth::AuthError> authenticatePassword(std::string_view authorizationHeader,
                                                                      std::int64_t currentUnixTimeSeconds) const;
 
         EnrollmentAuthConfig m_config;

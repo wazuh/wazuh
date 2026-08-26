@@ -78,7 +78,7 @@ namespace remoted::endpoints
     {
         std::shared_ptr<wazuh::metrics::ICounter> unknownAgent; ///< Agent id not in client.keys.
         std::shared_ptr<wazuh::metrics::ICounter>
-            invalidSignature; ///< The token's HS256 (or /enroll's CMAC) did not verify.
+            invalidSignature; ///< The bearer's HS256 signature (agent or enroll profile) did not verify.
         std::shared_ptr<wazuh::metrics::ICounter>
             badToken; ///< Bearer is not a wazuh-agent+jwt token (grammar/header/claims).
         std::shared_ptr<wazuh::metrics::ICounter> identityMismatch;  ///< kid / sub / iss disagree (security signal).
@@ -101,7 +101,7 @@ namespace remoted::endpoints
                 METRIC_AUTH_REJECT_UNKNOWN_AGENT, "Rejections: the agent id is not in client.keys", "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_INVALID_SIGNATURE,
                                        "Rejections: the bearer token's signature did not verify with the agent's key "
-                                       "(wrong key or tampering); /enroll's CMAC failures also land here",
+                                       "(wrong key or tampering); /enroll's wazuh-enroll+jwt failures also land here",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BAD_TOKEN,
                                        "Rejections: the bearer is not a valid wazuh-agent+jwt token (size, grammar, "
@@ -125,7 +125,7 @@ namespace remoted::endpoints
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_ENROLLMENT_KEY,
                                        "Rejections: Password-mode POST /enroll could not use the enrollment password "
                                        "key -- etc/authd.pass missing, unreadable, invalid or not yet synced to this "
-                                       "worker, or AES-CMAC unavailable. NOT an agent credential fault: no agent "
+                                       "worker, or HKDF unavailable. NOT an agent credential fault: no agent "
                                        "exists yet, so re-enrolling fixes nothing",
                                        "count"),
             manager.getOrCreateCounter(

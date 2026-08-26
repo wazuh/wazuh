@@ -63,3 +63,44 @@ namespace jwt_profile::v1::test_vectors
         "p0aSI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJuYmYiOjE3MDAwMDAwMDAsInN1YiI6IjAwMSJ9."
         "ScnCz_6A1XAqPd7vuqmbfMeRLdc8NaM7rDLuHqF9gng";
 } // namespace jwt_profile::v1::test_vectors
+
+/// Frozen `wazuh-enroll+jwt` vectors (jwtEnrollProfileV1.hpp), same oracle; JSON mirror under
+/// "enroll" in jwt_vectors.json.
+namespace jwt_profile::v1::test_vectors::enroll
+{
+    constexpr std::string_view kPassword = "MyEnrollmentSecret123";
+    /// HKDF-SHA256(kPassword, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01, L = 32).
+    constexpr std::string_view kKeyHex = "eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6";
+    /// The historical AES-CMAC key of the same password (info "WAZUH-ENROLL-CMAC-KEY" || 0x01):
+    /// must differ from kKeyHex (domain separation).
+    constexpr std::string_view kLegacyCmacKeyHex = "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e";
+    constexpr std::int64_t kIat = 1700000000;
+    constexpr std::int64_t kExp = 1700000060;
+    constexpr std::string_view kJti = "AAECAwQFBgcICQoLDA0ODw";
+
+    constexpr std::string_view kHeaderJson = R"({"alg":"HS256","typ":"wazuh-enroll+jwt"})";
+    constexpr std::string_view kPayloadJson =
+        R"({"exp":1700000060,"iat":1700000000,"jti":"AAECAwQFBgcICQoLDA0ODw","nbf":1700000000})";
+    constexpr std::string_view kSigningInput = "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ."
+                                               "eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2N"
+                                               "JQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0";
+    constexpr std::string_view kSignatureB64Url = "Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o";
+    /// The complete valid token (210 bytes).
+    constexpr std::string_view kToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ."
+                                        "eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTE"
+                                        "RBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0."
+                                        "Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o";
+
+    /// Negative: same claims, signed with the key of password "WrongPassword". Must be rejected.
+    constexpr std::string_view kWrongPasswordToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ."
+                                                     "eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3U"
+                                                     "UZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0."
+                                                     "a8lxhFZIpYPD74vwYD_h6kPT4ZnedFOHEBMJPbltzZg";
+
+    /// Negative: correct key and signature, header carries an extra `kid` (exact header set).
+    constexpr std::string_view kKidHeaderToken =
+        "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ."
+        "eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH"
+        "0."
+        "-PID3RuMlsz0ShaKX5IppGhP3iX2nEq6mfyGPgqDDMY";
+} // namespace jwt_profile::v1::test_vectors::enroll

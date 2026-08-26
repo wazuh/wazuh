@@ -521,7 +521,7 @@ private:
         // like legacy authd, which already enforces its own <ssl_verify_host> at the TLS handshake
         // and <use_password> while parsing the enrollment message as two separate checks on the
         // same connection (main-server.c). So EnrollmentAuthenticator only ever needs to know
-        // whether it must additionally require the WazuhEnroll CMAC; it has no notion of "mTLS
+        // whether it must additionally require the `wazuh-enroll+jwt` bearer; it has no notion of "mTLS
         // mode" at all, because a client certificate is never its concern -- the TLS listener
         // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
         // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
@@ -536,10 +536,8 @@ private:
         }
 
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
-            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
-                                                       enrollConfig.timePolicy.maxAgeSec(),
-                                                       enrollConfig.timePolicy.skewSec(),
-                                                       enrollConfig.maxBodySize},
+            remoted::enrollment::EnrollmentAuthConfig {
+                enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
             enrollPasswordKeySource);
 
         m_authdClient =

@@ -1,5 +1,5 @@
 /*
- * Wazuh remoted module - EnrollmentAuthenticator unit tests
+ * Wazuh remoted module - agent enrollment authenticator tests
  * Copyright (C) 2015, Wazuh Inc.
  * August 19, 2026.
  *
@@ -9,10 +9,13 @@
  * Foundation.
  */
 
-// Exercises EnrollmentAuthenticator in isolation -- no sockets, no transport -- covering the
-// per-mode pass/deny matrix and the WazuhEnroll CMAC tamper scenarios a real E2E test re-runs
-// over the wire.
+// Unit tests of EnrollmentAuthenticator: the protocol-version and body-cap gates every mode
+// enforces, the Open-mode pass-through, and the `wazuh-enroll+jwt` bearer check of Password mode
+// (the token grammar itself is the shared verifier's job -- jwtEnrollSignVerify_test.cpp -- so
+// here the negatives are the ones the authenticator's own wiring can get wrong: scheme, key
+// availability, time policy, hot-reloaded password, cross-profile token).
 
+#include <chrono>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -20,56 +23,50 @@
 
 #include <gtest/gtest.h>
 
-#include "auth/cmac.hpp"
 #include "enrollment/enrollmentAuthenticator.hpp"
+#include "jwt/enrollKeyDerivation.hpp"
+#include "jwt/jwtEnrollTokenSigner.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/testVectors.hpp"
 
 using namespace remoted::enrollment;
+using jwt_profile::v1::SecureBytes;
+using jwt_profile::v1::TimePolicy;
+using jwt_profile::v1::enroll::JwtEnrollTokenSigner;
 using remoted::auth::AuthError;
-using remoted::auth::Cmac;
 using remoted::auth::PasswordKeySource;
-using remoted::auth::toLowerHex;
+namespace tv = jwt_profile::v1::test_vectors::enroll;
 
 namespace
 {
-    constexpr std::int64_t kNow = 1'784'238'000;
-
-    /// The protocol-version header value every request must carry. Spelled from the shared constant
-    /// so a bump there fails these tests loudly instead of leaving them asserting a stale version.
+    // 10 s after the frozen vector's iat, so the vector tokens are valid "now".
+    constexpr std::int64_t kNow = tv::kIat + 10;
     constexpr std::string_view kVersion = remoted::auth::kSupportedProtocolVersion;
+    constexpr std::size_t kSmallBody = 2;
 
-    std::string writePasswordFile(const std::string& password)
+    std::string writePasswordFile(const std::string& password, const char* tag = "")
     {
-        const std::string path = "/tmp/enrollmentAuthenticator_test_" + std::to_string(getpid()) + ".pass";
+        const std::string path = "/tmp/enrollmentAuthenticator_test_" + std::to_string(getpid()) + tag + ".pass";
         std::ofstream file(path);
         file << password << "\n";
         return path;
     }
 
-    // Builds the same canonical byte sequence EnrollmentAuthenticator verifies in Password mode,
-    // so tests can sign a request without a production signer.
-    std::string sign(const std::vector<std::uint8_t>& key,
-                     std::string_view method,
-                     std::string_view target,
-                     std::string_view body,
-                     std::int64_t ts)
+    std::chrono::system_clock::time_point at(std::int64_t ts)
     {
-        Cmac cmac(key);
-        cmac.update("WAZUH-ENROLL\n");
-        cmac.update("1\n");
-        cmac.update(method);
-        cmac.update("\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return "WazuhEnroll " + std::to_string(ts) + ":" + toLowerHex(mac.data(), mac.size());
+        return std::chrono::system_clock::time_point {std::chrono::seconds {ts}};
+    }
+
+    std::string bearer(const SecureBytes& key, std::int64_t ts)
+    {
+        const auto token = JwtEnrollTokenSigner::sign(key, at(ts));
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
     }
 
     struct PasswordFixture : public ::testing::Test
     {
-        std::string path = writePasswordFile("MyEnrollmentSecret123");
+        std::string path = writePasswordFile(std::string {tv::kPassword});
         std::shared_ptr<PasswordKeySource> keySource = std::make_shared<PasswordKeySource>(path);
         EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource};
 
@@ -78,101 +75,142 @@ namespace
             std::remove(path.c_str());
         }
 
-        std::string signValid(std::string_view method = "POST",
-                              std::string_view target = "/enroll",
-                              std::string_view body = R"({"name":"agent1"})",
-                              std::int64_t ts = kNow)
+        std::string validBearer(std::int64_t ts = kNow)
         {
             const auto key = keySource->currentKey();
-            return sign(*key, method, target, body, ts);
+            EXPECT_TRUE(key.has_value());
+            return bearer(*key, ts);
+        }
+
+        std::optional<AuthError> run(std::string_view authorization, std::int64_t now = kNow)
+        {
+            return authenticator.authenticate(kVersion, authorization, kSmallBody, now);
         }
     };
 } // namespace
 
 // -----------------------------------------------------------------------------
-// Password mode
+// Password mode: `Bearer <wazuh-enroll+jwt>` keyed by the HKDF of authd.pass.
 // -----------------------------------------------------------------------------
 
-TEST_F(PasswordFixture, ValidSignatureIsAccepted)
+TEST_F(PasswordFixture, ValidBearerIsAccepted)
 {
-    const std::string auth = signValid();
-    EXPECT_EQ(authenticator.authenticate(kVersion, auth, "POST", "/enroll", R"({"name":"agent1"})", kNow),
-              std::nullopt);
+    EXPECT_EQ(run(validBearer()), std::nullopt);
+}
+
+TEST_F(PasswordFixture, TheFrozenVectorTokenIsAcceptedWithTheVectorPassword)
+{
+    // Interop pin: the manager's HKDF + verifier accept the token every other implementation
+    // (agent, Python tools) reproduces byte for byte from jwt_vectors.json.
+    EXPECT_EQ(run("Bearer " + std::string {tv::kToken}), std::nullopt);
 }
 
 TEST_F(PasswordFixture, MissingAuthorizationHeaderIsRejected)
 {
-    const auto err = authenticator.authenticate(kVersion, "", "POST", "/enroll", R"({"name":"agent1"})", kNow);
+    const auto err = run("");
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::MissingAuthorization);
 }
 
-TEST_F(PasswordFixture, WrongSchemeIsRejected)
+TEST_F(PasswordFixture, NonBearerSchemesAreRejectedAsMalformed)
 {
-    const auto err = authenticator.authenticate(
-        kVersion, "Wazuh 001:1739999999:deadbeef", "POST", "/enroll", R"({"name":"agent1"})", kNow);
-    ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::MalformedAuthorization);
+    // The retired `WazuhEnroll <ts>:<mac>` header included: there is no compatibility path (J3).
+    for (const auto* header : {"WazuhEnroll 1784238000:00112233445566778899aabbccddeeff",
+                               "Basic dXNlcjpwYXNz",
+                               "bearer abc.def.ghi",
+                               "Bearer",
+                               "Bearer "})
+    {
+        const auto err = run(header);
+        ASSERT_TRUE(err.has_value()) << header;
+        EXPECT_EQ(*err, AuthError::MalformedAuthorization) << header;
+    }
 }
 
-TEST_F(PasswordFixture, NonHexMacIsRejected)
+TEST_F(PasswordFixture, GarbageTokenIsRejectedAsInvalidToken)
 {
-    const auto err = authenticator.authenticate(
-        kVersion, "WazuhEnroll 1784238000:not-a-valid-mac-hex-string-000", "POST", "/enroll", "{}", kNow);
+    const auto err = run("Bearer not.a.token");
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::MalformedAuthorization);
+    EXPECT_EQ(*err, AuthError::InvalidToken);
 }
 
-TEST_F(PasswordFixture, NonNumericTimestampIsRejected)
+TEST_F(PasswordFixture, WrongPasswordIsRejectedAsInvalidSignature)
 {
-    const std::string mac(32, 'a');
-    const auto err =
-        authenticator.authenticate(kVersion, "WazuhEnroll notanumber:" + mac, "POST", "/enroll", "{}", kNow);
+    const auto err = run("Bearer " + std::string {tv::kWrongPasswordToken});
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::MalformedAuthorization);
+    EXPECT_EQ(*err, AuthError::InvalidSignature);
 }
 
-TEST_F(PasswordFixture, TamperedBodyIsRejected)
+TEST_F(PasswordFixture, AnAgentProfileTokenIsRejected)
 {
-    const std::string auth = signValid("POST", "/enroll", R"({"name":"agent1"})", kNow);
-    const auto err = authenticator.authenticate(kVersion, auth, "POST", "/enroll", R"({"name":"agent2"})", kNow);
+    // A `wazuh-agent+jwt` minted with the SAME key bytes: rejected on the exact header set (`kid`,
+    // `typ`), before its signature is even considered -- the two profiles never cross over.
+    const auto key = keySource->currentKey();
+    ASSERT_TRUE(key.has_value());
+    const auto agentToken =
+        jwt_profile::v1::JwtRequestTokenSigner::sign(*jwt_profile::v1::CanonicalAgentId::parse("001"), *key, at(kNow));
+    ASSERT_TRUE(agentToken.has_value());
+    const auto err = run("Bearer " + *agentToken);
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::InvalidMac);
+    EXPECT_EQ(*err, AuthError::InvalidToken);
 }
 
-TEST_F(PasswordFixture, TamperedTargetIsRejected)
+TEST_F(PasswordFixture, KidInTheHeaderIsRejected)
 {
-    const std::string auth = signValid("POST", "/enroll", R"({"name":"agent1"})", kNow);
-    const auto err = authenticator.authenticate(kVersion, auth, "POST", "/other", R"({"name":"agent1"})", kNow);
+    const auto err = run("Bearer " + std::string {tv::kKidHeaderToken});
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::InvalidMac);
+    EXPECT_EQ(*err, AuthError::InvalidToken);
 }
 
-TEST_F(PasswordFixture, WrongKeyIsRejected)
+TEST_F(PasswordFixture, TokenOlderThanTheAcceptedAgeIsStale)
 {
-    const std::vector<std::uint8_t> otherKey(32, 0x42);
-    const std::string auth = sign(otherKey, "POST", "/enroll", R"({"name":"agent1"})", kNow);
-    const auto err = authenticator.authenticate(kVersion, auth, "POST", "/enroll", R"({"name":"agent1"})", kNow);
+    // Default policy: 60 s age + 30 s skew.
+    EXPECT_EQ(run(validBearer(kNow - 90)), std::nullopt);
+    const auto err = run(validBearer(kNow - 91));
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::InvalidMac);
+    EXPECT_EQ(*err, AuthError::StaleToken);
 }
 
-TEST_F(PasswordFixture, ExpiredTimestampIsRejected)
+TEST_F(PasswordFixture, TokenIssuedBeyondTheSkewInTheFutureIsStale)
 {
-    const std::int64_t oldTs = kNow - 301; // just past the 300s default window
-    const std::string auth = signValid("POST", "/enroll", "{}", oldTs);
-    const auto err = authenticator.authenticate(kVersion, auth, "POST", "/enroll", "{}", kNow);
+    EXPECT_EQ(run(validBearer(kNow + 30)), std::nullopt);
+    const auto err = run(validBearer(kNow + 31));
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::ExpiredRequest);
+    EXPECT_EQ(*err, AuthError::StaleToken);
 }
 
-TEST_F(PasswordFixture, FutureTimestampIsRejected)
+TEST_F(PasswordFixture, ConfiguredTimePolicyNarrowsTheWindow)
 {
-    const std::int64_t futureTs = kNow + 31; // just past the 30s default skew
-    const std::string auth = signValid("POST", "/enroll", "{}", futureTs);
-    const auto err = authenticator.authenticate(kVersion, auth, "POST", "/enroll", "{}", kNow);
+    // remoted.jwt_max_age=10 / remoted.jwt_clock_skew=0 reach /enroll through the same TimePolicy
+    // the agent<->manager profile uses.
+    EnrollmentAuthConfig config {true};
+    config.timePolicy = TimePolicy {10, 0};
+    EnrollmentAuthenticator narrow {config, keySource};
+
+    EXPECT_EQ(narrow.authenticate(kVersion, validBearer(kNow - 10), kSmallBody, kNow), std::nullopt);
+    const auto tooOld = narrow.authenticate(kVersion, validBearer(kNow - 11), kSmallBody, kNow);
+    ASSERT_TRUE(tooOld.has_value());
+    EXPECT_EQ(*tooOld, AuthError::StaleToken);
+    const auto future = narrow.authenticate(kVersion, validBearer(kNow + 1), kSmallBody, kNow);
+    ASSERT_TRUE(future.has_value());
+    EXPECT_EQ(*future, AuthError::StaleToken);
+}
+
+TEST_F(PasswordFixture, RotatingThePasswordInvalidatesTokensOfTheOldOne)
+{
+    const std::string oldBearer = validBearer();
+    EXPECT_EQ(run(oldBearer), std::nullopt);
+
+    {
+        std::ofstream file(path);
+        file << "SomeOtherSecret456\n";
+    }
+    ASSERT_TRUE(keySource->reload());
+
+    const auto err = run(oldBearer);
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::FutureRequest);
+    EXPECT_EQ(*err, AuthError::InvalidSignature);
+    EXPECT_EQ(run(validBearer()), std::nullopt); // minted with the new key
 }
 
 TEST(EnrollmentAuthenticatorTest, PasswordModeMissingKeyFileFailsClosed)
@@ -185,9 +223,15 @@ TEST(EnrollmentAuthenticatorTest, PasswordModeMissingKeyFileFailsClosed)
     auto keySource = std::make_shared<PasswordKeySource>("/tmp/enrollmentAuthenticator_test_absent.pass");
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource};
 
-    const std::string mac(32, 'a');
-    const auto err = authenticator.authenticate(
-        kVersion, "WazuhEnroll " + std::to_string(kNow) + ":" + mac, "POST", "/enroll", "{}", kNow);
+    const auto err = authenticator.authenticate(kVersion, "Bearer " + std::string {tv::kToken}, kSmallBody, kNow);
+    ASSERT_TRUE(err.has_value());
+    EXPECT_EQ(*err, AuthError::EnrollmentKeyUnavailable);
+}
+
+TEST(EnrollmentAuthenticatorTest, PasswordModeWithoutAKeySourceFailsClosed)
+{
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, nullptr};
+    const auto err = authenticator.authenticate(kVersion, "Bearer " + std::string {tv::kToken}, kSmallBody, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::EnrollmentKeyUnavailable);
 }
@@ -202,21 +246,21 @@ TEST(EnrollmentAuthenticatorTest, PasswordModeMissingKeyFileFailsClosed)
 TEST(EnrollmentAuthenticatorTest, RequirePasswordFalseAlwaysPasses)
 {
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
-    EXPECT_EQ(authenticator.authenticate(kVersion, "", "POST", "/enroll", "{}", kNow), std::nullopt);
-    EXPECT_EQ(authenticator.authenticate(kVersion, "garbage", "POST", "/enroll", "{}", kNow), std::nullopt);
+    EXPECT_EQ(authenticator.authenticate(kVersion, "", kSmallBody, kNow), std::nullopt);
+    EXPECT_EQ(authenticator.authenticate(kVersion, "garbage", kSmallBody, kNow), std::nullopt);
 }
 
 // -----------------------------------------------------------------------------
 // protocol-version -- validated FIRST, in every mode, exactly as AuthMiddleware does for every
-// other authenticated route. Regression guard: /enroll used to skip this check entirely while
-// hardcoding "1" into the signed canonical sequence, so a wrong or missing version surfaced as an
-// opaque 401 MAC failure (or, in Open mode, was accepted outright) instead of a 400.
+// other authenticated route. Regression guard: /enroll used to skip this check entirely, so a
+// wrong or missing version surfaced as an opaque 401 (or, in Open mode, was accepted outright)
+// instead of a 400.
 // -----------------------------------------------------------------------------
 
 TEST(EnrollmentAuthenticatorTest, MissingProtocolVersionIsRejectedInOpenMode)
 {
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
-    const auto err = authenticator.authenticate("", "", "POST", "/enroll", "{}", kNow);
+    const auto err = authenticator.authenticate("", "", kSmallBody, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::MissingProtocolVersion);
 }
@@ -224,27 +268,25 @@ TEST(EnrollmentAuthenticatorTest, MissingProtocolVersionIsRejectedInOpenMode)
 TEST(EnrollmentAuthenticatorTest, UnsupportedProtocolVersionIsRejectedInOpenMode)
 {
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
-    const auto err = authenticator.authenticate("2", "", "POST", "/enroll", "{}", kNow);
+    const auto err = authenticator.authenticate("2", "", kSmallBody, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::UnsupportedProtocolVersion);
 }
 
-TEST_F(PasswordFixture, MissingProtocolVersionIsRejectedBeforeTheSignatureIsChecked)
+TEST_F(PasswordFixture, MissingProtocolVersionIsRejectedBeforeTheBearerIsChecked)
 {
-    // A perfectly valid signature, but no protocol-version: the version rejection must win, or the
-    // check isn't really first. This is the case that used to authenticate successfully.
-    const std::string auth = signValid();
-    const auto err = authenticator.authenticate("", auth, "POST", "/enroll", R"({"name":"agent1"})", kNow);
+    // A perfectly valid bearer, but no protocol-version: the version rejection must win, or the
+    // check isn't really first.
+    const auto err = authenticator.authenticate("", validBearer(), kSmallBody, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::MissingProtocolVersion);
 }
 
-TEST_F(PasswordFixture, UnsupportedProtocolVersionIsRejectedBeforeTheSignatureIsChecked)
+TEST_F(PasswordFixture, UnsupportedProtocolVersionIsRejectedBeforeTheBearerIsChecked)
 {
-    const std::string auth = signValid();
-    const auto err = authenticator.authenticate("99", auth, "POST", "/enroll", R"({"name":"agent1"})", kNow);
+    const auto err = authenticator.authenticate("99", validBearer(), kSmallBody, kNow);
     ASSERT_TRUE(err.has_value());
-    // NOT InvalidMac: a version mismatch must surface as its own 400, not as an opaque credential
+    // NOT a credential error: a version mismatch must surface as its own 400, not as an opaque
     // failure the operator cannot tell apart from a wrong password.
     EXPECT_EQ(*err, AuthError::UnsupportedProtocolVersion);
 }
@@ -252,21 +294,20 @@ TEST_F(PasswordFixture, UnsupportedProtocolVersionIsRejectedBeforeTheSignatureIs
 TEST(EnrollmentAuthenticatorTest, ProtocolVersionIsRejectedBeforeTheBodySizeCap)
 {
     // Both wrong: no version AND an oversized body. The version check runs first, so that is the
-    // error -- matching AuthMiddleware, where protocol-version is step 1 and the body cap is
-    // enforced later while the MAC streams.
+    // error -- matching AuthMiddleware, where protocol-version is step 1.
     EnrollmentAuthConfig config {false};
     config.maxBodySize = 10;
     EnrollmentAuthenticator authenticator {config, nullptr};
 
-    const auto err = authenticator.authenticate("", "", "POST", "/enroll", std::string(11, 'a'), kNow);
+    const auto err = authenticator.authenticate("", "", 11, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::MissingProtocolVersion);
 }
 
 // -----------------------------------------------------------------------------
 // maxBodySize -- checked once the protocol version is accepted, in every mode. Regression guard:
-// this class used to have no body-size cap at all, so an unauthenticated peer could make it CMAC an
-// arbitrarily large body (up to the transport's own cap) before ever being rejected.
+// this class used to have no body-size cap at all, so an unauthenticated peer could make the
+// endpoint hold an arbitrarily large body (up to the transport's own cap) before being rejected.
 // -----------------------------------------------------------------------------
 
 TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheCredentialCheckInOpenMode)
@@ -275,7 +316,7 @@ TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheCredentialChec
     config.maxBodySize = 10;
     EnrollmentAuthenticator authenticator {config, nullptr};
 
-    const auto err = authenticator.authenticate(kVersion, "", "POST", "/enroll", std::string(11, 'a'), kNow);
+    const auto err = authenticator.authenticate(kVersion, "", 11, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::BodyTooLarge);
 }
@@ -286,10 +327,10 @@ TEST(EnrollmentAuthenticatorTest, BodyAtOrUnderTheCapIsNotRejectedOnSizeAloneInO
     config.maxBodySize = 10;
     EnrollmentAuthenticator authenticator {config, nullptr};
 
-    EXPECT_EQ(authenticator.authenticate(kVersion, "", "POST", "/enroll", std::string(10, 'a'), kNow), std::nullopt);
+    EXPECT_EQ(authenticator.authenticate(kVersion, "", 10, kNow), std::nullopt);
 }
 
-TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheCmacRunsInPasswordMode)
+TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheBearerIsCheckedInPasswordMode)
 {
     // No Authorization header at all, AND an oversized body: if this returned
     // MissingAuthorization instead, the size check would be running after (or not at all before)
@@ -298,7 +339,7 @@ TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheCmacRunsInPass
     config.maxBodySize = 10;
     EnrollmentAuthenticator authenticator {config, nullptr};
 
-    const auto err = authenticator.authenticate(kVersion, "", "POST", "/enroll", std::string(11, 'a'), kNow);
+    const auto err = authenticator.authenticate(kVersion, "", 11, kNow);
     ASSERT_TRUE(err.has_value());
     EXPECT_EQ(*err, AuthError::BodyTooLarge);
 }

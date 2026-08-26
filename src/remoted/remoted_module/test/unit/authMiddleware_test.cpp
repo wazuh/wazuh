@@ -441,9 +441,6 @@ namespace
                                AuthError::InvalidSignature,
                                AuthError::StaleToken,
                                AuthError::IdentityMismatch,
-                               AuthError::ExpiredRequest,
-                               AuthError::FutureRequest,
-                               AuthError::InvalidMac,
                                AuthError::EnrollmentKeyUnavailable})
         {
             const auto pub = publicErrorFor(err);
@@ -468,9 +465,6 @@ namespace
                                  AuthError::InvalidSignature,
                                  AuthError::StaleToken,
                                  AuthError::IdentityMismatch,
-                                 AuthError::ExpiredRequest,
-                                 AuthError::FutureRequest,
-                                 AuthError::InvalidMac,
                                  AuthError::PayloadAgentMismatch,
                                  AuthError::BodyTooLarge,
                                  AuthError::UnsupportedContentEncoding,

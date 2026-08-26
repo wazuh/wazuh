@@ -22,7 +22,9 @@
 #include "jwt/base64Url.hpp"
 #include "jwt/canonicalAgentId.hpp"
 #include "jwt/hmacSha256.hpp"
+#include "jwt/jwtCompactGrammar.hpp"
 #include "jwt/jwtProfileV1.hpp"
+#include "jwt/jwtVerifyError.hpp"
 #include "jwt/secureBytes.hpp"
 #include "jwt/strictJsonObject.hpp"
 
@@ -34,16 +36,6 @@
 
 namespace jwt_profile::v1
 {
-    /// Low-cardinality failure classes (for metrics; the HTTP answer is the same 401 for all).
-    enum class VerifyError
-    {
-        None,
-        InvalidToken,     ///< size, grammar, base64url, JSON, header/claim sets or types, jti, structural time rules
-        InvalidSignature, ///< HMAC mismatch (also a key of the wrong size)
-        StaleToken,       ///< clock-relative rules: future iat, expired, older than the accepted age
-        IdentityMismatch, ///< sub or iss do not name the kid agent
-    };
-
     class VerifyResult final
     {
     public:
@@ -141,43 +133,18 @@ namespace jwt_profile::v1
 
         struct Parsed
         {
-            std::string_view header64;
-            std::string_view payload64;
-            std::string_view signature64;
-            std::string_view signingInput;
+            CompactParts parts;
             std::optional<CanonicalAgentId> kid;
         };
 
         static VerifyError parseUpToHeader(std::string_view token, Parsed& out)
         {
-            if (token.empty() || token.size() > kMaxTokenBytes)
+            // Grammar of every segment before decoding anything (shared with the enroll profile).
+            if (!splitCompact(token, out.parts))
             {
                 return VerifyError::InvalidToken;
             }
-            const auto dot1 = token.find('.');
-            if (dot1 == std::string_view::npos)
-            {
-                return VerifyError::InvalidToken;
-            }
-            const auto dot2 = token.find('.', dot1 + 1);
-            if (dot2 == std::string_view::npos || token.find('.', dot2 + 1) != std::string_view::npos)
-            {
-                return VerifyError::InvalidToken; // exactly three segments
-            }
-            out.header64 = token.substr(0, dot1);
-            out.payload64 = token.substr(dot1 + 1, dot2 - dot1 - 1);
-            out.signature64 = token.substr(dot2 + 1);
-            out.signingInput = token.substr(0, dot2);
-
-            // Grammar of every segment before decoding anything: canonical base64url, non-empty
-            // header/payload, signature of exactly 32 bytes.
-            if (out.header64.empty() || out.payload64.empty() || !isCanonicalBase64Url(out.header64) ||
-                !isCanonicalBase64Url(out.payload64) || !isCanonicalBase64UrlOf(out.signature64, kHmacSha256Bytes))
-            {
-                return VerifyError::InvalidToken;
-            }
-
-            const auto headerJson = base64UrlDecodeCanonical(out.header64);
+            const auto headerJson = base64UrlDecodeCanonical(out.parts.header64);
             if (!headerJson)
             {
                 return VerifyError::InvalidToken;
@@ -207,20 +174,12 @@ namespace jwt_profile::v1
             }
 
             // Signature first: nothing below is looked at on an unauthenticated payload.
-            if (key.size() != kKeyBytes)
+            if (!verifyHs256(parsed.parts, key))
             {
                 return VerifyResult::failure(VerifyError::InvalidSignature);
             }
-            const auto signature = base64UrlDecodeCanonical(parsed.signature64);
-            HmacSha256Digest expected {};
-            if (!signature || !hmacSha256(key, parsed.signingInput, expected) ||
-                !hmacSha256Equal(expected, reinterpret_cast<const std::uint8_t*>(signature->data()), signature->size()))
-            {
-                return VerifyResult::failure(VerifyError::InvalidSignature);
-            }
-
             // Exact claim set and types.
-            const auto payloadJson = base64UrlDecodeCanonical(parsed.payload64);
+            const auto payloadJson = base64UrlDecodeCanonical(parsed.parts.payload64);
             StrictJsonObject<6> claims;
             if (!payloadJson || !StrictJsonObject<6>::parse(kPayloadFields, *payloadJson, claims))
             {
@@ -237,38 +196,12 @@ namespace jwt_profile::v1
                 return VerifyResult::failure(VerifyError::IdentityMismatch);
             }
 
-            // Structural time rules (independent of the clock). All values are non-negative int64
-            // (the parser rejects anything else), so the differences below cannot overflow.
-            const std::int64_t iat = claims.num(pIat);
-            const std::int64_t nbf = claims.num(pNbf);
-            const std::int64_t exp = claims.num(pExp);
-            if (nbf != iat || exp <= iat || exp - iat > kLifetimeSec)
+            // Time rules, structural then clock-relative (shared with the enroll profile).
+            if (const auto err = checkTimeRules(claims.num(pIat), claims.num(pNbf), claims.num(pExp), policy, now);
+                err != VerifyError::None)
             {
-                return VerifyResult::failure(VerifyError::InvalidToken);
+                return VerifyResult::failure(err);
             }
-
-            // Clock-relative rules. `iat <= nowSec + skew` is checked first, which bounds every later
-            // sum (exp <= iat + 60 <= nowSec + skew + 60) away from overflow.
-            const auto nowSec = static_cast<std::int64_t>(
-                std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count());
-            if (nowSec < 0 || nowSec > INT64_MAX - kMaxClockSkewSec - kLifetimeSec)
-            {
-                return VerifyResult::failure(VerifyError::StaleToken);
-            }
-            const std::int64_t skew = policy.skewSec();
-            if (iat > nowSec + skew)
-            {
-                return VerifyResult::failure(VerifyError::StaleToken); // issued in the future
-            }
-            if (nowSec > exp + skew)
-            {
-                return VerifyResult::failure(VerifyError::StaleToken); // expired
-            }
-            if (nowSec >= iat && nowSec - iat > policy.maxAgeSec() + skew)
-            {
-                return VerifyResult::failure(VerifyError::StaleToken); // older than the accepted age
-            }
-
             // jti: 22 canonical chars for 16 bytes.
             if (!isCanonicalBase64UrlOf(claims.str(pJti), kJtiBytes))
             {

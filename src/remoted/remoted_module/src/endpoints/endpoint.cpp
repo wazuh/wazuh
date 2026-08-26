@@ -54,13 +54,10 @@ namespace
             switch (err)
             {
                 case remoted::auth::AuthError::UnknownAgent: return m.unknownAgent;
-                case remoted::auth::AuthError::InvalidSignature:
-                case remoted::auth::AuthError::InvalidMac: return m.invalidSignature;
+                case remoted::auth::AuthError::InvalidSignature: return m.invalidSignature;
                 case remoted::auth::AuthError::InvalidToken: return m.badToken;
                 case remoted::auth::AuthError::IdentityMismatch: return m.identityMismatch;
-                case remoted::auth::AuthError::StaleToken:
-                case remoted::auth::AuthError::ExpiredRequest:
-                case remoted::auth::AuthError::FutureRequest: return m.clockSkew;
+                case remoted::auth::AuthError::StaleToken: return m.clockSkew;
                 case remoted::auth::AuthError::MissingKey: return m.unusableKey;
                 case remoted::auth::AuthError::AddressNotAllowed: return m.addressNotAllowed;
                 case remoted::auth::AuthError::EnrollmentKeyUnavailable: return m.enrollmentKey;
@@ -99,7 +96,7 @@ namespace
         BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
         UnusableKey,              ///< The agent exists but its client.keys key does not decode.
         AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
-        EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or AES-CMAC
+        EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
     };
@@ -108,9 +105,7 @@ namespace
     {
         switch (err)
         {
-            case remoted::auth::AuthError::StaleToken:
-            case remoted::auth::AuthError::ExpiredRequest:
-            case remoted::auth::AuthError::FutureRequest: return RejectionKind::ClockSkew;
+            case remoted::auth::AuthError::StaleToken: return RejectionKind::ClockSkew;
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;

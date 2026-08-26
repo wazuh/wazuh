@@ -14,6 +14,7 @@
 #include "remoted_module.h"
 
 #include "jwt/jwtProfileV1.hpp"
+#include "jwt/jwtVerifyError.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -139,9 +140,6 @@ namespace remoted::auth
         StaleToken,           ///< Clock-relative rejection: issued in the future, expired, or older than
                               ///< the accepted age (AuthConfig::timePolicy).
         IdentityMismatch,     ///< `sub` / `iss` do not name the agent `kid` names.
-        ExpiredRequest,       ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
-        FutureRequest,        ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
-        InvalidMac,           ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
         PayloadAgentMismatch, ///< Raised by POST /stateless's pre-forward check (statelessEndpoint.cpp):
                               ///< the H-line JSON is missing/malformed, or wazuh.agent.id is
                               ///< missing/not-a-string/not-numeric, or doesn't match the authenticated
@@ -153,7 +151,7 @@ namespace remoted::auth
         EnrollmentKeyUnavailable,   ///< Raised ONLY by EnrollmentAuthenticator's Password mode
                                     ///< (enrollmentAuthenticator.cpp): etc/authd.pass is missing,
                                     ///< unreadable, invalid, or not yet synced from the master to this
-                                    ///< node, OR AES-CMAC is unavailable manager-wide. Deliberately
+                                    ///< node, OR the HKDF provider is unavailable manager-wide. Deliberately
                                     ///< distinct from MissingKey (a client.keys decode failure for an
                                     ///< ALREADY-enrolled agent) -- collapsing the two would have
                                     ///< logRejection() tell an operator to "re-enroll the affected
@@ -209,6 +207,13 @@ namespace remoted::auth
      * validates.
      */
     inline constexpr std::string_view kSupportedProtocolVersion {"1"};
+
+    /**
+     * @brief Maps a verifier failure class onto the AuthError taxonomy. Shared by the
+     *        `wazuh-agent+jwt` middleware and the `wazuh-enroll+jwt` enrollment authenticator so
+     *        the same verifier outcome always counts in the same metric cell.
+     */
+    AuthError toAuthError(jwt_profile::v1::VerifyError error);
 
     /**
      * @brief Auth-protocol tunables shared by every transport.

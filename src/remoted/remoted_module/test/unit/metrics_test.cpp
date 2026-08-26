@@ -362,10 +362,10 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
         return static_cast<uint64_t>(manager.get(name)->value());
     };
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT), 1U);
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 2U); // InvalidSignature + InvalidMac
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_TOKEN), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_IDENTITY_MISMATCH), 1U);
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 3U); // Stale + Expired + Future
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 1U); // StaleToken (both profiles)
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ENROLLMENT_KEY), 1U);
@@ -395,8 +395,8 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     // Uninstall (back to the null object): the instance is process-wide, so leaving these
     // counters live would leak this test's accounting into any later test that rejects.
     remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::AuthRejectMetrics {});
-    (void)remoted::endpoints::errorResponseFor(AuthError::InvalidSignature); // not crashing IS the contract
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 2U);
+    (void)remoted::endpoints::errorResponseFor(AuthError::InvalidSignature);          // not crashing IS the contract
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 1U); // unchanged after uninstall
 }
 
 // All families resolve on ONE manager in production (the facade's), so the dump must show them

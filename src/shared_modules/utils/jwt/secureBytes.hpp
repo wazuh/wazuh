@@ -77,6 +77,17 @@ namespace jwt_profile::v1
             m_bytes.shrink_to_fit();
         }
 
+        /// Constant-time equality (CRYPTO_memcmp): sizes must match too.
+        bool operator==(const SecureBytes& other) const noexcept
+        {
+            return m_bytes.size() == other.m_bytes.size() &&
+                   (m_bytes.empty() || CRYPTO_memcmp(m_bytes.data(), other.m_bytes.data(), m_bytes.size()) == 0);
+        }
+        bool operator!=(const SecureBytes& other) const noexcept
+        {
+            return !(*this == other);
+        }
+
         std::uint8_t* data() noexcept
         {
             return m_bytes.data();

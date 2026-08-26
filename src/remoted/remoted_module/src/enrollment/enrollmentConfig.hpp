@@ -43,9 +43,8 @@ namespace remoted::enrollment
         /// The SAME time policy the agent<->manager bearer scheme's AuthConfig resolves from the
         /// `jwt_max_age` / `jwt_clock_skew` ABI fields (authTypes.cpp's buildTimePolicy()): /enroll's
         /// freshness window (maxAgeSec back, skewSec either way) must never silently diverge from the
-        /// two documented, tunable internal options. Until /enroll moves to its own JWT profile this
-        /// still feeds the WazuhEnroll CMAC timestamp check (EnrollmentAuthConfig), which therefore
-        /// shrinks from the old 300 s to the profile's 60 s + skew.
+        /// two documented, tunable internal options: the `wazuh-enroll+jwt` bearer is verified with
+        /// exactly this policy (EnrollmentAuthConfig::timePolicy).
         jwt_profile::v1::TimePolicy timePolicy {};
 
         /// Same `auth_max_body_size` ABI field (and the same 10 MiB default) authTypes.cpp

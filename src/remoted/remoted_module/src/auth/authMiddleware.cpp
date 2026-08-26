@@ -53,19 +53,6 @@ namespace remoted::auth
         // differently is not this profile's client. Anything else is malformed, never "unsupported".
         constexpr std::string_view kBearerScheme {"Bearer "};
 
-        AuthError toAuthError(jwt_profile::v1::VerifyError error)
-        {
-            using jwt_profile::v1::VerifyError;
-            switch (error)
-            {
-                case VerifyError::InvalidSignature: return AuthError::InvalidSignature;
-                case VerifyError::StaleToken: return AuthError::StaleToken;
-                case VerifyError::IdentityMismatch: return AuthError::IdentityMismatch;
-                case VerifyError::InvalidToken:
-                case VerifyError::None: break; // None never comes back on the failure path
-            }
-            return AuthError::InvalidToken;
-        }
     } // namespace
 
     const char* toString(AuthError err)
@@ -84,9 +71,6 @@ namespace remoted::auth
             case AuthError::InvalidSignature: return "invalid_signature";
             case AuthError::StaleToken: return "stale_token";
             case AuthError::IdentityMismatch: return "identity_mismatch";
-            case AuthError::ExpiredRequest: return "expired_request";
-            case AuthError::FutureRequest: return "future_request";
-            case AuthError::InvalidMac: return "invalid_mac";
             case AuthError::PayloadAgentMismatch: return "payload_agent_mismatch";
             case AuthError::BodyTooLarge: return "body_too_large";
             case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
@@ -109,7 +93,7 @@ namespace remoted::auth
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
             // AddressNotAllowed, InvalidToken, InvalidSignature, StaleToken, IdentityMismatch,
-            // ExpiredRequest, FutureRequest, InvalidMac, EnrollmentKeyUnavailable: collapse to one
+            // EnrollmentKeyUnavailable: collapse to one
             // generic 401 so the client can never distinguish the reason.
             default: return {401, "Invalid client authentication"};
         }

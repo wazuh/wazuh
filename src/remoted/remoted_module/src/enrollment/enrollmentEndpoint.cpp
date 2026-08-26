@@ -88,7 +88,17 @@ namespace remoted::enrollment
         remoted::http::HttpResponse authErrorResponse(remoted::auth::AuthError err)
         {
             const auto logged = remoted::endpoints::errorResponseFor(err);
-            return errorResponse(logged.status, 0, remoted::auth::publicErrorFor(err).message);
+            auto response = errorResponse(logged.status, 0, remoted::auth::publicErrorFor(err).message);
+            // Keep the RFC 6750 challenge errorResponseFor() attaches to every credential 401
+            // (`WWW-Authenticate: Bearer`): /enroll swaps the body envelope, not the auth contract.
+            for (const auto& [name, value] : logged.headers)
+            {
+                if (name == "WWW-Authenticate")
+                {
+                    response.headers.emplace_back(name, value);
+                }
+            }
+            return response;
         }
 
         bool isValidName(std::string_view name)
@@ -380,17 +390,15 @@ namespace remoted::enrollment
             }
 
             // Parsed here (before authentication), acted on only after it succeeds below -- same
-            // ordering AuthGateway uses: the MAC must cover the wire bytes exactly as sent,
-            // compressed or not, so decoding can never run against an unauthenticated body.
+            // ordering AuthGateway uses: nothing is decoded on behalf of an unauthenticated peer
+            // (the bearer does not cover the body; the size cap is what authenticate() checks).
             const auto contentEncoding =
                 remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
             const auto authErr = authenticator.authenticate(headerValue(request->headers, "protocol-version"),
                                                             headerValue(request->headers, "authorization"),
-                                                            "POST",
-                                                            request->target,
-                                                            request->body,
+                                                            request->body.size(),
                                                             now);
             if (authErr)
             {

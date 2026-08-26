@@ -18,6 +18,19 @@ namespace
 
 namespace remoted::auth
 {
+    AuthError toAuthError(jwt_profile::v1::VerifyError error)
+    {
+        using jwt_profile::v1::VerifyError;
+        switch (error)
+        {
+            case VerifyError::InvalidSignature: return AuthError::InvalidSignature;
+            case VerifyError::StaleToken: return AuthError::StaleToken;
+            case VerifyError::IdentityMismatch: return AuthError::IdentityMismatch;
+            case VerifyError::InvalidToken:
+            case VerifyError::None: break; // None never comes back on the failure path
+        }
+        return AuthError::InvalidToken;
+    }
 
     jwt_profile::v1::TimePolicy buildTimePolicy(int jwtMaxAge, int jwtClockSkew, bool jwtClockSkewSet)
     {
