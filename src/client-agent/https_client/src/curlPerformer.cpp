@@ -273,7 +273,8 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
 
-    if (!handle.captureResponseHeaders({&response.retryAfterSeconds, &response.serverDateSeconds}))
+    if (!handle.captureResponseHeaders({&response.retryAfterSeconds, &response.serverDateSeconds,
+                                        &response.contentEncodingZstd}))
     {
         return false;
     }

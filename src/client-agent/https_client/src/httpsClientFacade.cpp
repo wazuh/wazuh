@@ -98,6 +98,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
                 m_compressionGate,
                 m_taskStore,
                 m_vdOffsetStore,
+                m_fileDecompressor,
                 makeHostCollector(callbacks))
     , m_reporter(
           m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors)

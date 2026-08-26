@@ -28,17 +28,20 @@
 #include <zstd.h>
 
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <vector>
+#include <strings.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
 // The config_token every notify reports, and the only resource_id /download will serve.
 // Deliberately NOT the group name, even though the real 5.0 manager currently mints the group
@@ -52,6 +55,47 @@ inline constexpr auto FAKE_MANAGER_CONFIG_TOKEN {"cfg-token-abc123"};
 // limits + cluster only, agent.groups excluded -- NOT a raw hash of the startup
 // body's bytes, since nlohmann::json always dumps object keys alphabetically
 // regardless of the literal source order.
+// Test-only zstd compressor mirroring the manager's own #38506 response transform -- not
+// production code (real https_client only ever decompresses a manager's response, never
+// compresses one). Level 3 to match the fixed level used throughout this feature family
+// (manager and agent alike).
+inline std::string fakeManagerZstdCompress(const std::string& plain)
+{
+    std::string out(ZSTD_compressBound(plain.size()), '\0');
+    const size_t written = ZSTD_compress(out.data(), out.size(), plain.data(), plain.size(), 3);
+
+    if (ZSTD_isError(written))
+    {
+        return {}; // LCOV_EXCL_LINE: cannot fail on a well-formed buffer.
+    }
+
+    out.resize(written);
+    return out;
+}
+
+// "Accept-Encoding: zstd" (bare, case-insensitive) -- the same defensive exact match
+// curlHandle.cpp's isBareZstdEncoding() applies to the response side, mirrored here to decide
+// whether THIS fake server should negotiate compression for the incoming request.
+inline bool requestAdvertisesZstd(const httplib::Request& request)
+{
+    const std::string value = request.get_header_value("Accept-Encoding");
+    size_t start = 0;
+    size_t end = value.size();
+
+    while (start < end && std::isspace(static_cast<unsigned char>(value[start])))
+    {
+        start++;
+    }
+
+    while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])))
+    {
+        end--;
+    }
+
+    const std::string trimmed = value.substr(start, end - start);
+    return trimmed.size() == 4 && strncasecmp(trimmed.c_str(), "zstd", 4) == 0;
+}
+
 inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 {
     const auto parsed = nlohmann::json::parse(startupBody);
@@ -120,6 +164,13 @@ class FakeManager final
         /// with a generic error body instead of running the real flow, so a
         /// test can drive the 400/401/403/409/500/503 mapping in
         /// w_enrollment_process_response() without needing five fake servers.
+        /// compressConfigResponse (#38514): when true and configBlob is set,
+        /// /download responds with a zstd-compressed body (Content-Encoding:
+        /// zstd) IF AND ONLY IF the request advertised Accept-Encoding: zstd --
+        /// mirroring the manager's own negotiation contract (#38506), never
+        /// compressing unconditionally. A request that doesn't advertise it
+        /// (e.g. wpkFetcher's, or a 5.0.0-shaped client) still gets the plain
+        /// body exactly as when this flag is off.
         FakeManager(uint16_t port,
                     const std::string& keyHex,
                     bool tls = false,
@@ -132,7 +183,8 @@ class FakeManager final
                     uint64_t vdFeedOffset = 0,
                     int scanVdRejectFirstNAttempts = 0,
                     std::string enrollPassword = {},
-                    int enrollForcedStatus = 0)
+                    int enrollForcedStatus = 0,
+                    bool compressConfigResponse = false)
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -146,6 +198,7 @@ class FakeManager final
             , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
             , m_enrollPassword(std::move(enrollPassword))
             , m_enrollForcedStatus(enrollForcedStatus)
+            , m_compressConfigResponse(compressConfigResponse)
         {
             m_pid = fork();
 
@@ -385,9 +438,12 @@ class FakeManager final
                                      "application/json");
             });
 
+            const bool compressConfigResponse = m_compressConfigResponse;
+
             server.Post(
                 "/download",
-                [verify, configBlob](const httplib::Request & request, httplib::Response & response)
+                [verify, configBlob, compressConfigResponse](const httplib::Request & request,
+                                                              httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
@@ -412,22 +468,36 @@ class FakeManager final
                     return;
                 }
 
+                // #38514: negotiated exactly like the real manager (#38506) -- compress only when
+                // BOTH this fake server was configured to and the request itself advertised
+                // Accept-Encoding: zstd. wpkFetcher-shaped requests (no such header) and any test
+                // running with compressConfigResponse=false always get the plain body below,
+                // unchanged from this feature's own baseline behavior.
+                const bool serveCompressed = compressConfigResponse && requestAdvertisesZstd(request);
+                const std::string wireBody = serveCompressed ? fakeManagerZstdCompress(configBlob) : configBlob;
+
+                if (serveCompressed)
+                {
+                    response.set_header("Content-Encoding", "zstd");
+                }
+
                 // Chunked transfer on purpose (#37733 5.2.3): the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
-                response.set_chunked_content_provider("application/octet-stream",
-                                                      [configBlob](size_t offset, httplib::DataSink & sink)
+                response.set_chunked_content_provider(
+                    "application/octet-stream",
+                    [wireBody](size_t offset, httplib::DataSink & sink)
                 {
                     constexpr size_t CHUNK = 16 * 1024;
-                    const size_t remaining = configBlob.size() - offset;
+                    const size_t remaining = wireBody.size() - offset;
                     const size_t count = remaining < CHUNK ? remaining : CHUNK;
 
                     if (count > 0)
                     {
-                        sink.write(configBlob.data() + offset, count);
+                        sink.write(wireBody.data() + offset, count);
                     }
 
-                    if (offset + count >= configBlob.size())
+                    if (offset + count >= wireBody.size())
                     {
                         sink.done();
                     }
@@ -817,6 +887,7 @@ class FakeManager final
         int m_scanVdRejectFirstNAttempts {0};
         std::string m_enrollPassword;
         int m_enrollForcedStatus {0};
+        bool m_compressConfigResponse {false};
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

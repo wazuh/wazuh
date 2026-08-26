@@ -128,16 +128,48 @@ namespace
         return wrote;
     }
 
+    // Trims leading/trailing spaces and tabs (RFC 9110 OWS) and compares case-insensitively
+    // against "zstd" -- the manager's transport (RestinioHttpServer.cpp's POC) only ever emits
+    // that literal value, so this is a defensive exact match, not a general Accept-Encoding-style
+    // grammar parser: anything else (absent, "gzip", "zstd, gzip", garbage) leaves the flag false,
+    // identical to "not compressed".
+    bool isBareZstdEncoding(const char* value, size_t length)
+    {
+        size_t start = 0;
+        size_t end = length;
+
+        while (start < end && (value[start] == ' ' || value[start] == '\t'))
+        {
+            start++;
+        }
+
+        while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' ||
+                               value[end - 1] == '\r' || value[end - 1] == '\n'))
+        {
+            end--;
+        }
+
+        constexpr size_t zstdLength = 4; // "zstd"
+        return (end - start) == zstdLength && strncasecmp(value + start, "zstd", zstdLength) == 0;
+    }
+
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
         auto* capture = static_cast<HeaderCapture*>(userData);
-        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
-        constexpr size_t datePrefixLength = 5;        // "Date:"
+        constexpr size_t retryAfterPrefixLength = 12;      // "Retry-After:"
+        constexpr size_t datePrefixLength = 5;             // "Date:"
+        constexpr size_t contentEncodingPrefixLength = 17; // "Content-Encoding:"
 
         if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
             *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (total > contentEncodingPrefixLength &&
+                strncasecmp(data, "Content-Encoding:", contentEncodingPrefixLength) == 0)
+        {
+            *capture->contentEncodingZstd = isBareZstdEncoding(data + contentEncodingPrefixLength,
+                                                               total - contentEncodingPrefixLength);
         }
         else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
         {

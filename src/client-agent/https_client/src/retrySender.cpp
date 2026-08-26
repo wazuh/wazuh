@@ -37,7 +37,9 @@ RetrySender::RetrySender(IHttpPerformer& performer,
                          bool compressionEnabled,
                          CompressionGate* compressionGate,
                          AuthGate* authGate,
-                         std::string serverEndpoint)
+                         std::string serverEndpoint,
+                         IFileDecompressor* decompressor,
+                         std::string spoolDir)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -46,6 +48,8 @@ RetrySender::RetrySender(IHttpPerformer& performer,
     , m_compressionGate(compressionGate)
     , m_authGate(authGate)
     , m_serverEndpoint(std::move(serverEndpoint))
+    , m_decompressor(decompressor)
+    , m_spoolDir(std::move(spoolDir))
 {
 }
 
@@ -130,7 +134,45 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         m_authGate->reportAuthFailure();
     }
 
+    if (result.outcome == OutcomeClass::Ok)
+    {
+        // After the backoff/auth-gate decisions above, which must key off the genuine transport
+        // outcome only -- a decompression failure is content-level, not transport-level, exactly
+        // like the pre-existing config_hash mismatch it now sits alongside (configFetcher.cpp).
+        decompressResponseIfNeeded(spec, result, base.abortFlag);
+    }
+
     return result;
+}
+
+void RetrySender::decompressResponseIfNeeded(const HttpRequestSpec& spec, Result& result,
+                                             const std::atomic<bool>* abortFlag) const
+{
+    if (m_decompressor == nullptr || !result.response.contentEncodingZstd || spec.responseFilePath.empty())
+    {
+        return; // Plain response, or this stream never produces a file-backed one.
+    }
+
+    // Applies uniformly, regardless of which fetcher sent the request: a WPK response carrying
+    // the header gets the same safe handling for free, even though wpkFetcher never advertises
+    // Accept-Encoding (#38514 decision log #7) -- decompression already runs before any
+    // hash/signature check either way, so the integrity chain is unaffected.
+    const auto decompressedBytes =
+        m_decompressor->decompress(spec.responseFilePath, spec.maxResponseBytes, m_spoolDir, abortFlag);
+
+    if (!decompressedBytes)
+    {
+        // Not retried within this send() call -- mirrors the pre-existing hash-mismatch discard
+        // (configFetcher.cpp): the caller returns nullptr and the next scheduled notify simply
+        // re-triggers the download. Permanent already sits outside isRetryable()'s set, and this
+        // runs after the retry loop above has already exited, so there is no risk of looping back
+        // into it.
+        result.outcome = OutcomeClass::Permanent;
+        LOGFN_WARN(m_logFn,
+                   "Content-Encoding: zstd response for %s failed to decompress "
+                   "(malformed/truncated/over-cap frame); discarding.",
+                   spec.target.c_str());
+    }
 }
 
 RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
