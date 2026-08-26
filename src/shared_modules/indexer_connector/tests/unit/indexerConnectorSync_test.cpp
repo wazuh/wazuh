@@ -933,6 +933,59 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
     EXPECT_GT(validateBulkFormat(secondChunk), 0) << "Second chunk should contain valid bulk operations";
 }
 
+/// The residue path of a FAILED split: a 413 splits the batch, the first chunk then fails with a
+/// clearing error, and the whole flush throws. The buffer must come out empty -- kept bytes
+/// would be re-sent by whoever flushes next.
+TEST_F(IndexerConnectorSyncTest, HandleError413FailedSplitLeavesAnEmptyBuffer)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    const auto respondWith = [](auto postParams, const char* error, long status)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, status, "");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, status, "");
+        }
+    };
+
+    // Call 1 (the full 2-doc batch): 413, so the batch splits. Call 2 (the first 1-doc chunk):
+    // 500, which aborts the split with a throw. The second chunk is never attempted.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [this, &respondWith](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                respondWith(postParams, "Payload Too Large", 413);
+            }))
+        .WillOnce(Invoke(
+            [this, &respondWith](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                respondWith(postParams, "Internal Server Error", 500);
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", std::string(200, 'a'));
+        connector.bulkIndex("id2", "index1", std::string(200, 'b'));
+    }
+
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_EQ(callCount, 2);
+
+    // The buffer must be empty now: a second flush is a clean no-op with NO further post.
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(callCount, 2) << "a failed split must not leave bytes for the next flush to resend";
+}
+
 // Test processBulkChunk error handling - 413 with successful recursive splitting
 TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413RecursiveSplittingSuccess)
 {
