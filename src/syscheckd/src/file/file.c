@@ -226,7 +226,6 @@ STATIC void handle_orphaned_delete(const char* path,
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
     if (sync_json == NULL) {
         mdebug1("Couldn't find sync for orphaned delete '%s'", path);
-        cJSON_Delete(stateful_event);
         return;
     }
     int sync_value = (int)cJSON_GetNumberValue(sync_json);
@@ -1145,39 +1144,21 @@ void fim_file(const char *path,
 
         fim_db_file_update(&new_entry, callback_data);
 
-        // If schema validation failed, the row is about to be deleted below: don't try to
-        // set its sync flag afterwards (fim_db_set_sync_flag() would find no row to update
-        // and log a spurious WARNING on every such event), and undo the increment
-        // transaction_callback() already applied to synced_docs_files for it, since
-        // cleanup_failed_fim_files() removes the row without going through the DELETED
-        // branch that would otherwise balance it. This path handles a single file per call,
-        // so failed_paths and pending_sync_updates — both populated from the same
-        // transaction_callback() invocation — can only ever be about that one path; a
-        // non-empty failed_paths here means whatever is in pending_sync_updates is for it.
-        if (OSList_GetFirstNode(failed_paths) != NULL) {
-            OSListNode *node_it;
-            OSList_foreach(node_it, pending_sync_updates) {
-                pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
-                if (item != NULL && item->sync_value == 1) {
-                    synced_docs_files--;
-                }
-            }
-        } else if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
-            // Most realtime/whodata events don't have anything to promote (the file was
-            // already synced, or this was a MODIFIED with no old.sync=0 to promote), so skip
-            // the call entirely when there's nothing to do. When there IS something to
-            // promote, still don't log a summary here (process_pending_sync_updates() no
-            // longer logs on its own) — a mass create/modify against a realtime-monitored
-            // directory calls this once per file, and a per-file "Processed N pending sync
-            // flag updates" line would flood debug=1. The per-scan summary (scheduled scan,
-            // registry scan) is logged by those callers instead.
-            process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
-        }
-        OSList_Destroy(pending_sync_updates);
-
         // Delete files that failed schema validation (outside transaction)
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
+
+        // Most realtime/whodata events don't have anything to promote (the file was already
+        // synced, or this was a MODIFIED with no old.sync=0 to promote), so skip the call
+        // entirely when there's nothing to do. When there IS something to promote, still don't
+        // log a summary here (process_pending_sync_updates() no longer logs on its own) — a mass
+        // create/modify against a realtime-monitored directory calls this once per file, and a
+        // per-file "Processed N pending sync flag updates" line would flood debug=1. The
+        // per-scan summary (scheduled scan, registry scan) is logged by those callers instead.
+        if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
+            process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        }
+        OSList_Destroy(pending_sync_updates);
 
         free_file_data(new_entry.file_entry.data);
     }
@@ -1424,16 +1405,6 @@ void fim_file_scan() {
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
         // Delete files that failed schema validation (outside transaction)
-        //
-        // Pre-existing gap (not introduced by #38522's fix, out of scope here): unlike the
-        // realtime/whodata call site above, this doesn't skip/compensate
-        // process_pending_sync_updates() for paths that also ended up in failed_paths — a
-        // file that fails schema validation during a scan can get its row deleted here and
-        // then still have a stale sync-flag update attempted below, spamming a WARNING and
-        // leaving synced_docs_files off by one. A full scan's failed_paths and
-        // pending_sync_updates aren't correlated by path here, so fixing it needs matching
-        // entries across both lists rather than the single-file short-circuit used above.
-        // Tracked in https://github.com/wazuh/wazuh/issues/38608 for a follow-up fix.
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 

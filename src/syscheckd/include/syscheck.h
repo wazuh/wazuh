@@ -440,7 +440,7 @@ void free_pending_sync_item(void* data);
  *
  * @param table_name Name of the table the pending items belong to.
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
- * @return Number of items successfully updated (fim_db_set_sync_flag() failures aren't counted).
+ * @return Number of items processed.
  */
 int process_pending_sync_updates(char* table_name, OSList* pending_items);
 

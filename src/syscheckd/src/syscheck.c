@@ -143,9 +143,8 @@ int process_pending_sync_updates(char* table_name, OSList *pending_items) {
         if (item != NULL && item->json != NULL) {
             const cJSON* path = cJSON_GetObjectItem(item->json, "path");
             mdebug2("Setting sync=%d for path: %s", item->sync_value, cJSON_GetStringValue(path));
-            if (fim_db_set_sync_flag(table_name, item, item->sync_value) == 0) {
-                count++;
-            }
+            fim_db_set_sync_flag(table_name, item, item->sync_value);
+            count++;
         }
     }
     return count;
