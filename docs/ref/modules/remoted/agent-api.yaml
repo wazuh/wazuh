@@ -824,7 +824,7 @@ paths:
           description: |
             A missing or unsupported `protocol-version` header (checked before anything else), a
             malformed body, a missing `name`/`version`, an invalid `ip`, an agent version newer than
-            allowed, or an `authd` bad-argument code (9003-9006, 9014, 9017) passed through with its
+            allowed, or an `authd` bad-argument code (9003-9006, 9014, 9017, 9019) passed through with its
             message.
           content:
             application/json:

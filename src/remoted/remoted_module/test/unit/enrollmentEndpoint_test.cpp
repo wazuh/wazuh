@@ -673,6 +673,7 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9006, 400},
                                            AuthdErrorCase {9014, 400},
                                            AuthdErrorCase {9017, 400}, // invalid agent name (new)
+                                           AuthdErrorCase {9019, 400}, // invalid caller-supplied key
                                            AuthdErrorCase {9007, 409},
                                            AuthdErrorCase {9008, 409},
                                            AuthdErrorCase {9012, 409},

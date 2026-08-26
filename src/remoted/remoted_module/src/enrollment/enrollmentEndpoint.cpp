@@ -294,6 +294,8 @@ namespace remoted::enrollment
                            // any name authd would reject with 9017 was already refused locally with
                            // a 400. Mapped for completeness, and so the status stays right if the
                            // two checks ever diverge.
+                case 9019: // invalid caller-supplied key. Unreachable from here too: self-enrollment
+                           // never sends a key (authd generates it); mapped for completeness.
                     return 400;
                 case 9007:
                 case 9008:
