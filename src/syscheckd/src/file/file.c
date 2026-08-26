@@ -1355,9 +1355,7 @@ STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSLis
             const char *failed_path = (const char *)fp_it->data;
             if (failed_path != NULL && strcmp(item_path, failed_path) == 0) {
                 if (item->sync_value == 1) {
-                    w_mutex_lock(&synced_docs_mutex);
                     synced_docs_files--;
-                    w_mutex_unlock(&synced_docs_mutex);
                 }
                 free_pending_sync_item(item);
                 nodes_to_remove[nodes_to_remove_count++] = node_it;
