@@ -9,11 +9,13 @@
  * Foundation.
  */
 
-#include "auth/cmac.hpp"
 #include "decoding/bodyDecoder.hpp"
 #include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 #include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
@@ -51,14 +53,14 @@ namespace
         {
             if (agentId == 1)
             {
-                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(32, 0x0A), true};
             }
             return std::nullopt;
         }
     };
 
     // Keystore stub that always throws, simulating an unexpected failure (e.g. a corrupted on-disk
-    // state) reached from INSIDE AuthMiddleware::beginSession() -- i.e. before the gateway's old,
+    // state) reached from INSIDE AuthMiddleware::authenticate() -- i.e. before the gateway's old,
     // too-narrow try/catch used to start.
     class ThrowingKeystore final : public remoted::auth::IAgentKeystore
     {
@@ -121,42 +123,32 @@ namespace
         return AuthGateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder()};
     }
 
-    // Build a valid "Wazuh <id>:<ts>:<mac>" Authorization for agent 001, signing the same
-    // canonical byte sequence AuthMiddleware verifies, with the key FakeKeystore returns.
-    std::string
-    buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
+    // A valid `Bearer <wazuh-agent+jwt>` Authorization for agent 001, minted with the key
+    // FakeKeystore returns for it (a fresh token per call).
+    std::string buildAuthorization()
     {
-        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
-        remoted::auth::Cmac cmac(key);
-        cmac.update("WAZUH-REQUEST\n");
-        cmac.update("1\n"); // protocol-version
-        cmac.update(method);
-        cmac.update("\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update("001\n"); // agent id
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return "Wazuh 001:" + std::to_string(ts) + ":" + remoted::auth::toLowerHex(mac.data(), mac.size());
+        const std::vector<std::uint8_t> key(32, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            *jwt_profile::v1::CanonicalAgentId::parse("001"), secret, std::chrono::system_clock::now());
+        return "Bearer " + (token ? *token : std::string {});
     }
 
-    // A request that authenticates cleanly for agent 001 against makeGateway().
+    // A request that authenticates cleanly for agent 001 against makeGateway(). The token is
+    // identity-only, so any body/target authenticates the same way.
     HttpRequest signedRequest(const std::string& body)
     {
-        const auto ts = static_cast<std::int64_t>(std::time(nullptr));
         HttpRequest request;
         request.method = Method::Post;
         request.target = "/stateless";
         request.body = body;
         request.headers.emplace("protocol-version", "1");
-        request.headers.emplace("authorization", buildAuthorization("POST", "/stateless", body, ts));
+        request.headers.emplace("authorization", buildAuthorization());
         return request;
     }
 
-    // Same as signedRequest(), plus a Content-Encoding header. The MAC still covers exactly
-    // `body` -- whatever the caller passes as the wire bytes, compressed or not.
+    // Same as signedRequest(), plus a Content-Encoding header. `body` is whatever the caller wants
+    // on the wire, compressed or not -- authentication does not look at it.
     HttpRequest signedRequestWithContentEncoding(const std::string& body, const std::string& encoding)
     {
         auto request = signedRequest(body);
@@ -570,9 +562,11 @@ TEST(AuthGatewayTest, DecoderIsNotRunWhenAuthenticationFails)
                                       responder->send(HttpResponse {200, "", {}});
                                   });
 
-    // Signed correctly, then the transmitted body is swapped -> the MAC no longer matches.
-    auto request = signedRequestWithContentEncoding("signed body", "some-encoding");
-    request.body = "tampered body";
+    // A well-formed request whose token signature is corrupted -> 401 before any decoding. (The
+    // body is deliberately left alone: it is not part of authentication under the bearer profile.)
+    auto request = signedRequestWithContentEncoding("some body", "some-encoding");
+    auto& authorization = request.headers["authorization"];
+    authorization[authorization.size() - 2] = authorization[authorization.size() - 2] == 'A' ? 'B' : 'A';
     auto responder = std::make_shared<CapturingResponder>();
     server.dispatch(Method::Post, "/stateless", request, responder);
 

@@ -14,9 +14,13 @@
 // plumbing is correct before trusting it inside the auth middleware.
 #include <gtest/gtest.h>
 
+#include <type_traits>
+
 #include "auth/cmac.hpp"
 
 using remoted::auth::Cmac;
+using remoted::auth::CmacKeyError;
+using remoted::auth::CmacProviderError;
 using remoted::auth::fromLowerHex;
 using remoted::auth::toLowerHex;
 
@@ -81,4 +85,28 @@ TEST(Cmac, HexRoundTrip)
     std::array<std::uint8_t, 3> out {};
     EXPECT_TRUE(fromLowerHex(hex, out.data(), out.size()));
     EXPECT_EQ(out, bytes);
+}
+
+// A key of the wrong length is one agent's problem; a provider failure is everyone's. The two
+// must be distinguishable by type (the enrollment authenticator relies on it).
+TEST(CmacExceptions, KeyErrorAndProviderErrorAreDistinctTypes)
+{
+    EXPECT_THROW(Cmac(std::vector<std::uint8_t>(7, 0xAB)), CmacKeyError);
+
+    try
+    {
+        Cmac bad {std::vector<std::uint8_t>(7, 0xAB)};
+        FAIL() << "expected CmacKeyError";
+    }
+    catch (const CmacProviderError&)
+    {
+        FAIL() << "a bad key length must not be reported as a provider failure";
+    }
+    catch (const CmacKeyError&)
+    {
+        SUCCEED();
+    }
+
+    EXPECT_TRUE((std::is_base_of_v<std::exception, CmacKeyError>));
+    EXPECT_TRUE((std::is_base_of_v<std::exception, CmacProviderError>));
 }

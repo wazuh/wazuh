@@ -53,7 +53,9 @@ namespace remoted::endpoints
     // rejection passes through -- with the PRE-collapse reason (publicErrorFor() deliberately
     // folds the credential failures into one generic 401 on the wire).
     constexpr auto METRIC_AUTH_REJECT_UNKNOWN_AGENT {"remoted.auth.reject.unknown_agent"};
-    constexpr auto METRIC_AUTH_REJECT_INVALID_MAC {"remoted.auth.reject.invalid_mac"};
+    constexpr auto METRIC_AUTH_REJECT_INVALID_SIGNATURE {"remoted.auth.reject.invalid_signature"};
+    constexpr auto METRIC_AUTH_REJECT_BAD_TOKEN {"remoted.auth.reject.bad_token"};
+    constexpr auto METRIC_AUTH_REJECT_IDENTITY_MISMATCH {"remoted.auth.reject.identity_mismatch"};
     constexpr auto METRIC_AUTH_REJECT_CLOCK_SKEW {"remoted.auth.reject.clock_skew"};
     constexpr auto METRIC_AUTH_REJECT_UNUSABLE_KEY {"remoted.auth.reject.unusable_key"};
     constexpr auto METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED {"remoted.auth.reject.address_not_allowed"};
@@ -74,9 +76,13 @@ namespace remoted::endpoints
      */
     struct AuthRejectMetrics
     {
-        std::shared_ptr<wazuh::metrics::ICounter> unknownAgent;      ///< Agent id not in client.keys.
-        std::shared_ptr<wazuh::metrics::ICounter> invalidMac;        ///< AES-CMAC did not verify.
-        std::shared_ptr<wazuh::metrics::ICounter> clockSkew;         ///< Timestamp outside the window.
+        std::shared_ptr<wazuh::metrics::ICounter> unknownAgent; ///< Agent id not in client.keys.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            invalidSignature; ///< The token's HS256 (or /enroll's CMAC) did not verify.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            badToken; ///< Bearer is not a wazuh-agent+jwt token (grammar/header/claims).
+        std::shared_ptr<wazuh::metrics::ICounter> identityMismatch;  ///< kid / sub / iss disagree (security signal).
+        std::shared_ptr<wazuh::metrics::ICounter> clockSkew;         ///< Token outside the accepted time window.
         std::shared_ptr<wazuh::metrics::ICounter> unusableKey;       ///< client.keys entry does not decode.
         std::shared_ptr<wazuh::metrics::ICounter> addressNotAllowed; ///< Peer address outside the agent's ip column.
         std::shared_ptr<wazuh::metrics::ICounter> enrollmentKey; ///< /enroll: the enrollment password key is unusable.
@@ -93,14 +99,25 @@ namespace remoted::endpoints
         return AuthRejectMetrics {
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_UNKNOWN_AGENT, "Rejections: the agent id is not in client.keys", "count"),
-            manager.getOrCreateCounter(
-                METRIC_AUTH_REJECT_INVALID_MAC, "Rejections: the request's AES-CMAC did not verify", "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_INVALID_SIGNATURE,
+                                       "Rejections: the bearer token's signature did not verify with the agent's key "
+                                       "(wrong key or tampering); /enroll's CMAC failures also land here",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_BAD_TOKEN,
+                                       "Rejections: the bearer is not a valid wazuh-agent+jwt token (size, grammar, "
+                                       "header, claim set/types, jti, or exp-iat > 60 s)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_IDENTITY_MISMATCH,
+                                       "Rejections: a correctly signed token whose kid, sub and iss do not name the "
+                                       "same agent (security signal)",
+                                       "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_CLOCK_SKEW,
-                                       "Rejections: timestamp outside the window set by "
-                                       "'remoted.auth_max_request_age' and 'remoted.auth_max_future_skew'",
+                                       "Rejections: token issued in the future, expired, or older than the accepted "
+                                       "age (see the JWT time-policy internals; today "
+                                       "'remoted.auth_max_request_age'/'remoted.auth_max_future_skew' for /enroll)",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_UNUSABLE_KEY,
-                                       "Rejections: the agent's client.keys entry does not decode to a usable AES key",
+                                       "Rejections: the agent's client.keys entry does not decode to a 32-byte key",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
                                        "Rejections: the peer address does not satisfy the agent's client.keys ip "

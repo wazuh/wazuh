@@ -20,15 +20,17 @@
 // built with -DFSANITIZE=ON (ASan): without a sanitizer, the freed io_context memory may not be
 // detectably corrupted within this test's short window, so it can "pass" even against the
 // unfixed ordering. Run it under the ASan job, not just a plain Debug/Release build.
-#include "auth/cmac.hpp"
+#include "decoding/bodyDecoder.hpp"
 #include "downstream/asioUdsHttpClient.hpp"
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
 #include "endpoints/authGateway.hpp"
-#include "decoding/bodyDecoder.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 
 #include "testTlsServer.hpp"
 
@@ -43,12 +45,12 @@
 #include <asio/write.hpp>
 
 #include <array>
-#include <chrono>
-#include <cstring>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <future>
 #include <memory>
@@ -76,7 +78,7 @@ namespace
         {
             if (agentId == 7)
             {
-                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0B), true};
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(32, 0x0B), true};
             }
             return std::nullopt;
         }
@@ -172,30 +174,13 @@ namespace
         std::promise<void> m_received;
     };
 
-    // Builds the canonical AES-CMAC exactly as AuthMiddleware verifies it.
-    std::string canonicalMac(const std::vector<std::uint8_t>& key,
-                             const std::string& protocolVersion,
-                             const std::string& method,
-                             const std::string& target,
-                             const std::string& agentId,
-                             std::int64_t ts,
-                             const std::string& body)
+    // Mints a wazuh-agent+jwt bearer for agent 7 with FakeKeystore's key, as the agent would.
+    std::string bearerToken(const std::vector<std::uint8_t>& key)
     {
-        remoted::auth::Cmac cmac(key);
-        cmac.update("WAZUH-REQUEST\n");
-        cmac.update(protocolVersion);
-        cmac.update("\n");
-        cmac.update(method);
-        cmac.update("\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update(agentId);
-        cmac.update("\n");
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return remoted::auth::toLowerHex(mac.data(), mac.size());
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            jwt_profile::v1::CanonicalAgentId::fromNumeric(7), secret, std::chrono::system_clock::now());
+        return token ? *token : std::string {};
     }
 
     // Generates a throwaway self-signed cert/key pair via the system openssl binary (a hard
@@ -245,13 +230,10 @@ namespace
             asio::connect(stream.next_layer(), endpoints);
             stream.handshake(asio::ssl::stream_base::client);
 
-            const auto ts = static_cast<std::int64_t>(std::time(nullptr));
-            const std::string mac = canonicalMac(key, "1", "POST", "/stateless", "7", ts, body);
-
             std::string request = "POST /stateless HTTP/1.1\r\n";
             request += "Host: 127.0.0.1\r\n";
             request += "protocol-version: 1\r\n";
-            request += "Authorization: Wazuh 7:" + std::to_string(ts) + ":" + mac + "\r\n";
+            request += "Authorization: Bearer " + bearerToken(key) + "\r\n";
             request += "Content-Length: " + std::to_string(body.size()) + "\r\n";
             request += "Connection: close\r\n\r\n";
             request += body;
@@ -334,7 +316,7 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
     config.privateKeyPath = cert.keyPath;
     server->start(config);
 
-    const std::vector<std::uint8_t> key(16, 0x0B); // matches FakeKeystore::lookup(7)
+    const std::vector<std::uint8_t> key(32, 0x0B); // matches FakeKeystore::lookup(7)
     std::thread clientThread([&] { sendSignedRequestFireAndForget(config.port, key, "H {}\nE test\n"); });
 
     // Wait until the request has genuinely reached the downstream -- i.e. it is sitting exactly in
@@ -439,10 +421,7 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightStream)
     // pool -> strand -> pool while the teardown below runs.
     std::thread clientThread(
         [&]
-        {
-            remoted::test::sendSignedRequest(
-                config.port, remoted::test::testAgentKey(), "/stream", "{}", 256 * 1024);
-        });
+        { remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}", 256 * 1024); });
 
     // Wait until the pump has genuinely started cycling: that is the mid-flight window.
     for (int i = 0; i < 200 && reads->load() < 2; ++i)

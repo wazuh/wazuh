@@ -178,7 +178,9 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
 {
     startModule();
 
-    struct stat socketStat {};
+    struct stat socketStat
+    {
+    };
     ASSERT_EQ(::stat(kAdminSocketPath, &socketStat), 0) << "admin socket was not bound at the fixed path";
     EXPECT_TRUE(S_ISSOCK(socketStat.st_mode));
     EXPECT_EQ(socketStat.st_mode & 0777U, 0660U);
@@ -229,7 +231,9 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.forwarder.deferred.inflight",
                              "remoted.forwarder.deferred.capacity",
                              "remoted.forwarder.deferred.rejected.total",
-                             "remoted.auth.reject.invalid_mac",
+                             "remoted.auth.reject.invalid_signature",
+                             "remoted.auth.reject.bad_token",
+                             "remoted.auth.reject.identity_mismatch",
                              "remoted.auth.reject.address_not_allowed",
                              "remoted.auth.reject.enrollment_key_unavailable",
                              "remoted.http.enroll.responses.2xx",

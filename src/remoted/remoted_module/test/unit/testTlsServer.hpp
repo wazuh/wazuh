@@ -13,14 +13,16 @@
 #define _REMOTED_TEST_TLS_SERVER_HPP
 
 // Shared fixtures for the tests that drive a REAL RestinioHttpServer over TLS: a throwaway
-// certificate, a one-agent keystore, and a signed client that can read a response back (or
-// deliberately walk away mid-response).
+// certificate, a one-agent keystore, and a bearer-authenticated client that can read a response
+// back (or deliberately walk away mid-response).
 //
 // Extracted from shutdownRace_test.cpp so the streaming tests in httpServer_test.cpp can use the
 // same client rather than growing a second copy of the certificate/signing dance.
 
-#include "auth/cmac.hpp"
 #include "auth/iAgentKeystore.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 
 #include <asio/connect.hpp>
 #include <asio/io_context.hpp>
@@ -46,10 +48,10 @@ namespace remoted::test
     /// The single agent every TLS test authenticates as.
     constexpr remoted::auth::AgentId kTestAgentId {7};
 
-    /// Its key, as the FakeKeystore below reports it.
+    /// Its 32-byte HS256 key, as the FakeKeystore below reports it.
     inline std::vector<std::uint8_t> testAgentKey()
     {
-        return std::vector<std::uint8_t>(16, 0x0B);
+        return std::vector<std::uint8_t>(32, 0x0B);
     }
 
     /// Keystore stub: one agent, numeric id 7.
@@ -115,61 +117,30 @@ namespace remoted::test
         std::vector<std::string> m_paths;
     };
 
-    /// Builds the canonical AES-CMAC exactly as AuthMiddleware verifies it.
-    inline std::string canonicalMac(const std::vector<std::uint8_t>& key,
-                                    const std::string& protocolVersion,
-                                    const std::string& method,
-                                    const std::string& target,
-                                    const std::string& agentId,
-                                    std::int64_t ts,
-                                    const std::string& body)
+    /// Mints a fresh `wazuh-agent+jwt` bearer for @p agentId with @p key, exactly as an agent does
+    /// (the shared JwtRequestTokenSigner; a new token -- new jti -- per call).
+    inline std::string bearerToken(const std::vector<std::uint8_t>& key, remoted::auth::AgentId agentId = kTestAgentId)
     {
-        remoted::auth::Cmac cmac(key);
-        cmac.update("WAZUH-REQUEST\n");
-        cmac.update(protocolVersion);
-        cmac.update("\n");
-        cmac.update(method);
-        cmac.update("\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update(agentId);
-        cmac.update("\n");
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return remoted::auth::toLowerHex(mac.data(), mac.size());
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            jwt_profile::v1::CanonicalAgentId::fromNumeric(agentId), secret, std::chrono::system_clock::now());
+        return token ? *token : std::string {};
     }
 
-    /// Builds signed request bytes where the MAC'd target and the request-line target are chosen
-    /// INDEPENDENTLY. The global-prefix tests need the split: the feature's contract is that the
-    /// agent signs the full prefixed target (wireTarget == signedTarget, the 3-arg overload), and
-    /// its failure mode -- a client that signs the unprefixed path but sends the prefixed one --
-    /// is exactly wireTarget != signedTarget.
-    inline std::string signedRequest(const std::vector<std::uint8_t>& key,
-                                     const std::string& wireTarget,
-                                     const std::string& signedTarget,
-                                     const std::string& body)
+    /// Builds the authenticated request bytes an agent would put on the wire: protocol-version 1
+    /// and a bearer token for kTestAgentId. The token binds identity only -- not the target, not
+    /// the body -- so the same helper serves every route.
+    inline std::string
+    signedRequest(const std::vector<std::uint8_t>& key, const std::string& target, const std::string& body)
     {
-        const auto ts = static_cast<std::int64_t>(std::time(nullptr));
-        const std::string mac = canonicalMac(key, "1", "POST", signedTarget, std::to_string(kTestAgentId), ts, body);
-
-        std::string request = "POST " + wireTarget + " HTTP/1.1\r\n";
+        std::string request = "POST " + target + " HTTP/1.1\r\n";
         request += "Host: 127.0.0.1\r\n";
         request += "protocol-version: 1\r\n";
-        request +=
-            "Authorization: Wazuh " + std::to_string(kTestAgentId) + ":" + std::to_string(ts) + ":" + mac + "\r\n";
+        request += "Authorization: Bearer " + bearerToken(key) + "\r\n";
         request += "Content-Length: " + std::to_string(body.size()) + "\r\n";
         request += "Connection: close\r\n\r\n";
         request += body;
         return request;
-    }
-
-    /// Builds the signed request bytes an agent would put on the wire (signs the sent target).
-    inline std::string
-    signedRequest(const std::vector<std::uint8_t>& key, const std::string& target, const std::string& body)
-    {
-        return signedRequest(key, target, target, body);
     }
 
     /**
@@ -224,17 +195,6 @@ namespace remoted::test
     inline std::string sendGetRequest(std::uint16_t port, const std::string& target)
     {
         return sendRawOverTls(port, "GET " + target + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
-    }
-
-    /// Signed send where the MAC'd target and the wire target differ (see the 4-arg
-    /// signedRequest above for when that split is the point of the test).
-    inline std::string sendSignedRequest(std::uint16_t port,
-                                         const std::vector<std::uint8_t>& key,
-                                         const std::string& wireTarget,
-                                         const std::string& signedTarget,
-                                         const std::string& body)
-    {
-        return sendRawOverTls(port, signedRequest(key, wireTarget, signedTarget, body));
     }
 
     inline std::string sendSignedRequest(std::uint16_t port,

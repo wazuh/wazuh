@@ -36,6 +36,9 @@ TEST(AuthConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxRequestAgeSeconds, 300);
     EXPECT_EQ(config.maxFutureSkewSeconds, 30);
     EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
+    // The bearer profile's time policy defaults to the profile maxima (E3 wires the knobs).
+    EXPECT_EQ(config.timePolicy.maxAgeSec(), 60);
+    EXPECT_EQ(config.timePolicy.skewSec(), 30);
 }
 
 TEST(AuthConfigTest, StructValuesWin)
@@ -67,4 +70,3 @@ TEST(AuthConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(config.maxRequestAgeSeconds, 300);
     EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
 }
-

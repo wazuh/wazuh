@@ -54,7 +54,11 @@ namespace
             switch (err)
             {
                 case remoted::auth::AuthError::UnknownAgent: return m.unknownAgent;
-                case remoted::auth::AuthError::InvalidMac: return m.invalidMac;
+                case remoted::auth::AuthError::InvalidSignature:
+                case remoted::auth::AuthError::InvalidMac: return m.invalidSignature;
+                case remoted::auth::AuthError::InvalidToken: return m.badToken;
+                case remoted::auth::AuthError::IdentityMismatch: return m.identityMismatch;
+                case remoted::auth::AuthError::StaleToken:
                 case remoted::auth::AuthError::ExpiredRequest:
                 case remoted::auth::AuthError::FutureRequest: return m.clockSkew;
                 case remoted::auth::AuthError::MissingKey: return m.unusableKey;
@@ -104,6 +108,7 @@ namespace
     {
         switch (err)
         {
+            case remoted::auth::AuthError::StaleToken:
             case remoted::auth::AuthError::ExpiredRequest:
             case remoted::auth::AuthError::FutureRequest: return RejectionKind::ClockSkew;
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;

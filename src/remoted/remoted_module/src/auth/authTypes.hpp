@@ -13,6 +13,8 @@
 
 #include "remoted_module.h"
 
+#include "jwt/jwtProfileV1.hpp"
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -87,7 +89,7 @@ namespace remoted::auth
     };
 
     /**
-     * @brief Identity + payload an endpoint handler receives once the MAC has
+     * @brief Identity + payload an endpoint handler receives once the bearer token has
      *        been verified.
      *
      * This struct is the contract between the transport and endpoint-specific
@@ -97,12 +99,12 @@ namespace remoted::auth
      */
     struct AuthenticatedRequest
     {
-        std::string agentId;         ///< Agent id parsed from the Authorization header.
+        std::string agentId;         ///< Verified agent id, canonical (the token's `sub`, never the raw header).
         std::string protocolVersion; ///< Value of the protocol-version header.
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.
         Payload payload;             ///< Verified request body (a view into the single transport buffer).
-        /// When the auth gateway picked the request up (stamped once, before the CMAC pipeline
+        /// When the auth gateway picked the request up (stamped once, before authentication
         /// runs). Feeds the remoted.http.<endpoint>.latency histograms: end-to-end time is
         /// measured from here to response delivery. steady_clock so an NTP step can't produce
         /// negative or wild durations. Default (epoch) means "never stamped" -- consumers skip
@@ -127,12 +129,19 @@ namespace remoted::auth
         MalformedAuthorization,
         UnknownAgent,
         MissingKey,
-        AddressNotAllowed, ///< The peer address does not satisfy the agent's client.keys ip column
-                           ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
-                           ///< generic 401: a distinct status would confirm that the agent id exists.
-        ExpiredRequest,
-        FutureRequest,
-        InvalidMac,
+        AddressNotAllowed,    ///< The peer address does not satisfy the agent's client.keys ip column
+                              ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
+                              ///< generic 401: a distinct status would confirm that the agent id exists.
+        InvalidToken,         ///< The bearer is not a `wazuh-agent+jwt` token: size, compact grammar,
+                              ///< base64url, JSON, header/claim sets or types, jti, or the structural
+                              ///< time rules (nbf == iat, exp > iat, exp - iat <= 60).
+        InvalidSignature,     ///< The HS256 signature does not verify with the agent's key.
+        StaleToken,           ///< Clock-relative rejection: issued in the future, expired, or older than
+                              ///< the accepted age (AuthConfig::timePolicy).
+        IdentityMismatch,     ///< `sub` / `iss` do not name the agent `kid` names.
+        ExpiredRequest,       ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
+        FutureRequest,        ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
+        InvalidMac,           ///< WazuhEnroll (AES-CMAC) only, until /enroll moves to JWT.
         PayloadAgentMismatch, ///< Raised by POST /stateless's pre-forward check (statelessEndpoint.cpp):
                               ///< the H-line JSON is missing/malformed, or wazuh.agent.id is
                               ///< missing/not-a-string/not-numeric, or doesn't match the authenticated
@@ -150,6 +159,15 @@ namespace remoted::auth
                                     ///< logRejection() tell an operator to "re-enroll the affected
                                     ///< agent(s)" for a condition where no agent, and no client.keys
                                     ///< entry, exists yet at all.
+    };
+
+    /**
+     * @brief What AuthMiddleware::authenticate() hands back on success: the identity every
+     *        consumer downstream may trust, and nothing else.
+     */
+    struct VerifiedAgent
+    {
+        std::string agentId; ///< Canonical form ("001"): the token's verified `sub`, equal to `kid`.
     };
 
     /**
@@ -185,7 +203,7 @@ namespace remoted::auth
      *
      * A protocol constant, not an ops tuning knob -- which is why it is not C-ABI driven. Named
      * here rather than spelled inline so that EVERY authenticated scheme reads the same value:
-     * both the agent<->manager AES-CMAC middleware (AuthConfig below) and the enrollment scheme
+     * both the agent<->manager bearer-JWT middleware (AuthConfig below) and the enrollment scheme
      * (EnrollmentAuthConfig) default to it, so the two can never drift into accepting different
      * versions -- and neither can hardcode a literal that silently disagrees with what it
      * validates.
@@ -201,8 +219,13 @@ namespace remoted::auth
     struct AuthConfig
     {
         std::string supportedProtocolVersion {kSupportedProtocolVersion}; ///< Expected protocol-version header.
-        std::int64_t maxRequestAgeSeconds = 300;    ///< How far in the past a request timestamp may be.
-        std::int64_t maxFutureSkewSeconds = 30;     ///< How far in the future a request timestamp may be.
+        /// Accepted token age and clock skew for the `wazuh-agent+jwt` bearer (profile maxima by
+        /// default; remoted's `jwt_max_lifetime` / `jwt_clock_skew` internals lower them -- wired in E3).
+        jwt_profile::v1::TimePolicy timePolicy {};
+        // The two AES-CMAC window knobs. No longer read by the request path (the bearer profile has
+        // its own TimePolicy above); still resolved from the C-ABI until E3 retires them.
+        std::int64_t maxRequestAgeSeconds = 300;    ///< Legacy: how far in the past a request timestamp may be.
+        std::int64_t maxFutureSkewSeconds = 30;     ///< Legacy: how far in the future a request timestamp may be.
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
     };
 
