@@ -22,7 +22,7 @@ flowchart TB
         subgraph ISS["inventory_sync_server (modulesd) — HTTP/1.1 over UDS"]
             SYNCR["POST /stateful"] -->|non-VD sessions| PIPE[SyncPipeline\nworkers sharded by agent id\none IndexerConnectorSync each\ngroup commit]
             SYNCR -->|"vulnerability-detection sessions\n(queue full ⇒ 503)"| LANE[[VD scan lane\nbounded queue + vd_workers\nscan → ok → index → respond]]
-            DELR["DELETE /agents\n(UDS-local callers only)"]
+            DELR["DELETE /agents\n(UDS-local callers only)"] -->|"enqueue on the agent's shard\nanswers 200 at admission"| PIPE
             PIPE <-.->|in-flight agent registry| LANE
         end
         REME -->|"POST /stateful over UDS\n+ X-Wazuh-Agent-Id"| SYNCR
@@ -37,7 +37,6 @@ flowchart TB
     REME -.->|the agent's own HTTP response| CLI
     PIPE -->|bulk / deleteByQuery / updateByQuery / search| IDX[(wazuh-indexer)]
     LANE -->|"inventory bulk (only if the scan succeeded)"| IDX
-    DELR -->|"deleteByQuery\nwazuh-states-*, wazuh-agent-config, wazuh-agent-stats"| IDX
     ORCH -->|its own connector| IDX
 ```
 

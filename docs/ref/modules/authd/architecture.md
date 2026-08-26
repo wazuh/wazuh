@@ -55,19 +55,197 @@ thread instead of being called inline.
 | Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, queues indexer purges |
 | Purge relay | master only | sends queued purges after their delay, owns every retry |
+| authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
+
+## The two stores
+
+authd keeps every key in **two** places, and the difference between them explains most of the
+module's behaviour — and most of its surprises.
+
+```mermaid
+flowchart TB
+    G["authd generates a key"] --> MEM
+    MEM[("in-memory keystore\ncurrent from the instant the key exists")]
+    MEM -->|"answers the enrolling agent"| AG[Agent]
+    MEM -.->|"the writer copies it\nCAN LAG"| CK[("etc/client.keys")]
+    CK --> REM["remoted\nauthenticates every agent request"]
+    MEM --> AUT["authd itself\nduplicates, agent limit, force rules"]
+```
+
+- **The in-memory keystore** (`keys`, guarded by `mutex_keys`) is authoritative *inside* authd. It is
+  where `OS_AddNewAgent()` assigns the id, where duplicate checks look, and where the key the agent
+  receives comes from. It is current the moment a key exists.
+- **`etc/client.keys`** is how the rest of the manager finds out. Only the writer thread rewrites it,
+  and **remoted authenticates agents by reading it** — so an agent whose key has not reached the file
+  yet is rejected as unknown (`401`), even though the key it holds is perfectly valid.
+
+**Enrollment latency is the writer's pass time plus remoted's reload.** That is the reason nothing
+slow may live in the writer's pass, and the reason the indexer purge sits behind a queue and a second
+thread instead of being called inline.
+
+On a **worker node** the gap is structural rather than incidental — see [Cluster](#cluster).
 
 ## Enrollment
 
-Whichever door the request arrives through — including remoted's `/enroll`, which reaches authd over
-the same local socket the API uses, and a worker node's forward to the master — the serving thread
-validates it and, under `mutex_keys`, checks for a duplicate id, name or IP, applies the
-[force](configuration.md#force) rules, adds the entry to the keystore, appends the key
-to the insertion queue and signals the writer. It answers the caller with the key immediately.
+Three doors converge on the same code. The TLS port on 1515 is served by the remote server thread;
+remoted's authenticated `POST /enroll` and the server API both arrive over the local Unix socket.
 
-The agent has a usable key at that point, but remoted does not know about it yet: the key reaches
-`client.keys` on the writer's next pass, and remoted reloads that file on its own cadence. **Enrollment
-latency is the writer's pass time plus remoted's reload**, which is the reason nothing slow may live
-in that pass.
+```mermaid
+sequenceDiagram
+    participant C as Caller<br/>(agent · remoted /enroll · server API)
+    participant T as Serving thread
+    participant KS as In-memory keystore
+    participant W as Writer thread
+    participant CK as client.keys
+    participant R as remoted
+
+    C->>T: enroll (name, version, ip?, groups?, key_hash?)
+    Note over T: parse + credential<br/>(password and/or TLS client cert)
+    T->>T: validate name, ip, groups, agent version
+    rect rgb(240, 240, 235)
+        Note over T,KS: under mutex_keys
+        T->>KS: duplicate id / ip / name?
+        alt duplicate found
+            KS-->>T: force rules decide (see below)
+        end
+        T->>KS: OS_AddNewAgent() — assigns the id, generates the key
+        T->>W: queue_insert += entry; write_pending = 1; signal
+    end
+    T-->>C: id + name + ip + key
+    Note over C: the agent can sign requests NOW…
+    W->>CK: rewrite client.keys whole (atomic rename)
+    W->>W: wdb_insert_agent + wdb_set_agent_groups_csv
+    CK-->>R: inotify / periodic reload
+    Note over R: …but remoted only accepts it from here on
+```
+
+### Validation
+
+Checked before the keystore is mutated:
+
+| Field | Rule |
+|---|---|
+| `name` | two validators, deliberately different — see below |
+| `ip` | a syntactic IPv4/IPv6/CIDR, or `any`. `use_source_ip` overrides whatever the caller claims |
+| `groups` | every group must exist (`9014`) |
+| version | rejected if newer than the manager's, unless `<agents><allow_higher_versions>` is `yes` |
+
+The agent limit is not on that list because it is not a separate check: `OS_AddNewAgent()` enforces
+`max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`.
+
+**The name is checked by two different validators, and the difference is intentional.** The TLS
+port 1515 path applies `OS_IsValidName()` — 2–128 characters, no leading `.`, a restricted charset.
+The local socket applies only `is_storable_agent_name()`, a **storage-safety floor**: non-empty, at
+most 128 bytes, no leading `#` or `!` (those mark removed and comment lines in `client.keys`), and no
+control byte, space or `DEL` (any of them would break the file's `<id> <name> <ip> <key>` field
+split). A name that clears the floor but not the stricter rule is rejected with `9017`.
+
+The looser floor is what lets an operator register a name the self-enrollment path would refuse.
+remoted's `/enroll` applies its own validator, tighter than both, before it ever reaches the socket.
+
+### Id and key assignment
+
+`OS_AddNewAgent()` picks the id — always the next free one, **never a recycled one** (see
+[Why an id is never reused](#durability-and-the-id-mark)) — and generates the key. The caller then
+reads both straight out of the entry it just created:
+
+```c
+os_strdup(keys.keyentries[index]->id,      *id);
+os_strdup(keys.keyentries[index]->raw_key, *key);
+```
+
+An insertion may also *name* an id explicitly (`manage_agents`, `POST /agents/insert`). That path is
+refused rather than served when the id is taken (`9012`) or still owes a purge (`9018`); self-enrolling
+agents never send one.
+
+## Duplicate handling and force replacement
+
+When the name or IP already exists, `w_auth_replace_agent()` decides whether the newcomer may take it
+over. **Every guard has to allow it**, and they are evaluated in this order — the first one that
+refuses ends the decision:
+
+```mermaid
+flowchart TB
+    S["duplicate name or IP found"] --> G1{"&lt;force&gt; enabled?"}
+    G1 -->|no| X1["refuse:<br/>force option is disabled"]
+    G1 -->|yes| G2{"agent-info readable<br/>in wazuh-db?"}
+    G2 -->|no| X2["refuse:<br/>Failed to get agent-info"]
+    G2 -->|yes| G3{"disconnected_time<br/>satisfied?"}
+    G3 -->|"still connected"| X3["refuse:<br/>can't be replaced since<br/>it is not disconnected"]
+    G3 -->|"disconnected too recently"| X4["refuse:<br/>has not been disconnected<br/>long enough"]
+    G3 -->|ok| G4{"registered longer ago<br/>than after_registration_time?"}
+    G4 -->|no| X5["refuse:<br/>doesn't comply with the<br/>registration time"]
+    G4 -->|yes| G5{"key_mismatch: does the<br/>presented key_hash match?"}
+    G5 -->|"matches"| X6["refuse:<br/>key already exists<br/>on the manager"]
+    G5 -->|"differs / absent"| OK["Removing old agent<br/>add_remove + OS_DeleteKey"]
+```
+
+Two consequences worth internalising:
+
+- **A replacement is a deletion.** It runs `add_remove()` and `OS_DeleteKey()` — the same two calls
+  `DELETE /agents` makes — so everything in [Agent removal](#agent-removal) applies to it, including
+  the queued indexer purge. A fleet re-enrolling under names that already exist generates one deletion
+  per agent with nobody touching the API.
+- **A replacement never reuses the id.** The replacing agent is a new registration with a new id.
+
+`key_hash` is the caller's `SHA1(id ‖ name ‖ raw_key)` over its *current* credential — the same value
+the legacy `K:` field carried, computed by `w_get_key_hash()` on both sides. It is a proof of
+possession, not the key itself, and it is the last guard consulted rather than the first.
+
+## Cluster
+
+A worker node runs neither the writer nor the purge relay: `if (!config.worker_node)` gates both. An
+enrollment that arrives at a worker is forwarded to the master, and **the worker keeps nothing**.
+
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant WK as Worker authd
+    participant MA as Master authd
+    participant WCK as Worker client.keys
+    participant WR as Worker remoted
+
+    A->>WK: enroll
+    WK->>MA: w_request_agent_add_clustered()
+    MA->>MA: validate + OS_AddNewAgent (master's keystore)
+    MA-->>WK: new_id + new_key
+    WK-->>A: id + key
+    Note over WK: no local add, no write_pending —<br/>new_key is relayed and discarded
+    MA->>MA: master's writer rewrites its client.keys
+    MA-->>WCK: cluster integrity sync (~9 s + transfer)
+    WCK-->>WR: reload
+    Note over A,WR: until this point the agent holds a valid key<br/>that the worker's remoted cannot verify
+```
+
+Because of that, on a worker the window between "the agent has its key" and "remoted accepts it" is a
+property of the cluster sync interval, not of authd's own speed. The `<force>` settings are ignored on
+a worker — the master decides — and a worker that cannot reach the master answers `9016`.
+
+## The enrollment password
+
+With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
+first start if none exists and logs that it did. Workers receive the file through the same cluster
+sync as `client.keys`, which is why they run the **authpass watcher**: a worker that has not received
+it yet fails closed — it rejects enrollments rather than validating against a null password.
+
+remoted's `/enroll` route does not present this password as-is; it derives an AES-256-CMAC key from it
+with HKDF-SHA256 and signs the request (`Authorization: WazuhEnroll <timestamp>:<mac>`). See the
+[agent API reference](../remoted/agent-api.yaml).
+
+## Error codes
+
+The local socket answers a numeric code that the server API maps onto its own, and remoted's
+`/enroll` maps onto HTTP:
+
+| Code | Meaning | `/enroll` |
+|---|---|---|
+| 9001 / 9002 / 9009 | internal error, JSON parse failure, key generation failure | `500` |
+| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 | no such function/argument/name/IP, invalid groups, invalid agent name | `400` |
+| 9007 / 9008 / 9012 | duplicate IP, name or id | `409` |
+| 9010 / 9011 | no such agent id / agent id not found | — |
+| 9013 | `max_agents` reached | `503` |
+| 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
+| 9018 | the id still has a pending deletion | — |
 
 ## Agent removal
 
@@ -184,7 +362,7 @@ held their ids before, in the indices they do not resynchronise themselves.
 
 | Path | Contents |
 |---|---|
-| `etc/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place |
+| `etc/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
 | `etc/agents-timestamp` | per-agent registration timestamp |
 | `etc/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | pending indexer purges and the highest id ever handed out |

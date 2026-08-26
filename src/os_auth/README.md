@@ -6,16 +6,81 @@ makes sure that agent's documents leave the indexer too.
 
 Three documentation layers cover authd, each with its own job:
 
-- **This README** — the developer's map: how the threads divide the work, which invariants are
+- **This README** — the developer's map: the [requirements catalog](#requirements) and
+  [design decisions](#design-decisions-d1d8), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
-  reference: [overview](../../docs/ref/modules/authd/README.md) and
+  reference: [overview](../../docs/ref/modules/authd/README.md),
+  [architecture](../../docs/ref/modules/authd/architecture.md) (the diagrams: the two stores, the
+  enrollment sequence, the force-guard chain, cluster forwarding, the removal path) and
   [configuration](../../docs/ref/modules/authd/configuration.md).
 - **[`inventory_sync_server`](../wazuh_modules/inventory_sync_server/README.md)** — the peer on the
   other side of the deletion route; its
   [agent deletion section](../wazuh_modules/inventory_sync_server/README.md#agent-deletion-endpointsdeleteagentendpoint)
   documents what a `200` promises.
+
+## Requirements
+
+What the module has to do, and where each requirement is answered. A row marked **superseded** is
+kept on purpose: the original requirement is still the reason the current design exists, and deleting
+it would erase why.
+
+### Functional (RF)
+
+| # | Requirement | Status |
+|---|---|---|
+| RF-1 | Serve enrollment on the TLS port (1515), over the local socket, and through remoted's authenticated `POST /enroll` — one implementation, three doors | kept ([enrollment](#enrollment)) |
+| RF-2 | Assign each agent a unique id and generate its key; answer the caller with both | kept (`OS_AddNewAgent`, `w_auth_add_agent`) |
+| RF-3 | Validate name, IP, groups and agent version before any keystore mutation | kept |
+| RF-4 | Authenticate the enroller by shared password and/or TLS client certificate, each independently optional | kept (`use_password`, `ssl_agent_ca`/`ssl_verify_host`) |
+| RF-5 | Refuse a duplicate name, IP or id unless the `<force>` guards all allow the takeover | kept ([force replacement](#force-replacement)) |
+| RF-6 | Persist the keystore to `client.keys` and mirror every registration into wazuh-db | kept (the [writer](#threads)) |
+| RF-7 | Remove an agent from the keystore, `client.keys`, wazuh-db, its rids counter and its timestamp | kept ([agent removal](#agent-removal)) |
+| RF-8 | Delete a removed agent's documents from the indexer, retriably | kept — **relayed, not inline** (D3); the endpoint is inventory-sync's `POST /agents/delete` |
+| RF-9 | Forward enrollment to the master on a worker node; the master decides | kept (`local_add_clustered`, `w_request_agent_add_clustered`) |
+| RF-10 | Accept an insertion that names an explicit id (`manage_agents`, `POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`) or owes a purge (`9018`) — D6 |
+| RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — the `200` means *queued*; waiting for the flush wedged the writer |
+| RF-12 | Survive a restart without losing work the system has no other record of | kept ([the state file](#the-state-file)) |
+| RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
+
+### Non-functional (RNF)
+
+| # | Requirement | Where it is answered |
+|---|---|---|
+| RNF-1 | **An enrollment must never wait on the indexer.** remoted authenticates from `client.keys`, so anything slow in the writer's pass delays every agent, including unrelated ones | the purge queue + relay thread (D3); invariant 1 |
+| RNF-2 | No I/O under `mutex_keys` | the purge queue has its own mutex and condvar; invariant 2 |
+| RNF-3 | A queued purge is never lost — not to a restart, not to a crash, not to an unreachable indexer | [the state file](#the-state-file), written before the relay is woken; invariant 3 |
+| RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
+| RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
+| RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | `running` is checked inside the relay's retry sleeps; the relay stops sending rather than draining |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001–9018` table |
+| RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
+
+### Contract with inventory_sync_server (REQ-PURGE)
+
+The deletion route is a contract between two modules; both sides depend on these:
+
+| # | Requirement |
+|---|---|
+| REQ-PURGE-1 | The purge is **idempotent** — a missing index or an already-purged agent counts as success, so repeating it is free |
+| REQ-PURGE-2 | It is **at least once**, never at most once: authd retries until accepted and persists across restarts |
+| REQ-PURGE-3 | A `200` means *recorded and queued*, not *documents gone*. The purge's own outcome is observable in inventory-sync's log, never on this wire |
+| REQ-PURGE-4 | The purge is **delayed** by `authd.purge_delay` so it outlives the index refresh, the cluster sync and the keepalive tolerance — whatever it misses survives forever |
+| REQ-PURGE-5 | Deletion orders FIFO against that agent's in-flight sessions; the caller does not serialize it |
+
+## Design decisions (D1–D8)
+
+| # | Decision | Rationale |
+|---|---|---|
+| D1 | **One in-memory keystore behind one mutex** is the authority inside authd; `client.keys` is a projection of it, never a second source of truth | Duplicate checks, the agent limit and id assignment all need the same instantaneous view; two stores that can disagree would need reconciliation nobody would get right |
+| D2 | **The writer is the only thread that persists `client.keys`**, and it rewrites the file whole through a temp + rename | One writer means no locking discipline to get wrong on the file, and an atomic rename means a reader never sees a torn keystore |
+| D3 | **The indexer purge is relayed by a second thread**, never called from the writer | A delete-by-query on populated `wazuh-states-*` legitimately outlives any budget worth setting; doing it inline blocked every key write and locked out enrollment fleet-wide |
+| D4 | **The purge queue is persisted before the relay is woken** | If the process dies in between, the next start replays an entry that was never sent — failing towards "purge twice", which is free (REQ-PURGE-1) |
+| D5 | **`client.keys` is rewritten before the purge is recorded**, never the other way round | The reverse order can leave a queued purge for an agent that is still alive |
+| D6 | **An id whose purge is pending is refused, not reassigned** (`9018`) | The purge matches by agent id and nothing in a state document distinguishes one owner from the next; cancelling a queued purge is never the answer |
+| D7 | **A replacement is a deletion, and never reuses the id** | It goes through the same `add_remove()` + `OS_DeleteKey()` path, so it inherits every guarantee above instead of needing its own |
+| D8 | **The `<force>` guards are all-or-nothing and each logs its own refusal** | An operator debugging a rejected enrollment needs to know *which* guard refused; a single generic "rejected" is unactionable |
 
 ## Layout
 
