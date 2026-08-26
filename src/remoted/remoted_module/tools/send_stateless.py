@@ -3,18 +3,14 @@
 Sends signed POST /stateless requests to remoted's HTTPS auth endpoint, exactly
 the way AuthMiddleware (remoted_module/src/authMiddleware.cpp) expects them:
 
-  Authorization: Wazuh <agent-id>:<timestamp>:<mac>
   protocol-version: 1
+  Authorization: Bearer <wazuh-agent+jwt token>
 
-MAC = AES-CMAC(agent_key, canonical_bytes), where:
-
-  canonical_bytes = b"WAZUH-REQUEST\n"
-                   + protocol_version + b"\n"
-                   + method.upper()   + b"\n"
-                   + request_target   + b"\n"   (raw path+query, exactly as sent)
-                   + agent_id         + b"\n"
-                   + str(timestamp)   + b"\n"
-                   + body                        (exact request body bytes, no trailing \n)
+The token is a JWT (HS256) the agent self-signs with its client.keys secret -- exactly the closed
+profile wire_jwt.py mints (header {alg,kid,typ}, six claims, 60 s lifetime, fresh jti per request).
+It binds the agent's identity only: method, target, body and compression are NOT part of
+authentication; the manager answers every credential failure with a uniform 401 +
+WWW-Authenticate: Bearer. See wire_jwt.py (and `python3 wire_jwt.py --self-test`).
 
 The agent key is read straight out of client.keys (same file
 Keystore reads), so this always matches whatever agent is
@@ -25,7 +21,7 @@ Requires: pip install -r requirements.txt
 Examples:
   python3 send_stateless.py                       # one valid signed request -> 202
   python3 send_stateless.py --agent-id 1001 --body 'hello'
-  python3 send_stateless.py --tamper              # modified body -> 401 InvalidMac
+  python3 send_stateless.py --tamper              # corrupted token -> 401
   python3 send_stateless.py --all                 # run every success/failure scenario below
 """
 import argparse
@@ -35,9 +31,9 @@ import time
 
 import requests
 import urllib3
+from wire_jwt import (EXPIRED_IAT_OFFSET, FUTURE_IAT_OFFSET, auth_headers, make_jwt, read_agent_key,
+                      tamper_token)  # the shared wazuh-agent+jwt signer (same directory)
 import zstandard
-from cryptography.hazmat.primitives import cmac
-from cryptography.hazmat.primitives.ciphers import algorithms
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -47,8 +43,6 @@ DEFAULT_BODY = b'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:hello 
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
 # side of each window.
-MAX_REQUEST_AGE_SECONDS = 300
-MAX_FUTURE_SKEW_SECONDS = 30
 MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (20 MiB) sits above it on purpose.
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
@@ -68,9 +62,9 @@ CONN_CLOSED = "CONN_CLOSED"
 
 
 # --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
-# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
-# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
-# manager's configured prefix surfaces as 404 (route not found), not 401.
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
 #
 # Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
 # test, so when --global-prefix is not given it is read from that manager's own configuration
@@ -119,49 +113,6 @@ def prefixed(path: str) -> str:
     """Serves `path` under the configured global prefix (signed AND sent)."""
     return GLOBAL_PREFIX + path
 
-def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
-    """Parses client.keys the same way Keystore does: 'id name ip key'
-    lines, '#'/' '-prefixed lines are comments, a name starting with '#'/'!' means
-    removed. Returns the raw key bytes (hex-decoded)."""
-    with open(client_keys_path, "r") as f:
-        for line in f:
-            if not line or line[0] in ("#", " "):
-                continue
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            line_id, name, _ip, key_hex = parts[0], parts[1], parts[2], parts[3]
-            if name.startswith("#") or name.startswith("!"):
-                continue
-            if line_id == agent_id:
-                return bytes.fromhex(key_hex)
-    raise SystemExit(f"agent id {agent_id!r} not found (or removed) in {client_keys_path}")
-
-
-def sign_request(agent_key: bytes, protocol_version: str, method: str,
-                  request_target: str, agent_id: str, timestamp: int, body: bytes) -> str:
-    """Builds the canonical byte sequence and returns its lowercase-hex AES-CMAC."""
-    if len(agent_key) not in (16, 24, 32):
-        raise SystemExit(f"agent key must be 16, 24 or 32 bytes (got {len(agent_key)})")
-
-    c = cmac.CMAC(algorithms.AES(agent_key))
-    c.update(b"WAZUH-REQUEST\n")
-    c.update(protocol_version.encode() + b"\n")
-    c.update(method.upper().encode() + b"\n")
-    c.update(request_target.encode() + b"\n")
-    c.update(agent_id.encode() + b"\n")
-    c.update(str(timestamp).encode() + b"\n")
-    c.update(body)
-
-    return c.finalize().hex()
-
-
-def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method: str,
-                  target: str, timestamp: int, body: bytes) -> dict:
-    mac = sign_request(agent_key, protocol_version, method, target, agent_id, timestamp, body)
-    return {"protocol-version": protocol_version, "Authorization": f"Wazuh {agent_id}:{timestamp}:{mac}"}
-
-
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct AuthError that
 # publicErrorFor() (authMiddleware.cpp) maps to a distinct status is covered
@@ -174,14 +125,14 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 def scenario_valid(agent_id, agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_missing_protocol_version(agent_id, agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     del headers["protocol-version"]
     return headers, body, target
 
@@ -189,7 +140,7 @@ def scenario_missing_protocol_version(agent_id, agent_key):
 def scenario_unsupported_protocol_version(agent_id, agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "2", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key, protocol_version="2")
     return headers, body, target
 
 
@@ -206,32 +157,57 @@ def scenario_malformed_authorization(_agent_id, _agent_key):
 def scenario_unknown_agent(_agent_id, _agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    fake_id, fake_key = "999999", bytes(32)  # an id that (almost certainly) isn't enrolled
-    headers = _auth_header(fake_id, fake_key, "1", "POST", target, int(time.time()), body)
+    fake_id, fake_key = "999999", "00" * 32  # an id that (almost certainly) isn't enrolled
+    headers = auth_headers(fake_id, fake_key)
     return headers, body, target
 
 
 def scenario_expired_request(agent_id, agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + EXPIRED_IAT_OFFSET  # older than jwt_max_age + jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
 def scenario_future_request(agent_id, agent_key):
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + FUTURE_IAT_OFFSET  # issued further ahead than jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
-def scenario_invalid_mac(agent_id, agent_key):
-    target = prefixed("/stateless")
-    signed_body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
-    return headers, b"tampered!", target  # transmit different bytes than what was signed
+def _valid_with(agent_id, agent_key, **jwt_kwargs):
+    """The valid scenario with its Authorization replaced by a deliberately deviant token:
+    every keyword goes to wire_jwt.make_jwt (see there). The manager must answer 401."""
+    result = list(scenario_valid(agent_id, agent_key))
+    result[0] = auth_headers(agent_id, agent_key, **jwt_kwargs)
+    return tuple(result)
+
+
+def scenario_invalid_signature(agent_id, agent_key):
+    result = list(scenario_valid(agent_id, agent_key))
+    token = result[0]["Authorization"].split(" ", 1)[1]
+    result[0] = dict(result[0], Authorization="Bearer " + tamper_token(token))
+    return tuple(result)
+
+
+def scenario_alg_none(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, alg="none")
+
+
+def scenario_aud_present(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, extra_claims={"aud": "wazuh-manager"})
+
+
+def scenario_non_canonical_kid(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, kid="0" + f"{int(agent_id):03d}")
+
+
+def scenario_ascii_key(agent_id, agent_key):
+    # The classic interoperability mistake: HMAC with the 64 hex chars instead of the 32 bytes.
+    return _valid_with(agent_id, agent_key, sign_with=agent_key.encode())
 
 
 def scenario_body_too_large(agent_id, agent_key):
@@ -241,7 +217,7 @@ def scenario_body_too_large(agent_id, agent_key):
     # first with no response at all.
     target = prefixed("/stateless")
     body = b"A" * (MAX_BODY_SIZE + 1024 * 1024)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
@@ -250,7 +226,7 @@ def scenario_url_too_large(agent_id, agent_key):
     # so the parser must abort before routing/auth ever run.
     target = prefixed("/stateless?pad=" + ("a" * (MAX_URL_SIZE + 100)))
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
@@ -258,7 +234,7 @@ def scenario_header_name_too_large(agent_id, agent_key):
     # max_field_name_size is 256.
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["X-" + ("n" * (MAX_FIELD_NAME_SIZE + 50))] = "value"
     return headers, body, target
 
@@ -267,7 +243,7 @@ def scenario_header_value_too_large(agent_id, agent_key):
     # max_field_value_size is 8192.
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["X-Test"] = "v" * (MAX_FIELD_VALUE_SIZE + 500)
     return headers, body, target
 
@@ -277,20 +253,20 @@ def scenario_too_many_headers(agent_id, agent_key):
     # 2, so this many extra custom headers comfortably pushes the total over.
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     for i in range(MAX_FIELD_COUNT + 10):
         headers[f"X-Test-{i}"] = "v"
     return headers, body, target
 
 
 def scenario_payload_agent_mismatch(agent_id, agent_key):
-    # The Authorization header (and its MAC) are for the real, signing agent; the H line's
+    # The bearer token names the real agent; the H line's
     # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
     # plain 400 before ever forwarding the batch to the engine.
     target = prefixed("/stateless")
     claimed_id = str(int(agent_id) + 1)
     body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
@@ -301,17 +277,17 @@ def scenario_transport_body_too_large(agent_id, agent_key):
     # soon as it sees a too-large Content-Length, before any body is read.
     target = prefixed("/stateless")
     body = b"A" * (TRANSPORT_MAX_BODY_SIZE + 1024 * 1024)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_zstd_encoded(agent_id, agent_key):
-    # Content-Encoding: zstd -- sign over the COMPRESSED (wire) bytes, exactly like the manager
-    # does: the MAC always covers what was actually sent, compressed or not.
+    # Content-Encoding: zstd -- the token does not cover the body, compressed or not; only the
+    # manager's decoder cares about these bytes.
     target = prefixed("/stateless")
     plain = DEFAULT_BODY
     compressed = zstandard.ZstdCompressor().compress(plain)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
+    headers = auth_headers(agent_id, agent_key)
     headers["Content-Encoding"] = "zstd"
     return headers, compressed, target
 
@@ -321,7 +297,7 @@ def scenario_unsupported_content_encoding(agent_id, agent_key):
     # value, including a once-supported one, must be rejected as 415.
     target = prefixed("/stateless")
     body = DEFAULT_BODY
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["Content-Encoding"] = "gzip"
     return headers, body, target
 
@@ -330,7 +306,7 @@ def scenario_malformed_zstd(agent_id, agent_key):
     # Claims zstd, but the body is not a zstd frame at all.
     target = prefixed("/stateless")
     body = b"definitely not a zstd frame"
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["Content-Encoding"] = "zstd"
     return headers, body, target
 
@@ -351,7 +327,7 @@ def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
     header = b'H {"wazuh":{"agent":{"id":"1001"}}}\n'
     plain = header + event * ((MAX_BODY_SIZE + 1024 * 1024) // len(event) + 1)
     compressed = zstandard.ZstdCompressor().compress(plain)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
+    headers = auth_headers(agent_id, agent_key)
     headers["Content-Encoding"] = "zstd"
     return headers, compressed, target
 
@@ -363,9 +339,13 @@ SCENARIOS = [
     ("missing_authorization", 401, scenario_missing_authorization),
     ("malformed_authorization", 401, scenario_malformed_authorization),
     ("unknown_agent", 401, scenario_unknown_agent),
-    ("expired_request", 401, scenario_expired_request),
-    ("future_request", 401, scenario_future_request),
-    ("invalid_mac_tampered_body", 401, scenario_invalid_mac),
+    ("expired_token", 401, scenario_expired_request),
+    ("future_token", 401, scenario_future_request),
+    ("invalid_signature_tampered_token", 401, scenario_invalid_signature),
+    ("alg_none", 401, scenario_alg_none),
+    ("aud_present", 401, scenario_aud_present),
+    ("non_canonical_kid", 401, scenario_non_canonical_kid),
+    ("ascii_key", 401, scenario_ascii_key),
     ("payload_agent_mismatch", 400, scenario_payload_agent_mismatch),
     ("body_too_large", 413, scenario_body_too_large),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
@@ -419,16 +399,16 @@ def main():
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
     parser.add_argument("--global-prefix", default=None,
                         help="URL path prefix the manager serves every endpoint under "
-                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
-                             "signing: the MAC covers the full prefixed path. Read from "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
                              + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
                              "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--body", default=DEFAULT_BODY.decode(), help="Raw request body to sign and send.")
     parser.add_argument("--tamper", action="store_true",
-                         help="Transmit a different body than the one signed, to prove the server "
-                              "rejects a modified body with 401 InvalidMac.")
+                         help="Corrupt the token's signature before sending, to prove the server "
+                              "rejects it with 401 (invalid_signature).")
     parser.add_argument("--all", action="store_true",
                          help="Ignore --body/--tamper and run every success/failure scenario "
                               "(one per distinct AuthError reachable through this endpoint).")
@@ -446,8 +426,11 @@ def main():
     method, target, protocol_version = "POST", prefixed("/stateless"), "1"
     signed_body = args.body.encode()
     timestamp = int(time.time())
-    headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)
-    sent_body = b"tampered!" if args.tamper else signed_body
+    headers = auth_headers(args.agent_id, agent_key, now=timestamp, protocol_version=protocol_version)
+    sent_body = signed_body
+    if args.tamper:
+        # Corrupt the token's signature: the manager must answer 401 (invalid_signature).
+        headers["Authorization"] = "Bearer " + tamper_token(headers["Authorization"].split(" ", 1)[1])
 
     url = args.url.rstrip("/") + target
     print(f"--> {method} {url}")

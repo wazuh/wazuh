@@ -4,9 +4,9 @@ Reproducible lab for the spike *"verify whether the protocol remains secure and 
 deployed behind load balancers and reverse proxies"*. Every check maps to a requirement from that
 issue; **section 6 is the mapping**.
 
-It complements the two sibling tools in `../`: `send_stateless.py` and `send_agent_json.py` each sign
-and send one canonical request. This lab adds what those cannot do — an actual proxy in front, a
-second manager node, exact control over the signed request target, and request replay.
+It complements the two sibling tools in `../`: `send_stateless.py` and `send_agent_json.py` each mint
+a bearer token and send one request. This lab adds what those cannot do — an actual proxy in front, a
+second manager node, exact control over the raw request target, and request replay.
 
 **You do not need to know NGINX to use this.** [`nginx/both_topologies.conf`](nginx/both_topologies.conf)
 is commented line by line and opens with an explanation of how an `nginx.conf` is structured.
@@ -41,19 +41,22 @@ what the two proxies do differently).
 
 ## 1. Why a load balancer changes anything
 
-Every agent request carries a signature computed with the agent's pre-shared key
-(`etc/client.keys`) over a canonical string — see `src/auth/authMiddleware.cpp` (`beginSession`):
+Every agent request carries a `wazuh-agent+jwt` bearer token the agent self-signs (HS256) with its
+`etc/client.keys` secret — see `src/shared_modules/utils/jwt/` and `../wire_jwt.py`:
 
 ```
-WAZUH-REQUEST\n <protocol-version>\n <METHOD>\n <raw request target>\n <agent id>\n <timestamp>\n <body>
+protocol-version: 1
+Authorization: Bearer <header.claims.signature>     claims: exp iat iss jti nbf sub (60 s lifetime)
 ```
 
 Two consequences drive the whole lab:
 
-1. **The signature covers the request target and the body, byte for byte.** Any intermediary that
-   rewrites either one invalidates every request → `401`.
-2. **Anything *not* in that string is unprotected.** Other headers can be changed without the
-   signature noticing.
+1. **The token binds the agent's identity only.** The method, the request target, the headers and
+   the body are *not* authenticated: an intermediary can rewrite any of them without the token
+   noticing. A rewritten path therefore fails as a `404` (the route does not exist), never a `401`.
+2. **Everything about freshness is the token's own clock.** It is valid while
+   `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default) and can be replayed within that
+   window on any node that holds the agent's key.
 
 ## 2. What the lab runs
 
@@ -82,8 +85,8 @@ downstream, which makes node 2 a clean authentication oracle:
 
 | Node 2 answers | Meaning |
 |---|---|
-| `503` | the signature was **accepted** (only the downstream is missing) |
-| `401` | the signature was **rejected** |
+| `503` | the token was **accepted** (only the downstream is missing) |
+| `401` | the token was **rejected** |
 
 It also lets the two nodes identify themselves by status code, with no log parsing. Node 2 is what
 covers the issue's *"duplicate delivery across manager nodes"*, *"shared replay state in clustered
@@ -125,10 +128,10 @@ Almost every finding is proved by *which* status code comes back. Learn these fi
 
 | Code | Meaning |
 |---|---|
-| `202` | signature valid **and** event ingested by the engine |
-| `401` | signature rejected — **authentication failed** |
-| `400` | signature **valid**, body not understood — **authentication passed** |
-| `503` | signature **valid**, engine unavailable — **authentication passed** |
+| `202` | token valid **and** event ingested by the engine |
+| `401` | token rejected — **authentication failed** |
+| `400` | token **valid**, body not understood — **authentication passed** |
+| `503` | token **valid**, engine unavailable — **authentication passed** |
 | `502` | the proxy could not reach the node — never reached authentication |
 
 **When a manipulation returns `400` or `503` instead of `401`, it got past authentication.** That is
@@ -170,7 +173,7 @@ Smoke test:
 ./send_signed_request.py                                         # direct      -> 202
 ./send_signed_request.py --url https://127.0.0.1:8443            # termination -> 202
 ./send_signed_request.py --url https://127.0.0.1:8444            # passthrough -> 202
-./send_signed_request.py --url https://127.0.0.1:8443 --tamper   #             -> 401
+./send_signed_request.py --url https://127.0.0.1:8443 --tamper   # corrupted token -> 401
 ```
 
 ### How NGINX is started
@@ -213,17 +216,17 @@ Run `./run_issue_checks.sh` to reproduce every row.
 | **Modes** — unsafe combinations | above | `certificate` under termination gives a false sense of security: it authenticates the balancer |
 | **Modes** — which certificates go where | `generate_test_certificates.sh` is the inventory: `load_balancer` (validated by the agent under termination), `manager_node1/2` (validated under passthrough), `agent` (client, mTLS), `proxy_client` (what NGINX presents to remoted), and the two controls for `full`: `agent_wrong_ip` and `proxy_client_wrong_ip`, identical to their counterparts except that their SAN holds an address the peer does not connect from | — |
 | **Proxy** — HTTP method | signed; NGINX does not rewrite methods | no impact |
-| **Proxy** — raw request target | `breaks_signature_path_rewrite.conf` + `works_prefix_passthrough.conf` | 🔴 rewriting the path → `401` on every request; the rule is `proxy_pass https://backend;` with no URI component. ✅ Publishing under a prefix IS supported the other way around: `<remote><https><global_prefix>` on the manager + the same prefix signed and sent by the client, proxy in pure passthrough (`location /<prefix>/` with no URI on `proxy_pass`) |
+| **Proxy** — raw request target | `breaks_signature_path_rewrite.conf` + `works_prefix_passthrough.conf` | 🔴 rewriting the path → `404` on every request (the token does not bind the path, so the failure is a missing route, never a `401`); the rule is `proxy_pass https://backend;` with no URI component. ✅ Publishing under a prefix IS supported the other way around: `<remote><https><global_prefix>` on the manager + the same prefix signed and sent by the client, proxy in pure passthrough (`location /<prefix>/` with no URI on `proxy_pass`) |
 | **Proxy** — query string | `--target '/stateless?foo=bar&x=1'` | preserved verbatim → `202` |
 | **Proxy** — request body | `--tamper`, every topology | rejected with `401` ✅ (explicit acceptance criterion) |
 | **Proxy** — transfer encoding | only bytes are signed, not framing | no impact |
-| **Proxy** — content encoding | `--strip-content-encoding` / `--add-content-encoding` | 🔴 **not signed**: `400` rather than `401` proves the signature validated and the event was silently dropped |
+| **Proxy** — content encoding | `--strip-content-encoding` / `--add-content-encoding` | 🔴 **not authenticated**: `400` rather than `401` proves the token validated and the event was silently dropped |
 | **Proxy** — header normalization | extra headers added | no impact; the module reads only 3 headers, case-insensitively |
 | **Proxy** — connection handling | `--keepalive`; plus `safe_merge_slashes_on.conf` | keep-alive works, and `merge_slashes on` (the NGINX default) does **not** break the signature |
 | **Proxy** — PROXY protocol | `breaks_handshake_proxy_protocol.conf` | 🔴 **breaks the TLS handshake of every agent at once**: the PROXY line lands where remoted expects the ClientHello. Same failure mode as `proxy_protocol_v2` on an AWS NLB. Never enable it; passthrough deployments therefore do not see the agent IP |
-| **HTTP/2** (what an ALB speaks to clients) | `termination_http2.conf` + `curl --http2` driven by `--print-auth` | `202` over h2: the h2 → HTTP/1.1 conversion cannot break the signature (the canonical string exists identically in both versions; framing is not signed). HTTP/1.1-only clients keep working on the same port via ALPN |
+| **HTTP/2** (what an ALB speaks to clients) | `termination_http2.conf` + `curl --http2` driven by `--print-auth` | `202` over h2: the h2 → HTTP/1.1 conversion cannot break the token (an opaque Authorization value binding identity only) |
 | **Idle timeout** (issue: timeouts and connection limits) | `termination_idle_timeout.conf`, `--keepalive --interval` | inside the timeout: `202`; after an idle gap beyond it the proxy has closed the connection and the next send fails at transport level — clean and immediate, nothing consumed, so reconnect-and-resend duplicates nothing. Emulates the ALB's 60 s idle timeout |
-| **Replay** — within the timestamp window | `--repeat 10` with one signature | **10× `202`**. No protection beyond the timestamp; window measured at **330 s** |
+| **Replay** — within the token's window | `--repeat 10` with one token | **10× `202`**. No protection beyond the token's own times; window **90 s** (`jwt_max_age` 60 + `jwt_clock_skew` 30) |
 | **Replay** — retries by agents, proxies or balancers | `two_nodes_no_retry` vs `two_nodes_with_retry`, node 2 down | 🔴 without retry **one request is lost**; with retry **the same request reaches two nodes** |
 | **Replay** — duplicate delivery across manager nodes | byte-identical request (`--timestamp`) to both nodes, with two controls | 🔴 node 2 authenticates a request already consumed by node 1 |
 | **Replay** — shared replay state in clusters | follows from the row above | a per-node replay cache would be **useless** behind a balancer: it needs shared state, or per-agent affinity |
@@ -261,7 +264,7 @@ which is commented line by line and is where the deployment rules actually live.
 | `breaks_signature_path_rewrite.conf` | **Meant to fail.** REWRITES the path to publish remoted under a prefix — the unsupported way. |
 | `works_prefix_passthrough.conf` | The SUPPORTED way to publish under a prefix: manager configured with `global_prefix` (`./set_manager_global_prefix.sh /wazuh-manager/`), `location` scoped to it, `proxy_pass` with no URI component. |
 | `breaks_handshake_proxy_protocol.conf` | **Meant to fail.** Passthrough with `proxy_protocol on;` — proves why it must never be enabled. |
-| `safe_merge_slashes_on.conf` | Proves `merge_slashes on` does *not* break the signature. |
+| `safe_merge_slashes_on.conf` | Proves `merge_slashes on` only normalises the path the router sees (404 for a non-route); authentication is untouched. |
 | `termination_without_client_cert.conf` | Termination where NGINX presents no client certificate of its own. |
 | `breaks_full_mode_proxy_cert_ip.conf` | **Meant to fail.** Termination where the proxy's certificate does not carry the address the proxy connects from — every agent gets `403` under `verification_mode=full`. |
 | `termination_http2.conf` | Termination speaking HTTP/2 to the agent and HTTP/1.1 to remoted — what an AWS ALB does. |
@@ -364,7 +367,7 @@ empties the test `client.keys`. It does **not** stop node 1's daemons.
 
 ## 11. NGINX or HAProxy?
 
-Both work, and for everything that matters they behave **identically**: signature survives in both
+Both work, and for everything that matters they behave **identically**: the bearer token survives in both
 topologies, target forwarded verbatim, headers harmless, zstd fine, keep-alive fine, `GET /` health
 check fine, L7 spreads per request while L4 pins per connection, HTTP/2 works, the idle timeout
 behaves the same, and PROXY protocol breaks the handshake on both.

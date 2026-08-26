@@ -4,8 +4,8 @@ Drives remoted's `POST /download` endpoint the way a real agent does, and checks
 things unit tests cannot reach: the chunked transfer over TLS, and resource resolution
 against a real installation.
 
-Signing is identical to /stateless (same AuthMiddleware), so the helpers are imported
-from send_stateless.py rather than duplicated.
+Authentication is the same wazuh-agent+jwt bearer as /stateless (see wire_jwt.py, which must sit
+next to this script), so the helpers are imported rather than duplicated.
 
 What it verifies beyond "did it return 200":
 
@@ -19,7 +19,7 @@ What it verifies beyond "did it return 200":
     size"; CPU is read as a /proc counter delta rather than sampled as a percentage, so
     it cannot miss time between samples; the fd count catches a descriptor leak.
 
-Requires: pip install requests cryptography
+Requires: pip install requests
 
 Examples:
   python3 send_download.py                            # config download for agent 001's group
@@ -41,7 +41,7 @@ import time
 import requests
 import urllib3
 
-from send_stateless import _auth_header, read_agent_key
+from wire_jwt import auth_headers, read_agent_key  # the shared wazuh-agent+jwt signer (same directory)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -64,9 +64,9 @@ class ManagerPaths:
 
 
 # --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
-# Applied to every target BEFORE signing: the MAC covers the request target exactly as it
-# travels, so the prefix must be part of both the signed and the sent path. A mismatch with the
-# manager's configured prefix surfaces as 404 (route not found), not 401.
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
 #
 # Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
 # test, so when --global-prefix is not given it is read from that manager's own configuration
@@ -112,7 +112,7 @@ def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> s
 
 
 def prefixed(path: str) -> str:
-    """Serves `path` under the configured global prefix (signed AND sent)."""
+    """Serves `path` under the configured global prefix."""
     return GLOBAL_PREFIX + path
 
 def multigroup_dir_name(selector: str) -> str:
@@ -164,11 +164,11 @@ class DownloadResult:
 
 
 def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> DownloadResult:
-    """Signs and sends one /download request, consuming the body as a stream so the
+    """Sends one bearer-authenticated /download request, consuming the body as a stream so the
     client never holds the whole file either."""
     result = DownloadResult()
     url = base_url.rstrip("/") + prefixed(TARGET)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", prefixed(TARGET), int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
 
     try:
         response = requests.post(url, headers=headers, data=body, verify=False, stream=True, timeout=timeout)
@@ -481,8 +481,8 @@ def main():
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
     parser.add_argument("--global-prefix", default=None,
                         help="URL path prefix the manager serves every endpoint under "
-                             "(<remote><https><global_prefix>). Applied to the target BEFORE "
-                             "signing: the MAC covers the full prefixed path. Read from "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
                              + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
                              "unprefixed paths.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")

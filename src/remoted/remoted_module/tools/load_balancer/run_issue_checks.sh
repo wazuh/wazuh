@@ -134,17 +134,17 @@ use_config both_topologies
 require "$NODE1" "manager node 1"
 wait_for_node "$NODE2" "manager node 2" || exit 1
 echo "  node 1 (full, with engine)   $NODE1  -> answers 202"
-echo "  node 2 (remoted only)        $NODE2  -> answers 503 when the signature is accepted"
+echo "  node 2 (remoted only)        $NODE2  -> answers 503 when the token is accepted"
 echo "  load balancer                $TERM (L7) / $PASS_URL (L4)"
 
 # ============================================================ issue: scenarios 1, 2 and 3
-group "Scenario 1 (direct), 2 (passthrough) and 3 (termination) -- the signature must survive"
+group "Scenario 1 (direct), 2 (passthrough) and 3 (termination) -- the bearer token must survive"
 check "direct: valid request"                       "202" "$(status --url "$NODE1")"
-check "direct: tampered body rejected"              "401" "$(status --url "$NODE1" --tamper)"
+check "direct: tampered token rejected"             "401" "$(status --url "$NODE1" --tamper)"
 check "passthrough: valid request"                  "202" "$(status --url "$PASS_URL")"
-check "passthrough: tampered body rejected"         "401" "$(status --url "$PASS_URL" --tamper)"
+check "passthrough: tampered token rejected"        "401" "$(status --url "$PASS_URL" --tamper)"
 check "termination: valid request"                  "202" "$(status --url "$TERM")"
-check "termination: tampered body rejected"         "401" "$(status --url "$TERM" --tamper)"
+check "termination: tampered token rejected"        "401" "$(status --url "$TERM" --tamper)"
 
 group "Which certificate the agent validates (issue: where validation happens, which identity)"
 subject_at() {
@@ -178,37 +178,39 @@ note "CAVEAT: this is LIVENESS, not pipeline health -- node 2 answers 200 while 
 note "503 (no engine). A balancer health-checking GET / keeps routing traffic to such a node."
 
 # ============================================================ issue: request transformations
-group "Request transformations that could break the signature (issue: full checklist)"
+group "Request transformations (issue: full checklist) -- the token binds identity, not the request"
 check "query string preserved verbatim"             "202" "$(status --url "$TERM" --target '/stateless?foo=bar&x=1')"
-check "extra headers are harmless (not signed)"     "202" "$(status --url "$TERM" --header 'X-Test: 1' --header 'X-Other: 2')"
+check "extra headers are harmless (not authenticated)" "202" "$(status --url "$TERM" --header 'X-Test: 1' --header 'X-Other: 2')"
 check "zstd body traverses the proxy"               "202" "$(status --url "$TERM" --zstd)"
 check "connection reuse (keep-alive) works"         "6x202" "$(summary --url "$TERM" --repeat 6 --keepalive)"
 
 use_config breaks_signature_path_rewrite
-check "path rewriting BREAKS the signature"         "401" "$(status --url "$TERM" --target /wazuh/stateless)"
+check "path rewriting: the route does not exist"    "404" "$(status --url "$TERM" --target /wazuh/stateless)"
+note "With the bearer token nothing about the path is authenticated: a rewrite is a routing failure (404),"
+note "never a 401. A proxy that rewrites paths must map them onto routes the manager actually serves."
 
 use_config safe_merge_slashes_on
 check "merge_slashes on does NOT break it (//)"     "404" "$(status --url "$TERM" --target '//stateless')"
 check "merge_slashes on does NOT break it (..)"     "404" "$(status --url "$TERM" --target '/foo/../stateless')"
-note "404 rather than 401 is the proof: the target arrived verbatim, so the signature still matched."
+note "404 is the router refusing the normalised target; authentication never ran and never could fail here."
 
 # ============================================================ issue #38491: global endpoint prefix
 group "Global endpoint prefix (issue #38491) -- configured on both ends, never rewritten"
 use_prefix /wazuh-manager/
 use_config works_prefix_passthrough
-check "prefixed target, signed exactly as sent"     "202" "$(status --url "$TERM" --target /wazuh-manager/stateless)"
+check "prefixed target"                             "202" "$(status --url "$TERM" --target /wazuh-manager/stateless)"
 check "health probe moved under the prefix"         "200" "$(status --url "$TERM" --no-auth --method GET --target /wazuh-manager/ --body '')"
 check "unprefixed path no longer exists"            "404" "$(status --url "$NODE1" --target /stateless)"
-check "signature minted for the BARE path -> 401"   "401" "$(status --url "$NODE1" --target /wazuh-manager/stateless --signed-target /stateless)"
-note "The probe signs --target verbatim, so the prefix works with no probe changes. The proxy's"
+check "body tampered after minting still authenticates" "202" "$(status --url "$NODE1" --target /wazuh-manager/stateless --tamper-body)"
+note "The token does not bind the target or the body, so the prefix needs no probe changes. The proxy's"
 note "only job is passthrough: location /wazuh-manager/ + proxy_pass with NO URI component."
 use_prefix /
 use_config both_topologies
-group "Unsigned field: Content-Encoding (issue: are additional signed fields needed?)"
+group "Unauthenticated field: Content-Encoding (issue: are additional authenticated fields needed?)"
 check "control: zstd body with its header"          "202" "$(status --url "$TERM" --zstd)"
-check "header removed after signing -> 400 not 401" "400" "$(status --url "$TERM" --zstd --strip-content-encoding)"
-check "header added after signing   -> 400 not 401" "400" "$(status --url "$TERM" --add-content-encoding zstd)"
-note "400 means the signature validated and the event was silently dropped: the field is unsigned."
+check "header removed after minting -> 400 not 401" "400" "$(status --url "$TERM" --zstd --strip-content-encoding)"
+check "header added after minting   -> 400 not 401" "400" "$(status --url "$TERM" --add-content-encoding zstd)"
+note "400 means the token validated and the event was silently dropped: the field is not authenticated."
 
 # ============================================================ issue: connection handling / AWS
 group "PROXY protocol towards remoted (issue: connection handling, source address forwarding)"
@@ -231,12 +233,12 @@ if command -v curl >/dev/null; then
              -H "Authorization: $("$PYTHON" "$PROBE" --print-auth --body "$H2_BODY")" \
              --data-binary "$H2_BODY" https://127.0.0.1:8443/stateless
     }
-    check "h2 client: signature survives h2 -> h1.1"  "2:202" "$(h2_curl --http2)"
+    check "h2 client: token survives h2 -> h1.1"      "2:202" "$(h2_curl --http2)"
     check "control: same request over HTTP/1.1"     "1.1:202" "$(h2_curl --http1.1)"
     check "HTTP/1.1-only client (the probe) works"      "202" "$(status --url "$TERM")"
     note "ALPN decides per client on one port: h2 when offered, HTTP/1.1 when not. The conversion"
-    note "cannot break the signature: the canonical string (method, target, agent id, timestamp,"
-    note "body) exists identically in both versions, and framing is not signed."
+    note "cannot break the token: it is an opaque Authorization value that binds the agent's identity"
+    note "only; nothing about the HTTP framing takes part in authentication."
     use_config both_topologies
 else
     note "curl not found -- HTTP/2 checks skipped (the probe itself only speaks HTTP/1.1)"
@@ -353,7 +355,7 @@ use_mode none
 
 # ============================================================ issue: replay protection
 group "Replay within the accepted timestamp window (issue: replay protection)"
-check "same signature replayed 10 times"         "10x202" "$(summary --url "$TERM" --repeat 10 --interval 0.1)"
+check "same token replayed 10 times"             "10x202" "$(summary --url "$TERM" --repeat 10 --interval 0.1)"
 note "No replay protection beyond the timestamp window. Already true on a single node."
 # Offsets kept a few seconds clear of the exact boundary on purpose: the server evaluates its own
 # clock about a second after the probe stamps the request, so -301 and +31 sit right on the edge
@@ -367,9 +369,10 @@ note "Effective replay window: 90 s (jwt_max_age 60 back, jwt_clock_skew 30 ahea
 
 group "Duplicate delivery across manager nodes (issue: shared replay state in clusters?)"
 FIXED_TS=$("$PYTHON" -c 'import time; print(int(time.time()))')
-check "node 1 accepts and ingests"                  "202" "$(status --url "$NODE1" --timestamp "$FIXED_TS")"
-check "node 2 accepts THE SAME BYTES"               "503" "$(status --url "$NODE2" --timestamp "$FIXED_TS")"
-check "control: node 2 rejects a tampered body"     "401" "$(status --url "$NODE2" --timestamp "$FIXED_TS" --tamper)"
+FIXED_JTI="AAECAwQFBgcICQoLDA0ODw"  # pinned with --timestamp so both nodes see byte-identical tokens
+check "node 1 accepts and ingests"                  "202" "$(status --url "$NODE1" --timestamp "$FIXED_TS" --jti "$FIXED_JTI")"
+check "node 2 accepts THE SAME BYTES"               "503" "$(status --url "$NODE2" --timestamp "$FIXED_TS" --jti "$FIXED_JTI")"
+check "control: node 2 rejects a tampered token"    "401" "$(status --url "$NODE2" --timestamp "$FIXED_TS" --jti "$FIXED_JTI" --tamper)"
 check "control: node 2 rejects an expired stamp"    "401" "$(status --url "$NODE2" --timestamp-offset -400)"
 note "The 503 means node 2 authenticated a request already consumed by node 1: the request is not"
 note "bound to any node. A per-node replay cache would therefore be useless behind a balancer."

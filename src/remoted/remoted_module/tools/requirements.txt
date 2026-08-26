@@ -1,3 +1,5 @@
 requests>=2.31.0
+# cryptography: only send_enroll.py still needs it (WazuhEnroll HKDF + AES-CMAC) until /enroll
+# moves to its own JWT profile; the agent bearer token (wire_jwt.py) is pure stdlib.
 cryptography>=41.0.0
 zstandard>=0.21.0
