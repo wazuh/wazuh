@@ -127,16 +127,21 @@ getPreinstalledDirByType()
     fi
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
+        if [ -f /Library/LaunchDaemons/com.wazuh.agent.plist ]; then
+            PREINSTALLEDDIR=`sed -n 's/^[[:space:]]*<string>\(.*\)\/Wazuh-launcher<\/string>$/\1/p' /Library/LaunchDaemons/com.wazuh.agent.plist`
+            if [ -d "$PREINSTALLEDDIR" ]; then
+                return 0;
+            fi
+        fi
+        # Legacy StartupItems service, kept only to detect an upgrade from a
+        # package older than the LaunchDaemon-only service (see darwin-init.sh).
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
             PREINSTALLEDDIR=`sed -n 's/^ *//; s/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
-            else
-                return 1;
             fi
-        else
-            return 1;
         fi
+        return 1;
     fi
     # Checking for SunOS
     if [ "X${UN}" = "XSunOS" ]; then
