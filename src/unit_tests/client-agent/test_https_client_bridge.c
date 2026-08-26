@@ -998,8 +998,30 @@ static void test_registered_state_twice_clears_wait_file_each_time(void **state)
 }
 
 /* on_producer_pause: the confirmed-disconnect pause. Both directions move the
- * lock and the .state status together. */
-static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **state)
+ * lock and the .state status together; the two pause cases below differ only in
+ * whether the module handed over a transport reason to name. */
+static void test_producer_pause_with_a_reason_names_the_cause(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Manager unreachable. Pausing module event production. Reason: (60) SSL peer "
+                  "certificate or SSH remote key was not OK");
+    expect_function_call(__wrap_os_setwait);
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_producer_pause(true, "(60) SSL peer certificate or SSH remote key was not OK",
+                                          g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* The reason is empty whenever the module has nothing to add -- a pause armed by
+ * an answered rejection rather than a transport failure. */
+static void test_producer_pause_without_a_reason_logs_the_bare_message(void **state)
 {
     (void)state;
     start_client_successfully();
@@ -1009,7 +1031,7 @@ static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **st
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
 
-    g_captured_callbacks.on_producer_pause(true, g_captured_callbacks.user_data);
+    g_captured_callbacks.on_producer_pause(true, "", g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1027,7 +1049,7 @@ static void test_producer_pause_release_clears_the_lock_and_reports_connected(vo
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
 
-    g_captured_callbacks.on_producer_pause(false, g_captured_callbacks.user_data);
+    g_captured_callbacks.on_producer_pause(false, "", g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -2381,7 +2403,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_producer_pause_arms_the_lock_and_reports_disconnected, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_with_a_reason_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_without_a_reason_logs_the_bare_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),
