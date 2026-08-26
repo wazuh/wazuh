@@ -176,7 +176,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
         If the response for the request is not 200 OK.
     """
 
-    logging.debug(f"Graph request - URL: {url} - Headers: {headers}")
+    logging.debug(f"Graph request - URL: {url}")
     logging.info("Graph: Requesting data")
     response = get(url=url, headers=headers, timeout=10)
 
