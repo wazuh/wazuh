@@ -80,17 +80,17 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
-void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
+bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
     int increase_result = fim_db_increase_each_entry_version(table_name);
     if (increase_result == -1) {
         merror("Failed to increase version for each entry in %s", table_name);
-        return;
+        return false;
     }
     // Get all synced items from the table
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s", table_name);
-        return;
+        return false;
     }
 
     int item_count = cJSON_GetArraySize(items);
@@ -111,7 +111,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     else {
         merror("Invalid table name: %s", table_name);
         cJSON_Delete(items);
-        return;
+        return false;
     }
 
     // Clear the manager's index for this table before resending: recovery is now a
@@ -123,7 +123,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         merror("Failed to clear index '%s' before recovery resync for table %s; will retry later",
                recovery_index, table_name);
         cJSON_Delete(items);
-        return;
+        return false;
     }
 
     // Process each item
@@ -195,7 +195,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             merror("Invalid table name: %s", table_name);
             cJSON_Delete(item_copy);
             cJSON_Delete(items);
-            return;
+            return false;
         }
 
         // Calculate SHA1 hash of id
@@ -288,6 +288,50 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     } else {
         mdebug1("Recovery synchronization failed, will retry later%s%s", result.failure_reason[0] != '\0' ? ": " : "", result.failure_reason);
     }
+
+    // True from here on: the manager accepted the DataClean above and every row is queued, so
+    // a caller gating durable state on this is recording something the manager really saw. A
+    // failed final sync is not that -- the rows stay queued and the ordinary cycle drains them.
+    return true;
+}
+
+bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list) {
+    const long current_id = asp_get_agent_id();
+
+    if (current_id == 0) {
+        // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
+        // previous id, must never read as a new identity.
+        return false;
+    }
+
+    const int64_t synced_id = fim_db_get_last_sync_time(FIM_SYNCED_AGENT_ID_METADATA_KEY);
+
+    if (synced_id <= 0) {
+        // First time we record one: a clean install, or a database from before this marker
+        // existed. Adopt it and resync nothing -- on a clean install the ordinary first sync
+        // covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // been maintaining all along.
+        fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
+        return false;
+    }
+
+    if (synced_id == (int64_t)current_id) {
+        return false;
+    }
+
+    minfo("FIM data was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
+          (long)synced_id, current_id);
+
+    for (int i = 0; i < table_count; i++) {
+        if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
+            // Leave the marker untouched so this re-fires next cycle. Recording it now would
+            // claim the manager holds data it never received.
+            return false;
+        }
+    }
+
+    fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
+    return true;
 }
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync

@@ -519,6 +519,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,fim_db_increase_each_entry_version \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_persist_diff \
                          -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \
+                         -Wl,--wrap,asp_get_agent_id \
                          -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
                          -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
                          -Wl,--wrap,build_stateful_event_registry_value \

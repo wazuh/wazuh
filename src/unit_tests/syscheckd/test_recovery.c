@@ -608,6 +608,147 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
 }
 #endif // WIN32
 
+
+// #38601: an agent deleted on the manager re-enrolls under a new id while fim.db -- the
+// first-sync marker in it included -- survives untouched, so every later cycle sends a delta
+// against a baseline the manager no longer has for this identity. These cases pin the decision
+// procedure that repairs it, and above all the two ways it must NOT fire.
+
+// The marker has never been recorded -- every agent on its first cycle after an upgrade. It must
+// be adopted in silence: resyncing here would have an in-place fleet upgrade resend every
+// agent's whole database at once.
+static void test_fim_resync_on_agent_id_change_absent_marker_is_adopted(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    will_return(__wrap_asp_get_agent_id, 1);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+
+    // Adopted, and nothing more: no version bump, no DataClean, no table resent. Any of those
+    // would mean an upgrading fleet resyncs all at once.
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 1);
+
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
+// The id is unchanged: the steady state, and also what a re-enrollment handing back the SAME id
+// looks like -- a key rotation, an authd password change, any 401 that is not a deletion. Getting
+// this wrong would resync the whole fleet on every credential refresh.
+static void test_fim_resync_on_agent_id_change_same_id_is_noop(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    will_return(__wrap_asp_get_agent_id, 7);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 7);
+
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
+// The provider has published nothing. "Unknown" must never read as "changed", or an agent whose
+// metadata has not been published yet would resync on every single cycle. Not even the marker is
+// read here.
+static void test_fim_resync_on_agent_id_change_unknown_id_is_noop(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    will_return(__wrap_asp_get_agent_id, 0);
+
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
+// The id changed: the table is resent in full and only then are both markers advanced.
+static void test_fim_resync_on_agent_id_change_resends_and_records(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 1);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON* item = cJSON_CreateObject();
+    cJSON_AddStringToObject(item, "path", "/tmp/identity.txt");
+    cJSON_AddStringToObject(item, "checksum", "abc123");
+    cJSON_AddNumberToObject(item, "version", 1);
+    cJSON_AddNumberToObject(item, "inode", 12345);
+    cJSON_AddItemToArray(test_items, item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    // The manager accepting this is what makes the markers below honest.
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
+
+    expect_string(__wrap_fim_configuration_directory, path, "/tmp/identity.txt");
+    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
+
+    expect_string(__wrap_build_stateful_event_file, path, "/tmp/identity.txt");
+    cJSON* mock_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(mock_event, "type", "file");
+    will_return(__wrap_build_stateful_event_file, mock_event);
+
+    will_return(__wrap_schema_validator_is_initialized, false);
+
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
+
+    assert_true(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
+// A table that could not be resent records nothing, so the next cycle tries again. Recording it
+// would claim the manager holds data it never received.
+static void test_fim_resync_on_agent_id_change_failed_table_records_nothing(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 1);
+
+    // Fails at the very first step, so nothing reaches the manager.
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, -1);
+
+    // No fim_db_update_last_sync_time_value expectation: writing one here would be the bug.
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_first_time),
@@ -621,6 +762,11 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_mismatch),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_match),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_null_checksum),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_absent_marker_is_adopted),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_same_id_is_noop),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_unknown_id_is_noop),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_resends_and_records),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_table_records_nothing),
         cmocka_unit_test(test_buildFileStatefulEvent_success),
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),
