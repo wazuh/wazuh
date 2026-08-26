@@ -881,7 +881,7 @@ void fim_send_scan_info(fim_scan_event event);
  * @brief Checks the DB state, sends a message alert if necessary
  *
  */
-void fim_check_db_state();
+void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state, const char* table_name);
 
 /**
  * @brief Checks the size of the queue/diff/local folder

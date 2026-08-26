@@ -60,7 +60,7 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     const char *cfg = OSSECCONF;
     gid_t gid;
-    const char *group = QUOTE(GROUPGLOBAL);
+    const char *group = GROUPGLOBAL;
     directory_t *dir_it = NULL;
     int start_realtime = 0;
 
