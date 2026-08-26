@@ -237,6 +237,57 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportFailureReportsLocalTrans
     EXPECT_EQ(second.consecutiveFailures, 2U);
 }
 
+// Regression guard for a race trackLocalTransportFailure() used to have: it called shouldStop()
+// itself instead of taking the caller's already-computed value, so a stop() landing between the
+// caller's read (for the "stopped" field) and trackLocalTransportFailure()'s own read could leave
+// the two disagreeing -- stopped=false in the result, but the streak silently not incremented
+// (the internal read saw the stop and skipped the bump). A background thread hammers
+// stop()/reset() throughout to make that window likely to be hit at least once; with the caller's
+// single read now threaded through as a parameter, the two can no longer disagree regardless of
+// timing, so this passes deterministically post-fix and would fail intermittently pre-fix.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedAndStreakStayConsistentUnderConcurrentStop)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::atomic<bool> keepToggling {true};
+    std::thread toggler(
+        [&]()
+    {
+        while (keepToggling.load(std::memory_order_relaxed))
+        {
+            protocol->stop();
+            protocol->reset();
+        }
+    });
+
+    unsigned int previousFailures = 0;
+    constexpr int ITERATIONS = 20000;
+
+    for (int i = 0; i < ITERATIONS; ++i)
+    {
+        const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+
+        if (!result.stopped)
+        {
+            // Not reported as a shutdown-time abort, so this attempt must have been counted: the
+            // streak has to have grown. A streak that failed to grow here is exactly the
+            // inconsistency the pre-fix double read could produce.
+            EXPECT_GT(result.consecutiveFailures, previousFailures)
+                    << "iteration " << i << ": stopped=false but the local-transport-failure "
+                    "streak did not grow.";
+            previousFailures = result.consecutiveFailures;
+        }
+    }
+
+    keepToggling.store(false, std::memory_order_relaxed);
+    toggler.join();
+    protocol->reset();
+}
+
 // Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
 // FIM depends on to distinguish a shutdown-aborted sync from a genuine failure.
 TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
