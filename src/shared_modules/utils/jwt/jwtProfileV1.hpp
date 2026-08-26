@@ -14,6 +14,8 @@
 /// token an agent self-signs with its client.keys secret (HS256) to authenticate to remoted over
 /// TLS. Shared by the manager (verifier), the agent (signer) and every test. Nothing here is
 /// negotiable on the wire: a token is either exactly this profile or it is rejected.
+/// The JSON text of the header and of the claims is ASCII (every value the profile carries is);
+/// a non-ASCII byte anywhere in either segment is an invalid token (strictJsonObject.hpp).
 
 #pragma once
 

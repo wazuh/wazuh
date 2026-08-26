@@ -1460,7 +1460,11 @@ peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme, 
 resolve the CANDIDATE key from the keystore (and the registered-address verdict in the same pass),
 then the verifier, then `AuthError`. Nothing from the token is trusted before its signature except
 the bounded `kid` used for the lookup, and the algorithm is fixed to HS256 — never read from the
-token. Metrics: every client-visible rejection is counted with its pre-collapse cause as
+token. The JSON pre-parse (`StrictJsonObject`) is ASCII-only and length-bounded (rapidjson
+`MemoryStream`, not a NUL-terminated `StringStream`): the profile text never needs anything else, and
+it keeps rapidjson's UTF-8 validation — which consumes continuation bytes without checking for the end
+of a C string — from ever running over a decoded segment (the ASAN CI finding on the fuzz test).
+Metrics: every client-visible rejection is counted with its pre-collapse cause as
 `remoted.auth.reject.*` (catalog in `endpoints/endpoint.hpp`, counted at `errorResponseFor()`),
 and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
 [Metrics catalog](#metrics-catalog). `authTypes.hpp` holds the shared contract

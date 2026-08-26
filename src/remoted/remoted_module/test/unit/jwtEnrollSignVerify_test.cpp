@@ -151,6 +151,22 @@ TEST(EnrollVerifier, HeaderMustBeExactlyAlgAndTyp)
               VerifyError::InvalidToken);
 }
 
+TEST(EnrollVerifier, RejectsNonAsciiTextInEitherSegment)
+{
+    // The profile text is ASCII; a truncated multi-byte lead at the end of a decoded segment is the
+    // ASAN regression (bounded pre-parse), a complete UTF-8 sequence is simply not the profile.
+    EXPECT_EQ(verifyAt(mint(R"({"alg":"HS256","typ":"wazuh-enroll+jwt)"
+                            "\xF0",
+                            tv::kPayloadJson)),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(verifyAt(mint(tv::kHeaderJson, std::string(tv::kPayloadJson).substr(0, 20) + "\xE2\x82")),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(verifyAt(mint(tv::kHeaderJson, payload(tv::kIat, tv::kIat, tv::kExp, "AAECAwQFBgcICQoLDA0OD\xC3\xA9"))),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(verifyAt(mint("\xEF\xBB\xBF" + std::string(tv::kHeaderJson), tv::kPayloadJson)),
+              VerifyError::InvalidToken);
+}
+
 TEST(EnrollVerifier, ClaimsMustBeExactlyExpIatJtiNbf)
 {
     const auto valid = payload(tv::kIat, tv::kIat, tv::kExp);

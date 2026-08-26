@@ -12,13 +12,18 @@
 /// @file strictJsonObject.hpp
 /// One-pass strict parser for the flat JSON objects of the JWT profiles (JOSE header, claims set):
 /// an exact allowlist of members, each with a fixed type (string or non-negative integer), no
-/// duplicates, no nesting, no extra members, root must be an object, UTF-8 validated. Built on
-/// rapidjson's SAX Reader so nothing is materialised beyond the expected fields -- the strictness a
+/// duplicates, no nesting, no extra members, root must be an object, **ASCII only** (the profiles'
+/// values -- algorithm, type, canonical agent id, base64url jti, integers -- never need anything
+/// else, and a non-ASCII byte is therefore a rejected token, never a "valid UTF-8" question). Built
+/// on rapidjson's SAX Reader over a length-bounded stream, so nothing is materialised beyond the
+/// expected fields and the parser can never read past the text it was given -- the strictness a
 /// generic JWT library cannot offer (jwtCppSpike_test.cpp pins why). Reused by every profile.
 
 #pragma once
 
+#include <rapidjson/encodedstream.h>
 #include <rapidjson/error/error.h>
+#include <rapidjson/memorystream.h>
 #include <rapidjson/reader.h>
 
 #include <array>
@@ -49,20 +54,25 @@ namespace jwt_profile::v1
         static bool parse(const Fields& fields, std::string_view json, StrictJsonObject& out) noexcept
         {
             out = StrictJsonObject {};
-            // rapidjson's StringStream needs a NUL-terminated buffer; JSON text never legitimately
-            // contains a raw NUL, and one inside a string would trip the parser anyway.
-            std::string buffer;
-            try
+            // ASCII only: the profile text never needs anything else, so this is a rule of the
+            // profile, not a heuristic. It also keeps rapidjson's UTF-8 validation out of the
+            // picture entirely -- its multi-byte path consumes continuation bytes without checking
+            // for the end of the input, which is exactly the class of bug a bounded stream must never
+            // be exposed to (a truncated lead byte at the end of a decoded segment).
+            for (const unsigned char c : json)
             {
-                buffer.assign(json.data(), json.size());
-            }
-            catch (...)
-            {
-                return false;
+                if (c >= 0x80)
+                {
+                    return false;
+                }
             }
             Sink sink {fields, out};
             rapidjson::Reader reader;
-            rapidjson::StringStream stream {buffer.c_str()};
+            // Length-bounded input (what rapidjson's own Document::Parse(str, len) does underneath):
+            // MemoryStream hands back '\0' forever once it reaches the end, so no parser path --
+            // encoding validation included -- can read past `json`. No copy, no NUL terminator needed.
+            rapidjson::MemoryStream memory {json.data(), json.size()};
+            rapidjson::EncodedInputStream<rapidjson::UTF8<>, rapidjson::MemoryStream> stream {memory};
             const auto result = reader.Parse<rapidjson::kParseValidateEncodingFlag>(stream, sink);
             return !result.IsError() && sink.complete() && !sink.failed;
         }

@@ -903,6 +903,7 @@ components:
         - acceptance window: `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default,
           `remoted.jwt_max_age` / `remoted.jwt_clock_skew`), never more than `jwt_clock_skew` s
           before `iat`
+        - the JSON text of header and claims is ASCII; any non-ASCII byte is an invalid token
 
         The token authenticates identity and freshness only: method, target and body are not signed
         (TLS protects them). Every credential failure is the same `401` with

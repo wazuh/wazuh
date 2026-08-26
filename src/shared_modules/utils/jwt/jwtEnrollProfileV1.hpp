@@ -18,6 +18,7 @@
 ///   claims  exactly {exp, iat, jti, nbf}                        -- no `iss`/`sub`: no identity to assert
 ///   key     HKDF-SHA256(IKM = password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01, L = 32)
 /// A token of either profile presented to the other's verifier fails on `typ` (exact header set).
+/// Like the agent profile, the JSON text of both segments is ASCII; anything else is an invalid token.
 
 #pragma once
 

@@ -465,7 +465,12 @@ TEST(JwtVerify, RejectsStructuralTimeRelationsAndOverflowSafely)
     const std::string edge =
         R"({"exp":9223372036854775807,"iat":9223372036854775747,"iss":"wazuh-agent/001","jti":"AAECAwQFBgcICQoLDA0ODw","nbf":9223372036854775747,"sub":"001"})";
     EXPECT_REJECTED(run(withPayload(edge, key), key), VerifyError::StaleToken, "int64 edge");
-    EXPECT_REJECTED(run(withPayload(edge, key), key, INT64_MAX - 1), VerifyError::StaleToken, "clock at int64 edge");
+    // The largest reading the clock can represent (a system_clock time_point counts nanoseconds, so
+    // seconds near INT64_MAX are not constructible without overflowing the conversion).
+    const auto clockMaxSeconds = std::chrono::duration_cast<std::chrono::seconds>(
+                                     std::chrono::system_clock::time_point::max().time_since_epoch())
+                                     .count();
+    EXPECT_REJECTED(run(withPayload(edge, key), key, clockMaxSeconds), VerifyError::StaleToken, "clock at its maximum");
     // Zero timestamps: structurally fine, far in the past.
     const std::string zero =
         R"({"exp":60,"iat":0,"iss":"wazuh-agent/001","jti":"AAECAwQFBgcICQoLDA0ODw","nbf":0,"sub":"001"})";
@@ -604,6 +609,26 @@ TEST(JwtVerify, RejectsInvalidJsonUtf8AndNonObjectSegments)
     EXPECT_REJECTED(run(withHeader(R"({"alg":"HS256","kid":"001","typ":"wazuh-agent+jwt",})", key), key),
                     VerifyError::InvalidToken,
                     "trailing comma");
+
+    // Non-ASCII bytes: the profile text is ASCII, and a truncated multi-byte lead at the very end of a
+    // decoded segment is the ASAN regression (rapidjson's UTF-8 validation over a NUL-terminated
+    // stream read past the buffer). Correct signature either way: the JSON pre-parse rejects them.
+    const std::string headerHead = R"({"alg":"HS256","kid":"001","typ":"wazuh-agent+jwt)";
+    EXPECT_REJECTED(
+        run(withHeader(headerHead + "\xF0", key), key), VerifyError::InvalidToken, "header ends in a lead byte");
+    EXPECT_REJECTED(
+        run(withHeader(headerHead + "\xE2\x82", key), key), VerifyError::InvalidToken, "header ends mid-sequence");
+    EXPECT_REJECTED(
+        run(withHeader(headerHead + "\xC3\xA9\"}", key), key), VerifyError::InvalidToken, "valid UTF-8 in typ");
+    EXPECT_REJECTED(
+        run(payloadReplacing(R"("iss":"wazuh-agent/001")", "\"iss\":\"wazuh-agent/001\xC3\xA9\"", key), key),
+        VerifyError::InvalidToken,
+        "valid UTF-8 in iss");
+    EXPECT_REJECTED(run(withPayload(std::string(tv::kPayloadJson).substr(0, 20) + "\xF0", key), key),
+                    VerifyError::InvalidToken,
+                    "payload ends in a lead byte");
+    EXPECT_REJECTED(
+        run(withHeader("\xEF\xBB\xBF" + std::string(tv::kHeaderJson), key), key), VerifyError::InvalidToken, "BOM");
 
     EXPECT_REJECTED(run(withPayload("[1]", key), key), VerifyError::InvalidToken, "payload array");
     EXPECT_REJECTED(run(withPayload("null", key), key), VerifyError::InvalidToken, "payload null");

@@ -128,7 +128,10 @@ Verification is fail-closed and happens in a fixed order: size and compact gramm
 key lookup by `kid` (and the [registered address](#registered-address-ip-column) check) → signature →
 exact claim set and types → identity (`sub` and `iss` must name the `kid` agent) → time rules →
 `jti` shape. A duplicate JSON member, a non-canonical base64url spelling, a padded segment, a
-string where an integer is expected or any extra member anywhere is an invalid token.
+string where an integer is expected or any extra member anywhere is an invalid token. The JSON text of
+both segments is **ASCII** — every value the profile carries is — so any non-ASCII byte (a UTF-8
+sequence, a BOM) is an invalid token as well; the parser is bounded by the segment's length and never
+inspects encoding beyond that rule.
 
 **What the token does and does not bind.** It authenticates the agent's identity and freshness. It
 does **not** cover the HTTP method, the request target or the body — TLS is what protects those
