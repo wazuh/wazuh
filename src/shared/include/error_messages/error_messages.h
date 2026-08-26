@@ -83,6 +83,7 @@
 #define RULES_ERROR     "(1220): Error loading the rules: '%s'."
 #define LISTS_ERROR     "(1221): Error loading the list: '%s'."
 #define IMSG_ERROR      "(1222): Invalid msg: %s"
+#define XML_OBSOLETE    "(1223): '%s' is no longer supported and will be ignored. %s"
 #define QUEUE_SEND      "(1224): Error sending message to queue."
 #define SIGNAL_RECV     "(1225): SIGNAL [(%d)-(%s)] Received. Exit Cleaning..."
 #define XML_ERROR       "(1226): Error reading XML file '%s': %s (line %d)."
