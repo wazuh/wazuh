@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
 - Fixed the cluster server keeping pre-authentication connections open indefinitely by adding a handshake deadline and a global connection limit. ([#38449](https://github.com/wazuh/wazuh/pull/38449))
 - Fixed a memory leak in the `wazuh-analysisd` JSON decoder when an event repeats a static field. ([#38548](https://github.com/wazuh/wazuh/pull/38548))
+- Restricted the Azure Graph wodle pagination to the Microsoft Graph endpoint, so the authentication token is not sent to another host. ([#38594](https://github.com/wazuh/wazuh/pull/38594))
 
 ### Agent
 
