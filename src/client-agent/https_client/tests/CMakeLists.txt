@@ -70,9 +70,13 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # support macro and the vendored OpenSSL symbols linked directly (wazuhext
   # does not re-export them).
   # CPPHTTPLIB_ZSTD_SUPPORT: cpp-httplib >= 0.20 answers 415 to any
-  # `Content-Encoding: zstd` request it cannot decode, so the fake manager
-  # decodes compressed /stateful sessions the way the real manager does
-  # (ext_zstd is linked below anyway).
+  # `Content-Encoding: zstd` request it cannot decode, so with the manager
+  # tree's 0.25.0 the fake manager decodes compressed /stateful sessions the
+  # way the real manager does (ext_zstd is linked below anyway). Agent builds
+  # (Linux TARGET=agent, macOS) do not ship cpp-httplib in EXTERNAL_RES: the
+  # http-request CMake downloads 0.10.9 (its EXTERNAL_DEPS_VERSION=19 default),
+  # which ignores this macro and passes the frame through -- fakeManager.hpp
+  # inflates it itself in that case, so the tests hold under both versions.
   target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT
                                                                  CPPHTTPLIB_ZSTD_SUPPORT)
   target_link_libraries(

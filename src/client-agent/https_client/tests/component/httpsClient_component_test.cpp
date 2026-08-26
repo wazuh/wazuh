@@ -310,9 +310,11 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     const auto response = m_performer.perform(spec);
 
     EXPECT_EQ(200, response.httpCode);
-    // The fake manager (cpp-httplib with CPPHTTPLIB_ZSTD_SUPPORT) decodes the
-    // body the way the real manager does and reports the decoded size, so
-    // this proves the smaller wire body inflated back to the full session.
+    // The fake manager reports the *inflated* size the way the real manager
+    // would see it -- decoded by cpp-httplib itself (0.25.0 in the manager tree,
+    // with CPPHTTPLIB_ZSTD_SUPPORT) or by the fake's own zstd pass (0.10.9 in
+    // agent builds hands the frame over untouched) -- so this proves the
+    // smaller wire body inflated back to the full session on every CI leg.
     EXPECT_NE(std::string::npos, response.body.find("\"bytes\":" + std::to_string(payload.size())));
 
     // Prove those wire bytes are what a real IBodyDecoder would accept: read

@@ -25,6 +25,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <zstd.h>
 
 #include <atomic>
 #include <chrono>
@@ -35,6 +36,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -312,8 +314,40 @@ class FakeManager final
                 });
             }
 
+            // Size of the session as the manager would see it. Agent builds compile the fake
+            // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
+            // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
+            // the manager tree's 0.25.0 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
+            // runs. Inflate here whenever the body is still a zstd frame so the compression test
+            // proves the same thing -- wire bytes back to the full session -- under both.
+            const auto statefulBytes = [](const httplib::Request & request) -> std::size_t
+            {
+                const auto& body = request.body;
+                const bool zstdFrame = body.size() >= 4 && static_cast<unsigned char>(body[0]) == 0x28 &&
+                static_cast<unsigned char>(body[1]) == 0xB5 &&
+                static_cast<unsigned char>(body[2]) == 0x2F &&
+                static_cast<unsigned char>(body[3]) == 0xFD;
+
+                if (request.get_header_value("Content-Encoding") != "zstd" || !zstdFrame)
+                {
+                    return body.size();
+                }
+
+                const auto expected = ZSTD_getFrameContentSize(body.data(), body.size());
+
+                if (expected == ZSTD_CONTENTSIZE_ERROR || expected == ZSTD_CONTENTSIZE_UNKNOWN)
+                {
+                    return 0;
+                }
+
+                std::vector<char> inflated(static_cast<std::size_t>(expected));
+                const auto produced = ZSTD_decompress(inflated.data(), inflated.size(), body.data(), body.size());
+                return ZSTD_isError(produced) ? 0 : produced;
+            };
+
             server.Post("/stateful",
-                        [verify, lastSession, holdFile](const httplib::Request & request, httplib::Response & response)
+                        [verify, lastSession, holdFile, statefulBytes](const httplib::Request & request,
+                                                                       httplib::Response & response)
             {
                 if (!verify("/stateful", request))
                 {
@@ -338,7 +372,7 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(std::string {"{\"sessionId\":\""} + session +
                                      "\",\"cached\":" + (cached ? "true" : "false") +
-                                     ",\"bytes\":" + std::to_string(request.body.size()) + "}",
+                                     ",\"bytes\":" + std::to_string(statefulBytes(request)) + "}",
                                      "application/json");
             });
 
