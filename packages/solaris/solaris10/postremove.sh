@@ -9,3 +9,7 @@ fi
 if getent group wazuh > /dev/null 2>&1; then
   groupdel wazuh
 fi
+
+# pkgrm only removes the pathnames listed in the package, so files created at
+# runtime and the directories holding them are left behind
+rm -rf /var/ossec
