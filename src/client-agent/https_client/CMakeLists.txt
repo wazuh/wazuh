@@ -26,6 +26,18 @@ target_compile_options(
   https_client PRIVATE -Wall -Wextra -Wshadow -Wnon-virtual-dtor
                        -Woverloaded-virtual -Wunused -Wcast-align -fPIC)
 
+# os_cert_bundle.c (vendored above) also compiles into libwazuh.so via
+# shared/CMakeLists.txt's src/*.c glob, so with default visibility os_find_ca_bundle is a
+# global symbol duplicated across two .so's loaded into the same agentd process -- harmless
+# today (identical source both places) but fragile if one copy is ever patched without the
+# other. uds_http_server hides its whole vendored target the same way for the same reason
+# (shared_modules/uds_http_server/CMakeLists.txt); a target-wide hide isn't an option here,
+# though -- tests/component/tlsVerification_component_test.cpp links straight against
+# https_client's internal C++ classes (CurlPerformer, ConfigKeyProvider, ...), which aren't
+# HC_EXPORTED and would go unresolved. Scoped to just this one file instead.
+set_source_files_properties(${SRC_FOLDER}/shared/src/os_cert_bundle.c
+                            PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden")
+
 target_include_directories(
   https_client
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
