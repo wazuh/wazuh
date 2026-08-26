@@ -40,9 +40,10 @@ public:
     /// profile key or the agent id is not numeric.
     std::optional<SignedHeaders> sign(std::time_t timestamp) const override;
 
-private:
-    std::string agentId() const;
+    /// The live id (see ISigner::agentId); guarded like setAgentId().
+    std::string agentId() const override;
 
+private:
     mutable std::mutex m_agentIdMutex;
     std::string m_agentId;
     const IKeyProvider& m_keyProvider;

@@ -20,23 +20,29 @@ namespace
     // Reporters never retry in the loop: a fresh snapshot is collected next
     // cycle, so a failed send just reschedules.
     constexpr uint32_t REPORTER_MAX_ATTEMPTS = 1;
-    constexpr auto MIN_SLEEP = std::chrono::milliseconds
-    {
-        100
-    };
-    constexpr auto MAX_SLEEP = std::chrono::milliseconds
-    {
-        60000
-    };
-}
+    constexpr auto MIN_SLEEP = std::chrono::milliseconds {100};
+    constexpr auto MAX_SLEEP = std::chrono::milliseconds {60000};
+} // namespace
 
-ReporterStream::ReporterStream(const ModuleConfig& config, IHttpPerformer& performer,
-                               const ISigner& signer, IClock& clock, IRandom& random,
-                               AuthGate& authGate, CompressionGate& compressionGate,
-                               ClusterIdentity& cluster, ICollectorSource& collectors)
+ReporterStream::ReporterStream(const ModuleConfig& config,
+                               IHttpPerformer& performer,
+                               const ISigner& signer,
+                               IClock& clock,
+                               IRandom& random,
+                               AuthGate& authGate,
+                               CompressionGate& compressionGate,
+                               ClusterIdentity& cluster,
+                               ICollectorSource& collectors)
     : m_config(config)
+    , m_signer(signer)
     , m_sendBackoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_sendBackoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    , m_sender(performer,
+               signer,
+               clock,
+               m_sendBackoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_clock(clock)
     , m_authGate(authGate)
@@ -85,8 +91,7 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
     return sleepHint();
 }
 
-void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter,
-                             std::optional<std::string> collected)
+void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected)
 {
     const auto now = m_clock.steadyNow();
     const auto document = stampedDocument(std::move(collected));
@@ -123,9 +128,8 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter,
     else if (result.outcome == OutcomeClass::BackPressure)
     {
         const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
-        path.nextDue = now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(
-                                          serverDelay),
-                                      backoff.next());
+        path.nextDue =
+            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next());
     }
     else
     {
@@ -151,7 +155,7 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
     }
 
     const auto cluster = m_cluster.get();
-    document["agent_id"] = m_config.agentId;
+    document["agent_id"] = m_signer.agentId(); // The live id: a re-enroll may have swapped it.
     document["cluster"] = {{"name", cluster.name}};
     return document.dump();
 }
@@ -163,14 +167,12 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
 
     if (m_stats.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(
-                               m_stats.nextDue - now));
+        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_stats.nextDue - now));
     }
 
     if (m_config_.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(
-                               m_config_.nextDue - now));
+        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_config_.nextDue - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

@@ -241,3 +241,26 @@ TEST_F(ReporterStreamTest, BackPressureDefersOnlyThatPath)
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
 }
+
+TEST_F(ReporterStreamTest, StampFollowsTheSignerIdentityAfterAReenroll)
+{
+    // Same rule as the /stateless H line: the stamped agent_id is the signer's
+    // live id, not the id the module was created with.
+    const auto config = makeConfig(true, false);
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+    m_signer.setAgentId("002");
+
+    std::string body;
+    EXPECT_CALL(m_performer, perform(_))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
+
+    reporter.tick(m_waiter, true);
+    EXPECT_NE(std::string::npos, body.find(R"("agent_id":"002")"));
+    EXPECT_EQ(std::string::npos, body.find(R"("agent_id":"001")"));
+}

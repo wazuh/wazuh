@@ -160,12 +160,21 @@ TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
 {
     // The H line is JSON: an id carrying a quote must not be able to close the
     // string it sits in and rewrite the rest of the object.
-    hc_config_t raw {};
-    std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
-    std::strncpy(raw.agent_id, R"(0"01)", sizeof(raw.agent_id) - 1);
-    raw.verify_mode = HC_VERIFY_NONE;
-    const ModuleConfig config = ModuleConfig::fromC(raw);
-    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
+    // The id comes from the signer (ISigner::agentId(), the live identity), so
+    // the hostile value is injected there; the JwtSigner itself refuses to mint
+    // for a non-numeric id, hence the stub.
+    struct QuoteIdSigner final : ISigner
+    {
+        std::optional<SignedHeaders> sign(std::time_t) const override
+        {
+            return SignedHeaders {"protocol-version: 1", "Authorization: Bearer stub"};
+        }
+        std::string agentId() const override
+        {
+            return R"(0"01)";
+        }
+    } signer;
+    StatelessStream stream {m_config, m_performer, signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -798,4 +807,69 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
     ASSERT_EQ(2u, decompressedBodies.size());
     EXPECT_NE(std::string::npos, decompressedBodies[1].find("E aaaa\n"));
     EXPECT_EQ(0u, stream.droppedEvents());
+}
+
+TEST_F(StatelessStreamTest, HeaderLineFollowsTheSignerIdentityAfterAReenroll)
+{
+    // hc_set_agent_identity() can hand the signer a new numeric id (#38465).
+    // The H line must name the same agent as the bearer that signs the batch,
+    // or the manager answers 400 PayloadAgentMismatch to every batch.
+    m_signer.setAgentId("002");
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
+
+    ASSERT_TRUE(submit("event"));
+    m_stream.tick(m_waiter, true);
+
+    EXPECT_EQ("002", parseWazuhHeader(sentBody).at("agent").at("id").get<std::string>());
+}
+
+TEST_F(StatelessStreamTest, IdentitySwapMidFlightKeepsTheBatchAndRestampsItNextFlush)
+{
+    // The re-enroll path (#38465): a batch built for "001" is in flight when
+    // hc_set_agent_identity() swaps the signer to "002". Its retry is signed by
+    // "002" but the H line still names "001", so the manager answers 400. That
+    // 400 must not drop the events: the next flush re-stamps them with "002".
+    std::vector<std::string> bodies;
+    EXPECT_CALL(m_performer, perform(_))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                bodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                m_signer.setAgentId("002"); // Lands while the request is out.
+                return response(TransportStatus::Ok, 400);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                bodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
+
+    ASSERT_TRUE(submit("event"));
+    m_stream.tick(m_waiter, true);
+    m_stream.tick(m_waiter, true);
+
+    ASSERT_EQ(2u, bodies.size());
+    EXPECT_EQ("001", parseWazuhHeader(bodies[0]).at("agent").at("id").get<std::string>());
+    EXPECT_EQ("002", parseWazuhHeader(bodies[1]).at("agent").at("id").get<std::string>());
+    EXPECT_NE(std::string::npos, bodies[1].find("event")); // Same events, re-stamped.
+}
+
+TEST_F(StatelessStreamTest, AGenuine400StillDropsTheBatch)
+{
+    // Guard for the rule above: with the identity unchanged, a 400 keeps its
+    // documented meaning -- retrying identical bytes cannot help, so drop.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 400)));
+    ASSERT_TRUE(submit("event"));
+    m_stream.tick(m_waiter, true);
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    m_stream.tick(m_waiter, true);
 }
