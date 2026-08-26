@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 // clang-format off
 #include "ebpf_whodata.hpp"
@@ -395,6 +396,8 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_object__next_program_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__next_program");
     bpf_helpers->bpf_program_attach =
         (bpf_program__attach_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__attach");
+    bpf_helpers->bpf_link_destroy =
+        (bpf_link__destroy_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_link__destroy");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)local_sym_load->getFunctionSymbol(
         bpf_helpers->module, "bpf_object__find_map_fd_by_name");
     bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)local_sym_load->getFunctionSymbol(
@@ -422,6 +425,7 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_object_close,
                     bpf_helpers->bpf_object_next_program,
                     bpf_helpers->bpf_program_attach,
+                    bpf_helpers->bpf_link_destroy,
                     bpf_helpers->bpf_object_find_map_fd_by_name,
                     bpf_helpers->bpf_program_set_autoload,
                     bpf_helpers->bpf_program_autoload,
@@ -568,6 +572,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
 
     global_obj = obj;
 
+    std::vector<struct bpf_link*> links;
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj)
     {
@@ -593,10 +598,20 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
                      strerror(saved_errno));
             logFn(LOG_ERROR, error_message);
             logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
+            /* Detach the links already installed in this attempt: a
+             * bpf_link created by bpf_program__attach outlives
+             * bpf_object__close, so without this a partially-attached set
+             * would leak and the kprobe fallback would stack a second,
+             * overlapping hook set on top of it. */
+            for (struct bpf_link* installed : links)
+            {
+                bpf_helpers->bpf_link_destroy(installed);
+            }
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
             return 1;
         }
+        links.push_back(link);
     }
 
     return 0;

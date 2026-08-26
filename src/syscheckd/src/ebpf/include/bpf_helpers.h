@@ -83,6 +83,7 @@ typedef void (*ring_buffer__free_t)(struct ring_buffer *rb);
 typedef void (*bpf_object__close_t)(struct bpf_object *obj);
 typedef struct bpf_program *(*bpf_object__next_program_t)(const struct bpf_object *obj, struct bpf_program *prog);
 typedef struct bpf_link *(*bpf_program__attach_t)(struct bpf_program *prog);
+typedef void (*bpf_link__destroy_t)(struct bpf_link *link);
 typedef int (*bpf_object__find_map_fd_by_name_t)(struct bpf_object *obj, const char *name);
 typedef int (*bpf_program__set_autoload_t)(struct bpf_program *prog, bool autoload);
 typedef bool (*bpf_program__autoload_t)(const struct bpf_program *prog);
@@ -117,6 +118,7 @@ typedef struct {
     bpf_object__close_t bpf_object_close;
     bpf_object__next_program_t bpf_object_next_program;
     bpf_program__attach_t bpf_program_attach;
+    bpf_link__destroy_t bpf_link_destroy;
     bpf_object__find_map_fd_by_name_t bpf_object_find_map_fd_by_name;
     bpf_program__set_autoload_t bpf_program_set_autoload;
     bpf_program__autoload_t bpf_program_autoload;
