@@ -15,8 +15,13 @@ RESOURCES_CACHE = TTLCache(maxsize=100, ttl=10)
 
 
 def clear_tokens_cache():
-    """This function clear the authorization tokens cache."""
-    common.token_cache_event.set()
+    """Invalidate the authorization tokens cache in every process.
+
+    Bumps the shared generation counter so each process flushes its own copy of the cache on
+    its next cached call, rather than relying on a one-shot flag that only one process consumes.
+    """
+    with common.token_cache_generation.get_lock():
+        common.token_cache_generation.value += 1
 
 
 def token_cache(cache: TTLCache = TOKENS_CACHE):
@@ -33,13 +38,21 @@ def token_cache(cache: TTLCache = TOKENS_CACHE):
     """
 
     def decorator(func):
+        # Last invalidation generation this process has already applied to `cache`. It lives in the
+        # closure so it is per decorated function and per process, matching the per-process cache.
+        applied_generation = 0
+
         @wraps(func)
         def wrapper(*args, **kwargs):
+            nonlocal applied_generation
             origin_node_type = kwargs.pop('origin_node_type')
 
-            if common.token_cache_event.is_set():
+            # Reading .value takes the shared lock, as the previous Event.is_set() did, so this
+            # adds no per-request cost over the mechanism it replaces. The counter only ever grows.
+            current_generation = common.token_cache_generation.value
+            if current_generation != applied_generation:
                 cache.clear()
-                common.token_cache_event.clear()
+                applied_generation = current_generation
 
             @cached(cache=cache)
             def f(*_args, **_kwargs):
