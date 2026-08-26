@@ -300,17 +300,26 @@ def test_orphan_promote_after_config_removal(
     time.sleep(2)
     delete_log_text = Path(WAZUH_LOG_PATH).read_text()
 
-    generating_delete_lines = [
-        line for line in delete_log_text.splitlines()
+    all_lines = delete_log_text.splitlines()
+    generating_delete_line_indices = [
+        i for i, line in enumerate(all_lines)
         if re.search(HANDLE_ORPHANED_DELETE_PATTERN, line) and str(target_file) in line
     ]
+    generating_delete_lines = [all_lines[i] for i in generating_delete_line_indices]
     assert generating_delete_lines, (
         f'Expected "Generating delete event for orphaned file" line for '
         f'{target_file}, got none. ossec.log tail:\n{delete_log_text[-2000:]}'
     )
 
+    # The "Persisting FIM event" payload carries no event-type field, so a create and a
+    # delete for the same path produce an identical-looking log line. target_file's original
+    # CREATE (earlier in this same ossec.log, from _setup_orphan_test_folders) already left
+    # one such line — searching the whole file would let that stale line satisfy this
+    # assertion even if the DELETE itself was never persisted, exactly the #38522 bug this
+    # test exists to catch. Anchor the search to lines from the orphan-delete detection
+    # onward so only a persist for THIS delete can match.
     persisted_lines = [
-        line for line in delete_log_text.splitlines()
+        line for line in all_lines[generating_delete_line_indices[0]:]
         if re.search(PERSISTING_FIM_EVENT_PATTERN.format(path=target_file_pattern), line)
     ]
     assert persisted_lines, (
