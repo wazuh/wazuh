@@ -45,6 +45,7 @@
 fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
+void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates);
 void create_unix_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
@@ -1366,6 +1367,208 @@ static void test_fim_file_modify(void **state) {
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
+}
+
+// Regression tests for #38608: reconcile_failed_paths_with_pending_sync() must remove, from
+// pending_sync_updates, only the items whose path also failed schema validation this scan
+// (failed_paths), compensating synced_docs_files for any that had sync_value == 1 — and must
+// leave every other pending item (and the counter, when nothing matches) untouched.
+
+static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/unrelated_failed.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 1);
+    pending_sync_item_t *item = (pending_sync_item_t *)OSList_GetFirstNode(pending_sync_updates)->data;
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")), "/etc/a_test_file.txt");
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    // The matching item (and the count it had already added to synced_docs_files) is gone.
+    assert_int_equal(synced_docs_files, 4);
+    assert_int_equal(pending_sync_updates->currently_size, 0);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 0);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    // Removed from the pending list either way (its row is about to be deleted), but nothing
+    // to compensate: transaction_callback() never counted a sync_value == 0 item in the first
+    // place.
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 0);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/b_failed.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+    const char *paths[3] = {"/etc/a_ok.txt", "/etc/b_failed.txt", "/etc/c_ok.txt"};
+    for (int i = 0; i < 3; i++) {
+        cJSON *item_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(item_json, "path", paths[i]);
+        cJSON_AddNumberToObject(item_json, "version", 1);
+        add_pending_sync_item(pending_sync_updates, item_json, 1);
+        cJSON_Delete(item_json);
+    }
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    assert_int_equal(synced_docs_files, 4);
+    assert_int_equal(pending_sync_updates->currently_size, 2);
+
+    // Both surviving items keep their own data intact, in original relative order — proves
+    // OSList_DeleteThisNode() on the middle node didn't corrupt the remaining links.
+    OSListNode *node_it;
+    int found_a = 0, found_c = 0;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        const char *path = cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"));
+        if (strcmp(path, "/etc/a_ok.txt") == 0) {
+            found_a = 1;
+        } else if (strcmp(path, "/etc/c_ok.txt") == 0) {
+            found_c = 1;
+        } else {
+            fail_msg("Unexpected surviving item: %s", path);
+        }
+    }
+    assert_int_equal(found_a, 1);
+    assert_int_equal(found_c, 1);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    // Both lists empty.
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+    assert_int_equal(synced_docs_files, 5);
+
+    // failed_paths empty, pending_sync_updates non-empty: nothing to reconcile against.
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 1);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
 }
 
 static void test_fim_file_no_attributes(void **state) {
@@ -4504,6 +4707,13 @@ int main(void) {
 
         /* init_fim_data_entry */
         cmocka_unit_test(test_init_fim_data_entry),
+
+        /* reconcile_failed_paths_with_pending_sync (#38608) */
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_no_overlap),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop),
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),

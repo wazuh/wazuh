@@ -1304,6 +1304,74 @@ void fim_handle_delete_by_path(const char *path,
     }
 }
 
+/**
+ * @brief Drops pending sync-flag updates whose path also failed schema validation this scan,
+ *        compensating synced_docs_files for any that had already been counted.
+ *
+ * A file that fails schema validation has its row deleted directly (fim_db_file_delete(),
+ * called from cleanup_failed_fim_files()), bypassing the DELETED branch of
+ * transaction_callback() that would otherwise decrement synced_docs_files back down. Letting
+ * process_pending_sync_updates() try to set that row's sync flag afterwards would both log a
+ * spurious WARNING (the row is gone by then) and leave the counter permanently inflated.
+ *
+ * Must run after transaction_callback() has finished populating both lists for this scan, and
+ * before either cleanup_failed_fim_files() or process_pending_sync_updates() consumes them —
+ * see #38608.
+ *
+ * @param failed_paths OSList of char* paths that failed schema validation this scan.
+ * @param pending_sync_updates OSList of pending_sync_item_t queued for a sync flag update;
+ *                              items whose path is also in failed_paths are removed from it.
+ */
+STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates) {
+    if (OSList_GetFirstNode(failed_paths) == NULL || OSList_GetFirstNode(pending_sync_updates) == NULL) {
+        return;
+    }
+
+    size_t max_nodes = (size_t)pending_sync_updates->currently_size;
+    OSListNode **nodes_to_remove = calloc(max_nodes, sizeof(OSListNode *));
+    if (nodes_to_remove == NULL) {
+        merror("Failed to allocate scratch buffer to correlate failed schema-validation paths "
+               "with pending sync updates; sync flags may be attempted for deleted rows this scan");
+        return;
+    }
+
+    // Two passes: first collect the pending_sync_updates nodes whose path also failed
+    // validation, without mutating the list while iterating it — OSList_foreach reads
+    // node_it->next on every iteration, so unlinking/freeing a node mid-traversal would use
+    // freed memory. Only after this read-only pass finishes are the collected nodes removed.
+    size_t nodes_to_remove_count = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        const char *item_path = (item != NULL && item->json != NULL)
+                                     ? cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"))
+                                     : NULL;
+        if (item_path == NULL) {
+            continue;
+        }
+
+        OSListNode *fp_it;
+        OSList_foreach(fp_it, failed_paths) {
+            const char *failed_path = (const char *)fp_it->data;
+            if (failed_path != NULL && strcmp(item_path, failed_path) == 0) {
+                if (item->sync_value == 1) {
+                    w_mutex_lock(&synced_docs_mutex);
+                    synced_docs_files--;
+                    w_mutex_unlock(&synced_docs_mutex);
+                }
+                free_pending_sync_item(item);
+                nodes_to_remove[nodes_to_remove_count++] = node_it;
+                break;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < nodes_to_remove_count; i++) {
+        OSList_DeleteThisNode(pending_sync_updates, nodes_to_remove[i]);
+    }
+    free(nodes_to_remove);
+}
+
 void fim_file_scan() {
     if (fim_shutdown_process_on()) {
         return;
@@ -1445,17 +1513,11 @@ void fim_file_scan() {
     } else {
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
+        // #38608: see reconcile_failed_paths_with_pending_sync()'s doc comment for why this
+        // has to run before either list is consumed below.
+        reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
         // Delete files that failed schema validation (outside transaction)
-        //
-        // Pre-existing gap (not introduced by #38522's fix, out of scope here): unlike the
-        // realtime/whodata call site above, this doesn't skip/compensate
-        // process_pending_sync_updates() for paths that also ended up in failed_paths — a
-        // file that fails schema validation during a scan can get its row deleted here and
-        // then still have a stale sync-flag update attempted below, spamming a WARNING and
-        // leaving synced_docs_files off by one. A full scan's failed_paths and
-        // pending_sync_updates aren't correlated by path here, so fixing it needs matching
-        // entries across both lists rather than the single-file short-circuit used above.
-        // Tracked in https://github.com/wazuh/wazuh/issues/38608 for a follow-up fix.
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 
