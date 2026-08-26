@@ -25,6 +25,9 @@ target_link_libraries(
   optimized gmock
   https_client
   ext_zstd
+  # jwtSigner_test.cpp checks the minted bearer with the shared verifier-side
+  # helpers (shared_modules/utils/jwt/, header-only over jwt-cpp + OpenSSL).
+  ext_jwt_cpp
   pthread)
 
 target_include_directories(

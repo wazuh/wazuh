@@ -53,7 +53,9 @@ target_include_directories(
 # wazuhext carries the vendored libcurl + OpenSSL symbols for agent targets.
 # ext_zstd: request-body compression, same target remoted_module
 # already links for the manager-side decode (#38129).
-target_link_libraries(https_client PRIVATE wazuhext pthread ext_zstd)
+# ext_jwt_cpp: header-only jwt-cpp behind shared_modules/utils/jwt/ -- the
+# wazuh-agent+jwt bearer signer the agent shares with the manager (#38582).
+target_link_libraries(https_client PRIVATE wazuhext pthread ext_zstd ext_jwt_cpp)
 
 set_target_properties(https_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                               BUILD_RPATH "$ORIGIN/../lib")

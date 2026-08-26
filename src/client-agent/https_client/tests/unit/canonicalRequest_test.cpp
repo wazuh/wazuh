@@ -9,63 +9,41 @@
  * Foundation.
  */
 
+// The password-mode WazuhEnroll canonical request (#38438) -- the only canonical request left in
+// the module: agent<->manager requests carry a bearer token (jwtSigner.hpp) with no canonical form.
 #include "canonicalRequest.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstring>
 
-TEST(CanonicalRequestTest, HeadHasTheExactWireLayout)
+TEST(EnrollCanonicalRequestTest, HeadHasTheExactWireLayoutWithoutAnAgentId)
 {
-    EXPECT_EQ("WAZUH-REQUEST\n1\nPOST\n/stateless\n001\n1700000000\n",
-              canonicalRequestHead("POST", "/stateless", "001", 1700000000));
+    EXPECT_EQ("WAZUH-ENROLL\n1\nPOST\n/enroll\n1700000000\n",
+              enrollCanonicalRequestHead("POST", "/enroll", 1700000000));
 }
 
-TEST(CanonicalRequestTest, BodyBytesAppendedVerbatim)
+TEST(EnrollCanonicalRequestTest, BodyBytesAppendedVerbatim)
 {
-    const uint8_t body[] = "H {}\nE 1:loc:msg";
-    const auto canonical =
-        buildCanonicalRequest("POST", "/stateless", "001", 1700000000, body, sizeof(body) - 1);
-    const std::string expected =
-        "WAZUH-REQUEST\n1\nPOST\n/stateless\n001\n1700000000\nH {}\nE 1:loc:msg";
+    const uint8_t body[] = R"({"name":"web-01"})";
+    const auto canonical = buildEnrollCanonicalRequest("POST", "/enroll", 1700000000, body, sizeof(body) - 1);
+    const std::string expected = "WAZUH-ENROLL\n1\nPOST\n/enroll\n1700000000\n{\"name\":\"web-01\"}";
     ASSERT_EQ(expected.size(), canonical.size());
     EXPECT_EQ(0, std::memcmp(expected.data(), canonical.data(), canonical.size()));
 }
 
-TEST(CanonicalRequestTest, EmptyBodyEndsAtTheHead)
+TEST(EnrollCanonicalRequestTest, EmptyBodyEndsAtTheHead)
 {
-    const auto canonical = buildCanonicalRequest("POST", "/control", "001", 1, nullptr, 0);
-    const std::string expected = "WAZUH-REQUEST\n1\nPOST\n/control\n001\n1\n";
+    const auto canonical = buildEnrollCanonicalRequest("POST", "/enroll", 1, nullptr, 0);
+    const std::string expected = "WAZUH-ENROLL\n1\nPOST\n/enroll\n1\n";
     ASSERT_EQ(expected.size(), canonical.size());
     EXPECT_EQ(0, std::memcmp(expected.data(), canonical.data(), canonical.size()));
 }
 
-TEST(CanonicalRequestTest, BinaryBodyWithEmbeddedNulsIsPreserved)
+TEST(EnrollCanonicalRequestTest, PrefixedTargetIsCoveredVerbatim)
 {
-    const uint8_t body[] = {'A', '\0', 'B', '\n', '\0'};
-    const auto canonical =
-        buildCanonicalRequest("POST", "/stateful", "001", 2, body, sizeof(body));
-    const std::string head = "WAZUH-REQUEST\n1\nPOST\n/stateful\n001\n2\n";
-    ASSERT_EQ(head.size() + sizeof(body), canonical.size());
-    EXPECT_EQ(0, std::memcmp(body, canonical.data() + head.size(), sizeof(body)));
-}
-
-// #38492/#38491: prefixedTarget() -- the manager's auth middleware CMACs the
-// literal wire request-target, prefix included, so this is what gets fed
-// into canonicalRequestHead()/enrollCanonicalRequestHead() instead of the
-// bare target whenever an endpoint is configured.
-
-TEST(PrefixedTargetTest, EmptyEndpointLeavesTheTargetUnchanged)
-{
-    EXPECT_EQ("/stateless", prefixedTarget("", "/stateless"));
-}
-
-TEST(PrefixedTargetTest, JoinsTheNormalizedEndpointAndTheBareTarget)
-{
-    EXPECT_EQ("/wazuh-manager/stateless", prefixedTarget("wazuh-manager", "/stateless"));
-}
-
-TEST(PrefixedTargetTest, ComposesWithAMultiSegmentEndpoint)
-{
-    EXPECT_EQ("/gateway/wazuh/enroll", prefixedTarget("gateway/wazuh", "/enroll"));
+    // The reverse-proxy prefix is part of the enrollment target the signature covers (the
+    // WazuhEnroll scheme still signs the request until /enroll moves to its own JWT profile).
+    EXPECT_EQ("WAZUH-ENROLL\n1\nPOST\n/wazuh-manager/enroll\n2\n",
+              enrollCanonicalRequestHead("POST", "/wazuh-manager/enroll", 2));
 }

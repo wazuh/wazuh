@@ -11,7 +11,7 @@
 
 #include "enrollSigner.hpp"
 #include "canonicalRequest.hpp"
-#include "cmacSigner.hpp"
+#include "cmacPrimitive.hpp"
 
 #include <openssl/core_names.h>
 #include <openssl/kdf.h>
@@ -24,7 +24,7 @@ namespace
     using KdfPtr = std::unique_ptr<EVP_KDF, decltype(&EVP_KDF_free)>;
     using KdfCtxPtr = std::unique_ptr<EVP_KDF_CTX, decltype(&EVP_KDF_CTX_free)>;
 
-    constexpr size_t DERIVED_KEY_BYTES = 32;  // AES-256-CBC-CMAC key length (#38438).
+    constexpr size_t DERIVED_KEY_BYTES = 32; // AES-256-CBC-CMAC key length (#38438).
     constexpr size_t SHA256_DIGEST_BYTES = 32;
 
     // The literal info bytes from the #38438 contract: the ASCII string
@@ -67,17 +67,12 @@ std::optional<std::vector<uint8_t>> EnrollSigner::deriveKey(const std::string& p
     const std::vector<uint8_t> info = hkdfInfo();
     char digestName[] = "SHA256";
 
-    const OSSL_PARAM params[] =
-    {
+    const OSSL_PARAM params[] = {
         OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, digestName, 0),
-        OSSL_PARAM_construct_octet_string(
-            OSSL_KDF_PARAM_KEY, const_cast<char*>(password.data()), password.size()),
-        OSSL_PARAM_construct_octet_string(
-            OSSL_KDF_PARAM_SALT, const_cast<uint8_t*>(salt.data()), salt.size()),
-        OSSL_PARAM_construct_octet_string(
-            OSSL_KDF_PARAM_INFO, const_cast<uint8_t*>(info.data()), info.size()),
-        OSSL_PARAM_construct_end()
-    };
+        OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_KEY, const_cast<char*>(password.data()), password.size()),
+        OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SALT, const_cast<uint8_t*>(salt.data()), salt.size()),
+        OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_INFO, const_cast<uint8_t*>(info.data()), info.size()),
+        OSSL_PARAM_construct_end()};
 
     std::vector<uint8_t> derived(DERIVED_KEY_BYTES);
 
@@ -89,9 +84,12 @@ std::optional<std::vector<uint8_t>> EnrollSigner::deriveKey(const std::string& p
     return derived;
 }
 
-std::optional<EnrollSignedHeaders> EnrollSigner::sign(const std::string& password, const std::string& method,
-                                                      const std::string& target, const uint8_t* body,
-                                                      size_t bodyLength, std::time_t timestamp)
+std::optional<EnrollSignedHeaders> EnrollSigner::sign(const std::string& password,
+                                                      const std::string& method,
+                                                      const std::string& target,
+                                                      const uint8_t* body,
+                                                      size_t bodyLength,
+                                                      std::time_t timestamp)
 {
     const auto key = deriveKey(password);
 
@@ -101,7 +99,7 @@ std::optional<EnrollSignedHeaders> EnrollSigner::sign(const std::string& passwor
     }
 
     const auto canonical = buildEnrollCanonicalRequest(method, target, timestamp, body, bodyLength);
-    const auto digest = CmacSigner::macHex(*key, canonical.data(), canonical.size());
+    const auto digest = cmacHex(*key, canonical.data(), canonical.size());
 
     if (!digest)
     {

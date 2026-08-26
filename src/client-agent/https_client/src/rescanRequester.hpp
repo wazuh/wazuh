@@ -13,8 +13,8 @@
 #define _HC_RESCAN_REQUESTER_HPP
 
 #include "backoff.hpp"
-#include "cmacSigner.hpp"
 #include "iHttpPerformer.hpp"
+#include "iSigner.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -45,25 +45,29 @@
  */
 class RescanRequester final
 {
-    public:
-        RescanRequester(const ModuleConfig& config, IHttpPerformer& performer,
-                        const ISigner& signer, IClock& clock, IRandom& random,
-                        AuthGate& authGate, CompressionGate& compressionGate,
-                        IVdOffsetStore& store);
+public:
+    RescanRequester(const ModuleConfig& config,
+                    IHttpPerformer& performer,
+                    const ISigner& signer,
+                    IClock& clock,
+                    IRandom& random,
+                    AuthGate& authGate,
+                    CompressionGate& compressionGate,
+                    IVdOffsetStore& store);
 
-        /// Attempts to satisfy the pending re-scan for `offset` (as reported by
-        /// IVdOffsetStore::observe()). Returns true if the request succeeded
-        /// (and the pending flag was cleared); false if it is still pending
-        /// after this call -- the next Notify (via observe()'s no-op path)
-        /// will retry.
-        bool requestRescan(uint64_t offset, Waiter& waiter);
+    /// Attempts to satisfy the pending re-scan for `offset` (as reported by
+    /// IVdOffsetStore::observe()). Returns true if the request succeeded
+    /// (and the pending flag was cleared); false if it is still pending
+    /// after this call -- the next Notify (via observe()'s no-op path)
+    /// will retry.
+    bool requestRescan(uint64_t offset, Waiter& waiter);
 
-    private:
-        const ModuleConfig& m_config;
-        Backoff m_backoff;
-        RetrySender m_sender;
-        IVdOffsetStore& m_store;
-        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+private:
+    const ModuleConfig& m_config;
+    Backoff m_backoff;
+    RetrySender m_sender;
+    IVdOffsetStore& m_store;
+    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 
 #endif // _HC_RESCAN_REQUESTER_HPP

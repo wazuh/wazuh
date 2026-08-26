@@ -116,14 +116,13 @@ typedef struct hc_config_t
     uint16_t server_port;          ///< Manager HTTPS port.
     char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
     ///< prepended to every request target (e.g. "/endpoint/stateless");
-    ///< empty -> unprefixed, today's behavior. The manager's auth middleware
-    ///< CMACs the literal wire request-target, prefix included, so this is
-    ///< folded into HttpRequestSpec::target (via prefixedTarget()) before
-    ///< signing -- the CMAC covers the prefixed target, not the bare one.
+    ///< empty -> unprefixed, today's behavior. A routing matter only: the
+    ///< manager routes on the literal wire request-target, prefix included,
+    ///< and the bearer token does not bind the target (a mismatch is a 404).
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
-    ///< AES-128/192/256-CMAC by byte length
-    ///< (16/24/32; a real key is 64 hex = 32).
+    char agent_key[HC_MAX_KEY];    ///< The client.keys secret as hex: exactly 64 lowercase hex
+    ///< chars, decoded verbatim into the 32-byte HS256 key every
+    ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
@@ -466,8 +465,8 @@ HC_EXPORTED void hc_notify_now(hc_handle* handle);
 HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
 /**
- * @brief Swap the agent id and AES-CMAC credential at runtime (key: hex;
- *        16/24/32 bytes decoded) after a re-enrollment (#38465's POST /enroll
+ * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
+ *        32 bytes) after a re-enrollment (#38465's POST /enroll
  *        response can hand back a different numeric id along with the new
  *        key -- the two are set together so no request is ever signed with
  *        one half stale). Like hc_set_config_hash this is callback-safe (it

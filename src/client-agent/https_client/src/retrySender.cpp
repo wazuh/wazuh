@@ -12,7 +12,7 @@
 #include "retrySender.hpp"
 
 #include "bodyCompressor.hpp"
-#include "canonicalRequest.hpp"
+#include "requestTarget.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -24,15 +24,20 @@ namespace
     // Below this, a Date-vs-local gap is plausibly network latency or Date's
     // 1 s granularity, not real clock skew -- applying a correction for noise
     // this small would only ever matter within the 300 s CMAC window this
-    // agent already tolerates, so it is not worth perturbing signing over.
+    // agent already tolerates, so it is not worth perturbing the token's iat over.
     // The clock-skew failures this targets (VM snapshot restore, dead CMOS
     // battery, no NTP) are minutes to hours off, far above this floor.
     constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
 } // namespace
 
-RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
-                         Backoff& backoff, bool compressionEnabled, CompressionGate* compressionGate,
-                         AuthGate* authGate, std::string serverEndpoint)
+RetrySender::RetrySender(IHttpPerformer& performer,
+                         const ISigner& signer,
+                         IClock& clock,
+                         Backoff& backoff,
+                         bool compressionEnabled,
+                         CompressionGate* compressionGate,
+                         AuthGate* authGate,
+                         std::string serverEndpoint)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -44,8 +49,7 @@ RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, ICloc
 {
 }
 
-RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waiter,
-                                      uint32_t maxAttempts)
+RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts)
 {
     HttpRequestSpec base = spec;
     base.abortFlag = waiter.stopFlag();
@@ -69,7 +73,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
             // a clock-skewed agent, or a dead key -- the manager deliberately
             // answers all three identically (#37828). Correct for
             // measurable skew (if the response carried the manager's Date)
-            // and resign with a fresh timestamp (attemptOnce re-signs); only
+            // and mint a fresh token (attemptOnce re-mints); only
             // a second 401 -- now on a timestamp already skew-corrected --
             // escalates below as a genuine credential failure.
             if (result.outcome == OutcomeClass::AuthFail && !authRetried)
@@ -133,16 +137,15 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
 
-    // #38492/#38491: fold the configured endpoint into the target before
-    // anything else -- the manager's auth middleware CMACs the literal wire
-    // request-target (prefix included), so what gets signed below and what
-    // CurlPerformer later appends to ModuleConfig::baseUrl() must be the
-    // exact same (already-prefixed) string.
+    // #38492/#38491: fold the configured endpoint into the target -- the
+    // manager routes on the literal wire request-target (prefix included);
+    // CurlPerformer later appends this already-prefixed string to
+    // ModuleConfig::baseUrl(). Authentication does not look at it.
     attempt.target = prefixedTarget(m_serverEndpoint, attempt.target);
 
     // In-memory bodies: compressed here, per attempt (cheap for the small
-    // buffers every other send path uses). Compressed before signing so the
-    // CMAC covers the wire bytes.
+    // buffers every other send path uses). The bearer token does not cover
+    // the body, so compression and authentication are independent.
     std::vector<uint8_t> compressedBody;
     const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
 
@@ -160,8 +163,8 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
         // one-shot ZSTD_compress() into a ZSTD_compressBound()-sized buffer
         // should never actually fail, but never lose the request over it.
     }
-    else if (m_compressionEnabled && gateAllowsCompression && !attempt.bodyFilePath.empty()
-             && !attempt.precompressedBodyFilePath.empty())
+    else if (m_compressionEnabled && gateAllowsCompression && !attempt.bodyFilePath.empty() &&
+             !attempt.precompressedBodyFilePath.empty())
     {
         // File-backed bodies (/stateful): compressing a potentially multi-MB
         // spool file per attempt would be wasteful under retries, so the
@@ -175,14 +178,9 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
         attempt.headers.push_back("Content-Encoding: zstd");
     }
 
-    const auto timestamp = m_clock.wallSeconds();
-    // Bind by reference: both branches return std::optional<SignedHeaders> by
-    // value, and `headers` is only read locally below, well within the
-    // ternary temporary's extended lifetime -- no need to copy it. (CID 562606)
-    const auto& headers =
-        attempt.bodyFilePath.empty()
-        ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
-        : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
+    // One fresh bearer per attempt (identity only: the same call serves
+    // in-memory and file-backed bodies alike).
+    const auto headers = m_signer.sign(m_clock.wallSeconds());
 
     if (!headers)
     {
@@ -204,8 +202,7 @@ std::chrono::milliseconds RetrySender::delayFor(const Result& result)
 
     if (result.outcome == OutcomeClass::BackPressure)
     {
-        const auto serverDelay =
-            std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
+        const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
         return std::max(serverDelay, backoffDelay); // The server's delay wins when longer.
     }
 
@@ -239,8 +236,8 @@ void RetrySender::correctClockIfSkewed(const HttpResponse& response)
     // recomputes the actual offset itself, from its own raw clock read
     // taken at commit time, so a stale `delta` here never corrupts the
     // applied correction (see IClock::correctToServerTime's contract).
-    const auto delta = static_cast<std::int64_t>(response.serverDateSeconds) -
-                       static_cast<std::int64_t>(m_clock.wallSeconds());
+    const auto delta =
+        static_cast<std::int64_t>(response.serverDateSeconds) - static_cast<std::int64_t>(m_clock.wallSeconds());
 
     if (std::abs(delta) < kSkewNoiseFloorSeconds)
     {
@@ -250,6 +247,6 @@ void RetrySender::correctClockIfSkewed(const HttpResponse& response)
     m_clock.correctToServerTime(response.serverDateSeconds);
     LOGFN_INFO(m_logFn,
                "https_client: clock skew of %lld s detected against the manager's response "
-               "(Date header); correcting the signing timestamp for this and future requests.",
+               "(Date header); correcting the token timestamp for this and future requests.",
                static_cast<long long>(delta));
 }

@@ -10,12 +10,14 @@
  */
 
 /*
- * The retry loop uses the REAL CmacSigner plus the fake clock, so the
- * re-sign-on-every-retry property is proven through actually different
+ * The retry loop uses the REAL JwtSigner plus the fake clock, so the
+ * fresh-token-on-every-attempt property is proven through actually different
  * Authorization headers, not through mock bookkeeping.
  */
 
 #include "fakeSysSeams.hpp"
+#include "jwtSigner.hpp"
+#include "jwtTestSupport.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 #include "retrySender.hpp"
@@ -62,31 +64,31 @@ namespace
 
     class RetrySenderTest : public ::testing::Test
     {
-        protected:
-            RetrySenderTest()
-                : m_signer("001", m_keyProvider)
-                , m_backoff(1000, 60000, m_random)
-                , m_sender(m_performer, m_signer, m_clock, m_backoff, false)
-            {
-            }
+    protected:
+        RetrySenderTest()
+            : m_signer("001", m_keyProvider)
+            , m_backoff(1000, 60000, m_random)
+            , m_sender(m_performer, m_signer, m_clock, m_backoff, false)
+        {
+        }
 
-            HttpRequestSpec makeSpec()
-            {
-                HttpRequestSpec spec;
-                spec.target = "/stateless";
-                spec.body = reinterpret_cast<const uint8_t*>("body");
-                spec.bodyLength = 4;
-                return spec;
-            }
+        HttpRequestSpec makeSpec()
+        {
+            HttpRequestSpec spec;
+            spec.target = "/stateless";
+            spec.body = reinterpret_cast<const uint8_t*>("body");
+            spec.bodyLength = 4;
+            return spec;
+        }
 
-            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-            CmacSigner m_signer;
-            FakeClock m_clock;
-            ScriptedRandom m_random {{1.0}}; // Jitter always hits the window ceiling.
-            Backoff m_backoff;
-            MockHttpPerformer m_performer;
-            FakeWaiter m_waiter;
-            RetrySender m_sender;
+        ConfigKeyProvider m_keyProvider {testAgentKeyHex()};
+        JwtSigner m_signer;
+        FakeClock m_clock;
+        ScriptedRandom m_random {{1.0}}; // Jitter always hits the window ceiling.
+        Backoff m_backoff;
+        MockHttpPerformer m_performer;
+        FakeWaiter m_waiter;
+        RetrySender m_sender;
     };
 } // namespace
 
@@ -94,12 +96,12 @@ TEST_F(RetrySenderTest, SuccessOnFirstAttemptSignsAndResetsBackoff)
 {
     std::vector<std::string> seenHeaders;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        seenHeaders = spec.headers;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                seenHeaders = spec.headers;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     m_backoff.next(); // Pre-dirty the backoff to observe the reset.
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
@@ -107,7 +109,11 @@ TEST_F(RetrySenderTest, SuccessOnFirstAttemptSignsAndResetsBackoff)
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
     ASSERT_EQ(2u, seenHeaders.size());
     EXPECT_EQ("protocol-version: 1", seenHeaders[0]);
-    EXPECT_EQ(0u, seenHeaders[1].find("Authorization: Wazuh 001:"));
+    EXPECT_EQ(0u, seenHeaders[1].find("Authorization: Bearer "));
+    const auto bearer = decodeBearer(seenHeaders[1], testAgentKeyHex());
+    ASSERT_TRUE(bearer.has_value());
+    EXPECT_TRUE(bearer->signatureValid);
+    EXPECT_EQ("001", bearer->claims.at("sub"));
     EXPECT_EQ(1000u, m_backoff.currentCeilingMs()); // Reset on success.
     EXPECT_TRUE(m_waiter.requestedDelays().empty());
 }
@@ -116,29 +122,29 @@ TEST_F(RetrySenderTest, EveryRetryIsFreshlySigned)
 {
     std::vector<std::string> authorizations;
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec & spec)
-    {
-        authorizations.push_back(spec.headers.back());
-        m_clock.advance(std::chrono::seconds {5}); // Time passes between attempts.
-        return response(TransportStatus::Ok, 500);
-    }));
+        .Times(2)
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                authorizations.push_back(spec.headers.back());
+                m_clock.advance(std::chrono::seconds {5}); // Time passes between attempts.
+                return response(TransportStatus::Ok, 500);
+            }));
     m_waiter.script({true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 2);
 
     EXPECT_EQ(OutcomeClass::ServerError, result.outcome); // 500: the manager answered.
     ASSERT_EQ(2u, authorizations.size());
-    // Different timestamp -> different ts field AND different MAC.
+    // Different timestamp -> different iat AND a fresh jti/signature.
     EXPECT_NE(authorizations[0], authorizations[1]);
 }
 
 TEST_F(RetrySenderTest, ServerRetryAfterWinsWhenLonger)
 {
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 503, 90)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(response(TransportStatus::Ok, 503, 90)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
     m_waiter.script({true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
@@ -151,8 +157,8 @@ TEST_F(RetrySenderTest, ServerRetryAfterWinsWhenLonger)
 TEST_F(RetrySenderTest, BackoffWinsOverShorterRetryAfter)
 {
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 503, 0))) // Retry-After absent.
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(response(TransportStatus::Ok, 503, 0))) // Retry-After absent.
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
     m_waiter.script({true});
 
     m_sender.send(makeSpec(), m_waiter, 4);
@@ -181,9 +187,7 @@ TEST_F(RetrySenderTest, PayloadTooLargeReturnsImmediately)
 TEST_F(RetrySenderTest, RepeatedAuthFailureReturnsAuthFail)
 {
     // A 401 triggers one fresh-timestamp retry; a second 401 is the verdict.
-    EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::AuthFail, result.outcome); // Re-enroll policy is the caller's.
     EXPECT_TRUE(m_waiter.requestedDelays().empty());   // The auth retry is immediate.
@@ -194,27 +198,27 @@ TEST_F(RetrySenderTest, AuthFailureRecoversWithAFreshTimestamp)
     // The first 401 is an edge/expired timestamp; the immediate resign succeeds.
     std::vector<std::string> authorizations;
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        authorizations.push_back(spec.headers.back());
-        m_clock.advance(std::chrono::seconds {5}); // Clock moves before the retry.
-        return response(TransportStatus::Ok, 401);
-    }))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        authorizations.push_back(spec.headers.back());
-        return response(TransportStatus::Ok, 200);
-    }));
+        .Times(2)
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                authorizations.push_back(spec.headers.back());
+                m_clock.advance(std::chrono::seconds {5}); // Clock moves before the retry.
+                return response(TransportStatus::Ok, 401);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                authorizations.push_back(spec.headers.back());
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
     ASSERT_EQ(2u, authorizations.size());
     EXPECT_NE(authorizations[0], authorizations[1]); // Retry was freshly signed.
-    EXPECT_TRUE(m_waiter.requestedDelays().empty());  // No backoff between the two.
+    EXPECT_TRUE(m_waiter.requestedDelays().empty()); // No backoff between the two.
 }
 
 TEST_F(RetrySenderTest, SkewedClockIsCorrectedFromServerDateAndRetrySucceeds)
@@ -224,8 +228,8 @@ TEST_F(RetrySenderTest, SkewedClockIsCorrectedFromServerDateAndRetrySucceeds)
     // 401 carries its real time; the one-shot retry must land on it.
     m_clock.setWall(1700036000);
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(authFailWithServerDate(1700000000)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(authFailWithServerDate(1700000000)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
@@ -245,8 +249,8 @@ TEST_F(RetrySenderTest, BehindClockIsCorrectedForwardFromServerDateAndRetrySucce
     // exercised the agent-ahead direction.
     m_clock.setWall(1700000000);
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(authFailWithServerDate(1700036000)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(authFailWithServerDate(1700036000)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
@@ -262,9 +266,7 @@ TEST_F(RetrySenderTest, SmallDateGapWithinNoiseFloorIsNotTreatedAsSkew)
     // agent must not perturb its own correct clock over it, and the 401 is
     // left to escalate exactly as before this fix (likely a dead key).
     m_clock.setWall(1700000000);
-    EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillRepeatedly(Return(authFailWithServerDate(1700000002)));
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFailWithServerDate(1700000002)));
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
@@ -278,8 +280,8 @@ TEST_F(RetrySenderTest, MissingServerDateNeverAppliesACorrection)
     // fresh-timestamp-only retry still happens, just uncorrected -- no crash,
     // no spurious offset.
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillRepeatedly(Return(response(TransportStatus::Ok, 401))); // serverDateSeconds defaults to 0.
+        .Times(2)
+        .WillRepeatedly(Return(response(TransportStatus::Ok, 401))); // serverDateSeconds defaults to 0.
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
@@ -294,13 +296,13 @@ TEST_F(RetrySenderTest, CorrectedRetryStillFailingEscalatesAsKeyFailure)
     // only remaining explanation is a genuinely bad/revoked key.
     m_clock.setWall(1700036000);
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(authFailWithServerDate(1700000000)))
-    .WillOnce(Return(authFailWithServerDate(1700000005))); // Corrected retry: still 401.
+        .WillOnce(Return(authFailWithServerDate(1700000000)))
+        .WillOnce(Return(authFailWithServerDate(1700000005))); // Corrected retry: still 401.
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
 
     EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
-    EXPECT_EQ(1, m_clock.offsetApplyCount()); // Correction applied once (the one-shot retry).
+    EXPECT_EQ(1, m_clock.offsetApplyCount());        // Correction applied once (the one-shot retry).
     EXPECT_TRUE(m_waiter.requestedDelays().empty()); // AuthFail is never itself retried with a delay.
 }
 
@@ -312,9 +314,9 @@ TEST_F(RetrySenderTest, CorrectionPersistsForSubsequentSendsAfterTheIncidentEnds
     // second send() that never even sees a 401.
     m_clock.setWall(1700036000);
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(authFailWithServerDate(1700000000)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(authFailWithServerDate(1700000000)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
 
     const auto first = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::Ok, first.outcome);
@@ -341,13 +343,13 @@ TEST_F(RetrySenderTest, SecondIndependentSkewEventConvergesOnTopOfAnExistingCorr
     RetrySender sender {m_performer, m_signer, correctedClock, m_backoff, false};
 
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(authFailWithServerDate(1700000000)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)))
-    // A second, independent skew event: the raw clock is now only 20000s
-    // ahead of a LATER true time (1700010000) -- a smaller, unrelated skew,
-    // not a continuation of the first one.
-    .WillOnce(Return(authFailWithServerDate(1700010000)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(authFailWithServerDate(1700000000)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)))
+        // A second, independent skew event: the raw clock is now only 20000s
+        // ahead of a LATER true time (1700010000) -- a smaller, unrelated skew,
+        // not a continuation of the first one.
+        .WillOnce(Return(authFailWithServerDate(1700010000)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
 
     const auto first = sender.send(makeSpec(), m_waiter, 4);
     ASSERT_EQ(OutcomeClass::Ok, first.outcome);
@@ -366,21 +368,22 @@ TEST_F(RetrySenderTest, SecondIndependentSkewEventConvergesOnTopOfAnExistingCorr
 TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 {
     ::testing::NiceMock<MockCallbackSink> sink;
-    AuthGate gate {sink, [] {}};
+    AuthGate gate {sink, [] {
+                   }};
     RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
 
     // First send: a 401 then a 200 on the retry -> recovered, no pause.
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)))
-    // Second send: two 401s -> escalate.
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)));
+        .WillOnce(Return(response(TransportStatus::Ok, 401)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)))
+        // Second send: two 401s -> escalate.
+        .WillOnce(Return(response(TransportStatus::Ok, 401)))
+        .WillOnce(Return(response(TransportStatus::Ok, 401)));
 
     guarded.send(makeSpec(), m_waiter, 1);
     EXPECT_FALSE(gate.paused()); // Retry recovered: no pause.
     guarded.send(makeSpec(), m_waiter, 1);
-    EXPECT_TRUE(gate.paused());  // Retry also 401: paused.
+    EXPECT_TRUE(gate.paused()); // Retry also 401: paused.
 }
 
 TEST_F(RetrySenderTest, VersionRejectionReturnsImmediately)
@@ -400,8 +403,7 @@ TEST_F(RetrySenderTest, StopDuringTheDelayInterrupts)
 
 TEST_F(RetrySenderTest, AbortedTransferSurfacesAsInterrupted)
 {
-    EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Aborted, 0)));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Aborted, 0)));
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::Interrupted, result.outcome);
     EXPECT_TRUE(m_waiter.requestedDelays().empty()); // Never waits after an abort.
@@ -409,27 +411,25 @@ TEST_F(RetrySenderTest, AbortedTransferSurfacesAsInterrupted)
 
 TEST_F(RetrySenderTest, MaxAttemptsBoundsTheLoop)
 {
-    EXPECT_CALL(m_performer, perform(_))
-    .Times(3)
-    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_performer, perform(_)).Times(3).WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
     m_waiter.script({true, true, true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 3);
 
     EXPECT_EQ(OutcomeClass::Unreachable, result.outcome); // Timeout: no answer at all.
-    EXPECT_EQ(2u, m_waiter.requestedDelays().size()); // No delay after the last attempt.
+    EXPECT_EQ(2u, m_waiter.requestedDelays().size());     // No delay after the last attempt.
 }
 
 TEST_F(RetrySenderTest, WaiterStopFlagIsWiredAsTheAbortFlag)
 {
     const std::atomic<bool>* seenFlag = nullptr;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        seenFlag = spec.abortFlag;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                seenFlag = spec.abortFlag;
+                return response(TransportStatus::Ok, 200);
+            }));
     m_sender.send(makeSpec(), m_waiter, 1);
     EXPECT_EQ(m_waiter.stopFlag(), seenFlag);
 }
@@ -437,7 +437,7 @@ TEST_F(RetrySenderTest, WaiterStopFlagIsWiredAsTheAbortFlag)
 TEST_F(RetrySenderTest, UnusableCredentialsArePermanentWithoutSending)
 {
     const ConfigKeyProvider badProvider {"zz"};
-    const CmacSigner badSigner {"001", badProvider};
+    const JwtSigner badSigner {"001", badProvider};
     RetrySender sender {m_performer, badSigner, m_clock, m_backoff, false};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
 
@@ -445,17 +445,26 @@ TEST_F(RetrySenderTest, UnusableCredentialsArePermanentWithoutSending)
     EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
 }
 
-TEST_F(RetrySenderTest, FileBackedSpecsAreSignedThroughSignFile)
+TEST_F(RetrySenderTest, FileBackedSpecsGetABearerWithoutReadingTheFile)
 {
-    // A file body routes through signFile(); a missing file must therefore be
-    // Permanent (unusable), with nothing sent.
+    // The bearer binds identity only, so a file body is never read to mint it:
+    // a missing spool file is the performer's problem, not a credential failure.
     HttpRequestSpec spec;
     spec.target = "/stateful";
     spec.bodyFilePath = "/nonexistent/hc-spool/session.bin";
-    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    std::vector<std::string> seenHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenHeaders = attempt.headers;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = m_sender.send(spec, m_waiter, 4);
-    EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    ASSERT_EQ(2u, seenHeaders.size());
+    EXPECT_TRUE(decodeBearer(seenHeaders[1], testAgentKeyHex())->signatureValid);
 }
 
 TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
@@ -465,13 +474,13 @@ TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
     std::vector<uint8_t> receivedBody;
     std::vector<std::string> receivedHeaders;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        receivedBody.assign(spec.body, spec.body + spec.bodyLength);
-        receivedHeaders = spec.headers;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                receivedBody.assign(spec.body, spec.body + spec.bodyLength);
+                receivedHeaders = spec.headers;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto spec = makeSpec();
     const auto result = m_sender.send(spec, m_waiter, 1);
@@ -482,7 +491,7 @@ TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
     EXPECT_TRUE(std::equal(receivedBody.begin(), receivedBody.end(), spec.body));
 }
 
-TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
+TEST_F(RetrySenderTest, CompressedBodyCarriesAVerifiableBearerIndependentOfTheBytes)
 {
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
 
@@ -496,13 +505,13 @@ TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
     std::vector<uint8_t> receivedBody;
     std::vector<std::string> receivedHeaders;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        receivedBody.assign(attempt.body, attempt.body + attempt.bodyLength);
-        receivedHeaders = attempt.headers;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                receivedBody.assign(attempt.body, attempt.body + attempt.bodyLength);
+                receivedHeaders = attempt.headers;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 1);
 
@@ -517,29 +526,39 @@ TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
     ASSERT_EQ(plain.size(), decompressedSize);
     EXPECT_EQ(plain, std::string(decompressed.begin(), decompressed.end()));
 
-    // The CMAC must cover the wire (compressed) bytes, not the original --
-    // re-signing the exact received bytes at the same timestamp (the clock
-    // never advanced) must reproduce the exact Authorization header sent.
-    const auto expected =
-        m_signer.sign("POST", spec.target, receivedBody.data(), receivedBody.size(), m_clock.wallSeconds());
-    ASSERT_TRUE(expected.has_value());
-    EXPECT_THAT(receivedHeaders, Contains(expected->authorization));
+    // The bearer does not cover the body (compressed or not): it is simply a
+    // valid token for agent 001 minted at the fake clock's time.
+    const auto bearer = decodeBearer(receivedHeaders.back(), testAgentKeyHex());
+    ASSERT_TRUE(bearer.has_value());
+    EXPECT_TRUE(bearer->signatureValid);
+    EXPECT_EQ("001", bearer->claims.at("sub"));
+    EXPECT_EQ(m_clock.wallSeconds(), bearer->claims.at("iat").get<std::time_t>());
 }
 
 TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
 {
-    // Same fixture as FileBackedSpecsAreSignedThroughSignFile above, but with
-    // compression on: without a precompressedBodyFilePath set (the caller's
-    // job -- see CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds
-    // below), a file-backed body is still sent exactly as-is.
+    // Compression on, but no precompressedBodyFilePath set (the caller's job --
+    // see CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds
+    // below): a file-backed body is sent exactly as-is, no Content-Encoding, and
+    // the bearer is minted without touching the file.
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
     HttpRequestSpec spec;
     spec.target = "/stateful";
     spec.bodyFilePath = "/nonexistent/hc-spool/session.bin";
-    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    HttpRequestSpec seenSpec;
+    EXPECT_CALL(m_performer, perform(_))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenSpec = attempt;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 4);
-    EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(spec.bodyFilePath, seenSpec.bodyFilePath);
+    EXPECT_THAT(seenSpec.headers, Not(Contains("Content-Encoding: zstd")));
+    EXPECT_TRUE(decodeBearer(seenSpec.headers.back(), testAgentKeyHex())->signatureValid);
 }
 
 TEST_F(RetrySenderTest, CompressedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)
@@ -554,19 +573,19 @@ TEST_F(RetrySenderTest, CompressedAttemptRejectedWith415RetriesOnceUncompressedA
 
     std::vector<std::vector<std::string>> seenHeadersPerAttempt;
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenHeadersPerAttempt.push_back(attempt.headers);
-        return response(TransportStatus::Ok, 415);
-    }))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenHeadersPerAttempt.push_back(attempt.headers);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .Times(2)
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenHeadersPerAttempt.push_back(attempt.headers);
+                return response(TransportStatus::Ok, 415);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenHeadersPerAttempt.push_back(attempt.headers);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 1);
 
@@ -592,16 +611,16 @@ TEST_F(RetrySenderTest, CompressionRejectionDisablesTheSharedGateForOtherSenders
     spec.bodyLength = plain.size();
 
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 415))) // first: rejected.
-    .WillOnce(Return(response(TransportStatus::Ok, 200))) // first's retry: uncompressed, succeeds.
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        // second's only attempt: the gate is already disabled, so it never
-        // even tries to compress -- no header, no wasted round trip.
-        EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Return(response(TransportStatus::Ok, 415))) // first: rejected.
+        .WillOnce(Return(response(TransportStatus::Ok, 200))) // first's retry: uncompressed, succeeds.
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                // second's only attempt: the gate is already disabled, so it never
+                // even tries to compress -- no header, no wasted round trip.
+                EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
+                return response(TransportStatus::Ok, 200);
+            }));
 
     first.send(spec, m_waiter, 1);
     ASSERT_TRUE(gate.disabled());
@@ -627,7 +646,8 @@ TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRe
     // That 401 must get its own fresh-timestamp grace retry -- not skip
     // straight past it just because the compression retry already ran.
     ::testing::NiceMock<MockCallbackSink> sink;
-    AuthGate authGate {sink, [] {}};
+    AuthGate authGate {sink, [] {
+                       }};
     CompressionGate compressionGate;
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &compressionGate, &authGate};
 
@@ -637,9 +657,9 @@ TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRe
     spec.bodyLength = plain.size();
 
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 415))) // Rejected: retry uncompressed.
-    .WillOnce(Return(response(TransportStatus::Ok, 401))) // Uncompressed retry: transient 401.
-    .WillOnce(Return(response(TransportStatus::Ok, 200))); // Auth grace retry: recovers.
+        .WillOnce(Return(response(TransportStatus::Ok, 415)))  // Rejected: retry uncompressed.
+        .WillOnce(Return(response(TransportStatus::Ok, 401)))  // Uncompressed retry: transient 401.
+        .WillOnce(Return(response(TransportStatus::Ok, 200))); // Auth grace retry: recovers.
 
     const auto result = compressing.send(spec, m_waiter, 1);
 
@@ -647,11 +667,11 @@ TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRe
     EXPECT_FALSE(authGate.paused()); // Recovered by its own grace retry: never escalated.
 }
 
-TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
+TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedWithAFreshBearer)
 {
     // /stateful's own caller (StatefulStream) compresses once, up front, and
-    // hands the sibling's path/size here -- attemptOnce() must swap it in and
-    // sign over ITS bytes, not the original file's.
+    // hands the sibling's path/size here -- attemptOnce() must swap it in
+    // (the bearer is independent of the bytes either way).
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
 
     const std::string originalPath = writeTempFile("hc_rs_original.bin", "the original body");
@@ -668,14 +688,14 @@ TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
     uint64_t seenBodyFileSize = 0;
     std::vector<std::string> seenHeaders;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenBodyFilePath = attempt.bodyFilePath;
-        seenBodyFileSize = attempt.bodyFileSize;
-        seenHeaders = attempt.headers;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenBodyFilePath = attempt.bodyFilePath;
+                seenBodyFileSize = attempt.bodyFileSize;
+                seenHeaders = attempt.headers;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 1);
 
@@ -684,10 +704,8 @@ TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
     EXPECT_EQ(14u, seenBodyFileSize);
     EXPECT_THAT(seenHeaders, Contains("Content-Encoding: zstd"));
 
-    // The CMAC must cover the compressed file's bytes, not the original's.
-    const auto expected = m_signer.signFile("POST", spec.target, compressedPath, m_clock.wallSeconds());
-    ASSERT_TRUE(expected.has_value());
-    EXPECT_THAT(seenHeaders, Contains(expected->authorization));
+    ASSERT_EQ(3u, seenHeaders.size()); // Content-Encoding + the auth pair.
+    EXPECT_TRUE(decodeBearer(seenHeaders.back(), testAgentKeyHex())->signatureValid);
 }
 
 TEST_F(RetrySenderTest, CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)
@@ -708,21 +726,21 @@ TEST_F(RetrySenderTest, CompressedFileBackedAttemptRejectedWith415RetriesOnceUnc
     std::vector<std::string> firstBodyFilePathAndHeaders;
     std::vector<std::string> secondBodyFilePathAndHeaders;
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        firstBodyFilePathAndHeaders = attempt.headers;
-        firstBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
-        return response(TransportStatus::Ok, 415);
-    }))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        secondBodyFilePathAndHeaders = attempt.headers;
-        secondBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .Times(2)
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                firstBodyFilePathAndHeaders = attempt.headers;
+                firstBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
+                return response(TransportStatus::Ok, 415);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                secondBodyFilePathAndHeaders = attempt.headers;
+                secondBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 1);
 
@@ -777,24 +795,22 @@ TEST_F(RetrySenderTest, FileBackedSenderSkipsCompressionOnceTheSharedGateIsAlrea
     spec.precompressedBodyFileSize = 14;
 
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
-        EXPECT_EQ(originalPath, attempt.bodyFilePath);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
+                EXPECT_EQ(originalPath, attempt.bodyFilePath);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = compressing.send(spec, m_waiter, 1);
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
 }
 
-// #38492/#38491: the configured endpoint. The manager's own auth middleware
-// CMACs the literal wire request-target (prefix included) -- confirmed
-// end-to-end against the real manager PR (#38542) -- so unlike compression
-// (transport-only, never signed), the endpoint must be folded into the
-// target BEFORE signing, and the exact same (already-prefixed) string must
-// be what reaches the wire.
+// #38492/#38491: the configured endpoint is folded into the wire target. The
+// manager routes on the literal request-target (prefix included); the bearer
+// token binds the agent's identity only, so the same token is valid for the
+// bare and the prefixed target alike -- a prefix mismatch is a 404, never a 401.
 
 TEST_F(RetrySenderTest, NoEndpointConfiguredLeavesTheTargetBare)
 {
@@ -802,12 +818,12 @@ TEST_F(RetrySenderTest, NoEndpointConfiguredLeavesTheTargetBare)
     // every other test in this file already relies on this being a no-op.
     HttpRequestSpec seenSpec;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenSpec = attempt;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenSpec = attempt;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 1);
 
@@ -815,19 +831,18 @@ TEST_F(RetrySenderTest, NoEndpointConfiguredLeavesTheTargetBare)
     EXPECT_EQ("/stateless", seenSpec.target);
 }
 
-TEST_F(RetrySenderTest, ConfiguredEndpointIsFoldedIntoTheWireTargetAndTheSignature)
+TEST_F(RetrySenderTest, ConfiguredEndpointIsFoldedIntoTheWireTargetOnly)
 {
-    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                              "wazuh-manager"};
+    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr, "wazuh-manager"};
 
     HttpRequestSpec seenSpec;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenSpec = attempt;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenSpec = attempt;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = withEndpoint.send(makeSpec(), m_waiter, 1);
 
@@ -835,25 +850,18 @@ TEST_F(RetrySenderTest, ConfiguredEndpointIsFoldedIntoTheWireTargetAndTheSignatu
     // The wire target carries the prefix...
     ASSERT_EQ("/wazuh-manager/stateless", seenSpec.target);
 
-    // ...and the Authorization header is a signature over that exact
-    // (prefixed) target, not the bare one -- re-signing the prefixed target
-    // at the same timestamp must reproduce it; re-signing the bare target
-    // must not.
-    const auto expectedPrefixed =
-        m_signer.sign("POST", "/wazuh-manager/stateless", seenSpec.body, seenSpec.bodyLength, m_clock.wallSeconds());
-    ASSERT_TRUE(expectedPrefixed.has_value());
-    EXPECT_THAT(seenSpec.headers, Contains(expectedPrefixed->authorization));
-
-    const auto signedIfBare =
-        m_signer.sign("POST", "/stateless", seenSpec.body, seenSpec.bodyLength, m_clock.wallSeconds());
-    ASSERT_TRUE(signedIfBare.has_value());
-    EXPECT_THAT(seenSpec.headers, Not(Contains(signedIfBare->authorization)));
+    // ...and the Authorization header is a plain bearer for agent 001 that says
+    // nothing about the target: verifiable with the key, no target inside it.
+    const auto bearer = decodeBearer(seenSpec.headers.back(), testAgentKeyHex());
+    ASSERT_TRUE(bearer.has_value());
+    EXPECT_TRUE(bearer->signatureValid);
+    EXPECT_EQ("001", bearer->claims.at("sub"));
+    EXPECT_EQ(std::string::npos, seenSpec.headers.back().find("stateless"));
 }
 
 TEST_F(RetrySenderTest, ConfiguredEndpointComposesWithFileBackedTargets)
 {
-    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                              "wazuh-manager"};
+    RetrySender withEndpoint {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr, "wazuh-manager"};
 
     const std::string path = writeTempFile("hc_rs_endpoint_stateful.bin", "the body");
 
@@ -864,20 +872,17 @@ TEST_F(RetrySenderTest, ConfiguredEndpointComposesWithFileBackedTargets)
 
     HttpRequestSpec seenSpec;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & attempt)
-    {
-        seenSpec = attempt;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& attempt)
+            {
+                seenSpec = attempt;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const auto result = withEndpoint.send(spec, m_waiter, 1);
 
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
     ASSERT_EQ("/wazuh-manager/stateful", seenSpec.target);
 
-    const auto expectedPrefixed =
-        m_signer.signFile("POST", "/wazuh-manager/stateful", path, m_clock.wallSeconds());
-    ASSERT_TRUE(expectedPrefixed.has_value());
-    EXPECT_THAT(seenSpec.headers, Contains(expectedPrefixed->authorization));
+    EXPECT_TRUE(decodeBearer(seenSpec.headers.back(), testAgentKeyHex())->signatureValid);
 }

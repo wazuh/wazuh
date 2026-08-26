@@ -15,19 +15,19 @@
 #include "authGate.hpp"
 #include "callbackDispatcher.hpp"
 #include "clusterIdentity.hpp"
-#include "cmacSigner.hpp"
 #include "collectorSource.hpp"
 #include "compressionGate.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
-#include "reporterStream.hpp"
 #include "curlPerformer.hpp"
 #include "fileCompressor.hpp"
 #include "https_client.h"
+#include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "registrationGate.hpp"
+#include "reporterStream.hpp"
 #include "spoolFile.hpp"
 #include "statefulStream.hpp"
 #include "statelessStream.hpp"
@@ -57,93 +57,97 @@
  */
 class HttpsClientFacade final
 {
-    public:
-        HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks);
-        ~HttpsClientFacade();
+public:
+    HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks);
+    ~HttpsClientFacade();
 
-        HttpsClientFacade(const HttpsClientFacade&) = delete;
-        HttpsClientFacade& operator=(const HttpsClientFacade&) = delete;
+    HttpsClientFacade(const HttpsClientFacade&) = delete;
+    HttpsClientFacade& operator=(const HttpsClientFacade&) = delete;
 
-        bool start();
-        void stop();
+    bool start();
+    void stop();
 
-        bool submitEvent(const uint8_t* frame, size_t length);
-        bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
-        bool submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size);
-        void notifyNow();
-        void setConfigHash(const char* configHash);
-        bool setAgentIdentity(const char* agentId, const char* keyHex);
-        hc_conn_state_t state() const;
+    bool submitEvent(const uint8_t* frame, size_t length);
+    bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
+    bool submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size);
+    void notifyNow();
+    void setConfigHash(const char* configHash);
+    bool setAgentIdentity(const char* agentId, const char* keyHex);
+    hc_conn_state_t state() const;
 
-    private:
-        void controlLoop();
-        void statelessLoop();
-        void statefulLoop();
-        void reporterLoop();
-        void startSyncIntake();
-        void drain();
-        std::chrono::milliseconds controlInterval() const;
+private:
+    void controlLoop();
+    void statelessLoop();
+    void statefulLoop();
+    void reporterLoop();
+    void startSyncIntake();
+    void drain();
+    std::chrono::milliseconds controlInterval() const;
 
-        ModuleConfig m_config;
-        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+    ModuleConfig m_config;
+    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
-        // Seams (built once; stable references handed to the streams).
-        // m_clock wraps m_systemClock with a runtime-correctable offset: every
-        // stream below is handed IClock& m_clock, so a skew RetrySender learns
-        // from any one manager response corrects every sender's signing
-        // timestamp from the next request on (#37828 follow-up). Declaration
-        // order matters here -- m_systemClock must construct before m_clock,
-        // which holds a reference to it.
-        SystemClock m_systemClock;
-        SkewCorrectedClock m_clock {m_systemClock};
-        Mt19937Random m_random;
-        FsProbe m_fsProbe;
-        ConfigKeyProvider m_keyProvider;
-        CmacSigner m_signer;
-        TempSpoolFactory m_spoolFactory;
-        ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
-        CurlPerformer m_performer;
-        CallbackDispatcher m_dispatcher;
-        ConfigHashState m_configHash;
-        ClusterIdentity m_cluster;
-        TaskIdStoreAdapter m_taskStore;
-        VdOffsetStoreAdapter m_vdOffsetStore;
-        // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
-        // The wake lambda runs later, so referencing m_controlWaiter (declared
-        // below) is safe.
-        AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
-        // Shared across every stream's RetrySender: one 415 disables
-        // compression agent-wide for the rest of this run.
-        CompressionGate m_compressionGate;
+    // Seams (built once; stable references handed to the streams).
+    // m_clock wraps m_systemClock with a runtime-correctable offset: every
+    // stream below is handed IClock& m_clock, so a skew RetrySender learns
+    // from any one manager response corrects every sender's signing
+    // timestamp from the next request on (#37828 follow-up). Declaration
+    // order matters here -- m_systemClock must construct before m_clock,
+    // which holds a reference to it.
+    SystemClock m_systemClock;
+    SkewCorrectedClock m_clock {m_systemClock};
+    Mt19937Random m_random;
+    FsProbe m_fsProbe;
+    ConfigKeyProvider m_keyProvider;
+    JwtSigner m_signer;
+    TempSpoolFactory m_spoolFactory;
+    ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
+    CurlPerformer m_performer;
+    CallbackDispatcher m_dispatcher;
+    ConfigHashState m_configHash;
+    ClusterIdentity m_cluster;
+    TaskIdStoreAdapter m_taskStore;
+    VdOffsetStoreAdapter m_vdOffsetStore;
+    // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
+    // The wake lambda runs later, so referencing m_controlWaiter (declared
+    // below) is safe.
+    AuthGate m_authGate {m_dispatcher,
+                         [this]
+                         {
+                             m_controlWaiter.notify();
+                         }};
+    // Shared across every stream's RetrySender: one 415 disables
+    // compression agent-wide for the rest of this run.
+    CompressionGate m_compressionGate;
 
-        CallbackCollectorSource m_collectors;
-        StatelessStream m_stateless;
-        StatefulStream m_stateful;
-        ControlStream m_control;
-        ReporterStream m_reporter;
+    CallbackCollectorSource m_collectors;
+    StatelessStream m_stateless;
+    StatefulStream m_stateful;
+    ControlStream m_control;
+    ReporterStream m_reporter;
 
-        // One waiter per stream thread; the stop flag doubles as the abort flag.
-        Waiter m_controlWaiter;
-        Waiter m_statelessWaiter;
-        Waiter m_statefulWaiter;
-        Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
-        RegistrationGate m_gate;
+    // One waiter per stream thread; the stop flag doubles as the abort flag.
+    Waiter m_controlWaiter;
+    Waiter m_statelessWaiter;
+    Waiter m_statefulWaiter;
+    Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
+    RegistrationGate m_gate;
 
-        Waiter m_reporterWaiter;
+    Waiter m_reporterWaiter;
 
-        std::thread m_controlThread;
-        std::thread m_statelessThread;
-        std::thread m_statefulThread;
-        std::thread m_reporterThread;
+    std::thread m_controlThread;
+    std::thread m_statelessThread;
+    std::thread m_statefulThread;
+    std::thread m_reporterThread;
 
-        // Optional stateful sync intake (large sessions off a local STREAM
-        // socket). Constructed only when a socket path is configured; its sink
-        // feeds the stateful stream's file-based submit.
-        std::unique_ptr<SyncIntake> m_syncIntake;
+    // Optional stateful sync intake (large sessions off a local STREAM
+    // socket). Constructed only when a socket path is configured; its sink
+    // feeds the stateful stream's file-based submit.
+    std::unique_ptr<SyncIntake> m_syncIntake;
 
-        mutable std::mutex m_lifecycleMutex;
-        bool m_started {false};
-        bool m_stopped {false}; ///< Latched on stop(); the client is single-shot.
+    mutable std::mutex m_lifecycleMutex;
+    bool m_started {false};
+    bool m_stopped {false}; ///< Latched on stop(); the client is single-shot.
 };
 
 #endif // _HTTPS_CLIENT_FACADE_HPP

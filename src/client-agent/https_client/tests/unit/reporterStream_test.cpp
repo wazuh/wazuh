@@ -10,6 +10,7 @@
  */
 
 #include "fakeSysSeams.hpp"
+#include "jwtSigner.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 #include "reporterStream.hpp"
@@ -40,66 +41,66 @@ namespace
     /// Hands out scripted snapshots; records how many times each was pulled.
     class FakeCollectorSource final : public ICollectorSource
     {
-        public:
-            std::optional<std::string> collectStats() override
-            {
-                m_statsCalls++;
-                return m_stats;
-            }
+    public:
+        std::optional<std::string> collectStats() override
+        {
+            m_statsCalls++;
+            return m_stats;
+        }
 
-            std::optional<std::string> collectConfig() override
-            {
-                m_configCalls++;
-                return m_config;
-            }
+        std::optional<std::string> collectConfig() override
+        {
+            m_configCalls++;
+            return m_config;
+        }
 
-            std::optional<std::string> m_stats {R"({"uptime":10})"};
-            std::optional<std::string> m_config {R"({"client":{"notify_time":10}})"};
-            int m_statsCalls {0};
-            int m_configCalls {0};
+        std::optional<std::string> m_stats {R"({"uptime":10})"};
+        std::optional<std::string> m_config {R"({"client":{"notify_time":10}})"};
+        int m_statsCalls {0};
+        int m_configCalls {0};
     };
 
     class ReporterStreamTest : public ::testing::Test
     {
-        protected:
-            ReporterStreamTest()
-                : m_signer("001", m_keyProvider)
-                , m_authGate(m_sink, [] {})
-            {
-            }
+    protected:
+        ReporterStreamTest()
+            : m_signer("001", m_keyProvider)
+            , m_authGate(m_sink, [] {})
+        {
+        }
 
-            ModuleConfig makeConfig(bool stats, bool config)
-            {
-                hc_config_t raw {};
-                std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
-                std::strncpy(raw.agent_id, "001", sizeof(raw.agent_id) - 1);
-                raw.verify_mode = HC_VERIFY_NONE;
-                raw.stats_enabled = stats;
-                raw.stats_interval_s = 60;
-                raw.config_report_enabled = config;
-                raw.config_report_interval_s = 3600;
-                return ModuleConfig::fromC(raw);
-            }
+        ModuleConfig makeConfig(bool stats, bool config)
+        {
+            hc_config_t raw {};
+            std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
+            std::strncpy(raw.agent_id, "001", sizeof(raw.agent_id) - 1);
+            raw.verify_mode = HC_VERIFY_NONE;
+            raw.stats_enabled = stats;
+            raw.stats_interval_s = 60;
+            raw.config_report_enabled = config;
+            raw.config_report_interval_s = 3600;
+            return ModuleConfig::fromC(raw);
+        }
 
-            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-            CmacSigner m_signer;
-            FakeClock m_clock;
-            ScriptedRandom m_random {{0.0}};
-            NiceMock<MockCallbackSink> m_sink;
-            AuthGate m_authGate;
-            CompressionGate m_compressionGate;
-            ClusterIdentity m_cluster;
-            FakeCollectorSource m_collectors;
-            MockHttpPerformer m_performer;
-            FakeWaiter m_waiter;
+        ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};
+        JwtSigner m_signer;
+        FakeClock m_clock;
+        ScriptedRandom m_random {{0.0}};
+        NiceMock<MockCallbackSink> m_sink;
+        AuthGate m_authGate;
+        CompressionGate m_compressionGate;
+        ClusterIdentity m_cluster;
+        FakeCollectorSource m_collectors;
+        MockHttpPerformer m_performer;
+        FakeWaiter m_waiter;
     };
 } // namespace
 
 TEST_F(ReporterStreamTest, DisabledReportersNeverCollectOrSend)
 {
     const auto config = makeConfig(false, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_FALSE(reporter.anyEnabled());
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
@@ -111,18 +112,18 @@ TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
 {
     m_cluster.set("prod");
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
 
     std::string body;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_EQ("/stats", spec.target);
-        body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_EQ("/stats", spec.target);
+                body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     reporter.tick(m_waiter, true); // Due immediately at epoch.
     EXPECT_NE(std::string::npos, body.find(R"("agent_id":"001")"));
@@ -135,16 +136,17 @@ TEST_F(ReporterStreamTest, StampOverwritesCollectorSuppliedIdentityFields)
     m_cluster.set("authoritative");
     m_collectors.m_stats = R"({"agent_id":"WRONG","cluster":"WRONG","x":1})";
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
 
     std::string body;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke([&](const HttpRequestSpec & spec)
-    {
-        body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     reporter.tick(m_waiter, true);
     EXPECT_NE(std::string::npos, body.find(R"("agent_id":"001")"));
@@ -156,8 +158,8 @@ TEST_F(ReporterStreamTest, NullCollectorReturnSkipsWithoutSending)
 {
     m_collectors.m_stats = std::nullopt;
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
     EXPECT_EQ(1, m_collectors.m_statsCalls); // Collected, then skipped.
@@ -171,8 +173,8 @@ TEST_F(ReporterStreamTest, NullCollectorReturnRetriesSoonNotAfterFullInterval)
     // short backoff as a send failure, not wait out the full (60 s here) interval.
     m_collectors.m_stats = std::nullopt;
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
 
     reporter.tick(m_waiter, true); // First attempt: nothing collected yet.
@@ -187,8 +189,8 @@ TEST_F(ReporterStreamTest, NonObjectCollectorReturnIsSkipped)
 {
     m_collectors.m_stats = R"(["not","an","object"])";
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
 }
@@ -196,8 +198,8 @@ TEST_F(ReporterStreamTest, NonObjectCollectorReturnIsSkipped)
 TEST_F(ReporterStreamTest, UnregisteredOrPausedSkipsAndKeepsDueness)
 {
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, false); // Not registered.
     m_authGate.reportAuthFailure();
@@ -208,13 +210,13 @@ TEST_F(ReporterStreamTest, UnregisteredOrPausedSkipsAndKeepsDueness)
 TEST_F(ReporterStreamTest, IntervalGovernsTheNextSend)
 {
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 200)));
 
-    reporter.tick(m_waiter, true);             // Sends (due at epoch).
+    reporter.tick(m_waiter, true); // Sends (due at epoch).
     EXPECT_EQ(1, m_collectors.m_statsCalls);
-    reporter.tick(m_waiter, true);             // Too soon: not due.
+    reporter.tick(m_waiter, true); // Too soon: not due.
     EXPECT_EQ(1, m_collectors.m_statsCalls);
     m_clock.advance(std::chrono::seconds {60}); // Reach the interval.
     reporter.tick(m_waiter, true);
@@ -224,12 +226,12 @@ TEST_F(ReporterStreamTest, IntervalGovernsTheNextSend)
 TEST_F(ReporterStreamTest, BackPressureDefersOnlyThatPath)
 {
     const auto config = makeConfig(true, true);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                             m_cluster, m_collectors};
+    ReporterStream reporter {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
     // Both due at epoch: stats 503 (Retry-After 5), config 200.
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 503, 5)))  // /stats first.
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));    // /config.
+        .WillOnce(Return(response(TransportStatus::Ok, 503, 5))) // /stats first.
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));   // /config.
     reporter.tick(m_waiter, true);
     EXPECT_EQ(1, m_collectors.m_statsCalls);
     EXPECT_EQ(1, m_collectors.m_configCalls);

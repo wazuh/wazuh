@@ -11,49 +11,13 @@
 
 #include "canonicalRequest.hpp"
 
-std::string canonicalRequestHead(const std::string& method, const std::string& target,
-                                 const std::string& agentId, std::time_t timestamp)
-{
-    return "WAZUH-REQUEST\n1\n" + method + "\n" + target + "\n" + agentId + "\n" +
-           std::to_string(timestamp) + "\n";
-}
-
-std::vector<uint8_t> buildCanonicalRequest(const std::string& method, const std::string& target,
-                                           const std::string& agentId, std::time_t timestamp,
-                                           const uint8_t* body, size_t bodyLength)
-{
-    const std::string head = canonicalRequestHead(method, target, agentId, timestamp);
-    std::vector<uint8_t> buffer;
-    buffer.reserve(head.size() + bodyLength);
-    buffer.insert(buffer.end(), head.begin(), head.end());
-
-    if (body != nullptr && bodyLength > 0)
-    {
-        buffer.insert(buffer.end(), body, body + bodyLength);
-    }
-
-    return buffer;
-}
-
-std::string prefixedTarget(const std::string& endpoint, const std::string& target)
-{
-    if (endpoint.empty())
-    {
-        return target;
-    }
-
-    return "/" + endpoint + target;
-}
-
-std::string enrollCanonicalRequestHead(const std::string& method, const std::string& target,
-                                       std::time_t timestamp)
+std::string enrollCanonicalRequestHead(const std::string& method, const std::string& target, std::time_t timestamp)
 {
     return "WAZUH-ENROLL\n1\n" + method + "\n" + target + "\n" + std::to_string(timestamp) + "\n";
 }
 
-std::vector<uint8_t> buildEnrollCanonicalRequest(const std::string& method, const std::string& target,
-                                                 std::time_t timestamp, const uint8_t* body,
-                                                 size_t bodyLength)
+std::vector<uint8_t> buildEnrollCanonicalRequest(
+    const std::string& method, const std::string& target, std::time_t timestamp, const uint8_t* body, size_t bodyLength)
 {
     const std::string head = enrollCanonicalRequestHead(method, target, timestamp);
     std::vector<uint8_t> buffer;

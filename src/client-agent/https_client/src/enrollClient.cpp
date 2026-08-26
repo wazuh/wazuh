@@ -12,8 +12,8 @@
 #include "enrollClient.hpp"
 
 #include "bodyCompressor.hpp"
-#include "canonicalRequest.hpp"
 #include "enrollSigner.hpp"
+#include "requestTarget.hpp"
 
 #include <cstdlib>
 #include <utility>
@@ -27,8 +27,8 @@ namespace
     constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
 } // namespace
 
-EnrollClient::EnrollClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
-                           IClock& clock, LogFn logFn)
+EnrollClient::EnrollClient(
+    const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, IClock& clock, LogFn logFn)
     : m_config(config)
     , m_performer(performer)
     , m_fsProbe(fsProbe)
@@ -105,8 +105,8 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
         return; // No Date captured/parsed: nothing to measure skew against.
     }
 
-    const auto delta = static_cast<std::int64_t>(response.serverDateSeconds) -
-                       static_cast<std::int64_t>(m_clock.wallSeconds());
+    const auto delta =
+        static_cast<std::int64_t>(response.serverDateSeconds) - static_cast<std::int64_t>(m_clock.wallSeconds());
 
     if (std::abs(delta) < kSkewNoiseFloorSeconds)
     {
@@ -120,8 +120,7 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
                static_cast<long long>(delta));
 }
 
-HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
-                                       bool allowCompression)
+HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password, bool allowCompression)
 {
     const auto* bodyPtr = reinterpret_cast<const uint8_t*>(bodyJson.data());
     size_t bodyLength = bodyJson.size();
@@ -129,7 +128,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     std::vector<std::string> headers;
 
     // Sent unconditionally in all three auth modes (#38465 Q4b/G5, confirmed
-    // with the server team) -- unlike CmacSigner's identical header, this one
+    // with the server team) -- unlike JwtSigner's identical header, this one
     // is not tied to whether a signature is computed below.
     headers.push_back("protocol-version: 1");
 
@@ -157,8 +156,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     // must cover what the manager will actually receive.
     if (!password.empty())
     {
-        const auto signature =
-            EnrollSigner::sign(password, "POST", target, bodyPtr, bodyLength, m_clock.wallSeconds());
+        const auto signature = EnrollSigner::sign(password, "POST", target, bodyPtr, bodyLength, m_clock.wallSeconds());
 
         if (signature)
         {

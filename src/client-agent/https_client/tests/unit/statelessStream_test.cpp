@@ -10,6 +10,7 @@
  */
 
 #include "fakeSysSeams.hpp"
+#include "jwtSigner.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 #include "statelessStream.hpp"
@@ -55,58 +56,57 @@ namespace
         EXPECT_NE(std::string::npos, start) << "sent body has no H line: " << sentBody;
         const auto jsonStart = start + prefix.size();
         const auto newline = sentBody.find('\n', jsonStart);
-        const auto jsonText = sentBody.substr(
-                                  jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
+        const auto jsonText =
+            sentBody.substr(jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
         return nlohmann::json::parse(jsonText)["wazuh"];
     }
 
     class StatelessStreamTest : public ::testing::Test
     {
-        protected:
-            StatelessStreamTest()
-                : m_signer("001", m_keyProvider)
-                , m_config(makeConfig())
-                , m_authGate(m_sink, [] {})
-            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
-                       m_compressionGate)
-            {
-            }
+    protected:
+        StatelessStreamTest()
+            : m_signer("001", m_keyProvider)
+            , m_config(makeConfig())
+            , m_authGate(m_sink, [] {})
+            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate)
+        {
+        }
 
-            static ModuleConfig makeConfig(bool compressionEnabled = false)
-            {
-                hc_config_t config {};
-                std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
-                std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
-                config.verify_mode = HC_VERIFY_NONE;
-                // 35-byte H line + 16 bytes available for E lines.
-                config.batch_size_bytes = 51;
-                config.batch_interval_ms = 5000;
-                config.buffer_cap_multiplier = 4;
-                config.https_compression_enabled = compressionEnabled;
-                return ModuleConfig::fromC(config);
-            }
+        static ModuleConfig makeConfig(bool compressionEnabled = false)
+        {
+            hc_config_t config {};
+            std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+            std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+            config.verify_mode = HC_VERIFY_NONE;
+            // 35-byte H line + 16 bytes available for E lines.
+            config.batch_size_bytes = 51;
+            config.batch_interval_ms = 5000;
+            config.buffer_cap_multiplier = 4;
+            config.https_compression_enabled = compressionEnabled;
+            return ModuleConfig::fromC(config);
+        }
 
-            StatelessStream::SubmissionResult submitResult(const std::string& frame)
-            {
-                return m_stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
-            }
+        StatelessStream::SubmissionResult submitResult(const std::string& frame)
+        {
+            return m_stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+        }
 
-            bool submit(const std::string& frame)
-            {
-                return submitResult(frame).accepted;
-            }
+        bool submit(const std::string& frame)
+        {
+            return submitResult(frame).accepted;
+        }
 
-            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-            CmacSigner m_signer;
-            ModuleConfig m_config;
-            FakeClock m_clock;
-            ScriptedRandom m_random {{0.0}}; // Zero jitter keeps deferrals deterministic.
-            NiceMock<MockCallbackSink> m_sink;
-            MockHttpPerformer m_performer;
-            AuthGate m_authGate;
-            CompressionGate m_compressionGate;
-            FakeWaiter m_waiter;
-            StatelessStream m_stream;
+        ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};
+        JwtSigner m_signer;
+        ModuleConfig m_config;
+        FakeClock m_clock;
+        ScriptedRandom m_random {{0.0}}; // Zero jitter keeps deferrals deterministic.
+        NiceMock<MockCallbackSink> m_sink;
+        MockHttpPerformer m_performer;
+        AuthGate m_authGate;
+        CompressionGate m_compressionGate;
+        FakeWaiter m_waiter;
+        StatelessStream m_stream;
     };
 } // namespace
 
@@ -120,13 +120,13 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
 {
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        EXPECT_EQ("/stateless", spec.target);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                EXPECT_EQ("/stateless", spec.target);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     EXPECT_FALSE(submitResult("event-aaaa").shouldWakeSender);
     EXPECT_TRUE(submitResult("event-bbbb").shouldWakeSender);
@@ -165,17 +165,16 @@ TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
     std::strncpy(raw.agent_id, R"(0"01)", sizeof(raw.agent_id) - 1);
     raw.verify_mode = HC_VERIFY_NONE;
     const ModuleConfig config = ModuleConfig::fromC(raw);
-    StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate, m_compressionGate};
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const std::string frame = "1:/loc:escaped";
     stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
@@ -192,21 +191,30 @@ TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
     // (not as siblings of it) because that is the ONLY shape the indexer's
     // strict_allow_templates wazuh.* mapping accepts -- it mirrors the legacy
     // manager's own append_header() (remoted/src/secure.c) exactly.
-    const std::string hostJson =
-        R"({"agent":{"name":"myagent","version":"5.0.0","groups":["g1","g2"],)"
-        R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
-        R"("cluster":{"name":"c1"}})";
-    StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, m_compressionGate, [&hostJson] { return hostJson; }};
+    const std::string hostJson = R"({"agent":{"name":"myagent","version":"5.0.0","groups":["g1","g2"],)"
+                                 R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
+                                 R"("cluster":{"name":"c1"}})";
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&hostJson]
+                            {
+                                return hostJson;
+                            }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
     stream.tick(m_waiter, true);
@@ -234,17 +242,27 @@ TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenCollectHostIsEmpty)
     // Mirrors bridge_on_collect_stateless_host() writing "" when
     // metadata_provider has nothing yet (e.g. before the first /control
     // handshake): the H line must still be well-formed, carrying only id.
-    StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, m_compressionGate, [] { return std::string(); }};
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            []
+                            {
+                                return std::string();
+                            }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
     stream.tick(m_waiter, true);
@@ -260,17 +278,27 @@ TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
 {
     // A torn shared-memory read or an unexpected shape must degrade to
     // "agent.id only", never corrupt the H line or crash the stream.
-    StatelessStream stream {m_config,  m_performer, m_signer,  m_clock, m_random,
-                            m_sink,    m_authGate, m_compressionGate, [] { return std::string("not json"); }};
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            []
+                            {
+                                return std::string("not json");
+                            }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
     stream.tick(m_waiter, true);
@@ -287,29 +315,35 @@ TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruc
     // line must reflect collectHost's CURRENT return value at each flush, not
     // whatever was available when the stream was built.
     std::string clusterName = "";
-    StatelessStream stream
-    {
-        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate,
-        [&clusterName]
-        {
-            return clusterName.empty() ? std::string() : R"({"cluster":{"name":")" + clusterName + "\"}}";
-        }};
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&clusterName]
+                            {
+                                return clusterName.empty() ? std::string()
+                                                           : R"({"cluster":{"name":")" + clusterName + "\"}}";
+                            }};
 
     std::string firstBody;
     std::string secondBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        firstBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        secondBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                firstBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                secondBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     stream.submit(reinterpret_cast<const uint8_t*>("event1"), 6);
     stream.tick(m_waiter, true); // No cluster identity yet.
@@ -347,16 +381,16 @@ TEST_F(StatelessStreamTest, PayloadTooLargeKeepsEventsInOrderAndHalves)
     // order, and the effective payload halves so the next flush is smaller.
     std::vector<std::string> bodies;
     EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec & spec)
-    {
-        bodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        // First send (full 16-byte event budget) 413s; smaller retries succeed.
-        return response(TransportStatus::Ok, bodies.size() == 1 ? 413 : 200);
-    }));
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                bodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                // First send (full 16-byte event budget) 413s; smaller retries succeed.
+                return response(TransportStatus::Ok, bodies.size() == 1 ? 413 : 200);
+            }));
 
-    submit("aaaa"); // "E aaaa\n" = 7 bytes.
-    submit("bbbb"); // + 7 = 14 bytes; two events in the batch.
+    submit("aaaa");                // "E aaaa\n" = 7 bytes.
+    submit("bbbb");                // + 7 = 14 bytes; two events in the batch.
     m_stream.tick(m_waiter, true); // 413: batch retained, payload halves to 8.
     m_stream.tick(m_waiter, true); // Smaller batch (fits 8): first event.
     m_stream.tick(m_waiter, true); // Remaining event.
@@ -378,12 +412,12 @@ TEST_F(StatelessStreamTest, SuccessRampsThePayloadBackUp)
     int calls = 0;
     std::vector<size_t> bodySizes;
     EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec & spec)
-    {
-        bodySizes.push_back(spec.bodyLength);
-        return response(TransportStatus::Ok, ++calls == 1 ? 413 : 200);
-    }));
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                bodySizes.push_back(spec.bodyLength);
+                return response(TransportStatus::Ok, ++calls == 1 ? 413 : 200);
+            }));
 
     for (int index = 0; index < 6; index++)
     {
@@ -426,10 +460,9 @@ TEST_F(StatelessStreamTest, ASingleOversized413DoesNotShrinkTheBudget)
     raw.batch_interval_ms = 5000;
     raw.buffer_cap_multiplier = 4;
     const ModuleConfig config = ModuleConfig::fromC(raw);
-    StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate, m_compressionGate};
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
 
-    const auto push = [&stream](const std::string & frame)
+    const auto push = [&stream](const std::string& frame)
     {
         stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
     };
@@ -443,12 +476,12 @@ TEST_F(StatelessStreamTest, ASingleOversized413DoesNotShrinkTheBudget)
     // budget (100 - 35 = 65) would have cut this to five events.
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     for (int index = 0; index < 12; index++)
     {
@@ -487,8 +520,7 @@ TEST_F(StatelessStreamTest, Non413PermanentStillDropsTheBatch)
 
 TEST_F(StatelessStreamTest, RetryableKeepsTheBatch)
 {
-    EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
     submit("event-aaaa");
     submit("event-bbbb");
     m_stream.tick(m_waiter, true); // force; the batch stays after failure.
@@ -518,8 +550,8 @@ TEST_F(StatelessStreamTest, BackPressureIsRetriedInsideOneFlushWhenWaiterAllows)
     // Retry-After and retries within the same tick.
     m_waiter.script({true});
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 503, 2)))
-    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+        .WillOnce(Return(response(TransportStatus::Ok, 503, 2)))
+        .WillOnce(Return(response(TransportStatus::Ok, 200)));
     submit("event-aaaa");
     submit("event-bbbb");
     m_stream.tick(m_waiter, false);
@@ -612,8 +644,7 @@ TEST_F(StatelessStreamTest, AFailedFlushFallsBackToTheBatchInterval)
 {
     // Never loop back-to-back on failure: that would hammer a manager that is
     // rejecting or backing off.
-    EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
 
     for (int index = 0; index < 6; index++)
     {
@@ -630,13 +661,13 @@ TEST_F(StatelessStreamTest, DrainUsesASingleAttemptWithinTheDrainWindow)
     // drain window, exactly like ControlStream::drainStep.
     uint32_t attempts = 0;
     EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec & spec)
-    {
-        attempts++;
-        EXPECT_EQ(m_config.drainTimeoutMs, spec.timeoutMs);
-        return response(TransportStatus::Timeout, 0);
-    }));
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                attempts++;
+                EXPECT_EQ(m_config.drainTimeoutMs, spec.timeoutMs);
+                return response(TransportStatus::Timeout, 0);
+            }));
 
     m_waiter.script({true, true, true, true, true}); // Would allow retries.
     submit("event-aaaa");
@@ -649,12 +680,12 @@ TEST_F(StatelessStreamTest, DrainStopsAtTheIterationBound)
     // A manager that keeps accepting must not let the drain run forever either.
     uint32_t attempts = 0;
     EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec&)
-    {
-        attempts++;
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec&)
+            {
+                attempts++;
+                return response(TransportStatus::Ok, 200);
+            }));
 
     for (int index = 0; index < 15; index++)
     {
@@ -690,24 +721,23 @@ TEST_F(StatelessStreamTest, CompressionRejectionRecoversAndDeliversEventExactlyO
     // success looks exactly like any other Ok -- consumed once, not dropped,
     // not left behind for a duplicate resend.
     const ModuleConfig config = makeConfig(/*compressionEnabled=*/true);
-    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
-                            m_compressionGate};
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
 
     std::vector<std::vector<std::string>> headersPerCall;
     EXPECT_CALL(m_performer, perform(_))
-    .Times(2)
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        headersPerCall.push_back(spec.headers);
-        return response(TransportStatus::Ok, 415);
-    }))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        headersPerCall.push_back(spec.headers);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .Times(2)
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                headersPerCall.push_back(spec.headers);
+                return response(TransportStatus::Ok, 415);
+            }))
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                headersPerCall.push_back(spec.headers);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const std::string frame = "e1";
     stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
@@ -732,20 +762,20 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
     // compression on -- two "E aaaa\n" (7 bytes each) fit; a third must not be
     // pulled into the same flush just because it would compress smaller.
     const ModuleConfig config = makeConfig(/*compressionEnabled=*/true);
-    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
-                            m_compressionGate};
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate};
 
     std::vector<std::string> decompressedBodies;
     EXPECT_CALL(m_performer, perform(_))
-    .WillRepeatedly(Invoke(
-                        [&](const HttpRequestSpec & spec)
-    {
-        std::vector<uint8_t> decompressed(4096);
-        const size_t size = ZSTD_decompress(decompressed.data(), decompressed.size(), spec.body, spec.bodyLength);
-        EXPECT_FALSE(ZSTD_isError(size));
-        decompressedBodies.emplace_back(reinterpret_cast<const char*>(decompressed.data()), size);
-        return response(TransportStatus::Ok, 200);
-    }));
+        .WillRepeatedly(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                std::vector<uint8_t> decompressed(4096);
+                const size_t size =
+                    ZSTD_decompress(decompressed.data(), decompressed.size(), spec.body, spec.bodyLength);
+                EXPECT_FALSE(ZSTD_isError(size));
+                decompressedBodies.emplace_back(reinterpret_cast<const char*>(decompressed.data()), size);
+                return response(TransportStatus::Ok, 200);
+            }));
 
     const std::string frame = "aaaa"; // "E aaaa\n" = 7 bytes.
     stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
@@ -757,7 +787,9 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
     size_t eventCount = 0;
 
     for (size_t pos = 0; (pos = decompressedBodies[0].find("E aaaa\n", pos)) != std::string::npos;
-            pos += 7, eventCount++) {}
+         pos += 7, eventCount++)
+    {
+    }
 
     EXPECT_EQ(2u, eventCount); // Only two events fit the uncompressed budget.
 

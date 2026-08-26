@@ -29,97 +29,96 @@
  */
 struct ModuleConfig
 {
-        std::string serverHost;
-        uint16_t serverPort {443};
-        /// Optional reverse-proxy path segment, <endpoint> (#38492), already
-        /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
-        /// today's unprefixed behavior. baseUrl() does NOT insert it: the
-        /// manager's auth middleware CMACs the literal wire request-target,
-        /// prefix included, so callers fold it into HttpRequestSpec::target
-        /// (via prefixedTarget(), retrySender.cpp/enrollClient.cpp) before
-        /// signing, and baseUrl() only ever sees that already-prefixed target
-        /// appended to it afterward.
-        std::string serverEndpoint;
-        std::string agentId;
-        std::string agentKeyHex;
-        hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
-        std::string caPath;
-        std::string clientCert;
-        std::string clientKey;
-        std::string ciphers;
+    std::string serverHost;
+    uint16_t serverPort {443};
+    /// Optional reverse-proxy path segment, <endpoint> (#38492), already
+    /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
+    /// today's unprefixed behavior. baseUrl() does NOT insert it: callers
+    /// fold it into HttpRequestSpec::target (via prefixedTarget(),
+    /// retrySender.cpp/enrollClient.cpp) and baseUrl() only ever sees that
+    /// already-prefixed target appended to it afterward. Routing only: the
+    /// bearer token does not bind the target.
+    std::string serverEndpoint;
+    std::string agentId;
+    std::string agentKeyHex;
+    hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
+    std::string caPath;
+    std::string clientCert;
+    std::string clientKey;
+    std::string ciphers;
 
-        uint64_t batchSizeBytes {1024 * 1024};
-        uint32_t batchIntervalMs {10000};
-        uint32_t bufferCapMultiplier {4};
+    uint64_t batchSizeBytes {1024 * 1024};
+    uint32_t batchIntervalMs {10000};
+    uint32_t bufferCapMultiplier {4};
 
-        // Legacy client-buffer ladder defaults (etc/internal_options.conf).
-        uint32_t bufferWarnLevel {90};
-        uint32_t bufferNormalLevel {70};
-        uint32_t bufferFloodToleranceS {15};
+    // Legacy client-buffer ladder defaults (etc/internal_options.conf).
+    uint32_t bufferWarnLevel {90};
+    uint32_t bufferNormalLevel {70};
+    uint32_t bufferFloodToleranceS {15};
 
-        uint32_t notifyIntervalS {10};
-        uint32_t rejectedRetryIntervalS {60};
+    uint32_t notifyIntervalS {10};
+    uint32_t rejectedRetryIntervalS {60};
 
-        /// Safety bound for a remote_upgrade WPK download: stops a
-        /// hostile or faulty manager exhausting disk. WPKs are tens of MB,
-        /// much larger than merged.mg, hence the bigger default than config's.
-        uint64_t wpkMaxDownloadBytes {200ULL * 1024 * 1024};
+    /// Safety bound for a remote_upgrade WPK download: stops a
+    /// hostile or faulty manager exhausting disk. WPKs are tens of MB,
+    /// much larger than merged.mg, hence the bigger default than config's.
+    uint64_t wpkMaxDownloadBytes {200ULL * 1024 * 1024};
 
-        std::string version;
-        std::string configChecksum;
+    std::string version;
+    std::string configChecksum;
 
-        uint32_t requestTimeoutMs {10000};
-        uint32_t statefulTimeoutMs {90000};
-        uint32_t backoffBaseMs {1000};
-        uint32_t backoffCapMs {60000};
-        uint32_t drainTimeoutMs {5000};
+    uint32_t requestTimeoutMs {10000};
+    uint32_t statefulTimeoutMs {90000};
+    uint32_t backoffBaseMs {1000};
+    uint32_t backoffCapMs {60000};
+    uint32_t drainTimeoutMs {5000};
 
-        // Per-stream retry budgets (total tries, not retries-after-the-first).
-        // Consumed only by Retryable/BackPressure outcomes.
-        uint32_t controlMaxAttempts {4};
-        uint32_t statelessMaxAttempts {5};
-        uint32_t statefulMaxAttempts {5};
-        uint32_t downloadMaxAttempts {2};
+    // Per-stream retry budgets (total tries, not retries-after-the-first).
+    // Consumed only by Retryable/BackPressure outcomes.
+    uint32_t controlMaxAttempts {4};
+    uint32_t statelessMaxAttempts {5};
+    uint32_t statefulMaxAttempts {5};
+    uint32_t downloadMaxAttempts {2};
 
-        /// Consecutive undeliverable /control steps before producers pause.
-        uint32_t producerPauseThreshold {2};
+    /// Consecutive undeliverable /control steps before producers pause.
+    uint32_t producerPauseThreshold {2};
 
-        std::string spoolDir;
+    std::string spoolDir;
 
-        // #37843 periodic reporters. Struct defaults only; fromC() always overrides
-        // both from the agent config, where <config_report> ships on and
-        // <stats_report> stays off (see ClientConf() in client-agent/src/config.c).
-        bool statsEnabled {false};
-        uint32_t statsIntervalS {60};
-        bool configReportEnabled {false};
-        uint32_t configReportIntervalS {3600};
-        std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
+    // #37843 periodic reporters. Struct defaults only; fromC() always overrides
+    // both from the agent config, where <config_report> ships on and
+    // <stats_report> stays off (see ClientConf() in client-agent/src/config.c).
+    bool statsEnabled {false};
+    uint32_t statsIntervalS {60};
+    bool configReportEnabled {false};
+    uint32_t configReportIntervalS {3600};
+    std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
-        // zstd-compress in-memory request bodies before signing/sending.
-        // internal_options.conf (agent.https_compression_enabled), on by default.
-        bool httpsCompressionEnabled {true};
+    // zstd-compress in-memory request bodies before signing/sending.
+    // internal_options.conf (agent.https_compression_enabled), on by default.
+    bool httpsCompressionEnabled {true};
 
-        // Always "https" in production (fromC never changes it); the component
-        // test overrides it to "http" to drive the real curl path against a
-        // plaintext fake manager.
-        std::string scheme {"https"};
+    // Always "https" in production (fromC never changes it); the component
+    // test overrides it to "http" to drive the real curl path against a
+    // plaintext fake manager.
+    std::string scheme {"https"};
 
-        static ModuleConfig fromC(const hc_config_t& config);
+    static ModuleConfig fromC(const hc_config_t& config);
 
-        bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
+    bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
 
-        /// The TLS half of validate() alone (fail-closed CA check + client-cert
-        /// pairing), without the serverHost/agentId precondition -- an
-        /// enrolling agent has no agentId yet, but the same TLS matrix still
-        /// has to hold before its /enroll request goes out (#38465).
-        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
+    /// The TLS half of validate() alone (fail-closed CA check + client-cert
+    /// pairing), without the serverHost/agentId precondition -- an
+    /// enrolling agent has no agentId yet, but the same TLS matrix still
+    /// has to hold before its /enroll request goes out (#38465).
+    bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
 
-        std::string baseUrl() const;
+    std::string baseUrl() const;
 
-    private:
-        bool validateTiming(const LogFn& logFn) const;
-        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
-        bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
+private:
+    bool validateTiming(const LogFn& logFn) const;
+    bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
+    bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };
 
 #endif // _HC_MODULE_CONFIG_HPP
