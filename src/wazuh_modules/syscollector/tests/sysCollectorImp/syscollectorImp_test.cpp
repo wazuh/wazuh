@@ -3055,6 +3055,97 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMeta
     Syscollector::instance().destroy();
 }
 
+
+// ── #38601: synced_agent_id marker and query ─────────────────────────────────
+//
+// An agent deleted on the manager re-enrolls under a new id while local.db -- the first-sync
+// marker in it included -- survives untouched, so every later cycle sends a delta against a
+// baseline the manager no longer has for this identity. This marker is what lets a cycle notice.
+
+TEST_F(SyscollectorImpTest, queryCommandGetSyncedAgentIdDefaultsToZero)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Zero, not an error: a database that has never recorded one is the normal state of every
+    // agent before its first cycle, and of every agent upgrading in place.
+    std::string response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["synced_agent_id"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetSyncedAgentIdReturnsStoredValue)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    // Stored as a plain number: OS_IsValidID() has already rejected anything but at most 8
+    // digits by the time an id reaches client.keys, so it fits the INTEGER column.
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('synced_agent_id', 42);",
+                           nullptr,
+                           nullptr,
+                           &errMsg),
+              SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["synced_agent_id"], 42);
+
+    Syscollector::instance().destroy();
+}
+
 // ── first_scan_completed marker and query ────────────────────────────────────
 
 TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedDefaultsToFalse)

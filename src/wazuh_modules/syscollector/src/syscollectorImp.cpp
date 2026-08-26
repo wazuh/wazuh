@@ -93,6 +93,12 @@ constexpr auto QUEUE_SIZE
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync_completed"};
+// The agent id whose manager-side copy of this inventory is the one first_sync_completed refers
+// to. Absence means "never recorded" and is adopted without resyncing -- which is what keeps an
+// in-place upgrade of an existing fleet from making every agent resync at once. Stored as a
+// number: OS_IsValidID() has already rejected anything but at most 8 digits by the time an id
+// reaches client.keys, so it fits the INTEGER column the table already has.
+constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -2372,12 +2378,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
     bool overallSuccess = true;
+    // #38601: true once either protocol actually opened a session with queued items. Success
+    // alone cannot say that -- an empty queue reports success without contacting the manager.
+    bool sentAnything = false;
     std::string failureReason;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+        sentAnything = sentAnything || result.sentAnything;
 
         if (result.success)
         {
@@ -2439,6 +2449,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     if (m_spSyncProtocolVD)
     {
         SyncModuleResult vdResult = synchronizeVDTables(mode);
+        sentAnything = sentAnything || vdResult.sentAnything;
 
         if (!vdResult.success)
         {
@@ -2487,10 +2498,13 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
 
     if (overallSuccess)
     {
-        m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
+        m_logFunction(LOG_INFO,
+                      sentAnything
+                      ? "Syscollector synchronization process finished successfully."
+                      : "Syscollector synchronization process finished: nothing to send.");
     }
 
-    return {overallSuccess, std::move(failureReason)};
+    return {overallSuccess, std::move(failureReason), false, false, 0, false, sentAnything};
 }
 // LCOV_EXCL_STOP
 
@@ -2501,19 +2515,25 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
     // coordination polls), so the members it reaches must not be reset underneath it.
     std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
+    if (auto* protocol = protocolForIndex(index))
+    {
+        protocol->persistDifference(id, operation, index, data, version, isDataContext);
+    }
+}
+
+IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
+{
     // VD tables: system (os), packages, hotfixes
-    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+    const bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                            index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                            index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
 
     if (isVDTable && m_spSyncProtocolVD)
     {
-        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+        return m_spSyncProtocolVD.get();
     }
-    else if (m_spSyncProtocol)
-    {
-        m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
-    }
+
+    return m_spSyncProtocol.get();
 }
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
@@ -3449,6 +3469,26 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector first sync completion";
+            }
+        }
+        else if (command == "get_synced_agent_id")
+        {
+            // #38601: which agent id the manager's copy of this inventory belongs to. Zero means
+            // none has been recorded yet, which is adopted rather than resynced. Exposed for the
+            // same reason as the markers above -- it decides whether a cycle resends everything,
+            // so it has to be observable without opening the database by hand.
+            int64_t syncedAgentId = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedAgentId))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector synced agent id retrieved";
+                response["data"]["synced_agent_id"] = syncedAgentId;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector synced agent id";
             }
         }
         else if (command == "get_first_scan_completed")
@@ -4752,151 +4792,255 @@ bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int
     return (elapsedTime >= integrityInterval);
 }
 
-void Syscollector::runRecoveryProcess()
+bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) const
 {
+    if (tableName == OS_TABLE) return m_os;
+
+    if (tableName == HW_TABLE) return m_hardware;
+
+    if (tableName == HOTFIXES_TABLE) return m_hotfixes;
+
+    if (tableName == PACKAGES_TABLE) return m_packages;
+
+    if (tableName == PROCESSES_TABLE) return m_processes;
+
+    if (tableName == PORTS_TABLE) return m_ports;
+
+    if (tableName == NET_ADDRESS_TABLE || tableName == NET_IFACE_TABLE || tableName == NET_PROTOCOL_TABLE) return m_network;
+
+    if (tableName == USERS_TABLE) return m_users;
+
+    if (tableName == GROUPS_TABLE) return m_groups;
+
+    if (tableName == SERVICES_TABLE) return m_services;
+
+    if (tableName == BROWSER_EXTENSIONS_TABLE) return m_browserExtensions;
+
+    return true;
+}
+
+// LCOV_EXCL_START
+// Driving this needs a manager to answer the DataClean and accept the resync.
+bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index)
+{
+    try
+    {
+        m_spDBSync->increaseEachEntryVersion(tableName);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+        return false;
+    }
+
+    std::vector<nlohmann::json> items;
+
+    // Determine if we need to filter by sync=1
+    // Only filter when document limits are configured (limit > 0)
+    // If limit == 0 (unlimited), recover all items without filtering
+    size_t documentLimit = getDocumentLimit(index);
+    std::string rowFilterClause;
+
+    try
+    {
+        if (documentLimit > 0)
+        {
+            // With limits: only recover items with sync=1
+            // Items with sync=0 exceeded the document limit and should not be recovered
+            rowFilterClause = "WHERE sync=1";
+        }
+        else
+        {
+            // No limits: recover all items regardless of sync value
+            rowFilterClause = "";
+        }
+
+        auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == ReturnTypeCallback::SELECTED)
+            {
+                items.push_back(data);
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"*"})
+                           .rowFilter(rowFilterClause)
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+        return false;
+    }
+
+    // Clear the manager's index before resending: a full-replace sync is now a
+    // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
+    // (which used to make the manager unconditionally deleteByQuery over a
+    // byte-capped/truncated payload and could permanently drop whatever didn't
+    // fit in that one session).
+    //
+    // #38601: on the protocol this index's data actually rides, not unconditionally
+    // the plain one. Recovering a VD index while cleaning the plain queue would
+    // clear a queue that never held the rows and leave the VD one holding stale
+    // ones.
+    auto* protocol = protocolForIndex(index);
+
+    if (!protocol)
+    {
+        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; will retry later");
+        return false;
+    }
+
+    if (!protocol->notifyDataClean({index}))
+    {
+        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+        return false;
+    }
+
+    for (const auto& item : items)
+    {
+        // Build stateful event
+        auto [newData, version] = ecsData(item, tableName);
+        const auto statefulToSend{newData.dump()};
+
+        // Validate stateful event before persisting for recovery
+        bool shouldPersist = true;
+        std::string context = "recovery event, table: " + tableName;
+
+        // Use helper function to validate and log
+        bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
+
+        if (!validationPassed)
+        {
+            m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+            shouldPersist = false;
+        }
+
+        if (shouldPersist)
+        {
+            // #38601: same protocol the DataClean above targeted. Sending a VD
+            // index's rows down the plain protocol repopulates
+            // wazuh-states-inventory-* but never reaches the vulnerability
+            // scanner, so a recovered agent gets its inventory back while its
+            // vulnerability documents stay missing.
+            protocol->persistDifference(
+                calculateHashId(item, tableName),
+                Operation::CREATE,
+                index,
+                statefulToSend,
+                item["version"].get<uint64_t>()
+            );
+        }
+    }
+
+    m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
+    m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
+    bool recoverySucceeded = syncModule(Mode::DELTA).success;
+
+    if (recoverySucceeded)
+    {
+        m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+    }
+
+
+    return true;
+}
+// LCOV_EXCL_STOP
+
+void Syscollector::checkAgentIdentity()
+{
+    const long currentId = AgentSyncProtocol::currentAgentId();
+
+    if (currentId == 0)
+    {
+        // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
+        // previous id, must never read as a new identity.
+        return;
+    }
+
+    int64_t syncedId = 0;
+
+    if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId) || syncedId == 0)
+    {
+        // First time we record one: a clean install, or a database from before this marker
+        // existed. Adopt it and resync nothing -- on a clean install the ordinary first sync
+        // covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // been maintaining all along.
+        updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+        return;
+    }
+
+    if (syncedId == currentId)
+    {
+        return;
+    }
+
+    m_logFunction(LOG_INFO,
+                  "Inventory was last synchronized as agent " + std::to_string(syncedId) +
+                  ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
+
     for (const auto& [tableName, index] : INDEX_MAP)
     {
-        // Skip disabled modules
-        if (tableName == OS_TABLE && !m_os) continue;
+        if (m_stopping.load())
+        {
+            // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
+            // than recording a pass that never finished.
+            return;
+        }
 
-        if (tableName == HW_TABLE && !m_hardware) continue;
+        if (!isCollectorEnabledForTable(tableName))
+        {
+            continue;
+        }
 
-        if (tableName == HOTFIXES_TABLE && !m_hotfixes) continue;
+        if (!resyncTableToManager(tableName, index))
+        {
+            // Leave the marker untouched so this re-fires next cycle. Recording it now would
+            // claim the manager holds data it never received.
+            return;
+        }
+    }
 
-        if (tableName == PACKAGES_TABLE && !m_packages) continue;
+    // Both markers move together, and only once every table above proved the manager accepted
+    // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
+    // reports success without opening a session at all -- record a cycle that never landed.
+    updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+    updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+}
 
-        if (tableName == PROCESSES_TABLE && !m_processes) continue;
+void Syscollector::runRecoveryProcess()
+{
+    // #38601: identity before integrity. If this agent's id changed, the manager holds nothing
+    // under it, and the per-table checksum loop below would only rediscover that one table at a
+    // time, an integrity_interval apart each. Safe to drive the resync from here rather than
+    // from syncModule(): the wodle calls this after a successful sync, so resyncTableToManager()
+    // reaching syncModule() internally cannot recurse.
+    checkAgentIdentity();
 
-        if (tableName == PORTS_TABLE && !m_ports) continue;
-
-        if (((tableName == NET_ADDRESS_TABLE) || (tableName == NET_IFACE_TABLE) || (tableName == NET_PROTOCOL_TABLE)) && !m_network) continue;
-
-        if (tableName == USERS_TABLE && !m_users) continue;
-
-        if (tableName == GROUPS_TABLE && !m_groups) continue;
-
-        if (tableName == SERVICES_TABLE && !m_services) continue;
-
-        if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        if (!isCollectorEnabledForTable(tableName)) continue;
 
         // LCOV_EXCL_START
         // Recovery process requires manager integration for checksum validation.
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
-            bool full_sync_required = checkIfFullSyncRequired(tableName);
 
-            if (full_sync_required)
+            if (checkIfFullSyncRequired(tableName) && !resyncTableToManager(tableName, index))
             {
-                try
-                {
-                    m_spDBSync->increaseEachEntryVersion(tableName);
-                }
-                catch (const std::exception& ex)
-                {
-                    m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
-                    return;
-                }
-
-                std::vector<nlohmann::json> items;
-
-                // Determine if we need to filter by sync=1
-                // Only filter when document limits are configured (limit > 0)
-                // If limit == 0 (unlimited), recover all items without filtering
-                size_t documentLimit = getDocumentLimit(index);
-                std::string rowFilterClause;
-
-                try
-                {
-                    if (documentLimit > 0)
-                    {
-                        // With limits: only recover items with sync=1
-                        // Items with sync=0 exceeded the document limit and should not be recovered
-                        rowFilterClause = "WHERE sync=1";
-                    }
-                    else
-                    {
-                        // No limits: recover all items regardless of sync value
-                        rowFilterClause = "";
-                    }
-
-                    auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
-                    {
-                        if (result == ReturnTypeCallback::SELECTED)
-                        {
-                            items.push_back(data);
-                        }
-                    };
-
-                    auto selectQuery = SelectQuery::builder()
-                                       .table(tableName)
-                                       .columnList({"*"})
-                                       .rowFilter(rowFilterClause)
-                                       .build();
-
-                    m_spDBSync->selectRows(selectQuery.query(), callback);
-                }
-                catch (const std::exception& ex)
-                {
-                    m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
-                    return;
-                }
-
-                // Clear the manager's index before resending: a full-replace sync is now a
-                // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
-                // (which used to make the manager unconditionally deleteByQuery over a
-                // byte-capped/truncated payload and could permanently drop whatever didn't
-                // fit in that one session).
-                if (!m_spSyncProtocol->notifyDataClean({index}))
-                {
-                    m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
-                    return;
-                }
-
-                for (const auto& item : items)
-                {
-                    // Build stateful event
-                    auto [newData, version] = ecsData(item, tableName);
-                    const auto statefulToSend{newData.dump()};
-
-                    // Validate stateful event before persisting for recovery
-                    bool shouldPersist = true;
-                    std::string context = "recovery event, table: " + tableName;
-
-                    // Use helper function to validate and log
-                    bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
-
-                    if (!validationPassed)
-                    {
-                        m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
-                        shouldPersist = false;
-                    }
-
-                    if (shouldPersist)
-                    {
-                        m_spSyncProtocol->persistDifference(
-                            calculateHashId(item, tableName),
-                            Operation::CREATE,
-                            index,
-                            statefulToSend,
-                            item["version"].get<uint64_t>()
-                        );
-                    }
-                }
-
-                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
-                m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool recoverySucceeded = syncModule(Mode::DELTA).success;
-
-                if (recoverySucceeded)
-                {
-                    m_logFunction(LOG_DEBUG, "Recovery completed successfully");
-                }
-                else
-                {
-                    m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
-                }
-
+                // Preserved from before this was extracted: a table that cannot be resynced
+                // aborts the whole pass instead of moving on, so its integrity timestamp is
+                // left untouched and the next cycle retries it from the same point.
+                return;
             }
 
             // Update the last sync time regardless of whether full sync was required
