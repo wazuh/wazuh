@@ -38,13 +38,6 @@ int synced_docs_files = 0;
 int synced_docs_registry_keys = 0;
 int synced_docs_registry_values = 0;
 
-// Guards the check-then-increment/decrement on the synced_docs_* counters above: the
-// scheduled scan (fim_file_scan()/fim_registry_scan(), under fim_scan_mutex) and realtime/
-// whodata events (fim_file(), which doesn't take fim_scan_mutex to avoid stalling realtime
-// events for the whole scan) can race on these plain ints otherwise, undercounting synced
-// documents and re-triggering #38522-style drift in file/registry limit enforcement.
-pthread_mutex_t synced_docs_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #ifdef USE_MAGIC
 #include <magic.h>
 magic_t magic_cookie = 0;
@@ -633,13 +626,7 @@ void fim_initialize() {
                             if (primary_keys) {
                                 add_pending_sync_item(pending_sync_updates, primary_keys, 1);
                                 cJSON_Delete(primary_keys);
-                                // fim_initialize() runs once at startup before the scan/
-                                // realtime threads exist, so this lock isn't load-bearing
-                                // here — kept only for consistency with the other counter
-                                // updates guarded by synced_docs_mutex.
-                                w_mutex_lock(&synced_docs_mutex);
                                 (*synced_docs_ptr)++;
-                                w_mutex_unlock(&synced_docs_mutex);
                             }
                         }
 
@@ -668,11 +655,7 @@ void fim_initialize() {
                         cJSON* item = NULL;
                         cJSON_ArrayForEach(item, docs_to_demote) {
                             add_pending_sync_item(pending_sync_updates, item, 0);
-                            // See the comment on the promote branch above: not load-bearing
-                            // at startup, kept for consistency.
-                            w_mutex_lock(&synced_docs_mutex);
                             (*synced_docs_ptr)--;
-                            w_mutex_unlock(&synced_docs_mutex);
                         }
 
                         // Process pending sync updates. Runs once per table at startup, so log

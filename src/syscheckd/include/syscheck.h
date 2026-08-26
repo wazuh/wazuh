@@ -89,7 +89,6 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
-extern pthread_mutex_t synced_docs_mutex;
 extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type

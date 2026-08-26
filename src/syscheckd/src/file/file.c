@@ -307,27 +307,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case INSERTED:
             txn_context->event->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
-            // For CREATE events: determine if within limit and defer sync flag update.
-            // Check-then-increment must be atomic: the scheduled scan and a realtime/whodata
-            // event can run this concurrently (see synced_docs_mutex's declaration comment).
+            // For CREATE events: determine if within limit and defer sync flag update
             if (syscheck.file_limit > 0) {
-                w_mutex_lock(&synced_docs_mutex);
-                int docs_before = synced_docs_files;
                 sync_flag = (synced_docs_files < syscheck.file_limit) ? 1 : 0;
-                if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
-                    synced_docs_files++;
-                }
-                w_mutex_unlock(&synced_docs_mutex);
-                // Logged pre-increment (docs_before), matching the value the sync_flag
-                // decision above was actually based on.
                 mdebug2("INSERTED: synced_docs_files=%d, file_limit=%d, sync_flag=%d, path=%s",
-                        docs_before, syscheck.file_limit, sync_flag, path);
+                        synced_docs_files, syscheck.file_limit, sync_flag, path);
             } else {
                 sync_flag = 1;
                 mdebug2("INSERTED: file_limit=0 (unlimited), sync_flag=1, path=%s", path);
             }
             // Add to deferred list if sync_flag should be 1
             if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
+                synced_docs_files++;
                 cJSON* sync_item = cJSON_CreateObject();
                 if (sync_item != NULL) {
                     cJSON_AddStringToObject(sync_item, "path", path);
@@ -354,17 +345,8 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             }
 
             if (sync_flag == 0 && syscheck.file_limit > 0) { // Promote
-                // Check-then-increment must be atomic (see synced_docs_mutex's declaration
-                // comment); the cJSON construction below doesn't touch shared state, so it
-                // stays outside the lock.
-                w_mutex_lock(&synced_docs_mutex);
-                bool promote = (synced_docs_files < syscheck.file_limit);
-                if (promote) {
+                if (synced_docs_files < syscheck.file_limit) {
                     synced_docs_files++;
-                }
-                w_mutex_unlock(&synced_docs_mutex);
-
-                if (promote) {
                     cJSON* sync_item = cJSON_CreateObject();
                     if (sync_item != NULL) {
                         cJSON_AddStringToObject(sync_item, "path", path);
@@ -391,9 +373,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                 if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
                     sync_flag = sync_json->valueint;
                     if (sync_flag == 1) {
-                        w_mutex_lock(&synced_docs_mutex);
                         synced_docs_files--;
-                        w_mutex_unlock(&synced_docs_mutex);
                     }
                 }
             }
@@ -1179,9 +1159,7 @@ void fim_file(const char *path,
             OSList_foreach(node_it, pending_sync_updates) {
                 pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
                 if (item != NULL && item->sync_value == 1) {
-                    w_mutex_lock(&synced_docs_mutex);
                     synced_docs_files--;
-                    w_mutex_unlock(&synced_docs_mutex);
                 }
             }
         } else if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
