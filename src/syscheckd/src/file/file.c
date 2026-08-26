@@ -1455,7 +1455,7 @@ void fim_file_scan() {
         // leaving synced_docs_files off by one. A full scan's failed_paths and
         // pending_sync_updates aren't correlated by path here, so fixing it needs matching
         // entries across both lists rather than the single-file short-circuit used above.
-        // Tracked separately for a follow-up fix.
+        // Tracked in https://github.com/wazuh/wazuh/issues/38608 for a follow-up fix.
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 
