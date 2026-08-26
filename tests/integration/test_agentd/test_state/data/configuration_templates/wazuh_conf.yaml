@@ -7,3 +7,5 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1517'
+                - endpoint:
+                    value: ''

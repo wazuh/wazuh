@@ -145,7 +145,7 @@ jobs:
             Get-ChildItem -Path "C:\wazuh-package" -Recurse | Format-Table Name, FullName
             exit 1
           }
-          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER=`"127.0.0.1`"" -Wait -NoNewWindow
+          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER=`"127.0.0.1`" WAZUH_MANAGER_ENDPOINT=`"/`"" -Wait -NoNewWindow
       # ================= QA FRAMEWORK =================
       - name: Download and install qa-integration-framework
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}

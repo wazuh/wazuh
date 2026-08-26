@@ -121,17 +121,27 @@ public function config()
             End If
 
             ' Unlike the shell installers, an MSI property has no "unset" state
-            ' distinct from empty -- WAZUH_MANAGER_ENDPOINT="" on the msiexec
-            ' command line is indistinguishable from not passing it at all, so
-            ' there is no way to reach the client parser's <endpoint></endpoint>
-            ' opt-out (#38492) through this installer. Only a non-empty value
-            ' is ever applied; leaving it out keeps the base block's default.
+            ' distinct from empty -- Windows Installer drops a PROPERTY="" command-line
+            ' assignment from the property table entirely, so WAZUH_MANAGER_ENDPOINT=""
+            ' is indistinguishable from not passing it at all and can never reach here
+            ' as a real value. Use WAZUH_MANAGER_ENDPOINT="/" to opt out instead: the
+            ' client parser already normalizes a slash-only <endpoint> to "no prefix"
+            ' the same way it does an empty one (w_normalize_agent_endpoint, #38492;
+            ' see test_agent_manager_endpoint_of_just_slashes_is_no_endpoint), so "/"
+            ' is the one non-empty value the MSI can actually carry through as an
+            ' opt-out. Write it as an empty tag to match the shell installers' own
+            ' opt-out spelling instead of leaving the literal slash in ossec.conf.
             If WAZUH_MANAGER_ENDPOINT <> "" Then ' manager reverse-proxy prefix (#38492)
                 If InStr(strText, "<endpoint>") > 0 Then
+                    If WAZUH_MANAGER_ENDPOINT = "/" Then
+                        FINAL_ENDPOINT = ""
+                    Else
+                        FINAL_ENDPOINT = WAZUH_MANAGER_ENDPOINT
+                    End If
                     Set re = new regexp
                     re.Pattern = "<endpoint>.*</endpoint>"
                     re.Global = True
-                    strText = re.Replace(strText, "<endpoint>" & WAZUH_MANAGER_ENDPOINT & "</endpoint>")
+                    strText = re.Replace(strText, "<endpoint>" & FINAL_ENDPOINT & "</endpoint>")
                 End If
 
             End If

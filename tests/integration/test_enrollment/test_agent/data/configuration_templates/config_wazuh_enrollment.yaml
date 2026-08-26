@@ -9,6 +9,8 @@
                 elements:
                 - address:
                     value: 127.0.0.1
+                - endpoint:
+                    value: ''
             - enrollment:
                 elements:
                 - enabled:

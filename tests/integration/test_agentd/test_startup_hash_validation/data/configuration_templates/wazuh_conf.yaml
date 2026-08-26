@@ -7,6 +7,8 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1517'
+                - endpoint:
+                    value: ''
             - notify_time:
                 value: '1'
       # syscheck + rootcheck must be explicitly enabled: these scenarios assert
