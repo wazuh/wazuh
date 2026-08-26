@@ -38,13 +38,19 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.aws import US_EAST_1_REGION
 
 # Keys permanently seeded by DevOps in the shared bucket that tests must never delete.
-# Only the CloudTrail seed is mirrored: it already gives find_account_ids the AWSLogs/<acct>/
-# CommonPrefix. An ELB seed would land in elasticloadbalancing/.../2022/11/20/, the same prefix the
-# alb/clb/nlb tests read, inflating their event count (found 2, expected 1).
-_PERMANENT_SEED_KEYS = frozenset({
-    'AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/'
-    '819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json',
-})
+_SEED_CLOUDTRAIL = ('AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/'
+                    '819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json')
+_SEED_ELB = ('AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/'
+             '819751203818_elasticloadbalancing_us-east-1_net.qatests_'
+             '20221120T0000Z_1412953514070675864_29.145.39.119.log')
+
+# Seeds DevOps keeps in the bucket: no test may ever delete them (guards _safe_delete_key and the
+# stale-orphan auto-heal in _assert_prefix_clean against wiping them in a local, non-namespaced run).
+_PERMANENT_SEED_KEYS = frozenset({_SEED_CLOUDTRAIL, _SEED_ELB})
+
+# Subset mirrored into the run namespace. The ELB seed is left out on purpose: it would land in the
+# elasticloadbalancing/.../2022/11/20/ prefix the alb/clb/nlb tests read and inflate their count.
+_MIRRORED_SEED_KEYS = frozenset({_SEED_CLOUDTRAIL})
 # VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
 _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
 
@@ -93,7 +99,7 @@ def _copy_seeds_into_namespace(s3_client, bucket_name):
     if not _RUN_ID:
         return
     copied = 0
-    for key in _PERMANENT_SEED_KEYS:
+    for key in _MIRRORED_SEED_KEYS:
         try:
             s3_client.Object(bucket_name, f"{_RUN_ID}/{key}").copy_from(
                 CopySource={'Bucket': bucket_name, 'Key': key})
@@ -106,7 +112,7 @@ def _copy_seeds_into_namespace(s3_client, bucket_name):
         # the suite would fail with unrelated messages. Fail fast, here, instead of masking it downstream.
         raise RuntimeError(
             f"No permanent seed could be copied into run namespace '{_RUN_ID}/' "
-            f"(all {len(_PERMANENT_SEED_KEYS)} failed); the namespace has no AWSLogs/ structure to read."
+            f"(all {len(_MIRRORED_SEED_KEYS)} failed); the namespace has no AWSLogs/ structure to read."
         )
 
 
@@ -580,7 +586,7 @@ def test_configuration() -> dict:
 
 
 @pytest.fixture(scope='session', autouse=True)
-def aws_run_namespace():
+def aws_run_namespace(request):
     """Isolate this run under '<GITHUB_RUN_ID>/' on the shared bucket (issue #38194).
 
     Mirrors the permanent seeds into the namespace at session start so the module's check_bucket /
@@ -588,7 +594,11 @@ def aws_run_namespace():
     end. No-op locally (no GITHUB_RUN_ID). Uses its own S3 resource because it is session-scoped.
     """
     bucket = os.environ.get('AWS_BUCKET_NAME')
-    if not _RUN_ID or not bucket:
+    # Matrix jobs share GITHUB_RUN_ID and the 'test_aws/' target (aws vs aws_inspector, split by -k), so a
+    # session may run no bucket test at all (e.g. inspector). Skipping those keeps that session from
+    # deleting the namespace out from under a sibling job still using it.
+    needs_bucket = any('create_test_bucket' in i.fixturenames for i in request.session.items)
+    if not _RUN_ID or not bucket or not needs_bucket:
         yield
         return
     profile = os.environ.get('AWS_PROFILE', 'default')
