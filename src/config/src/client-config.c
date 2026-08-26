@@ -354,14 +354,20 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 #define AGENT_SERVER_ENDPOINT_MAX_LEN 128
 
 /**
- * @brief Validate and normalize an <endpoint> value (#38492).
+ * @brief Validate and normalize a present <endpoint> tag's content (#38492).
+ *
+ * Only called with the raw content of an <endpoint> tag that was actually found in
+ * the XML -- an entirely absent tag never reaches this function; see
+ * Read_Agent_Manager()'s `endpoint_set`, which now defaults that case to
+ * DEFAULT_AGENT_ENDPOINT_PREFIX instead of leaving it unprefixed.
  *
  * Strips leading and trailing '/' characters (so "/wazuh-manager/",
  * "wazuh-manager", and "wazuh-manager/" all normalize the same way),
  * then rejects anything outside [A-Za-z0-9._-] plus '/' as an internal
  * segment separator, repeated '/' (an empty segment), and '.'/'..'
- * segments. An endpoint that normalizes to empty (absent, "/", or "")
- * means "no endpoint configured" -- today's unprefixed behavior.
+ * segments. A *present* endpoint that normalizes to empty ("/" or "")
+ * is a deliberate opt-out and still means "no endpoint configured" --
+ * unprefixed requests, unlike the entirely-absent case above.
  *
  * The manager-side sister issue must accept exactly the same charset,
  * or an endpoint this agent accepts could still fail to route once it
