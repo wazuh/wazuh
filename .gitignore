@@ -118,6 +118,7 @@ src/libwazuhext.*
 *.swp
 *.swo
 .cache/
+compile_commands.json
 
 # patch files
 *.rej
