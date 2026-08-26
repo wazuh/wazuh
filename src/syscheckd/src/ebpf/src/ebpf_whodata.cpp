@@ -39,6 +39,7 @@
 volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
+static std::vector<struct bpf_link*> global_links;
 
 /*
  * Returns true if the running kernel has "bpf" in its active LSM list.
@@ -450,6 +451,15 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 
 void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 {
+    for (auto* l : global_links)
+    {
+        if (bpf_helpers && bpf_helpers->bpf_link_destroy)
+        {
+            bpf_helpers->bpf_link_destroy(l);
+        }
+    }
+    global_links.clear();
+
     if (bpf_helpers)
     {
         if (bpf_helpers->module)
@@ -522,7 +532,7 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     }
 }
 
-static int load_and_attach(const char* bpfobj_path, bool use_lsm)
+static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_attempt)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
     if (!logFn || !bpf_helpers)
@@ -530,6 +540,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
         return 1;
     }
 
+    const modules_log_level_t fail_level = final_attempt ? LOG_ERROR : LOG_DEBUG;
     bpf_object* obj = nullptr;
     bool prefer_dpath = use_lsm;
 
@@ -540,7 +551,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
         {
             char error_message[4200];
             snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path, strerror(errno));
-            logFn(LOG_ERROR, error_message);
+            logFn(fail_level, error_message);
             return 1;
         }
 
@@ -560,7 +571,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
             continue;
         }
 
-        logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
+        logFn(fail_level, FIM_ERROR_EBPF_OBJ_LOAD);
         return 1;
     }
 
@@ -587,11 +598,14 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
                      name ? name : "?",
                      saved_errno,
                      strerror(saved_errno));
-            logFn(LOG_ERROR, error_message);
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
+            logFn(fail_level, error_message);
+            logFn(fail_level, FIM_ERROR_EBPF_OBJ_ATTACH);
             for (struct bpf_link* installed : links)
             {
-                bpf_helpers->bpf_link_destroy(installed);
+                if (bpf_helpers->bpf_link_destroy)
+                {
+                    bpf_helpers->bpf_link_destroy(installed);
+                }
             }
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
@@ -600,6 +614,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm)
         links.push_back(link);
     }
 
+    global_links = std::move(links);
     return 0;
 }
 
@@ -616,18 +631,26 @@ int init_bpfobj()
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
     g_bpf_lsm_active = is_bpf_lsm_active();
-    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
-
-    if (load_and_attach(bpfobj_path, g_bpf_lsm_active) == 0)
+    if (!g_bpf_lsm_active)
     {
+        logFn(LOG_INFO, FIM_EBPF_LSM_INACTIVE);
+    }
+
+    if (load_and_attach(bpfobj_path, g_bpf_lsm_active, !g_bpf_lsm_active) == 0)
+    {
+        if (g_bpf_lsm_active)
+        {
+            logFn(LOG_INFO, FIM_EBPF_LSM_ACTIVE);
+        }
         return 0;
     }
 
     if (g_bpf_lsm_active)
     {
         logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
-        if (load_and_attach(bpfobj_path, false) == 0)
+        if (load_and_attach(bpfobj_path, false, true) == 0)
         {
+            g_bpf_lsm_active = false;
             return 0;
         }
     }
@@ -849,6 +872,14 @@ extern "C"
         }
 
         bpf_helpers->ring_buffer_free(rb);
+        for (auto* l : global_links)
+        {
+            if (bpf_helpers->bpf_link_destroy)
+            {
+                bpf_helpers->bpf_link_destroy(l);
+            }
+        }
+        global_links.clear();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         w_bpf_deinit(bpf_helpers);

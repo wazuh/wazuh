@@ -97,6 +97,7 @@ bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, bpf_pro
 }
 int mock_bpf_program_attach_success([[maybe_unused]] void* prog) { return 1; }
 int mock_bpf_program_attach_failure([[maybe_unused]] void* prog) { return 0; }
+void mock_bpf_link_destroy([[maybe_unused]] struct bpf_link* link) {}
 int mock_bpf_program_set_autoload([[maybe_unused]] void* prog, [[maybe_unused]] bool autoload) { return 0; }
 bool mock_bpf_program_autoload_true([[maybe_unused]] const void* prog) { return true; }
 bool mock_bpf_program_autoload_false([[maybe_unused]] const void* prog) { return false; }

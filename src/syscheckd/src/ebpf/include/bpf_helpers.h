@@ -90,13 +90,6 @@ typedef bool (*bpf_program__autoload_t)(const struct bpf_program *prog);
 typedef const char *(*bpf_program__section_name_t)(const struct bpf_program *prog);
 typedef const char *(*bpf_program__name_t)(const struct bpf_program *prog);
 
-// Function pointers to execute stateless requests to BPF
-void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton *obj) = NULL;
-int (*bpf_object__open_skeleton)(struct bpf_object_skeleton *obj, const struct bpf_object_open_opts *opts) = NULL;
-int (*bpf_object__load_skeleton)(struct bpf_object_skeleton *obj) = NULL;
-int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
-void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
-
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue);
 typedef int(*check_invalid_kernel_version_t)();

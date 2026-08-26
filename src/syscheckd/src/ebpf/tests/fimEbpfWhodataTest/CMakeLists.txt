@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(fim_ebpf_whodata_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
+if(FSANITIZE)
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+else()
+    set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -36,9 +40,14 @@ foreach(TEST_FILE ${TEST_FILES})
         optimized gmock_main
         pthread
         fimebpf
-        -fsanitize=address
-        -fsanitize=undefined
     )
+
+    if(FSANITIZE)
+        target_link_libraries(${TEST_NAME}
+            -fsanitize=address
+            -fsanitize=undefined
+        )
+    endif(FSANITIZE)
 
     add_test(NAME ${TEST_NAME}
     COMMAND ${TEST_NAME})
