@@ -403,6 +403,7 @@ def run_all(base_url, agent_id, agent_key):
 
 
 def main():
+    global GLOBAL_PREFIX, DEFAULT_BODY
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
     parser.add_argument("--global-prefix", default=None,
@@ -413,7 +414,8 @@ def main():
                              "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
-    parser.add_argument("--body", default=DEFAULT_BODY.decode(), help="Raw request body to sign and send.")
+    parser.add_argument("--body", default=None,
+                        help="Raw request body to send (default: one H line naming --agent-id plus one event).")
     parser.add_argument("--tamper", action="store_true",
                          help="Corrupt the token's signature before sending, to prove the server "
                               "rejects it with 401 (invalid_signature).")
@@ -421,7 +423,6 @@ def main():
                          help="Ignore --body/--tamper and run every success/failure scenario "
                               "(one per distinct AuthError reachable through this endpoint).")
     args = parser.parse_args()
-    global GLOBAL_PREFIX, DEFAULT_BODY
     GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
     if args.global_prefix is None and GLOBAL_PREFIX:
         print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
@@ -433,7 +434,7 @@ def main():
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1
 
     method, target, protocol_version = "POST", prefixed("/stateless"), "1"
-    signed_body = args.body.encode()
+    signed_body = args.body.encode() if args.body is not None else DEFAULT_BODY
     timestamp = int(time.time())
     headers = auth_headers(args.agent_id, agent_key, now=timestamp, protocol_version=protocol_version)
     sent_body = signed_body
