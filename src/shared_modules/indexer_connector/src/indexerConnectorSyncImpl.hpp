@@ -10,6 +10,7 @@
  */
 
 #include "IURLRequest.hpp"
+#include "defer.hpp"
 #include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
@@ -588,6 +589,16 @@ class IndexerConnectorSyncImpl final
 
     void splitAndProcessBulk()
     {
+        // Clear on every exit path: on failure the caller re-stages, so bytes kept here would be
+        // re-sent by whoever flushes next.
+        DEFER(
+            [this]()
+            {
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+            });
+
         const size_t totalOperations = m_boundaries.size();
         if (totalOperations <= 1)
         {
@@ -636,9 +647,6 @@ class IndexerConnectorSyncImpl final
         {
             m_shouldNotifyAfterBulk = true;
         }
-        m_bulkData.clear();
-        m_boundaries.clear();
-        m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
