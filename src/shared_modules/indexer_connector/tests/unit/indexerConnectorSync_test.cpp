@@ -4695,6 +4695,55 @@ TEST_F(IndexerConnectorSyncTest, FlushIntervalTimerDoesNotFlushWhenNoData)
     EXPECT_EQ(callCount, 0) << "No HTTP post should be made when the timer fires on an empty buffer";
 }
 
+namespace
+{
+    /// Threads alive in this process, from /proc/self/task. std::thread's constructor returns
+    /// only after the native thread exists, so the count is deterministic -- no sleeps.
+    std::size_t liveThreadCount()
+    {
+        std::size_t count = 0;
+        for ([[maybe_unused]] const auto& entry : std::filesystem::directory_iterator("/proc/self/task"))
+        {
+            ++count;
+        }
+        return count;
+    }
+} // namespace
+
+/// flush_interval_seconds = 0 means the CALLER owns every flush: no background thread exists,
+/// and staged data waits for an explicit flush() instead of racing a timer.
+TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
+{
+    config["flush_interval_seconds"] = 0;
+
+    const auto baseline = liveThreadCount();
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_EQ(baseline, liveThreadCount()) << "a zero interval must not start a flush thread";
+
+        // The caller-owned flush still works.
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+        }
+        connector.flush();
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must not leak a thread either";
+    EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
+}
+
+/// The counting companion of the test above: a non-zero interval starts exactly one flush thread,
+/// which pins that liveThreadCount() can tell the two configurations apart.
+TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)
+{
+    const auto baseline = liveThreadCount();
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest); // default interval
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "a non-zero interval must start one flush thread";
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "the destructor must join the flush thread";
+}
+
 // Empty-buffer guard tests
 TEST_F(IndexerConnectorSyncTest, BulkIndexOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
 {
