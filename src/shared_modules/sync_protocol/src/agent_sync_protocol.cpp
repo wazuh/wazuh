@@ -607,8 +607,8 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 }
 
 SyncModuleResult AgentSyncProtocol::notifyDataCleanResult(const std::vector<std::string>& indices,
-                                                           Option option,
-                                                           bool trackConsecutiveFailures)
+                                                          Option option,
+                                                          bool trackConsecutiveFailures)
 {
     if (indices.empty())
     {
