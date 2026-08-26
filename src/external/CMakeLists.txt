@@ -329,6 +329,7 @@ else() # Darwin
       "LIBS=-lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
+      --with-apple-sectrust
       --disable-ldap
       --without-libidn2
       --without-brotli
@@ -1530,10 +1531,15 @@ if(IS_DARWIN)
                BUILD_WITH_INSTALL_RPATH TRUE
                INSTALL_NAME_DIR "@rpath"
                MACOSX_RPATH TRUE)
+  # -framework CoreServices: required by curl's --with-apple-sectrust (enabled
+  # above) alongside CoreFoundation/Security -- see m4/curl-apple-sectrust.m4's
+  # APPLE_SECTRUST_LDFLAGS. A static libcurl.a doesn't drag its own configure-time
+  # LDFLAGS into whatever finally links it, so this has to be declared here too.
   target_link_libraries(
     wazuhext
     PRIVATE "-Wl,-all_load" ${WAZUHEXT_WHOLE_LIBS} "-framework Security"
-            "-framework CoreFoundation" "-framework SystemConfiguration")
+            "-framework CoreFoundation" "-framework CoreServices"
+            "-framework SystemConfiguration")
 
 elseif(IS_WINDOWS)
   # Windows (MinGW cross-compile): DLL + delay-import lib

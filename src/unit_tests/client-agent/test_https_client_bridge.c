@@ -486,6 +486,31 @@ static void test_compression_defaults_to_enabled(void **state)
     w_https_client_stop();
 }
 
+static void test_system_verify_mode_maps_to_hc_verify_system(void **state)
+{
+    (void)state;
+    agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    /* The bridge maps the enum unconditionally; whether an OS CA bundle
+     * actually exists is https_client's own (module-level) concern. */
+    assert_int_equal(g_captured_config.verify_mode, HC_VERIFY_SYSTEM);
+    assert_string_equal(g_captured_config.ca_path, "");
+
+    w_https_client_stop();
+}
+
 static void test_client_cert_key_and_ciphers_are_copied(void **state)
 {
     (void)state;
@@ -2331,6 +2356,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_system_verify_mode_maps_to_hc_verify_system, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_configured_endpoint_reaches_the_module, setup_test, teardown_test),

@@ -116,22 +116,43 @@ int ClientConf(const char *cfgfile)
 bool w_agent_validate_ssl_ca(const agent *cfg)
 {
     const char *ca = cfg->ssl.certificate_authorities;
-    const bool readable = ca && w_is_file(ca);
 
     /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
      * enables verification -- and then the agent refuses to start. Warn while it is
      * still harmless rather than accepting it in silence. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        if (ca && !readable) {
+        if (ca && !w_is_file(ca)) {
             mwarn(AG_UNUSED_SSL_CA, ca);
         }
 
         return true;
     }
 
+    /* 'system' trusts the OS store instead of an operator-supplied file: a configured CA
+     * would be silently unused, which is worth failing closed on rather than guessing which
+     * one the operator actually meant. On Windows/macOS the OS store is asked for natively
+     * (no file to probe for); on Linux the https_client module itself fails closed if no
+     * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
+     * one layer up so a bad config is caught before the module ever spins up threads. */
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
+        if (ca) {
+            merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
+            return false;
+        }
+
+#if !defined(WIN32) && !defined(__APPLE__)
+        if (os_find_ca_bundle(NULL) == NULL) {
+            merror(AG_SSL_SYSTEM_NO_BUNDLE);
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
     /* A verifying mode without a readable CA can never connect: the https_client module
      * fails closed on this, per its own validation. */
-    if (!readable) {
+    if (!ca || !w_is_file(ca)) {
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
@@ -149,6 +170,8 @@ static const char *w_agent_verify_mode_str(int verification_mode)
         return "certificate";
     case AGENT_VERIFY_NONE:
         return "none";
+    case AGENT_VERIFY_SYSTEM:
+        return "system";
     default:
         return "unknown";
     }

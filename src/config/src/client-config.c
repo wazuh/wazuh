@@ -669,6 +669,8 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
                 logr->ssl.verification_mode = AGENT_VERIFY_CERT;
             } else if (strcmp(node[j]->content, "none") == 0) {
                 logr->ssl.verification_mode = AGENT_VERIFY_NONE;
+            } else if (strcmp(node[j]->content, "system") == 0) {
+                logr->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
             } else {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);

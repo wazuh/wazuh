@@ -75,6 +75,72 @@ Network interface index to bind for manager connection.
 - **Allowed values:** Positive integer (interface index number)
 - **Note:** Platform-specific; forces agent to use specific network interface
 
+### ssl
+
+TLS configuration for the agent's HTTPS connection to the manager. Controls how the agent
+verifies the manager's certificate and, optionally, presents its own client certificate.
+
+**Sub-options:**
+
+#### certificate
+
+Path to an optional client (mTLS) certificate the agent presents to the manager.
+
+- **Default value:** None (no client certificate presented)
+- **Allowed values:** Path to a PEM-encoded certificate file, readable by the agent
+- **Note:** Must be set together with `<key>`; setting only one of the two is rejected.
+
+#### key
+
+Path to the private key matching `<certificate>`.
+
+- **Default value:** None
+- **Allowed values:** Path to a PEM-encoded private key file, readable by the agent
+- **Note:** Must be set together with `<certificate>`; setting only one of the two is rejected.
+
+#### certificate_authorities
+
+Path to the CA bundle used to verify the manager's certificate.
+
+- **Default value:** None
+- **Allowed values:** Path to a PEM-encoded CA bundle file, readable by the agent
+- **Required:** Yes, when `<verification_mode>` is `full` or `certificate` -- the agent fails
+  closed (refuses to start) without a readable CA file in that case.
+- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed if
+  it is, since the OS trust store is used as the anchor instead and a configured CA would go
+  silently unused. Ignored (with a warning if set but unreadable) when `<verification_mode>` is
+  `none`.
+
+#### verification_mode
+
+How strictly the agent verifies the manager's TLS certificate.
+
+- **Default value:** `none`
+- **Allowed values:**
+  - `full` — verify the certificate against `<certificate_authorities>` AND check that it
+    matches the manager's hostname (strictest).
+  - `certificate` — verify the certificate against `<certificate_authorities>`, but do not
+    check the hostname.
+  - `none` — no TLS verification at all. Insecure; intended for quick testing only.
+  - `system` — verify the certificate (and hostname, like `full`) against the operating
+    system's own trusted CA store instead of `<certificate_authorities>`, the way a web
+    browser trusts a public website. Useful when the manager's certificate is issued by a
+    publicly (or OS-) trusted CA, so a CA bundle does not need to be distributed to every
+    agent by hand. On Windows and macOS this uses the native certificate store (Windows
+    Certificate Store / Keychain); on Linux it probes a fixed set of well-known distribution
+    paths (e.g. `/etc/ssl/certs/ca-certificates.crt` on Debian-family systems,
+    `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
+    none is found on the host.
+- **Note:** Any value other than the four above is rejected at config-parse time.
+
+#### ciphers
+
+TLS 1.3 ciphersuite list to offer during the handshake.
+
+- **Default value:** None (libcurl/OpenSSL default TLS 1.3 ciphersuites)
+- **Allowed values:** Colon-separated list of TLS 1.3 ciphersuite names
+- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
+
 ### ip_update_interval
 
 Interval in seconds for updating agent's IP address with the manager.
@@ -416,7 +482,7 @@ Automatic agent registration:
 </agent>
 ```
 
-Enrollment dials the address/port from `<server>` above (and, if configured,
+Enrollment dials the address/port from `<manager>` above (and, if configured,
 presents the TLS material from `<ssl>`) — there is no separate
 `manager_address`/`port` to set under `<enrollment>` any more.
 

@@ -61,7 +61,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_keyProvider(m_config.agentKeyHex)
     , m_signer(m_config.agentId, m_keyProvider)
     , m_spoolFactory(m_config.spoolDir)
-    , m_performer(m_config, defaultCurlHandleFactory())
+    , m_performer(m_config, defaultCurlHandleFactory(), m_fsProbe)
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)

@@ -340,6 +340,18 @@ static void test_reports_full_verification_mode(void **state)
     cJSON_Delete(root);
 }
 
+static void test_reports_system_verification_mode(void **state)
+{
+    (void)state;
+    cJSON *root = NULL;
+
+    test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+
+    assert_string_field(cJSON_GetObjectItem(get_agent_section(&root), "ssl"), "verification_mode", "system");
+
+    cJSON_Delete(root);
+}
+
 static void test_reports_configured_batch_limits(void **state)
 {
     (void)state;
@@ -416,6 +428,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reports_every_configured_ssl_field, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_default_ssl_posture, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_full_verification_mode, setup_agent, teardown_agent),
+        cmocka_unit_test_setup_teardown(test_reports_system_verification_mode, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_configured_batch_limits, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_batch_defaults, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_both_periodic_pushes, setup_agent, teardown_agent),

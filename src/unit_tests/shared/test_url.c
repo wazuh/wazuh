@@ -16,6 +16,7 @@
 #include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/os_cert_bundle_wrappers.h"
 
 /* setup/teardown */
 static int group_setup(void ** state) {
@@ -95,7 +96,7 @@ void test_wurl_http_request_headers_list_null(void **state)
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+        expect_os_find_ca_bundle("/etc/ssl/certs/ca-certificates.crt");
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
