@@ -52,6 +52,9 @@ typedef struct SyncModuleResult_t
     /// first (assigned groups, or a VD feed offset) has not arrived yet. See
     /// SyncModuleResult::awaitingPrerequisite (agent_sync_protocol_types.hpp) for the full doc.
     bool awaiting_prerequisite;
+    /// @brief True when the local sync intake itself could not be reached. See
+    /// SyncModuleResult::localTransportUnavailable (agent_sync_protocol_types.hpp) for the full doc.
+    bool local_transport_unavailable;
 } SyncModuleResult_t;
 
 /// @brief Defines the type of modification operation.

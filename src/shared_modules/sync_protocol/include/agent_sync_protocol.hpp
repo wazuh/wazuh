@@ -153,6 +153,20 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
         unsigned int trackSyncOutcome(bool success, bool stopped);
 
+        /// @brief Bumps (or, if a stop was requested, just reads) the consecutive-failure streak
+        ///        for the local sync intake being unreachable.
+        /// @param stopped Whether it was aborted because a stop was requested. Takes this as an
+        ///        already-computed parameter, mirroring trackSyncOutcome(), instead of calling
+        ///        shouldStop() again here: a second, independent read of m_stopRequested could
+        ///        observe a stop() that landed after the caller's own read, leaving the returned
+        ///        SyncModuleResult's "stopped" field and this streak disagreeing about whether one
+        ///        was in flight.
+        /// @return Consecutive checkStatus() failures in a row, including this one.
+        ///
+        /// Separate from @ref m_consecutiveSyncFailures: this fires before the handshake is even
+        /// attempted, and that counter is reserved for outcomes that reach it.
+        unsigned int trackLocalTransportFailure(bool stopped);
+
         /// @brief Waits for agent metadata to become available - indefinitely,
         ///        unless a stop is requested - then builds the Start table into
         ///        an existing FlatBuffer builder. Owns the metadata lifetime end
@@ -353,6 +367,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
+
+        /// @brief Consecutive checkStatus() failures in a row, reset the moment it succeeds again.
+        ///
+        /// Deliberately not @ref m_consecutiveSyncFailures: this measures failures to reach the
+        /// local sync intake, which happens before any handshake is attempted, so it says nothing
+        /// about the manager and must not share a counter that is reserved for outcomes that do.
+        std::atomic<unsigned int> m_consecutiveLocalTransportFailures{0};
 
         /// Built-in ceiling on one session, used until a daemon calls setSessionMaxBytes()
         /// with what <agent><batch><size> says. Same 1 MiB the HTTPS transport applies to

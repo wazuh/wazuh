@@ -56,4 +56,10 @@ struct SyncModuleResult
     /// since it is expected and normally clears within the next cycle or two (e.g. right after
     /// an agent restart, before the first /control round trip completes).
     bool awaitingPrerequisite{false};
+    /// @brief True when the local sync intake itself could not be reached (wazuh-agentd's
+    /// https_client not done starting yet). Deliberately distinct from @ref managerNotReady: this
+    /// never got far enough to hear anything from the manager, so it must not be described as a
+    /// manager-side condition. Same idea as managerNotReady otherwise -- use it together with
+    /// @ref consecutiveFailures to tell a restart hiccup from a lasting local problem.
+    bool localTransportUnavailable{false};
 };

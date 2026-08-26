@@ -2405,16 +2405,18 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // yet, most commonly right after enrollment/restart. Expected to clear on its own.
                 m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason);
             }
-            else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            else if ((result.managerNotReady || result.localTransportUnavailable) &&
+                     result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
-                // The manager is not ready for this agent yet, mostly right after a restart, and the
-                // sync has not failed enough times in a row to suspect it will not clear.
+                // Either the manager is not ready for this agent yet, or the local sync intake
+                // itself isn't reachable yet -- both mostly right after a restart -- and the sync
+                // has not failed enough times in a row to suspect it will not clear.
                 m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason +
                               " Will retry next cycle.");
             }
-            else if (result.managerNotReady)
+            else if (result.managerNotReady || result.localTransportUnavailable)
             {
-                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                // Neither condition has cleared for several cycles in a row.
                 m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
                               std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
             }
@@ -2477,16 +2479,18 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // own within the next cycle or two.
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
             }
-            else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            else if ((vdResult.managerNotReady || vdResult.localTransportUnavailable) &&
+                     vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
-                // The manager is not ready for this agent yet, mostly right after a restart, and the
-                // sync has not failed enough times in a row to suspect it will not clear.
+                // Either the manager is not ready for this agent yet, or the local sync intake
+                // itself isn't reachable yet -- both mostly right after a restart -- and the sync
+                // has not failed enough times in a row to suspect it will not clear.
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason +
                               " Will retry next cycle.");
             }
-            else if (vdResult.managerNotReady)
+            else if (vdResult.managerNotReady || vdResult.localTransportUnavailable)
             {
-                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                // Neither condition has cleared for several cycles in a row.
                 m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
                               std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
             }
@@ -3113,19 +3117,22 @@ int Syscollector::executeFlushSync()
 
             const std::string reasonSuffix = reason.empty() ? "" : ": " + reason;
 
-            // A queue that failed counts as "manager not ready" only if that specific sync said so;
-            // a queue that succeeded does not veto the deferral.
+            // A queue that failed counts as "manager not ready" only if that specific sync said so
+            // (either the manager itself, or the local sync intake being unreachable -- both share
+            // the same restart-hiccup shape); a queue that succeeded does not veto the deferral.
             const bool allFailuresManagerNotReady =
-                (result.success   || result.managerNotReady) &&
-                (vdResult.success || vdResult.managerNotReady);
+                (result.success   || result.managerNotReady || result.localTransportUnavailable) &&
+                (vdResult.success || vdResult.managerNotReady || vdResult.localTransportUnavailable);
 
             // Longest manager-not-ready streak among the queues that actually failed.
             unsigned int streak = 0;
 
-            if (!result.success && result.managerNotReady && result.consecutiveFailures > streak)
+            if (!result.success && (result.managerNotReady || result.localTransportUnavailable) &&
+                    result.consecutiveFailures > streak)
                 streak = result.consecutiveFailures;
 
-            if (!vdResult.success && vdResult.managerNotReady && vdResult.consecutiveFailures > streak)
+            if (!vdResult.success && (vdResult.managerNotReady || vdResult.localTransportUnavailable) &&
+                    vdResult.consecutiveFailures > streak)
                 streak = vdResult.consecutiveFailures;
 
             if (allFailuresManagerNotReady && streak <= SYNC_MANAGER_NOT_READY_TOLERANCE)
