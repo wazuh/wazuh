@@ -41,7 +41,9 @@ link_libraries(
   gmock_main)
 
 add_executable(sca_unit_test sca_test.cpp)
-target_link_libraries(sca_unit_test PRIVATE SCAImpl)
+# agent_metadata: the fixture resets the shared-memory provider so these cases do not inherit
+# whichever agent id another test binary in this tree happened to leave behind.
+target_link_libraries(sca_unit_test PRIVATE SCAImpl agent_metadata)
 add_test(NAME SCATest COMMAND sca_unit_test)
 
 set_tests_properties(SCATest PROPERTIES LABELS "sca")
@@ -139,6 +141,12 @@ target_link_libraries(sca_dataclean_unit_test PRIVATE SCAImpl)
 add_test(NAME SCADataCleanTest COMMAND sca_dataclean_unit_test)
 
 set_tests_properties(SCADataCleanTest PROPERTIES LABELS "sca")
+
+add_executable(sca_identity_unit_test sca_identity_test.cpp)
+target_link_libraries(sca_identity_unit_test PRIVATE SCAImpl agent_metadata)
+add_test(NAME SCAIdentityTest COMMAND sca_identity_unit_test)
+
+set_tests_properties(SCAIdentityTest PROPERTIES LABELS "sca")
 
 if(WIN32)
   add_executable(registry_rule_evaluator_unit_test

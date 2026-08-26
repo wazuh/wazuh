@@ -3,6 +3,7 @@
 
 #include <sca.h>
 #include <sca_impl.hpp>
+#include <metadata_provider.h>
 
 #include <dbsync.hpp>
 #include <isca_policy.hpp>
@@ -26,6 +27,12 @@ class ScaTest : public ::testing::Test
         void SetUp() override
         {
             m_logOutput.clear();
+
+            // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
+            // that provider is a file other test binaries in this tree also write. Clearing it
+            // keeps these cases on the "id unknown, do nothing" path deterministically, instead
+            // of inheriting whichever id happened to be left behind.
+            metadata_provider_reset();
 
             // Set up the logging callback to avoid "Log callback not set" errors
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
