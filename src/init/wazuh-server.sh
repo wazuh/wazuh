@@ -37,10 +37,9 @@ SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# This number should be more than enough (even if it is
-# started multiple times together). It will try for up
-# to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="60"
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45,
+# templates/wazuh-manager.service), or systemd reports a timeout instead of the real reason.
+MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
@@ -200,7 +199,16 @@ status()
         fi
         pstatus ${i};
         if [ $? = 0 ]; then
-            if [ $USE_JSON = true ]; then
+            # The marker testconfig() leaves on a refused configuration, and the same one the
+            # framework reads as 'failed'. Without it a rejected value is indistinguishable from a
+            # daemon that was never started.
+            if [ -f ${DIR}/var/run/${i}.failed ]; then
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"daemon":"'${i}'","status":"failed"}'
+                else
+                    echo "${i} refused its configuration..."
+                fi
+            elif [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
                 echo "${i} not running..."
@@ -221,6 +229,11 @@ status()
 
 testconfig()
 {
+    # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
+    # here, not in start_service(): this function exits 1 on the FIRST failure, so start_service()
+    # may never run to clear a marker left by an earlier, unrelated one.
+    rm -f ${DIR}/var/run/*.failed
+
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
         daemon_name="$i"
@@ -379,7 +392,6 @@ start_service()
         if [ $? = 0 ]; then
             ## Create starting flag
             failed=false
-            rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             daemon_name="$i"
 
