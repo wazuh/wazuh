@@ -31,13 +31,6 @@ namespace remoted::scanvd
             static const LogFn instance {SCANVD_HANDLER_LOGTAG};
             return instance;
         }
-
-        // VD answers the scan POST at ADMISSION into its bounded dispatch queue -- inline route
-        // work, never the scan itself -- so this is a local-socket round trip measured in
-        // milliseconds. 5 s is pure headroom for a loaded box; anything slower is indistinguishable
-        // from VD being down, and the honest answer to the agent is the same 503 either way.
-        constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 5;
-        constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
     } // namespace
 
     class ScanVdHandlerImpl::Impl

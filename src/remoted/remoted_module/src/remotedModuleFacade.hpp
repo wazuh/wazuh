@@ -497,6 +497,15 @@ private:
             "/control",
             remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics));
 
+        // Not a DeferredForwarder, so it takes the shape-agnostic check. The two deadlines add
+        // up rather than overlap: past the group-refresh window getAgentGroups() runs first and
+        // gates the response. The wazuh-db write is fire-and-forget and is not in the budget.
+        warnIfBudgetExceedsRequestTimeout("/control",
+                                          "control_wdb_roundtrip_deadline'/'control_tm_deadline",
+                                          static_cast<long long>(controlConfig.wdbRoundtripDeadlineMs) +
+                                              controlConfig.tmDeadlineMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
+
         // /scan/vd: agent-initiated VD scans. Offset queries and scan triggers both travel to
         // VD's socket (queue/sockets/vd-http.sock -- see ScanVdHandlerImpl's and VdClient's default
         // arguments): since the socket unification, /offset starvation is prevented by the
@@ -508,6 +517,12 @@ private:
                                              remoted::http::Method::Post,
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
+
+        // Deadlines fixed at compile time: nothing to reduce, so the check names only the cap.
+        warnIfBudgetExceedsRequestTimeout("/scan/vd",
+                                          nullptr,
+                                          remoted::scanvd::ScanVdHandlerImpl::VD_SCAN_BUDGET_MS,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
         // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
@@ -1035,23 +1050,32 @@ private:
     /// authd_response_timeout, no write phase) rather than the DeferredForwarder/DownstreamConfig
     /// pair every other endpoint here shares, can run the same sanity check without forcing that
     /// shape onto it.
+    /// @param tunablesToReduce Options the operator could lower instead of raising the cap, or
+    /// nullptr when the budget is fixed at compile time and only the cap can move.
     void warnIfBudgetExceedsRequestTimeout(const char* path,
                                            const char* tunablesToReduce,
                                            long long budgetMs,
                                            long long requestCapMs)
     {
-        if (budgetMs > requestCapMs)
+        if (budgetMs <= requestCapMs)
         {
-            LOGFN_WARN(moduleLogFn(),
-                       "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
-                       "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
-                       "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
-                       "reducing '%s'.",
-                       path,
-                       budgetMs,
-                       requestCapMs,
-                       tunablesToReduce);
+            return;
         }
+
+        const std::string advice =
+            tunablesToReduce
+                ? "Consider increasing the value of 'http_request_timeout', or reducing '" +
+                      std::string {tunablesToReduce} + "'."
+                : std::string {"These deadlines are fixed, so only 'http_request_timeout' can be increased."};
+
+        LOGFN_WARN(moduleLogFn(),
+                   "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
+                   "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
+                   "downstream deadline is reached. %s",
+                   path,
+                   budgetMs,
+                   requestCapMs,
+                   advice.c_str());
     }
 
     /// Unwinds a partially-built HTTPS stack after a failed/incomplete start().
