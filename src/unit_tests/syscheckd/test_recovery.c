@@ -20,8 +20,18 @@
 #include "../wrappers/common.h"
 #include "../../syscheckd/src/recovery/recovery.h"
 
-/* Defined in run_check.c: what fim_shutdown_process_on() reports. */
-extern volatile bool is_fim_shutdown;
+/* fim_shutdown_process_on() is wrapped rather than driven through is_fim_shutdown, the flag it
+ * reports: that flag is a data symbol from another translation unit, and the winagent target
+ * already wraps it (see RECOVERY_BASE_FLAGS' sibling flags), so writing to it through an extern
+ * declaration there lands on a symbol that is not a variable -- EXCEPTION_ACCESS_VIOLATION.
+ * Wrapping the function behaves identically on both targets. Backed by a static rather than
+ * cmocka's queue so the cases that do not care about shutdown need not script every call: the
+ * resync loop asks once per table. */
+static bool mock_fim_shutdown = false;
+
+bool __wrap_fim_shutdown_process_on(void) {
+    return mock_fim_shutdown;
+}
 #include "../../syscheckd/src/db/include/db.h"
 #include "../../syscheckd/src/file/file.h"
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
@@ -823,10 +833,10 @@ static void test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_s
     will_return(__wrap_fim_db_try_get_last_sync_time, 0);
     will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
-    is_fim_shutdown = true;
+    mock_fim_shutdown = true;
     // No fim_db_update_last_sync_time_value expectation: adopting here would be the bug.
     assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
-    is_fim_shutdown = false;
+    mock_fim_shutdown = false;
 }
 
 int main(void) {
