@@ -2094,7 +2094,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q firewalld -> r:package firewalld is not installed"
-      - "c:command -v firewall-cmd >/dev/null && firewall-cmd --state -> r:not running"
+      - 'c:sh -c "command -v firewall-cmd >/dev/null && firewall-cmd --state" -> r:not running'
       - "c:systemctl is-enabled firewalld -> r:masked"
 
   # 3.5.2.3 Ensure iptables-services not installed with nftables. (Automated)
