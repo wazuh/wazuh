@@ -128,6 +128,10 @@ getPreinstalledDirByType()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/LaunchDaemons/com.wazuh.agent.plist ]; then
+            # Assumes exactly one <string>...Wazuh-launcher</string> line (true for the
+            # plist darwin-init.sh writes today). No `q` here, matching every other sed
+            # extraction in this function — if that ever changes, PREINSTALLEDDIR could
+            # capture multiple newline-joined paths and this test would just fail closed.
             PREINSTALLEDDIR=`sed -n 's/^[[:space:]]*<string>\(.*\)\/Wazuh-launcher<\/string>$/\1/p' /Library/LaunchDaemons/com.wazuh.agent.plist`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
