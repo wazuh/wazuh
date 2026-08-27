@@ -103,8 +103,8 @@ bool EbpfLoader::isBpfLsmActive() {
 }
 
 bool EbpfLoader::load(EventClass event_class, const std::string& bpf_obj_path) {
-    // ponytail: every program in the object belongs to FILE. When exec/network
-    // hooks land, map each program to its class by name prefix and filter here.
+    // Every program in the object belongs to FILE. When exec/network hooks land,
+    // map each program to its class by name prefix and filter here.
     if (event_class != EventClass::FILE) {
         return false;
     }

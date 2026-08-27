@@ -28,8 +28,8 @@ namespace wazuh::ebpf {
  * instance. There is no shared engine, no subscription registry and no dispatch
  * thread: the module polls from its own thread.
  *
- * ponytail: methods are virtual only so consumer tests can inject
- * MockEbpfLoader; there is a single production implementation.
+ * The methods are virtual so consumer tests can inject MockEbpfLoader; there is
+ * a single production implementation.
  */
 class EbpfLoader {
 public:
@@ -62,9 +62,9 @@ public:
      * @param timeout_ms Poll timeout; returns after it expires with no records.
      * @return false on ring buffer error.
      *
-     * ponytail: FILE is the only class the object implements, so records decode
-     * straight to FileEvent. When exec/network hooks land, tag the kernel record
-     * with its class and switch on it here.
+     * FILE is the only class the object implements, so records decode straight
+     * to FileEvent. When exec/network hooks land, tag the kernel record with its
+     * class and switch on it here.
      */
     virtual bool poll(const FileEventCallback& callback, int timeout_ms = 250);
 
