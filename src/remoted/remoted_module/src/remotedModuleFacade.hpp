@@ -546,8 +546,10 @@ private:
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
         if (enrollConfig.usePassword)
         {
-            enrollPasswordKeySource = std::make_shared<remoted::auth::PasswordKeySource>(
-                remoted::auth::PasswordKeySource::kDefaultPath, enrollConfig.passwordRefreshIntervalSec);
+            enrollPasswordKeySource =
+                std::make_shared<remoted::auth::PasswordKeySource>(remoted::auth::PasswordKeySource::kDefaultPath,
+                                                                   enrollConfig.passwordRefreshIntervalSec,
+                                                                   enrollConfig.isWorkerNode);
         }
 
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(

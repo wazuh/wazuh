@@ -86,6 +86,39 @@ namespace
         EXPECT_FALSE(source.currentKey().has_value());
     }
 
+    TEST_F(PasswordKeySourceTest, MissingFileHasNoKeyRegardlessOfWorkerFlag)
+    {
+        PasswordKeySource source(m_path, PasswordKeySource::kDefaultRefreshIntervalSeconds, /*isWorkerNode=*/true);
+        EXPECT_FALSE(source.currentKey().has_value());
+    }
+
+    // ---------------------------------------------------------------------------
+    // shouldWarnAboutMissingPassword: pure WARN-vs-DEBUG1 decision function
+    // ---------------------------------------------------------------------------
+
+    TEST_F(PasswordKeySourceTest, MasterAlwaysWarnsEvenImmediately)
+    {
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(/*isWorkerNode=*/false, std::chrono::seconds(0)));
+    }
+
+    TEST_F(PasswordKeySourceTest, WorkerDoesNotWarnWithinGraceWindow)
+    {
+        EXPECT_FALSE(PasswordKeySource::shouldWarnAboutMissingPassword(/*isWorkerNode=*/true, std::chrono::seconds(0)));
+        EXPECT_FALSE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds - 1)));
+    }
+
+    // Safety-property regression guard: a worker still missing the password past the grace window
+    // is a real problem, not normal join timing, and must still warn -- this must never silently
+    // regress into suppressing the warning forever.
+    TEST_F(PasswordKeySourceTest, WorkerStillWarnsOnceGraceWindowIsExceeded)
+    {
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds)));
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds + 3600)));
+    }
+
     TEST_F(PasswordKeySourceTest, ValidPasswordProducesA32ByteKey)
     {
         writeFile("MyEnrollmentSecret123\n");

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <optional>
@@ -64,15 +65,41 @@ namespace remoted::auth
         /// Built-in refresh interval when the caller passes <=0 (matches Keystore's own default).
         static constexpr int kDefaultRefreshIntervalSeconds = 10;
 
+        /// How long after construction a worker's missing/unreadable authd.pass is treated as an
+        /// expected wait for the master's cluster sync (DEBUG1) rather than a fault (WARN). Chosen
+        /// as generous relative to the ~20s recovery observed reproducing a worker cluster-sync
+        /// wait on a live cluster.
+        static constexpr int kWorkerJoinGraceSeconds = 60;
+
+        /**
+         * @brief Whether a missing/unreadable authd.pass should be logged as a WARNING right now.
+         *
+         * True unconditionally when @p isWorkerNode is false (master/standalone) -- a master
+         * should never legitimately hit this path, so if it does, it's worth flagging
+         * immediately, same as today. For a worker, true only once @p elapsedSinceConstruction has
+         * passed kWorkerJoinGraceSeconds -- within that window the wait is expected (the file
+         * hasn't synced from the master yet) and should log at DEBUG1 instead; a worker still
+         * stuck past the window is a real problem and must still warn.
+         *
+         * Pure and static so it's directly unit-testable with fabricated durations, without
+         * needing to capture real log output across the DSO boundary or wait out a real grace
+         * window in a test.
+         */
+        static bool shouldWarnAboutMissingPassword(bool isWorkerNode,
+                                                   std::chrono::steady_clock::duration elapsedSinceConstruction);
+
         /**
          * @param path Path to authd's password file. An initial reload() runs synchronously in
          *             the constructor; a missing or invalid file is not an error -- currentKey()
          *             simply starts at nullopt (fail closed for Password mode).
          * @param refreshIntervalSeconds How often the background watcher re-checks the file as a
          *             fallback to the inotify subscription (seconds). <=0 -> kDefaultRefreshIntervalSeconds.
+         * @param isWorkerNode Whether this manager is a cluster worker -- gates the startup/poll
+         *             grace-window behavior of shouldWarnAboutMissingPassword().
          */
         explicit PasswordKeySource(std::string path = kDefaultPath,
-                                   int refreshIntervalSeconds = kDefaultRefreshIntervalSeconds);
+                                   int refreshIntervalSeconds = kDefaultRefreshIntervalSeconds,
+                                   bool isWorkerNode = false);
 
         ~PasswordKeySource();
 
@@ -128,6 +155,9 @@ namespace remoted::auth
         std::mutex m_reloadMutex;
         bool m_hasBaseline {false};
         std::vector<std::uint8_t> m_lastHash;
+
+        bool m_isWorkerNode;
+        std::chrono::steady_clock::time_point m_constructedAt;
 
         /// Throttles the "authd.pass is unreadable" warning: the watcher retries every
         /// m_refreshIntervalSeconds, so an unreadable file would otherwise flood wazuh-manager.log.
