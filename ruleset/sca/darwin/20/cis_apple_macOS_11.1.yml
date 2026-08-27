@@ -760,8 +760,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$"
-      - 'c:grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
+      - 'c:sh -c "grep -E -s ''!tty_tickets'' /etc/sudoers /etc/sudoers.d/*" -> r:^$'
+      - 'c:sh -c "grep -E -s ''timestamp_type'' /etc/sudoers /etc/sudoers.d/*" -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
   # not implemented - SCA Limit -> 5.6 Ensure login keychain is locked when the computer sleeps (Manual)
 
