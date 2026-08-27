@@ -301,7 +301,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             bool lastSyncManagerNotReady = false;
 
             /// @brief True when the sync was aborted because a prerequisite the manager has to
-            /// supply first (assigned groups, or a VD feed offset) has not arrived yet. See
+            /// supply first (the assigned groups) has not arrived yet. See
             /// @ref SyncModuleResult::awaitingPrerequisite.
             bool lastSyncAwaitingPrerequisite = false;
 

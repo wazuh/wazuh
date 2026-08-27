@@ -323,8 +323,23 @@ namespace invsync::vd
             // Offset gate: reject a VDFirst/VDSync session built against a feed offset this node
             // doesn't currently have, mirroring /scan/vd's version check on the REST on-demand
             // path. Non-VD sessions don't carry a meaningful feed_offset.
-            if (item.session.isVD)
+            //
+            // Only while this node runs a scanner, though. Without one -- vulnerability detection
+            // disabled, or failed to start -- there is no version to disagree about, so the
+            // session is admitted and takes the legitimate-skip path below, which indexes the
+            // agent's inventory without scanning it. Rejecting it instead would leave agents that
+            // hold an offset from before the module was disabled unable to index their packages
+            // at all (#38599).
+            //
+            // Gated on the scanner, not on the offset reading 0: a running scanner reports 0 too
+            // while the content manager's offset store is not answering yet (a window on every
+            // restart with a feed already on disk), and skipping the check there would index an
+            // agent's packages unscanned on a node whose vulnerability detection is enabled. A
+            // feed that is merely still loading never reaches this point either way (D17 answers
+            // it 503 above).
+            if (item.session.isVD && m_scanner->scannerRunning())
             {
+                // Read once: two loads could disagree if a feed update lands between them.
                 const auto currentOffset = m_scanner->currentFeedOffset();
                 if (item.session.feedOffset != currentOffset)
                 {

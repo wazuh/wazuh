@@ -52,11 +52,6 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
-        case SyncResult::NO_VD_OFFSET_ERROR:
-            failureReason = "No VD feed offset available yet. Waiting for the server to report one "
-                            "via /control. Cannot proceed with VD synchronization.";
-            break;
-
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
 
         default:
@@ -183,7 +178,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (!m_syncInProgress.compare_exchange_strong(expected, true))
     {
         m_logger(LOG_DEBUG, "Synchronization already in progress, skipping concurrent request");
-        return {true, {}};
+        SyncModuleResult skipped;
+        skipped.success = true;
+        skipped.sessionSkipped = true;
+        return skipped;
     }
 
     struct SyncInProgressGuard
@@ -690,30 +688,14 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
             return 0;
         }
 
-        // VD (VDFirst/VDSync) syncs additionally require a feed offset already received
-        // from the manager (via /control notify) -- vd_feed_offset is 0 both when it was
-        // never set and when metadata_provider_get() legitimately returns no metadata at
-        // all, so this can only mean "not yet observed" here (mirrors the groups gate
-        // above; abort and retry next interval rather than syncing with no offset context).
-        if (isUncappedSyncOption(option) && metadata.vd_feed_offset == 0)
-        {
-            m_logger(LOG_DEBUG, "No VD feed offset available yet. Waiting for the server to report "
-                     "one via /control. Cannot proceed with VD synchronization.");
-            {
-                // Same race as the NO_GROUPS_ERROR branch above. (CID 562608)
-                std::lock_guard<std::mutex> lock(m_syncState.mtx);
-                m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
-                m_syncState.lastSyncAwaitingPrerequisite = true;
-            }
-
-            if (has_metadata)
-            {
-                metadata_provider_free_metadata(&metadata);
-            }
-
-            return 0;
-        }
-
+        // A VD (VDFirst/VDSync) sync is NOT gated on having a feed offset. The offset is
+        // reported verbatim -- 0 included, which is what it reads as until the manager sends
+        // one -- and the decision about what to do with a session that does not match the
+        // node's own feed belongs to the manager: it answers 503 + Retry-After while its feed
+        // is still loading, and accepts the session (indexing the inventory without scanning
+        // it) when its scanner is not running at all. Deferring here instead would make the
+        // agent guess between those two from the same value, and a manager with vulnerability
+        // detection disabled would never index the agent's packages (#38599).
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata

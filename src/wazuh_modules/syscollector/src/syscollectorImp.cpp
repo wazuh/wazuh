@@ -2438,24 +2438,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // Sync VD data with appropriate option based on first scan status
     if (m_spSyncProtocolVD)
     {
-        Option vdOption;
-        bool firstSyncDone = isVDFirstSyncDone();
-
-        if (!m_vdSyncEnabled)
-        {
-            // If both packages and OS are disabled, use regular SYNC option
-            vdOption = Option::SYNC;
-            m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
-        }
-        else
-        {
-            // Use VDFIRST for first scan, VDSYNC for subsequent syncs
-            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
-        }
-
-        SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
-
-        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
+        SyncModuleResult vdResult = synchronizeVDTables(mode);
 
         if (!vdResult.success)
         {
@@ -2473,10 +2456,10 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             }
             else if (vdResult.awaitingPrerequisite)
             {
-                // Not a real failure either: no VD feed offset has been received from the manager
-                // yet (via /control), most commonly during the first cycle(s) after an agent
-                // restart, before the first notify round trip completes. Expected to clear on its
-                // own within the next cycle or two.
+                // Not a real failure either: the groups the manager has to assign have not
+                // arrived yet, most commonly during the first cycle(s) after an agent restart,
+                // before the first notify round trip completes. Expected to clear on its own
+                // within the next cycle or two.
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
             }
             else if ((vdResult.managerNotReady || vdResult.localTransportUnavailable) &&
@@ -2737,6 +2720,37 @@ bool Syscollector::isVDFirstSyncDone()
     int64_t vdFirstSyncCompleted = 0;
     return getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted)
            && vdFirstSyncCompleted > 0;
+}
+
+SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
+{
+    Option vdOption;
+    const bool firstSyncDone = isVDFirstSyncDone();
+
+    if (!m_vdSyncEnabled)
+    {
+        // If packages, OS or hotfixes are disabled, use regular SYNC option
+        vdOption = Option::SYNC;
+        m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
+    }
+    else
+    {
+        // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+        vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+    }
+
+    // Sent whatever the manager's vulnerability feed is doing: the session carries the feed
+    // offset this agent last heard about (0 when it never heard one) and the manager decides
+    // from there -- 503 + Retry-After while its feed is still loading, accepted and indexed
+    // without a scan when its scanner is not running at all.
+    const SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+
+    // Not for a call that ran no session at all: a flush landing on top of the periodic cycle
+    // is reported as a success, and recording a VD first sync for it would tell agent-info a
+    // full scan has covered this agent when nothing was sent.
+    persistVDFirstSyncIfNeeded(vdResult.success && !vdResult.sessionSkipped, firstSyncDone);
+
+    return vdResult;
 }
 
 void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone)
@@ -3058,21 +3072,7 @@ int Syscollector::executeFlushSync()
 
     if (m_spSyncProtocolVD)
     {
-        Option vdOption;
-        const bool firstSyncDone = isVDFirstSyncDone();
-
-        if (!m_vdSyncEnabled)
-        {
-            vdOption = Option::SYNC;
-        }
-        else
-        {
-            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
-        }
-
-        vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
-
-        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
+        vdResult = synchronizeVDTables(Mode::DELTA);
     }
 
     const bool overallSuccess = result.success && vdResult.success;

@@ -161,6 +161,7 @@ The gates, in order:
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
 | Scan legitimately skipped (scanner disabled) | index + `200` | Inventory must keep flowing even with the scanner off. |
+| VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A feed that is merely still loading is answered `503` above, so packages and vulnerabilities keep going together whenever the module is up. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
 
 Two pieces coordinate the lane with the rest of the system:
@@ -342,7 +343,7 @@ per process and never reset), so totals read across a retry are cumulative.
 ## Design decisions
 
 The decisions that shape the module, and what each one buys. This is the narrative distillation;
-the complete numbered catalog (D1–D22, plus the functional and non-functional requirements it
+the complete numbered catalog (D1–D23, plus the functional and non-functional requirements it
 answers to) lives in the module's in-tree developer README,
 `src/wazuh_modules/inventory_sync_server/README.md`:
 

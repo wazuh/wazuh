@@ -49,7 +49,7 @@ typedef struct SyncModuleResult_t
     bool manager_not_ready;
     unsigned int consecutive_failures;
     /// @brief True when the sync was aborted because a prerequisite the manager has to supply
-    /// first (assigned groups, or a VD feed offset) has not arrived yet. See
+    /// first (the assigned groups) has not arrived yet. See
     /// SyncModuleResult::awaitingPrerequisite (agent_sync_protocol_types.hpp) for the full doc.
     bool awaiting_prerequisite;
     /// @brief True when the local sync intake itself could not be reached. See

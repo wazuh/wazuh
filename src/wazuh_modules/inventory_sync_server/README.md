@@ -101,7 +101,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D22)
+## Design decisions (D1–D23)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -131,6 +131,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path was removed, not migrated |
 | D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
+| D23 | A VD session addressed to a node whose scanner is not running (vulnerability detection disabled, or failed to start) skips the `feed_offset` version check and takes D22's legitimate-skip path: the inventory is indexed, nothing is scanned, `200`. Gated on the scanner, NOT on the node's offset reading 0 — a running scanner reports 0 too while the content manager's offset store is not answering yet, and skipping the check there would index packages unscanned on a node whose vulnerability detection IS enabled. A feed that is merely still loading never reaches the gate: D17 answers it `503 + Retry-After`, so packages and vulnerabilities keep going together whenever the module is up |
 
 ## Layout
 
@@ -390,7 +391,10 @@ check `Start.feed_offset` against `IVdScanner::currentFeedOffset()` for VD-flagg
 (answering `409 {"error":"version_mismatch","current_version":N}` — the same body shape as
 remoted's `/scan/vd` REST endpoint, so an agent handles either 409 the same way — if the session
 was built against a feed offset this node doesn't currently have; a non-VD session has no
-meaningful `feed_offset` and skips this check entirely), run the scan inside a try/catch (a throw
+meaningful `feed_offset` and skips this check entirely, and so does every session when this node
+runs no scanner at all — there is no version to disagree about, and the session goes on to the
+legitimate-skip path that indexes the agent's inventory without scanning it, D23), run the scan
+inside a try/catch (a throw
 answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
 flush, no group commit in this lane — and answer `200`.
 

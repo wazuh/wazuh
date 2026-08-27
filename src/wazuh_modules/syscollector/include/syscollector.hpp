@@ -174,6 +174,19 @@ class EXPORTED Syscollector final
         /// already hold it shared do not acquire it a second time on the same thread.
         void deleteDatabaseUnlocked();
         void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
+
+        /**
+         * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
+         *        VDFirst marker when the session succeeds.
+         * @details Picks the sync option that fits the current state: SYNC when the agent's own
+         *          collectors rule VD scanning out, VDFIRST/VDSYNC otherwise. The session is
+         *          sent regardless of the VD feed offset the agent has heard about; what to do
+         *          with one built against an offset the node does not have is the manager's
+         *          decision.
+         * @param mode Synchronization mode to use for the session.
+         * @return The result of the session.
+         */
+        SyncModuleResult synchronizeVDTables(const Mode mode);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,
