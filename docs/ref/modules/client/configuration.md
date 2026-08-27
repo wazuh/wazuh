@@ -387,6 +387,9 @@ agent.https_download_attempts=2
 
 # Consecutive undeliverable /control steps before event producers pause;
 # one deliverable step releases the pause (default: 2, range 1-1000)
+# Undeliverable means unreachable, a rejected key or a rejected version. Answers that
+# clear on their own (5xx, 429, 503, 413, 400) are excluded and reset the streak, so
+# persistent 503s never reach this threshold.
 agent.https_producer_pause_threshold=2
 ```
 

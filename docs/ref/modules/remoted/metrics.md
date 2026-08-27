@@ -279,7 +279,7 @@ unit `count`.
 |---|---|
 | `remoted.scanvd.requests.total` | Requests reaching the handler |
 | `remoted.scanvd.accepted` | 200: VD queued the scan (it will run) |
-| `remoted.scanvd.queue_full` | 503: VD's scan dispatch queue at capacity |
+| `remoted.scanvd.queue_full` | 503: VD's scan dispatch queue at capacity. **Not** `vd.capacity.503.total`, which the inventory sync server raises for its own VD lane on a different socket ([inventory sync server metrics](../inventory-sync-server/metrics.md#vulnerability-detection-lane--vd)) |
 | `remoted.scanvd.indexer_unavailable` | 503: VD reports no healthy indexer host |
 | `remoted.scanvd.vd_error` | 503 for any other reason: VD unreachable, not ready, unexpected answer |
 | `remoted.scanvd.version_mismatch` | 409: requested feed offset != current offset |

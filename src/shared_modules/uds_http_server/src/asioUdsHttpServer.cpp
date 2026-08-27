@@ -963,6 +963,10 @@ namespace wazuh::uds_http
              * behind by the request's own reads -- readable-per-cache while a recv() would say
              * EAGAIN -- which falsely condemned ~1% of group-committed responses whose request
              * arrived in more than one segment. A real read only completes on actual data or EOF.
+             *
+             * Transport-level only: the byte reservation lives in the RequestContext with the
+             * payload, so a peer that gives up mid-flush frees its fd, registry entry and
+             * connection slot here while its bytes stay charged until the handler drops the request.
              */
             void watchPeerDuringDeferral()
             {

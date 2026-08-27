@@ -61,6 +61,9 @@ namespace
      * @p batchSize), concatenates the checksums in that order and hashes the concatenation. The
      * query shape and the ordering are the CONTRACT with what the agent computes locally, so they
      * are kept byte-identical.
+     *
+     * The single-field sort needs no tiebreaker: producers hash the whole item JSON, identity
+     * fields included, so two documents of one agent in one index cannot share a value.
      */
     std::string calculateChecksumOfChecksums(invsync::indexer::IIndexerConnectorSync& connector,
                                              const std::string& index,
