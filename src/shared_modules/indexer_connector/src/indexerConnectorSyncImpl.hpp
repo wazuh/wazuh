@@ -902,11 +902,8 @@ public:
     {
         if (!isSafeIndexName(index))
         {
-            LOGFN_WARN(m_logFn,
-                       "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
-                       "[a-zA-Z0-9._*-]).",
-                       index.c_str());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("deleteByQuery: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
         }
 
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
@@ -1100,7 +1097,7 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(
+                LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -1131,7 +1128,7 @@ public:
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG1(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
+                LOGFN_DEBUG2(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
             else
             {
@@ -1178,7 +1175,7 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
@@ -1497,14 +1494,9 @@ public:
     {
         if (!isSafeIndexName(index))
         {
-            LOGFN_ERROR(m_logFn,
-                        "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
-                        "[a-zA-Z0-9._*-]) on document '%.*s'",
-                        static_cast<int>(index.size()),
-                        index.data(),
-                        static_cast<int>(id.size()),
-                        id.data());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("bulkDelete: unsafe index name '" + std::string(index) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-]) on document '" +
+                                            std::string(id) + "'");
         }
 
         // Only flush if there is data already buffered.
@@ -1535,14 +1527,9 @@ public:
         // Validate input parameters
         if (!isSafeIndexName(index))
         {
-            LOGFN_ERROR(m_logFn,
-                        "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
-                        "[a-zA-Z0-9._*-]) on document '%.*s'",
-                        static_cast<int>(index.size()),
-                        index.data(),
-                        static_cast<int>(id.size()),
-                        id.data());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("bulkIndex: unsafe index name '" + std::string(index) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-]) on document '" +
+                                            std::string(id) + "'");
         }
 
         if (data.empty())
