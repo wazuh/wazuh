@@ -101,7 +101,7 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
 }
 
 #ifdef __linux__
-extern int __real_statfs(const char * __file, struct statfs * __buf);
+extern int __real_statfs(const char * __file, struct statfs * __buf) __attribute__((weak));
 int __wrap_statfs(const char * __file, struct statfs * __buf) {
     struct statfs * mock_buf;
     if (test_mode) {

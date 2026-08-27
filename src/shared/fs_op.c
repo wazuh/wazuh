@@ -141,8 +141,7 @@ bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unus
     case PROCFS:
         return set.proc;
     case TMPFS: {
-        // /dev (devtmpfs) shares TMPFS_MAGIC with any user tmpfs mount, but each
-        // mount gets its own device id, so compare against /dev's to tell them apart.
+        // /dev shares TMPFS_MAGIC with any tmpfs mount; device id tells them apart.
         struct stat dev_stat, path_stat;
         return set.dev && stat("/dev", &dev_stat) == 0 && stat(path, &path_stat) == 0 &&
                path_stat.st_dev == dev_stat.st_dev;
