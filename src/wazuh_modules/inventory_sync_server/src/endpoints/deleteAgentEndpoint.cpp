@@ -54,6 +54,7 @@ namespace invsync::endpoints::delete_agent
             // Throttled and function-local, same rationale as the sync route: how often these fire
             // is driven by how often callers request deletions, so one line per request would be a
             // log-amplification vector. One slot per condition.
+            static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
             static wazuh::uds_http::LogThrottle capacityThrottle;
 
@@ -81,7 +82,22 @@ namespace invsync::endpoints::delete_agent
             // indexer makes the deletion a guaranteed failure, and a 503 NOW is what lets the
             // caller retry instead of losing the delete silently (the legacy behavior).
             const auto indexer = deps.indexer.lock();
-            if (!indexer || !indexer->isAvailable())
+            if (!indexer)
+            {
+                // The facade cleared the connector: stop() is running. Distinct from an outage.
+                if (const auto decision = goneThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Rejected %llu agent deletion(s) with 503 in the last %d s: the module is shutting "
+                                 "down and the indexer connector is already gone.",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                }
+                deps.requestCounters.count(503);
+                responder->send(errorResponse(503, "Service unavailable"));
+                return;
+            }
+            if (!indexer->isAvailable())
             {
                 if (const auto decision = unavailableThrottle.record())
                 {
