@@ -825,6 +825,20 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
                                                         call('Wazuh-db response for chunk 2/5 was not "ok": 1')])
 
+    # Test chunk errors logged with debug level when 'chunk_errors_as_debug' is enabled
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', new_callable=AsyncMock) as send_data_to_wdb_mock:
+        with patch.object(LoggerMock, "debug") as logger_debug_mock:
+            with patch.object(LoggerMock, "error") as logger_error_mock:
+                send_data_to_wdb_mock.return_value = {
+                    'updated_chunks': 2, 'time_spent': 6,
+                    'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1']}}
+                await handler.update_chunks_wdb(
+                    data={'chunks': [0, 1, 2, 3, 4]}, info_type='agent-groups', logger=logger,
+                    error_command=b'ERROR', timeout=10, chunk_errors_as_debug=True)
+                logger_debug_mock.assert_has_calls([call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
+                                                    call('Wazuh-db response for chunk 2/5 was not "ok": 1')])
+                logger_error_mock.assert_called_once_with('other1')
+
     # Test Exception
     send_request_mock.reset_mock()
     error_message = 'error'
