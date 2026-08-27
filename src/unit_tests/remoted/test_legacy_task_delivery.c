@@ -409,7 +409,7 @@ static void test_deliver_fails_on_open_step(void **state) {
     expect_req_step("ok ", 0);                 // lock_restart succeeds
     expect_req_step(NULL, -1);                 // open fails: no ack
     expect_any(__wrap__mwarn, formatted_msg);   // "no response for step targeting 'open'"
-    expect_any(__wrap__mwarn, formatted_msg);  // "'open' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg);   // "'open' step failed, aborting push"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
@@ -492,7 +492,7 @@ static void test_deliver_fails_on_close_step(void **state) {
 
     expect_req_step(NULL, -1);                  // close fails: no ack
     expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'close'"
-    expect_any(__wrap__mwarn, formatted_msg);   // "'close' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg);    // "'close' step failed, aborting push"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
