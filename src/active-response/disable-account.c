@@ -75,7 +75,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(cmd_path);
-            return OS_SUCCESS;
+            return OS_INVALID;
         }
 
         memset(args, '\0', COMMANDSIZE_4096);
@@ -93,7 +93,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(cmd_path);
-            return OS_SUCCESS;
+            return OS_INVALID;
         }
 
         // Disabling an account
