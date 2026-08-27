@@ -329,6 +329,13 @@ TEST(IntegrationTest, ConstructorNonV4UUIDAccepted)
         cm::store::dataType::Integration("not-a-uuid", "name", true, "security", std::nullopt, {}, {}));
 }
 
+TEST(IntegrationTest, ConstructorDecoderUUIDsDifferingOnlyByCaseAreDistinct)
+{
+    // Identifiers are compared byte by byte: no case folding
+    EXPECT_NO_THROW(
+        cm::store::dataType::Integration(validUUID(), "name", true, "security", std::nullopt, {}, {"ABC", "abc"}));
+}
+
 TEST(IntegrationTest, ConstructorEmptyNameThrows)
 {
     EXPECT_THROW(cm::store::dataType::Integration(validUUID(), "", true, "security", std::nullopt, {}, {}),
@@ -758,6 +765,23 @@ TEST_F(CMStoreNSTest, CreateResourceWithExistingIDPreservesIt)
     auto uuid = store->createResource(
         "decoder/withid/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/withid/0", existingUUID));
     EXPECT_EQ(uuid, existingUUID);
+}
+
+TEST_F(CMStoreNSTest, CreateResourceIDsDifferingOnlyByCaseAreDistinct)
+{
+    auto store = makeStore();
+
+    // Identifiers are stored and looked up byte by byte: no normalization is applied
+    store->createResource(
+        "decoder/upper/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upper/0", "ABC"));
+    store->createResource(
+        "decoder/lower/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/lower/0", "abc"));
+
+    EXPECT_TRUE(store->assetExistsByUUID("ABC"));
+    EXPECT_TRUE(store->assetExistsByUUID("abc"));
+    EXPECT_FALSE(store->assetExistsByUUID("Abc"));
+    EXPECT_EQ(std::get<0>(store->resolveNameFromUUID("ABC")), "decoder/upper/0");
+    EXPECT_EQ(std::get<0>(store->resolveNameFromUUID("abc")), "decoder/lower/0");
 }
 
 // ======================== Policy ========================

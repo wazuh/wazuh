@@ -55,31 +55,32 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
 namespace cm::store::detail
 {
 
-inline void
-findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::string& type, bool caseInsensitive = true)
+/**
+ * @brief Checks a list of resource identifiers.
+ *
+ * Every identifier must satisfy base::utils::generators::isValidResourceId() and the list must
+ * not contain duplicates. Identifiers are opaque and compared byte by byte: no case folding or
+ * any other normalization is applied, so two identifiers that only differ in case are distinct.
+ *
+ * @param uuids Identifiers to check
+ * @param type Resource type used in the error messages (e.g. "Decoder")
+ * @throw std::runtime_error if an identifier is not valid or appears more than once
+ */
+inline void findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::string& type)
 {
     std::unordered_set<std::string> seen;
     seen.reserve(uuids.size());
 
-    for (const auto& original : uuids)
+    for (const auto& uuid : uuids)
     {
-        if (!base::utils::generators::isValidResourceId(original))
+        if (!base::utils::generators::isValidResourceId(uuid))
         {
             throw std::runtime_error(type + " UUID cannot be empty");
         }
 
-        std::string key = original;
-        if (caseInsensitive)
+        if (!seen.insert(uuid).second)
         {
-            std::transform(key.begin(),
-                           key.end(),
-                           key.begin(),
-                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        }
-
-        if (!seen.insert(key).second)
-        {
-            throw std::runtime_error("Duplicate " + type + " UUID: " + original);
+            throw std::runtime_error("Duplicate " + type + " UUID: " + uuid);
         }
     }
 }

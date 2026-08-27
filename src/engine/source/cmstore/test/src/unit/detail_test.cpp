@@ -18,10 +18,7 @@ std::string toUpperUUID(const std::string& uuid)
     std::string upper = uuid;
     for (char& c : upper)
     {
-        if (c != '-')
-        {
-            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        }
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
     }
     return upper;
 }
@@ -89,16 +86,18 @@ TEST(DetailTest, DuplicateUUIDErrorMessageContainsDuplicateValue)
     }
 }
 
-TEST(DetailTest, ExactDuplicateStillThrowsWhenCaseSensitiveDisabled)
+TEST(DetailTest, IdsDifferingOnlyByCaseAreDistinct)
 {
-    const std::string uuid = validUUID();
-    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({uuid, uuid}, TYPE, false), std::runtime_error);
-}
-
-TEST(DetailTest, UppercaseUUIDDetectedAsDuplicateCaseInsensitive)
-{
+    // Identifiers are opaque and compared byte by byte: no case folding is applied
     const std::string lower = validUUID();
     const std::string upper = toUpperUUID(lower);
-    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE), std::runtime_error);
-    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE, false));
+    ASSERT_NE(lower, upper);
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE));
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"ABC", "abc", "Abc"}, TYPE));
+}
+
+TEST(DetailTest, DuplicateNonUUIDIdentifierThrows)
+{
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"custom/id_1", "custom/id_1"}, TYPE),
+                 std::runtime_error);
 }
