@@ -320,10 +320,13 @@ TEST(IntegrationTest, ConstructorEmptyUUIDNotRequired)
     EXPECT_NO_THROW(cm::store::dataType::Integration("", "name", true, "security", std::nullopt, {}, {}, false));
 }
 
-TEST(IntegrationTest, ConstructorInvalidUUIDThrows)
+TEST(IntegrationTest, ConstructorNonV4UUIDAccepted)
 {
-    EXPECT_THROW(cm::store::dataType::Integration("not-a-uuid", "name", true, "security", std::nullopt, {}, {}),
-                 std::runtime_error);
+    // The identifier is opaque to the engine: any UUID version or format is accepted
+    EXPECT_NO_THROW(cm::store::dataType::Integration(
+        "6093809a-6285-5cf8-9284-63bd68f796e9", "name", true, "security", std::nullopt, {}, {}));
+    EXPECT_NO_THROW(
+        cm::store::dataType::Integration("not-a-uuid", "name", true, "security", std::nullopt, {}, {}));
 }
 
 TEST(IntegrationTest, ConstructorEmptyNameThrows)
@@ -344,11 +347,16 @@ TEST(IntegrationTest, ConstructorInvalidCategoryThrows)
                  std::runtime_error);
 }
 
-TEST(IntegrationTest, ConstructorInvalidDefaultParentThrows)
+TEST(IntegrationTest, ConstructorEmptyDefaultParentThrows)
 {
-    EXPECT_THROW(
-        cm::store::dataType::Integration(validUUID(), "name", true, "security", std::string("not-a-uuid"), {}, {}),
-        std::runtime_error);
+    EXPECT_THROW(cm::store::dataType::Integration(validUUID(), "name", true, "security", std::string(""), {}, {}),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorNonV4DefaultParentAccepted)
+{
+    EXPECT_NO_THROW(cm::store::dataType::Integration(
+        validUUID(), "name", true, "security", std::string("6093809a-6285-5cf8-9284-63bd68f796e9"), {}, {}));
 }
 
 TEST(IntegrationTest, ConstructorDuplicateDecoderUUIDsThrows)
@@ -395,11 +403,19 @@ TEST(IntegrationTest, FromJsonMissingIdRequiredThrows)
     EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
 }
 
-TEST(IntegrationTest, FromJsonInvalidIdRequiredThrows)
+TEST(IntegrationTest, FromJsonEmptyIdRequiredThrows)
 {
     auto j = makeValidIntegrationJson(false);
-    j.setString("not-a-valid-uuid", "/id");
+    j.setString("", "/id");
     EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonNonV4IdRequiredAccepted)
+{
+    auto j = makeValidIntegrationJson(false);
+    j.setString("6093809a-6285-5cf8-9284-63bd68f796e9", "/id");
+    auto integration = cm::store::dataType::Integration::fromJson(j, true);
+    EXPECT_EQ(integration.getUUID(), "6093809a-6285-5cf8-9284-63bd68f796e9");
 }
 
 TEST(IntegrationTest, FromJsonMissingIdNotRequired)
@@ -471,11 +487,11 @@ TEST(IntegrationTest, FromJsonEmptyDefaultParentThrows)
     EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
 }
 
-TEST(IntegrationTest, FromJsonInvalidDefaultParentThrows)
+TEST(IntegrationTest, FromJsonNonV4DefaultParentAccepted)
 {
     auto j = makeValidIntegrationJson();
-    j.setString("not-a-valid-uuid", "/default_parent");
-    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+    j.setString("6093809a-6285-5cf8-9284-63bd68f796e9", "/default_parent");
+    EXPECT_NO_THROW(cm::store::dataType::Integration::fromJson(j, true));
 }
 
 TEST(IntegrationTest, ToJsonWithDecodersKVDBsAndDefaultParent)
@@ -1145,11 +1161,17 @@ TEST(KVDBTest, ConstructorEmptyUUIDNotRequired)
     EXPECT_NO_THROW(cm::store::dataType::KVDB("", "name", std::move(content), true, false));
 }
 
-TEST(KVDBTest, ConstructorInvalidUUIDThrows)
+TEST(KVDBTest, ConstructorNonV4UUIDAccepted)
 {
-    json::Json content;
-    content.setString("v", "/k");
-    EXPECT_THROW(cm::store::dataType::KVDB("not-a-uuid", "name", std::move(content), true, true), std::runtime_error);
+    // The identifier is opaque to the engine: any UUID version or format is accepted
+    json::Json contentV5;
+    contentV5.setString("v", "/k");
+    EXPECT_NO_THROW(cm::store::dataType::KVDB(
+        "6093809a-6285-5cf8-9284-63bd68f796e9", "name", std::move(contentV5), true, true));
+
+    json::Json contentOther;
+    contentOther.setString("v", "/k");
+    EXPECT_NO_THROW(cm::store::dataType::KVDB("not-a-uuid", "name", std::move(contentOther), true, true));
 }
 
 TEST(KVDBTest, ConstructorEmptyNameThrows)
@@ -1177,10 +1199,10 @@ TEST(KVDBTest, FromJsonMissingIdRequiredThrows)
     EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
 }
 
-TEST(KVDBTest, FromJsonInvalidIdRequiredThrows)
+TEST(KVDBTest, FromJsonEmptyIdRequiredThrows)
 {
     json::Json j;
-    j.setString("not-a-uuid", "/id");
+    j.setString("", "/id");
     j.setString("test_kvdb", "/metadata/title");
     j.setBool(true, "/enabled");
     json::Json content;
@@ -1188,6 +1210,20 @@ TEST(KVDBTest, FromJsonInvalidIdRequiredThrows)
     j.set("/content", content);
 
     EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonNonV4IdRequiredAccepted)
+{
+    json::Json j;
+    j.setString("6093809a-6285-5cf8-9284-63bd68f796e9", "/id");
+    j.setString("test_kvdb", "/metadata/title");
+    j.setBool(true, "/enabled");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    auto kvdb = cm::store::dataType::KVDB::fromJson(j, true);
+    EXPECT_EQ(kvdb.getUUID(), "6093809a-6285-5cf8-9284-63bd68f796e9");
 }
 
 TEST(KVDBTest, FromJsonMissingTitleThrows)
@@ -1788,11 +1824,11 @@ TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithInvalidJSON)
     EXPECT_EQ(store->getCollection(cm::store::ResourceType::DECODER).size(), 1u);
 }
 
-TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithExistingInvalidUUID)
+TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithEmptyUUID)
 {
     std::filesystem::remove(storagePath() / "cache_ns.json");
     std::filesystem::create_directories(storagePath() / "decoders");
-    writeFile(storagePath() / "decoders" / "decoder_bad_0.json", R"({"id":"not-a-uuid"})");
+    writeFile(storagePath() / "decoders" / "decoder_bad_0.json", R"({"id":""})");
     writeFile(storagePath() / "decoders" / "decoder_ok_0.json", makeMinimalResourceJson().str());
 
     auto store = makeStore();

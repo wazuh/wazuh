@@ -39,23 +39,32 @@ TEST(DetailTest, EmptyListDoesNotThrow)
     EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({}, TYPE));
 }
 
-TEST(DetailTest, InvalidUUIDThrows)
+TEST(DetailTest, NonV4UUIDsDoNotThrow)
 {
-    const std::vector<std::string> uuids = {"not-a-valid-uuid"};
+    // The identifier is opaque to the engine: any UUID version or format is accepted
+    const std::vector<std::string> uuids = {"6093809a-6285-5cf8-9284-63bd68f796e9",  // v5
+                                            "00000000-0000-0000-0000-000000000000",  // nil
+                                            "0199a9f4-1b1e-7c3b-8f2a-2f9a1c0d4e5f",  // v7
+                                            "not-a-uuid"};
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID(uuids, TYPE));
+}
+
+TEST(DetailTest, EmptyUUIDThrows)
+{
+    const std::vector<std::string> uuids = {""};
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID(uuids, TYPE), std::runtime_error);
 }
 
-TEST(DetailTest, InvalidUUIDErrorMessageContainsValue)
+TEST(DetailTest, EmptyUUIDErrorMessageContainsType)
 {
-    const std::string bad = "not-a-valid-uuid";
     try
     {
-        cm::store::detail::findDuplicateOrInvalidUUID({bad}, TYPE);
+        cm::store::detail::findDuplicateOrInvalidUUID({""}, TYPE);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_NE(std::string(e.what()).find(bad), std::string::npos);
+        EXPECT_NE(std::string(e.what()).find(TYPE), std::string::npos);
     }
 }
 
@@ -86,9 +95,10 @@ TEST(DetailTest, ExactDuplicateStillThrowsWhenCaseSensitiveDisabled)
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({uuid, uuid}, TYPE, false), std::runtime_error);
 }
 
-TEST(DetailTest, UppercaseUUIDRejectedBeforeCaseInsensitiveDuplicateCheck)
+TEST(DetailTest, UppercaseUUIDDetectedAsDuplicateCaseInsensitive)
 {
     const std::string lower = validUUID();
     const std::string upper = toUpperUUID(lower);
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE), std::runtime_error);
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE, false));
 }
