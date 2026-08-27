@@ -537,10 +537,10 @@ namespace
         // X509_cmp_current_time returns < 0 when the time is in the past.
         if (X509_cmp_current_time(notAfter) < 0)
         {
-            LOGFN_WARN(logFn(),
-                       "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
-                       "reject the connection until it is renewed.",
-                       path.c_str());
+            LOGFN_ERROR(logFn(),
+                        "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
+                        "reject the connection until it is renewed.",
+                        path.c_str());
             return;
         }
 

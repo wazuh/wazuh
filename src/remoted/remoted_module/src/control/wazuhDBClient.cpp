@@ -65,6 +65,12 @@ namespace remoted::control
             static remoted::common::LogThrottle instance;
             return instance;
         }
+
+        remoted::common::LogThrottle& protocolErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
     } // namespace
     class WazuhDBClient::Impl
     {
@@ -347,6 +353,14 @@ namespace remoted::control
 
                   if (!isOk(response))
                   {
+                      if (const auto throttle = protocolErrorThrottle().record())
+                      {
+                          LOGFN_WARN(logFn(),
+                                     "WazuhDB returned a non-ok response to getAgentGroups: %llu error(s) in the "
+                                     "last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                      }
                       callback(SocketError::ProtocolError, {});
                       return;
                   }
@@ -387,6 +401,14 @@ namespace remoted::control
                   }
                   catch (...)
                   {
+                      if (const auto throttle = protocolErrorThrottle().record())
+                      {
+                          LOGFN_WARN(logFn(),
+                                     "WazuhDB getAgentGroups: could not parse the response: %llu error(s) in the "
+                                     "last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                      }
                       callback(SocketError::ProtocolError, {});
                   }
               });
