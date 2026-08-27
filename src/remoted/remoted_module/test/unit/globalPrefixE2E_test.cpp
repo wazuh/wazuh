@@ -9,9 +9,9 @@
  * Foundation.
  *
  * Drives a REAL TLS RestinioHttpServer + real AuthGateway with a global prefix configured, to
- * pin the feature's protocol contract: the AES-CMAC covers the request target EXACTLY as sent
- * on the wire -- global prefix included. An agent that signs the full prefixed target
- * authenticates; one that signs the unprefixed path while sending the prefixed one gets 401
+ * pin the feature's routing contract: routes live at the prefixed path, an unprefixed request is
+ * a 404 (auth never runs), and -- since the bearer profile authenticates identity only -- the same
+ * token is valid for any target the router accepts (the token does not bind the target, by design).
  * (the legacy-tooling failure mode); an unprefixed request never reaches auth at all (404).
  * GlobalPrefixTransportTest (httpServer_test.cpp) covers the routing-only side without auth.
  */
@@ -81,7 +81,7 @@ namespace
     }
 
     // The RemotedModuleFacade wiring slice that matters here: a real server, a real gateway
-    // (real AuthMiddleware + CMAC verification against FakeKeystore's one agent), and a trivial
+    // (real AuthMiddleware + bearer verification against FakeKeystore's one agent), and a trivial
     // always-200 authenticated handler on the LOGICAL path "/stateless".
     class GlobalPrefixE2ETest : public ::testing::Test
     {
@@ -143,54 +143,38 @@ namespace
     };
 } // namespace
 
-TEST_F(GlobalPrefixE2ETest, SigningTheFullPrefixedTargetSucceeds)
+TEST_F(GlobalPrefixE2ETest, AuthenticatedRequestToThePrefixedTargetSucceeds)
 {
     startServer("/wazuh-manager/");
 
-    // The feature's load-bearing contract: MAC over the target exactly as sent, prefix included.
+    // The feature's load-bearing contract: the agent sends the full prefixed target, which is what
+    // the router matches -- and authentication passes on the bearer alone.
     const auto key = remoted::test::testAgentKey();
     const auto response = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(response), 200) << response;
 }
 
-TEST_F(GlobalPrefixE2ETest, SigningTheUnprefixedTargetIs401)
+TEST_F(GlobalPrefixE2ETest, TheBearerDoesNotBindTheTargetOrTheQueryString)
 {
     startServer("/wazuh-manager/");
 
-    // The legacy-tooling failure mode: send the prefixed target, sign the bare one. The route
-    // matches, but the canonical request no longer describes what was sent -> 401, never 200.
+    // A documented, deliberate property of the profile: the token authenticates identity only, so one
+    // token is valid for any target the router accepts -- prefix and query string included. The
+    // target is purely a routing matter (an unprefixed target is a 404, see below).
     const auto key = remoted::test::testAgentKey();
-    const auto response = remoted::test::sendSignedRequest(
-        m_port, key, /*wire*/ "/wazuh-manager/stateless", /*signed*/ "/stateless", R"({"events":[]})");
-    EXPECT_EQ(statusOf(response), 401) << response;
-}
-
-TEST_F(GlobalPrefixE2ETest, QueryStringIsPartOfTheSignedTarget)
-{
-    startServer("/wazuh-manager/");
-
-    const auto key = remoted::test::testAgentKey();
-
-    // Signing wire target + query verifies...
-    const auto good = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless?x=1", R"({"events":[]})");
-    EXPECT_EQ(statusOf(good), 200) << good;
-
-    // ...while omitting the query from the MAC (same wire target) does not.
-    const auto bad = remoted::test::sendSignedRequest(m_port,
-                                                      key,
-                                                      /*wire*/ "/wazuh-manager/stateless?x=1",
-                                                      /*signed*/ "/wazuh-manager/stateless",
-                                                      R"({"events":[]})");
-    EXPECT_EQ(statusOf(bad), 401) << bad;
+    const auto plain = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless", R"({"events":[]})");
+    EXPECT_EQ(statusOf(plain), 200) << plain;
+    const auto withQuery =
+        remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless?x=1", R"({"events":[]})");
+    EXPECT_EQ(statusOf(withQuery), 200) << withQuery;
 }
 
 TEST_F(GlobalPrefixE2ETest, UnprefixedRequestNeverReachesAuth)
 {
     startServer("/wazuh-manager/");
 
-    // Correctly signed for its own target, but the unprefixed route does not exist: 404 from the
-    // router's non-matched handler, not a 401 -- auth never ran. Also the symptom of an
-    // agent/manager prefix mismatch.
+    // A valid bearer, but the unprefixed route does not exist: 404 from the router's non-matched
+    // handler, not a 401 -- auth never ran. Also the symptom of an agent/manager prefix mismatch.
     const auto key = remoted::test::testAgentKey();
     const auto response = remoted::test::sendSignedRequest(m_port, key, "/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(response), 404) << response;
@@ -204,10 +188,9 @@ TEST_F(GlobalPrefixE2ETest, ADifferentPrefixCarriesTheSameContract)
     const auto good = remoted::test::sendSignedRequest(m_port, key, "/edge/wazuh-5/stateless", R"({"events":[]})");
     EXPECT_EQ(statusOf(good), 200) << good;
 
-    // A signature minted for another deployment's prefix does not transfer.
-    const auto bad = remoted::test::sendSignedRequest(
-        m_port, key, /*wire*/ "/edge/wazuh-5/stateless", /*signed*/ "/wazuh-manager/stateless", R"({"events":[]})");
-    EXPECT_EQ(statusOf(bad), 401) << bad;
+    // The default prefix is not routed on this server: 404 from the router, auth never runs.
+    const auto other = remoted::test::sendSignedRequest(m_port, key, "/wazuh-manager/stateless", R"({"events":[]})");
+    EXPECT_EQ(statusOf(other), 404) << other;
 }
 
 TEST_F(GlobalPrefixE2ETest, IdentityPrefixKeepsTodaysContract)

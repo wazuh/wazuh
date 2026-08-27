@@ -13,7 +13,7 @@ authd listens on **TCP/1515** with TLS. The protocol is one line in, one line ou
 ```
 
 The sender **MUST** parse the four fields of the answer and keep `<id>` and `<key>`: the key is the
-hex-encoded AES key every later request is signed with. It **MUST** treat the TLS certificate as
+64-hex secret (32 bytes) every later request's bearer token is signed with. It **MUST** treat the TLS certificate as
 untrusted-but-accepted (the manager's certificate is self-signed in test environments).
 
 A password-protected authd expects `OSSEC PASS: <password> OSSEC A:'<name>'` instead. The sender
@@ -22,55 +22,61 @@ A password-protected authd expects `OSSEC PASS: <password> OSSEC A:'<name>'` ins
 shared secret to the run. If the manager rejects enrollment, the run **MUST** fail loudly with the
 manager's own answer rather than retrying blindly.
 
+The real agent enrolls over remoted's HTTPS `POST /enroll` instead, whose Password mode carries a
+`wazuh-enroll+jwt` bearer (HS256 with the HKDF-SHA256 key of the password; vectors under `"enroll"`
+in `internal/wire/testdata/jwt_vectors.json`). The simulator keeps the authd TCP path: it needs no
+password and exercises the same `client.keys` outcome.
+
 The fleet **SHOULD** be named with a stable prefix (`bench-<n>`) so cleanup can find it, and
 enrollment **SHOULD** be bounded in concurrency: authd is a single-threaded acceptor, and 2000
 simultaneous enrollments measure authd, not the sync path.
 
-## Request signing (AES-CMAC)
+## Request authentication (`wazuh-agent+jwt` bearer)
 
 Every HTTPS request to remoted carries:
 
 ```text
 protocol-version: 1
-Authorization: Wazuh <agent-id>:<unix-timestamp>:<mac>
+Authorization: Bearer <compact JWS>
 ```
 
-`<mac>` is the AES-CMAC of the canonical byte sequence below, hex-encoded **lowercase**, exactly 32
-characters (the manager parses that length strictly). The key is the enrollment key decoded from hex
-to raw bytes, and its length **MUST** be 16, 24 or 32 bytes (AES-128/192/256).
+The token is a JWT (RFC 7519) in the manager's closed **`wazuh-agent+jwt`** profile, self-signed by
+the agent with HS256 over its client.keys secret. Nothing in it is negotiable — the manager rejects
+any deviation with a uniform `401` + `WWW-Authenticate: Bearer`:
 
 ```text
-"WAZUH-REQUEST\n"
-<protocol-version> "\n"      e.g. "1\n"
-<METHOD> "\n"                uppercase, e.g. "POST\n"
-<request-target> "\n"        exactly as sent, query string and global prefix included,
-                             e.g. "/stateful\n" or "/wazuh-manager/stateful\n"
-<agent-id> "\n"              the SAME string used in the Authorization header, e.g. "001\n"
-<timestamp> "\n"             the SAME decimal string used in the header
-<body>                       the exact request bytes, with NO trailing newline
+header  {"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}          exactly these three
+claims  {"exp":<iat+60>,"iat":<now>,"iss":"wazuh-agent/<agent-id>",
+         "jti":"<22 chars base64url of 16 CSPRNG bytes>","nbf":<iat>,"sub":"<agent-id>"}
+                                                                            exactly these six; no aud
+key     the 32 bytes obtained by hex-decoding the 64-char client.keys secret — NEVER the ASCII text
 ```
 
 Details that are easy to get wrong and produce an opaque `401`:
 
-- The body is appended raw, with no separator after it.
-- The agent id and the timestamp are hashed as the strings that appear in the header. Sending `001`
-  in the header and hashing `1` fails.
-- The method is uppercase; the target is the raw target, not a normalized path.
-- When the manager configures `<remote><https><global_prefix>`, the prefix is **part of the
-  target** and therefore part of the MAC: remoted does not strip it before verifying. The two
-  failure modes are distinct and both diagnosable from the status alone — signing the bare target
-  while sending the prefixed one is `401`; sending the bare target is `404`, because the route does
-  not exist and auth is never reached. The sender applies `--global-prefix` to one string that
-  feeds both the URL and the signature (`internal/wire/client.go`, `Do`).
-- The timestamp **MUST** be within the manager's window: at most 300 s old and at most 30 s in the
-  future by default. A sender whose clock drifts will see uniform `401`s.
+- `kid`, `sub` and the `iss` suffix carry the agent id **as client.keys spells it**: decimal,
+  zero-padded to three digits (`001`). `1` is a protocol violation, not an alias.
+- `iat`, `nbf`, `exp` are integer seconds; `nbf == iat` and `exp == iat + 60` (the lifetime is a
+  profile constant, not a choice). The manager accepts a token while `now - iat <= jwt_max_age +
+  jwt_clock_skew` (60 + 30 s by default) and `iat <= now + jwt_clock_skew`; a drifting clock shows
+  up as uniform `401`s.
+- base64url **without padding**, canonical (no `=`, no `%3d`, zero trailing bits); JSON compact
+  with members in alphabetical order (Go's `encoding/json` over alphabetically declared structs
+  produces exactly that, and so does the manager's own signer — the frozen vector proves it).
+- A **fresh token per request**, retries included: new `jti`, new `iat`. Reusing a token is not an
+  error within its life (the manager keeps no replay store), but the sender **MUST NOT** rely on it.
+- The token binds the agent's identity only: **not** the method, **not** the target, **not** the
+  body. Compression, the global prefix and the query string are invisible to authentication. A
+  prefix mismatch is therefore always a `404` (the route does not exist), never a `401`.
+- Duplicated `Authorization` or `protocol-version` headers (any casing) are refused.
 
 Reference implementations to check a Go port against, byte for byte:
-`src/remoted/remoted_module/tools/send_stateless.py` (`sign_request()`, plus
-`normalize_global_prefix()`/`prefixed()` for the prefix) and the manager side in
-`src/remoted/remoted_module/src/auth/authMiddleware.cpp`. The sender **SHOULD** ship a unit test
-that reproduces a known MAC from a fixed key, timestamp and body, so a regression is caught without
-a manager.
+`src/shared_modules/utils/jwt/jwtRequestTokenSigner.hpp` (the agent's and the manager's shared
+signer), `src/remoted/remoted_module/tools/wire_jwt.py` (Python stdlib), and the manager's verifier
+in `src/shared_modules/utils/jwt/jwtRequestTokenVerifier.hpp`. The frozen vectors all three share
+are `internal/wire/testdata/jwt_vectors.json` (mirror of `src/shared_modules/utils/jwt/testVectors.hpp`):
+`jwt_test.go` reproduces the vector token byte for byte from the vector key, id, `iat` and `jti`,
+which is the interoperability proof — no manager needed.
 
 ## HTTPS to remoted (`agent` mode)
 
@@ -81,7 +87,7 @@ a manager.
   `Content-Type: application/octet-stream` and the FlatBuffers body, and `POST /stateless` with the
   H/E log-event batch (see [13](13-engine-event-streams.md)) when the scenario has an engine lane.
 - When the manager sets a global endpoint prefix, all of those routes are served under it and
-  `--global-prefix` **MUST** match it exactly (see the canonical string above). The uds transport
+  `--global-prefix` **MUST** match it exactly (a mismatch is a `404`, see above). The uds transport
   is never prefixed: the module's socket is not published under the manager's prefix, so
   `NewUDSClient` takes no prefix at all.
 - The sender **MUST NOT** send `X-Wazuh-Agent-Id` on `/stateful`: remoted sets it from the identity
@@ -99,8 +105,8 @@ from the scenario's `defaults.compression` (`""`/absent = the per-transport defa
 off, `"zstd"` = forced) or the `--compression zstd|none` CLI override. The contract has three
 load-bearing points:
 
-- **The CMAC signs the COMPRESSED bytes** — they are the wire bytes. The sender therefore
-  compresses *before* signing; a signature over the plaintext would be a `401`.
+- **Authentication ignores the body**: the bearer token binds the agent's identity, not the bytes,
+  so compression and authentication are independent (compress first or last, same token).
 - remoted answers `415` to any other encoding value (or when the feature is disabled), `400` to a
   body that is not a valid zstd frame, and `413` when the decompressed payload does not fit its
   in-flight memory budget. It **decompresses before relaying**: the inventory sync server receives

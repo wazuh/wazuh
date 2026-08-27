@@ -24,8 +24,8 @@ Source of truth: `src/remoted/remoted_module/src/endpoints/scanVdEndpoint.cpp` a
 ## Authentication
 
 The same authenticated gateway as `/control` and `/stateful`: `protocol-version: 1` plus
-`Authorization: Wazuh <agent-id>:<ts>:<cmac-hex>` over the target `/scan/vd` and the exact body
-bytes ([04-wire-protocol.md](04-wire-protocol.md)). The agent id is the one in the header; the body
+`Authorization: Bearer <wazuh-agent+jwt token>` ([04-wire-protocol.md](04-wire-protocol.md)). The
+agent id is the token's verified `sub`; the body
 has no identity field. **agent mode only** — the module's Unix socket has no such route, so a `uds`
 scenario carrying a `scan_vd` step is refused at load time, exactly like an `engine` step is.
 

@@ -207,7 +207,9 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     # Auth-gateway rejection taxonomy: the PRE-collapse cause of every client-visible auth
     # rejection (the wire response deliberately folds the credential failures into one 401).
     ("remoted.auth.reject.unknown_agent", "auth_reject_unknown_agent"),
-    ("remoted.auth.reject.invalid_mac", "auth_reject_invalid_mac"),
+    ("remoted.auth.reject.invalid_signature", "auth_reject_invalid_signature"),
+    ("remoted.auth.reject.bad_token", "auth_reject_bad_token"),
+    ("remoted.auth.reject.identity_mismatch", "auth_reject_identity_mismatch"),
     ("remoted.auth.reject.clock_skew", "auth_reject_clock_skew"),
     ("remoted.auth.reject.unusable_key", "auth_reject_unusable_key"),
     ("remoted.auth.reject.address_not_allowed", "auth_reject_address_not_allowed"),

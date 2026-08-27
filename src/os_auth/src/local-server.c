@@ -41,7 +41,8 @@ typedef enum auth_local_err {
     ENOMASTER,
     ENOMASTERCOMM,
     EINVALIDNAME,
-    EPENDINGPURGE // Append only: ERRORS[] below is indexed directly by these values.
+    EPENDINGPURGE,
+    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -68,7 +69,10 @@ static const struct {
     // A name that IS present but not storable in client.keys (see is_storable_agent_name()), as
     // opposed to 9005 "No such name", which means the argument was missing.
     { 9017, "Invalid agent name" },
-    { 9018, "Agent ID has a pending deletion" }
+    { 9018, "Agent ID has a pending deletion" },
+    // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
+    // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
+    { 9019, "Invalid agent key" }
 };
 
 // Dispatch local request
@@ -610,6 +614,14 @@ cJSON* local_add(const char *id,
             ierror = EINVGROUP;
             goto fail;
         }
+    }
+
+    /* A caller-supplied key must already have the shape remoted will accept (64 lowercase hex chars
+     * -> the agent's 32-byte HS256 key). Anything else would be stored fine and then rejected on
+     * every request as an unusable key, which is far harder to diagnose than refusing it here. */
+    if (key && !OS_IsValidAgentKey(key)) {
+        ierror = EINVALIDKEY;
+        goto fail;
     }
 
     /* An explicitly chosen id is the one case where the caller can land on an id whose previous

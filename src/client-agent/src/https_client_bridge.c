@@ -1526,12 +1526,12 @@ static int bridge_map_verify_mode(int agent_verify_mode)
     }
 }
 
-/* The AES-CMAC recipe (settled by the manager's own resolver): decode
- * client.keys' raw_key verbatim as hex, cipher chosen by byte length
- * (16/24/32 bytes = 32/48/64 hex chars). The module's key provider re-derives
- * the same check lazily at signing time (so a bad key never crashes
- * anything), but that means a misconfigured key otherwise fails every
- * request silently forever with no startup error. Validate it here so a
+/* The `wazuh-agent+jwt` key rule (settled by the manager's own keystore and
+ * the shared JwtKeyDecoder): client.keys' raw_key is exactly 64 lowercase hex
+ * characters, decoded verbatim into the 32-byte HS256 key. The module's key
+ * provider re-derives the same check lazily at signing time (so a bad key
+ * never crashes anything), but that means a misconfigured key otherwise fails
+ * every request silently forever with no startup error. Validate it here so a
  * broken client.keys is caught once, loudly, at start. */
 static bool bridge_key_is_valid(const char *raw_key)
 {
@@ -1539,13 +1539,13 @@ static bool bridge_key_is_valid(const char *raw_key)
         return false;
     }
 
-    size_t len = strlen(raw_key);
-    if (len != 32 && len != 48 && len != 64) {
+    if (strlen(raw_key) != 64) {
         return false;
     }
 
-    for (size_t i = 0; i < len; i++) {
-        if (!isxdigit((unsigned char)raw_key[i])) {
+    for (size_t i = 0; i < 64; i++) {
+        const char c = raw_key[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
             return false;
         }
     }
@@ -1622,8 +1622,8 @@ static bool bridge_build_config(hc_config_t *config)
         if (keys.keysize == 0) {
             mdebug1("https_client: not enrolled yet (no client.keys); deferring start.");
         } else {
-            merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
-                   "(expected 32, 48 or 64 hex characters); refusing to start.");
+            merror("https_client: agent key is missing or is not a valid HS256 key "
+                   "(expected exactly 64 lowercase hex characters); refusing to start.");
         }
         return false;
     }

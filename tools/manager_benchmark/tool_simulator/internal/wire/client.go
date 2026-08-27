@@ -22,14 +22,14 @@ type Response struct {
 
 // Client sends one agent's requests. There is one per agent so that identities
 // are never mixed on a shared connection (docu/08). In agent mode it targets
-// remoted over HTTPS and signs every request; in uds mode it targets the
-// module's Unix socket and sets X-Wazuh-Agent-Id itself.
+// remoted over HTTPS with a fresh bearer token per request; in uds mode it
+// targets the module's Unix socket and sets X-Wazuh-Agent-Id itself.
 type Client struct {
 	http    *http.Client
 	agentID string
-	keyHex  string // empty in uds mode: no signing
+	keyHex  string // empty in uds mode: no bearer
 
-	// agentMode: HTTPS to remoted with AES-CMAC. Otherwise: HTTP over UDS.
+	// agentMode: HTTPS to remoted with a wazuh-agent+jwt bearer. Otherwise: HTTP over UDS.
 	agentMode bool
 	baseURL   string // "https://host:1517" (agent) or "http://unix" (uds)
 	timeout   time.Duration
@@ -84,14 +84,12 @@ func NewUDSClient(agentID, socketPath string, timeout time.Duration) *Client {
 // whether X-Wazuh-Agent-Id is set: the caller sets it for uds /stateful and
 // /agents routes, and never for agent-mode routes (remoted sets it there).
 // contentEncoding, when non-empty, is sent as Content-Encoding: the caller
-// already compressed body, so the AES-CMAC below covers the COMPRESSED bytes
-// -- exactly remoted's contract (the signature is over the wire bytes).
+// already compressed body. Authentication does not look at the body (or the
+// target): the bearer token binds the agent's identity only.
 func (c *Client) Do(method, target string, body []byte, contentType, contentEncoding string, now int64, setAgentIDHeader bool) (Response, error) {
-	// The signed target is the request target verbatim, global prefix included: remoted
-	// does not strip the prefix before verifying. One local, used twice below, is what
-	// keeps "what we sign" and "what we send" from ever drifting apart -- see prefix.go
-	// for the two failure modes that drift produces. In uds mode globalPrefix is always
-	// empty, so full == target.
+	// The global prefix is purely a routing matter: routes live under it on the manager,
+	// so it goes into the URL (see prefix.go for the failure modes). In uds mode
+	// globalPrefix is always empty, so full == target.
 	full := c.globalPrefix + target
 
 	req, err := http.NewRequest(method, c.baseURL+full, bytes.NewReader(body))
@@ -106,7 +104,8 @@ func (c *Client) Do(method, target string, body []byte, contentType, contentEnco
 	}
 
 	if c.agentMode {
-		headers, err := AuthHeaders(c.keyHex, method, full, c.agentID, now, body)
+		// A fresh token per call: every attempt, retries included, carries its own jti/iat.
+		headers, err := AuthHeaders(c.keyHex, c.agentID, now)
 		if err != nil {
 			return Response{}, err
 		}

@@ -20,6 +20,7 @@
  * own certificate verification -- transport-layer, not this code's (see enrollmentMtlsE2E_test.cpp).
  */
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -33,18 +34,17 @@
 #include <gtest/gtest.h>
 
 #include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
-#include "auth/cmac.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
+#include "jwt/jwtEnrollTokenSigner.hpp"
+#include "jwt/testVectors.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
 using namespace remoted::enrollment;
-using remoted::auth::Cmac;
 using remoted::auth::PasswordKeySource;
-using remoted::auth::toLowerHex;
 using remoted::decoding::ContentEncoding;
 using remoted::decoding::IBodyDecoder;
 using remoted::http::HttpRequest;
@@ -123,22 +123,14 @@ namespace
         return path;
     }
 
-    std::string signWazuhEnroll(const std::vector<std::uint8_t>& key,
-                                std::string_view target,
-                                std::string_view body,
-                                std::int64_t ts)
+    // The `wazuh-enroll+jwt` bearer EnrollmentAuthenticator verifies (jwt/jwtEnrollTokenSigner.hpp),
+    // minted with the manager's own HKDF key at `ts`.
+    std::string bearerFor(const jwt_profile::v1::SecureBytes& key, std::int64_t ts)
     {
-        Cmac cmac(key);
-        cmac.update("WAZUH-ENROLL\n");
-        cmac.update("1\n");
-        cmac.update("POST\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return "WazuhEnroll " + std::to_string(ts) + ":" + toLowerHex(mac.data(), mac.size());
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::sign(
+            key, std::chrono::system_clock::time_point {std::chrono::seconds {ts}});
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
     }
 
     Config baseConfig()
@@ -182,7 +174,7 @@ TEST(EnrollmentE2ETest, PasswordModeCorrectlySignedRequestEnrollsSuccessfully)
     request.target = "/enroll";
     request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
-    request.headers.emplace("authorization", signWazuhEnroll(*key, "/enroll", kBody, nowTs()));
+    request.headers.emplace("authorization", bearerFor(*key, nowTs()));
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 200);
@@ -208,10 +200,18 @@ TEST(EnrollmentE2ETest, PasswordModeWrongSignatureIsRejected)
     request.target = "/enroll";
     request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
-    request.headers.emplace("authorization", "WazuhEnroll " + std::to_string(nowTs()) + ":" + std::string(32, 'a'));
+    request.headers.emplace("authorization",
+                            "Bearer " + std::string {jwt_profile::v1::test_vectors::enroll::kWrongPasswordToken});
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 401);
+    // RFC 6750 §3: /enroll's 401 carries the same bearer challenge every other route's does
+    // (regression: its own error envelope used to drop the header errorResponseFor() attaches).
+    const auto challenge = std::find_if(response.headers.begin(),
+                                        response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, response.headers.end());
+    EXPECT_EQ(challenge->second, "Bearer");
 
     std::remove(passwordPath.c_str());
 }
@@ -266,8 +266,8 @@ TEST(EnrollmentE2ETest, AuthdDownMapsTo503)
 
 TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedItself)
 {
-    // D12 (accepted limitation): the WazuhEnroll scheme has no nonce, so an identical, still-valid
-    // signed request replayed inside the freshness window passes OUR authentication a second time
+    // D12 (accepted limitation): remoted keeps no jti replay store, so an identical, still-valid
+    // bearer replayed inside the freshness window passes OUR authentication a second time
     // too -- exactly like the first. Whatever stops a meaningful replay is authd's own business
     // rule (typically duplicate-name/IP rejection), which this test's fake authd emulates by
     // answering the second identical call with 9008 (Duplicate name), not by remoted itself.
@@ -304,7 +304,7 @@ TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedIt
     request.target = "/enroll";
     request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
-    request.headers.emplace("authorization", signWazuhEnroll(*key, "/enroll", kBody, nowTs()));
+    request.headers.emplace("authorization", bearerFor(*key, nowTs()));
 
     const auto first = dispatch(handler, request);
     EXPECT_EQ(first.status, 200);

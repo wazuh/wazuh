@@ -205,10 +205,10 @@ std::string ModuleConfig::baseUrl() const
     const std::string host = ipv6 ? "[" + serverHost + "]" : serverHost;
 
     // serverEndpoint is NOT joined in here: #38491 (the manager's global
-    // prefix) requires the endpoint inside the signed CMAC target, not just
-    // the wire URL, so callers fold it into HttpRequestSpec::target (via
-    // prefixedTarget(), canonicalRequest.hpp) before signing -- this
-    // function only ever sees the bare, already-prefixed target appended to
-    // it afterward, same as before #38492.
+    // prefix) routes on the prefixed request-target, so callers fold it into
+    // HttpRequestSpec::target (via prefixedTarget(), requestTarget.hpp) --
+    // this function only ever sees the already-prefixed target appended to
+    // it afterward, same as before #38492. Routing only: the bearer token
+    // does not bind the target.
     return scheme + "://" + host + ":" + std::to_string(serverPort);
 }

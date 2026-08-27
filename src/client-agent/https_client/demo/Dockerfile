@@ -4,7 +4,7 @@
 # Compiles the REAL https_client module sources into a shared library against
 # the distro's libcurl + OpenSSL (no full Wazuh build needed), builds the demo
 # driver against it, and runs the driver at a local python TLS mock manager so
-# the whole HTTPS + AES-CMAC conversation is visible. Demo harness only.
+# the whole HTTPS + JWT-bearer conversation is visible. Demo harness only.
 #
 # Build context is staged by docker-run.sh (module sources + a handful of
 # header-only deps). See that script.

@@ -710,8 +710,8 @@ static void test_missing_key_refuses_to_start(void **state)
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
     /* No hc_create expectation: must not be reached. */
@@ -740,12 +740,12 @@ static void test_wrong_length_key_refuses_to_start(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
-    os_strdup("aabbccdd", keys.keyentries[0]->raw_key); /* 8 hex chars: not 32/48/64 */
+    os_strdup("aabbccdd", keys.keyentries[0]->raw_key); /* 8 hex chars: not 64 */
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
 }
@@ -754,22 +754,53 @@ static void test_non_hex_key_refuses_to_start(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
-    /* Right length (32 chars) but 'z' is not a hex digit. */
-    os_strdup("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", keys.keyentries[0]->raw_key);
+    /* Right length (64 chars) but 'z' is not a hex digit. */
+    os_strdup("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", keys.keyentries[0]->raw_key);
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
 }
 
-static void test_valid_48_char_key_is_accepted(void **state)
+/* The `wazuh-agent+jwt` key is exactly 32 bytes (64 hex chars), so a client.keys entry of any
+ * other length is refused at start (the agent must re-enroll) instead of failing every request later. */
+static void test_48_char_key_is_refused(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
     os_strdup("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", keys.keyentries[0]->raw_key); /* 48 hex chars */
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
+
+    w_https_client_start(); /* the merror expectation above is the assertion */
+}
+
+/* The shared JwtKeyDecoder only takes lowercase hex (canonical client.keys form). */
+static void test_uppercase_hex_key_is_refused(void **state)
+{
+    (void)state;
+    os_free(keys.keyentries[0]->raw_key);
+    os_strdup("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F", keys.keyentries[0]->raw_key);
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
+
+    w_https_client_start(); /* the merror expectation above is the assertion */
+}
+
+static void test_valid_64_char_key_is_accepted(void **state)
+{
+    (void)state;
+    os_free(keys.keyentries[0]->raw_key);
+    os_strdup("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", keys.keyentries[0]->raw_key);
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
@@ -784,7 +815,7 @@ static void test_valid_48_char_key_is_accepted(void **state)
     w_https_client_start();
 
     assert_string_equal(g_captured_config.agent_key,
-                         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+                         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
     w_https_client_stop();
 }
@@ -2392,7 +2423,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_no_keystore_defers_at_debug, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_wrong_length_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_non_hex_key_refuses_to_start, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_valid_48_char_key_is_accepted, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_48_char_key_is_refused, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_uppercase_hex_key_is_refused, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_valid_64_char_key_is_accepted, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_create_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_start_failure_destroys_and_logs, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),

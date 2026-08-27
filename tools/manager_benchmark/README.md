@@ -98,7 +98,7 @@ Percentiles are excluded from that delta on purpose: subtracting two p99 snapsho
 ```bash
 cd tool_simulator
 make all                       # flatc --go bindings + go build -> ./benchmark_sender
-make test                      # CMAC RFC-4493 vectors + FlatBuffers round-trip
+make test                      # wazuh-agent+jwt frozen vector + FlatBuffers round-trip
 
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --validate      # load + strict-check only
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --mode uds \
@@ -232,8 +232,8 @@ The same scenarios over two transports, so the difference isolates the relay:
 - **`--mode uds`** — straight to the module's Unix socket (`POST /stateful`), measuring the
   ingestion pipeline alone: validation, sharded workers, group commit, the vulnerability-detection
   scan lane.
-- **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with AES-CMAC
-  signatures, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
+- **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with a
+  `wazuh-agent+jwt` bearer token per request, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
   the `POST /stateful` sessions.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),

@@ -34,7 +34,7 @@ For configuration options see [Authd Configuration](configuration.md).
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
      compared against the manager's stored key when deciding whether a `force` re-enrollment
      applies (see [Force re-enrollment](#force-re-enrollment)).
-5. Authd validates the agent name, checks for existing registrations (applying `force` rules if configured), generates a random key pair, and queues the entry for persistence. If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment.
+5. Authd validates the agent name, checks for existing registrations (applying `force` rules if configured), generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile), and queues the entry for persistence. If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment.
 6. The agent key is written to `/var/wazuh-manager/etc/client.keys` by a background writer thread.
 7. The response is sent back to the agent over the same TLS connection.
 
@@ -187,7 +187,7 @@ A request is a single-line JSON object:
     leading `.` — keep working.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
   - `groups` (optional) — comma-separated centralized group(s) to assign
-  - `key` (optional) — a caller-supplied key instead of a randomly generated one
+  - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
     in the network protocol when deciding whether a `force` replacement applies
   - `force` (optional, object) — see below

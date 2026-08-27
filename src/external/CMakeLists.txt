@@ -1421,15 +1421,37 @@ add_library(ext_httplib INTERFACE)
 target_include_directories(ext_httplib SYSTEM
                            INTERFACE ${EXTERNAL_DIR}/cpp-httplib)
 
+# jwt-cpp (header-only; in the base EXTERNAL_RES list so agent, winagent and manager all get it).
+# ${EXTERNAL_DIR} is on the include path because traits/nlohmann-json/traits.h does
+# #include "nlohmann/json.hpp" and this tree vendors json.hpp directly under external/nlohmann/.
+# picojson is not vendored, so its default traits are disabled. HS256 needs libcrypto (EVP HMAC).
+if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
+  add_library(ext_jwt_cpp INTERFACE)
+  target_include_directories(ext_jwt_cpp SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/jwt-cpp/include
+                                       ${EXTERNAL_DIR})
+  target_compile_definitions(ext_jwt_cpp INTERFACE JWT_DISABLE_PICOJSON)
+  target_link_libraries(ext_jwt_cpp INTERFACE crypto)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    # `crypto` is the static libcrypto.a: on MinGW its winstore/bio_sock objects import
+    # crypt32 (Cert*) and ws2_32 (WSA*, sockets), so any consumer that resolves OpenSSL
+    # from this archive rather than from the wazuhext DLL (e.g. https_client_unit_test.exe)
+    # needs both -- same pairing as every other winagent target that links `crypto`.
+    target_link_libraries(ext_jwt_cpp INTERFACE crypt32 ws2_32)
+  endif()
+endif()
+
+# rapidjson (header-only; in the base EXTERNAL_RES list since #38582: the shared wazuh-agent+jwt
+# verifier in shared_modules/utils/jwt/ parses tokens with its SAX reader, and the agent's
+# component tests run that verifier as their fake manager).
+if(EXISTS ${EXTERNAL_DIR}/rapidjson)
+  add_library(ext_rapidjson INTERFACE)
+  target_include_directories(ext_rapidjson SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
+endif()
+
 # Header-only libs that are only downloaded for server builds
 if(NOT IS_AGENT)
-  # rapidjson
-  if(EXISTS ${EXTERNAL_DIR}/rapidjson)
-    add_library(ext_rapidjson INTERFACE)
-    target_include_directories(ext_rapidjson SYSTEM
-                               INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
-  endif()
-
   # RxCpp
   if(EXISTS ${EXTERNAL_DIR}/RxCpp)
     add_library(ext_rxcpp INTERFACE)

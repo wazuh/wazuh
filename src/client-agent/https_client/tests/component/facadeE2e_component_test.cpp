@@ -39,7 +39,7 @@
 namespace
 {
     constexpr uint16_t TLS_PORT = 44861;
-    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f";
+    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     struct Recorder
     {
@@ -62,8 +62,7 @@ namespace
     /// provided here; the module injects it from the live connection.
     void collectHostStub(char* json_out, size_t cap, void*)
     {
-        std::snprintf(json_out, cap,
-                      R"({"hostname":"h","architecture":"x86_64","os":{"type":"linux"}})");
+        std::snprintf(json_out, cap, R"({"hostname":"h","architecture":"x86_64","os":{"type":"linux"}})");
     }
 
     void onSync(const char*, int, const char*, size_t, void* userData)
@@ -102,8 +101,7 @@ namespace
         }
     }
 
-    void vdOffsetObserve(uint64_t offset, int* outChanged, int* outPending,
-                         uint64_t* outPendingOffset, void* userData)
+    void vdOffsetObserve(uint64_t offset, int* outChanged, int* outPending, uint64_t* outPendingOffset, void* userData)
     {
         auto* recorder = static_cast<VdRescanRecorder*>(userData);
         std::lock_guard<std::mutex> lock(recorder->mutex);
@@ -252,15 +250,13 @@ namespace
         return false;
     }
 
-    bool waitForBody(httplib::Client& peek, const char* target, const std::string& needle,
-                     int timeoutMs)
+    bool waitForBody(httplib::Client& peek, const char* target, const std::string& needle, int timeoutMs)
     {
         const int deadline = scaledTimeout(timeoutMs);
 
         for (int elapsed = 0; elapsed < deadline; elapsed += 20)
         {
-            if (const auto result = peek.Get(target);
-                    result && result->body.find(needle) != std::string::npos)
+            if (const auto result = peek.Get(target); result && result->body.find(needle) != std::string::npos)
             {
                 return true;
             }
@@ -331,14 +327,13 @@ TEST_F(FacadeE2eTest, GracefulStopSendsControlShutdown)
     // problem in this exact lifecycle (start -> register -> destroy), and
     // whatever the QA round observed must come from a path this test does
     // not cover (e.g. the real daemon's signal-handler-driven shutdown).
-    EXPECT_NE(std::string::npos, seenTypes.find("shutdown"))
-            << "manager's /control record was: " << seenTypes;
+    EXPECT_NE(std::string::npos, seenTypes.find("shutdown")) << "manager's /control record was: " << seenTypes;
 }
 
 TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
 {
     // The full lifecycle against a real TLS listener: STARTING -> REGISTERED
-    // (accepted startup, CMAC verified server-side) -> STOPPED on destroy.
+    // (accepted startup, bearer verified server-side) -> STOPPED on destroy.
     Recorder recorder;
     hc_config_t config = tlsConfig();
     hc_callbacks_t callbacks {};
@@ -353,8 +348,7 @@ TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
     hc_destroy(handle);
 
     std::lock_guard<std::mutex> lock(recorder.mutex);
-    EXPECT_NE(recorder.states.end(),
-              std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
+    EXPECT_NE(recorder.states.end(), std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
 }
 
@@ -435,10 +429,8 @@ TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)
 
     const std::string first = "1:/loc:size-wakeup-first";
     const std::string second = "1:/loc:size-wakeup-second";
-    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(first.data()),
-                                first.size()));
-    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(second.data()),
-                                second.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(first.data()), first.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(second.data()), second.size()));
 
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
@@ -487,8 +479,7 @@ TEST_F(FacadeE2eTest, IntervalFlushesABatchThatNeverReachesTheSize)
     ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
 
     const std::string event = "1:/loc:interval-only-flush";
-    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
-                                event.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()), event.size()));
 
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
@@ -522,8 +513,7 @@ TEST_F(FacadeE2eTest, ControlKeepsItsNotifyCadenceWhileEventsAreStillBatching)
     ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
 
     const std::string event = "1:/loc:held-in-the-batch";
-    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
-                                event.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()), event.size()));
 
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
@@ -559,8 +549,8 @@ TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
     ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
 
     std::string body(2u * 1024 * 1024, 'S'); // 2 MB, far past the 64 KB DGRAM cap.
-    ASSERT_TRUE(sendSyncSession(sockPath, "intake-session-1",
-                                reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+    ASSERT_TRUE(
+        sendSyncSession(sockPath, "intake-session-1", reinterpret_cast<const uint8_t*>(body.data()), body.size()));
 
     // The session crossed the socket, was spooled, and was POSTed to the mock.
     EXPECT_TRUE(waitFor(recorder.syncCount, 1, 5000));
@@ -577,7 +567,7 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
     const uint16_t port = TLS_PORT + 9;
     const std::string gate = "/tmp/hc_hold_stateful_" + std::to_string(getpid());
     {
-        std::ofstream open {gate};    // Held from here until we remove it.
+        std::ofstream open {gate}; // Held from here until we remove it.
     }
 
     FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, 0, 0, {}, gate};
@@ -602,15 +592,13 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
     const int notifiesBefore = peekCount(peek, "/peek/notifies");
 
     const std::string session(256 * 1024, 'H');
-    ASSERT_TRUE(hc_submit_sync_session(handle, "held-session-1",
-                                       reinterpret_cast<const uint8_t*>(session.data()),
-                                       session.size()));
+    ASSERT_TRUE(hc_submit_sync_session(
+                    handle, "held-session-1", reinterpret_cast<const uint8_t*>(session.data()), session.size()));
     std::this_thread::sleep_for(std::chrono::milliseconds {scaledTimeout(300)}); // Get inside the POST.
 
     // Stateless keeps going while the session is stuck mid-flight.
     const std::string event = "1:/var/log/syslog:while-stateful-is-held";
-    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
-                                event.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()), event.size()));
     EXPECT_TRUE(waitForBody(peek, "/peek/stateless", "while-stateful-is-held", 4000));
 
     // ...and so does control, on its own cadence.
@@ -640,8 +628,7 @@ namespace
         std::lock_guard<std::mutex> lock(recorder->mutex);
         recorder->hash = configHash;
         std::ifstream file {filePath, std::ios::binary};
-        recorder->content.assign(std::istreambuf_iterator<char>(file),
-                                 std::istreambuf_iterator<char>());
+        recorder->content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
         recorder->count++;
     }
 } // namespace
@@ -659,8 +646,7 @@ TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
     ConfigRecorder recorder;
     hc_config_t config = tlsConfig();
     config.server_port = port;
-    std::strncpy(config.config_checksum, "0000-local-out-of-date",
-                 sizeof(config.config_checksum) - 1);
+    std::strncpy(config.config_checksum, "0000-local-out-of-date", sizeof(config.config_checksum) - 1);
     hc_callbacks_t callbacks {};
     callbacks.on_config_downloaded = onConfigDownloaded;
     callbacks.user_data = &recorder;
@@ -678,7 +664,7 @@ TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
     hc_destroy(handle);
 
     std::lock_guard<std::mutex> lock(recorder.mutex);
-    EXPECT_EQ(blob, recorder.content); // Byte-exact through chunked TLS.
+    EXPECT_EQ(blob, recorder.content);    // Byte-exact through chunked TLS.
     EXPECT_EQ(64u, recorder.hash.size()); // A SHA-256 hex.
 }
 
@@ -727,7 +713,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     // swaps the key via hc_set_agent_identity, and the client re-registers (#37828).
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
-    const std::string newKey = "0f0e0d0c0b0a09080706050403020100";
+    const std::string newKey = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
     FakeManager manager {port, oldKey, /*tls=*/true, 0, {}, 0, /*rotateKeyAfterNotifies=*/2, newKey};
 
     ReenrollRecorder recorder;
@@ -757,10 +743,8 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
 
     EXPECT_EQ(1, recorder.reenrollCount.load()); // Fired once, not per 401.
     std::lock_guard<std::mutex> lock(recorder.mutex);
-    EXPECT_NE(recorder.states.end(),
-              std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_AUTH_ERROR));
-    EXPECT_NE(recorder.states.end(),
-              std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
+    EXPECT_NE(recorder.states.end(), std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_AUTH_ERROR));
+    EXPECT_NE(recorder.states.end(), std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
 }
 
 TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
@@ -794,8 +778,7 @@ TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
     {
         char frame[64];
         const int n = std::snprintf(frame, sizeof frame, "1:/loc:evt-%02d-payload", index);
-        EXPECT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(frame),
-                                    static_cast<size_t>(n)));
+        EXPECT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(frame), static_cast<size_t>(n)));
     }
 
     // Poll the manager's accumulated view until all events land (or time out).
@@ -835,8 +818,7 @@ TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
         std::snprintf(needle, sizeof needle, "evt-%02d-", index);
         const size_t first = received.find(needle);
         ASSERT_NE(std::string::npos, first) << "missing event " << index;
-        EXPECT_EQ(std::string::npos, received.find(needle, first + 1))
-                << "duplicated event " << index;
+        EXPECT_EQ(std::string::npos, received.find(needle, first + 1)) << "duplicated event " << index;
     }
 }
 
@@ -937,10 +919,8 @@ TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
 
     // One STARTING only: the refresh never left REGISTERED.
     std::lock_guard<std::mutex> lock(recorder.mutex);
-    EXPECT_EQ(1, std::count(recorder.states.begin(), recorder.states.end(),
-                            HC_STATE_STARTING));
-    EXPECT_EQ(0, std::count(recorder.states.begin(), recorder.states.end(),
-                            HC_STATE_REJECTED));
+    EXPECT_EQ(1, std::count(recorder.states.begin(), recorder.states.end(), HC_STATE_STARTING));
+    EXPECT_EQ(0, std::count(recorder.states.begin(), recorder.states.end(), HC_STATE_REJECTED));
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
 }
 
@@ -973,22 +953,28 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
 
     hc_destroy(handle); // Drains (final flush + Notify) and joins.
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
-    EXPECT_NE(recorder.states.end(),
-              std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
+    EXPECT_NE(recorder.states.end(), std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
 }
 
 // Issue #38204: a real notify carrying vd_feed_offset must drive a real
-// POST /scan/vd over the wire (real TLS, real AES-CMAC signing verified
+// POST /scan/vd over the wire (real TLS, real bearer token verified
 // server-side), and a 200 must clear the pending flag through the real
 // callback -- this is the one thing the mocked-transport unit tests
 // (controlStream_test.cpp) cannot prove by themselves.
 TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetTriggersRealScanVdRequestAndClearsOnSuccess)
 {
     const uint16_t port = TLS_PORT + 10;
-    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/{},
-                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0,
-                         /*rotatedKeyHex=*/{}, /*statefulHoldFile=*/{},
-                         /*vdFeedOffset=*/100, /*scanVdRejectFirstNAttempts=*/0};
+    FakeManager manager {port,
+                         KEY_HEX,
+                         /*tls=*/true,
+                         /*settingsFlipAfter=*/0,
+                         /*configBlob=*/ {},
+                         /*statelessMaxBody=*/0,
+                         /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/ {},
+                         /*statefulHoldFile=*/ {},
+                         /*vdFeedOffset=*/100,
+                         /*scanVdRejectFirstNAttempts=*/0};
 
     VdRescanRecorder recorder;
     hc_config_t config = tlsConfig();
@@ -1041,10 +1027,17 @@ TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetRetriesRealScanVdRequestAfter409)
 {
     const uint16_t port = TLS_PORT + 11;
     // current_version on the 409 is vdFeedOffset+1 = 101 (see fakeManager.hpp).
-    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/{},
-                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0,
-                         /*rotatedKeyHex=*/{}, /*statefulHoldFile=*/{},
-                         /*vdFeedOffset=*/100, /*scanVdRejectFirstNAttempts=*/1};
+    FakeManager manager {port,
+                         KEY_HEX,
+                         /*tls=*/true,
+                         /*settingsFlipAfter=*/0,
+                         /*configBlob=*/ {},
+                         /*statelessMaxBody=*/0,
+                         /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/ {},
+                         /*statefulHoldFile=*/ {},
+                         /*vdFeedOffset=*/100,
+                         /*scanVdRejectFirstNAttempts=*/1};
 
     VdRescanRecorder recorder;
     hc_config_t config = tlsConfig();

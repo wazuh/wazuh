@@ -16,13 +16,15 @@
 // a real DeferredForwarder -- the same pattern as statsEndpoint_test.cpp.
 #include "endpoints/statefulEndpoint.hpp"
 
-#include "auth/cmac.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -404,17 +406,17 @@ namespace
         {
             if (agentId == 1)
             {
-                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(32, 0x0A), true};
             }
             return std::nullopt;
         }
     };
 } // namespace
 
-// The doc-10 §3 component chain in one piece: a CMAC-signed agent request to /stateful runs
-// through the real AuthGateway into the real handler, and the id that reaches the downstream
+// The doc-10 §3 component chain in one piece: a bearer-authenticated agent request to /stateful
+// runs through the real AuthGateway into the real handler, and the id that reaches the downstream
 // X-Wazuh-Agent-Id header is the AUTHENTICATED one -- written by the manager from the verified
-// Authorization header, never taken from anything the agent controls independently of the MAC.
+// token, never taken from anything the agent controls independently of the signature.
 TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForward)
 {
     auto client = std::make_shared<FakeDownstreamClient>();
@@ -429,28 +431,20 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
                                   "/stateful",
                                   stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000));
 
-    // Sign the canonical byte sequence AuthMiddleware verifies, with FakeKeystore's key for 001.
+    // A wazuh-agent+jwt bearer for 001, minted with FakeKeystore's key for it.
     const std::string body = "\x01\x02opaque-fullsession";
-    const auto ts = static_cast<std::int64_t>(std::time(nullptr));
-    const std::vector<std::uint8_t> key(16, 0x0A);
-    remoted::auth::Cmac cmac(key);
-    cmac.update("WAZUH-REQUEST\n");
-    cmac.update("1\n"); // protocol-version
-    cmac.update("POST\n");
-    cmac.update("/stateful\n");
-    cmac.update("001\n");
-    cmac.update(std::to_string(ts));
-    cmac.update("\n");
-    cmac.update(body);
-    const auto mac = cmac.finalize();
+    const std::vector<std::uint8_t> key(32, 0x0A);
+    const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+    const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+        *jwt_profile::v1::CanonicalAgentId::parse("001"), secret, std::chrono::system_clock::now());
+    ASSERT_TRUE(token);
 
     remoted::http::HttpRequest request;
     request.method = Method::Post;
     request.target = "/stateful";
     request.body = body;
     request.headers.emplace("protocol-version", "1");
-    request.headers.emplace(
-        "authorization", "Wazuh 001:" + std::to_string(ts) + ":" + remoted::auth::toLowerHex(mac.data(), mac.size()));
+    request.headers.emplace("authorization", "Bearer " + *token);
 
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -460,7 +454,7 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     const auto req = client->request();
     ASSERT_EQ(req.headers.size(), 1U);
     EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
-    EXPECT_EQ(req.headers[0].second, "001"); // the id the CMAC authenticated, wire form
+    EXPECT_EQ(req.headers[0].second, "001"); // the id the token authenticated, canonical form
 
     client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);

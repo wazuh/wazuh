@@ -48,9 +48,9 @@ namespace remoted::http
     struct HttpRequest
     {
         Method method {Method::Get};
-        /// Raw request target (path + query, exactly as received on the wire). The auth layer
-        /// signs this value verbatim -- global endpoint prefix included when one is configured
-        /// (HttpServerConfig::globalPrefix) -- so it is never normalized or rewritten.
+        /// Raw request target (path + query, exactly as received on the wire), global endpoint
+        /// prefix included when one is configured (HttpServerConfig::globalPrefix). Never normalized
+        /// or rewritten: it is what the router matched and what AuthenticatedRequest carries.
         std::string target;
         std::string body; ///< Raw request body.
         /// Header name -> value, EXACTLY as the transport reports it (a well-known field name like
@@ -59,11 +59,14 @@ namespace remoted::http
         /// http_server/headerUtils.hpp's headerValue() (case-insensitive), never an exact-match
         /// find(): an exact match only happens to work against a handcrafted request that inserted
         /// an already-lowercase key directly, never having gone through the real transport.
+        /// `authorization` and `protocol-version` are special: when a request carries either of them
+        /// more than once (any case), the transport stores an EMPTY value, which the auth layer
+        /// rejects as absent -- a duplicated credential header is never "first wins".
         std::unordered_map<std::string, std::string> headers;
         std::string remoteIp; ///< Client's connection IP (textual form; IPv4-mapped-IPv6 addresses
                               ///< are unmapped to plain IPv4 first). The auth gateway hands it to
                               ///< AuthMiddleware, which matches it against the agent's authorized
-                              ///< address (client.keys' third column) before verifying the MAC.
+                              ///< address (client.keys' third column) before verifying the token.
     };
 
     /**

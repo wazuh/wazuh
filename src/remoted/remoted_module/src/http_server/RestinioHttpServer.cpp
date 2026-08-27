@@ -17,6 +17,8 @@
 
 #include "loggerHelper.h"
 
+#include <algorithm>
+#include <cctype>
 #include <restinio/core.hpp>
 #include <restinio/http_server_run.hpp>
 #include <restinio/router/express.hpp>
@@ -93,7 +95,7 @@ namespace
      * HTTP parse, a header/URL over its configured limit -- overwhelmingly driven by client behavior
      * (a portscanner, a buggy client, or deliberately-malformed negative-test traffic, e.g.
      * tools/send_stateless.py --all). None of that is "the manager is broken" in the sense this
-     * module reserves ERROR for (AES-CMAC unavailable, the worker thread failing to launch); it is
+     * module reserves ERROR for (the auth pipeline itself failing, the worker thread failing to launch); it is
      * the same "client fault" bucket as an auth rejection, just one layer lower in the stack. The one
      * event here that IS a genuine, rare, operator-facing problem -- the acceptor failing to bind
      * (port in use, TLS context rejected) -- is already surfaced distinctly and more clearly by our
@@ -420,20 +422,84 @@ namespace
         return !ec && parsed.is_v6();
     }
 
+    // Case-insensitive name match for the two headers the auth layer keys on.
+    bool isAuthHeader(std::string_view name)
+    {
+        constexpr std::string_view kGuarded[] = {"authorization", "protocol-version"};
+        for (const auto guarded : kGuarded)
+        {
+            if (name.size() != guarded.size())
+            {
+                continue;
+            }
+            bool equal = true;
+            for (std::size_t i = 0; i < name.size() && equal; ++i)
+            {
+                equal = static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) == guarded[i];
+            }
+            if (equal)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Build the neutral request view from a RESTinio request handle.
     remoted::http::HttpRequest makeHttpRequest(remoted::http::Method method, const restinio::request_handle_t& req)
     {
         remoted::http::HttpRequest request;
         request.method = method;
-        // Raw request target (path + query, exactly as received): the auth layer
-        // signs it verbatim, so it must not be path-only or normalized.
+        // Raw request target (path + query, exactly as received): it is what the router matches
+        // (global endpoint prefix included) and what AuthenticatedRequest carries, so it must not
+        // be path-only or normalized.
         request.target = req->header().request_target();
         request.body = req->body();
         request.remoteIp = normalizeRemoteAddress(req->remote_endpoint().address());
 
+        // HttpRequest::headers is a map, so a header sent twice would silently collapse to whichever
+        // occurrence was seen first -- and for the two headers the auth layer keys on, "first wins"
+        // is exactly the ambiguity a request-smuggling client aims for (RFC 9110 §5.3: a recipient
+        // MUST NOT rely on the order of duplicated fields). Those two are therefore collected
+        // case-insensitively and, when duplicated (identical or case-variant names), stored as an
+        // EMPTY value under the first spelling seen: the auth layer already treats empty as "absent
+        // or duplicated" and rejects. Every other header keeps today's first-wins behaviour.
+        struct Guarded
+        {
+            std::string name;
+            std::string value;
+            int count {0};
+        };
+        std::vector<Guarded> guarded;
         req->header().for_each_field(
-            [&request](const restinio::http_header_field_t& field)
-            { request.headers.emplace(std::string {field.name()}, std::string {field.value()}); });
+            [&request, &guarded](const restinio::http_header_field_t& field)
+            {
+                if (!isAuthHeader(field.name()))
+                {
+                    request.headers.emplace(std::string {field.name()}, std::string {field.value()});
+                    return;
+                }
+                for (auto& g : guarded)
+                {
+                    if (g.name.size() == field.name().size() &&
+                        std::equal(g.name.begin(),
+                                   g.name.end(),
+                                   field.name().begin(),
+                                   [](char a, char b) {
+                                       return std::tolower(static_cast<unsigned char>(a)) ==
+                                              std::tolower(static_cast<unsigned char>(b));
+                                   }))
+                    {
+                        ++g.count;
+                        return;
+                    }
+                }
+                guarded.push_back(Guarded {std::string {field.name()}, std::string {field.value()}, 1});
+            });
+        for (auto& g : guarded)
+        {
+            request.headers.emplace(std::move(g.name), g.count == 1 ? std::move(g.value) : std::string {});
+        }
 
         return request;
     }

@@ -4,8 +4,8 @@ import "testing"
 
 // The table IS the parity contract with the manual senders' normalize_global_prefix()
 // (src/remoted/remoted_module/tools/send_*.py) and with the manager's own normalizer
-// (httpServerConfig.cpp). A change here that is not mirrored there is a bug: the target
-// this tool signs would stop matching the route the manager registered.
+// (httpServerConfig.cpp). A change here that is not mirrored there is a bug: the URL
+// this tool sends would stop matching the route the manager registered (404).
 func TestNormalizeGlobalPrefix(t *testing.T) {
 	cases := []struct {
 		raw  string

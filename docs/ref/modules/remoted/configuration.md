@@ -148,13 +148,13 @@ similar spelling: nothing on disk is looked up under it.
   trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
   configuration error (`wazuh-manager-remoted -t` reports it).
-- **Note:** the request signature (the AES-CMAC scheme, and `/enroll`'s own CMAC) covers the
-  request target exactly as sent — prefix included — so agents must send **and sign** the full
-  prefixed path, and any proxy in between must forward the path untouched (rewriting it breaks
-  the signature). A prefix mismatch between agent and manager surfaces as `404`. The prefix
+- **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
+  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
+  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
   counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
   local admin socket is not. See
-  [HTTPS Events API](https-events-api.md#authentication-aes-cmac).
+  [HTTPS Events API](https-events-api.md#authentication-jwt-bearer).
 
 ### https.dual_stack
 
@@ -562,7 +562,7 @@ Number of I/O threads (accept + read/write) for the HTTPS agent server.
 Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
 
 - **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
-  work can block on AES-CMAC verification and `client.keys` file I/O)
+  work can block on token verification and `client.keys` file I/O)
 - **Allowed values:** Integer from `0` to `256`
 - **Note:** Size it from the end-to-end latency histograms (`remoted.http.stateless.latency`,
   `remoted.http.stateful.latency`) in
@@ -778,27 +778,31 @@ Cap on a downstream response body, in bytes.
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
 
-#### remoted.auth_max_request_age
+#### remoted.jwt_max_age
 
-How far in the past (seconds) a request's timestamp may be before the auth middleware rejects it
-as expired.
+Maximum **age** (seconds) of an agent's bearer token (`wazuh-agent+jwt`) the auth middleware accepts:
+a token is usable while `now - iat <= jwt_max_age + jwt_clock_skew`. The token's declared lifetime
+(`exp - iat`) is a fixed 60 s of the profile and is not configurable; this option can only shorten
+the window in which an issued token is still honoured.
 
-- **Default value:** `300`
-- **Allowed values:** Integer from `1` to `3600`
-- **Note:** Rejections against this window (either direction) are visible as
-  `remoted.auth.reject.clock_skew` in
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `60` (the profile maximum -- a larger value keeps remoted
+  from starting)
+- **Note:** Rejections against the time window (too old, expired, or issued in the future) are
+  visible as `remoted.auth.reject.clock_skew` in
   [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A moving counter
-  usually means unsynchronized agent clocks — fix NTP before widening the window.
+  usually means unsynchronized agent clocks — fix NTP before touching the window.
 
-#### remoted.auth_max_future_skew
+#### remoted.jwt_clock_skew
 
-How far in the future (seconds) a request's timestamp may be before the auth middleware rejects
-it.
+Tolerated clock difference (seconds) between an agent and the manager, applied in both directions:
+a token may be issued up to `jwt_clock_skew` seconds in the future, and is still accepted up to
+`jwt_clock_skew` seconds after its `exp`.
 
 - **Default value:** `30`
-- **Allowed values:** Integer from `1` to `300`
-- **Note:** Shares the `remoted.auth.reject.clock_skew` counter with
-  `remoted.auth_max_request_age` (see above).
+- **Allowed values:** Integer from `0` to `30` (the profile maximum; `0` means no tolerance at all)
+- **Note:** Shares the `remoted.auth.reject.clock_skew` counter with `remoted.jwt_max_age` (see
+  above). Also bounds the freshness window of `POST /enroll`.
 
 #### remoted.auth_max_body_size
 
