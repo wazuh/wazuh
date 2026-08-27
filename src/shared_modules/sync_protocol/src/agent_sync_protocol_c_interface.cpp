@@ -117,6 +117,7 @@ extern "C" {
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
             cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
             cResult.sent_anything = cppResult.sentAnything;
 
             return cResult;
@@ -219,6 +220,7 @@ extern "C" {
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
             cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
             cResult.sent_anything = cppResult.sentAnything;
 
             return cResult;

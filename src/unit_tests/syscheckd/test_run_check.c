@@ -408,7 +408,10 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished successfully.");
+    /* The shared asp_sync_module wrapper zero-fills its result, so sent_anything is false and
+     * run_check reports the empty-cycle wording. That distinction is the point of the field:
+     * "successfully" would claim the manager took data it never received. */
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished: nothing to send.");
 
     if (persist_first_sync_marker) {
 #ifndef TEST_WINAGENT
@@ -422,6 +425,11 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
     // synchronization (fim_sync_module_running already cleared), so tests that stop the
     // loop through the sync wrapper must not expect it.
     if (expect_recovery_pass) {
+        /* #38601: the identity check runs before the per-table loop. Zero means the metadata
+         * provider has published nothing, which is the "unknown id, do nothing" path -- these
+         * cases are about the integrity loop, not about a re-enrollment. */
+        will_return(__wrap_asp_get_agent_id, 0);
+
 #ifdef TEST_WINAGENT
         /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
         expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
@@ -447,7 +455,9 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished successfully.");
+    // The shared __wrap_asp_sync_module zero-fills its result, so sent_anything is false and
+    // this is the empty-cycle wording.
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished: nothing to send.");
 
     if (persist_first_sync_marker) {
 #ifndef TEST_WINAGENT

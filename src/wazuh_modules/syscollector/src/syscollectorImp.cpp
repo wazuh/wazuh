@@ -2504,7 +2504,10 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                       : "Syscollector synchronization process finished: nothing to send.");
     }
 
-    return {overallSuccess, std::move(failureReason), false, false, 0, false, sentAnything};
+    // Eight initializers for eight fields: localTransportUnavailable sits between
+    // awaitingPrerequisite and sentAnything, and omitting it would silently put sentAnything in
+    // its place -- two consecutive bools, so nothing would fail to compile.
+    return {overallSuccess, std::move(failureReason), false, false, 0, false, false, sentAnything};
 }
 // LCOV_EXCL_STOP
 
@@ -4968,11 +4971,20 @@ void Syscollector::checkAgentIdentity()
 
     int64_t syncedId = 0;
 
-    if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId) || syncedId == 0)
+    if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
     {
-        // First time we record one: a clean install, or a database from before this marker
-        // existed. Adopt it and resync nothing -- on a clean install the ordinary first sync
-        // covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return;
+    }
+
+    if (syncedId == 0)
+    {
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
+        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
         // been maintaining all along.
         updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
         return;
@@ -4987,6 +4999,16 @@ void Syscollector::checkAgentIdentity()
                   "Inventory was last synchronized as agent " + std::to_string(syncedId) +
                   ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
 
+    bool anyFailed = false;
+
+    // One resync per table, each ending in its own sync session, rather than clearing all
+    // thirteen indices and sending everything in one. It is the slower shape -- the wodle holds
+    // the scan mutex throughout, and this is the same per-index cost the manager-driven recovery
+    // path already pays -- but a failure stays contained: an index is only cleared immediately
+    // before its own rows are queued, so a session that never reaches the manager leaves the
+    // other twelve untouched, and the marker below can be gated on what each table proved
+    // individually. Clearing everything up front would put all thirteen behind a single point of
+    // failure.
     for (const auto& [tableName, index] : INDEX_MAP)
     {
         if (m_stopping.load())
@@ -5003,10 +5025,29 @@ void Syscollector::checkAgentIdentity()
 
         if (!resyncTableToManager(tableName, index))
         {
-            // Leave the marker untouched so this re-fires next cycle. Recording it now would
-            // claim the manager holds data it never received.
-            return;
+            // Keep going: the tables that can be resent should be, and aborting here would make
+            // every later pass re-upload the ones that already succeeded. The marker is what
+            // must not move -- recording it would claim the manager holds data it never
+            // received -- so remember the failure and leave it alone at the end.
+            anyFailed = true;
         }
+        else
+        {
+            // Stamp the integrity clock exactly as the checksum loop does after its own resync.
+            // Without this, that loop -- same pass, same locked region, immediately behind this
+            // one -- can find the interval elapsed for a table this pass just full-replaced, ask
+            // the manager for a checksum it has had no chance to recompute, and issue a second
+            // notifyDataClean for it. Duplicated version-bump/select/re-persist work at best,
+            // and if that second clean is ordered after the rows queued here, it deletes them.
+            updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+        }
+    }
+
+    if (anyFailed)
+    {
+        // At least one table did not reach the manager, so the identity is not fully
+        // synchronized yet and the next pass has to try again.
+        return;
     }
 
     // Both markers move together, and only once every table above proved the manager accepted

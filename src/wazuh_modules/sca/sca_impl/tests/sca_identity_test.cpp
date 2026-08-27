@@ -44,7 +44,11 @@ class SCAIdentityTest : public ::testing::Test
             m_logOutput.clear();
 
             // The provider is a file, and other test binaries in this tree write it too.
-            std::filesystem::create_directories("var/run");
+            // Own directory per binary: the provider is a file at a path relative to the working
+            // directory, and other SCA test binaries in this tree write the same one, so sharing
+            // it makes both flaky under a parallel ctest.
+            std::filesystem::create_directories("sca_identity_test/var/run");
+            std::filesystem::current_path("sca_identity_test");
             metadata_provider_reset();
 
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
@@ -60,11 +64,15 @@ class SCAIdentityTest : public ::testing::Test
 
             m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
             m_sca->setSyncProtocol(m_mockSyncProtocol);
+            // syncModule() answers immediately unless the module is paused -- that is how
+            // agent-info drives a coordinated sync, and it is the state these cases exercise.
+            m_sca->pause();
         }
 
         void TearDown() override
         {
             metadata_provider_reset();
+            std::filesystem::current_path("..");
             m_sca.reset();
             m_mockDBSync.reset();
             m_mockFileSystem.reset();

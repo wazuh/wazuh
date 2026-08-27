@@ -295,6 +295,10 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     return true;
 }
 
+/* Declared here rather than by including syscheck.h: that header pulls in audit_op.h and with it
+ * the kernel's linux/audit.h, which is not on this translation unit's include path. */
+bool fim_shutdown_process_on(void);
+
 bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list) {
     const long current_id = asp_get_agent_id();
 
@@ -304,12 +308,20 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         return false;
     }
 
-    const int64_t synced_id = fim_db_get_last_sync_time(FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    int64_t synced_id = 0;
+
+    if (!fim_db_try_get_last_sync_time(FIM_SYNCED_AGENT_ID_METADATA_KEY, &synced_id)) {
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return false;
+    }
 
     if (synced_id <= 0) {
-        // First time we record one: a clean install, or a database from before this marker
-        // existed. Adopt it and resync nothing -- on a clean install the ordinary first sync
-        // covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
+        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
         // been maintaining all along.
         fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
         return false;
@@ -323,6 +335,12 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
           (long)synced_id, current_id);
 
     for (int i = 0; i < table_count; i++) {
+        if (fim_shutdown_process_on()) {
+            // Cut short by shutdown, like the integrity loop that follows this one: leave the
+            // marker alone so the next boot re-fires rather than recording a partial pass.
+            return false;
+        }
+
         if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
             // Leave the marker untouched so this re-fires next cycle. Recording it now would
             // claim the manager holds data it never received.

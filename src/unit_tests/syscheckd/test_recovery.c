@@ -30,6 +30,7 @@
 
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
+bool __wrap_fim_db_try_get_last_sync_time(const char* table_name, int64_t* out_value);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
 // __wrap_fim_configuration_directory is provided by create_db_wrappers.c (shared wrapper).
@@ -55,6 +56,12 @@ static registry_t mock_registry_config = {0};
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
     check_expected(table_name);
     return mock_type(int64_t);
+}
+
+bool __wrap_fim_db_try_get_last_sync_time(const char* table_name, int64_t* out_value) {
+    check_expected(table_name);
+    *out_value = mock_type(int64_t);
+    return mock_type(bool);
 }
 
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
@@ -624,8 +631,9 @@ static void test_fim_resync_on_agent_id_change_absent_marker_is_adopted(void **s
 
     will_return(__wrap_asp_get_agent_id, 1);
 
-    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
-    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 0);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
     // Adopted, and nothing more: no version bump, no DataClean, no table resent. Any of those
     // would mean an upgrading fleet resyncs all at once.
@@ -645,8 +653,9 @@ static void test_fim_resync_on_agent_id_change_same_id_is_noop(void **state) {
 
     will_return(__wrap_asp_get_agent_id, 7);
 
-    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
-    will_return(__wrap_fim_db_get_last_sync_time, 7);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 7);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
     assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
 }
@@ -675,8 +684,9 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
 
     will_return(__wrap_asp_get_agent_id, 2);
 
-    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
-    will_return(__wrap_fim_db_get_last_sync_time, 1);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 1);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
     cJSON* test_items = cJSON_CreateArray();
     cJSON* item = cJSON_CreateObject();
@@ -738,12 +748,32 @@ static void test_fim_resync_on_agent_id_change_failed_table_records_nothing(void
 
     will_return(__wrap_asp_get_agent_id, 2);
 
-    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
-    will_return(__wrap_fim_db_get_last_sync_time, 1);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 1);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
     // Fails at the very first step, so nothing reaches the manager.
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_increase_each_entry_version, -1);
+
+    // No fim_db_update_last_sync_time_value expectation: writing one here would be the bug.
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+}
+
+
+// A failed read is not an answer. Adopting on it would be the worst outcome available: one
+// transient busy database in the window right after a re-enrollment would record the new id as
+// already synchronized and suppress the resync permanently.
+static void test_fim_resync_on_agent_id_change_failed_read_adopts_nothing(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 0);
+    will_return(__wrap_fim_db_try_get_last_sync_time, false);
 
     // No fim_db_update_last_sync_time_value expectation: writing one here would be the bug.
     assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
@@ -767,6 +797,7 @@ int main(void) {
         cmocka_unit_test(test_fim_resync_on_agent_id_change_unknown_id_is_noop),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_resends_and_records),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_table_records_nothing),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_read_adopts_nothing),
         cmocka_unit_test(test_buildFileStatefulEvent_success),
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),

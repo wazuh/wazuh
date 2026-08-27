@@ -1517,11 +1517,20 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
 
     int64_t syncedId = 0;
 
-    if (!getMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, syncedId) || syncedId == 0)
+    if (!getMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
     {
-        // First time we record one: a clean install, or a database from before this marker
-        // existed. Adopt it and resync nothing -- on a clean install first_sync_completed is
-        // absent too and the ordinary snapshot covers it, and on an upgraded agent the
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return;
+    }
+
+    if (syncedId == 0)
+    {
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install first_sync_completed
+        // is absent too and the ordinary snapshot covers it, and on an upgraded agent the
         // manager's copy is exactly the one this agent has been maintaining all along.
         updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
         return;
@@ -1537,9 +1546,11 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
         "SCA data was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
         std::to_string(currentId) + ". Sending a full snapshot.");
 
-    // increaseVersions stays false: indexer document ids are agent-scoped, so under a new
-    // identity there are no higher-versioned documents of ours left to outrank. Recovery needs
-    // true only because it is repairing documents written under this same id.
+    // increaseVersions stays false: the manager builds indexer document ids as
+    // clusterName_agentId_id, so under a new identity every document this snapshot writes is one
+    // the indexer has never seen and there is nothing of ours left to outrank. Recovery needs
+    // true only because it is repairing documents written under this same id, where the stale
+    // versions really are present.
     const auto result = synchronizeDatabaseSnapshot(false, "agent id change");
 
     if (!result.success || !m_keepRunning.load())

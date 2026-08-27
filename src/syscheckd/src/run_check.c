@@ -1232,11 +1232,22 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         if (pause_requested && flush_request_detected) {
             minfo("Starting FIM synchronization requested by agent-info.");
 
+            // No identity check and no integrity loop in this branch, by construction: it is
+            // reached precisely because FIM is paused, which is what forbids taking the scan
+            // mutex both of them need. They stay in the branch below and fire on the first
+            // cycle after FIM resumes -- the same availability the integrity loop has always
+            // had, and the identity marker is untouched meanwhile, so nothing is lost.
             SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
 
             if (sync_result.success) {
-                minfo("FIM synchronization requested by agent-info finished successfully.");
+                // #38601: the same distinction the ordinary path below makes -- success with an
+                // empty queue never opened a session, so it cannot mean the manager took data.
+                if (sync_result.sent_anything) {
+                    minfo("FIM synchronization requested by agent-info finished successfully.");
+                } else {
+                    minfo("FIM synchronization requested by agent-info finished: nothing to send.");
+                }
             } else if (sync_result.stopped || fim_shutdown_process_on()) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
