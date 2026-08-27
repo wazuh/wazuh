@@ -226,6 +226,7 @@ jobs:
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            GITHUB_RUN_ID="${GITHUB_RUN_ID}" \
             AWS_VPC_ID="${AWS_VPC_ID}" \
             AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
             AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" \
