@@ -307,9 +307,11 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     return NULL;
 }
 
-// Accepts only the portable username character set, plus '$' for machine accounts.
-// Anything outside it is rejected, so no separator, quote, whitespace, control or
-// non-ASCII byte can reach the command line the username is placed on.
+// Accepts only the portable username character set, plus '$' anywhere for machine
+// accounts. Anything outside it is rejected, so no separator, quote, whitespace,
+// control or non-ASCII byte reaches the argument vector the username is placed in.
+// '@' is deliberately excluded: passwd and chuser act on local accounts, which
+// cannot carry a realm suffix, so a qualified name could never be locked anyway.
 int is_valid_username(const char *username) {
     if (!username || !*username) {
         return 0;

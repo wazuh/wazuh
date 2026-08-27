@@ -92,8 +92,9 @@ const char* get_username_from_json(const cJSON *input);
 
 /**
  * Validate username format
- * Accepts only [A-Za-z0-9._-] plus '$' for machine accounts, and rejects a
- * leading dash so the name cannot be read as an option.
+ * Accepts only [A-Za-z0-9._-] plus '$' anywhere for machine accounts, and rejects
+ * a leading dash so the name cannot be read as an option. '@' is excluded: only
+ * local accounts can be locked, and those cannot carry a realm suffix.
  * Rejects: reserved names (root), empty strings, null, names over 256 bytes
  * @param username Username to validate
  * @retval 1 If username is valid
