@@ -375,8 +375,10 @@ namespace invsync::sync
         connector.flush();
 
         // "state documents", not "every document": the other half of the scope is queued on the
-        // async connector by the endpoint, and its outcome is not observable from here.
-        LOGFN_INFO(logFn(), "Deleted every state document of agent %s (%s).", agentId.c_str(), scope.c_str());
+        // async connector by the endpoint, and its outcome is not observable from here. And
+        // "completed", not "deleted every": the refresh interval can hide what the agent's last
+        // session wrote -- see the KNOWN LIMITATION above.
+        LOGFN_INFO(logFn(), "Deletion of agent %s state documents completed (%s).", agentId.c_str(), scope.c_str());
         return ok();
     }
 

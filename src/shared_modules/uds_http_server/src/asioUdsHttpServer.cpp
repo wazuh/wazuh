@@ -2101,7 +2101,8 @@ namespace wazuh::uds_http
         // reports it at debug level.
         LOGFN_INFO(m_impl->state->log,
                    "%s server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
-                   "max %zu connection(s), %zu byte in-flight budget, %zu byte body cap, %zu byte per-request "
+                   "max %zu connection(s), %zu reserved for control, %zu data session(s), %zu byte in-flight "
+                   "budget, %zu byte body cap, %zu byte per-request "
                    "overhead; timeouts s: header=%zu body=%zu response=%zu write=%zu drain=%zu).",
                    m_impl->state->config.serverName.c_str(),
                    m_impl->socketPath.c_str(),
@@ -2109,6 +2110,8 @@ namespace wazuh::uds_http
                    threadCount,
                    m_impl->state->config.concurrentAccepts,
                    m_impl->state->config.maxConnections,
+                   m_impl->state->config.reservedControlConnections,
+                   m_impl->state->config.dataPolicy.maxSessions,
                    m_impl->state->config.maxInFlightBytes,
                    m_impl->state->config.maxBodySize,
                    m_impl->state->perRequestOverhead,
