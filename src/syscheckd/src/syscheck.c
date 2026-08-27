@@ -20,7 +20,7 @@
 #include "file.h"
 #include "db.h"
 #include "fimCommonDefs.h"
-#include "ebpf_whodata.h"
+#include "fim_ebpf.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "schemaValidator_c.h"
 #include "agentd_query.h"
@@ -868,27 +868,3 @@ int Start_win32_Syscheck() {
     return 0;
 }
 #endif /* WIN32 */
-
-#ifdef __linux__
-#ifdef ENABLE_AUDIT
-/* Wrapper for eBPF that provides syscheck.directories internally
- * This is cleaner than keeping a reference to syscheck.directories inside the ebpf instance.
- * eBPF uses the old 2-parameter signature, and this wrapper translates to the new 3-parameter version.
- * */
-static directory_t *fim_configuration_directory_ebpf(const char *path, bool notify_not_found) {
-    return fim_configuration_directory(path, notify_not_found, syscheck.directories);
-}
-
-void check_ebpf_availability() {
-    minfo(FIM_EBPF_INIT);
-    fimebpf_initialize(fim_configuration_directory_ebpf, get_user, get_group, fim_whodata_event,
-                       free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
-    if (ebpf_whodata_healthcheck()) {
-        mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
-
-        // Switch whodata eBPF to whodata audit
-        syscheck.whodata_provider = AUDIT_PROVIDER;
-    }
-}
-#endif /* ENABLE_AUDIT */
-#endif /* __linux__ */

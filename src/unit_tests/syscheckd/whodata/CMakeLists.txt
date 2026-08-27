@@ -142,28 +142,6 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
     add_test(NAME test_audit_parse COMMAND test_audit_parse)
 
-    # test_syscheck_ebpf tests
-    add_executable(test_syscheck_ebpf test_syscheck_ebpf.c ${SRC_FOLDER}/unit_tests/wrappers/linux/ebpf_wrappers.c)
-    target_compile_options(test_syscheck_ebpf PRIVATE "-Wall")
-    set(SYSCHECK_EBPF_FLAGS "-Wl,--wrap,fimebpf_initialize"
-                            "-Wl,--wrap,ebpf_whodata_healthcheck"
-			                "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
-                            "-Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required"
-                            "-Wl,--wrap,fim_recovery_persist_table_and_resync"
-                            "-Wl,--wrap,fim_db_update_last_sync_time"
-                            "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
-                            "-Wl,--wrap,asp_notify_data_clean"
-                            "-Wl,--wrap,asp_delete_database"
-                            "-Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate"
-                            "-Wl,--wrap,fim_db_file_delete"
-                            "-Wl,--wrap,w_query_agentd"
-                            ${DEBUG_OP_WRAPPERS})
-
-    target_link_libraries(test_syscheck_ebpf SYSCHECK_O ${TEST_DEPS} fimdb)
-
-    target_link_libraries(test_syscheck_ebpf "${SYSCHECK_EBPF_FLAGS}")
-    add_test(NAME test_syscheck_ebpf COMMAND test_syscheck_ebpf)
-
 else()
     link_directories(${SRC_FOLDER}/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)

@@ -17,7 +17,7 @@
 #include "registry.h"
 #ifdef __linux__
 #ifdef ENABLE_AUDIT
-#include "ebpf_whodata.h"
+#include "fim_ebpf.h"
 #endif /* ENABLE_AUDIT */
 #endif /* __linux__ */
 

@@ -165,6 +165,7 @@ include_directories(${SRC_FOLDER}/shared_modules/indexer_connector/include)
 include_directories(${SRC_FOLDER}/shared_modules/keystore/include)
 include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include)
+include_directories(${SRC_FOLDER}/shared_modules/ebpf/include)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 
 # Windows version resource objects
@@ -255,6 +256,9 @@ if(IS_AGENT)
   add_subdirectory(shared_modules/agent_metadata)
   add_subdirectory(shared_modules/dbsync)
   add_subdirectory(shared_modules/sync_protocol)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(shared_modules/ebpf)
+  endif()
   add_subdirectory(syscheckd)
   # Windows agent executables and resources
   if("${TARGET}" STREQUAL "winagent")

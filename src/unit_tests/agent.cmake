@@ -31,7 +31,7 @@ else()
     set(TEST_DEPS
         -Wl,--start-group
         ${WAZUHLIB} ${WAZUHEXT}
-        -lagent_metadata -lfimebpf -lagent_sync_protocol -ldbsync -lschema_validator -lfimdb
+        -lagent_metadata -lebpf -lagent_sync_protocol -ldbsync -lschema_validator -lfimdb
         -Wl,--end-group
         -lpthread -lcmocka -ldl -fprofile-arcs -ftest-coverage)
 endif()

@@ -28,7 +28,7 @@
 #include "rootcheck.h"
 #include "file.h"
 #include "db.h"
-#include "ebpf_whodata.h"
+#include "fim_ebpf.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "schemaValidator_c.h"
 #ifdef WIN32

@@ -42,7 +42,7 @@ include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/db/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/ebpf/include/)
+include_directories(${SRC_FOLDER}/shared_modules/ebpf/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/file/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/recovery/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/registry/)
@@ -83,6 +83,7 @@ file(
   GLOB
   SYSCHECKD_SRC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/file/*.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/registry/*.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/whodata/*.c"
@@ -123,8 +124,7 @@ if(UNIX)
     target_link_libraries(syscheckd_lib PUBLIC rt)
   endif(NOT APPLE)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_subdirectory("src/ebpf")
-    target_link_libraries(syscheckd_lib PUBLIC fimebpf)
+    target_link_libraries(syscheckd_lib PUBLIC ebpf)
   endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif(UNIX)
 
