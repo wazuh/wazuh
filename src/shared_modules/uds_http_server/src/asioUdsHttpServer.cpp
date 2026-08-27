@@ -543,12 +543,12 @@ namespace wazuh::uds_http
                 // network is invisible.
                 if (const auto decision = m_state->phaseTimeoutThrottle.record())
                 {
-                    LOGFN_DEBUG1(m_state->log,
-                                 "Closed %llu connection(s) in the last %d s that timed out before a response was "
-                                 "due (last phase: %s).",
-                                 static_cast<unsigned long long>(decision.total),
-                                 LogThrottle::kDefaultWindowSeconds,
-                                 phaseName(m_phase));
+                    LOGFN_WARN(m_state->log,
+                               "Closed %llu connection(s) in the last %d s that timed out before a response was "
+                               "due (last phase: %s).",
+                               static_cast<unsigned long long>(decision.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               phaseName(m_phase));
                 }
                 m_finished = true;
                 closeSocket();
