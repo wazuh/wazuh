@@ -15,6 +15,7 @@ int main (int argc, char **argv) {
     char *cmd_path = NULL;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
+    int end_of_options = 0;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
@@ -63,6 +64,9 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
+        // passwd parses options with getopt, so the username must be delimited
+        end_of_options = 1;
+
         // Checking if passwd is present
         if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
@@ -106,7 +110,16 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    char *exec_cmd1[4] = { cmd_path, args, (char *)user, NULL };
+    char *exec_cmd1[5];
+    int argc_cmd = 0;
+
+    exec_cmd1[argc_cmd++] = cmd_path;
+    exec_cmd1[argc_cmd++] = args;
+    if (end_of_options) {
+        exec_cmd1[argc_cmd++] = "--";
+    }
+    exec_cmd1[argc_cmd++] = (char *)user;
+    exec_cmd1[argc_cmd] = NULL;
 
     wfd_t *wfd = wpopenv(cmd_path, exec_cmd1, W_BIND_STDERR);
     if (!wfd) {
