@@ -181,15 +181,6 @@ class SyscollectorIdentityTest : public ::testing::Test
             sqlite3_close(db);
         }
 
-        /// @brief Makes the marker unreadable, as a busy or damaged database would.
-        static void dropMetadataTable()
-        {
-            sqlite3* db = nullptr;
-            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-            ASSERT_EQ(sqlite3_exec(db, "DROP TABLE table_metadata;", nullptr, nullptr, nullptr), SQLITE_OK);
-            sqlite3_close(db);
-        }
-
         static int64_t readMarker()
         {
             const auto response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
@@ -261,17 +252,25 @@ TEST_F(SyscollectorIdentityTest, UnknownIdIsANoOp)
 // synchronized and suppress the resync permanently.
 TEST_F(SyscollectorIdentityTest, FailedMarkerReadAdoptsNothing)
 {
-    initModule(true, true);
+    initWithMarker(true, true, 5);
     publishAgentId("9");
-    Syscollector::instance().destroy();
-    dropMetadataTable();
-    initModule(true, true);
     INJECT_MOCK_PROTOCOLS();
 
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(0);
 
+    // A read that fails rather than one that answers "nothing recorded": getMetadataValue()
+    // reports false when it has no database, which is the same "not an answer" a busy or
+    // unreadable one produces. Dropping table_metadata instead reproduces it too, but leaves the
+    // schema broken -- portable enough to pass here and fatal to the process under wine.
+    auto dbsync = std::move(Syscollector::instance().m_spDBSync);
     Syscollector::instance().checkAgentIdentity();
+    Syscollector::instance().m_spDBSync = std::move(dbsync);
+
+    // The distinguishing observation, and the reason this case exists: an absent marker is
+    // adopted, a failed read must not be. Adopting 9 here would record an id nothing was ever
+    // sent under and suppress the resync permanently.
+    EXPECT_EQ(readMarker(), 5);
 }
 
 // The headline behaviour: every enabled table is resent, each on the protocol its data rides.
