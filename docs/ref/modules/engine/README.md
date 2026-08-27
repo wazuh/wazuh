@@ -1096,7 +1096,8 @@ classDef AttributesClass min-width: 200px
 Attributes are configuration details and metadata about the asset. Every asset shares the following common attributes:
 
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
-- **`id`**: A UUIDv4 string that uniquely identifies the asset across the system.
+- **`id`**: A string that uniquely identifies the asset across the system. It is opaque to the Engine:
+  any UUID version or other format is accepted, and one is generated (UUIDv4) when the asset does not carry it.
 - **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
   The policy's root decoder is the one exception: because it anchors the whole decoder tree, the build
   fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
@@ -1220,7 +1221,7 @@ Each integration has the following fields:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | Yes | UUIDv4 that uniquely identifies the integration |
+| `id` | Yes | Identifier that uniquely identifies the integration (opaque; any UUID version or format) |
 | name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
 | `category` | Yes | One of the seven allowed categories (see below) |
@@ -1884,7 +1885,7 @@ kanban
   be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `filter`, and
   the version must be 0, since versioning is not implemented:
 
-- **ID**: Unique identifier for the filter in UUIDv4 format.
+- **ID**: Unique identifier for the filter. It is opaque to the Engine: any UUID version or other format is accepted.
 
 - **Enabled**: Boolean flag to enable or disable the filter.
 
