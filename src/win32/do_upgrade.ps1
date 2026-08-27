@@ -304,6 +304,14 @@ function get_conf_value($block, $sub, $tag) {
     }
     $tag_matches = [regex]::Matches($sub_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
     if ($tag_matches.Count -eq 0) {
+        # A self-closing <tag/> is present, not absent: OS_XML parses it as exactly
+        # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml),
+        # so report it as present-but-empty ("") rather than absent ($null). Callers
+        # that only test IsNullOrEmpty are unaffected; the one caller that needs the
+        # distinction is <endpoint>'s opt-out (#38492).
+        if ([regex]::IsMatch($sub_match.Groups[1].Value, "<$tag\s*/>")) {
+            return ""
+        }
         return $null
     }
     return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
@@ -353,11 +361,15 @@ if ([string]::IsNullOrEmpty($server_port)) {
 }
 
 # The 5x agent reads the server endpoint from the <agent> block, defaulting to the manager's own
-# default reverse-proxy prefix when absent or empty -- e.g. when upgrading from a 4.x agent, whose
-# <client><server> block never had this tag at all (mirrors DEFAULT_AGENT_ENDPOINT_PREFIX,
-# src/config/include/client-config.h).
+# default reverse-proxy prefix only when the tag is genuinely absent -- e.g. when upgrading from a
+# 4.x agent, whose <client><server> block never had this tag at all (mirrors
+# DEFAULT_AGENT_ENDPOINT_PREFIX, src/config/include/client-config.h). A present-but-empty
+# <endpoint></endpoint> is a deliberate opt-out and must be honored as-is: get_conf_value already
+# returns $null for "tag absent" vs. "" for "tag present but empty", so check for $null
+# specifically -- [string]::IsNullOrEmpty would collapse both cases into the default and silently
+# override the opt-out.
 $server_endpoint = get_conf_value "agent" "manager" "endpoint"
-if ([string]::IsNullOrEmpty($server_endpoint)) {
+if ($null -eq $server_endpoint) {
     $server_endpoint = "wazuh-manager"
 }
 $server_endpoint = $server_endpoint.Trim('/')
