@@ -51,6 +51,12 @@ namespace invsync::endpoints::delete_agent
         return [deps = std::move(dependencies)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
                                                 std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
+            // Throttled and function-local, same rationale as the sync route: how often these fire
+            // is driven by how often callers request deletions, so one line per request would be a
+            // log-amplification vector. One slot per condition.
+            static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle capacityThrottle;
+
             if (!request)
             {
                 // Every response of this route is counted here, the site that sends it: the route
@@ -77,6 +83,15 @@ namespace invsync::endpoints::delete_agent
             const auto indexer = deps.indexer.lock();
             if (!indexer || !indexer->isAvailable())
             {
+                if (const auto decision = unavailableThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu agent deletion(s) with 503 in the last %d s: no configured indexer "
+                               "host is currently healthy. Check the <indexer> hosts and that the indexer is "
+                               "running.",
+                               static_cast<unsigned long long>(decision.total),
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                }
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
@@ -150,6 +165,15 @@ namespace invsync::endpoints::delete_agent
 
             if (!pipeline->enqueue(std::move(item)))
             {
+                if (const auto decision = capacityThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu agent deletion(s) with 503 in the last %d s: the sync pipeline queue "
+                               "is full. Consider raising 'inventory_sync_server_sync_workers' or "
+                               "'inventory_sync_server_sync_queue_bytes'.",
+                               static_cast<unsigned long long>(decision.total),
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                }
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
