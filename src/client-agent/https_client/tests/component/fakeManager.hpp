@@ -443,7 +443,7 @@ class FakeManager final
             server.Post(
                 "/download",
                 [verify, configBlob, compressConfigResponse](const httplib::Request & request,
-                                                              httplib::Response & response)
+                                                             httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
