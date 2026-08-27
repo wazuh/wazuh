@@ -50,9 +50,9 @@ class IFileDecompressor
         /// On success: `pathToReplace` holds the decompressed bytes and the
         /// sibling temp file is gone; returns the decompressed byte count.
         virtual std::optional<uint64_t> decompress(const std::string& pathToReplace,
-                                                    uint64_t maxDecompressedBytes,
-                                                    const std::string& spoolDir,
-                                                    const std::atomic<bool>* abortFlag) = 0;
+                                                   uint64_t maxDecompressedBytes,
+                                                   const std::string& spoolDir,
+                                                   const std::atomic<bool>* abortFlag) = 0;
 };
 
 /// Real implementation: ZSTD_decompressStream, streamed in 64 KiB chunks
@@ -64,9 +64,9 @@ class ZstdFileDecompressor final : public IFileDecompressor
 {
     public:
         std::optional<uint64_t> decompress(const std::string& pathToReplace,
-                                            uint64_t maxDecompressedBytes,
-                                            const std::string& spoolDir,
-                                            const std::atomic<bool>* abortFlag) override;
+                                           uint64_t maxDecompressedBytes,
+                                           const std::string& spoolDir,
+                                           const std::atomic<bool>* abortFlag) override;
 };
 
 #endif // _HC_FILE_DECOMPRESSOR_HPP

@@ -917,7 +917,7 @@ TEST_F(RetrySenderTest, CompressedFileBackedResponseIsDecompressedInPlaceOnSucce
         return value;
     }));
     EXPECT_CALL(decompressor,
-               decompress(path, 64ULL * 1024 * 1024, std::string {"the-spool-dir"}, NotNull()))
+                decompress(path, 64ULL * 1024 * 1024, std::string {"the-spool-dir"}, NotNull()))
     .WillOnce(Return(std::optional<uint64_t> {123}));
 
     const auto result = withDecompressor.send(spec, m_waiter, 1);
