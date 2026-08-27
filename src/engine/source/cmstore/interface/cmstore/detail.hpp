@@ -63,9 +63,9 @@ findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::str
 
     for (const auto& original : uuids)
     {
-        if (!base::utils::generators::isValidUUIDv4(original))
+        if (!base::utils::generators::isValidResourceId(original))
         {
-            throw std::runtime_error(type + " UUID is not a valid UUIDv4: " + original);
+            throw std::runtime_error(type + " UUID cannot be empty");
         }
 
         std::string key = original;

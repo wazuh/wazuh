@@ -59,19 +59,9 @@ public:
         , m_name(std::move(name))
         , m_enabled(enabled)
     {
-        if (m_uuid.empty())
+        if (requireUUID && !base::utils::generators::isValidResourceId(m_uuid))
         {
-            if (requireUUID)
-            {
-                throw std::runtime_error("KVDB UUID cannot be empty");
-            }
-        }
-        else
-        {
-            if (!base::utils::generators::isValidUUIDv4(m_uuid))
-            {
-                throw std::runtime_error("KVDB UUID must be a valid UUIDv4: " + m_uuid);
-            }
+            throw std::runtime_error("KVDB UUID cannot be empty");
         }
         if (m_name.empty())
         {
@@ -95,11 +85,6 @@ public:
                 throw std::runtime_error("KVDB JSON must have a valid id");
             }
             uuid.clear();
-        }
-
-        if (requireUUID && !base::utils::generators::isValidUUIDv4(uuid))
-        {
-            throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
         }
 
         std::string name;

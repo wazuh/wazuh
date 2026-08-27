@@ -53,54 +53,18 @@ inline std::string generateUUIDv4()
 }
 
 /**
- * @brief Validates if a given string is a valid UUID version 4.
+ * @brief Validates a resource identifier.
  *
- * @param uuid The UUID string to validate
- * @return true if the string is a valid UUID v4, false otherwise
+ * Resource identifiers are opaque to the engine: any UUID version (v4, v5, ...) or any other
+ * identifier format is accepted, as they are only used as keys and never interpreted. The only
+ * constraint is that the identifier must not be empty, since an empty value means "no identifier".
+ *
+ * @param id The identifier string to validate
+ * @return true if the string is a usable identifier, false otherwise
  */
-inline bool isValidUUIDv4(const std::string& uuid)
+inline bool isValidResourceId(const std::string& id)
 {
-    if (uuid.length() != UUID_V4_LENGTH)
-    {
-        return false;
-    }
-
-    for (size_t i = 0; i < UUID_V4_LENGTH; ++i)
-    {
-        char c = uuid[i];
-        switch (i)
-        {
-            case 8:
-            case 13:
-            case 18:
-            case 23:
-                if (c != '-')
-                {
-                    return false;
-                }
-                break;
-            case 14:
-                if (c != '4') // UUID version 4
-                {
-                    return false;
-                }
-                break;
-            case 19:
-                if (c != '8' && c != '9' && c != 'a' && c != 'b') // UUID variant
-                {
-                    return false;
-                }
-                break;
-            default:
-                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
-                {
-                    return false;
-                }
-                break;
-        }
-    }
-
-    return true;
+    return !id.empty();
 }
 
 /**

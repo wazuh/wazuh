@@ -162,9 +162,9 @@ std::string CMStoreNS::upsertUUID(json::Json& content)
     std::string uuid;
     if (auto ret = content.getString(uuid, pathns::JSON_ID_PATH); ret == json::RetGet::Success)
     {
-        if (!base::utils::generators::isValidUUIDv4(uuid))
+        if (!base::utils::generators::isValidResourceId(uuid))
         {
-            throw std::runtime_error("Existing UUIDv4 is not valid: " + uuid);
+            throw std::runtime_error("Existing UUID cannot be empty");
         }
         return uuid;
     }
