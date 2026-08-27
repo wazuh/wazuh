@@ -131,7 +131,26 @@ int main (int argc, char **argv) {
         os_free(cmd_path);
         return OS_INVALID;
     }
-    wpclose(wfd);
+    // Read the command diagnostic before closing, otherwise the reason is lost
+    char cmd_output[OS_SIZE_1024];
+    memset(cmd_output, '\0', OS_SIZE_1024);
+    if (fgets(cmd_output, OS_SIZE_1024, wfd->file_out)) {
+        char *newline = strchr(cmd_output, '\n');
+        if (newline) {
+            *newline = '\0';
+        }
+    }
+
+    int wp_closefd = wpclose(wfd);
+    if (!WIFEXITED(wp_closefd) || WEXITSTATUS(wp_closefd) != 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Command '%s' failed to %s the account '%s': %s", cmd_path,
+                 action == ADD_COMMAND ? "disable" : "enable", user, cmd_output);
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        os_free(cmd_path);
+        return OS_INVALID;
+    }
 
     write_debug_file(argv[0], "Ended");
 
