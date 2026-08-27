@@ -461,8 +461,8 @@ def step_impl(context, rtype, space):
     context.res_error_msg, context.res_response = request_resource_list(space, rtype)
 
 
-@when('I send a request to create a "decoder" resource named "{name}" with id "{uuid}" in namespace "{space}"')
-def step_impl(context, name, uuid, space):
+@when('I send a request to create a "decoder" resource with id "{uuid}" named "{name}" in namespace "{space}"')
+def step_impl(context, uuid, name, space):
     payload = build_decoder_json_with_id(name, uuid)
     context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
@@ -581,8 +581,8 @@ def step_impl(context, name):
     assert name in names, f"Resource named '{name}' not found in names: {names}"
 
 
-@then('the resource list should contain a resource named "{name}" with id "{uuid}"')
-def step_impl(context, name, uuid):
+@then('the resource list should contain a resource with id "{uuid}" named "{name}"')
+def step_impl(context, uuid, name):
     resources = list(context.res_response.resources)
     matches = [r.uuid for r in resources if r.name == name]
     assert matches, f"Resource named '{name}' not found in {resources}"

@@ -30,11 +30,11 @@ Feature: Resource management via cmcrud resource handlers
 
   Scenario: Create a decoder resource whose id is not a UUIDv4 and list it unchanged
     # Resource identifiers are opaque to the Engine: the content ships UUIDv5 ids
-    When I send a request to create a "decoder" resource named "decoder/v5_decoder/0" with id "6093809a-6285-5cf8-9284-63bd68f796e9" in namespace "analytics"
+    When I send a request to create a "decoder" resource with id "6093809a-6285-5cf8-9284-63bd68f796e9" named "decoder/v5_decoder/0" in namespace "analytics"
     Then the resource request should succeed
     When I request the list of "decoder" resources in namespace "analytics"
     Then the resource list request should succeed
-    And the resource list should contain a resource named "decoder/v5_decoder/0" with id "6093809a-6285-5cf8-9284-63bd68f796e9"
+    And the resource list should contain a resource with id "6093809a-6285-5cf8-9284-63bd68f796e9" named "decoder/v5_decoder/0"
 
   Scenario: Delete an existing decoder resource and verify it is gone
     Given I have created a "decoder" resource named "decoder/my_decoder/0" in namespace "analytics"
