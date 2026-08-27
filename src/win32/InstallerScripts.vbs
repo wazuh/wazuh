@@ -55,6 +55,7 @@ public function config()
     WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
     WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
     ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+    WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -72,7 +73,7 @@ public function config()
         strText = objFile.ReadAll
         objFile.Close
 
-        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
+        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
             If WAZUH_MANAGER <> "" Then
                 Set re = new regexp
                 re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
@@ -98,6 +99,7 @@ public function config()
                         formatted_list = formatted_list & "    <" & inner_tag & ">" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
+                        formatted_list = formatted_list & "      <endpoint>/wazuh-manager/</endpoint>" & vbCrLf
                         if i = UBound(ip_list) then
                             formatted_list = formatted_list & "    </" & inner_tag & ">"
                         Else
@@ -114,6 +116,32 @@ public function config()
                     re.Pattern = "<port>.*</port>"
                     re.Global = True
                     strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                End If
+
+            End If
+
+            ' Unlike the shell installers, an MSI property has no "unset" state
+            ' distinct from empty -- Windows Installer drops a PROPERTY="" command-line
+            ' assignment from the property table entirely, so WAZUH_MANAGER_ENDPOINT=""
+            ' is indistinguishable from not passing it at all and can never reach here
+            ' as a real value. Use WAZUH_MANAGER_ENDPOINT="/" to opt out instead: the
+            ' client parser already normalizes a slash-only <endpoint> to "no prefix"
+            ' the same way it does an empty one (w_normalize_agent_endpoint, #38492;
+            ' see test_agent_manager_endpoint_of_just_slashes_is_no_endpoint), so "/"
+            ' is the one non-empty value the MSI can actually carry through as an
+            ' opt-out. Write it as an empty tag to match the shell installers' own
+            ' opt-out spelling instead of leaving the literal slash in ossec.conf.
+            If WAZUH_MANAGER_ENDPOINT <> "" Then ' manager reverse-proxy prefix (#38492)
+                If InStr(strText, "<endpoint>") > 0 Then
+                    If WAZUH_MANAGER_ENDPOINT = "/" Then
+                        FINAL_ENDPOINT = ""
+                    Else
+                        FINAL_ENDPOINT = WAZUH_MANAGER_ENDPOINT
+                    End If
+                    Set re = new regexp
+                    re.Pattern = "<endpoint>.*</endpoint>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<endpoint>" & FINAL_ENDPOINT & "</endpoint>")
                 End If
 
             End If

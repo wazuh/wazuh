@@ -121,6 +121,7 @@ def set_agent_config(request: pytest.FixtureRequest):
                     "elements": [
                         {"address": {"value": "127.0.0.1"}},
                         {"port": {"value": 1517}},
+                        {"endpoint": {"value": ""}},
                     ]
                 }
             }

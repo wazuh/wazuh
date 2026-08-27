@@ -179,4 +179,10 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
  * since the agent has no legacy-transport fallback to default to instead. */
 #define DEFAULT_HTTPS_CLIENT_PORT 1517
 
+/* Default reverse-proxy prefix applied when <endpoint> can't be present at all
+ * (legacy <client><server> configs, e.g. after a 4.x->5.x WPK upgrade that never
+ * rewrites ossec.conf) or is left unconfigured. Must mirror the manager's own
+ * default global_prefix (src/remoted/remoted_module, #38491). */
+#define DEFAULT_AGENT_ENDPOINT_PREFIX "wazuh-manager"
+
 #endif /* CAGENTD_H */

@@ -68,18 +68,20 @@ xml_value() {
         sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
 }
 
-# Check that the manager answers on the HTTPS control port. GET / is remoted's
-# unauthenticated health probe and returns 200 {"status":"ok","module":"remoted"}
+# Check that the manager answers on the HTTPS control port. Every endpoint,
+# including the health probe, is served under the manager's global_prefix
+# (#38491) -- an unprefixed request always gets a 404, so the probe URL must
+# include the same endpoint/prefix the agent itself connects with (arg 3).
 probe_server() {
     PROBE_TIMEOUT=5
 
     if command -v curl > /dev/null 2>&1; then
-        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}/"
+        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}/${3}/"
         return $?
     fi
 
     if command -v wget > /dev/null 2>&1; then
-        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}/"
+        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}/${3}/"
         return $?
     fi
 
@@ -112,20 +114,30 @@ if [ -z "${SERVER_PORT}" ]; then
     SERVER_PORT=1517
 fi
 
+# The 5x agent reads the manager endpoint from <agent><manager>, defaulting to
+# "wazuh-manager" -- the manager's own default global_prefix -- when the tag
+# is absent (upgrading from 4x, or a config predating this default, #38492).
+# Strip any leading/trailing '/' so the probe URL never doubles one up.
+SERVER_ENDPOINT=$(xml_value agent manager endpoint)
+if [ -z "${SERVER_ENDPOINT}" ]; then
+    SERVER_ENDPOINT="wazuh-manager"
+fi
+SERVER_ENDPOINT=$(echo "${SERVER_ENDPOINT}" | sed -e 's|^/*||' -e 's|/*$||')
+
 if [ -z "${SERVER_ADDRESS}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
     abort_upgrade "2"
 fi
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 
 if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager connectivity check skipped (test mode)." >> ./logs/upgrade.log
-elif ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
+elif ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}, interrupting upgrade." >> ./logs/upgrade.log
     abort_upgrade "2"
 else
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 fi
 
 if [[ "$OS" == "Darwin" ]]; then

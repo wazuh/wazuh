@@ -11,3 +11,5 @@
               elements:
               - address:
                   value: SERVER_ADDRESS
+              - endpoint:
+                  value: ''

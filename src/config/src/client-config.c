@@ -213,7 +213,10 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
             os_strdup(rip, logr->server[logr->server_count].rip);
             logr->server[logr->server_count].port = 0;
-            logr->server[logr->server_count].endpoint = NULL; // os_realloc() does not zero new memory.
+            // os_realloc() does not zero new memory; this old <server-ip>/<server-hostname>
+            // syntax never had an <endpoint> concept, so default it the same way a WPK-upgraded
+            // 4.x <client><server> config does (see Read_Legacy_Client_Address()).
+            os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[logr->server_count].endpoint);
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
@@ -289,10 +292,17 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
         OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
     }
     logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
+    /* 4.x had no <endpoint> concept at all -- any <port> under this legacy
+     * <client><server> block was never read either (see this function's own
+     * docstring), so a WPK-upgraded agent always reconnects on the 5.x HTTPS
+     * port with the manager's default reverse-proxy prefix, never the old
+     * 4.x port or unprefixed requests. */
+    os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
     logr->server_count = 1;
 
     minfo("<agent><manager><address> is not configured. Using <client><server><address> '%s' "
-          "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
+          "with the default port %d and the default endpoint prefix '%s'.",
+          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
 
     return (0);
 }
@@ -344,14 +354,20 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 #define AGENT_SERVER_ENDPOINT_MAX_LEN 128
 
 /**
- * @brief Validate and normalize an <endpoint> value (#38492).
+ * @brief Validate and normalize a present <endpoint> tag's content (#38492).
+ *
+ * Only called with the raw content of an <endpoint> tag that was actually found in
+ * the XML -- an entirely absent tag never reaches this function; see
+ * Read_Agent_Manager()'s `endpoint_set`, which now defaults that case to
+ * DEFAULT_AGENT_ENDPOINT_PREFIX instead of leaving it unprefixed.
  *
  * Strips leading and trailing '/' characters (so "/wazuh-manager/",
  * "wazuh-manager", and "wazuh-manager/" all normalize the same way),
  * then rejects anything outside [A-Za-z0-9._-] plus '/' as an internal
  * segment separator, repeated '/' (an empty segment), and '.'/'..'
- * segments. An endpoint that normalizes to empty (absent, "/", or "")
- * means "no endpoint configured" -- today's unprefixed behavior.
+ * segments. A *present* endpoint that normalizes to empty ("/" or "")
+ * is a deliberate opt-out and still means "no endpoint configured" --
+ * unprefixed requests, unlike the entirely-absent case above.
  *
  * The manager-side sister issue must accept exactly the same charset,
  * or an endpoint this agent accepts could still fail to route once it
@@ -454,6 +470,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     uint32_t network_interface = 0;
     int port = DEFAULT_HTTPS_REMOTE_PORT;
     bool port_set = false;
+    bool endpoint_set = false;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -494,6 +511,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             if (w_normalize_agent_endpoint(node[j]->content, endpoint, sizeof(endpoint)) == OS_INVALID) {
                 return (OS_INVALID);
             }
+            endpoint_set = true;
         } else if (strcmp(node[j]->element, xml_interface) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -547,9 +565,15 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
     }
 
-    /* endpoint[0] == '\0' (absent, or normalized away to nothing) leaves
-     * .endpoint NULL -- os_calloc() already zeroed it -- reproducing today's
-     * unprefixed behavior. */
+    /* <endpoint> absent entirely: default to the manager's own default prefix so an
+     * unconfigured agent still matches a manager using its default global_prefix
+     * (#38491). An explicit opt-out (endpoint present but normalizing to nothing,
+     * e.g. "/") is preserved as-is and left unprefixed -- only "tag never appeared"
+     * gets the default. */
+    if (!endpoint_set) {
+        snprintf(endpoint, sizeof(endpoint), "%s", DEFAULT_AGENT_ENDPOINT_PREFIX);
+    }
+
     if (endpoint[0] != '\0') {
         os_strdup(endpoint, logr->server[0].endpoint);
     }
