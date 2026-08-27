@@ -27,6 +27,12 @@ All notable changes to this project will be documented in this file.
 - Fixed WPK upgrade failing on agents without the `find` binary. ([#38431](https://github.com/wazuh/wazuh/pull/38431))
 - Bounded the `snort-full` log record appends to the available buffer space and sized the queued preprocessor message from its own line in `wazuh-logcollector`. ([#38472](https://github.com/wazuh/wazuh/pull/38472))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed SCA checks silently failing across macOS, RHEL/Debian, SLES, Ubuntu, Solaris, MongoDB policies by and adding missing shell wrappers and fixing broken rule syntax. ([#38679](https://github.com/wazuh/wazuh/pull/38679))
+
 ## [v4.14.8]
 
 ### Manager
