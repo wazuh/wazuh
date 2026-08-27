@@ -60,6 +60,11 @@ static void cleanup();
 /* Shared variables */
 static char *authpass = NULL;
 static time_t authpass_mtime = 0;  /* shared between process_message and run_authpass_watcher */
+/* Log-once latch for the "password not available yet" rejection below: without it, every
+ * enrollment attempt during the (expected, transient) worker sync window logs its own line.
+ * Guarded by mutex_authpass like authpass/authpass_mtime; reset wherever authpass is
+ * (re)loaded successfully, so a later unavailability (e.g. the file is removed) is reported again. */
+static bool authpass_unavailable_reported = false;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 static int g_epfd = -1;
@@ -149,6 +154,7 @@ static void* run_authpass_watcher(void *arg) {
             int first_load = (authpass == NULL);
             os_free(authpass);
             authpass = pass;
+            authpass_unavailable_reported = false;
             if (first_load) {
                 minfo("Enrollment password synchronized from the master node and now available at '%s'.", AUTHD_PASS);
             } else {
@@ -807,6 +813,7 @@ static void process_message(struct client *client) {
             if (fresh) {
                 os_free(authpass);
                 authpass = fresh;
+                authpass_unavailable_reported = false;
                 minfo("Enrollment password reloaded from '%s'.", AUTHD_PASS);
             }
             /* Record the mtime regardless of success: avoids re-logging a corrupt file
@@ -818,10 +825,18 @@ static void process_message(struct client *client) {
     /* Fail closed: required password missing (worker not synced yet) -> reject, never
      * validate against NULL (which skips the check). */
     if (config.flags.use_password && authpass == NULL) {
+        const bool should_log = !authpass_unavailable_reported;
+        authpass_unavailable_reported = true;
+
         if (serialize_authpass) {
             w_mutex_unlock(&mutex_authpass);
         }
-        merror("Enrollment password required but not available yet. Rejecting request from %s.", client->ip);
+        if (should_log) {
+            mwarn("Enrollment password required but not available yet. Rejecting request from %s. "
+                  "This is expected while a worker is syncing the password from the master; this "
+                  "warning will not repeat until the password becomes available.",
+                  client->ip);
+        }
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "ERROR: Enrollment password not available. Unable to add agent");
         client->write_len = strlen(client->write_buffer);
         return;
@@ -1193,12 +1208,15 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
  * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
  * flushed to the indexer.
  *
- * Failure is never silent. Every attempt that does not end in 200 is logged, and giving up is an
- * ERROR naming the agent, because at that point documents of a deleted agent are left in the
- * indexer with nothing to ever overwrite them -- the operator has to repeat the deletion, which is
- * safe (the server treats a missing index as success). The transport result and the HTTP status
- * are reported separately: a curl-level failure carries no status, and printing "status 0" for it
- * is what made a modulesd that was not listening look like a server that refused.
+ * Failure is never silent, but it is also never final: the caller (run_purge_relay) requeues
+ * anything that does not return 0 and retries it again on the next pass, so no deletion is ever
+ * lost or needs to be repeated by hand. That is why a server/network give-up after
+ * INV_SYNC_DELETE_ATTEMPTS is only logged at debug level -- the retry queue is the actual signal,
+ * not this function's return value. The one exception is a failure to even build the request
+ * (add/reset a header): that is a manager-side bug, not the server or the network, so it stays an
+ * ERROR naming the agent even though it too gets requeued. The transport result and the HTTP
+ * status are reported separately: a curl-level failure carries no status, and printing "status 0"
+ * for it is what made a modulesd that was not listening look like a server that refused.
  *
  * Called only from the relay thread (never the writer: that is the entire point of the queue in
  * front of it). The client handle is per-thread by uhttp's contract, and the lazy static is what

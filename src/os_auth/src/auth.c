@@ -210,7 +210,7 @@ w_err_t w_auth_parse_data(const char* buf,
         }
 
         if (parseok == 0) {
-            minfo("Invalid password provided by %s. Closing connection.", ip);
+            mwarn("Invalid password provided by %s. Closing connection.", ip);
             snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
