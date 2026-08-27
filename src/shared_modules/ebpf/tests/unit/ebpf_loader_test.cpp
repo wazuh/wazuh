@@ -7,10 +7,12 @@
  * Foundation.
  */
 
+#include "bounded_queue.hpp"
 #include "ebpf_types.hpp"
 #include "mocks/mock_ebpf_loader.hpp"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <thread>
 
 using namespace wazuh::ebpf;
 using ::testing::_;
@@ -67,4 +69,36 @@ TEST(EbpfLoaderMockTest, UnimplementedClassesAreRejected) {
 
     EXPECT_CALL(loader, load(EventClass::PROCESS, _)).WillOnce(Return(false));
     EXPECT_FALSE(loader.load(EventClass::PROCESS, ""));
+}
+
+TEST(BoundedQueueTest, DropsWhenFullAndKeepsOrder) {
+    BoundedQueue<std::string> queue(2);
+
+    EXPECT_TRUE(queue.push("first"));
+    EXPECT_TRUE(queue.push("second"));
+    EXPECT_FALSE(queue.push("third")); // full: reported, never blocks the poller
+
+    std::string value;
+    ASSERT_TRUE(queue.pop(value, 0));
+    EXPECT_EQ(value, "first");
+    ASSERT_TRUE(queue.pop(value, 0));
+    EXPECT_EQ(value, "second");
+}
+
+TEST(BoundedQueueTest, PopTimesOutWhenEmpty) {
+    BoundedQueue<std::string> queue(1);
+
+    std::string value;
+    EXPECT_FALSE(queue.pop(value, 10));
+}
+
+TEST(BoundedQueueTest, PopWakesOnPushFromAnotherThread) {
+    BoundedQueue<std::string> queue(1);
+
+    std::thread producer([&queue]() { queue.push("late"); });
+
+    std::string value;
+    EXPECT_TRUE(queue.pop(value, 2000));
+    EXPECT_EQ(value, "late");
+    producer.join();
 }
