@@ -69,9 +69,6 @@ void test_fs_magic(void **state)
 }
 
 #ifdef __linux__
-// /dev (devtmpfs) and a user tmpfs mount share the same statfs() magic number, so
-// HasFilesystem() must fall back to comparing device ids to tell them apart.
-
 void test_HasFilesystem_tmpfs_same_dev_as_slash_dev_is_skipped(void **state) {
     struct statfs sfs = {.f_type = TMPFS_MAGIC};
     struct stat dev_stat = {.st_dev = 100};
