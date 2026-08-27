@@ -166,7 +166,7 @@ namespace
             *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
         }
         else if (total > contentEncodingPrefixLength &&
-                strncasecmp(data, "Content-Encoding:", contentEncodingPrefixLength) == 0)
+                 strncasecmp(data, "Content-Encoding:", contentEncodingPrefixLength) == 0)
         {
             *capture->contentEncodingZstd = isBareZstdEncoding(data + contentEncodingPrefixLength,
                                                                total - contentEncodingPrefixLength);

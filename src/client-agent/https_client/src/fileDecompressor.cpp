@@ -155,7 +155,7 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
     // Feeds one input chunk through the decoder, writing whatever plain bytes it produces.
     // Returns false on any error: a zstd decode error, the output crossing
     // maxDecompressedBytes, or a write failure.
-    const auto feedChunk = [&](const uint8_t * data, size_t size)
+    const auto feedChunk = [&](const uint8_t* data, size_t size)
     {
         ZSTD_inBuffer input {data, size, 0};
 
