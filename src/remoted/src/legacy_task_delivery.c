@@ -331,8 +331,8 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
     os_free(request_str);
 
     if (!response) {
-        mdebug1("legacy_task_delivery: could not reach the Task Manager socket '%s' for agent '%s'",
-                WM_TASK_MODULE_SOCK, agent_id);
+        mwarn("legacy_task_delivery: could not reach the Task Manager socket '%s' for agent '%s'",
+              WM_TASK_MODULE_SOCK, agent_id);
         return NULL;
     }
 
@@ -340,13 +340,13 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
     os_free(response);
 
     if (!json_response) {
-        mdebug1("legacy_task_delivery: invalid JSON response from the Task Manager for agent '%s'", agent_id);
+        mwarn("legacy_task_delivery: invalid JSON response from the Task Manager for agent '%s'", agent_id);
         return NULL;
     }
 
     cJSON *status = cJSON_GetObjectItem(json_response, "status");
     if (!cJSON_IsString(status) || strcmp(status->valuestring, "ok") != 0) {
-        mdebug1("legacy_task_delivery: Task Manager returned a non-ok status for agent '%s'", agent_id);
+        mwarn("legacy_task_delivery: Task Manager returned a non-ok status for agent '%s'", agent_id);
         cJSON_Delete(json_response);
         return NULL;
     }
