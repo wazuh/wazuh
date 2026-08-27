@@ -29,7 +29,6 @@
 #define BTRFS       0x9123683E
 #define CIFS        0xFF534D42
 #define V9FS        0x01021997
-#define ST_NODEV    4
 #elif defined(__FreeBSD__)
 #define NFS         0x3a
 #define DEV         0x71
@@ -141,13 +140,13 @@ bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unus
          return set.nfs;
     case PROCFS:
         return set.proc;
-    case TMPFS:
-#ifdef _STATFS_F_FLAGS
-        // In modern Linux, /dev is TMPFS and ~ST_NODEV
-        return set.dev && (stfs.f_flags & ST_NODEV) == 0;
-#else
-        return set.dev;
-#endif
+    case TMPFS: {
+        // /dev (devtmpfs) shares TMPFS_MAGIC with any user tmpfs mount, but each
+        // mount gets its own device id, so compare against /dev's to tell them apart.
+        struct stat dev_stat, path_stat;
+        return set.dev && stat("/dev", &dev_stat) == 0 && stat(path, &path_stat) == 0 &&
+               path_stat.st_dev == dev_stat.st_dev;
+    }
     case SYSFS:
         return set.sys;
     case CIFS:
