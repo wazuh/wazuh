@@ -24,6 +24,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
+#include "syscollector_defs.hpp"
 #include "asyncFlushController.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
@@ -125,6 +126,8 @@ class EXPORTED Syscollector final
         void runRecoveryProcess();
 
     private:
+        SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS;
+
         Syscollector();
         ~Syscollector() = default;
         Syscollector(const Syscollector&) = delete;

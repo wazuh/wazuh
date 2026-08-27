@@ -319,6 +319,17 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     }
 
     if (synced_id <= 0) {
+        if (fim_shutdown_process_on()) {
+            // "Absent" is not trustworthy here. FIMDB::executeQuery answers a read with a silent
+            // no-op once the database is stopping or not yet initialized, and that reaches this
+            // caller as a clean read of an empty row -- the one ambiguity this whole decision
+            // procedure exists to avoid. FIMDB::updateItem is gated by the identical condition
+            // today, so the adoption below would write nothing anyway, but that is two distant
+            // guards happening to agree rather than a contract either of them states. Refuse
+            // explicitly and let the next boot decide with a database that can answer.
+            return false;
+        }
+
         // Read cleanly, and nothing recorded: a clean install, or a database from before this
         // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
         // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
@@ -334,6 +345,8 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     minfo("FIM data was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
           (long)synced_id, current_id);
 
+    bool any_failed = false;
+
     for (int i = 0; i < table_count; i++) {
         if (fim_shutdown_process_on()) {
             // Cut short by shutdown, like the integrity loop that follows this one: leave the
@@ -342,10 +355,18 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         }
 
         if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
-            // Leave the marker untouched so this re-fires next cycle. Recording it now would
-            // claim the manager holds data it never received.
-            return false;
+            // Keep going, like Syscollector::checkAgentIdentity(): the tables that can be resent
+            // should be, and abandoning the pass here would make every later one re-clear and
+            // re-upload the tables that had already succeeded. On Windows this is three tables,
+            // not one. The marker is the part that must not move -- recording it would claim the
+            // manager holds data it never received -- so remember the failure for the end.
+            any_failed = true;
         }
+    }
+
+    if (any_failed) {
+        // Not fully resynchronized, so the identity is not adopted and the next cycle retries.
+        return false;
     }
 
     fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);

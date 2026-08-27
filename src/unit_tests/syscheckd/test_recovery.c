@@ -19,6 +19,9 @@
 
 #include "../wrappers/common.h"
 #include "../../syscheckd/src/recovery/recovery.h"
+
+/* Defined in run_check.c: what fim_shutdown_process_on() reports. */
+extern volatile bool is_fim_shutdown;
 #include "../../syscheckd/src/db/include/db.h"
 #include "../../syscheckd/src/file/file.h"
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
@@ -779,6 +782,53 @@ static void test_fim_resync_on_agent_id_change_failed_read_adopts_nothing(void *
     assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
 }
 
+// Windows drives this loop with three tables, and a failure in one of them used to abandon the
+// pass: the tables behind it were skipped this cycle and re-cleared and re-uploaded the next one.
+// All three fail at their first step here, so all three must still be attempted -- cmocka fails
+// the test on any expectation left unconsumed, which is the assertion.
+static void test_fim_resync_on_agent_id_change_continues_past_a_failed_table(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 1);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+
+    for (int i = 0; i < 3; i++) {
+        expect_string(__wrap_fim_db_increase_each_entry_version, table_name, tables[i]);
+        will_return(__wrap_fim_db_increase_each_entry_version, -1);
+    }
+
+    // No fim_db_update_last_sync_time_value expectation: not one table reached the manager.
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories));
+}
+
+// "Nothing recorded" is also what a read gets once the database is stopping: FIMDB::executeQuery
+// answers with a silent no-op, and that arrives here as a clean read of an empty row. Adopting on
+// it would record an id nothing was ever sent under.
+static void test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_stopping(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    will_return(__wrap_asp_get_agent_id, 3);
+
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 0);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+
+    is_fim_shutdown = true;
+    // No fim_db_update_last_sync_time_value expectation: adopting here would be the bug.
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    is_fim_shutdown = false;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_first_time),
@@ -798,6 +848,8 @@ int main(void) {
         cmocka_unit_test(test_fim_resync_on_agent_id_change_resends_and_records),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_table_records_nothing),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_read_adopts_nothing),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_continues_past_a_failed_table),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_stopping),
         cmocka_unit_test(test_buildFileStatefulEvent_success),
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),

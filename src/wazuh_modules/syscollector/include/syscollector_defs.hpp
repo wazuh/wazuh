@@ -1,0 +1,39 @@
+/*
+ * Wazuh Syscollector
+ * Copyright (C) 2015, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _SYSCOLLECTOR_DEFS_HPP
+#define _SYSCOLLECTOR_DEFS_HPP
+
+// Test-only access to Syscollector's internals, following the same pattern as
+// vulnerabilityScannerFacade_defs.hpp. Nothing here exists in a production build: the module is
+// a `final` singleton with a private constructor, so a test subclass of the kind SCA uses
+// (SCAMock, which assigns m_spSyncProtocol directly) is not available to it, and the alternative
+// -- a public setter -- would add API that only tests would ever call.
+//
+// What this buys: the identity resync and its VD-versus-plain routing become assertable. Driving
+// them for real needs a manager to answer every notifyDataClean(), which is why the recovery path
+// carried no assertions at all until #38601 added these.
+#ifdef SYSCOLLECTOR_UNIT_TESTING
+#include <gtest/gtest_prod.h>
+
+#define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS                                                                          \
+    FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
+    FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
+    FRIEND_TEST(SyscollectorIdentityTest, UnknownIdIsANoOp);                                                           \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedMarkerReadAdoptsNothing);                                              \
+    FRIEND_TEST(SyscollectorIdentityTest, ChangedIdResendsEachTableOnItsOwnLane);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, ChangedIdSkipsDisabledCollectors);                                           \
+    FRIEND_TEST(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing);                            \
+    FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable)
+#else
+#define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
+#endif // SYSCOLLECTOR_UNIT_TESTING
+
+#endif //_SYSCOLLECTOR_DEFS_HPP

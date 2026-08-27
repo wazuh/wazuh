@@ -1356,6 +1356,16 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // #38601: identity before integrity. If this agent's id changed, the manager
                 // holds nothing under it and the per-table checksum loop below would only
                 // rediscover that one table at a time, an integrity_interval apart each.
+                //
+                // Both run inside fim_sync_lock_scan_mutex(), which holds fim_realtime_mutex as
+                // well as the scan one -- and realtime_process() reads the inotify descriptor
+                // under that same mutex, so neither of them can drain the kernel queue while a
+                // recovery is in flight. That is the recovery primitive's own critical section,
+                // not something this check introduces: the checksum loop below has always run
+                // the same primitive under the same mutexes, and after a re-enrollment every
+                // table mismatches, so it did the same work later rather than less of it.
+                // Shrinking that critical section around the manager round trip is tracked
+                // separately.
                 if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
                                                   directories_snapshot)) {
                     // Both markers move together, and only once the resync above proved the

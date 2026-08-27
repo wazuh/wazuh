@@ -4822,8 +4822,9 @@ bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) cons
     return true;
 }
 
-// LCOV_EXCL_START
-// Driving this needs a manager to answer the DataClean and accept the resync.
+// #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
+// are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
+// persist loop below still needs a manager, and that is what stays excluded.
 bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index)
 {
     try
@@ -4904,6 +4905,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
         return false;
     }
 
+    // LCOV_EXCL_START
     for (const auto& item : items)
     {
         // Build stateful event
@@ -4940,6 +4942,8 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
         }
     }
 
+    // LCOV_EXCL_STOP
+
     m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
     m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
     bool recoverySucceeded = syncModule(Mode::DELTA).success;
@@ -4956,7 +4960,6 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     return true;
 }
-// LCOV_EXCL_STOP
 
 void Syscollector::checkAgentIdentity()
 {
@@ -5003,8 +5006,9 @@ void Syscollector::checkAgentIdentity()
 
     // One resync per table, each ending in its own sync session, rather than clearing all
     // thirteen indices and sending everything in one. It is the slower shape -- the wodle holds
-    // the scan mutex throughout, and this is the same per-index cost the manager-driven recovery
-    // path already pays -- but a failure stays contained: an index is only cleared immediately
+    // the scan mutex across this whole loop, including each table's round trip to the manager,
+    // and this is the same per-index cost the manager-driven recovery path already pays under
+    // the same lock -- but a failure stays contained: an index is only cleared immediately
     // before its own rows are queued, so a session that never reaches the manager leaves the
     // other twelve untouched, and the marker below can be gated on what each table proved
     // individually. Clearing everything up front would put all thirteen behind a single point of
@@ -5050,6 +5054,11 @@ void Syscollector::checkAgentIdentity()
         return;
     }
 
+    // currentId was read once, before the loop: if a second re-enrollment lands mid-pass, the
+    // rows sent after it go out stamped with the newer id while this records the older one, so
+    // the next cycle sees a mismatch and resends everything. One extra pass under rapid
+    // re-enrollment churn, never a marker claiming more than was actually sent.
+    //
     // Both markers move together, and only once every table above proved the manager accepted
     // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
     // reports success without opening a session at all -- record a cycle that never landed.
