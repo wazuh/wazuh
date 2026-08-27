@@ -340,9 +340,10 @@ public:
                 size_t clusterBlockedCount = 0;
                 for (const auto& item : itemsArray)
                 {
-                    // Try to find the operation element (could be "index", "create")
+                    // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
+                    bool isDelete = false;
 
                     if (item["index"].get(operationElement) == simdjson::SUCCESS)
                     {
@@ -351,6 +352,11 @@ public:
                     else if (item["create"].get(operationElement) == simdjson::SUCCESS)
                     {
                         foundOperation = true;
+                    }
+                    else if (item["delete"].get(operationElement) == simdjson::SUCCESS)
+                    {
+                        foundOperation = true;
+                        isDelete = true;
                     }
 
                     if (!foundOperation)
@@ -420,8 +426,9 @@ public:
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                   "Error %s document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
                                    "Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
@@ -436,7 +443,8 @@ public:
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   "Error %s document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
