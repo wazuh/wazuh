@@ -89,6 +89,7 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
+extern pthread_mutex_t synced_docs_mutex;
 extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type
@@ -431,9 +432,18 @@ void free_pending_sync_item(void* data);
 /**
  * @brief Process pending sync flag updates after transaction commit.
  *
+ * Does not log a summary itself: a single realtime/whodata event can call this with a
+ * one-item list, and logging per call there would flood debug=1 on a mass create/modify
+ * (e.g. copying many files into a monitored directory). Callers that run once per scan or
+ * per startup check (fim_file_scan(), fim_registry_scan(), and the document-limit
+ * promote/demote paths in fim_initialize()) log their own summary from the returned count;
+ * the realtime/whodata call site in fim_file() does not log at all.
+ *
+ * @param table_name Name of the table the pending items belong to.
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
+ * @return Number of items successfully updated (fim_db_set_sync_flag() failures aren't counted).
  */
-void process_pending_sync_updates(char* table_name, OSList* pending_items);
+int process_pending_sync_updates(char* table_name, OSList* pending_items);
 
 /**
  * @brief Send a log message

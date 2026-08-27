@@ -1,7 +1,8 @@
 # Configuration template for tests covering issue #36134:
 # a previously realtime-monitored directory is removed from the FIM
 # configuration and the agent is restarted, so fim_initialize must
-# *not* log an ERROR for the rows that still live in fim.db.
+# *not* log an ERROR for the rows that still live in fim.db. Also covers
+# #38522 (realtime inserts must queue their sync flag right away).
 #
 # Two <directories> entries:
 #   - TEST_DIR_REALTIME (realtime) is what the test drops at restart;
