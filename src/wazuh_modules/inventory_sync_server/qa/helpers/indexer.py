@@ -8,9 +8,11 @@ STATES_PATTERN = "wazuh-states-*"
 AGENT_CONFIG_INDEX = "wazuh-agent-config"
 AGENT_STATS_INDEX = "wazuh-agent-stats"
 
-# Everything a whole-agent deletion has to reach -- mirrors AGENT_DELETION_SCOPE in
-# src/sync/stateIndexAllowlist.hpp. The two wazuh-agent-* indices sit outside the
-# states family, which is exactly why they used to survive the agent.
+# Everything a whole-agent deletion has to reach, whichever half reaches it -- the union of
+# AGENT_DELETION_SCOPE_BY_QUERY and AGENT_DELETION_SCOPE_BY_ID in src/sync/stateIndexAllowlist.hpp.
+# The states pattern is deleted by query on the sync connector; the two wazuh-agent-* documents by
+# document id on the async one that writes them. From the indexer's side the outcome is the same,
+# which is why this stays one tuple.
 DELETION_SCOPE = (STATES_PATTERN, AGENT_CONFIG_INDEX, AGENT_STATS_INDEX)
 
 

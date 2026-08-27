@@ -440,8 +440,16 @@ namespace invsync
                 // name): the deletion plane answers at admission, so all of its responses -- the
                 // inline 400/503 rejections and the 200 that accepts -- count into the same
                 // sync.requests.total.* cells the sync route already uses.
+                //
+                // The async connector is in here because the deletion has a half that belongs to
+                // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
+                // connector, so their deletes have to ride its own queue to be ordered after a
+                // report it has accepted but not yet pushed (see the route's header).
                 const invsync::endpoints::delete_agent::Dependencies deleteDeps {
-                    m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
+                    m_syncPipeline,
+                    m_indexerConnectorSync,
+                    m_indexerConnectorAsync,
+                    invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps),

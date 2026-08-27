@@ -59,6 +59,12 @@ namespace invsync::test
         std::atomic<bool> m_syncAvailable {true};
         /// Writes seen by the async fake: (id, index, data).
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
+        /// EVERY async operation, in call order: (op, id, index). `op` is the seam method name
+        /// ("index"/"indexDataStream"/"bulkDelete"). Separate from m_writes because ORDER across
+        /// the two kinds is what matters: the real connector's queue is FIFO, so a delete queued
+        /// behind a document's index() is applied after it -- that is what keeps DELETE /agents from
+        /// being outrun by a report this connector had not pushed yet. Guarded by m_mutex.
+        std::vector<std::tuple<std::string, std::string, std::string>> m_asyncOps;
         /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
         /// the seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
         /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by
@@ -115,6 +121,18 @@ namespace invsync::test
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_writes;
+        }
+
+        void recordAsyncOp(std::string op, std::string id, std::string index)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_asyncOps.emplace_back(std::move(op), std::move(id), std::move(index));
+        }
+
+        std::vector<std::tuple<std::string, std::string, std::string>> asyncOps()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_asyncOps;
         }
 
         void recordSyncOp(std::string op, std::string id, std::string index, std::string data, std::string version)
@@ -367,6 +385,7 @@ namespace invsync::test
             if (m_events)
             {
                 m_events->recordWrite(std::string {id}, std::string {index}, std::string {data});
+                m_events->recordAsyncOp("index", std::string {id}, std::string {index});
             }
         }
 
@@ -375,6 +394,17 @@ namespace invsync::test
             if (m_events)
             {
                 m_events->recordWrite(std::string {}, std::string {index}, std::string {data});
+                m_events->recordAsyncOp("indexDataStream", std::string {}, std::string {index});
+            }
+        }
+
+        /// Only on the op timeline, never in m_writes: a delete carries no document, and the tests
+        /// that read m_writes are asserting on what was WRITTEN.
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            if (m_events)
+            {
+                m_events->recordAsyncOp("bulkDelete", std::string {id}, std::string {index});
             }
         }
 

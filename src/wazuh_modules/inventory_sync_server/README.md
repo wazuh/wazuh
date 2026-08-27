@@ -429,15 +429,28 @@ unregisters FIRST, before the lane dies under the scanner's feet.
 HTTP helper (`uhttp_*`, libcurl) only speaks POST and authd is the production caller. UDS-local
 only; remoted has no downstream route to it.
 
-The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `400`), gates on
-indexer availability (→ `503`; the caller retries rather than losing the deletion), and enqueues
-a `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET agent's shard — the deletion orders
-FIFO against that agent's in-flight sessions, and respects a scan in flight through the same
-registry. The worker treats it like an immediate: batch cut, then one
-`deleteByQuery(index, agent, cluster)` for every index in `AGENT_DELETION_SCOPE`
-(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()`. A missing index
-counts as success inside the connector, so repeating a deletion is harmless and stays quiet, which
-is the callers' whole retry contract.
+The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `400`) and gates on
+indexer availability (→ `503`; the caller retries rather than losing the deletion). Then it queues
+**two halves, one per writer** — a document can only be deleted in the right ORDER by the connector
+that writes it, which is why the scope is split into `AGENT_DELETION_SCOPE_BY_QUERY` and
+`AGENT_DELETION_SCOPE_BY_ID`:
+
+1. **By id, on the ASYNC connector, first.** One `bulkDelete(agentId, index)` for each of
+   `wazuh-agent-config` and `wazuh-agent-stats` — the two documents `POST /config` and `POST /stats`
+   write through that connector's accumulating queue, keyed by the agent id. Queueing the deletes on
+   that same queue is the only way to order them after a report it has already accepted: the queue is
+   FIFO. It also needs no index refresh, unlike a search-based delete. First, before the enqueue
+   below, because every microsecond of delay is one more microsecond in which a report could slip in
+   behind the deletion.
+2. **By query, on the pipeline.** A `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET
+   agent's shard — the deletion orders FIFO against that agent's in-flight sessions, and respects a
+   scan in flight through the same registry. The worker treats it like an immediate: batch cut, then
+   one `deleteByQuery(index, agent, cluster)` per entry in `AGENT_DELETION_SCOPE_BY_QUERY`
+   (`wazuh-states-*`), and one `flush()`.
+
+A missing index counts as success inside the connector, and deleting a document that is not there is
+a no-op the whole chain ignores, so repeating a deletion is harmless and stays quiet — the callers'
+whole retry contract.
 
 **This route answers at ADMISSION: `200 {"status":"queued"}` means "recorded and queued, it WILL be
 purged".** Unlike `/stateful`, the caller is released as soon as the item is on the shard queue, and
@@ -448,24 +461,35 @@ timed out, retried into the very same running purge, and blocked every key write
 meant no agent could enroll until the batch drained. `POST /vulnerability-detector/scan` moved to
 this same contract for the same reason.
 
-**Two windows where a document can outlive the deletion.** Both are known, both are recorded by a
-skipped test in `qa/test_delete_agent.py`, and repeating the deletion clears either one (it is
-idempotent). Neither makes the deletion report failure — that is what makes them worth knowing:
+**One window where a document can outlive the deletion.** It is known, it is recorded by a skipped
+test in `qa/test_delete_agent.py`, and repeating the deletion clears it (it is idempotent). It does
+not make the deletion report failure — that is what makes it worth knowing:
 
-- **The index refresh interval.** A `_delete_by_query` runs a SEARCH, so it only sees refreshed
-  segments, and authd deletes immediately after removing the agent from `client.keys`. Whatever the
-  agent's last session wrote inside that interval is invisible to the query, and with the agent gone
-  nothing ever overwrites it. Refreshing each index first closed this, and was implemented — but
-  `_refresh` needs `indices:admin/refresh`, which is outside the `crud`/`write` action groups, so the
-  manager's least-privilege indexer role denies it and EVERY deletion failed with `403`. The refresh
-  was removed until the privilege is granted; restoring it is a follow-up.
-- **The async connector's queue.** `POST /config` and `POST /stats` are written through the
-  ASYNCHRONOUS connector, whose queue drains on its own timer
-  (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs
-  on the sync connector and cannot drain that queue, so a report still queued when the deletion runs
-  lands after the delete-by-query and recreates that agent's document. Closing it properly means
-  ordering those two endpoints against the deletion the way `DELETE /agents` already is — as pipeline
-  items on the agent's shard — which is the other follow-up.
+- **The index refresh interval, and only for `wazuh-states-*`.** A `_delete_by_query` runs a SEARCH,
+  so it only sees refreshed segments. Whatever the agent's last session wrote inside that interval is
+  invisible to the query, and with the agent gone nothing ever overwrites it. Refreshing each index
+  first closed this, and was implemented — but `_refresh` needs `indices:admin/refresh`, which is
+  outside the `crud`/`write` action groups, so the manager's least-privilege indexer role denies it and
+  EVERY deletion failed with `403`. The refresh was removed until the privilege is granted; restoring
+  it is a follow-up. `authd.purge_delay` (default 120 s) is what makes it a non-event in practice.
+
+**The window that used to sit next to it**, and how it was closed: a `POST /config` or `POST /stats`
+report still in the async connector's queue when the deletion ran landed AFTER the delete-by-query and
+recreated that agent's document — permanently, since nothing overwrites it and nothing re-runs a
+deletion. The by-query pass could neither drain that queue (it runs on the other connector) nor, being
+a SEARCH, see a document that had not been refreshed yet. Those two indices are now deleted by id on
+the async queue itself, so the report is applied first and the delete behind it. Pinned by
+`test_a_report_in_flight_does_not_survive_the_deletion` in the qa suite and by
+`ADeletionIsQueuedBehindAReportTheAsyncConnectorHasAlreadyAccepted` in the unit suite.
+
+Two properties the by-query pass had are deliberately given up for those two indices, both without
+loss: cluster scoping (their `_id` carries no cluster prefix, so two clusters sharing one indexer
+already collide on WRITE — the scoping was never real) and reaching a document whose `_id` is not the
+form this manager writes today (only ever produced by a caller that bypasses remoted, which
+normalizes the agent id). What is genuinely traded away is the belt-and-braces: if the async queue
+sheds the delete (over `max_queue_bytes`), nothing else deletes those two documents — the same
+exposure their WRITES already have. What was NOT done, deliberately: moving the reports onto the
+pipeline. They accumulate and push in batches by design.
 
 ## Transport (`src/http_server/`)
 

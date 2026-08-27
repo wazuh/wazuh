@@ -344,25 +344,29 @@ namespace invsync::sync
     ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
                                                         indexer::IIndexerConnectorSync& connector) const
     {
-        // The whole scope, not just the states pattern: `wazuh-agent-config` and `wazuh-agent-stats`
-        // sit outside the wazuh-states-* family and used to survive the agent. This is a whole-agent
-        // deletion (the agent is GONE from client.keys), so it must reach every index holding its
-        // documents, including ones no current session writes to. deleteByQuery stages; the flush is
-        // the durability of the 200, exactly like executeCleans() -- a 404 for a not-yet-created
-        // index counts as success inside the connector, so re-running a delete is harmless (that is
-        // authd's retry contract).
+        // The BY-QUERY half of a whole-agent deletion, and only that half: this connector is the one
+        // that writes state documents, so it is the one that can delete them in order (on the
+        // agent's own shard, behind that agent's in-flight sessions). The agent's `/config` and
+        // `/stats` documents are written by the ASYNC connector, and DELETE /agents deletes them by
+        // document id on that connector's own queue instead -- see AGENT_DELETION_SCOPE_BY_ID and
+        // deleteAgentEndpoint.hpp for why a by-query pass from here could not order against a report
+        // that queue had accepted but not yet pushed.
         //
-        // KNOWN LIMITATION, deliberate: a _delete_by_query is a SEARCH, so it only sees refreshed
-        // segments. This deletion arrives immediately behind the agent's last session (authd removes
-        // the key, then calls us), so whatever that session wrote inside the index refresh interval
-        // is invisible to the query and survives -- and with the agent gone from client.keys nothing
-        // ever overwrites it. Refreshing each index first would close that window, but `_refresh`
-        // needs `indices:admin/refresh`, which the manager's least-privilege indexer role does not
-        // grant: every deletion then failed with 403 instead of missing a few documents. Repeating
-        // the deletion is the recovery meanwhile; see the follow-up to restore the refresh once the
-        // privilege is in place.
+        // deleteByQuery stages; the flush is the durability of the 200, exactly like
+        // executeCleans() -- a 404 for a not-yet-created index counts as success inside the
+        // connector, so re-running a delete is harmless (that is authd's retry contract).
+        //
+        // KNOWN LIMITATION, deliberate, and confined to this half: a _delete_by_query is a SEARCH,
+        // so it only sees refreshed segments. This deletion arrives behind the agent's last session
+        // (authd removes the key, then relays after its purge delay), so whatever that session wrote
+        // inside the index refresh interval is invisible to the query and survives -- and with the
+        // agent gone from client.keys nothing ever overwrites it. Refreshing each index first would
+        // close that window, but `_refresh` needs `indices:admin/refresh`, which the manager's
+        // least-privilege indexer role does not grant: every deletion then failed with 403 instead
+        // of missing a few documents. Repeating the deletion is the recovery meanwhile; see the
+        // follow-up to restore the refresh once the privilege is in place.
         std::string scope;
-        for (const auto& index : AGENT_DELETION_SCOPE)
+        for (const auto& index : AGENT_DELETION_SCOPE_BY_QUERY)
         {
             connector.deleteByQuery(std::string {index}, agentId, m_managerClusterName);
             scope += scope.empty() ? "" : ", ";
@@ -370,7 +374,9 @@ namespace invsync::sync
         }
         connector.flush();
 
-        LOGFN_INFO(logFn(), "Deleted every document of agent %s (%s).", agentId.c_str(), scope.c_str());
+        // "state documents", not "every document": the other half of the scope is queued on the
+        // async connector by the endpoint, and its outcome is not observable from here.
+        LOGFN_INFO(logFn(), "Deleted every state document of agent %s (%s).", agentId.c_str(), scope.c_str());
         return ok();
     }
 
