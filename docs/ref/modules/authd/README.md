@@ -12,7 +12,9 @@ long-term enrollment path going forward.
 
 Source: `src/os_auth/`
 
-For configuration options see [Authd Configuration](configuration.md).
+For the diagrams — the two stores, the enrollment sequence, the force-guard chain, cluster
+forwarding and the removal path — see [Authd Architecture](architecture.md). For configuration
+options see [Authd Configuration](configuration.md).
 
 ## How it works
 
@@ -46,6 +48,21 @@ For configuration options see [Authd Configuration](configuration.md).
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
 | Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and hands the indexer purge of every removed agent to the relay. It never waits on the network |
 | Purge relay | Sends the queued indexer purges to the [Inventory Sync Server](../inventory-sync-server/README.md), after the configured delay, and owns every retry |
+| authpass watcher | On a worker with `use_password`, re-reads `etc/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects enrollments |
+
+The writer and the purge relay run on the **master only**. See [Cluster](#cluster) below.
+
+## Cluster
+
+A worker node does not own a keystore. An enrollment that arrives at a worker is forwarded to the
+master, which validates it, assigns the id and generates the key; the worker relays the answer to the
+agent and keeps nothing locally. The `<force>` settings are ignored on a worker — the master decides —
+and a worker that cannot reach the master answers `9016`.
+
+The key reaches the worker's own `client.keys` through the cluster's integrity sync, the same
+mechanism that distributes `etc/authd.pass`. Until it does, the worker's remoted cannot verify a key
+the agent already holds; see
+[the two stores](architecture.md#the-two-stores) and [Cluster](architecture.md#cluster).
 
 ## Storage
 
@@ -267,3 +284,12 @@ manager's own hostname and the `CN` parsed out of `-S` (when present and not alr
 
 The actual `<auth>` XML element parsing, validation, and default values live in the shared config
 subsystem at `src/config/src/authd-config.c`, not in `os_auth` itself.
+
+## Development
+
+The in-repo companion to these pages (a plain path — it lives outside this book):
+
+- `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
+  requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
+  decisions (D1–D8) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
+  and which test suite covers what.
