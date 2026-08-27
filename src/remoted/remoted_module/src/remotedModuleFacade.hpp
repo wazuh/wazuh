@@ -294,7 +294,7 @@ public:
         // debug line is how the LAST totals are observed. The macro skips the dump entirely
         // when debug logging is inactive.
         LOGFN_DEBUG1(moduleLogFn(),
-                     "remoted module metrics: %s",
+                     "remoted module metrics at stop: %s",
                      wazuh::metrics::dumpJson(*m_metricsManager, {"remoted"}).c_str());
 
         LOGFN_INFO(moduleLogFn(), "remoted module stopped.");

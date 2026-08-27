@@ -30,6 +30,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -167,6 +168,23 @@ namespace
         std::function<std::string(const std::string&)> m_selectHandler;
         std::function<std::string(const std::string&)> m_writeHandler;
     };
+
+    // The host block three tests build identically.
+    NotifyData notifyWithHost()
+    {
+        NotifyData data;
+        data.version = "5.0.0";
+        HostInfo host;
+        host.hostname = "web01";
+        host.ip = "127.0.0.1";
+        host.osName = "Ubuntu";
+        host.osVersion = "24.04";
+        host.osPlatform = "ubuntu";
+        host.architecture = "x86_64";
+        host.osType = "Linux";
+        data.host = host;
+        return data;
+    }
 
     // Standard "handler under test" fixture: all four collaborators plus the
     // handler itself, wired in the exact same order as production code.
@@ -659,4 +677,135 @@ TEST(ControlHandlerTest, ShutdownTouchesRegistryLastActivity)
     auto e = h.registry->get(99);
     ASSERT_TRUE(e);
     EXPECT_GT(e->lastActivitySec, 0U);
+}
+
+// =============================================================================
+// Downstream failures must not be reported as success
+// =============================================================================
+
+TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns500OnWdbError)
+{
+    // Nothing cached and wazuh-db down: "default" here would be a wrong answer served as
+    // authoritative, which is what every agent gets after a restart with wazuh-db down.
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "err some failure"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 500);
+    EXPECT_NE(w.value.body.find("database_error"), std::string::npos);
+    EXPECT_FALSE(h.registry->get(1));
+}
+
+TEST(ControlHandlerTest, NotifyServesCachedGroupsWithoutOverwritingThemOnWdbError)
+{
+    std::atomic<bool> wdbDown {false};
+    auto wdb = std::make_shared<WdbRouter>();
+    // Array form: getAgentGroups() reads the group out of [{"group": "..."}] only, so an object
+    // here would parse to no groups and cache "default".
+    wdb->onSelectAgentGroup([&](const std::string&) -> std::string
+                            { return wdbDown.load() ? "err some failure" : "ok [{\"group\":\"g1\"}]"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
+        [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(ws.value.status, 200);
+
+    // Age the cached refresh so the next notify is due for one, then take wazuh-db down.
+    h.registry->update(1,
+                       [](std::shared_ptr<const AgentEntry> old)
+                       {
+                           auto e = std::make_shared<AgentEntry>(*old);
+                           e->groupsRefreshedAtSec = 1000;
+                           return e;
+                       });
+    wdbDown.store(true);
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w1;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w1.complete(r); });
+    ASSERT_TRUE(w1.wait(3000ms));
+    EXPECT_EQ(w1.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(w1.value.body)["agent"]["groups"][0], "g1");
+
+    // The registry's copy is untouched: a failed query neither marks the cached membership fresh
+    // nor overwrites what a concurrent notify may have refreshed.
+    auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 1000U);
+    ASSERT_EQ(entry->groups.size(), 1U);
+    EXPECT_EQ(entry->groups[0], "g1");
+
+    // And a successful query afterwards does write, so the failure path is not sticky.
+    wdbDown.store(false);
+    Waiter<HttpResponse> w2;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w2.complete(r); });
+    ASSERT_TRUE(w2.wait(3000ms));
+
+    entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_GT(entry->groupsRefreshedAtSec, 1000U);
+}
+
+TEST(ControlHandlerTest, NotifyAfterStartupBypassesKeepaliveThrottle)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
+        [](Config& c) { c.keepaliveThrottleSec = 3600; });
+
+    const NotifyData data = notifyWithHost();
+
+    // Steady state: one full update, and the throttle window is now open.
+    Waiter<HttpResponse> w1;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w1.complete(r); });
+    ASSERT_TRUE(w1.wait(3000ms));
+
+    // The agent restarts. /startup writes "pending", and hostPersisted lives here and is not
+    // reset by it, so without the bypass the agent reads "pending" for a whole window.
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(ws.value.status, 200);
+
+    Waiter<HttpResponse> w2;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w2.complete(r); });
+    ASSERT_TRUE(w2.wait(3000ms));
+    EXPECT_EQ(w2.value.status, 200);
+
+    const auto fullUpdates = [&]
+    {
+        const auto commands = wdb->commands();
+        return std::count_if(commands.begin(),
+                             commands.end(),
+                             [](const std::string& c)
+                             {
+                                 return c.find("global update-agent-data") != std::string::npos &&
+                                        c.find("\"connection_status\":\"active\"") != std::string::npos;
+                             });
+    };
+
+    for (int i = 0; i < 200 && fullUpdates() < 2; ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    std::this_thread::sleep_for(50ms); // settle so a stray extra write would be visible
+
+    EXPECT_EQ(fullUpdates(), 2);
 }
