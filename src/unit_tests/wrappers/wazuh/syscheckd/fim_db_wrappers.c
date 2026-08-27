@@ -80,6 +80,10 @@ void expect_fim_db_file_update_invoking_callback(void) {
     drive_fim_db_file_update_callback = true;
 }
 
+void reset_fim_db_file_update_invoking_callback(void) {
+    drive_fim_db_file_update_callback = false;
+}
+
 FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
                               callback_context_t callback)
 {

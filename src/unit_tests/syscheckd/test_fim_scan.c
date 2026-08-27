@@ -1173,6 +1173,38 @@ static void test_fim_file_add(void **state) {
 // about. This test drives the mocked callback for real, so fim_file()'s own local
 // pending_sync_updates list gets genuinely populated by the same code fim_file() constructs,
 // and asserts process_pending_sync_updates() reports 1 processed item, not 0.
+// Saved/restored around test_fim_file_add_queues_sync_flag_update_end_to_end via cmocka
+// setup/teardown (not inline in the test body) so a failed assert/expectation mid-test still
+// restores global state instead of leaking it into the next test.
+typedef struct {
+    int original_notify_scan;
+    int original_synced_docs_files;
+} end_to_end_saved_state_t;
+
+static int setup_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    end_to_end_saved_state_t *saved = calloc(1, sizeof(end_to_end_saved_state_t));
+    if (saved == NULL) {
+        return -1;
+    }
+    saved->original_notify_scan = notify_scan;
+    saved->original_synced_docs_files = synced_docs_files;
+    *state = saved;
+    return 0;
+}
+
+static int teardown_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    end_to_end_saved_state_t *saved = *state;
+    if (saved != NULL) {
+        notify_scan = saved->original_notify_scan;
+        synced_docs_files = saved->original_synced_docs_files;
+        free(saved);
+    }
+    // Guards against a leftover one-shot flag if this test aborted before
+    // __wrap_fim_db_file_update() consumed it.
+    reset_fim_db_file_update_invoking_callback();
+    return 0;
+}
+
 static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
@@ -1189,11 +1221,9 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     ignore_function_calls(__wrap_pthread_mutex_unlock);
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
 
-    int original_synced_docs_files = synced_docs_files;
     // send_syscheck_msg() only fires when notify_scan is set — true on a live agent past its
     // first scan (this file's OTHER tests never reach this check, so nothing else in this group
     // sets it; only the separate test_transaction_callback_* fixture does, for its own tests).
-    int original_notify_scan = notify_scan;
     notify_scan = 1;
 
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
@@ -1247,8 +1277,6 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 
     cJSON_Delete(result);
-    synced_docs_files = original_synced_docs_files;
-    notify_scan = original_notify_scan;
 }
 
 static void test_fim_file_modify_transaction(void **state) {
@@ -4717,7 +4745,9 @@ int main(void) {
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
-        cmocka_unit_test(test_fim_file_add_queues_sync_flag_update_end_to_end),
+        cmocka_unit_test_setup_teardown(test_fim_file_add_queues_sync_flag_update_end_to_end,
+                                        setup_fim_file_add_queues_sync_flag_update_end_to_end,
+                                        teardown_fim_file_add_queues_sync_flag_update_end_to_end),
         cmocka_unit_test_setup_teardown(test_fim_file_modify, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_file_modify_transaction, setup_fim_entry, teardown_fim_entry),
 

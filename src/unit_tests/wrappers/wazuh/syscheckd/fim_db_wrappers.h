@@ -62,6 +62,16 @@ FIMDBErrorCode __wrap_fim_db_file_update(fim_entry* new, callback_context_t call
  */
 void expect_fim_db_file_update_invoking_callback(void);
 
+/**
+ * @brief Undo a pending expect_fim_db_file_update_invoking_callback() that never fired.
+ *
+ * The one-shot flag it sets only clears itself inside __wrap_fim_db_file_update() when the
+ * callback actually runs. If the test aborts earlier (e.g. a failed assert/expectation), the
+ * flag leaks into the next test, which would then try to drive a callback using mock values
+ * that were never queued for it. Call this from a teardown to guarantee it's cleared either way.
+ */
+void reset_fim_db_file_update_invoking_callback(void);
+
 FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
                                                  __attribute__((unused)) callback_context_t callback);
 

@@ -2238,9 +2238,9 @@ void fim_registry_scan() {
         // Process pending sync flag updates after transaction commit. Runs once per full
         // registry scan, so log the summary here (process_pending_sync_updates() itself doesn't).
         int synced_keys = process_pending_sync_updates(FIMDB_REGISTRY_KEY_TABLENAME, pending_sync_keys);
-        mdebug1("Processed %d pending sync flag updates", synced_keys);
+        mdebug1("Processed %d pending sync flag updates (keys)", synced_keys);
         int synced_values = process_pending_sync_updates(FIMDB_REGISTRY_VALUE_TABLENAME, pending_sync_values);
-        mdebug1("Processed %d pending sync flag updates", synced_values);
+        mdebug1("Processed %d pending sync flag updates (values)", synced_values);
 
         // Delete registry keys and values that failed schema validation (outside transaction)
         cleanup_failed_registry_keys(failed_keys);
