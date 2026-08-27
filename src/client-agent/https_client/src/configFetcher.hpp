@@ -47,10 +47,11 @@ class ConfigFetcher final
                       AuthGate& authGate,
                       CompressionGate& compressionGate);
 
-        /// Downloads the config for `group`, expecting the given SHA-256.
-        /// Returns the verified spool file (deleted on drop) or nullptr on
-        /// any failure, already logged.
-        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& group, Waiter& waiter);
+        /// Downloads the config named by `resourceId` -- the manager's own
+        /// agent.config_token, used verbatim and never interpreted here --
+        /// expecting the given SHA-256. Returns the verified spool file
+        /// (deleted on drop) or nullptr on any failure, already logged.
+        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& resourceId, Waiter& waiter);
 
     private:
         const ModuleConfig& m_config;

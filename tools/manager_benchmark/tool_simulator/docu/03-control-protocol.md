@@ -85,7 +85,11 @@ Response:
 
 ```json
 {
-  "agent": { "groups": ["default"], "config_hash": "<sha or \"0\">" },
+  "agent": {
+    "groups": ["default"],
+    "config_token": "<opaque /download resource_id>",
+    "config_hash": "<sha or \"0\">"
+  },
   "settings_hash": "<sha256 hex>",
   "tasks": [ { "task_id": 1, "task_type": "...", "payload": {} } ]
 }
@@ -147,10 +151,11 @@ path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** st
 
 And it **MUST NOT** use any field of the body to change what it does next, with exactly ONE
 exception: `limits` does not become a rate limit, `agent.groups` does not reach the sessions'
-`Start.groups`, `config_hash` and `settings_hash` are not compared across requests, and `tasks` are
-never executed or acknowledged. The reasons are two: a load generator whose shape depends on the
-system under test produces incomparable numbers between runs, and consuming that payload would make
-the tool a conformance checker for a contract that is not what this benchmark measures.
+`Start.groups`, `config_hash`, `config_token` and `settings_hash` are not compared across requests
+or turned into a `/download` call, and `tasks` are never executed or acknowledged. The reasons are
+two: a load generator whose shape depends on the system under test produces incomparable numbers
+between runs, and consuming that payload would make the tool a conformance checker for a contract
+that is not what this benchmark measures.
 
 The exception is `notify`'s `vd_feed_offset`: it is the one piece of server state a real agent
 DOES act on (deciding when to request a VD re-scan through `POST /scan/vd` — see

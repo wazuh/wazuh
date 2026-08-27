@@ -693,6 +693,22 @@ A group change therefore does **not** move `settings_hash`. Groups are delivered
 `agent.groups` of this same response, and a group change surfaces to the agent as a `config_hash`
 mismatch, since it resolves to a different `merged.mg`.
 
+Alongside the hash, the response carries the identifier the agent must use to actually fetch that
+file:
+
+- **`config_token`** — the `resource_id` to send to [`/download`](#download-endpoint-post-download)
+  for `resource_type: "config"`. It is **opaque to the agent**: the agent passes it through
+  verbatim and must never parse, reorder, split or substitute anything into it. The manager
+  guarantees it resolves to the very same `merged.mg` that `config_hash` was computed over, so the
+  two can never disagree. Currently its value *is* the agent's group selector — the same
+  comma-joined CSV documented under `/download` below — but that is an implementation detail of
+  this manager version, not part of the contract: the whole point of the field is that a later
+  manager can change what it addresses, and how, without any agent change.
+
+An agent must therefore **not** rebuild the selector from `agent.groups` itself. `agent.groups` is
+the agent's group *identity* (it is what tags the events the agent emits); `config_token` is what
+names its configuration.
+
 The manager throttles wazuh-db writes per agent (`remoted.control_keepalive_throttle`, default 60s —
 see [Configuration](configuration.md#remotedcontrol_keepalive_throttle)): when the window has expired,
 it writes a full update (`updateAgentData`) if host metadata is present in the request, or a
@@ -703,7 +719,7 @@ delivery time). Task delivery status is **local only** (not broadcast to the clu
 
 The agent compares the received hashes against its local copies: if `settings_hash` differs, it
 sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
-`/download`.
+`/download`, using the response's `agent.config_token` as the request's `resource_id`.
 
 The response also carries `vd_feed_offset`: this node's current Vulnerability Detection feed
 offset, always present (0 if the feed has never completed an update, or if the VD module is
@@ -742,6 +758,7 @@ update), which had no equivalent once agent-manager connections became stateless
 {
   "agent": {
     "groups": ["web-servers"],
+    "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
@@ -753,13 +770,16 @@ update), which had no equivalent once agent-manager connections became stateless
 Every field above is **always present**, `tasks` included — it is an empty array when the manager has
 no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
 selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
-rather than omitting the field or sending an empty string.
+rather than omitting the field or sending an empty string. `config_token` is always a **non-empty**
+string, including in that unresolved case — the agent still needs something to name on `/download`,
+and the next notify re-triggers the attempt.
 
 **Response with tasks (`200 OK`):**
 ```json
 {
   "agent": {
     "groups": ["web-servers"],
+    "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
@@ -1129,9 +1149,10 @@ are the exception to the "always nested" rule above, not a second business-error
 
 `/download` serves the two files an agent has to pull from the manager: its **centralized
 configuration** (`merged.mg`, fetched when `/control`'s `config_hash` stops matching what the agent
-holds) and a **WPK upgrade package** (fetched when a `remote_upgrade` task is dispatched). It replaces
-the legacy push, where the manager wrote both down the agent's persistent TCP connection; with
-stateless HTTPS there is no connection to push into, so the agent pulls instead.
+holds, and named by the `config_token` that same response carried) and a **WPK upgrade package**
+(fetched when a `remote_upgrade` task is dispatched). It replaces the legacy push, where the manager
+wrote both down the agent's persistent TCP connection; with stateless HTTPS there is no connection
+to push into, so the agent pulls instead.
 
 It is the only route that answers with a **streamed** body. A WPK can be hundreds of megabytes, so
 the response uses HTTP chunked transfer encoding with memory that does not grow with file size:
@@ -1223,9 +1244,16 @@ rename, not a tighter check here.
 
 ### Coupling with `/control`
 
-`/control` must report `config_hash` over the file that `/download` resolves to **for the selector it
-hands that agent**. If the two disagree — a hash over one member group's `merged.mg` while the agent
-is given a multigroup selector, say — the agent re-downloads its configuration on every notify.
+An agent does not choose the `resource_id` for a `config` request: it sends back, verbatim, the
+`agent.config_token` `/control` gave it on the notify that reported the mismatching `config_hash`
+(see [Notify](#notify-keepalive)). Today that token's value *is* the group selector documented
+above, which is why the two sections describe the same identifier — but the token is the contract
+and the selector is the current implementation of it.
+
+That makes the invariant the manager's to keep: `/control` must report `config_hash` over the file
+that `/download` resolves to **for the token it hands that agent**. If the two disagree — a hash over
+one member group's `merged.mg` while the agent is given a multigroup selector, say — the agent
+re-downloads its configuration on every notify.
 
 ## Reporting endpoints (`POST /stats` and `POST /config`)
 

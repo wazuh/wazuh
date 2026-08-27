@@ -437,12 +437,13 @@ TEST_F(ControlStreamTest, StaleSettingsHashDoesNotLoopStartups)
 TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
 {
     // The manager reports a config_hash != local ("abc"): the client POSTs
-    // /download with the reported group, the body lands in the response file,
-    // its SHA-256 matches, the local hash updates and the file is delivered.
+    // /download with the reported config_token, the body lands in the response
+    // file, its SHA-256 matches, the local hash updates and the file is delivered.
     const std::string blob = "merged-config-bytes";
     const std::string blobHash = sha256Hex(blob.data(), blob.size());
     const std::string notify =
-        R"({"status":"ok","agent":{"groups":["web-servers"],"config_hash":")" + blobHash + R"("}})";
+        R"({"status":"ok","agent":{"groups":["web-servers"],"config_token":"web-servers",)"
+        R"("config_hash":")" + blobHash + R"("}})";
 
     std::string downloadBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -477,15 +478,14 @@ TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
     EXPECT_EQ(blob, content);
 }
 
-TEST_F(ControlStreamTest, MultiGroupAgentRequestsAllGroupsCommaJoined)
+TEST_F(ControlStreamTest, UsesConfigTokenVerbatimAsTheDownloadResourceId)
 {
-    // A multi-group agent must send every reported group, comma-joined and in the
-    // manager's own order, as resource_id -- the manager's config_hash/merged.mg for
-    // a multi-group agent is keyed by that same CSV (controlHandler.cpp's
-    // toGroupsCsv, hashCache.cpp's getMergedMgPath); requesting only the first group
-    // would fetch a different (single-group) merged.mg that can never match the
-    // hash the manager actually reported, looping forever.
-    const std::string notify = R"({"status":"ok","agent":{"groups":["default","test"],"config_hash":"multi-hash"}})";
+    // The manager names the configuration resource; the agent must NOT derive it. The token
+    // here deliberately bears no relation to the reported groups, which is the whole point:
+    // whatever the manager decides to address a config with (a group selector today, anything
+    // else later), an agent that only passes it through keeps working with no change.
+    const std::string notify = R"({"status":"ok","agent":{"groups":["default","test"],)"
+                               R"("config_token":"opaque-token-42","config_hash":"multi-hash"}})";
 
     std::string downloadBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -501,7 +501,84 @@ TEST_F(ControlStreamTest, MultiGroupAgentRequestsAllGroupsCommaJoined)
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> download attempt.
 
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"opaque-token-42"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, MultiGroupTokenIsSentUnchanged)
+{
+    // The 5.0 manager's token IS the group selector: every group, comma-joined, in the
+    // manager's own order (controlHandler.cpp's makeConfigToken over toGroupsCsv). The agent
+    // must relay it byte-for-byte -- re-sorting or truncating it to the first group would
+    // resolve a different merged.mg that can never match the reported hash, looping forever.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default","test"],)"
+        R"("config_token":"default,test","config_hash":"multi-hash"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
     EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, MissingConfigTokenFallsBackToTheGroupsCsv)
+{
+    // A manager that reports no config_token must behave exactly as it did before the field
+    // existed: the agent rebuilds the selector from agent.groups itself, comma-joined in the
+    // reported order.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default","test"],"config_hash":"multi-hash"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsFallsBackToDefault)
+{
+    // The other half of the pre-config_token behaviour: with no token AND no groups there is
+    // still something to ask for, since every agent is implicitly in "default". A 5.0 manager
+    // never gets here -- it always reports a non-empty token.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":[],"config_hash":"some-hash"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default"})", downloadBody);
 }
 
 TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
@@ -581,11 +658,11 @@ TEST_F(ControlStreamTest, AgentGroupsReReportedAfterARefreshStartupEvenWhenUncha
 
 TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
 {
-    // Unlike /download's resource_id (which substitutes "default" when the agent
-    // has no groups, since /download always needs some group to ask for), an
-    // empty group set here must stay empty: agcom.c treats it as a distinct,
-    // meaningful value ("Empty agent_groups is allowed - fallback to merge.mg
-    // will be used"), not a synonym for being in "default".
+    // This is group IDENTITY, not the download selector (which the manager now names on its
+    // own, in config_token). An empty group set must stay empty here: agcom.c treats it as a
+    // distinct, meaningful value ("Empty agent_groups is allowed - fallback to merge.mg will
+    // be used"), not a synonym for being in "default" -- so no fallback is substituted, even
+    // though the download path's own legacy selector does substitute one.
     const std::string notifyNoGroups = R"({"agent":{"groups":[]}})";
 
     EXPECT_CALL(m_sink, onAgentGroups(std::string {}));
@@ -637,7 +714,8 @@ TEST_F(ControlStreamTest, ManagerConfigHashIsReportedBeforeADownload)
     // waiting for before /download lands it.
     const std::string blob = "new-config-bytes";
     const std::string blobHash = sha256Hex(blob.data(), blob.size());
-    const std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":")" + blobHash + R"("}})";
+    const std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_token":"default",)"
+                               R"("config_hash":")" + blobHash + R"("}})";
     EXPECT_CALL(m_sink, onManagerConfigHash(blobHash)).Times(1);
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
@@ -652,8 +730,8 @@ TEST_F(ControlStreamTest, HashMismatchOnTheDownloadedFileDiscardsIt)
 {
     // The downloaded bytes do not match the advertised MD5: no delivery, no
     // local-hash update; the next notify triggers a fresh download attempt.
-    const std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"1111111111111111)"
-                               R"(1111111111111111"}})";
+    const std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_token":"default",)"
+                               R"("config_hash":"11111111111111111111111111111111"}})";
 
     int downloads = 0;
     EXPECT_CALL(m_performer, perform(_))
@@ -687,7 +765,8 @@ TEST_F(ControlStreamTest, HashMismatchOnTheDownloadedFileDiscardsIt)
 
 TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
 {
-    const std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"ffff"}})";
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_token":"default","config_hash":"ffff"}})";
 
     int downloads = 0;
     EXPECT_CALL(m_performer, perform(_))

@@ -40,6 +40,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// The config_token every notify reports, and the only resource_id /download will serve.
+// Deliberately NOT the group name, even though the real 5.0 manager currently mints the group
+// selector (controlHandler.cpp's makeConfigToken): the token is opaque to the agent, so a
+// value the agent could not have derived from agent.groups is what proves it really came
+// through the notify rather than being reconstructed locally.
+inline constexpr auto FAKE_MANAGER_CONFIG_TOKEN {"cfg-token-abc123"};
+
 // Mirrors the real manager's HashCache::getSettingsHash() (remoted_module/src/
 // control/hashCache.cpp) and the agent's ControlStream::computeSettingsHash():
 // limits + cluster only, agent.groups excluded -- NOT a raw hash of the startup
@@ -82,7 +89,9 @@ class FakeManager final
         /// a client detects the change and refreshes its startup data.
         /// configBlob non-empty: /download serves it (chunked octet-stream)
         /// and every notify reports agent.config_hash = MD5(configBlob), so a
-        /// client whose local hash differs downloads it.
+        /// client whose local hash differs downloads it. Those notifies also
+        /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
+        /// serves nothing else, so the client must relay the token verbatim.
         /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
         /// 413, so the client must split and resend smaller (#37835).
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
@@ -392,6 +401,17 @@ class FakeManager final
                     return;
                 }
 
+                // Only the token this manager handed out in its notify is served, exactly as
+                // the real one resolves a resource_id it minted. An agent that derived the
+                // selector itself instead of relaying config_token gets a 404 here, so the
+                // E2E download tests fail rather than silently pass on a lucky guess.
+                if (request.body.find(std::string {R"("resource_id":")"} +
+                                      FAKE_MANAGER_CONFIG_TOKEN + R"(")") == std::string::npos)
+                {
+                    response.status = 404;
+                    return;
+                }
+
                 // Chunked transfer on purpose (#37733 5.2.3): the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
@@ -512,7 +532,10 @@ class FakeManager final
                     const std::string agent = configHash.empty()
                                               ? std::string {R"({"groups":["default"]})"}
                                               :
-                                              R"({"groups":["default"],"config_hash":")" + configHash + R"("})";
+                                              R"({"groups":["default"],"config_token":")" +
+                                              std::string {FAKE_MANAGER_CONFIG_TOKEN} +
+                                              R"(","config_hash":")" + configHash + R"("})";
+
                     const std::string vdFeedOffsetField =
                         vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset) : std::string {};
                     response.set_content(R"({"agent":)" + agent + R"(,"settings_hash":")" +
