@@ -1027,6 +1027,59 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
                     " times in a row: Failed to communicate with the manager."));
 }
 
+// logSyncFailure() treats localTransportUnavailable the same as managerNotReady (same tolerance,
+// same escalation) -- companion to the ManagerNotReady pair above, covering the local-socket-down
+// case that only became reachable through performRecovery() once it started routing through
+// notifyDataCleanResult(). (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery deferred: Failed to reach the sync intake socket. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
+}
+
+TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery failed " + std::to_string(streak) +
+                    " times in a row: Failed to reach the sync intake socket."));
+}
+
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
 // the ERROR it used to be.
 TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)

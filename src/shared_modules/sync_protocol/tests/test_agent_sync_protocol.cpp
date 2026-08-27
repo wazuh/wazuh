@@ -2354,6 +2354,68 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault
     EXPECT_EQ(tracked.consecutiveFailures, 1u);
 }
 
+// Companion to SynchronizeModuleTransportFailureReportsLocalTransportUnavailable: notifyDataCleanResult()
+// hits the same checkStatus() gate, so an unreachable local sync intake must be classified the same way
+// -- localTransportUnavailable, not managerNotReady -- and grow its own dedicated streak, regardless of
+// the trackConsecutiveFailures opt-in (that flag only gates m_consecutiveSyncFailures). (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    SyncModuleResult first = protocol->notifyDataCleanResult(indices);
+    EXPECT_FALSE(first.success);
+    EXPECT_FALSE(first.managerNotReady);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1u);
+
+    SyncModuleResult second = protocol->notifyDataCleanResult(indices);
+    EXPECT_TRUE(second.localTransportUnavailable);
+    EXPECT_EQ(second.consecutiveFailures, 2u);
+}
+
+// A notifyDataCleanResult() call that reaches past checkStatus() must reset the local-transport
+// streak, same as synchronizeModule()/synchronizeMetadataOrGroups() do -- otherwise a later
+// transport failure would report an inflated streak carried over from before the local socket
+// recovered. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnceReachable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    mockSyncTransport->setAvailable(false);
+    SyncModuleResult first = protocol->notifyDataCleanResult(indices);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1u);
+
+    mockSyncTransport->setAvailable(true);
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("test_index_1"))
+    .Times(1);
+
+    std::thread syncThread([this, &indices]()
+    {
+        SyncModuleResult successResult = protocol->notifyDataCleanResult(indices);
+        EXPECT_TRUE(successResult.success);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    feedHttpResult(200);
+    syncThread.join();
+
+    mockSyncTransport->setAvailable(false);
+    SyncModuleResult afterReset = protocol->notifyDataCleanResult(indices);
+    EXPECT_TRUE(afterReset.localTransportUnavailable);
+    EXPECT_EQ(afterReset.consecutiveFailures, 1u);
+}
+
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();

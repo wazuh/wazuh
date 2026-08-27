@@ -618,11 +618,24 @@ SyncModuleResult AgentSyncProtocol::notifyDataCleanResult(const std::vector<std:
 
     if (!m_syncTransport->checkStatus())
     {
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to reach the sync intake socket.", shouldStop()};
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. Same shape as synchronizeModule()'s equivalent branch.
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                trackLocalTransportFailure(stopped), false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     clearSyncState();
 
