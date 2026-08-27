@@ -21,6 +21,7 @@
 extern int wdb_task_create(wdb_t* wdb, const char *task_id, const char *agent_id, const char *task_type, const char *payload);
 extern int wdb_task_get_pending(wdb_t* wdb, const char *agent_id, int max_tasks, cJSON **tasks_json);
 extern int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_time);
+extern int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status);
 extern int wdb_task_cleanup_expired(wdb_t* wdb, int ttl);
 extern int wdb_task_delete_old(wdb_t* wdb, time_t timestamp);
 
@@ -329,6 +330,79 @@ void test_wdb_task_mark_delivered_step_fail(void **state) {
     assert_int_equal(result, OS_INVALID);
 }
 
+/* Tests for wdb_task_update_status */
+
+void test_wdb_task_update_status_success(void **state) {
+    wdb_t *wdb = *state;
+    wdb->transaction = 0;
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_stmt_cache, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "pending");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "task-123");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    int result = wdb_task_update_status(wdb, "task-123", "pending");
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+void test_wdb_task_update_status_transaction_fail(void **state) {
+    wdb_t *wdb = *state;
+    wdb->transaction = 0;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, DB_TRANSACTION_ERROR);
+
+    int result = wdb_task_update_status(wdb, "task-123", "failed");
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_task_update_status_cache_fail(void **state) {
+    wdb_t *wdb = *state;
+    wdb->transaction = 0;
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, DB_CACHE_ERROR);
+
+    int result = wdb_task_update_status(wdb, "task-123", "failed");
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_task_update_status_step_fail(void **state) {
+    wdb_t *wdb = *state;
+    wdb->transaction = 0;
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_stmt_cache, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "failed");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "task-123");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "SQL error");
+    expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'SQL error'");
+
+    int result = wdb_task_update_status(wdb, "task-123", "failed");
+
+    assert_int_equal(result, OS_INVALID);
+}
+
 /* Tests for wdb_task_cleanup_expired */
 
 void test_wdb_task_cleanup_expired_success(void **state) {
@@ -488,6 +562,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_task_mark_delivered_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_mark_delivered_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_mark_delivered_step_fail, test_setup, test_teardown),
+        // wdb_task_update_status tests
+        cmocka_unit_test_setup_teardown(test_wdb_task_update_status_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_task_update_status_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_task_update_status_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_task_update_status_step_fail, test_setup, test_teardown),
         // wdb_task_cleanup_expired tests
         cmocka_unit_test_setup_teardown(test_wdb_task_cleanup_expired_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_cleanup_expired_transaction_fail, test_setup, test_teardown),

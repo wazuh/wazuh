@@ -387,6 +387,104 @@ void test_wdb_parse_task_mark_delivered_task_id_err(void **state)
     assert_string_equal(output, "err Error mark delivered: 'parsing task_id error'");
 }
 
+/* Test wdb_parse_task_update_status */
+
+void test_wdb_parse_task_update_status_ok(void **state)
+{
+    char *task_id = "task-12345";
+    char *status = "pending";
+
+    char output[OS_MAXSTR + 1];
+    *output = '\0';
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "task_id", task_id);
+    cJSON_AddStringToObject(parameters, "status", status);
+
+    expect_string(__wrap_wdb_task_update_status, task_id, task_id);
+    expect_string(__wrap_wdb_task_update_status, status, status);
+    will_return(__wrap_wdb_task_update_status, OS_SUCCESS);
+
+    int result = wdb_parse_task_update_status((wdb_t*)1, parameters, output);
+
+    *state = (void*)parameters;
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(output, "ok {\"error\":0}");
+}
+
+void test_wdb_parse_task_update_status_err(void **state)
+{
+    char *task_id = "task-12345";
+    char *status = "failed";
+
+    char output[OS_MAXSTR + 1];
+    *output = '\0';
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "task_id", task_id);
+    cJSON_AddStringToObject(parameters, "status", status);
+
+    expect_string(__wrap_wdb_task_update_status, task_id, task_id);
+    expect_string(__wrap_wdb_task_update_status, status, status);
+    will_return(__wrap_wdb_task_update_status, OS_INVALID);
+
+    int result = wdb_parse_task_update_status((wdb_t*)1, parameters, output);
+
+    *state = (void*)parameters;
+
+    assert_int_equal(result, OS_INVALID);
+    assert_string_equal(output, "ok {\"error\":-1}");
+}
+
+void test_wdb_parse_task_update_status_task_id_err(void **state)
+{
+    char output[OS_MAXSTR + 1];
+    *output = '\0';
+
+    cJSON *parameters = cJSON_CreateObject();
+
+    int result = wdb_parse_task_update_status((wdb_t*)1, parameters, output);
+
+    *state = (void*)parameters;
+
+    assert_int_equal(result, OS_INVALID);
+    assert_string_equal(output, "err Error update status: 'parsing task_id error'");
+}
+
+void test_wdb_parse_task_update_status_status_err(void **state)
+{
+    char output[OS_MAXSTR + 1];
+    *output = '\0';
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "task_id", "task-12345");
+
+    int result = wdb_parse_task_update_status((wdb_t*)1, parameters, output);
+
+    *state = (void*)parameters;
+
+    assert_int_equal(result, OS_INVALID);
+    assert_string_equal(output, "err Error update status: 'parsing status error'");
+}
+
+void test_wdb_parse_task_update_status_invalid_status(void **state)
+{
+    char output[OS_MAXSTR + 1];
+    *output = '\0';
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "task_id", "task-12345");
+    cJSON_AddStringToObject(parameters, "status", "delivered");
+
+    int result = wdb_parse_task_update_status((wdb_t*)1, parameters, output);
+
+    *state = (void*)parameters;
+
+    assert_int_equal(result, OS_INVALID);
+    assert_string_equal(output, "err Error update status: 'invalid status, expected pending or failed'");
+}
+
 /* Test wdb_parse_task_cleanup_expired */
 
 void test_wdb_parse_task_cleanup_expired_ok(void **state)
@@ -527,6 +625,12 @@ int main(void)
         cmocka_unit_test_teardown(test_wdb_parse_task_mark_delivered_ok, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_mark_delivered_err, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_mark_delivered_task_id_err, teardown_json),
+        // wdb_parse_task_update_status
+        cmocka_unit_test_teardown(test_wdb_parse_task_update_status_ok, teardown_json),
+        cmocka_unit_test_teardown(test_wdb_parse_task_update_status_err, teardown_json),
+        cmocka_unit_test_teardown(test_wdb_parse_task_update_status_task_id_err, teardown_json),
+        cmocka_unit_test_teardown(test_wdb_parse_task_update_status_status_err, teardown_json),
+        cmocka_unit_test_teardown(test_wdb_parse_task_update_status_invalid_status, teardown_json),
         // wdb_parse_task_cleanup_expired
         cmocka_unit_test_teardown(test_wdb_parse_task_cleanup_expired_ok, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_cleanup_expired_err, teardown_json),

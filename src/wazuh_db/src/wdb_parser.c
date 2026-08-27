@@ -759,6 +759,26 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_task_mark_delivered_time(diff);
             cJSON_Delete(parameters_json);
+        } else if (!strcmp("update_status", query)) {
+            w_inc_task_update_status();
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_pool_leave(wdb);
+                return OS_INVALID;
+            }
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
+                wdb_pool_leave(wdb);
+                return OS_INVALID;
+            }
+            gettimeofday(&begin, 0);
+            result = wdb_parse_task_update_status(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_update_status_time(diff);
+            cJSON_Delete(parameters_json);
         } else if (!strcmp("cleanup_expired", query)) {
             w_inc_task_cleanup_expired();
             if (!next) {
@@ -1999,6 +2019,46 @@ int wdb_parse_task_mark_delivered(wdb_t* wdb, const cJSON *parameters, char* out
     delivery_time = delivery_time_json->valueint;
 
     result = wdb_task_mark_delivered(wdb, task_id, delivery_time);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
+}
+
+int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+    int result = OS_INVALID;
+    const char *task_id = NULL;
+    const char *status = NULL;
+
+    cJSON *task_id_json = cJSON_GetObjectItem(parameters, "task_id");
+    if (!task_id_json || (task_id_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error update status: 'parsing task_id error'");
+        return OS_INVALID;
+    }
+    task_id = task_id_json->valuestring;
+
+    cJSON *status_json = cJSON_GetObjectItem(parameters, "status");
+    if (!status_json || (status_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error update status: 'parsing status error'");
+        return OS_INVALID;
+    }
+    status = status_json->valuestring;
+
+    if (strcmp(status, "pending") != 0 && strcmp(status, "failed") != 0) {
+        snprintf(output, OS_MAXSTR + 1, "err Error update status: 'invalid status, expected pending or failed'");
+        return OS_INVALID;
+    }
+
+    result = wdb_task_update_status(wdb, task_id, status);
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;

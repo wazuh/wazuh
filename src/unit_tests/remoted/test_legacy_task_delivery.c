@@ -37,12 +37,15 @@ typedef enum {
 
 bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version);
 agent_version_check_t agent_meta_check_version(const char *agent_id_str, const char *min_version, char **out_version);
-legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj);
+legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt);
 void legacy_upgrade_poll_cycle(void);
 void legacy_task_drain_clear_upgrade_replies(void);
 
 /* Must match LEGACY_TASK_MAX_PUSH_ATTEMPTS in legacy_task_delivery.c. */
-#define LEGACY_TASK_MAX_PUSH_ATTEMPTS 3
+#define LEGACY_TASK_MAX_PUSH_ATTEMPTS 5
+
+/* Must match LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC in legacy_task_delivery.c. */
+#define LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC 5
 
 /* req_send_and_wait() is exercised entirely through this local mock -- it is the one function
  * this module uses to reach an agent, so every push-step assertion goes through it. */
@@ -250,7 +253,7 @@ static void test_deliver_success(void **state) {
     expect_full_successful_push(fake_file, "abc123");
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("030", payload), LEGACY_TASK_PUSH_SUCCESS);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("030", payload, true), LEGACY_TASK_PUSH_SUCCESS);
     cJSON_Delete(payload);
 }
 
@@ -291,7 +294,7 @@ static void test_deliver_write_step_chunks_large_file(void **state) {
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);           // upgrade
 
     cJSON *payload = build_payload("big.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("031", payload), LEGACY_TASK_PUSH_SUCCESS);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("031", payload, true), LEGACY_TASK_PUSH_SUCCESS);
     cJSON_Delete(payload);
 
     free(chunk1);
@@ -303,14 +306,14 @@ static void test_deliver_fails_on_lock_restart_no_further_steps(void **state) {
 
     expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
     expect_any(__wrap__mwarn, formatted_msg); // "no response for step targeting 'com'"
-    expect_any(__wrap__merror, formatted_msg); // "'lock_restart' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg); // "'lock_restart' step failed, aborting push"
 
     // Only one step is queued: if the code attempted 'open' (or any later step) after this
     // failure, __wrap_req_send_and_wait would find an empty mock queue and abort the test.
     expect_req_step(NULL, -1);
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("032", payload), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("032", payload, true), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 }
 
@@ -334,13 +337,13 @@ static void test_deliver_fails_on_write_step_no_retry(void **state) {
     expect_any(__wrap__mwarn, formatted_msg); // "no response for step targeting 'upgrade'"
 
     expect_fclose(fake_file, 0);
-    expect_any(__wrap__merror, formatted_msg); // "'write' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg); // "'write' step failed, aborting push"
 
     // This call is made directly, once -- it proves this single call to
     // legacy_task_deliver_remote_upgrade() doesn't retry internally. The caller-side retry loop
     // (proven separately at the poll-cycle level) is what retries a RETRYABLE result.
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("033", payload), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("033", payload, true), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 
     // Only one write attempt was queued above: a second internal attempt would exhaust the mock
@@ -369,12 +372,12 @@ static void test_deliver_fails_on_sha1_mismatch_no_upgrade_step(void **state) {
 
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);              // close
     expect_req_step("{\"error\":0,\"message\":\"deadbeef\"}", 0);       // sha1 mismatch
-    expect_any(__wrap__merror, formatted_msg); // "sha1 mismatch after transfer..."
+    expect_any(__wrap__mwarn, formatted_msg); // "sha1 mismatch after transfer..."
 
     // No 'upgrade' step is queued: if the code sent it anyway, the mock queue would be empty.
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("034", payload), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("034", payload, true), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 }
 
@@ -386,14 +389,39 @@ static void test_deliver_fails_on_open_step(void **state) {
     expect_req_step("ok ", 0);                 // lock_restart succeeds
     expect_req_step(NULL, -1);                 // open fails: no ack
     expect_any(__wrap__mwarn, formatted_msg);   // "no response for step targeting 'open'"
-    expect_any(__wrap__merror, formatted_msg);  // "'open' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg);  // "'open' step failed, aborting push"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("035", payload), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("035", payload, true), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 
     // No wfopen/fread call is queued: if the code proceeded to 'write' after this failure,
     // the mock queue for that step would be empty and fail the test.
+}
+
+/* An 'open' rejection carrying exactly the agent's "not ready yet" message must trigger the
+ * LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC sleep before returning RETRYABLE -- a readiness race,
+ * not a wire failure (see test_deliver_fails_on_open_step for the ordinary wire-failure case,
+ * which must NOT sleep). is_last_attempt is passed as false: the backoff is deliberately skipped
+ * on the last attempt (no next attempt left to back off for), so this must not be the last one --
+ * see LEGACY_TASK_MAX_PUSH_ATTEMPTS's doc comment. This also means the step-failure logging below
+ * is at debug1, not warning (the ladder only escalates to warning on the last attempt). */
+static void test_deliver_open_step_not_ready_backs_off(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0); // lock_restart succeeds
+    expect_req_step("{\"error\":1,\"message\":\"Upgrade module is disabled or not ready yet\"}", 0); // open rejected
+    expect_any(__wrap__mdebug1, formatted_msg);  // "rejected step targeting 'open': ..."
+    expect_any(__wrap__mdebug1, formatted_msg); // "'open' step failed, aborting push"
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "'open' rejected as not ready yet, backing off..."
+    expect_value(__wrap_sleep, seconds, LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC);
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload, false), LEGACY_TASK_PUSH_RETRYABLE);
+    cJSON_Delete(payload);
 }
 
 static void test_deliver_fails_on_close_step(void **state) {
@@ -418,10 +446,10 @@ static void test_deliver_fails_on_close_step(void **state) {
 
     expect_req_step(NULL, -1);                  // close fails: no ack
     expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'close'"
-    expect_any(__wrap__merror, formatted_msg);   // "'close' step failed, aborting push"
+    expect_any(__wrap__mwarn, formatted_msg);   // "'close' step failed, aborting push"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload, true), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 
     // No 'sha1'/'upgrade' step is queued: a further attempt would exhaust the mock queue.
@@ -454,7 +482,7 @@ static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
     expect_any(__wrap__merror, formatted_msg); // "installer script failed (exit status: 1)"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("037", payload), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("037", payload, true), LEGACY_TASK_PUSH_PERMANENT);
     cJSON_Delete(payload);
 }
 
@@ -471,7 +499,7 @@ static void test_deliver_fails_on_invalid_payload_is_permanent(void **state) {
     cJSON_AddStringToObject(payload, "wpk_sha1", "abc123");
     // "installer" is intentionally omitted.
 
-    assert_int_equal(legacy_task_deliver_remote_upgrade("038", payload), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("038", payload, true), LEGACY_TASK_PUSH_PERMANENT);
     cJSON_Delete(payload);
 }
 
@@ -493,7 +521,7 @@ static void test_deliver_fails_on_local_wpk_file_missing_is_permanent(void **sta
     expect_any(__wrap__merror, formatted_msg); // "cannot open local WPK file..."
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("039", payload), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("039", payload, true), LEGACY_TASK_PUSH_PERMANENT);
     cJSON_Delete(payload);
 
     // No 'write'/'close'/'sha1'/'upgrade' step is queued: a retry here would exhaust the mock queue.
@@ -530,7 +558,7 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
     expect_any(__wrap__merror, formatted_msg);   // "'upgrade' step failed"
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    assert_int_equal(legacy_task_deliver_remote_upgrade("039b", payload), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("039b", payload, true), LEGACY_TASK_PUSH_PERMANENT);
     cJSON_Delete(payload);
 }
 
@@ -620,8 +648,9 @@ static void test_poll_cycle_retry_recovers_within_same_cycle(void **state) {
 
     expect_any(__wrap__minfo, formatted_msg); // "delivering..." (attempt 1)
     expect_req_step(NULL, -1);                 // attempt 1: lock_restart no-ack
-    expect_any(__wrap__mwarn, formatted_msg);
-    expect_any(__wrap__merror, formatted_msg); // "'lock_restart' step failed..."
+    // debug1, not warning: attempt 1 of LEGACY_TASK_MAX_PUSH_ATTEMPTS still has budget left.
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg); // "'lock_restart' step failed..."
 
     FILE *fake_file = tmpfile();
     assert_non_null(fake_file);
@@ -637,27 +666,53 @@ static void test_poll_cycle_retry_recovers_within_same_cycle(void **state) {
 
 /* Every attempt fails RETRYABLE (lock_restart no-ack each time): the loop must stop after exactly
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS attempts and log "giving up". Mock queues are sized for exactly
- * that many attempts -- a 4th attempt would hit an empty queue and fail the test, which is the
- * boundedness guarantee this test exists to prove. */
+ * that many attempts -- one more attempt would hit an empty queue and fail the test, which is the
+ * boundedness guarantee this test exists to prove. Attempts before the last log at debug1; only
+ * the last one escalates to warning (see LEGACY_TASK_MAX_PUSH_ATTEMPTS's doc comment). */
 static void test_poll_cycle_retry_exhausts_cap_and_gives_up(void **state) {
     (void) state;
 
     char *response = NULL;
     keyentry **keyentries = setup_single_task_poll_cycle("061", 61, "Wazuh v4.14.6", 71, &response);
 
-    for (int attempt = 0; attempt < LEGACY_TASK_MAX_PUSH_ATTEMPTS; attempt++) {
+    for (int attempt = 1; attempt <= LEGACY_TASK_MAX_PUSH_ATTEMPTS; attempt++) {
+        bool is_last_attempt = (attempt == LEGACY_TASK_MAX_PUSH_ATTEMPTS);
         expect_any(__wrap__minfo, formatted_msg); // "delivering..." (each attempt re-logs it)
         expect_req_step(NULL, -1);                 // lock_restart no-ack, every attempt
-        expect_any(__wrap__mwarn, formatted_msg);
-        expect_any(__wrap__merror, formatted_msg); // "'lock_restart' step failed..."
+        if (is_last_attempt) {
+            expect_any(__wrap__mwarn, formatted_msg);
+            expect_any(__wrap__mwarn, formatted_msg); // "'lock_restart' step failed..."
+        } else {
+            expect_any(__wrap__mdebug1, formatted_msg);
+            expect_any(__wrap__mdebug1, formatted_msg); // "'lock_restart' step failed..."
+        }
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-        "legacy_task_delivery: agent '061': task 't-retry' did not succeed after 3 attempt(s), "
-        "giving up -- the Task Manager has already marked it delivered, so it will not be offered again");
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '061': task 't-retry' did not succeed after 5 attempt(s), "
+        "giving up and reporting it as failed");
+
+    char *update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 90);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 90);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 90);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
 
     legacy_upgrade_poll_cycle();
 
+    os_free(update_response);
     free_single_task_poll_cycle(keyentries, response);
 }
 
@@ -723,8 +778,28 @@ static void test_poll_cycle_permanent_failure_short_circuits_no_retry(void **sta
     // via an unexpected-call error long before reaching a second "invalid payload" check.
     expect_any(__wrap__merror, formatted_msg); // "invalid or incomplete remote_upgrade payload..."
 
+    // legacy_task_report_push_result() reports the permanent-failure outcome back as "failed".
+    char *update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 91);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 91);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 91);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
+
     legacy_upgrade_poll_cycle();
 
+    os_free(update_response);
     free_single_task_poll_cycle(keyentries, response);
 }
 
@@ -802,8 +877,28 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, response_041);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response_041));
 
-    // The unsupported task type is logged and dropped -- no push attempted for it.
+    // The unsupported task type is logged and dropped -- no push attempted for it, but its
+    // 'delivered' status is now reported back to the Task Manager as 'failed' (B.4): a pre-v5.0.0
+    // agent has no legacy delivery path at all for a non-remote_upgrade task type.
     expect_any(__wrap__minfo, formatted_msg);
+
+    char *ar_update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 93);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 93);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 93);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, ar_update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(ar_update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
 
     FILE *fake_file = tmpfile();
     assert_non_null(fake_file);
@@ -850,19 +945,47 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     // A lock_restart no-ack is RETRYABLE, so this is retried up to LEGACY_TASK_MAX_PUSH_ATTEMPTS
     // times -- queue exactly that many failing attempts, or the loop trying a further attempt
     // would hit an empty mock queue and fail the test (the boundedness guarantee this proves).
-    for (int attempt = 0; attempt < LEGACY_TASK_MAX_PUSH_ATTEMPTS; attempt++) {
+    // Attempts before the last log at debug1; only the last one escalates to warning.
+    for (int attempt = 1; attempt <= LEGACY_TASK_MAX_PUSH_ATTEMPTS; attempt++) {
+        bool is_last_attempt = (attempt == LEGACY_TASK_MAX_PUSH_ATTEMPTS);
         expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
         expect_req_step(NULL, -1);
-        expect_any(__wrap__mwarn, formatted_msg); // "no response for step targeting 'com'"
-        expect_any(__wrap__merror, formatted_msg); // "'lock_restart' step failed, aborting push"
+        if (is_last_attempt) {
+            expect_any(__wrap__mwarn, formatted_msg); // "no response for step targeting 'com'"
+            expect_any(__wrap__mwarn, formatted_msg); // "'lock_restart' step failed, aborting push"
+        } else {
+            expect_any(__wrap__mdebug1, formatted_msg); // "no response for step targeting 'com'"
+            expect_any(__wrap__mdebug1, formatted_msg); // "'lock_restart' step failed, aborting push"
+        }
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-        "legacy_task_delivery: agent '042': task 't-up-2' did not succeed after 3 attempt(s), "
-        "giving up -- the Task Manager has already marked it delivered, so it will not be offered again");
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '042': task 't-up-2' did not succeed after 5 attempt(s), "
+        "giving up and reporting it as failed");
+
+    // legacy_task_report_push_result() reports the retryable-exhausted outcome back as "failed".
+    char *update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 92);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 92);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 92);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
 
     legacy_upgrade_poll_cycle();
 
+    os_free(update_response);
+    os_free(ar_update_response);
     os_free(response_041);
     os_free(response_042);
 
@@ -872,6 +995,158 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     os_free(keyentries[1]);
     os_free(keyentries[2]->id);
     os_free(keyentries[2]);
+    os_free(keyentries);
+}
+
+/* B.4: a task whose "payload" field isn't even a string (malformed at the task-shape level, before
+ * ever trying to JSON-parse it) must be reported back as 'failed' -- otherwise it stays 'delivered'
+ * forever, silently lost just like an unreported push failure. */
+static void test_poll_cycle_invalid_payload_reports_failed(void **state) {
+    (void) state;
+
+    keyentry **keyentries;
+    os_calloc(1, sizeof(keyentry *), keyentries);
+    keyentries[0] = make_key("045", 15);
+    keys.keyentries = keyentries;
+    keys.keysize = 1;
+
+    expect_any(__wrap__mdebug2, formatted_msg); // "checking 1 connected agent(s)"
+
+    expect_cache_miss("045");
+    expect_wdb_version(45, "Wazuh v4.14.6");
+    expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
+
+    cJSON *task_bad = cJSON_CreateObject();
+    cJSON_AddStringToObject(task_bad, "task_id", "t-bad-payload");
+    cJSON_AddStringToObject(task_bad, "task_type", "remote_upgrade");
+    cJSON_AddItemToObject(task_bad, "payload", cJSON_CreateObject()); // object, not a string
+
+    cJSON *tasks_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(tasks_array, task_bad);
+
+    cJSON *response_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(response_obj, "status", "ok");
+    cJSON_AddItemToObject(response_obj, "tasks", tasks_array);
+    char *response = cJSON_PrintUnformatted(response_obj);
+    cJSON_Delete(response_obj);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 15);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 15);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 15);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+
+    expect_any(__wrap__merror, formatted_msg); // "has an invalid payload, not delivered"
+
+    // legacy_task_report_push_result() reports this permanently-malformed task as "failed".
+    char *update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 16);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 16);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 16);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
+
+    // No req_send_and_wait mock is queued: an invalid payload must never reach the six-step push.
+    legacy_upgrade_poll_cycle();
+
+    os_free(update_response);
+    os_free(response);
+    os_free(keyentries[0]->id);
+    os_free(keyentries[0]);
+    os_free(keyentries);
+}
+
+/* B.4: same as above, but for a payload that's a string yet fails to JSON-parse. */
+static void test_poll_cycle_unparsable_payload_reports_failed(void **state) {
+    (void) state;
+
+    keyentry **keyentries;
+    os_calloc(1, sizeof(keyentry *), keyentries);
+    keyentries[0] = make_key("046", 17);
+    keys.keyentries = keyentries;
+    keys.keysize = 1;
+
+    expect_any(__wrap__mdebug2, formatted_msg); // "checking 1 connected agent(s)"
+
+    expect_cache_miss("046");
+    expect_wdb_version(46, "Wazuh v4.14.6");
+    expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
+
+    cJSON *task_bad = cJSON_CreateObject();
+    cJSON_AddStringToObject(task_bad, "task_id", "t-unparsable-payload");
+    cJSON_AddStringToObject(task_bad, "task_type", "remote_upgrade");
+    cJSON_AddStringToObject(task_bad, "payload", "{not valid json");
+
+    cJSON *tasks_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(tasks_array, task_bad);
+
+    cJSON *response_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(response_obj, "status", "ok");
+    cJSON_AddItemToObject(response_obj, "tasks", tasks_array);
+    char *response = cJSON_PrintUnformatted(response_obj);
+    cJSON_Delete(response_obj);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 17);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 17);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 17);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+
+    expect_any(__wrap__merror, formatted_msg); // "has an unparsable payload, not delivered"
+
+    char *update_response = strdup("{\"status\":\"ok\"}");
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 18);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 18);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 18);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, update_response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(update_response));
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' reported to the Task Manager as 'failed'"
+
+    legacy_upgrade_poll_cycle();
+
+    os_free(update_response);
+    os_free(response);
+    os_free(keyentries[0]->id);
+    os_free(keyentries[0]);
     os_free(keyentries);
 }
 
@@ -953,7 +1228,9 @@ void test_process_upgrade_ack_success_replies_clear_upgrade_result(void **state)
 void test_process_upgrade_ack_failure_still_replies_clear_upgrade_result(void **state) {
     (void) state;
 
-    expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
+    // A non-zero error is a genuine agent-side upgrade failure and must be logged at ERROR, not
+    // INFO, so it isn't silently missed by severity-filtered log monitoring.
+    expect_any(__wrap__merror, formatted_msg); // "reported upgrade result ..."
 
     bool result = legacy_task_process_upgrade_ack("002",
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
@@ -1165,6 +1442,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_write_step_no_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_sha1_mismatch_no_upgrade_step, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_open_step, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_open_step_not_ready_backs_off, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_close_step, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_upgrade_exit_nonzero, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_invalid_payload_is_permanent, test_setup, test_teardown),
@@ -1174,6 +1452,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_poll_cycle_retry_exhausts_cap_and_gives_up, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_permanent_failure_short_circuits_no_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_gating_filtering_and_bounded_retry, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_poll_cycle_invalid_payload_reports_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_poll_cycle_unparsable_payload_reports_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_eligible_agent_zero_pending_tasks, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_success_replies_clear_upgrade_result, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_failure_still_replies_clear_upgrade_result, test_setup, test_teardown),

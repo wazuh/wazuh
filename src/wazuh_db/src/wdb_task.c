@@ -126,6 +126,33 @@ int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_tim
     return OS_SUCCESS;
 }
 
+int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_UPDATE_STATUS) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_UPDATE_STATUS];
+
+    sqlite3_bind_text(stmt, 1, status, -1, NULL);
+    sqlite3_bind_text(stmt, 2, task_id, -1, NULL);
+
+    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
+}
+
 int wdb_task_cleanup_expired(wdb_t* wdb, int ttl) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;

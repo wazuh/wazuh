@@ -51,7 +51,8 @@ typedef enum _error_code {
  */
 typedef enum _wm_task_manager_action {
     WM_TASK_MANAGER_CREATE = 0,
-    WM_TASK_MANAGER_GET_PENDING
+    WM_TASK_MANAGER_GET_PENDING,
+    WM_TASK_MANAGER_UPDATE_STATUS
 } wm_task_manager_action;
 
 /**
@@ -71,6 +72,15 @@ typedef struct _wm_task_create_params {
 typedef struct _wm_task_get_pending_params {
     char *agent_id;
 } wm_task_get_pending_params;
+
+/**
+ * Update task status parameters
+ */
+typedef struct _wm_task_update_status_params {
+    char *task_id;
+    char *status;
+    char *agent_id;  // Optional -- only used to invalidate that agent's "no pending tasks" cache
+} wm_task_update_status_params;
 
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
@@ -112,8 +122,21 @@ char* wm_task_manager_create_task(
 cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) __attribute__((nonnull(1)));
 
 /**
+ * Report the outcome of a delivery attempt for a task previously returned by
+ * get_pending_tasks (and therefore already marked 'delivered' as a side effect of that read).
+ * 'pending' re-offers the task on a future get_pending_tasks call (retryable failure); 'failed'
+ * leaves it terminal but distinguishable from a successful delivery.
+ * @param task_id Task identifier
+ * @param status New status ("pending" or "failed")
+ * @param agent_id Optional; if given and status is "pending", invalidates that agent's
+ * "no pending tasks" cache entry so the reset task isn't hidden behind a stale cache hit
+ * @return true on success, false on error or an invalid status
+ */
+bool wm_task_manager_update_task_status(const char *task_id, const char *status, const char *agent_id) __attribute__((nonnull(1, 2)));
+
+/**
  * Socket message dispatcher for generic task API
- * Handles JSON messages with actions: create_task, get_pending_tasks
+ * Handles JSON messages with actions: create_task, get_pending_tasks, update_task_status
  * @param msg JSON message string
  * @return JSON response string (caller must free)
  */

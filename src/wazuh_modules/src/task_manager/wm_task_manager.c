@@ -396,6 +396,26 @@ char* wm_task_manager_dispatch(const char *msg) {
         }
         break;
 
+    case WM_TASK_MANAGER_UPDATE_STATUS:
+        if (params) {
+            wm_task_update_status_params *update_params = (wm_task_update_status_params *)params;
+
+            bool ok = wm_task_manager_update_task_status(update_params->task_id, update_params->status,
+                                                           update_params->agent_id);
+
+            if (ok) {
+                response = wm_task_manager_parse_update_status_response();
+            } else {
+                response = wm_task_manager_parse_error_response("update_failed", "Failed to update task status");
+            }
+
+            os_free(update_params->task_id);
+            os_free(update_params->status);
+            os_free(update_params->agent_id);
+            os_free(update_params);
+        }
+        break;
+
     case OS_INVALID:
     default:
         if (!response) {

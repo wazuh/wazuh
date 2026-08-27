@@ -104,11 +104,13 @@ typedef struct _task_tasks_t {
     uint64_t create_queries;
     uint64_t get_pending_queries;
     uint64_t mark_delivered_queries;
+    uint64_t update_status_queries;
     uint64_t cleanup_expired_queries;
     uint64_t delete_old_queries;
     struct timeval create_time;
     struct timeval get_pending_time;
     struct timeval mark_delivered_time;
+    struct timeval update_status_time;
     struct timeval cleanup_expired_time;
     struct timeval delete_old_time;
 } task_tasks_t;
@@ -615,6 +617,19 @@ void w_inc_task_mark_delivered();
  * @param time Value to increment the counter.
  */
 void w_inc_task_mark_delivered_time(struct timeval time);
+
+/**
+ * @brief Increment update_status task queries counter
+ *
+ */
+void w_inc_task_update_status();
+
+/**
+ * @brief Increment update_status task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_update_status_time(struct timeval time);
 
 /**
  * @brief Increment cleanup_expired task queries counter

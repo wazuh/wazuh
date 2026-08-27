@@ -71,6 +71,7 @@
 | [#38511](https://github.com/wazuh/wazuh/issues/38511) | Fixed world-writable permissions on bundled Python files after DEB installation, caused by the permission restoration script following symlinks. |
 | [#38547](https://github.com/wazuh/wazuh/issues/38547) | Fixed the API serving its OpenAPI specification and exact version at `/openapi.json` and `/openapi.yaml` without authentication. |
 | [#38565](https://github.com/wazuh/wazuh/issues/38565) | Bounded the `search` query parameter to 1024 characters across every endpoint that accepts it, fixed the API's `wazuh-db` socket client raising an unhandled error instead of a clean `500` when `wazuh-db` closes the connection on an oversized request, and stopped the API from returning `wazuh-db`'s raw backend error text (including SQL fragments) to the caller. |
+| [#38592](https://github.com/wazuh/wazuh/issues/38592) | Fixed the legacy `remote_upgrade` task delivery in `remoted` silently losing an agent's upgrade task when the push failed after the Task Manager had already marked it delivered, and fixed the agent's own reported upgrade failures being logged at `INFO` instead of `ERROR`. `remoted` now owns a task's delivery retries end to end once it has read it, retrying up to 5 times in-memory within the same poll cycle (logging each failed attempt at `debug` except the last, which logs a `warning`) before reporting it `failed` -- a task is never handed back to the Task Manager as `pending` to be re-offered on a future poll cycle. |
 
 ### Agent
 

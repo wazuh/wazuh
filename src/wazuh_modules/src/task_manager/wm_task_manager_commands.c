@@ -290,3 +290,37 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) {
 
     return tasks;
 }
+
+bool wm_task_manager_update_task_status(const char *task_id, const char *status, const char *agent_id) {
+    if (strcmp(status, "pending") != 0 && strcmp(status, "failed") != 0) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid task status update requested for task %s: '%s'", task_id, status);
+        return false;
+    }
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "task_id", task_id);
+    cJSON_AddStringToObject(params, "status", status);
+
+    int error_code = WM_TASK_SUCCESS;
+    cJSON *response = wm_task_manager_send_message_to_wdb("update_status", params, &error_code);
+
+    cJSON_Delete(params);
+
+    if (!response || error_code != WM_TASK_SUCCESS) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to update status of task %s to '%s'", task_id, status);
+        if (response) {
+            cJSON_Delete(response);
+        }
+        return false;
+    }
+
+    cJSON_Delete(response);
+
+    if (agent_id && strcmp(status, "pending") == 0) {
+        wm_task_cache_invalidate(agent_id);
+    }
+
+    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Task %s status updated to '%s'", task_id, status);
+
+    return true;
+}
