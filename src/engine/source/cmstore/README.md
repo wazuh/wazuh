@@ -73,7 +73,7 @@ enum class ResourceType : uint8_t {
 
 ### UUID System
 
-Every resource has a UUIDv4 identifier. When a resource is created via YAML/JSON, CMStore either extracts the existing `/id` field or generates a new UUID and injects it. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
+Every resource has a UUID identifier. When a resource is created via YAML/JSON, CMStore either extracts the existing `/id` field or generates a new UUIDv4 and injects it. Identifiers coming from the content are opaque: any UUID version (v4, v5, ...) or any other non-empty string is accepted and never interpreted. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
 
 ### Bidirectional Cache (`CacheNS`)
 
