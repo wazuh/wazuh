@@ -125,18 +125,4 @@ using FileEventCallback = std::function<void(const FileEvent&)>;
 using ProcessEventCallback = std::function<void(const ProcessEvent&)>;
 using NetworkEventCallback = std::function<void(const NetworkEvent&)>;
 
-/**
- * @brief Returns true when @p path starts with any of @p prefixes.
- * An empty prefix list matches nothing: consumers filter on their own
- * configuration, so "no configured paths" means "no events of interest".
- */
-inline bool matchesAnyPrefix(std::string_view path, const std::vector<std::string>& prefixes) {
-    for (const auto& prefix : prefixes) {
-        if (!prefix.empty() && path.compare(0, prefix.size(), prefix) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 } // namespace wazuh::ebpf

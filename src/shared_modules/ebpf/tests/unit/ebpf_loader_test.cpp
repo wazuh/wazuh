@@ -18,20 +18,6 @@ using namespace wazuh::ebpf;
 using ::testing::_;
 using ::testing::Return;
 
-TEST(EbpfFilterTest, PrefixMatching) {
-    const std::vector<std::string> prefixes {"/etc", "/var/ossec"};
-
-    EXPECT_TRUE(matchesAnyPrefix("/etc/shadow", prefixes));
-    EXPECT_TRUE(matchesAnyPrefix("/var/ossec/etc/ossec.conf", prefixes));
-    EXPECT_FALSE(matchesAnyPrefix("/usr/bin/ls", prefixes));
-    EXPECT_FALSE(matchesAnyPrefix("/et", prefixes));
-}
-
-TEST(EbpfFilterTest, EmptyPrefixListMatchesNothing) {
-    EXPECT_FALSE(matchesAnyPrefix("/etc/shadow", {}));
-    EXPECT_FALSE(matchesAnyPrefix("/etc/shadow", {""}));
-}
-
 TEST(EbpfLoaderMockTest, ConsumerOwnsLoadAndPollLoop) {
     MockEbpfLoader loader;
 
@@ -48,16 +34,13 @@ TEST(EbpfLoaderMockTest, ConsumerOwnsLoadAndPollLoop) {
 
     ASSERT_TRUE(loader.load(EventClass::FILE, "lib/modern.bpf.o"));
 
-    const std::vector<std::string> monitored {"/etc"};
     std::vector<std::string> delivered;
 
     ASSERT_TRUE(loader.poll(
         [&](const FileEvent& event) {
-            if (matchesAnyPrefix(event.path, monitored)) {
-                EXPECT_EQ(event.identity.pid, 1234u);
-                EXPECT_EQ(event.correlation.cgroup_id, 42u);
-                delivered.push_back(event.path);
-            }
+            EXPECT_EQ(event.identity.pid, 1234u);
+            EXPECT_EQ(event.correlation.cgroup_id, 42u);
+            delivered.push_back(event.path);
         },
         250));
 

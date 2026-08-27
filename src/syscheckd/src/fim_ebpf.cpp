@@ -20,7 +20,6 @@
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
-#include <vector>
 
 #include "bounded_queue.hpp"
 #include "ebpf_loader.hpp"
@@ -31,6 +30,7 @@ extern "C" {
 #include "syscheck_op.h"
 #include "debug_op.h"
 #include "list_op.h"
+#include "file.h"
 #include "fim_ebpf.h"
 
 int ebpf_kernel_queue_full_reported = 0;
@@ -64,25 +64,15 @@ int get_login_gid(unsigned int uid) {
     return static_cast<int>(pwd.pw_gid);
 }
 
-/// Directories configured with whodata; events outside them are dropped.
-std::vector<std::string> monitored_prefixes() {
-    std::vector<std::string> prefixes;
-
-    if (!syscheck.directories) {
-        return prefixes;
-    }
-
+/// True when the path falls under a directory configured with whodata, resolved
+/// per event so a configuration reload is picked up without restarting.
+bool is_whodata_monitored(const std::string& path) {
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSListNode* node_it = nullptr;
-    OSList_foreach(node_it, syscheck.directories) {
-        auto* dir = static_cast<directory_t*>(node_it->data);
-        if (dir && (dir->options & WHODATA_ACTIVE)) {
-            prefixes.emplace_back(dir->path);
-        }
-    }
+    const directory_t* config = fim_configuration_directory(path.c_str(), false, syscheck.directories);
+    const bool monitored = config && (config->options & WHODATA_ACTIVE);
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    return prefixes;
+    return monitored;
 }
 
 void deliver_to_fim(const FileEvent& event) {
@@ -309,7 +299,6 @@ void* ebpf_whodata(void* arg) {
         return nullptr;
     }
 
-    const auto prefixes = monitored_prefixes();
     wazuh::ebpf::BoundedQueue<FileEvent> queue(syscheck.queue_size);
     std::atomic<bool> consuming {true};
 
@@ -324,8 +313,8 @@ void* ebpf_whodata(void* arg) {
         }
     });
 
-    const FileEventCallback on_event = [&prefixes, &queue](const FileEvent& event) {
-        if (!wazuh::ebpf::matchesAnyPrefix(event.path, prefixes)) {
+    const FileEventCallback on_event = [&queue](const FileEvent& event) {
+        if (!is_whodata_monitored(event.path)) {
             return;
         }
 
