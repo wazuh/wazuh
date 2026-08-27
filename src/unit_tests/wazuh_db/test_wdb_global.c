@@ -6743,6 +6743,36 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
     __real_cJSON_Delete(find_group_resp);
 }
 
+void test_wdb_global_assign_agent_group_find_error_worker(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int initial_priority = 0;
+    char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
+    char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
+    cJSON* j_groups = __real_cJSON_CreateArray();
+
+    wconfig.is_worker_node = true;
+
+    for (int i=0; i<GROUPS_SIZE; i++) {
+        snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
+        cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name[i]));
+
+        // wdb_global_find_group
+        will_return(__wrap_wdb_begin2, OS_INVALID);
+        expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+        snprintf(debug_message[i], OS_MAXSTR, "Unable to find the id of the group '%s'. It may not have been synchronized from the master node yet.", group_name[i]);
+        expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
+        expect_function_call(__wrap_cJSON_Delete);
+    }
+
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
+
+    wconfig.is_worker_node = false;
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_groups);
+}
+
 void test_wdb_global_assign_agent_group_invalid_json(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
@@ -7589,6 +7619,63 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_agents_group_info);
     __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+    __real_cJSON_Delete(j_group_array_invalid);
+    __real_cJSON_Delete(j_groups_number);
+}
+
+void test_wdb_global_set_agent_groups_add_modes_assign_error_worker(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    const char * agent_name = "agent001";
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
+    cJSON* j_group_array = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_group_array_invalid = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array_invalid, cJSON_CreateNumber(-1)); //Invalid group information
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
+    cJSON* j_groups_number = cJSON_Parse("[{\"groups_number\":0}]");
+
+    wconfig.is_worker_node = true;
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "name", cJSON_CreateString(agent_name));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array_invalid, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_delete_agent_belong */
+        create_wdb_global_delete_agent_belong_success_call(agent_id);
+
+        /* wdb_global_validate_groups_success_call */
+        create_wdb_global_validate_groups_success_call(agent_id, j_groups_number);
+
+        /* wdb_global_assign_agent_group */
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups set information");
+        expect_string(__wrap__mdebug1, formatted_msg, "There was an error assigning the groups to agent '001'. The agent-groups synchronization will retry it.");
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id);
+
+        will_return(__wrap_wdb_step, SQLITE_ROW);
+        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        will_return(__wrap_sqlite3_column_text, group_name);
+        will_return(__wrap_wdb_step, SQLITE_DONE);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    wconfig.is_worker_node = false;
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
     __real_cJSON_Delete(j_group_array);
     __real_cJSON_Delete(j_group_array_invalid);
     __real_cJSON_Delete(j_groups_number);
@@ -8754,6 +8841,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error_worker, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),
         /* Tests wdb_global_unassign_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_success, test_setup, test_teardown),
@@ -8792,6 +8880,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_delete_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_add_modes_assign_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_add_modes_assign_error_worker, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_append_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_empty_only_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_empty_only_not_empty_error, test_setup, test_teardown),

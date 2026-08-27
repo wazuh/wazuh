@@ -629,7 +629,7 @@ class Handler(asyncio.Protocol):
         return data
 
     async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes,
-                                timeout: int) -> dict:
+                                timeout: int, chunk_errors_as_debug: bool = False) -> dict:
         """Send the received data to WDB and returns the result of the operation.
 
         Parameters
@@ -644,6 +644,9 @@ class Handler(asyncio.Protocol):
             Command sent to the sender node in case of error.
         timeout : int
             Seconds to wait before stopping the task.
+        chunk_errors_as_debug : bool
+            Whether to log chunk errors with debug level instead of error. Used when the caller
+            retries rejected chunks and the rejection is expected to be transient.
 
         Returns
         -------
@@ -665,7 +668,8 @@ class Handler(asyncio.Protocol):
 
         for error in result['error_messages']['chunks']:
             logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
+            error_log = f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}'
+            logger.debug(error_log) if chunk_errors_as_debug else logger.error(error_log)
 
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-manager-db '
                      f'in {result["time_spent"]:.3f}s.')
