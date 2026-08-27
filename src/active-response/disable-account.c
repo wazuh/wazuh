@@ -42,6 +42,7 @@ int main (int argc, char **argv) {
 
         action2 = send_keys_and_check_message(argv, keys);
 
+        os_free(keys[0]);
         os_free(keys);
 
         // If necessary, abort execution
