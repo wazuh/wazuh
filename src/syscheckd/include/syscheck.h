@@ -89,6 +89,7 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
+extern pthread_mutex_t synced_docs_mutex;
 extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type
@@ -440,7 +441,7 @@ void free_pending_sync_item(void* data);
  *
  * @param table_name Name of the table the pending items belong to.
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
- * @return Number of items processed.
+ * @return Number of items successfully updated (fim_db_set_sync_flag() failures aren't counted).
  */
 int process_pending_sync_updates(char* table_name, OSList* pending_items);
 
