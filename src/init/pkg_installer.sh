@@ -68,6 +68,19 @@ xml_value() {
         sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
 }
 
+# True (exit 0) if <block><sub><tag> exists in the config at all, even with empty
+# content -- distinct from xml_value, which returns "" both when the tag is absent
+# and when it's present but empty, since $(...) can't tell "no output" from "one
+# empty line of output" apart. Needed wherever an empty tag is a meaningful,
+# deliberate value rather than "unset" (e.g. <endpoint></endpoint>, #38492).
+# The self-closing <tag/> form counts as present: OS_XML parses it as exactly
+# equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml), so
+# the agent reads it as the same empty-content opt-out and this must agree.
+xml_tag_present() {
+    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+        grep -o "<$2>.*</$2>" | grep -qE "<$3>[^<]*</$3>|<$3[[:space:]]*/>"
+}
+
 # Check that the manager answers on the HTTPS control port. Every endpoint,
 # including the health probe, is served under the manager's global_prefix
 # (#38491) -- an unprefixed request always gets a 404, so the probe URL must
@@ -75,13 +88,23 @@ xml_value() {
 probe_server() {
     PROBE_TIMEOUT=5
 
+    # An empty endpoint (the <endpoint></endpoint> opt-out, #38492) must probe the
+    # bare root: "/${3}/" would emit "//", and the manager's HTTP router does not
+    # collapse duplicate slashes -- it 404s them, so the probe would fail against
+    # the very unprefixed manager the opt-out exists for. Mirrors do_upgrade.ps1.
+    if [ -z "${3}" ]; then
+        PROBE_PATH="/"
+    else
+        PROBE_PATH="/${3}/"
+    fi
+
     if command -v curl > /dev/null 2>&1; then
-        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}/${3}/"
+        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}${PROBE_PATH}"
         return $?
     fi
 
     if command -v wget > /dev/null 2>&1; then
-        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}/${3}/"
+        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}${PROBE_PATH}"
         return $?
     fi
 
@@ -115,11 +138,16 @@ if [ -z "${SERVER_PORT}" ]; then
 fi
 
 # The 5x agent reads the manager endpoint from <agent><manager>, defaulting to
-# "wazuh-manager" -- the manager's own default global_prefix -- when the tag
-# is absent (upgrading from 4x, or a config predating this default, #38492).
+# "wazuh-manager" -- the manager's own default global_prefix -- only when the tag
+# is genuinely absent (upgrading from 4x, or a config predating this default,
+# #38492). A present-but-empty <endpoint></endpoint> is a deliberate opt-out and
+# must be honored as-is, not collapsed into the default -- xml_value alone can't
+# tell "absent" from "present but empty" apart (both yield ""), so an empty value
+# needs the separate xml_tag_present scan to decide which one it is. That scan only
+# runs when the value is empty, so the common case stays a single pass over the file.
 # Strip any leading/trailing '/' so the probe URL never doubles one up.
 SERVER_ENDPOINT=$(xml_value agent manager endpoint)
-if [ -z "${SERVER_ENDPOINT}" ]; then
+if [ -z "${SERVER_ENDPOINT}" ] && ! xml_tag_present agent manager endpoint; then
     SERVER_ENDPOINT="wazuh-manager"
 fi
 SERVER_ENDPOINT=$(echo "${SERVER_ENDPOINT}" | sed -e 's|^/*||' -e 's|/*$||')
