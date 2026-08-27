@@ -187,27 +187,97 @@ check "the commented-out block does not absorb the insertion" \
 
 unset WAZUH_REGISTRATION_SERVER
 
-# WAZUH_MANAGER_ENDPOINT (#38492): the reverse-proxy prefix, written inside the
-# freshly-built <manager> block, defaulting like <port> to what the manager serves.
+# WAZUH_MANAGER_ENDPOINT (#38624) carries the whole connection target --
+# host[:port][/prefix] -- which the script splits back into the three tags the agent
+# reads. Only the host is mandatory; an omitted port or prefix takes its default.
+#
+# Collapses the emitted block to one line so a case reads as the tags it produced.
+manager_block() {
+
+    printf '%s\n' "$1" | awk '
+        /<manager>/ { inside = 1 }
+        inside { gsub(/^[[:space:]]+/, ""); printf "%s", $0 }
+        /<\/manager>/ { if (inside) { exit } }
+    '
+
+}
+
+endpoint_case() {
+
+    local desc="$1" value="$2" expected="$3"
+
+    export WAZUH_MANAGER_ENDPOINT="${value}"
+    check "WAZUH_MANAGER_ENDPOINT='${value}' ${desc}" \
+          "${expected}" "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER_ENDPOINT
+
+}
+
+# One row per accepted shape, asserting all three tags together rather than <endpoint>
+# alone -- the split is the thing under test, so a case that got the prefix right and
+# the port wrong has to fail.
+endpoint_case "takes both defaults" "5.5.5.5" \
+    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
+endpoint_case "accepts a hostname" "dasd.net" \
+    '<manager><address>dasd.net</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
+endpoint_case "takes an explicit port" "5.5.5.5:8443" \
+    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/wazuh-manager/</endpoint></manager>'
+endpoint_case "takes an explicit prefix" "5.5.5.5/proxy" \
+    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/proxy/</endpoint></manager>'
+endpoint_case "takes a multi-segment prefix" "5.5.5.5:8443/a/b" \
+    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/a/b/</endpoint></manager>'
+endpoint_case "tolerates an https:// scheme" "https://5.5.5.5:8443/proxy/" \
+    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/proxy/</endpoint></manager>'
+endpoint_case "matches the scheme case-insensitively" "HTTPS://5.5.5.5/proxy" \
+    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/proxy/</endpoint></manager>'
+endpoint_case "drops the brackets from an IPv6 literal" "[2001:db8::1]:8443/proxy" \
+    '<manager><address>2001:db8::1</address><port>8443</port><endpoint>/proxy/</endpoint></manager>'
+endpoint_case "accepts a bracketed IPv6 literal with no port" "[2001:db8::1]" \
+    '<manager><address>2001:db8::1</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
+
+# The distinction the whole grammar turns on, and the one a naive split loses: no '/'
+# at all means "default prefix", a trailing '/' with nothing after it is the operator's
+# deliberate opt-out (#38614) and has to survive as an empty tag.
+endpoint_case "with a trailing slash opts out of the prefix" "5.5.5.5/" \
+    '<manager><address>5.5.5.5</address><port>1517</port><endpoint></endpoint></manager>'
+endpoint_case "opts out with an explicit port too" "5.5.5.5:1517/" \
+    '<manager><address>5.5.5.5</address><port>1517</port><endpoint></endpoint></manager>'
+
+# Grammar violations write no <manager> block, leaving the shipped one in place so the
+# agent fails loudly at startup instead of connecting somewhere unintended.
+untouched='<manager><address>MANAGER_IP</address></manager>'
+endpoint_case "is rejected when empty" "" "${untouched}"
+endpoint_case "is rejected with no host" "/wazuh-manager/" "${untouched}"
+endpoint_case "is rejected for a non-https scheme" "http://5.5.5.5/" "${untouched}"
+endpoint_case "is rejected for an out-of-range port" "5.5.5.5:99999" "${untouched}"
+endpoint_case "is rejected for a non-numeric port" "5.5.5.5:abc" "${untouched}"
+endpoint_case "is rejected for a trailing colon" "5.5.5.5:" "${untouched}"
+endpoint_case "is rejected for an unbracketed IPv6 literal" "2001:db8::1" "${untouched}"
+endpoint_case "is rejected for an IPv6 zone id" "[fe80::1%25eth0]" "${untouched}"
+
+# WAZUH_MANAGER keeps working exactly as before when the combined value is not set --
+# this is what leaves every existing install command and documented example alone.
 export WAZUH_MANAGER="10.0.0.5"
-export WAZUH_MANAGER_ENDPOINT="wazuh-manager"
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_ENDPOINT is written inside <manager>" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>wazuh-manager</endpoint>")"
+check "WAZUH_MANAGER alone still writes the block with both defaults" \
+      '<manager><address>10.0.0.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>' \
+      "$(manager_block "${actual}")"
 
-unset WAZUH_MANAGER_ENDPOINT
+export WAZUH_MANAGER_PORT="8443"
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "no WAZUH_MANAGER_ENDPOINT falls back to the manager's own default prefix" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>/wazuh-manager/</endpoint>")"
+check "WAZUH_MANAGER_PORT alone still sets the port" \
+      '<manager><address>10.0.0.5</address><port>8443</port><endpoint>/wazuh-manager/</endpoint></manager>' \
+      "$(manager_block "${actual}")"
 
-# WAZUH_MANAGER_ENDPOINT="" (set, but empty) is a distinct case from unset: it is the
-# operator's own explicit opt-out and must reach the client parser as an empty
-# <endpoint></endpoint> tag, not silently fall back to the default like unset does.
-export WAZUH_MANAGER_ENDPOINT=""
+# The combined value wins over both, and WAZUH_MANAGER_PORT must not clobber the port
+# it parsed out.
+export WAZUH_MANAGER_ENDPOINT="6.6.6.6:9999/proxy"
 actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_ENDPOINT='' is written as an empty <endpoint></endpoint> (opt-out), not the default" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint></endpoint>")"
+check "WAZUH_MANAGER_ENDPOINT supersedes WAZUH_MANAGER and WAZUH_MANAGER_PORT" \
+      '<manager><address>6.6.6.6</address><port>9999</port><endpoint>/proxy/</endpoint></manager>' \
+      "$(manager_block "${actual}")"
 unset WAZUH_MANAGER_ENDPOINT
+unset WAZUH_MANAGER_PORT
 unset WAZUH_MANAGER
 
 echo

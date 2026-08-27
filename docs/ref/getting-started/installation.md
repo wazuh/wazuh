@@ -387,7 +387,32 @@ Specifies the IP address or hostname of the Wazuh server. The agent uses this to
 Defines the port used to communicate with the Wazuh server. Default: `1517`.
 
 **`WAZUH_MANAGER_ENDPOINT`**\
-Optional reverse-proxy path segment the agent prepends to every request sent to the server (for example `wazuh-manager`, to send requests under `/wazuh-manager/...`). Must match the server's own configured prefix. Unset by default, which writes the server's own default prefix `/wazuh-manager/` into the generated configuration.
+The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. When set, it supersedes both `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT`.
+
+```
+WAZUH_MANAGER_ENDPOINT = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+
+host   = IPv4 literal, hostname, or a bracketed IPv6 literal   ; REQUIRED
+port   = 1-65535                                               ; default 1517
+prefix = reverse-proxy path segments                           ; default wazuh-manager
+```
+
+The address is the only mandatory component; anything omitted takes its default, so `192.168.0.60` behaves exactly like `192.168.0.60:1517/wazuh-manager/`. The prefix must match the server's own configured prefix.
+
+| Value | Address | Port | Prefix |
+|---|---|---|---|
+| `192.168.0.60` | `192.168.0.60` | `1517` | `/wazuh-manager/` |
+| `manager.example.com:8443` | `manager.example.com` | `8443` | `/wazuh-manager/` |
+| `192.168.0.60/proxy/path` | `192.168.0.60` | `1517` | `/proxy/path/` |
+| `https://192.168.0.60:8443/proxy` | `192.168.0.60` | `8443` | `/proxy/` |
+| `192.168.0.60/` | `192.168.0.60` | `1517` | *none — see below* |
+| `[2001:db8::1]:8443` | `2001:db8::1` | `8443` | `/wazuh-manager/` |
+
+A **trailing slash with nothing after it** opts out of the prefix entirely, for a server that runs without one. Note the difference from omitting the slash: `192.168.0.60` gets the default prefix, while `192.168.0.60/` gets none.
+
+An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. IPv6 zone ids (`[fe80::1%25eth0]`) are not supported yet — configure `<interface_index>` directly in `ossec.conf` instead.
+
+A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
 
 #### Enrollment configuration
 
