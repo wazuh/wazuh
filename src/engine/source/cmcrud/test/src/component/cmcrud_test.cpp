@@ -510,14 +510,13 @@ TEST(CrudService_Component, UpsertIntegration_EmptyDecoderUUID_Throws_NoValidato
 
     try
     {
-        stack.service.upsertResource(nsId,
-                                     ResourceType::INTEGRATION,
-                                     makeJsonPayload(kEmptyDecoderUuidIntegrationYaml));
+        stack.service.upsertResource(
+            nsId, ResourceType::INTEGRATION, makeJsonPayload(kEmptyDecoderUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
     {
-        EXPECT_THAT(std::string {ex.what()}, HasSubstr("cannot be empty"));
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("is not a valid identifier"));
     }
 }
 
@@ -554,7 +553,7 @@ TEST(CrudService_Component, UpsertIntegration_EmptyKVDBUUID_Throws_NoValidator_N
     }
     catch (const std::runtime_error& ex)
     {
-        EXPECT_THAT(std::string {ex.what()}, HasSubstr("cannot be empty"));
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("is not a valid identifier"));
     }
 }
 

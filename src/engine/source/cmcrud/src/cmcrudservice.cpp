@@ -20,6 +20,14 @@ std::string assetUuidFromJson(const json::Json& jsonDoc, const base::Name& asset
             fmt::format("Asset '{}' is missing required UUID at JSON path '{}'", assetName.toStr(), PATH_KEY_ID));
     }
 
+    if (!base::utils::generators::isValidResourceId(uuid))
+    {
+        throw std::runtime_error(fmt::format("Asset '{}' has an invalid UUID at JSON path '{}': {}",
+                                             assetName.toStr(),
+                                             PATH_KEY_ID,
+                                             base::utils::generators::RESOURCE_ID_RULES));
+    }
+
     return uuid;
 }
 

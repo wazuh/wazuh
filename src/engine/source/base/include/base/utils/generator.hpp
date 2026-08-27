@@ -1,6 +1,7 @@
 #ifndef _BASE_GENERATORS_HPP
 #define _BASE_GENERATORS_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <random>
 #include <string>
@@ -53,18 +54,40 @@ inline std::string generateUUIDv4()
 }
 
 /**
+ * @brief Maximum accepted length, in bytes, of a resource identifier.
+ */
+constexpr size_t MAX_RESOURCE_ID_LENGTH = 256;
+
+/**
+ * @brief Human readable description of the resource identifier rules, for error messages.
+ */
+constexpr std::string_view RESOURCE_ID_RULES =
+    "it must be non-empty, at most 256 characters long and must not contain control characters";
+
+/**
  * @brief Validates a resource identifier.
  *
  * Resource identifiers are opaque to the engine: any UUID version (v4, v5, ...) or any other
- * identifier format is accepted, as they are only used as keys and never interpreted. The only
- * constraint is that the identifier must not be empty, since an empty value means "no identifier".
+ * identifier format is accepted, as they are only used as keys and never interpreted. They are
+ * compared byte by byte, so the engine never normalizes them (no case folding, no trimming).
+ *
+ * The only constraints protect the places where the identifier is echoed (logs, error messages,
+ * API responses) and bound the size of the keys:
+ *  - it must not be empty, since an empty value means "no identifier";
+ *  - it must not exceed MAX_RESOURCE_ID_LENGTH bytes;
+ *  - it must not contain control characters (0x00-0x1F, 0x7F).
  *
  * @param id The identifier string to validate
  * @return true if the string is a usable identifier, false otherwise
  */
 inline bool isValidResourceId(const std::string& id)
 {
-    return !id.empty();
+    if (id.empty() || id.size() > MAX_RESOURCE_ID_LENGTH)
+    {
+        return false;
+    }
+
+    return std::none_of(id.begin(), id.end(), [](unsigned char c) { return c < 0x20 || c == 0x7F; });
 }
 
 /**

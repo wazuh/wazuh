@@ -164,7 +164,8 @@ std::string CMStoreNS::upsertUUID(json::Json& content)
     {
         if (!base::utils::generators::isValidResourceId(uuid))
         {
-            throw std::runtime_error("Existing UUID cannot be empty");
+            throw std::runtime_error(fmt::format("Resource UUID at '/id' is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
         }
         return uuid;
     }

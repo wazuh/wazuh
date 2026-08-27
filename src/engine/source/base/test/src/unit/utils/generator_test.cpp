@@ -60,6 +60,27 @@ TEST(GeneratorTest, IsValidResourceIdAcceptsNonUUIDIdentifiers)
     EXPECT_TRUE(isValidResourceId("not-a-uuid"));
     EXPECT_TRUE(isValidResourceId("decoder/windows/0"));
     EXPECT_TRUE(isValidResourceId("0"));
+    EXPECT_TRUE(isValidResourceId("with space"));
+    EXPECT_TRUE(isValidResourceId("MixedCase-Id_1.2"));
+    EXPECT_TRUE(isValidResourceId("identificador-ñ-日本"));                   // UTF-8 is not a control character
+    EXPECT_TRUE(isValidResourceId(std::string(MAX_RESOURCE_ID_LENGTH, 'a'))); // exactly at the limit
+}
+
+TEST(GeneratorTest, IsValidResourceIdRejectsControlCharacters)
+{
+    EXPECT_FALSE(isValidResourceId("bad\nid"));
+    EXPECT_FALSE(isValidResourceId("bad\tid"));
+    EXPECT_FALSE(isValidResourceId("bad\rid"));
+    EXPECT_FALSE(isValidResourceId(std::string("bad\0id", 6)));
+    EXPECT_FALSE(isValidResourceId("bad\x1bid")); // ESC
+    EXPECT_FALSE(isValidResourceId("bad\x7fid")); // DEL
+    EXPECT_FALSE(isValidResourceId("\n"));
+}
+
+TEST(GeneratorTest, IsValidResourceIdRejectsOversizedIdentifiers)
+{
+    EXPECT_FALSE(isValidResourceId(std::string(MAX_RESOURCE_ID_LENGTH + 1, 'a')));
+    EXPECT_FALSE(isValidResourceId(std::string(4096, 'a')));
 }
 
 TEST(GeneratorTest, RandomHexStringLength)

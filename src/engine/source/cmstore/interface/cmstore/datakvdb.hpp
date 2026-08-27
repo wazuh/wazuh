@@ -50,7 +50,6 @@ private:
     json::Json m_data;
     bool m_enabled;
 
-
 public:
     KVDB() = delete;
 
@@ -59,9 +58,17 @@ public:
         , m_name(std::move(name))
         , m_enabled(enabled)
     {
-        if (requireUUID && !base::utils::generators::isValidResourceId(m_uuid))
+        if (m_uuid.empty())
         {
-            throw std::runtime_error("KVDB UUID cannot be empty");
+            if (requireUUID)
+            {
+                throw std::runtime_error("KVDB UUID cannot be empty");
+            }
+        }
+        else if (!base::utils::generators::isValidResourceId(m_uuid))
+        {
+            throw std::runtime_error(
+                fmt::format("KVDB UUID is not a valid identifier: {}", base::utils::generators::RESOURCE_ID_RULES));
         }
         if (m_name.empty())
         {
@@ -72,7 +79,6 @@ public:
             throw std::runtime_error(fmt::format("KVDB content must be a JSON object but got '{}'", data.typeName()));
         }
         m_data = std::move(data);
-
     }
 
     static KVDB fromJson(const json::Json& kvdbJson, bool requireUUID)

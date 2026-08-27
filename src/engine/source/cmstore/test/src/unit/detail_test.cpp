@@ -39,9 +39,9 @@ TEST(DetailTest, EmptyListDoesNotThrow)
 TEST(DetailTest, NonV4UUIDsDoNotThrow)
 {
     // The identifier is opaque to the engine: any UUID version or format is accepted
-    const std::vector<std::string> uuids = {"6093809a-6285-5cf8-9284-63bd68f796e9",  // v5
-                                            "00000000-0000-0000-0000-000000000000",  // nil
-                                            "0199a9f4-1b1e-7c3b-8f2a-2f9a1c0d4e5f",  // v7
+    const std::vector<std::string> uuids = {"6093809a-6285-5cf8-9284-63bd68f796e9", // v5
+                                            "00000000-0000-0000-0000-000000000000", // nil
+                                            "0199a9f4-1b1e-7c3b-8f2a-2f9a1c0d4e5f", // v7
                                             "not-a-uuid"};
     EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID(uuids, TYPE));
 }
@@ -62,7 +62,20 @@ TEST(DetailTest, EmptyUUIDErrorMessageContainsType)
     catch (const std::runtime_error& e)
     {
         EXPECT_NE(std::string(e.what()).find(TYPE), std::string::npos);
+        EXPECT_NE(std::string(e.what()).find("not a valid identifier"), std::string::npos);
     }
+}
+
+TEST(DetailTest, ControlCharacterUUIDThrows)
+{
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({validUUID(), "bad\nid"}, TYPE), std::runtime_error);
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"bad\tid"}, TYPE), std::runtime_error);
+}
+
+TEST(DetailTest, OversizedUUIDThrows)
+{
+    const std::string oversized(base::utils::generators::MAX_RESOURCE_ID_LENGTH + 1, 'a');
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({oversized}, TYPE), std::runtime_error);
 }
 
 TEST(DetailTest, DuplicateUUIDThrows)

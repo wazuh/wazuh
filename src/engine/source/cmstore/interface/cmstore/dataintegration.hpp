@@ -80,9 +80,17 @@ public:
         , m_kvdbsByUUID(std::move(kvdbsByUUID))
         , m_decodersByUUID(std::move(decodersByUUID))
     {
-        if (requireUUID && !base::utils::generators::isValidResourceId(m_uuid))
+        if (m_uuid.empty())
         {
-            throw std::runtime_error("Integration UUID cannot be empty");
+            if (requireUUID)
+            {
+                throw std::runtime_error("Integration UUID cannot be empty");
+            }
+        }
+        else if (!base::utils::generators::isValidResourceId(m_uuid))
+        {
+            throw std::runtime_error(fmt::format("Integration UUID is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
         }
         if (m_name.empty())
         {
@@ -99,7 +107,8 @@ public:
 
         if (m_defaultParent.has_value() && !base::utils::generators::isValidResourceId(*m_defaultParent))
         {
-            throw std::runtime_error("Integration default parent cannot be empty");
+            throw std::runtime_error(fmt::format("Integration default parent is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
         }
 
         cm::store::detail::findDuplicateOrInvalidUUID(m_decodersByUUID, "Decoder");
