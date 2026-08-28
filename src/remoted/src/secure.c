@@ -497,13 +497,15 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
 
     // The throttle suppresses the update-keepalive write for its whole window, and monitord marks
-    // any agent whose last_keepalive is older than <agents_disconnection_time>. The two are
-    // independent values with overlapping ranges, so a throttle at or above the threshold
-    // disconnects agents that are answering normally. Half is the safe setting, not just below:
-    // monitord's sweep period is the threshold itself, so detection lands anywhere in [1x, 2x].
-    if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time) {
-        mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above <agents_disconnection_time> (%ld s): "
-              "agents that are answering normally will be marked disconnected. Keep it below half of it.",
+    // any agent whose last_keepalive is older than <agents_disconnection_time>. The staleness the
+    // threshold sees is the throttle PLUS the agent's notify interval, which remoted does not
+    // know, so the guard fires from half: anything at or above it can cross once the agent's
+    // cadence is added, and half is also the safe setting for detection latency, because
+    // monitord's sweep period is the threshold itself and detection lands anywhere in [1x, 2x].
+    if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
+        mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
+              "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+              "are answering normally are marked disconnected. Keep it below half.",
               rm_config->keepalive_throttle_sec,
               logr.global.agents_disconnection_time);
     }

@@ -3767,16 +3767,19 @@ void test_remoted_module_control_config_warns_when_throttle_reaches_disconnectio
     (void) state;
     logr.global.agents_disconnection_time = 900;
 
-    queue_control_config_defines(900);
+    // 450 = exactly half: the smallest value the guard must catch (throttle + notify interval can
+    // cross the threshold from here up).
+    queue_control_config_defines(450);
     expect_string(__wrap__mwarn, formatted_msg,
-                  "'remoted.control_keepalive_throttle' (900 s) is at or above <agents_disconnection_time> (900 s): "
-                  "agents that are answering normally will be marked disconnected. Keep it below half of it.");
+                  "'remoted.control_keepalive_throttle' (450 s) is at or above half of <agents_disconnection_time> "
+                  "(900 s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+                  "are answering normally are marked disconnected. Keep it below half.");
 
     remoted_module_config_t rm_config;
     memset(&rm_config, 0, sizeof(rm_config));
     remoted_module_control_config(&rm_config);
 
-    assert_int_equal(rm_config.keepalive_throttle_sec, 900);
+    assert_int_equal(rm_config.keepalive_throttle_sec, 450);
 }
 
 void test_remoted_module_control_config_silent_below_disconnection_time(void** state)
@@ -3784,14 +3787,15 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     (void) state;
     logr.global.agents_disconnection_time = 900;
 
-    // No expect_string for __wrap__mwarn: an unexpected warning fails the test.
-    queue_control_config_defines(450);
+    // No expect_string for __wrap__mwarn: an unexpected warning fails the test. 449 sits just
+    // under half of 900.
+    queue_control_config_defines(449);
 
     remoted_module_config_t rm_config;
     memset(&rm_config, 0, sizeof(rm_config));
     remoted_module_control_config(&rm_config);
 
-    assert_int_equal(rm_config.keepalive_throttle_sec, 450);
+    assert_int_equal(rm_config.keepalive_throttle_sec, 449);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
