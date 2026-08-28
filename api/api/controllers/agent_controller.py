@@ -270,7 +270,10 @@ async def scan_agents(pretty: bool = False, wait_for_complete: bool = False,
     dapi = DistributedAPI(f=vulnerability_scan.scan_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=True,
+                          # Not is_async: scan_agents() makes one blocking VD HTTP call per
+                          # agent, so it must run off the API server's event loop (in the
+                          # process pool), not inline on it - see CHANGELOG/issue #38553.
+                          is_async=False,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           # No broadcasting: VD reads indexer-synced state, not a live per-node

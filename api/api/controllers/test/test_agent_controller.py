@@ -191,7 +191,7 @@ async def test_scan_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
     mock_dapi.assert_called_once_with(f=vulnerability_scan.scan_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=True,
+                                      is_async=False,
                                       wait_for_complete=False,
                                       broadcasting=False,
                                       logger=ANY,
