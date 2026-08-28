@@ -15,6 +15,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/x509v3.h>
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha512/sha512_op.h"
 #include "shared.h"
@@ -240,6 +241,11 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
     return 0;
 }
 
+static int wm_fluent_address_is_ip(const char * address) {
+    struct in6_addr addr;
+    return inet_pton(AF_INET, address, &addr) == 1 || inet_pton(AF_INET6, address, &addr) == 1;
+}
+
 static int wm_fluent_ssl_ctx(wm_fluent_t * fluent) {
     /* Free old context */
 
@@ -289,6 +295,23 @@ static int wm_fluent_ssl_connect(wm_fluent_t * fluent) {
     fluent->ssl = SSL_new(fluent->ctx);
     if (!fluent->ssl) {
         merror("Cannot create SSL structure: %s", ERR_reason_error_string(ERR_get_error()));
+        return -1;
+    }
+
+    /* Bind the expected server identity, so that SSL_connect() also checks the
+       peer certificate's name against the configured address */
+
+    if (fluent->certificate) {
+        SSL_set_hostflags(fluent->ssl, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+        if (!SSL_set1_host(fluent->ssl, fluent->address)) {
+            merror("Cannot set expected peer name '%s'", fluent->address);
+            return -1;
+        }
+    }
+
+    if (!wm_fluent_address_is_ip(fluent->address) && !SSL_set_tlsext_host_name(fluent->ssl, fluent->address)) {
+        merror("Cannot set server name indication '%s'", fluent->address);
         return -1;
     }
 
