@@ -159,11 +159,12 @@ src/http_server/
        on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
        example* below for the exact multiplier per pool.
     2. `<remote><https>` settings, wired from the parsed config in `secure.c`'s
-       `w_remoted_build_module_config()`: `port`, `bind_address`, `http_max_body_size`,
-       `ca_path`, `ciphers`, `verification_mode`, `dual_stack`. `certificate_path`/
-       `private_key_path` are file paths (not PEM content) opened by the module itself, after
-       `remoted` has already dropped root privileges (`Privsep_SetUser()`) -- so both files (and
-       `ca_path`, when configured) must be readable by the unprivileged user `remoted` runs as.
+       `w_remoted_build_module_config()`: `port`, `bind_address`, `global_prefix`,
+       `http_max_body_size`, `ca_path`, `ciphers`, `verification_mode`, `dual_stack`.
+       `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
+       module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
+       -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
+       user `remoted` runs as.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
