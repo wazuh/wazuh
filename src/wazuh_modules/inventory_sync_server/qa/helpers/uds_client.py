@@ -104,3 +104,18 @@ class ServerClient:
     def post_delete_agent_alias(self, agent_id):
         """The POST alias C callers use (uhttp only speaks POST)."""
         return self._request("POST", "/agents/delete", agent_id=agent_id)
+
+    def execute_agent_delete(self, body):
+        """The EXECUTION route, answered at COMPLETION: the response arrives only once the purge
+        has run and flushed, which is what lets a manager task be recorded as `completed`.
+
+        Takes the raw body rather than an agent id, and sends NO agent header -- that is the
+        contract with its real caller. The Task Manager's dispatcher POSTs a task row's payload
+        verbatim and adds no headers of its own, so a helper that set one would test a request
+        nothing sends. Pass a dict for the ordinary case, or bytes/str to send a malformed body."""
+        if isinstance(body, dict):
+            body = json.dumps(body)
+        if isinstance(body, str):
+            body = body.encode()
+        return self._request("POST", "/_internal/agents/delete", body=body,
+                             content_type="application/json")

@@ -16,6 +16,7 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
 | `DELETE` | `/agents` | `200` | Deletes every document of the agent named by `X-Wazuh-Agent-Id`, in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"queued"}` means both halves are queued, not that the documents are already gone. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). UDS-local only: the production caller is authd. |
 | `POST` | `/agents/delete` | `200` | Alias of `DELETE /agents` with the same handler, for C callers whose HTTP helper only speaks POST. |
+| `POST` | `/_internal/agents/delete` | `200` | The same deletion, answered at COMPLETION rather than at admission: `200` `{"status":"ok"}` means the by-query half has run and flushed. Manager-internal, called by the Task Manager's dispatcher; the agent id travels in the body (`{"agent_id":"7"}`), not in a header. See [Whole-agent deletion semantics](#whole-agent-deletion-semantics). `400` malformed body or no usable `agent_id`, `503` indexer unavailable or the module is stopping. |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
 
@@ -155,6 +156,26 @@ What a `200` guarantees: both halves were queued, and the by-query half was flus
 failures or skipped documents. An index that does not exist counts as success, and deleting a document
 that is not there is a no-op, so repeating a deletion is harmless — that is the caller's retry
 contract, and authd relies on it.
+
+### `POST /_internal/agents/delete`
+
+The same work, answered at **completion**. Its caller is the Task Manager's dispatcher, which records
+a manager-task row `completed` on the `200`, so a `200` meaning "queued" would record a purge that has
+not happened. The item therefore carries its responder onto the pipeline and the answer is sent after
+the by-query half has run *and* flushed — `{"status":"ok"}`, not `{"status":"queued"}`.
+
+Two consequences worth stating:
+
+- The `200` still promises only that the **by-id** half was *queued*. That half is fire-and-forget by
+  construction: the asynchronous connector's FIFO queue is the only thing that can order those deletes
+  behind a report it has already accepted, and it exposes nothing to wait on. Idempotency is what
+  limits the exposure — a retried deletion re-queues them.
+- The agent id is read from the request body only. The dispatcher POSTs a task row's payload verbatim
+  and sets no headers of its own, so `X-Wazuh-Agent-Id` is ignored on this route. Both `{"agent_id":"7"}`
+  and `{"agent_id":7}` are accepted.
+
+The two admission-answered routes above remain available; they are retired once authd stops relaying
+deletions itself.
 
 One window can still leave a document behind, and it does not turn the `200` into a failure.
 Repeating the deletion clears it:

@@ -72,6 +72,13 @@ namespace
             return future.get();
         }
 
+        /// Whether anything has been sent yet. Only meaningful next to a fact that pins WHERE the
+        /// handler is (the worker parked inside flush(), say); on its own it would just be a race.
+        bool answered() const
+        {
+            return m_sent.load();
+        }
+
     private:
         std::promise<HttpResponse> m_promise;
         std::atomic<bool> m_sent {false};
@@ -93,6 +100,9 @@ namespace
         std::shared_ptr<invsync::test::FakeIndexerConnectorAsync> asyncConnector;
         std::shared_ptr<SyncPipeline> pipeline;
         wazuh::uds_http::RouteHandler handler;
+        /// The execution route over the very same dependencies: what differs between the two is the
+        /// contract, not the wiring.
+        wazuh::uds_http::RouteHandler completionHandler;
 
         EndpointUnderTest()
         {
@@ -103,6 +113,8 @@ namespace
             pipeline = std::make_shared<SyncPipeline>(SyncPipelineConfig {}, std::move(connectors), CLUSTER);
             handler =
                 delete_agent::makeHandler(delete_agent::Dependencies {pipeline, admissionConnector, asyncConnector});
+            completionHandler = delete_agent::makeCompletionHandler(
+                delete_agent::Dependencies {pipeline, admissionConnector, asyncConnector});
         }
     };
 
@@ -128,6 +140,14 @@ namespace
         {
             request->headers.emplace("x-wazuh-agent-id", agentId);
         }
+        return request;
+    }
+
+    /// What the dispatcher sends: a manager-task row's PAYLOAD as the body, and no headers at all.
+    std::shared_ptr<HttpRequest> executionRequest(const std::string& body)
+    {
+        auto request = std::make_shared<HttpRequest>();
+        request->body = body;
         return request;
     }
 } // namespace
@@ -394,4 +414,199 @@ TEST(DeleteAgentEndpoint, AnswersWhileThePurgeIsStillRunning)
     // And the promise the 200 made is kept once the indexer lets go.
     fixture.events->openFlushGate();
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_syncFlushes.load() >= 1; }));
+}
+
+// --- The execution route: POST /_internal/agents/delete, answered AT COMPLETION -------------------
+//
+// Same work, opposite answer. The Task Manager's dispatcher drives this one and writes a row
+// `completed` on the 200, so these tests pin what makes that record true: nothing is sent until the
+// purge has flushed, and the agent id is read from the body because the dispatcher sends no headers.
+
+TEST(DeleteAgentEndpoint, ExecutionRouteIsPinned)
+{
+    EXPECT_EQ(delete_agent::internalMethod(), wazuh::uds_http::Method::Post);
+    EXPECT_STREQ(delete_agent::internalPath(), "/_internal/agents/delete");
+
+    // The backstop must stay ABOVE the Task Manager's manager_task_delete_timeout (600 s), or the
+    // transport synthesizes a 504 while the purge is still succeeding and the dispatcher retries a
+    // deletion that has no attempt budget to exhaust. Pinned so lowering it is a decision, not a
+    // side effect.
+    EXPECT_GT(delete_agent::internalResponseTimeoutSeconds(), 600U);
+}
+
+/// THE property the whole route exists for: `completed` must mean purged. With the fake parked
+/// inside flush(), a caller that is still waiting proves the answer is not sent at admission.
+TEST(DeleteAgentEndpoint, TheExecutionRouteAnswersOnlyAfterThePurgeHasFlushed)
+{
+    EndpointUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_flushGateClosed = true;
+    }
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(executionRequest(R"({"agent_id":"7"})"), responder);
+
+    // Not a race: the worker is demonstrably parked inside the flush that executeDeleteAgent()
+    // runs, so it cannot have answered. The admission route answers 200 at exactly this point.
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+    EXPECT_FALSE(responder->answered()) << "a 200 here would record a purge that has not happened";
+
+    fixture.events->openFlushGate();
+
+    const auto response = responder->get();
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ(R"({"status":"ok"})", response.body) << "the pipeline's own answer, not the queued body";
+    EXPECT_GE(fixture.events->m_syncFlushes.load(), 1);
+}
+
+TEST(DeleteAgentEndpoint, TheExecutionRouteReadsTheAgentIdFromTheBody)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(executionRequest(R"({"agent_id":"7"})"), responder);
+    ASSERT_EQ(200, responder->get().status);
+
+    // Padded exactly like the header route pads: the deletion must match what indexing wrote,
+    // whichever route asked for it.
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
+    EXPECT_EQ("007", std::get<1>(ops[0]));
+
+    const auto asyncOps = fixture.events->asyncOps();
+    ASSERT_EQ(2U, asyncOps.size()) << "the by-id half runs on this route too";
+    for (const auto& op : asyncOps)
+    {
+        EXPECT_EQ("bulkDelete", std::get<0>(op));
+        EXPECT_EQ("007", std::get<1>(op));
+    }
+}
+
+/// Both JSON spellings of the same small integer. Tolerated rather than rejected because this type's
+/// descriptor sets allow_terminal_failure = false, so a 400 comes back to the dispatcher as
+/// retryable -- a producer that emitted 7 instead of "7" would re-queue forever instead of failing.
+TEST(DeleteAgentEndpoint, TheExecutionRouteAcceptsTheNumberSpellingOfAnAgentId)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(executionRequest(R"({"agent_id":7})"), responder);
+    ASSERT_EQ(200, responder->get().status);
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("007", std::get<1>(ops[0])) << "the same agent, written the other way";
+}
+
+TEST(DeleteAgentEndpoint, TheExecutionRouteRejectsABodyThatNamesNoAgent)
+{
+    EndpointUnderTest fixture;
+
+    const std::vector<std::string> bodies {
+        "",                        // the dispatcher sent an empty payload
+        "not json",                // malformed: discarded, and a discarded value is not an object
+        "[]",                      // valid JSON, wrong shape
+        R"({})",                   // no member
+        R"({"agent_id":null})",    // present and useless
+        R"({"agent_id":"12x"})",   // not an id
+        R"({"agent_id":"-1"})",    // nor is this
+        R"({"agent_id":{"id":7}})" // nor this
+    };
+
+    for (const auto& body : bodies)
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        fixture.completionHandler(executionRequest(body), responder);
+        EXPECT_EQ(400, responder->get().status) << "body='" << body << "'";
+    }
+
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may reach the connector on a 400";
+    EXPECT_TRUE(fixture.events->asyncOps().empty()) << "and nothing may be queued on the async half either";
+}
+
+/// The body is the ONLY channel on this route. The dispatcher POSTs a row's payload and sets no
+/// headers, so honouring one here would hide a producer that forgot to write the id into the payload
+/// -- and would work in a test while failing in production.
+TEST(DeleteAgentEndpoint, TheExecutionRouteIgnoresTheAgentIdHeader)
+{
+    EndpointUnderTest fixture;
+
+    auto request = executionRequest(R"({})");
+    request->headers.emplace("x-wazuh-agent-id", "7");
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(request, responder);
+    EXPECT_EQ(400, responder->get().status);
+    EXPECT_TRUE(fixture.events->asyncOps().empty());
+}
+
+TEST(DeleteAgentEndpoint, TheExecutionRouteRefusesAtAdmissionWhenTheIndexerIsUnavailable)
+{
+    EndpointUnderTest fixture;
+    fixture.events->m_syncAvailable.store(false);
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(executionRequest(R"({"agent_id":"7"})"), responder);
+
+    // 503, not 409: the dispatcher reads a 5xx as retryable and backs off. Refusing here rather
+    // than letting the worker re-check keeps a lane slot and a shard slot free.
+    EXPECT_EQ(503, responder->get().status);
+    EXPECT_TRUE(fixture.events->syncOps().empty());
+    EXPECT_TRUE(fixture.events->asyncOps().empty());
+}
+
+/// A refused enqueue does not consume the item, so the responder it was carrying is still the
+/// handler's to answer with. Exactly one answer, from exactly one place.
+TEST(DeleteAgentEndpoint, AStoppedPipelineAnswersTheExecutionRouteOnceWith503)
+{
+    EndpointUnderTest fixture;
+    fixture.pipeline->stop();
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.completionHandler(executionRequest(R"({"agent_id":"7"})"), responder);
+    EXPECT_EQ(503, responder->get().status);
+}
+
+/// The counting rule, from the other side: this handler counts only what it sends itself. The
+/// fixture's pipeline carries no metrics manager, so a count landing in OUR family could only have
+/// come from the endpoint -- and after an accepted deletion there must be none.
+TEST(DeleteAgentEndpoint, TheExecutionRouteCountsOnlyTheResponsesItSendsItself)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto counters = invsync::metrics::RequestCounters::make(*metrics);
+
+    EndpointUnderTest fixture;
+    auto handler = delete_agent::makeCompletionHandler(
+        delete_agent::Dependencies {fixture.pipeline, fixture.admissionConnector, fixture.asyncConnector, counters});
+
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(executionRequest(R"({})"), responder);
+        EXPECT_EQ(400, responder->get().status);
+    }
+    EXPECT_EQ(1U, counters.c400->get());
+
+    fixture.events->m_syncAvailable.store(false);
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(executionRequest(R"({"agent_id":"7"})"), responder);
+        EXPECT_EQ(503, responder->get().status);
+    }
+    EXPECT_EQ(1U, counters.c503->get());
+    fixture.events->m_syncAvailable.store(true);
+
+    {
+        auto responder = std::make_shared<FutureResponder>();
+        handler(executionRequest(R"({"agent_id":"7"})"), responder);
+        EXPECT_EQ(200, responder->get().status);
+    }
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_syncFlushes.load() >= 1; }));
+
+    // Zero, not one: the 200 was sent by the pipeline, which counts it into ITS manager. A count
+    // here would mean the same request counted twice.
+    EXPECT_EQ(0U, counters.c200->get());
+    EXPECT_EQ(1U, counters.c400->get());
+    EXPECT_EQ(1U, counters.c503->get());
 }

@@ -177,3 +177,76 @@ def test_a_report_in_flight_does_not_survive_the_deletion(client, cluster, index
     for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
         assert indexer.agent_docs(agent_id, index=index) == [], \
             f"a report in flight at deletion time resurrected agent {agent_id} in {index}"
+
+
+# --- POST /_internal/agents/delete: the same work, answered at COMPLETION ---------------------------
+#
+# The Task Manager's dispatcher drives this route and records the task `completed` on its 200, so the
+# 200 has to mean the purge ran -- not that it was accepted. Note what the tests below do NOT do:
+# they never poll. Every other test in this file needs wait_for_docs() because the admission route
+# answers before the purge; here the documents are already gone when the response arrives, and that
+# absence of a wait IS the assertion.
+
+
+def test_the_execution_route_answers_only_once_the_documents_are_gone(client, cluster, indexer, agent_id):
+    _seed(client, cluster, agent_id)
+    indexer.refresh()  # delete-by-query acts on the search view
+
+    response = client.execute_agent_delete({"agent_id": agent_id})
+    assert response.status == 200, response.body
+    # "ok", not "queued": this body is the pipeline's own answer, produced after the flush.
+    assert json.loads(response.body) == {"status": "ok"}
+
+    # No wait_for_docs(). agent_docs() refreshes and searches once, so if the purge were still
+    # queued -- as it is on the admission route -- this would find the documents and fail.
+    assert indexer.agent_docs(agent_id) == [], \
+        "the response arrived before the purge: `completed` would not mean purged"
+
+
+def test_the_execution_route_takes_the_agent_id_from_the_body(client, cluster, indexer, agent_id):
+    """No X-Wazuh-Agent-Id anywhere in this request. The dispatcher sends a task row's payload as the
+    body and nothing else, so the body is the only channel the id can arrive through."""
+    survivor = f"{int(agent_id) + 1:03d}"
+    _seed(client, cluster, agent_id)
+    _seed(client, cluster, survivor)
+    indexer.refresh()
+
+    assert client.execute_agent_delete({"agent_id": agent_id}).status == 200
+    assert indexer.agent_docs(agent_id) == []
+    assert len(indexer.agent_docs(survivor)) == 2, "the deletion is per agent, not a wipe"
+
+
+def test_the_execution_route_deletes_config_and_stats_too(client, indexer, agent_id):
+    """The by-id half runs on this route as well. It stays fire-and-forget -- the async connector
+    that wrote those two documents is a buffering queue with nothing to wait on, which is exactly
+    what orders these deletes behind a report it has already accepted -- so unlike the by-query half
+    above, this one IS awaited: the 200 promises they were queued, not that they were applied."""
+    _seed_config_and_stats(client, agent_id)
+    _await_config_and_stats(indexer, agent_id)
+
+    assert client.execute_agent_delete({"agent_id": agent_id}).status == 200
+
+    for pattern, docs in indexer.wait_for_empty_scope(agent_id).items():
+        assert docs == [], f"agent {agent_id} still has documents in {pattern}"
+
+
+def test_the_execution_route_is_idempotent(client, agent_id):
+    """What makes the dispatcher's retries free: a repeat of an already-purged agent is a no-op the
+    whole chain ignores. This route has no attempt budget, so it retries until it succeeds."""
+    assert client.execute_agent_delete({"agent_id": agent_id}).status == 200
+    assert client.execute_agent_delete({"agent_id": agent_id}).status == 200
+
+
+def test_the_execution_route_rejects_a_body_that_names_no_agent(client):
+    for body in (b"", b"not json", b"[]", {}, {"agent_id": None}, {"agent_id": "not-numeric"}):
+        assert client.execute_agent_delete(body).status == 400, f"body={body!r}"
+
+
+def test_the_execution_route_accepts_the_number_spelling_of_an_agent_id(client, cluster, indexer, agent_id):
+    """A producer that writes 7 rather than "7" is tolerated on purpose: this task type's 4xx comes
+    back to the dispatcher as retryable, so rejecting it would re-queue the deletion forever."""
+    _seed(client, cluster, agent_id)
+    indexer.refresh()
+
+    assert client.execute_agent_delete({"agent_id": int(agent_id)}).status == 200
+    assert indexer.agent_docs(agent_id) == []

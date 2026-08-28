@@ -18,6 +18,7 @@
 #include "sync/syncPipeline.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
 
+#include <cstddef>
 #include <memory>
 
 namespace invsync::endpoints::delete_agent
@@ -80,6 +81,76 @@ namespace invsync::endpoints::delete_agent
     }
 
     /**
+     * @brief The EXECUTION route: `POST /_internal/agents/delete`, answered AT COMPLETION.
+     *
+     * Same work as the routes above, opposite answer. The Task Manager's dispatcher drives this one,
+     * and it writes a manager-task row `completed` on a 200 -- so a 200 that meant "queued" would
+     * record a purge that has not happened, and a modulesd crash right after it would lose the
+     * queued deletion while the row already read `completed`. The item therefore carries its
+     * responder and the pipeline's own respond() answers, after executeDeleteAgent() has run its
+     * delete-by-query AND flushed it. That is what makes `completed` mean purged.
+     *
+     * WHY BOTH EXIST AT ONCE. The admission routes above keep authd's current path working until it
+     * moves to creating a task row; removing them here would land a change in which agent deletion
+     * stops purging documents entirely. They go away with the relay thread, not before.
+     *
+     * THE AGENT ID TRAVELS IN THE BODY, not in `X-Wazuh-Agent-Id`. The dispatcher POSTs a row's
+     * PAYLOAD verbatim and sets no headers of its own -- the payload IS the consumer's request body,
+     * authored by whoever created the row -- so the body is the only place an id can arrive:
+     *
+     *     {"agent_id": "7"}
+     *
+     * WHAT `completed` DOES NOT COVER. The by-id half (`wazuh-agent-config`, `wazuh-agent-stats`)
+     * is queued on the async connector at admission and is fire-and-forget by construction: that
+     * queue is FIFO, which is the only thing that can order those deletes after a report it has
+     * already accepted, and it exposes no seam to wait on. So a 200 promises the state documents
+     * were deleted and flushed, and promises only that the other two deletions were queued. Closing
+     * that would mean giving up the ordering property the by-id half exists for. What limits the
+     * exposure is idempotency: a retried deletion re-queues them, and deleting an absent document is
+     * a no-op everywhere in the chain.
+     *
+     * CAPACITY. RouteClass::Control requires a route doing real work to shed its own capacity
+     * module-side. This one has no queue of its own; the bound is the dispatcher's delete-lane depth
+     * of 4, so at most four deletions are ever in flight.
+     */
+
+    /// @brief The verb of the execution route. POST for the same reason as the alias above: the
+    /// caller's C-side HTTP helper (uhttp_*) only speaks POST.
+    constexpr wazuh::uds_http::Method internalMethod()
+    {
+        return wazuh::uds_http::Method::Post;
+    }
+
+    /// @brief The execution route's path. `_internal` marks it as a manager-internal contract
+    /// between two daemons of the same version -- nothing outside the manager may target it, and it
+    /// carries no compatibility promise.
+    constexpr const char* internalPath()
+    {
+        return "/_internal/agents/delete";
+    }
+
+    /**
+     * @brief This route's own response backstop, overriding the server-wide 300 s.
+     *
+     * A CROSS-DAEMON COUPLING, and the only one this route has. The transport's backstop is written
+     * around the peer's deadline being the shorter one, so that the peer gives up first; the Task
+     * Manager gives this route 600 s (`manager_task_delete_timeout`), deliberately longer than the
+     * scan route's 300 s because a scan can park a deletion behind it on this module's per-agent
+     * queue. With the server-wide 300 s that ordering is inverted: a purge that legitimately runs
+     * past five minutes gets a synthesized 504, the dispatcher reads it as retryable, and the
+     * deletion re-queues forever while every attempt very nearly succeeds. This type has no attempt
+     * budget, so "forever" is literal.
+     *
+     * 900 s keeps the intended ordering with room to spare. It must stay above
+     * `manager_task_delete_timeout`: raising that knob past this value re-inverts the pair, which is
+     * why the number is stated here rather than buried at the registration site.
+     */
+    constexpr std::size_t internalResponseTimeoutSeconds()
+    {
+        return 900;
+    }
+
+    /**
      * @brief Everything the handler needs, captured by value at registration.
      *
      * All weak, like every other route: the facade's stop() resets them and the weak capture keeps
@@ -110,6 +181,17 @@ namespace invsync::endpoints::delete_agent
      *        enqueue a DeleteAgent item on the agent's shard and answer 200 right there.
      */
     wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies);
+
+    /**
+     * @brief Build the execution route's handler: validate the body (400), gate on availability
+     *        (503), enqueue the SAME DeleteAgent item WITH its responder, and answer nothing --
+     *        the pipeline answers once the purge has flushed.
+     *
+     * Takes the same Dependencies, and `requestCounters` still counts every response this handler
+     * sends itself. The terminal response is counted by the pipeline, at the site that sends it, so
+     * an accepted deletion is counted exactly once here too.
+     */
+    wazuh::uds_http::RouteHandler makeCompletionHandler(Dependencies dependencies);
 
 } // namespace invsync::endpoints::delete_agent
 

@@ -459,6 +459,33 @@ namespace invsync
                                        invsync::endpoints::delete_agent::altPath(),
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps),
                                        wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
+
+                // The EXECUTION route, same work and the opposite answer: the item carries its
+                // responder, so the pipeline answers only once the purge has flushed. That is what
+                // lets the Task Manager write a row `completed` and have it mean purged, rather
+                // than "inventory-sync accepted it". Its caller is the dispatcher, which drives the
+                // deletion's retries; the two routes above stay until authd stops relaying.
+                //
+                // Same Dependencies, so both share the sync.requests.total.* family. The completion
+                // route counts only what it answers itself (the inline 400/503 rejections); the
+                // terminal response is counted by the pipeline, which is the site that sends it.
+                //
+                // CONTROL class for the same reason as the routes above -- the agent id is a few
+                // bytes of body, so a saturated ingest budget must not fail deletions that cost it
+                // no payload memory. Its capacity bound is the dispatcher's delete-lane depth.
+                //
+                // And its own response backstop, because this is the one route whose peer waits
+                // LONGER than the server-wide 300 s -- see internalResponseTimeoutSeconds() for what
+                // the inverted pair costs. The zeroes before it keep the class policy's body and
+                // session caps.
+                m_httpServer->addRoute(
+                    invsync::endpoints::delete_agent::internalMethod(),
+                    invsync::endpoints::delete_agent::internalPath(),
+                    invsync::endpoints::delete_agent::makeCompletionHandler(deleteDeps),
+                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control,
+                                                   0,
+                                                   0,
+                                                   invsync::endpoints::delete_agent::internalResponseTimeoutSeconds()});
             }
 
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
@@ -472,14 +499,15 @@ namespace invsync
             registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
-                       "%zu sync worker(s)).",
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s, DELETE %s and "
+                       "POST %s; %zu sync worker(s)).",
                        config.socketPath.c_str(),
                        invsync::endpoints::metrics::path(),
                        invsync::endpoints::sync::path(),
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
+                       invsync::endpoints::delete_agent::internalPath(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 
