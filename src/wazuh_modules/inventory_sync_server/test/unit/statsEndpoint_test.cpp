@@ -17,6 +17,7 @@
 #include <json.hpp>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -100,10 +101,19 @@ namespace
             return m_available;
         }
 
+        // Simulates a transient write-time failure (e.g. a queue/broker error) on an otherwise
+        // healthy, available connector -- distinct from isAvailable()==false, which the handler
+        // checks beforehand and never even reaches this call.
         void index(std::string_view id, std::string_view index, std::string_view data) override
         {
+            if (throwOnIndex)
+            {
+                throw std::runtime_error {"simulated indexer write failure"};
+            }
             indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
         }
+
+        bool throwOnIndex {false};
 
         void indexDataStream(std::string_view index, std::string_view data) override
         {
@@ -432,6 +442,25 @@ TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 TEST(StatsEndpointTest, UnavailableIndexerYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+
+    const auto response = run(makeRequest(kAgentReport, "001"), connector);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
+/**
+ * The regression this endpoint's build/index split guards against: a failure in indexer->index()
+ * (the connector is available, the report was valid) is a backend fault, not the caller's. Before
+ * the split, both phases shared one try/catch, so this landed on the "Could not serialize" branch
+ * and answered 400 "Report holds bytes that are not valid UTF-8" -- telling the agent to fix a
+ * payload that was never wrong, instead of 503/retry.
+ */
+TEST(StatsEndpointTest, AWriteFailureOnAnAvailableIndexerYields503NotBadRequest)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    connector->throwOnIndex = true;
 
     const auto response = run(makeRequest(kAgentReport, "001"), connector);
 

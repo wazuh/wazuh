@@ -760,7 +760,8 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         if (!strncmp(message, "ERROR: ", 7)) {
             message += 7;
         }
-        merror("ERROR %d: %s.", master_error_code, message);
+
+        mwarn("Error %d: %s.", master_error_code, message);
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.

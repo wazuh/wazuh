@@ -126,11 +126,11 @@ namespace remoted::auth
         const int loaded = reload();
         if (loaded < 0)
         {
-            LOGFN_WARN(logFn(),
-                       "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
-                       "until the file becomes readable.",
-                       m_path.c_str(),
-                       errno);
+            LOGFN_ERROR(logFn(),
+                        "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
+                        "until the file becomes readable.",
+                        m_path.c_str(),
+                        errno);
         }
         else
         {
