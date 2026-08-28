@@ -128,11 +128,25 @@ The packages of an image come from the package database its layers carry:
 |--------|---------------|--------|
 | dpkg | `var/lib/dpkg/status` | Parsed. Installed packages only. |
 | apk | `lib/apk/db/installed`, `usr/lib/apk/db/installed` | Parsed. The second path is used by Wolfi and Chainguard images. |
-| rpm | `var/lib/rpm/`, `usr/lib/sysimage/rpm/` | Recognized, not parsed yet. |
+| rpm, sqlite | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` | Parsed. The format rpm 4.16 and later use, so the current Red Hat, Fedora and Amazon Linux families. |
+| rpm, ndb | `var/lib/rpm/Packages.db`, `usr/lib/sysimage/rpm/Packages.db` | Parsed. The format the SUSE family uses. |
+| rpm, Berkeley DB | `var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages` | Recognized, not parsed. The format rpm used before 4.16. |
 | pacman | `var/lib/pacman/local/` | Recognized, not parsed yet. |
 | portage | `var/db/pkg/` | Recognized, not parsed yet. |
 | xbps | `var/db/xbps/` | Recognized, not parsed yet. |
 | swupd | `usr/share/clear/bundles/` | Recognized, not parsed yet. |
+
+The rpm database format is taken from the content of the database, not from where it was found, so both formats are read at either location.
+
+The rpm sqlite database is read from the database file alone. An image whose database still holds uncommitted write-ahead log entries is inventoried as of its last checkpoint, which is what a committed image carries.
+
+Package versions are stored the way the distribution expresses them, `version-release`, with the epoch kept as `epoch:version-release` whenever the package carries one.
+
+An image whose package format is recognized but not parsed is still inventoried, with zero packages and one warning:
+
+```sql
+wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/centos.tar' uses the package format(s) rpm, which are recognized but not supported yet. Reporting zero packages.
+```
 
 ### Layer Compression
 
@@ -149,12 +163,6 @@ A layer using a compression that is recognized but not supported is skipped, and
 
 ```sql
 wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: layer 'blobs/sha256/<digest>' of '/var/tmp/images/myapp.tar' is xz compressed, which is recognized but not supported yet. Skipping it.
-```
-
-An image whose package format is recognized but not parsed yet is still inventoried, with zero packages and one warning:
-
-```sql
-wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/centos.tar' uses the package format(s) rpm, which are recognized but not supported yet. Reporting zero packages.
 ```
 
 ---

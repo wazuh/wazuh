@@ -20,7 +20,8 @@ from . import WMODULES_PREFIX
 
 # Lifecycle.
 CB_MODULE_INITIALIZED = fr'{PREFIX}DEBUG: Module initialized.'
-CB_MODULE_DISABLED = fr'{PREFIX}INFO: Module is disabled.'
+# The module logs this one at debug level: mdebug1("Module disabled. Exiting.").
+CB_MODULE_DISABLED = fr'{PREFIX}DEBUG: Module disabled\. Exiting\.'
 CB_MODULE_LOOP_FINISHED = fr'{PREFIX}DEBUG: Module loop finished.'
 
 # Scan lifecycle.

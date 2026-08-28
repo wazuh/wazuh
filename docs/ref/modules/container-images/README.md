@@ -48,7 +48,9 @@ Container Images scans configured image sources, stores what it finds in a local
 |--------|--------|
 | dpkg (`var/lib/dpkg/status`) | Parsed. Installed packages only. |
 | apk (`lib/apk/db/installed`, `usr/lib/apk/db/installed`) | Parsed. |
-| rpm, pacman, portage, xbps, swupd | Recognized. The image is inventoried with zero packages and a warning. |
+| rpm, sqlite and ndb databases (`var/lib/rpm/`, `usr/lib/sysimage/rpm/`) | Parsed. |
+| rpm, Berkeley DB database (`var/lib/rpm/Packages`) | Recognized. The image is inventoried with zero packages and a warning. |
+| pacman, portage, xbps, swupd | Recognized. The image is inventoried with zero packages and a warning. |
 
 ## Supported Layer Compressions
 

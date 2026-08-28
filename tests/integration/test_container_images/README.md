@@ -24,8 +24,9 @@ fixed number of seconds and hoping a scan finished. These tests avoid that entir
 - **Each case is isolated.** `truncate_monitored_files` clears the log before/after every case;
   `daemons_handler` restarts the agent per case; and the image fixture the case asks for
   (`prepare_local_image`, `prepare_saved_archive`, `prepare_layered_image`,
-  `prepare_whiteout_image`, `prepare_unsupported_image`) builds a fresh input and removes it
-  afterwards. No state leaks between cases.
+  `prepare_whiteout_image`, `prepare_unsupported_image`, `prepare_rpm_sqlite_image`,
+  `prepare_rpm_ndb_image`) builds a fresh input, points the configured `<archive>` reference at
+  it, and removes it afterwards. No state leaks between cases.
 
 ## Layout
 
@@ -71,7 +72,9 @@ expected message (e.g. a wording change in the module that the pattern must be u
 | I3 | Saved archive is inventoried | one `<archive>` saved image archive with an apk database | **PASS** when the reference is stored with type `archive` and its apk packages are stored. |
 | I4 | The later layer wins | an image whose second layer upgrades a package | **PASS** when the upgraded package is stored once, with the version of the last layer, and the untouched package is still stored. |
 | I5 | A deleted database contributes nothing | an image whose second layer deletes the dpkg database and adds an apk one | **PASS** when the package of the deleted database is absent and the apk package is stored. |
-| I6 | Unsupported package format | an image whose only database is an RPM one | **PASS** when the reference is stored, no package row exists, and the format is reported with a warning. |
+| I6 | Unsupported package format | an image whose only database is an RPM Berkeley DB one | **PASS** when the reference is stored, no package row exists, and the format is reported with a warning. |
+| I7 | RPM sqlite database | an image whose only database is `var/lib/rpm/rpmdb.sqlite` | **PASS** when the reference is stored and the rpm packages are stored, with the epoch preserved on the version that carries one. |
+| I8 | RPM ndb database | an image whose only database is `usr/lib/sysimage/rpm/Packages.db` | **PASS** when the reference is stored and the rpm packages are stored. |
 
 Expected **failures** (i.e. what a regression would look like):
 
@@ -87,6 +90,9 @@ Expected **failures** (i.e. what a regression would look like):
   markers are ignored → layer precedence regression.
 - I6 fails if an unsupported format costs the reference instead of costing its packages, or if the
   empty inventory is silent → format-detection regression.
+- I7 and I8 fail if the rpm database is not read, if the wrong database format is picked, or if the
+  version loses its epoch → rpm extraction regression. I7 also fails if the write-ahead log mode a
+  real `rpmdb.sqlite` carries is not handled, which shows up as zero packages.
 
 ## Requirements to run
 

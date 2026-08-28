@@ -14,6 +14,8 @@
 #include <zlib.h>
 #include <zstd.h>
 
+#include "sqlite3.h"
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -234,6 +236,200 @@ namespace imagefixtures
                "o:" + name + "-origin\n"
                "m:Alpine " + name + " Maintainers <team@alpinelinux.org>\n"
                "\n";
+    }
+
+    // -----------------------------------------------------------------------
+    // rpm databases.
+    // -----------------------------------------------------------------------
+
+    /// @brief One package as it is written into an rpm header blob.
+    struct RpmPackage
+    {
+        std::string name;
+        std::string version;
+        std::string release {"1.el9"};
+        std::string architecture {"x86_64"};
+        std::string summary {"short description"};
+        std::string vendor {"Wazuh Inc."};
+        std::string group {"Unspecified"};
+        std::string sourceRpm {};
+        std::int32_t size {2048};
+        std::int32_t installTime {1700000000};
+        bool hasEpoch {false};
+        std::int32_t epoch {0};
+    };
+
+    /// @brief Append a big endian uint32, the order the rpm header index uses.
+    inline void appendUint32BE(std::string& output, const std::uint32_t value)
+    {
+        output += static_cast<char>((value >> 24) & 0xFF);
+        output += static_cast<char>((value >> 16) & 0xFF);
+        output += static_cast<char>((value >> 8) & 0xFF);
+        output += static_cast<char>(value & 0xFF);
+    }
+
+    /// @brief Append a little endian uint32, the order the ndb database uses.
+    inline void appendUint32LE(std::string& output, const std::uint32_t value)
+    {
+        output += static_cast<char>(value & 0xFF);
+        output += static_cast<char>((value >> 8) & 0xFF);
+        output += static_cast<char>((value >> 16) & 0xFF);
+        output += static_cast<char>((value >> 24) & 0xFF);
+    }
+
+    /// @brief Build one rpm header blob, the structure every rpm backend stores.
+    inline std::string rpmHeaderBlob(const RpmPackage& package)
+    {
+        constexpr std::int32_t TYPE_INT32 {4};
+        constexpr std::int32_t TYPE_STRING {6};
+        constexpr std::int32_t TYPE_I18NSTRING {9};
+
+        std::string section;
+        std::string index;
+        std::size_t entries {0};
+
+        const auto addString
+        {
+            [&section, &index, &entries](const std::int32_t tag, const std::int32_t type, const std::string & value)
+            {
+                appendUint32BE(index, static_cast<std::uint32_t>(tag));
+                appendUint32BE(index, static_cast<std::uint32_t>(type));
+                appendUint32BE(index, static_cast<std::uint32_t>(section.size()));
+                appendUint32BE(index, 1);
+                section += value;
+                section += '\0';
+                ++entries;
+            }
+        };
+
+        const auto addInt32
+        {
+            [&section, &index, &entries](const std::int32_t tag, const std::int32_t value)
+            {
+                appendUint32BE(index, static_cast<std::uint32_t>(tag));
+                appendUint32BE(index, static_cast<std::uint32_t>(TYPE_INT32));
+                appendUint32BE(index, static_cast<std::uint32_t>(section.size()));
+                appendUint32BE(index, 1);
+                appendUint32BE(section, static_cast<std::uint32_t>(value));
+                ++entries;
+            }
+        };
+
+        addString(1000, TYPE_STRING, package.name);
+        addString(1001, TYPE_STRING, package.version);
+        addString(1002, TYPE_STRING, package.release);
+
+        if (package.hasEpoch)
+        {
+            addInt32(1003, package.epoch);
+        }
+
+        // The summary is an internationalized string in a real database, which is a
+        // different type carrying the same bytes.
+        addString(1004, TYPE_I18NSTRING, package.summary);
+        addInt32(1008, package.installTime);
+        addInt32(1009, package.size);
+        addString(1011, TYPE_STRING, package.vendor);
+        addString(1016, TYPE_I18NSTRING, package.group);
+        addString(1022, TYPE_STRING, package.architecture);
+
+        if (!package.sourceRpm.empty())
+        {
+            addString(1044, TYPE_STRING, package.sourceRpm);
+        }
+
+        std::string blob;
+        appendUint32BE(blob, static_cast<std::uint32_t>(entries));
+        appendUint32BE(blob, static_cast<std::uint32_t>(section.size()));
+        blob += index;
+        blob += section;
+
+        return blob;
+    }
+
+    /// @brief Build an `rpmdb.sqlite` holding the given header blobs.
+    ///
+    /// Written through sqlite itself and serialized back out, so the fixture is a real
+    /// database file rather than a hand-made approximation of one.
+    inline std::string rpmSqliteDatabase(const std::vector<std::string>& blobs)
+    {
+        sqlite3* database {nullptr};
+
+        if (sqlite3_open(":memory:", &database) != SQLITE_OK)
+        {
+            sqlite3_close(database);
+            throw std::runtime_error {"could not create the sqlite fixture"};
+        }
+
+        sqlite3_exec(database, "CREATE TABLE Packages (hnum INTEGER PRIMARY KEY, blob BLOB NOT NULL);", nullptr,
+                     nullptr, nullptr);
+
+        sqlite3_stmt* statement {nullptr};
+        sqlite3_prepare_v2(database, "INSERT INTO Packages (blob) VALUES (?);", -1, &statement, nullptr);
+
+        for (const auto& blob : blobs)
+        {
+            sqlite3_bind_blob(statement, 1, blob.data(), static_cast<int>(blob.size()), SQLITE_STATIC);
+            sqlite3_step(statement);
+            sqlite3_reset(statement);
+        }
+
+        sqlite3_finalize(statement);
+
+        sqlite3_int64 size {0};
+        auto* bytes {sqlite3_serialize(database, "main", &size, 0)};
+        std::string content {reinterpret_cast<const char*>(bytes), static_cast<std::size_t>(size)};
+
+        sqlite3_free(bytes);
+        sqlite3_close(database);
+
+        return content;
+    }
+
+    /// @brief Build a `Packages.db` holding the given header blobs.
+    ///
+    /// One slot page, the slot table right behind the 32-byte header, and the blobs laid
+    /// out from the second page on, each behind its own 16-byte header.
+    inline std::string rpmNdbDatabase(const std::vector<std::string>& blobs)
+    {
+        constexpr std::size_t BLOCK {16};
+        constexpr std::size_t PAGE {4096};
+        constexpr std::size_t SLOT_TABLE_OFFSET {32};
+
+        std::string slots;
+        std::string payloads;
+
+        for (std::size_t package = 0; package < blobs.size(); ++package)
+        {
+            const auto blockOffset {(PAGE + payloads.size()) / BLOCK};
+            const auto blockCount {(BLOCK + blobs[package].size() + BLOCK - 1) / BLOCK};
+
+            slots += "Slot";
+            appendUint32LE(slots, static_cast<std::uint32_t>(package + 1));
+            appendUint32LE(slots, static_cast<std::uint32_t>(blockOffset));
+            appendUint32LE(slots, static_cast<std::uint32_t>(blockCount));
+
+            payloads += "BlbS";
+            appendUint32LE(payloads, static_cast<std::uint32_t>(package + 1));
+            appendUint32LE(payloads, 1);
+            appendUint32LE(payloads, static_cast<std::uint32_t>(blobs[package].size()));
+            payloads += blobs[package];
+            payloads.resize(((payloads.size() + BLOCK - 1) / BLOCK) * BLOCK, '\0');
+        }
+
+        std::string database;
+        database += "RpmP";
+        appendUint32LE(database, 0);                                       // version
+        appendUint32LE(database, 1);                                       // generation
+        appendUint32LE(database, 1);                                       // slot pages
+        appendUint32LE(database, static_cast<std::uint32_t>(blobs.size() + 1)); // next package index
+        database.resize(SLOT_TABLE_OFFSET, '\0');
+
+        database += slots;
+        database.resize(PAGE, '\0');
+        database += payloads;
+
+        return database;
     }
 } // namespace imagefixtures
 
