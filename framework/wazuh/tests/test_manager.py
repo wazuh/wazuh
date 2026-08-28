@@ -69,6 +69,12 @@ VD_STATUS_READY = {
     'last_successful_update': 1719878400,
 }
 
+REMOTED_STATUS_READY = {
+    'ready': True,
+    'keystore': {'ready': True, 'agents_loaded': 5, 'entries_skipped': 0},
+    'enrollment_password': {'ready': True},
+}
+
 
 def _make_modulesd_mock(vd_status=None, side_effect=None):
     """Return a (mock_cls, mock_instance) pair for VdHTTPClient."""
@@ -82,15 +88,17 @@ def _make_modulesd_mock(vd_status=None, side_effect=None):
     return mock_cls, mock_instance
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
-    """Node ready: all daemons running, analysisd engine ready, modulesd VD ready."""
+def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """Node ready: all daemons running, analysisd engine ready, modulesd VD ready, remoted keystore/password ready."""
     mock_engine = MagicMock()
     mock_engine.get_status.return_value = ENGINE_STATUS_READY
     mock_engine_cls.return_value = mock_engine
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     result = get_status()
     assert isinstance(result, AffectedItemsWazuhResult)
@@ -110,8 +118,11 @@ def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
     assert modules['inventory-sync'] == {'available': True}
     assert modules['content-manager'] == {'available': True}
     assert modules['task-manager'] == {'available': True}
-    # plain daemon: ready iff running, no extra resources
-    assert data['wazuh-manager-remoted'] == {'ready': True, 'running': True}
+    # remoted embeds keystore/enrollment_password readiness from its admin GET /status
+    assert data['wazuh-manager-remoted']['running'] is True
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert data['wazuh-manager-remoted']['keystore'] == REMOTED_STATUS_READY['keystore']
+    assert data['wazuh-manager-remoted']['enrollment_password'] == REMOTED_STATUS_READY['enrollment_password']
 
 
 @patch('wazuh.manager.VdHTTPClient')
@@ -208,10 +219,11 @@ def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd
     mock_modulesd_cls.assert_not_called()
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """VD disabled → modulesd ready (disabled VD is not a readiness blocker)."""
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{
@@ -220,6 +232,7 @@ def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modu
             'last_successful_update': 0,
         },
     })
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['ready'] is True
@@ -244,6 +257,94 @@ def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_module
     assert data['wazuh-manager-modulesd']['modules']['vulnerability-detector']['available'] is True
     assert data['wazuh-manager-modulesd']['modules']['vulnerability-detector']['status'] == 'failed'
     assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """remoted running, keystore and enrollment password both ready → remoted (and node) ready."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert data['wazuh-manager-remoted']['keystore'] == REMOTED_STATUS_READY['keystore']
+    assert data['wazuh-manager-remoted']['enrollment_password'] == REMOTED_STATUS_READY['enrollment_password']
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_keystore_not_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """client.keys' last reload failed → remoted (and node) not ready, even with a valid enrollment password."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': {
+        'ready': False,
+        'keystore': {'ready': False, 'agents_loaded': 5, 'entries_skipped': 0},
+        'enrollment_password': {'ready': True},
+    }})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert data['wazuh-manager-remoted']['keystore']['ready'] is False
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_password_mode_disabled(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """Password-mode enrollment disabled → `enrollment_password` is absent from the entry, not a not-applicable state."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': {
+        'ready': True,
+        'keystore': {'ready': True, 'agents_loaded': 5, 'entries_skipped': 0},
+    }})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert 'enrollment_password' not in data['wazuh-manager-remoted']
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """remoted admin socket unreachable → remoted not ready → node not ready."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.side_effect': WazuhInternalError(2031)})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['running'] is True
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-remoted': 'stopped'})
+def test_get_status_remoted_stopped(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """remoted stopped → not running, not ready, admin socket never queried."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['running'] is False
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert data['ready'] is False
+    mock_remoted_cls.assert_not_called()
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [

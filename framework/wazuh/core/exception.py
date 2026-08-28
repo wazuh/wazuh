@@ -280,6 +280,12 @@ class WazuhException(Exception):
         2025: {'message': 'Modulesd request timeout'},
         2026: {'message': 'Modulesd connection error'},
         2027: {'message': 'Could not parse modulesd response as JSON'},
+        # Remoted (admin socket):
+        2028: {'message': 'Could not connect to the remoted admin unix socket'},
+        2029: {'message': 'Invalid remoted admin HTTP response'},
+        2030: {'message': 'Remoted admin request timeout'},
+        2031: {'message': 'Remoted admin connection error'},
+        2032: {'message': 'Could not parse remoted admin response as JSON'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},

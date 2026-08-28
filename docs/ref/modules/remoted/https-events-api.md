@@ -315,9 +315,10 @@ prefix — `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health
 `404`. The prefixed path is what travels on the wire and what the router matches: agents send the
 full prefixed target. The token does not bind it, so a prefix mismatch is a `404`, never a `401`.
 
-The module's own statistics are **not** served here: they live on a separate manager-local Unix
-socket (`GET /`, `GET /metrics` on `queue/sockets/remote-admin-http.sock`), so they are never reachable
-from an agent — see [the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
+The module's own statistics and readiness are **not** served here: they live on a separate
+manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
+`queue/sockets/remote-admin-http.sock`), so they are never reachable from an agent — see
+[the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.

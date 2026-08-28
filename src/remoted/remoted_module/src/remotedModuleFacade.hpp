@@ -20,10 +20,12 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "auth/passwordKeySource.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
@@ -557,6 +559,11 @@ private:
                 enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
             enrollPasswordKeySource);
 
+        // Reachability for GET /status on the admin server (see startAdminServer()). Null when
+        // Password mode is disabled: the weak_ptr then stays permanently expired, which is exactly
+        // the condition the handler uses to omit `enrollment_password` from its response.
+        registerPasswordKeySourceDiagnostics(enrollPasswordKeySource);
+
         m_authdClient =
             std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
                                                                m_config.worker_node,
@@ -714,6 +721,20 @@ private:
     }
 
     /**
+     * @brief Register reachability to PasswordKeySource for GET /status on the admin server.
+     *
+     * Unlike registerKeystoreDiagnostics(), no pull metrics are added here -- just a weak_ptr the
+     * /status handler can lock. @p source is null whenever Password-mode enrollment is disabled,
+     * which leaves the weak_ptr permanently expired -- .lock() then always returns nullptr, which
+     * is exactly the condition the handler uses to omit `enrollment_password` from its response.
+     */
+    void registerPasswordKeySourceDiagnostics(const std::shared_ptr<remoted::auth::PasswordKeySource>& source)
+    {
+        std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
+        m_passwordKeySourceDiagTarget = source;
+    }
+
+    /**
      * @brief Publish the agent registry's live size as a pull metric
      *        (remoted.control.registry.agents).
      *
@@ -805,6 +826,60 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // GET /status: readiness, not bare liveness -- whether client.keys last reloaded
+            // successfully and, when Password-mode enrollment is enabled, whether an enrollment
+            // password key is currently available. Both read resident, in-process state (plain
+            // atomics behind lastLoadOk()/agentsLoaded()/entriesSkipped(), a mutex-guarded cached
+            // key copy behind currentKey()) -- no I/O, no KDF, nothing that can block the admin
+            // socket's fixed 2-thread reactor. `ready` always reflects the real current state,
+            // never grace-window masked: the underlying capability genuinely is unavailable
+            // during the reported window, not just noisy about it.
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/status",
+                [this](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                       std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
+                    std::shared_ptr<remoted::auth::Keystore> keystore;
+                    {
+                        std::lock_guard<std::mutex> lock {m_keystoreDiagMutex};
+                        keystore = m_keystoreDiagTarget.lock();
+                    }
+                    if (!keystore)
+                    {
+                        responder->send(
+                            wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                        return;
+                    }
+
+                    std::shared_ptr<remoted::auth::PasswordKeySource> passwordSource;
+                    {
+                        std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
+                        passwordSource = m_passwordKeySourceDiagTarget.lock();
+                    }
+
+                    const bool keystoreReady = keystore->lastLoadOk();
+                    bool overallReady = keystoreReady;
+
+                    std::ostringstream body;
+                    body << R"({"keystore":{"ready":)" << (keystoreReady ? "true" : "false") << R"(,"agents_loaded":)"
+                         << keystore->agentsLoaded() << R"(,"entries_skipped":)" << keystore->entriesSkipped() << "}";
+
+                    if (passwordSource)
+                    {
+                        // .has_value() only -- the key material itself is never touched, copied
+                        // into the response, or logged.
+                        const bool pwReady = passwordSource->currentKey().has_value();
+                        overallReady = overallReady && pwReady;
+                        body << R"(,"enrollment_password":{"ready":)" << (pwReady ? "true" : "false") << "}";
+                    }
+
+                    body << R"(,"ready":)" << (overallReady ? "true" : "false") << "}";
+
+                    responder->send(wazuh::uds_http::HttpResponse::json(200, body.str()));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -822,7 +897,7 @@ private:
             registerAdminTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "remoted admin server listening on '%s' (routes: GET / and GET /metrics).",
+                       "remoted admin server listening on '%s' (routes: GET /, GET /metrics, and GET /status).",
                        REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)
@@ -1200,6 +1275,12 @@ private:
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
+
+    /// Same plumbing for PasswordKeySource reachability (see registerPasswordKeySourceDiagnostics()).
+    /// No pull metrics of its own -- just lets GET /status reach currentKey().has_value().
+    std::mutex m_passwordKeySourceDiagMutex;
+    std::weak_ptr<remoted::auth::PasswordKeySource> m_passwordKeySourceDiagTarget;
+
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.

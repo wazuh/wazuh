@@ -41,17 +41,19 @@ keep-alives, enriches and batches events, and forwards them to the engine.
 
 ## Local admin socket
 
-The C++ module serves its own metrics over a manager-local Unix socket,
+The C++ module serves its own metrics and readiness status over a manager-local Unix socket,
 `queue/sockets/remote-admin-http.sock` (fixed path, mode `0660`), separate by design from the
-agent-facing HTTPS endpoint — statistics are never exposed on the public listener.
+agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 
 | Route | Response |
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
+| `GET /status` | `200` — readiness, not bare liveness: whether `client.keys` last reloaded successfully and, when Password-mode enrollment is enabled, whether an enrollment password key is currently available. `{"keystore":{"ready":true,"agents_loaded":12,"entries_skipped":0},"enrollment_password":{"ready":true},"ready":true}` (`enrollment_password` is omitted entirely when Password-mode enrollment is disabled). Both flags reflect the real, current in-memory state — never masked during a worker's post-join sync window — and are what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted

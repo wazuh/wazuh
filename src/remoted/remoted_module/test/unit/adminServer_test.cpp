@@ -109,6 +109,14 @@ protected:
         std::error_code ec;
         std::filesystem::remove(kAdminSocketPath, ec);
         remoted::test::LogRecorder::clear();
+
+        // Keystore's default path (etc/client.keys, also relative to cwd) needs to exist and be
+        // readable so the module's startup load succeeds -- otherwise every test in this fixture
+        // would start with a permanently-unreadable keystore, which GetStatusReportsKeystoreAnd-
+        // PasswordReadiness below needs to NOT be the case (an empty, successfully-loaded file is
+        // exactly the state lastLoadOk() exists to distinguish from "never loaded").
+        std::filesystem::create_directories("etc");
+        std::ofstream {"etc/client.keys"};
     }
 
     void TearDown() override
@@ -127,9 +135,13 @@ protected:
      * the admin socket is either bound or definitively skipped (warn-and-continue) -- no
      * polling needed.
      *
+     * @param enrollUsePassword Mirrors authd's <use_password> (remoted_module_config_t's
+     *        enroll_use_password): whether Password-mode enrollment (and, with it,
+     *        PasswordKeySource) is constructed for this run. Defaults to false, matching every
+     *        other test in this file that doesn't care about the enrollment password.
      * @return The public HTTPS port the module bound (0 when the fixture itself failed).
      */
-    std::uint16_t startModule()
+    std::uint16_t startModule(bool enrollUsePassword = false)
     {
         // A second cycle regenerates the SAME pid-derived paths, so the previous cleanup must
         // run BEFORE the new files exist -- destroying it after would delete them again.
@@ -147,6 +159,7 @@ protected:
         cfg.port = findFreePort();
         EXPECT_NE(cfg.port, 0) << "could not obtain a free port to bind the module to";
         cfg.worker_node = false;
+        cfg.enroll_use_password = enrollUsePassword;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certificate->certPath.c_str());
         std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", certificate->keyPath.c_str());
@@ -285,6 +298,51 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     ASSERT_TRUE(wrongVerb) << "POST /metrics failed: " << httplib::to_string(wrongVerb.error());
     EXPECT_EQ(wrongVerb->status, 405);
     EXPECT_EQ(wrongVerb->get_header_value("Allow"), "GET");
+
+    // /status is a GET-only route too, same 405-naming-the-allowed-verb contract as /metrics.
+    const auto wrongVerbStatus = client->Post("/status", "", "application/json");
+    ASSERT_TRUE(wrongVerbStatus) << "POST /status failed: " << httplib::to_string(wrongVerbStatus.error());
+    EXPECT_EQ(wrongVerbStatus->status, 405);
+    EXPECT_EQ(wrongVerbStatus->get_header_value("Allow"), "GET");
+}
+
+// GET /status reports client.keys and (when Password-mode enrollment is enabled) enrollment
+// password readiness, read directly from Keystore/PasswordKeySource's resident state -- no I/O
+// in the handler itself. The module starts with an empty (but successfully loaded) client.keys,
+// so keystore.ready is true with agents_loaded:0 -- the exact case lastLoadOk() exists to get
+// right (see keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne).
+TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
+{
+    startModule(/*enrollUsePassword=*/true);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/status");
+    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+
+    EXPECT_NE(response->body.find("\"ready\""), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find("\"keystore\""), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find("\"agents_loaded\""), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find(R"("keystore":{"ready":true)"), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find(R"("agents_loaded":0)"), std::string::npos) << response->body;
+    // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk),
+    // but the field itself must still be present -- reachability, not readiness, is what gates
+    // whether the key shows up at all.
+    EXPECT_NE(response->body.find("\"enrollment_password\""), std::string::npos) << response->body;
+}
+
+// Scope decision: Password-mode disabled means `enrollment_password` is OMITTED entirely, not
+// reported as a distinct not-applicable state.
+TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled)
+{
+    startModule(/*enrollUsePassword=*/false);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/status");
+    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
 }
 
 // The owner's policy on a failed admin bind: WARN and CONTINUE. A regular file squatting the

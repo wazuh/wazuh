@@ -11,7 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
-from wazuh.core.engine_http import EngineHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
@@ -96,6 +96,34 @@ def _modulesd_status(running: bool) -> dict:
     }
 
 
+def _remoted_status(running: bool) -> dict:
+    """Build the status entry for remoted from its local admin GET /status endpoint.
+
+    Reports whether the client.keys mirror last reloaded successfully and, when
+    Password-mode enrollment is enabled, whether an enrollment password key is
+    available. Both reflect real current in-memory state, never a grace-window-masked
+    view (deliberate: the underlying capability genuinely fails during that window,
+    not just its logging).
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = RemotedHTTPClient()
+        remoted = client.get_status()
+    except WazuhException:
+        return {'ready': False}
+    finally:
+        if client is not None:
+            client.close()
+
+    entry = {'ready': bool(remoted.get('ready', False)), 'keystore': remoted.get('keystore', {})}
+    if 'enrollment_password' in remoted:
+        entry['enrollment_password'] = remoted['enrollment_password']
+    return entry
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
@@ -127,6 +155,8 @@ def get_status() -> AffectedItemsWazuhResult:
             entry.update(_analysisd_status(running))
         elif daemon == 'wazuh-manager-modulesd':
             entry.update(_modulesd_status(running))
+        elif daemon == 'wazuh-manager-remoted':
+            entry.update(_remoted_status(running))
 
         node_ready = node_ready and bool(entry['ready'])
         node_status[daemon] = entry

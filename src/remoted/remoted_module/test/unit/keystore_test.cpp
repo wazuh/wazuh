@@ -118,6 +118,36 @@ namespace
         EXPECT_EQ(keystore.agentsLoaded(), 2U); // previous table (and its level) kept
     }
 
+    // lastLoadOk() is the flag that resolves agentsLoaded()==0's ambiguity between "empty file,
+    // loaded fine" and "never successfully loaded" -- GET /status uses it, not agentsLoaded(), to
+    // decide client.keys readiness.
+    TEST_F(KeystoreTest, LastLoadOkTracksSuccessAndFailure)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+        EXPECT_TRUE(keystore.lastLoadOk());
+
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_FALSE(keystore.lastLoadOk());
+
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_TRUE(keystore.lastLoadOk());
+    }
+
+    // The exact ambiguity lastLoadOk() exists to resolve: an empty (but readable) client.keys is a
+    // valid, successfully-loaded state -- agentsLoaded()==0 alone can't tell that apart from a
+    // keystore that has never loaded at all.
+    TEST_F(KeystoreTest, EmptyFileIsALoadedStateNotAFailedOne)
+    {
+        writeFile("");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 0U);
+        EXPECT_TRUE(keystore.lastLoadOk());
+    }
+
     // entries_skipped is the companion level to `agents`: it counts the client.keys lines the
     // adopted load could NOT use, which is what tells an operator "that agent is silently
     // unauthenticable, go fix line N". Comments, blanks and deliberately removed entries are
