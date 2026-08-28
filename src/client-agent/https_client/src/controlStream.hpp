@@ -114,7 +114,10 @@ class ControlStream final
         void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void updateProducerPause(OutcomeClass outcome);
-        void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
+        /// resourceId is the manager-supplied agent.config_token, passed to /download verbatim
+        /// (opaque to the agent). Falls back to the group selector only for a manager that
+        /// reports no token -- see handleNotifyBody().
+        void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);

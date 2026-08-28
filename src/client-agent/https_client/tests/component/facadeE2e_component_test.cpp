@@ -639,6 +639,11 @@ TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
     // a different local hash) downloads it through the chunked /download,
     // reads it inside the callback, and the optimistic hash update keeps the
     // count at one across further notifies.
+    //
+    // This also covers the config_token round trip end to end: the FakeManager serves
+    // /download for FAKE_MANAGER_CONFIG_TOKEN and nothing else, and that token is not
+    // derivable from the reported groups -- so a client that rebuilt the resource_id itself
+    // instead of relaying the token gets a 404 and never reaches a count of one.
     const uint16_t port = TLS_PORT + 2;
     const std::string blob = "#merged.mg v2\n<agent_config></agent_config>\n";
     FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob};

@@ -254,7 +254,9 @@ paths:
         `notify` is the hot path -- a keepalive every 10 s by default. Its response tells the agent
         whether anything changed: `settings_hash` (over `limits` + `cluster.name` only, cached
         process-wide and therefore identical for every agent -- a different value means re-`startup`),
-        `config_hash` (a different value means fetch `merged.mg` via `POST /download`),
+        `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
+        `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
+        agent, which must never derive that identifier from `agent.groups` itself),
         `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
         `tasks` when the manager has work to dispatch.
 
@@ -310,13 +312,13 @@ paths:
                 notifyNoTasks:
                   summary: No pending work -- `tasks` is an empty array, never an absent key
                   value:
-                    agent: { groups: [web-servers], config_hash: "e3b0c442..." }
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
                     settings_hash: "d7a8fbb3..."
                     tasks: []
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
-                    agent: { groups: [web-servers], config_hash: "e3b0c442..." }
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
                     settings_hash: "d7a8fbb3..."
                     vd_feed_offset: 12345678
                     tasks:

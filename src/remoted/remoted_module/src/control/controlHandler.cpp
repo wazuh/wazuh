@@ -80,6 +80,21 @@ namespace remoted::control
             }
             return out;
         }
+
+        /// The /download resource_id the agent must use for its shared configuration.
+        ///
+        /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
+        /// which is exactly what lets this value change without shipping a new agent. Today it IS
+        /// the group selector -- the same CSV config_hash was computed over, so the two provably
+        /// name the same merged.mg -- and /download resolves it with no lookup.
+        ///
+        /// Never empty: /download needs some resource to name, and an agent with no groups is
+        /// implicitly in "default". The substitution is defensive only, since every site that
+        /// writes AgentEntry::groups already falls back to {"default"}.
+        std::string makeConfigToken(const std::string& groupsCsv)
+        {
+            return groupsCsv.empty() ? std::string {"default"} : groupsCsv;
+        }
     } // namespace
 
     class ControlHandler::Impl
@@ -456,6 +471,10 @@ namespace remoted::control
                     nlohmann::json response;
                     response["agent"]["groups"] = refreshedEntry->groups;
                     response["agent"]["config_hash"] = configHash;
+                    // Derived from the very same CSV mergedPath (and therefore configHash) came
+                    // from, so the resource the agent asks for can never drift from the hash it
+                    // was told to expect.
+                    response["agent"]["config_token"] = makeConfigToken(groupsCsv);
                     response["settings_hash"] = m_hashCache->getSettingsHash();
 
                     nlohmann::json tasksJson = nlohmann::json::array();

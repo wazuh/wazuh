@@ -455,6 +455,9 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     EXPECT_EQ(j["agent"]["groups"][0], "default");
     // No merged.mg file exists in the group dir, so config_hash must be "0".
     EXPECT_EQ(j["agent"]["config_hash"], "0");
+    // config_token is always present and never empty, even when nothing resolved: the agent
+    // needs some resource to name on /download, and the next notify re-triggers the download.
+    EXPECT_EQ(j["agent"]["config_token"], "default");
     EXPECT_TRUE(j.contains("settings_hash"));
     EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U); // sha256 hex
 
@@ -491,6 +494,43 @@ TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
     auto j = nlohmann::json::parse(w.value.body);
     // sha256("hello") -- verifies the hash cache picks up the file we wrote.
     EXPECT_EQ(j["agent"]["config_hash"], "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    // The token names the very group whose merged.mg that hash was taken over.
+    EXPECT_EQ(j["agent"]["config_token"], "default");
+}
+
+// The token is what /download resolves, and config_hash is what the agent verifies the bytes
+// against, so the two must always describe the SAME merged.mg. For a multigroup agent that
+// means the token has to carry every group, comma-joined in wdb's order -- the same CSV the
+// multigroups directory name is hashed from -- and must never be re-sorted or truncated to
+// the first group.
+TEST(ControlHandlerTest, NotifyConfigTokenIsTheFullMultigroupSelectorInWdbOrder)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    // Deliberately not alphabetical: "web" before "default" proves wdb's order survives.
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"web,default\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+
+    // sha256("web,default") = 4b323b4242e8... -> the multigroup dir is its first 8 hex chars.
+    const auto mergedMg = h.env.base / "multi" / "4b323b42" / "merged.mg";
+    fs::create_directories(mergedMg.parent_path());
+    {
+        std::ofstream f(mergedMg, std::ios::binary);
+        f << "hello";
+    }
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(11, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    auto j = nlohmann::json::parse(w.value.body);
+    EXPECT_EQ(j["agent"]["config_token"], "web,default");
+    // A real hash proves the token and the hash resolved to the same file: had the token been
+    // re-sorted or cut to "web", the multigroup dir would differ and this would be "0".
+    EXPECT_EQ(j["agent"]["config_hash"], "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    EXPECT_EQ(j["agent"]["groups"], nlohmann::json::array({"web", "default"}));
 }
 
 TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)

@@ -340,7 +340,12 @@ class Handler(BaseHTTPRequestHandler):
         n = Handler.notify_count
         blob = self._config_blob()
         startup = self._startup_body()
+        # config_token is what the agent must echo back as /download's resource_id. It is
+        # opaque to the agent, so this value is deliberately not the group name -- seeing it
+        # in the /download log below proves the agent relayed the token instead of deriving a
+        # selector from agent.groups on its own.
         response = {"agent": {"groups": ["default"],
+                              "config_token": "cfg-token-abc123",
                               "config_hash": hashlib.sha256(blob).hexdigest()},
                     "settings_hash": hashlib.sha256(startup).hexdigest()}
         if n == 2:

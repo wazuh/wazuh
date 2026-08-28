@@ -311,8 +311,10 @@ typedef struct hc_callbacks_t
     /// accepted Notify (comma-joined, manager's own order) -- fired only when it
     /// differs from what was last reported (Startup included), so a consumer
     /// doesn't republish identity data on every Notify for nothing. Empty is a
-    /// valid, meaningful value (no groups), not a placeholder for "default": do
-    /// not substitute a fallback here the way /download's group selector does.
+    /// valid, meaningful value (no groups), not a placeholder for "default": no
+    /// fallback is substituted here. This is the agent's group IDENTITY, and it is
+    /// unrelated to the configuration download, which the manager addresses on its
+    /// own with the opaque agent.config_token.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with

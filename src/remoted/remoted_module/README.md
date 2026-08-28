@@ -413,6 +413,11 @@ sequenceDiagram
      necessarily agent-independent)
    - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file); the literal `"0"`
      when the selector resolves to no file or it cannot be hashed -- never absent, never empty
+   - Mints `config_token` (`makeConfigToken()`), the `resource_id` the agent must send to
+     `/download` for that config. Opaque to the agent by contract -- it relays the value verbatim
+     and never parses it, which is what lets this change without an agent change. Derived from the
+     same groups CSV `config_hash` was computed over, so the two can never name different files;
+     today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
@@ -421,14 +426,14 @@ sequenceDiagram
      absent key):
      ```json
      {
-       "agent": {"groups": ["web-servers"], "config_hash": "e3b0c44..."},
+       "agent": {"groups": ["web-servers"], "config_token": "web-servers", "config_hash": "e3b0c44..."},
        "settings_hash": "d7a8fbb...",
        "tasks": [],
        "vd_feed_offset": 12345678
      }
      ```
    - **With tasks**: same shape, `tasks` populated -- `[{"task_id":"...","task_type":"active_response","payload":{...}}]`
-   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`), processes tasks, compares `vd_feed_offset`
+   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`, sending `config_token` back as the `resource_id`), processes tasks, compares `vd_feed_offset`
      against its stored value (if strictly higher → request a re-scan via `POST /scan/vd`, see below)
    - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
 
@@ -1198,9 +1203,10 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   lets an agent in several groups fetch its *effective* configuration rather than one member
   group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
   There is no group lookup and no membership check (protocol decision on #38022), so **any
-  authenticated agent can fetch any group's or multigroup's merged configuration**. `/control` must
-  report `config_hash` over the file this resolves to for the selector it hands the agent, or that
-  agent re-downloads on every notify.
+  authenticated agent can fetch any group's or multigroup's merged configuration**. For a `config`
+  request the agent does not pick that value: it relays the `config_token` `/control` handed it (see
+  the notify response above), so `/control` must report `config_hash` over the file this resolves to
+  for the token it handed that agent, or that agent re-downloads on every notify.
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
   traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
   there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
