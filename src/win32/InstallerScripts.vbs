@@ -67,6 +67,7 @@ end sub
 private function ParseManagerEndpoint(raw, home_dir, objFSO)
 
     Dim rest, scheme, authority, path, path_given, port_given, after_bracket, p, i, colons
+    Dim port_digits
 
     ParseManagerEndpoint = False
     MEP_HOST = ""
@@ -157,7 +158,28 @@ private function ParseManagerEndpoint(raw, home_dir, objFSO)
             mep_log home_dir, objFSO, raw, "port '" & port_given & "' is not a number."
             Exit Function
         End If
-        If CLng(port_given) < 1 Or CLng(port_given) > 65535 Then
+        ' CLng() holds a 32-bit Long, so it overflows above 2147483647. That error is not
+        ' catchable here -- "On Error Resume Next" is procedure-scoped and this function
+        ' declares none, so an overflow abandons the caller mid-statement: config() stops
+        ' at the call, no diagnostic is written, and nothing it would have configured after
+        ' that point happens. Narrow the value to something CLng can hold before using it.
+        ' Leading zeros are stripped rather than rejected, so "000080" stays the port 80 --
+        ' matching parse_manager_endpoint() in the shell installers.
+        port_digits = port_given
+
+        Do While Len(port_digits) > 1 And Left(port_digits, 1) = "0"
+            port_digits = Mid(port_digits, 2)
+        Loop
+
+        ' Kept separate from the range test below because VBScript's Or does not
+        ' short-circuit: both sides are evaluated, so CLng must never be reached with an
+        ' oversized value.
+        If Len(port_digits) > 5 Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
+            Exit Function
+        End If
+
+        If CLng(port_digits) < 1 Or CLng(port_digits) > 65535 Then
             mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
             Exit Function
         End If
