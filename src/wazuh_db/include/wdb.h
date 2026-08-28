@@ -129,6 +129,15 @@ typedef enum wdb_stmt {
     WDB_STMT_MANAGER_TASK_REQUEUE,
     WDB_STMT_MANAGER_TASK_SET_RESULT,
     WDB_STMT_MANAGER_TASK_GET,
+    WDB_STMT_MANAGER_TASK_GET_BY_AGENT,
+    WDB_STMT_MANAGER_TASK_POLL_DUE,
+    WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_BY_OWNER,
+    WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_ANY,
+    WDB_STMT_MANAGER_TASK_LIST_BY_TYPE,
+    WDB_STMT_MANAGER_TASK_LIST_BY_TYPE_STATUS,
+    WDB_STMT_MANAGER_TASK_COUNT_BY_TYPE_STATUS,
+    WDB_STMT_MANAGER_TASK_PENDING_TYPES,
+    WDB_STMT_MANAGER_TASK_FAIL_BY_TYPE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
@@ -1448,6 +1457,15 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
 /* Manager tasks */
 
 /**
+ * @brief Largest page a manager task listing will return.
+ *
+ * Every response travels through the same fixed WDBOUTPUT_SIZE buffer, which silently truncates,
+ * so the paged listings cap their own page size rather than trusting the caller's. At roughly
+ * 200 bytes per entry this leaves the response about a third full at worst.
+ */
+#define WDB_MANAGER_TASK_PAGE_SIZE 100
+
+/**
  * @brief Outcome of a manager task queue operation.
  *
  * Values start at 1 so that none of them can be mistaken for OS_SUCCESS or OS_INVALID.
@@ -1564,6 +1582,102 @@ int wdb_manager_task_set_result(wdb_t *wdb,
 int wdb_manager_task_get(wdb_t *wdb, const char *task_id, cJSON **task);
 
 /**
+ * @brief Fetch the most recent manager task for one agent and type.
+ *
+ * Serves authd's outstanding-purge check, which sits on the explicit-id enrollment path.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] agent_id Agent to look up.
+ * @param[in] task_type Type to look up.
+ * @param[out] task The row, or NULL when there is none. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_get_by_agent(wdb_t *wdb, const char *agent_id, const char *task_type, cJSON **task);
+
+/**
+ * @brief List the task types that currently have pending work, with the earliest due time of each.
+ *
+ * One command per poll interval rather than one claim per lane, which would multiply contention
+ * on the per-database mutex for no gain.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[out] types Array of {task_type, next_attempt_at}. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_poll(wdb_t *wdb, cJSON **types);
+
+/**
+ * @brief Enumerate claimed rows for the ownership sweep, one page at a time.
+ *
+ * Whether a claimed row may be reclaimed cannot be decided in SQL, because OWNER is a composite
+ * the caller parses, so the rows are handed back for the caller to filter.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] owner Restrict to one lane, or NULL for every claimed row (the startup form).
+ * @param[in] last_task_id Highest task id of the previous page, or NULL to start.
+ * @param[in] limit Page size. Must be positive.
+ * @param[out] tasks Array of rows with owner, claim time and counters. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_get_claimed(wdb_t *wdb, const char *owner, const char *last_task_id, int limit, cJSON **tasks);
+
+/**
+ * @brief List manager tasks of one type, optionally filtered by status, one page at a time.
+ *
+ * Returns a compact projection rather than whole rows; use wdb_manager_task_get() for a full one.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_type Type to list.
+ * @param[in] status Status to filter by, or NULL for every status.
+ * @param[in] last_task_id Highest task id of the previous page, or NULL to start.
+ * @param[in] limit Page size. Must be positive.
+ * @param[out] tasks Array of {task_id, agent_id, status, create_time, last_error}. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_list(wdb_t *wdb,
+                          const char *task_type,
+                          const char *status,
+                          const char *last_task_id,
+                          int limit,
+                          cJSON **tasks);
+
+/**
+ * @brief Count manager tasks of one type in one status.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_type Type to count.
+ * @param[in] status Status to count.
+ * @param[out] count Number of matching rows.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_count(wdb_t *wdb, const char *task_type, const char *status, int *count);
+
+/**
+ * @brief List the distinct task types that have pending rows.
+ *
+ * Half of the orphaned-type reaper: the caller compares this against its handler registry, since
+ * wazuh-db has no notion of which task types exist, and fails the ones it does not recognise.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[out] types Array of type names. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_pending_types(wdb_t *wdb, cJSON **types);
+
+/**
+ * @brief Move every pending row of one task type to failed.
+ *
+ * The other half of the reaper. A pending row of an unregistered type is never claimed, is never
+ * expired by age, and would otherwise count against the row ceiling forever.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_type Type to retire.
+ * @param[in] last_error Reason to record. May be NULL.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_fail_type(wdb_t *wdb, const char *task_type, const char *last_error);
+
+/**
  * @brief Render a MANAGER_TASKS row as JSON, omitting NULL columns.
  *
  * @param[in] stmt Statement positioned on a row selecting the full column list.
@@ -1590,12 +1704,22 @@ const char* wdb_manager_task_result_name(int result);
  */
 bool wdb_manager_task_payload_fits(const char *payload);
 
-/* Manager task sub-command handlers, reached through the task actor's command table. */
+/* Manager task sub-command handlers, reached through the task actor's command table.
+ *
+ * Every one of them takes a JSON parameters object, including those that read nothing from it, so
+ * that the dispatch stays uniform: the caller of a parameterless sub-command sends "{}". */
 int wdb_parse_manager_task_create(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_claim(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_requeue(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_result(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_get(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_get_by_agent(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_poll(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_get_claimed(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_list(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_count(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_pending_types(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_fail_type(wdb_t *wdb, const cJSON *parameters, char *output);
 
 int wdb_parse_task_create(wdb_t* wdb, const cJSON *parameters, char* output);
 

@@ -119,11 +119,15 @@ typedef struct _task_manager_tasks_t {
     uint64_t requeue_queries;
     uint64_t result_queries;
     uint64_t get_queries;
+    uint64_t poll_queries;
+    uint64_t list_queries;
     struct timeval create_time;
     struct timeval claim_time;
     struct timeval requeue_time;
     struct timeval result_time;
     struct timeval get_time;
+    struct timeval poll_time;
+    struct timeval list_time;
 } task_manager_tasks_t;
 
 typedef struct _task_breakdown_t {
@@ -735,6 +739,34 @@ void w_inc_task_manager_task_get();
  * @param time Value to increment the counter.
  */
 void w_inc_task_manager_task_get_time(struct timeval time);
+
+/**
+ * @brief Increment manager task poll queries counter
+ *
+ * Shared by the work poll and the ownership sweep: both are the scheduler thread's periodic
+ * scans, and separating them would say nothing the two intervals do not already say.
+ */
+void w_inc_task_manager_task_poll();
+
+/**
+ * @brief Increment manager task poll time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_poll_time(struct timeval time);
+
+/**
+ * @brief Increment manager task list queries counter
+ *
+ */
+void w_inc_task_manager_task_list();
+
+/**
+ * @brief Increment manager task list time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_list_time(struct timeval time);
 
 /**
  * @brief Increment mitre queries counter

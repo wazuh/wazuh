@@ -107,6 +107,26 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_MANAGER_TASK_REQUEUE] = "UPDATE MANAGER_TASKS SET STATUS = 'pending', NEXT_ATTEMPT_AT = ?, ATTEMPTS = ?, DEFER_COUNT = ?, LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_ID = ?;",
     [WDB_STMT_MANAGER_TASK_SET_RESULT] = "UPDATE MANAGER_TASKS SET STATUS = ?, LAST_ERROR = ?, ATTEMPTS = ?, DEFER_COUNT = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_ID = ?;",
     [WDB_STMT_MANAGER_TASK_GET] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, CREATE_TIME, STATUS, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT, LAST_ERROR, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT FROM MANAGER_TASKS WHERE TASK_ID = ?;",
+    // Same column list and order as WDB_STMT_MANAGER_TASK_GET, so both feed wdb_manager_task_row_to_json().
+    [WDB_STMT_MANAGER_TASK_GET_BY_AGENT] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, CREATE_TIME, STATUS, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT, LAST_ERROR, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? ORDER BY CREATE_TIME DESC LIMIT 1;",
+    // Walks the pending partial index without touching the table; SQLite has no loose index scan,
+    // so this traverses every pending entry, which the creation caps bound.
+    [WDB_STMT_MANAGER_TASK_POLL_DUE] = "SELECT TASK_TYPE, MIN(NEXT_ATTEMPT_AT) FROM MANAGER_TASKS WHERE STATUS = 'pending' GROUP BY TASK_TYPE;",
+    // The ownership sweep. Both forms page on TASK_ID rather than OFFSET: rows are being written
+    // concurrently, and an offset walk would skip or repeat rows as the result set shifts.
+    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_BY_OWNER] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE STATUS = 'claimed' AND OWNER = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
+    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_ANY] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE STATUS = 'claimed' AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
+    // A deliberately compact projection: these list a whole task type, so the full row including
+    // PAYLOAD would reach the response buffer's limit after a handful of entries.
+    [WDB_STMT_MANAGER_TASK_LIST_BY_TYPE] = "SELECT TASK_ID, AGENT_ID, STATUS, CREATE_TIME, LAST_ERROR FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
+    [WDB_STMT_MANAGER_TASK_LIST_BY_TYPE_STATUS] = "SELECT TASK_ID, AGENT_ID, STATUS, CREATE_TIME, LAST_ERROR FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
+    [WDB_STMT_MANAGER_TASK_COUNT_BY_TYPE_STATUS] = "SELECT COUNT(*) FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = ?;",
+    // The orphaned type reaper works in two steps because only the dispatcher knows which task
+    // types are registered. It asks which types have pending rows, and fails the ones it does not
+    // recognise. Keeping the list of known types out of wazuh-db is what lets a new task type be
+    // added without touching this file.
+    [WDB_STMT_MANAGER_TASK_PENDING_TYPES] = "SELECT DISTINCT TASK_TYPE FROM MANAGER_TASKS WHERE STATUS = 'pending';",
+    [WDB_STMT_MANAGER_TASK_FAIL_BY_TYPE] = "UPDATE MANAGER_TASKS SET STATUS = 'failed', LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_TYPE = ? AND STATUS = 'pending';",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",

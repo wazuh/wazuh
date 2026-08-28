@@ -569,6 +569,275 @@ void test_wdb_manager_task_rejects_missing_arguments(void **state) {
     assert_int_equal(wdb_manager_task_get(wdb, NULL, &out), OS_INVALID);
 }
 
+/* wdb_manager_task_poll */
+
+void test_wdb_manager_task_poll_groups_by_type(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *types = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "vd_scan");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 4000);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "agent_delete_indexer");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 4200);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // One command per interval tells the scheduler which lanes to wake and when the next row of
+    // each type comes due, rather than one claim attempt per lane on a timer.
+    assert_int_equal(wdb_manager_task_poll(wdb, &types), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(types), 2);
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(types, 0), "task_type")->valuestring, "vd_scan");
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(types, 1), "next_attempt_at")->valueint, 4200);
+
+    cJSON_Delete(types);
+}
+
+void test_wdb_manager_task_poll_empty(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *types = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_poll(wdb, &types), OS_SUCCESS);
+    assert_non_null(types);
+    assert_int_equal(cJSON_GetArraySize(types), 0);
+
+    cJSON_Delete(types);
+}
+
+/* wdb_manager_task_get_claimed */
+
+/**
+ * @brief Queue the column reads of one claimed row.
+ */
+static void expect_claimed_row(const char *task_id, const char *owner, int agent_column_type) {
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, task_id);
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "vd_scan");
+    expect_value(__wrap_sqlite3_column_type, i, 2);
+    will_return(__wrap_sqlite3_column_type, agent_column_type);
+
+    if (agent_column_type != SQLITE_NULL) {
+        expect_value(__wrap_sqlite3_column_text, iCol, 2);
+        will_return(__wrap_sqlite3_column_text, "001");
+    }
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 3);
+    will_return(__wrap_sqlite3_column_text, owner);
+    expect_value(__wrap_sqlite3_column_int64, iCol, 4);
+    will_return(__wrap_sqlite3_column_int64, 900);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
+    will_return(__wrap_sqlite3_column_int, 2);
+    expect_value(__wrap_sqlite3_column_int, iCol, 6);
+    will_return(__wrap_sqlite3_column_int, 0);
+}
+
+void test_wdb_manager_task_get_claimed_by_owner(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *tasks = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "10:20:scan-0", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "", SQLITE_OK);
+    expect_sqlite3_bind_int_call(3, 100, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_claimed_row("task-id", "10:20:scan-0", SQLITE_TEXT);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_get_claimed(wdb, "10:20:scan-0", NULL, 100, &tasks), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(tasks), 1);
+
+    cJSON *row = cJSON_GetArrayItem(tasks, 0);
+
+    // OWNER and CLAIM_TIME both travel back: whether a row may be reclaimed depends on the
+    // liveness of the owning lane and on the claim being older than the grace period, and
+    // neither can be decided in SQL.
+    assert_string_equal(cJSON_GetObjectItem(row, "owner")->valuestring, "10:20:scan-0");
+    assert_int_equal(cJSON_GetObjectItem(row, "claim_time")->valueint, 900);
+    assert_int_equal(cJSON_GetObjectItem(row, "attempts")->valueint, 2);
+
+    cJSON_Delete(tasks);
+}
+
+void test_wdb_manager_task_get_claimed_any_owner_pages(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *tasks = NULL;
+
+    // The startup form takes no owner, so the first bound parameter is the paging key. Its
+    // result set is bounded by nothing after repeated crashes, which is why it pages at all.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "task-000", SQLITE_OK);
+    expect_sqlite3_bind_int_call(2, 100, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_claimed_row("task-001", "10:20:local-0", SQLITE_NULL);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_get_claimed(wdb, NULL, "task-000", 100, &tasks), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(tasks), 1);
+    assert_null(cJSON_GetObjectItem(cJSON_GetArrayItem(tasks, 0), "agent_id"));
+
+    cJSON_Delete(tasks);
+}
+
+void test_wdb_manager_task_get_claimed_rejects_bad_limit(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *tasks = NULL;
+
+    assert_int_equal(wdb_manager_task_get_claimed(wdb, NULL, NULL, 0, &tasks), OS_INVALID);
+}
+
+/* wdb_manager_task_list */
+
+void test_wdb_manager_task_list_filters_by_status(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *tasks = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "vd_scan", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "dead_letter", SQLITE_OK);
+    expect_sqlite3_bind_text_call(3, "", SQLITE_OK);
+    expect_sqlite3_bind_int_call(4, 100, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "task-id");
+    expect_value(__wrap_sqlite3_column_type, i, 1);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "001");
+    expect_value(__wrap_sqlite3_column_text, iCol, 2);
+    will_return(__wrap_sqlite3_column_text, "dead_letter");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 3);
+    will_return(__wrap_sqlite3_column_int64, 1000);
+    expect_value(__wrap_sqlite3_column_type, i, 4);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "consumer unreachable");
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_list(wdb, "vd_scan", "dead_letter", NULL, 100, &tasks), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(tasks), 1);
+
+    // The listing carries LAST_ERROR so that a dead-letter row is self-explanatory to an
+    // operator who never saw the log line that announced it.
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(tasks, 0), "last_error")->valuestring,
+                        "consumer unreachable");
+
+    cJSON_Delete(tasks);
+}
+
+void test_wdb_manager_task_list_without_status(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *tasks = NULL;
+
+    // No status filter means one fewer bound parameter, so the paging key moves up.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_indexer", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "task-000", SQLITE_OK);
+    expect_sqlite3_bind_int_call(3, 50, SQLITE_OK);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_list(wdb, "agent_delete_indexer", NULL, "task-000", 50, &tasks),
+                     OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(tasks), 0);
+
+    cJSON_Delete(tasks);
+}
+
+/* wdb_manager_task_count */
+
+void test_wdb_manager_task_count_success(void **state) {
+    wdb_t *wdb = *state;
+    int count = 0;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_indexer", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "pending", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 17);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_count(wdb, "agent_delete_indexer", "pending", &count), OS_SUCCESS);
+    assert_int_equal(count, 17);
+}
+
+/* The orphaned type reaper */
+
+void test_wdb_manager_task_pending_types(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *types = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "vd_scan");
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "removed_in_a_later_release");
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // wazuh-db reports which types have pending rows but never judges them: the registry that
+    // knows which types exist lives in the dispatcher, which is what lets a new task type be
+    // added without touching the database layer.
+    assert_int_equal(wdb_manager_task_pending_types(wdb, &types), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(types), 2);
+    assert_string_equal(cJSON_GetArrayItem(types, 1)->valuestring, "removed_in_a_later_release");
+
+    cJSON_Delete(types);
+}
+
+void test_wdb_manager_task_fail_type(void **state) {
+    wdb_t *wdb = *state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "unknown task type", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "removed_in_a_later_release", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    assert_int_equal(wdb_manager_task_fail_type(wdb, "removed_in_a_later_release", "unknown task type"),
+                     OS_SUCCESS);
+}
+
+/* wdb_manager_task_get_by_agent */
+
+void test_wdb_manager_task_get_by_agent_not_found(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *task = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "001", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "agent_delete_indexer", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_get_by_agent(wdb, "001", "agent_delete_indexer", &task), OS_SUCCESS);
+    assert_null(task);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -603,6 +872,23 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_set_result_records_error, test_setup, test_teardown),
         // wdb_manager_task_get
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_not_found, test_setup, test_teardown),
+        // wdb_manager_task_poll
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_poll_groups_by_type, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_poll_empty, test_setup, test_teardown),
+        // wdb_manager_task_get_claimed
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_claimed_by_owner, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_claimed_any_owner_pages, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_claimed_rejects_bad_limit, test_setup, test_teardown),
+        // wdb_manager_task_list
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_list_filters_by_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_list_without_status, test_setup, test_teardown),
+        // wdb_manager_task_count
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_count_success, test_setup, test_teardown),
+        // Orphaned type reaper
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_pending_types, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_fail_type, test_setup, test_teardown),
+        // wdb_manager_task_get_by_agent
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_by_agent_not_found, test_setup, test_teardown),
         // Argument validation
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_rejects_missing_arguments, test_setup, test_teardown),
     };

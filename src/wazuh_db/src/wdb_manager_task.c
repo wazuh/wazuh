@@ -113,20 +113,26 @@ STATIC void wdb_manager_task_bind_optional_int(sqlite3_stmt *stmt, int index, lo
 /**
  * @brief Open the deferred transaction and fetch a cached statement.
  *
- * @return The statement on success, NULL on failure.
+ * The statement is returned through an out parameter rather than as the return value: whether it
+ * is NULL is not a failure signal, only whether the transaction opened and the cache was primed.
+ *
+ * @param[out] stmt Set to the cached statement on success.
+ * @return OS_SUCCESS on success, OS_INVALID on failure.
  */
-STATIC sqlite3_stmt* wdb_manager_task_stmt(wdb_t *wdb, wdb_stmt index) {
+STATIC int wdb_manager_task_prepare(wdb_t *wdb, wdb_stmt index, sqlite3_stmt **stmt) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1(DB_TRANSACTION_ERROR);
-        return NULL;
+        return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, index) < 0) {
         mdebug1(DB_CACHE_ERROR);
-        return NULL;
+        return OS_INVALID;
     }
 
-    return wdb->stmt[index];
+    *stmt = wdb->stmt[index];
+
+    return OS_SUCCESS;
 }
 
 /**
@@ -179,7 +185,7 @@ int wdb_manager_task_create(wdb_t *wdb, const wdb_manager_task_create_t *task, c
     // (AGENT_ID, TASK_TYPE) pair would collapse two genuinely distinct deletions of one agent
     // into one, which is why this is a flag the caller sets rather than a unique index.
     if (task->coalesce && task->agent_id) {
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_FIND_PENDING_BY_AGENT), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_FIND_PENDING_BY_AGENT, &stmt) != OS_SUCCESS) {
             return OS_INVALID;
         }
 
@@ -200,7 +206,7 @@ int wdb_manager_task_create(wdb_t *wdb, const wdb_manager_task_create_t *task, c
     // (b) The admission bound. It is exact rather than advisory because it shares this command
     // with the insert below, so no other creator can slip a row in between the two.
     if (task->max_pending > 0) {
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_COUNT_PENDING_BY_TYPE), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_COUNT_PENDING_BY_TYPE, &stmt) != OS_SUCCESS) {
             return OS_INVALID;
         }
 
@@ -221,7 +227,7 @@ int wdb_manager_task_create(wdb_t *wdb, const wdb_manager_task_create_t *task, c
         }
     }
 
-    if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_INSERT), !stmt) {
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_INSERT, &stmt) != OS_SUCCESS) {
         return OS_INVALID;
     }
 
@@ -282,7 +288,7 @@ int wdb_manager_task_claim(wdb_t *wdb, const char *task_type, const char *owner,
 
     *task = NULL;
 
-    if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_SELECT_CLAIMABLE), !stmt) {
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SELECT_CLAIMABLE, &stmt) != OS_SUCCESS) {
         return OS_INVALID;
     }
 
@@ -326,7 +332,7 @@ int wdb_manager_task_claim(wdb_t *wdb, const char *task_type, const char *owner,
     // Release the read cursor before updating the row it is sitting on.
     sqlite3_reset(stmt);
 
-    if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_CLAIM), !stmt) {
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_CLAIM, &stmt) != OS_SUCCESS) {
         goto error;
     }
 
@@ -373,7 +379,7 @@ int wdb_manager_task_requeue(wdb_t *wdb, const wdb_manager_task_requeue_t *reque
     // Only coalescing types can have a competing row: for every other type the id is the only
     // thing that identifies the work, so nothing can have taken this row's slot.
     if (requeue->coalesce && requeue->agent_id && requeue->task_type) {
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_FIND_COMPETING_PENDING), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_FIND_COMPETING_PENDING, &stmt) != OS_SUCCESS) {
             return OS_INVALID;
         }
 
@@ -407,7 +413,7 @@ int wdb_manager_task_requeue(wdb_t *wdb, const wdb_manager_task_requeue_t *reque
         // reach dead_letter under load: against a broken consumer with requests still arriving,
         // every timed-out row is superseded by a fresh row starting at zero, no row ever
         // accumulates a budget, and the failure stays invisible.
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_INHERIT_COUNTERS), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_INHERIT_COUNTERS, &stmt) != OS_SUCCESS) {
             os_free(survivor_id);
             return OS_INVALID;
         }
@@ -424,14 +430,14 @@ int wdb_manager_task_requeue(wdb_t *wdb, const wdb_manager_task_requeue_t *reque
 
         os_free(survivor_id);
 
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_SUPERSEDE), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SUPERSEDE, &stmt) != OS_SUCCESS) {
             return OS_INVALID;
         }
 
         wdb_manager_task_bind_text(stmt, 1, requeue->last_error);
         sqlite3_bind_text(stmt, 2, requeue->task_id, -1, NULL);
     } else {
-        if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_REQUEUE), !stmt) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_REQUEUE, &stmt) != OS_SUCCESS) {
             return OS_INVALID;
         }
 
@@ -462,7 +468,7 @@ int wdb_manager_task_set_result(wdb_t *wdb,
         return OS_INVALID;
     }
 
-    if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_SET_RESULT), !stmt) {
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SET_RESULT, &stmt) != OS_SUCCESS) {
         return OS_INVALID;
     }
 
@@ -494,7 +500,7 @@ int wdb_manager_task_get(wdb_t *wdb, const char *task_id, cJSON **task) {
 
     *task = NULL;
 
-    if (stmt = wdb_manager_task_stmt(wdb, WDB_STMT_MANAGER_TASK_GET), !stmt) {
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_GET, &stmt) != OS_SUCCESS) {
         return OS_INVALID;
     }
 
@@ -560,4 +566,305 @@ cJSON* wdb_manager_task_row_to_json(sqlite3_stmt *stmt) {
     }
 
     return task;
+}
+
+int wdb_manager_task_get_by_agent(wdb_t *wdb, const char *agent_id, const char *task_type, cJSON **task) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !agent_id || !task_type || !task) {
+        return OS_INVALID;
+    }
+
+    *task = NULL;
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_GET_BY_AGENT, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, agent_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, task_type, -1, NULL);
+
+    result = wdb_step(stmt);
+
+    if (result != SQLITE_ROW) {
+        if (result != SQLITE_DONE) {
+            merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        }
+
+        sqlite3_reset(stmt);
+
+        return result == SQLITE_DONE ? OS_SUCCESS : OS_INVALID;
+    }
+
+    // Newest first: an agent id can carry several rows over its lifetime, and the caller asking
+    // "is a task outstanding for this agent" means the current one.
+    *task = wdb_manager_task_row_to_json(stmt);
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_poll(wdb_t *wdb, cJSON **types) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !types) {
+        return OS_INVALID;
+    }
+
+    *types = cJSON_CreateArray();
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_POLL_DUE, &stmt) != OS_SUCCESS) {
+        cJSON_Delete(*types);
+        *types = NULL;
+        return OS_INVALID;
+    }
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        const char *task_type = (const char *)sqlite3_column_text(stmt, 0);
+        cJSON *entry = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(entry, "task_type", task_type ? task_type : "");
+        cJSON_AddNumberToObject(entry, "next_attempt_at", sqlite3_column_int64(stmt, 1));
+        cJSON_AddItemToArray(*types, entry);
+    }
+
+    if (result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        cJSON_Delete(*types);
+        *types = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_get_claimed(wdb_t *wdb, const char *owner, const char *last_task_id, int limit, cJSON **tasks) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+    int index = 1;
+
+    if (!wdb || !tasks || limit <= 0) {
+        return OS_INVALID;
+    }
+
+    *tasks = cJSON_CreateArray();
+
+    // A NULL owner enumerates every claimed row, whoever holds it. That is the startup form,
+    // whose result set is bounded by nothing after repeated crashes, which is why both forms page.
+    if (wdb_manager_task_prepare(wdb,
+                                 owner ? WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_BY_OWNER
+                                       : WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_ANY,
+                                 &stmt) != OS_SUCCESS) {
+        cJSON_Delete(*tasks);
+        *tasks = NULL;
+        return OS_INVALID;
+    }
+
+    if (owner) {
+        sqlite3_bind_text(stmt, index++, owner, -1, NULL);
+    }
+
+    sqlite3_bind_text(stmt, index++, last_task_id ? last_task_id : "", -1, NULL);
+    sqlite3_bind_int(stmt, index, limit);
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        cJSON *entry = cJSON_CreateObject();
+        const char *column = (const char *)sqlite3_column_text(stmt, 0);
+
+        cJSON_AddStringToObject(entry, "task_id", column ? column : "");
+
+        column = (const char *)sqlite3_column_text(stmt, 1);
+        cJSON_AddStringToObject(entry, "task_type", column ? column : "");
+
+        if (sqlite3_column_type(stmt, 2) != SQLITE_NULL) {
+            column = (const char *)sqlite3_column_text(stmt, 2);
+            cJSON_AddStringToObject(entry, "agent_id", column ? column : "");
+        }
+
+        // OWNER is parsed in C -- process id, process start time and lane id -- so the predicate
+        // deciding whether a row may be reclaimed cannot be expressed in SQL. CLAIM_TIME comes
+        // with it because reclaiming also requires the claim to be older than the grace period.
+        column = (const char *)sqlite3_column_text(stmt, 3);
+        cJSON_AddStringToObject(entry, "owner", column ? column : "");
+
+        cJSON_AddNumberToObject(entry, "claim_time", sqlite3_column_int64(stmt, 4));
+        cJSON_AddNumberToObject(entry, "attempts", sqlite3_column_int(stmt, 5));
+        cJSON_AddNumberToObject(entry, "defer_count", sqlite3_column_int(stmt, 6));
+
+        cJSON_AddItemToArray(*tasks, entry);
+    }
+
+    if (result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        cJSON_Delete(*tasks);
+        *tasks = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_list(wdb_t *wdb,
+                          const char *task_type,
+                          const char *status,
+                          const char *last_task_id,
+                          int limit,
+                          cJSON **tasks) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+    int index = 1;
+
+    if (!wdb || !task_type || !tasks || limit <= 0) {
+        return OS_INVALID;
+    }
+
+    *tasks = cJSON_CreateArray();
+
+    if (wdb_manager_task_prepare(wdb,
+                                 status ? WDB_STMT_MANAGER_TASK_LIST_BY_TYPE_STATUS
+                                        : WDB_STMT_MANAGER_TASK_LIST_BY_TYPE,
+                                 &stmt) != OS_SUCCESS) {
+        cJSON_Delete(*tasks);
+        *tasks = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, index++, task_type, -1, NULL);
+
+    if (status) {
+        sqlite3_bind_text(stmt, index++, status, -1, NULL);
+    }
+
+    sqlite3_bind_text(stmt, index++, last_task_id ? last_task_id : "", -1, NULL);
+    sqlite3_bind_int(stmt, index, limit);
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        cJSON *entry = cJSON_CreateObject();
+        const char *column = (const char *)sqlite3_column_text(stmt, 0);
+
+        cJSON_AddStringToObject(entry, "task_id", column ? column : "");
+
+        if (sqlite3_column_type(stmt, 1) != SQLITE_NULL) {
+            column = (const char *)sqlite3_column_text(stmt, 1);
+            cJSON_AddStringToObject(entry, "agent_id", column ? column : "");
+        }
+
+        column = (const char *)sqlite3_column_text(stmt, 2);
+        cJSON_AddStringToObject(entry, "status", column ? column : "");
+
+        cJSON_AddNumberToObject(entry, "create_time", sqlite3_column_int64(stmt, 3));
+
+        // Carried so that a dead-letter listing is self-explanatory: an operator who never saw
+        // the log line has no other way to learn why a row failed.
+        if (sqlite3_column_type(stmt, 4) != SQLITE_NULL) {
+            column = (const char *)sqlite3_column_text(stmt, 4);
+            cJSON_AddStringToObject(entry, "last_error", column ? column : "");
+        }
+
+        cJSON_AddItemToArray(*tasks, entry);
+    }
+
+    if (result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        cJSON_Delete(*tasks);
+        *tasks = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_count(wdb_t *wdb, const char *task_type, const char *status, int *count) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb || !task_type || !status || !count) {
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_COUNT_BY_TYPE_STATUS, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, task_type, -1, NULL);
+    sqlite3_bind_text(stmt, 2, status, -1, NULL);
+
+    if (wdb_step(stmt) != SQLITE_ROW) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        return OS_INVALID;
+    }
+
+    *count = sqlite3_column_int(stmt, 0);
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_pending_types(wdb_t *wdb, cJSON **types) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !types) {
+        return OS_INVALID;
+    }
+
+    *types = cJSON_CreateArray();
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_PENDING_TYPES, &stmt) != OS_SUCCESS) {
+        cJSON_Delete(*types);
+        *types = NULL;
+        return OS_INVALID;
+    }
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        const char *task_type = (const char *)sqlite3_column_text(stmt, 0);
+        cJSON_AddItemToArray(*types, cJSON_CreateString(task_type ? task_type : ""));
+    }
+
+    if (result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        cJSON_Delete(*types);
+        *types = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_fail_type(wdb_t *wdb, const char *task_type, const char *last_error) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb || !task_type) {
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_FAIL_BY_TYPE, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    wdb_manager_task_bind_text(stmt, 1, last_error);
+    sqlite3_bind_text(stmt, 2, task_type, -1, NULL);
+
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
 }

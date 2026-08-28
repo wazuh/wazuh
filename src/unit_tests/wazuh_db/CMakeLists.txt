@@ -107,7 +107,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_commit2 -Wl,--
                              -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 \
                              -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_text \
                              -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_errmsg \
-                             -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int64 \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")

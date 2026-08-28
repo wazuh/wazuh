@@ -575,6 +575,30 @@ void w_inc_task_manager_task_get_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_task_manager_task_poll() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.poll_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_poll_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.poll_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.poll_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_list() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.list_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_list_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.list_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.list_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_mitre() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.mitre_queries++;
@@ -715,6 +739,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_task_tables_manager_tasks, "requeue", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.requeue_queries);
     cJSON_AddNumberToObject(_task_tables_manager_tasks, "result", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.result_queries);
     cJSON_AddNumberToObject(_task_tables_manager_tasks, "get", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.get_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "poll", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.poll_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "list", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.list_queries);
 
     cJSON *_time = cJSON_CreateObject();
     cJSON_AddItemToObject(_metrics, "time", _time);
@@ -821,6 +847,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "requeue", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.requeue_time));
     cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "result", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.result_time));
     cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "get", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.get_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "poll", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.poll_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "list", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.list_time));
 
     return wdb_state_json;
 }
@@ -877,6 +905,8 @@ STATIC uint64_t get_task_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.requeue_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.result_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.get_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.poll_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.list_time, &task_time);
 
     return timeval_to_milis(task_time);
 }

@@ -39,6 +39,13 @@ static const manager_task_command_t MANAGER_TASK_COMMANDS[] = {
     {"requeue_manager_task", wdb_parse_manager_task_requeue, w_inc_task_manager_task_requeue, w_inc_task_manager_task_requeue_time},
     {"set_manager_task_result", wdb_parse_manager_task_result, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
     {"get_manager_task", wdb_parse_manager_task_get, w_inc_task_manager_task_get, w_inc_task_manager_task_get_time},
+    {"get_manager_task_by_agent", wdb_parse_manager_task_get_by_agent, w_inc_task_manager_task_get, w_inc_task_manager_task_get_time},
+    {"poll_manager_tasks", wdb_parse_manager_task_poll, w_inc_task_manager_task_poll, w_inc_task_manager_task_poll_time},
+    {"get_claimed_manager_tasks", wdb_parse_manager_task_get_claimed, w_inc_task_manager_task_poll, w_inc_task_manager_task_poll_time},
+    {"get_manager_tasks_by_type", wdb_parse_manager_task_list, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"count_manager_tasks", wdb_parse_manager_task_count, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"get_pending_manager_task_types", wdb_parse_manager_task_pending_types, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"fail_manager_tasks_by_type", wdb_parse_manager_task_fail_type, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
 };
 
 /**
@@ -2391,4 +2398,174 @@ int wdb_parse_manager_task_get(wdb_t *wdb, const cJSON *parameters, char *output
     }
 
     return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_get_by_agent(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *task = NULL;
+    const char *agent_id = NULL;
+    const char *task_type = NULL;
+
+    agent_id = wdb_manager_task_opt_string(parameters, "agent_id");
+    if (!agent_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get manager task by agent: 'parsing agent_id error'");
+        return OS_INVALID;
+    }
+
+    task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get manager task by agent: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_get_by_agent(wdb, agent_id, task_type, &task) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+
+    if (task) {
+        cJSON_AddItemToObject(response, "task", task);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_poll(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *types = NULL;
+
+    (void)parameters;
+
+    if (wdb_manager_task_poll(wdb, &types) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "types", types);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_get_claimed(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *tasks = NULL;
+    const char *owner = NULL;
+    const char *last_task_id = NULL;
+    int limit = 0;
+
+    // Absent owner means every claimed row, which is the startup form of the sweep.
+    owner = wdb_manager_task_opt_string(parameters, "owner");
+    last_task_id = wdb_manager_task_opt_string(parameters, "last_task_id");
+    limit = (int)wdb_manager_task_opt_number(parameters, "limit", WDB_MANAGER_TASK_PAGE_SIZE);
+
+    if (limit <= 0 || limit > WDB_MANAGER_TASK_PAGE_SIZE) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get claimed manager tasks: 'parsing limit error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_get_claimed(wdb, owner, last_task_id, limit, &tasks) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "tasks", tasks);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_list(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *tasks = NULL;
+    const char *task_type = NULL;
+    const char *status = NULL;
+    const char *last_task_id = NULL;
+    int limit = 0;
+
+    task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error list manager tasks: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    status = wdb_manager_task_opt_string(parameters, "status");
+    last_task_id = wdb_manager_task_opt_string(parameters, "last_task_id");
+    limit = (int)wdb_manager_task_opt_number(parameters, "limit", WDB_MANAGER_TASK_PAGE_SIZE);
+
+    if (limit <= 0 || limit > WDB_MANAGER_TASK_PAGE_SIZE) {
+        snprintf(output, OS_MAXSTR + 1, "err Error list manager tasks: 'parsing limit error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_list(wdb, task_type, status, last_task_id, limit, &tasks) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "tasks", tasks);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_count(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    const char *task_type = NULL;
+    const char *status = NULL;
+    int count = 0;
+
+    task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error count manager tasks: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    status = wdb_manager_task_opt_string(parameters, "status");
+    if (!status) {
+        snprintf(output, OS_MAXSTR + 1, "err Error count manager tasks: 'parsing status error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_count(wdb, task_type, status, &count) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "count", count);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_pending_types(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *types = NULL;
+
+    (void)parameters;
+
+    if (wdb_manager_task_pending_types(wdb, &types) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "types", types);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_fail_type(wdb_t *wdb, const cJSON *parameters, char *output) {
+    const char *task_type = NULL;
+    const char *last_error = NULL;
+
+    task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error fail manager tasks by type: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    last_error = wdb_manager_task_opt_string(parameters, "last_error");
+
+    if (wdb_manager_task_fail_type(wdb, task_type, last_error) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, NULL, output);
 }
