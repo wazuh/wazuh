@@ -143,13 +143,13 @@ TEST_F(ContainerImagesTest, LocalReaderSourceType)
 TEST_F(ContainerImagesTest, LocalReaderEmptyPathReturnsNothing)
 {
     LocalImageReader reader("");
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 }
 
 TEST_F(ContainerImagesTest, LocalReaderMissingLayoutReturnsNothing)
 {
     LocalImageReader reader("/nonexistent/path/to/layout");
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 }
 
 TEST_F(ContainerImagesTest, LocalReaderReadsSingleReference)
@@ -157,7 +157,7 @@ TEST_F(ContainerImagesTest, LocalReaderReadsSingleReference)
     const auto fixture = buildSingleImageLayout();
 
     LocalImageReader reader(fixture->path());
-    const auto references = reader.discover();
+    const auto references = reader.discover().records;
 
     ASSERT_EQ(references.size(), 1U);
 
@@ -179,7 +179,7 @@ TEST_F(ContainerImagesTest, LocalReaderUnknownFormatReturnsNothing)
     std::filesystem::create_directories(dir);
 
     LocalImageReader reader(dir.string());
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 
     std::filesystem::remove_all(dir);
 }
@@ -194,7 +194,7 @@ TEST_F(ContainerImagesTest, LocalReaderDockerArchiveNotImplemented)
     std::ofstream(dir / "manifest.json") << "[]";
 
     LocalImageReader reader(dir.string());
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 
     std::filesystem::remove_all(dir);
 }
@@ -205,7 +205,7 @@ TEST_F(ContainerImagesTest, LocalReaderRejectsTraversalDigest)
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":"sha256:../../../../etc/hostname"}]})");
 
     LocalImageReader reader(fixture->path());
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 }
 
 TEST_F(ContainerImagesTest, LocalReaderRejectsDriveRelativeDigest)
@@ -215,7 +215,7 @@ TEST_F(ContainerImagesTest, LocalReaderRejectsDriveRelativeDigest)
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":"sha256:C:foo"}]})");
 
     LocalImageReader reader(fixture->path());
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 }
 
 TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestEntryIsSkipped)
@@ -223,7 +223,7 @@ TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestEntryIsSkipped)
     const auto fixture = buildLayoutWithIndex(R"({"manifests":["oops"]})");
 
     LocalImageReader reader(fixture->path());
-    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().empty()));
+    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
 TEST_F(ContainerImagesTest, LocalReaderNonStringDigestIsSkipped)
@@ -231,7 +231,7 @@ TEST_F(ContainerImagesTest, LocalReaderNonStringDigestIsSkipped)
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":123}]})");
 
     LocalImageReader reader(fixture->path());
-    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().empty()));
+    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
 TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestConfigIsSkipped)
@@ -240,7 +240,7 @@ TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestConfigIsSkipped)
     fixture->writeBlob(MANIFEST_DIGEST, R"({"config":"x"})");
 
     LocalImageReader reader(fixture->path());
-    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().empty()));
+    EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
 TEST_F(ContainerImagesTest, LocalReaderUnparseableConfigBlobKeepsReferenceWithoutMetadata)
@@ -253,7 +253,7 @@ TEST_F(ContainerImagesTest, LocalReaderUnparseableConfigBlobKeepsReferenceWithou
     LocalImageReader reader(fixture->path());
 
     std::vector<ImageReferenceRecord> references;
-    ASSERT_NO_THROW(references = reader.discover());
+    ASSERT_NO_THROW(references = reader.discover().records);
     ASSERT_EQ(references.size(), 1U);
     EXPECT_TRUE(references.front().os.empty());
     EXPECT_TRUE(references.front().architecture.empty());
@@ -267,7 +267,7 @@ TEST_F(ContainerImagesTest, LocalReaderWrongTypedConfigFieldIsIgnored)
     LocalImageReader reader(fixture->path());
 
     std::vector<ImageReferenceRecord> references;
-    ASSERT_NO_THROW(references = reader.discover());
+    ASSERT_NO_THROW(references = reader.discover().records);
     ASSERT_EQ(references.size(), 1U);
     EXPECT_TRUE(references.front().os.empty());
     EXPECT_EQ(references.front().architecture, "amd64");
@@ -289,7 +289,7 @@ TEST_F(ContainerImagesTest, LocalReaderSkipsNonRegularBlob)
     }
 
     LocalImageReader reader(fixture->path());
-    EXPECT_TRUE(reader.discover().empty());
+    EXPECT_TRUE(reader.discover().records.empty());
 }
 #endif
 
@@ -595,6 +595,192 @@ TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
     // The factory is driven by the configured path, not by a fixed one.
     ASSERT_EQ(factoryPaths.size(), 1U);
     EXPECT_EQ(factoryPaths.front(), "/some/path");
+}
+
+namespace
+{
+    /// @brief A reader whose outcome each test sets: what it holds, or a failed read.
+    class OutcomeReader final : public IImageReader
+    {
+        public:
+            OutcomeReader(ImageReadResult result, std::string type)
+                : m_result {std::move(result)}
+                , m_type {std::move(type)}
+            {
+            }
+
+            ImageReadResult discover() override
+            {
+                return m_result;
+            }
+
+            std::string sourceType() const override
+            {
+                return m_type;
+            }
+
+        private:
+            ImageReadResult m_result;
+            std::string m_type;
+    };
+
+    /// @brief One reference with @p packages packages, found at @p location.
+    ImageReferenceRecord recordAt(const std::string& location, int packages)
+    {
+        ImageReferenceRecord reference;
+        reference.source = {"local", location};
+        reference.tag = "debian:12";
+        reference.configDigest = "sha256:config-aaaa";
+        reference.manifestDigest = "sha256:manifest-aaaa";
+        reference.os = "linux";
+        reference.architecture = "amd64";
+
+        for (int i = 0; i < packages; ++i)
+        {
+            ImagePackageRecord package;
+            package.name = "pkg-" + std::to_string(i);
+            package.version = "1.0";
+            package.architecture = "amd64";
+            package.type = "deb";
+            package.packageDbPath = "var/lib/dpkg/status";
+            reference.packages.push_back(std::move(package));
+        }
+
+        return reference;
+    }
+} // namespace
+
+TEST_F(ContainerImagesDBTest, AFailedReadKeepsTheInventoryAlreadyStored)
+{
+    // A source that cannot be read this time says nothing about what it holds, so what an
+    // earlier scan stored for it must survive. Leaving it out of the synced set would have
+    // the storage layer report every one of its records as deleted.
+    ContainerImagesConfig config;
+    config.localPaths = {"/images/a"};
+
+    bool readable {true};
+    const auto factory = [&readable](const std::string & path) -> std::unique_ptr<IImageReader>
+    {
+        return std::make_unique<OutcomeReader>(readable ? ImageReadResult::success({recordAt(path, 3)})
+                                               : ImageReadResult::failed(),
+                                               "local");
+    };
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+    ContainerImagesImpl impl(config, factory, db);
+
+    impl.scanOnce();
+    ASSERT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 3U);
+
+    readable = false;
+    impl.scanOnce();
+
+    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value"}).size(), 1U);
+    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 3U);
+}
+
+TEST_F(ContainerImagesDBTest, AFailedReadDoesNotCostTheOtherSources)
+{
+    // One source failing must not disturb the inventory of the ones that were read.
+    ContainerImagesConfig config;
+    config.localPaths = {"/images/a", "/images/b"};
+
+    const auto factory = [](const std::string & path) -> std::unique_ptr<IImageReader>
+    {
+        if (path == "/images/b")
+        {
+            return std::make_unique<OutcomeReader>(ImageReadResult::failed(), "local");
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 4)}), "local");
+    };
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+
+    {
+        // Both readable once, so both have something stored to preserve.
+        ContainerImagesImpl seed(config, [](const std::string & path)
+        {
+            return std::unique_ptr<IImageReader>(
+                       std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 4)}), "local"));
+        }, db);
+        seed.scanOnce();
+    }
+
+    ASSERT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 8U);
+
+    ContainerImagesImpl impl(config, factory, db);
+    impl.scanOnce();
+
+    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value"}).size(), 2U);
+    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 8U);
+}
+
+TEST_F(ContainerImagesDBTest, AnEmptySourceStillRemovesWhatItHeld)
+{
+    // The other half of the rule: a source that was read and holds nothing really is empty,
+    // so its records go. This is what separates an empty read from a failed one.
+    //
+    // Asserted on what the storage layer reports rather than on rows read back through a
+    // second connection, so the test says the same thing whatever the storage library's
+    // commit timing is.
+    ContainerImagesDB db {m_dbPath};
+
+    const auto reference {recordAt("/images/a", 3)};
+    db.syncReferences({reference}, [](ReturnTypeCallback, const std::string&, const std::string&,
+                                      const std::string&, std::uint64_t) {});
+    db.syncPackages({reference}, [](ReturnTypeCallback, const std::string&, const std::string&,
+                                    const std::string&, std::uint64_t) {});
+
+    std::size_t deletedPackages {0};
+    std::size_t deletedReferences {0};
+
+    const auto counting = [&](ReturnTypeCallback operation, const std::string & table, const std::string&,
+                              const std::string&, std::uint64_t)
+    {
+        if (operation == DELETED)
+        {
+            table == PACKAGES_TABLE ? ++deletedPackages : ++deletedReferences;
+        }
+    };
+
+    db.syncReferences({}, counting);
+    db.syncPackages({}, counting);
+
+    EXPECT_EQ(deletedReferences, 1U);
+    EXPECT_EQ(deletedPackages, 3U);
+}
+
+TEST_F(ContainerImagesDBTest, StoredInventoryIsReadBackWithItsFields)
+{
+    ContainerImagesConfig config;
+    config.localPaths = {"/images/a"};
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+    ContainerImagesImpl impl(config, [](const std::string & path)
+    {
+        return std::unique_ptr<IImageReader>(
+                   std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 2)}), "local"));
+    }, db);
+
+    impl.scanOnce();
+
+    const auto stored {db->loadStored("local", "/images/a")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->source.sourceType, "local");
+    EXPECT_EQ(stored->source.location, "/images/a");
+    EXPECT_EQ(stored->configDigest, "sha256:config-aaaa");
+    EXPECT_EQ(stored->manifestDigest, "sha256:manifest-aaaa");
+    EXPECT_EQ(stored->tag, "debian:12");
+    EXPECT_EQ(stored->os, "linux");
+    EXPECT_EQ(stored->architecture, "amd64");
+    ASSERT_EQ(stored->packages.size(), 2U);
+    EXPECT_EQ(stored->packages.front().name, "pkg-0");
+    EXPECT_EQ(stored->packages.front().type, "deb");
+    EXPECT_EQ(stored->packages.front().packageDbPath, "var/lib/dpkg/status");
+
+    EXPECT_FALSE(db->loadStored("local", "/images/never-scanned").has_value());
 }
 
 TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)

@@ -29,7 +29,7 @@ namespace containerimages
         public:
             explicit LocalImageReader(std::string layoutPath);
 
-            std::vector<ImageReferenceRecord> discover() override;
+            ImageReadResult discover() override;
             std::string sourceType() const override;
 
         private:

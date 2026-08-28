@@ -28,6 +28,11 @@ namespace
         LoggingHelper::getInstance().log(LOG_DEBUG, message);
     }
 
+    void logWarn(const std::string& message)
+    {
+        LoggingHelper::getInstance().log(LOG_WARNING, message);
+    }
+
     void logError(const std::string& message)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, message);
@@ -92,6 +97,8 @@ namespace containerimages
 
         std::vector<ImageReferenceRecord> references;
 
+        std::size_t unreadable {0};
+
         for (const auto& path : m_config.localPaths)
         {
             const auto reader {m_readerFactory(path)};
@@ -101,7 +108,34 @@ namespace containerimages
                 continue;
             }
 
-            for (auto& reference : reader->discover())
+            auto result {reader->discover()};
+
+            if (result.status == ReadStatus::Failed)
+            {
+                // A source that could not be read says nothing about what it holds, so its
+                // stored inventory is carried into this scan unchanged. Leaving it out
+                // would hand the synchronization an empty set for that source, and every
+                // record it owns would be reported as deleted on a scan that never saw it.
+                ++unreadable;
+
+                auto stored {m_db->loadStored(reader->sourceType(), path)};
+
+                if (stored)
+                {
+                    logWarn("Source '" + path + "' could not be read. Keeping the " +
+                            std::to_string(stored->packages.size()) +
+                            " package(s) already stored for it, which are left as they were.");
+                    references.push_back(std::move(*stored));
+                }
+                else
+                {
+                    logWarn("Source '" + path + "' could not be read, and nothing is stored for it.");
+                }
+
+                continue;
+            }
+
+            for (auto& reference : result.records)
             {
                 logDebug("Discovered image reference " + reference.source.location + " (" + reference.source.sourceType +
                          ") digest=" + reference.configDigest + ".");
@@ -128,6 +162,12 @@ namespace containerimages
         for (const auto& reference : references)
         {
             packageCount += reference.packages.size();
+        }
+
+        if (unreadable > 0)
+        {
+            logWarn("Scan ended with " + std::to_string(unreadable) +
+                    " source(s) that could not be read. Their inventory is the one stored by an earlier scan.");
         }
 
         logInfo("Scan ended. " + std::to_string(references.size()) + " references, " +
