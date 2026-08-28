@@ -52,10 +52,12 @@ manager_config/
 ├── schema/wazuh-manager.schema.json
 ├── include/manager_config/{manager_config.hpp, manager_config_c.h}
 ├── src/{yamlToJson,schemaValidate,defaults,semantics,manager_config,manager_config_c}.cpp
+├── cli/manager-conf.cpp           # bin/wazuh-manager-conf (validate | get | dump)
 └── tests/
     ├── unit/managerConfig_test.cpp   # target manager_config_utest
     ├── vectors/{valid,invalid}/*.yml + expected/*.json   # shared with parity.py
-    └── parity.py                     # jsonschema Draft4 must agree with the library on every vector
+    ├── parity.py                     # jsonschema Draft4 must agree with the library on every vector
+    └── cli/manager_conf_cli_test.sh  # ctest manager_config_cli: the CLI and the YAML generator (src/init/gen_wazuh.sh)
 ```
 
 ## Tests
@@ -67,10 +69,41 @@ $WAZUH_REPO/src/build/shared_modules/manager_config/tests/unit/manager_config_ut
 $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/vectors
 ```
 
-`ctest --test-dir $WAZUH_REPO/src/build -R manager_config` runs both (the parity test is registered when the venv exists).
+`ctest --test-dir $WAZUH_REPO/src/build -R manager_config` runs the three tests (`manager_config_utest`, `manager_config_parity`
+— registered when the venv exists — and `manager_config_cli`, which also drives `src/init/gen_wazuh.sh` through a scratch mirror of the repository).
 
-## Consumers (planned)
+## CLI — `bin/wazuh-manager-conf`
 
-remoted, authd, monitord, wazuh-db and modulesd (`mconf_load` at startup, `mconf_section_json` per section), the engine
-(`manager_config::Document`), `bin/wazuh-manager-conf` (`validate`, `get`, `dump`) and, through the installed schema copy,
-the Python framework.
+```
+wazuh-manager-conf [-f <file>] [-H <home>] [--skip-file-checks] validate | get <key.path> | dump
+```
+
+| Command | Output | Exit |
+|---|---|---|
+| `validate` | nothing on success; `(1244): Invalid configuration at '<json-pointer>': <reason>` on stderr otherwise | 0 / 1 |
+| `get a.b.c` | the option of the **effective** document (defaults applied): strings unquoted, booleans `true`/`false`, numbers as is, objects and lists as compact JSON | 0; 2 when the key is not set (no value and no default) |
+| `dump` | the whole effective document as pretty JSON | 0 / 1 |
+
+`-f` defaults to `<home>/etc/wazuh-manager.yml`; `<home>` is `-H`, else `$WAZUH_MANAGER_HOME`, else the parent of the `bin/`
+directory holding the binary (the same resolution as `w_homedir()`). A missing file is reported with `(1239)` (`NO_CONFIG`).
+`--skip-file-checks` disables the existence check of the certificate/key files named in the document (the installer uses it:
+the certificates are generated after the configuration). The CLI needs no daemon or socket; it links only `manager_config`.
+Source: `cli/manager-conf.cpp` (C++17, `manager_config::Document` + `rapidjson::Pointer`), built in every mode so the
+end-to-end test can run from the `UNIT_TEST` tree.
+
+## Installed files
+
+| Path (relative to `$WAZUH_HOME`) | Mode | Origin |
+|---|---|---|
+| `etc/wazuh-manager.yml` | 660 root:wazuh-manager | generated at installation by `WriteManagerYaml()` (`src/init/inst-functions.sh`), the YAML twin of `wazuh-manager.conf` with the same cluster key; `gen_wazuh.sh conf … [yaml_output]` writes it for the packages |
+| `etc/wazuh-manager.schema.json` | 640 root:wazuh-manager | copy of `schema/wazuh-manager.schema.json`, refreshed on every install (product, not configuration); the Python framework validates against it |
+| `bin/wazuh-manager-conf` | 750 root:wazuh-manager | this module's CLI |
+
+Templates of the generated file: `etc/templates/config/generic/manager/*.yml.template` (one fragment per section; `remote` is
+written from the `WAZUH_REMOTE_*` installation variables by `WriteRemoteYaml()`).
+
+## Consumers
+
+Today: `bin/wazuh-manager-conf` and the installer (validation of the generated file). Planned: remoted, authd, monitord,
+wazuh-db and modulesd (`mconf_load` at startup, `mconf_section_json` per section), the engine (`manager_config::Document`),
+`wazuh-server.sh` (`get`/`validate`) and, through the installed schema copy, the Python framework.

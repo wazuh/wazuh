@@ -1,0 +1,12 @@
+# Configuration for wazuh-manager-authd
+auth:
+  disabled: false
+  port: 1515
+  use_source_ip: false
+  purge: true
+  use_password: true
+  ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+  # ssl_agent_ca: etc/certs/ca.pem
+  ssl_verify_host: false
+  ssl_manager_cert: "${WAZUH_AUTHD_SSL_MANAGER_CERT}"
+  ssl_manager_key: "${WAZUH_AUTHD_SSL_MANAGER_KEY}"

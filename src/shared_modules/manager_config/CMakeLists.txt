@@ -45,6 +45,16 @@ target_include_directories(manager_config
 # yaml-cpp: imported target from src/external (server only); rapidjson: header-only INTERFACE target.
 target_link_libraries(manager_config PRIVATE ext_yamlcpp ext_rapidjson)
 
+# bin/wazuh-manager-conf: validate / get / dump over the effective document (installed by InstallLocal()).
+# Built in every mode (also UNIT_TEST) so the CLI end-to-end test can run from the test tree.
+add_executable(wazuh-manager-conf cli/manager-conf.cpp)
+target_include_directories(wazuh-manager-conf PRIVATE ${SRC_FOLDER}/shared/include/error_messages)
+target_link_libraries(wazuh-manager-conf PRIVATE manager_config ext_rapidjson)
+if(DEFINED VERSION_FILE)
+  target_compile_definitions(wazuh-manager-conf PRIVATE WAZUH_MANAGER_CONF_VERSION="${VERSION_FILE}")
+endif()
+set_target_properties(wazuh-manager-conf PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin)
+
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(manager_config)

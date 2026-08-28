@@ -1,0 +1,8 @@
+indexer:
+  hosts:
+    - https://127.0.0.1:9200
+  ssl:
+    certificate_authorities:
+      - etc/certs/root-ca.pem
+    certificate: etc/certs/indexer-connector.pem
+    key: etc/certs/indexer-connector-key.pem

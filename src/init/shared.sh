@@ -43,6 +43,7 @@ WAZUH_LOGJSON="wazuh-manager.json"
 
 # Internal definitions
 NEWCONFIG="./etc/wazuh.mc"
+NEWCONFIG_YML="./etc/wazuh.yml.tmp"
 PRECONFIG="./etc/PRECONFIG"
 
 ## Templates

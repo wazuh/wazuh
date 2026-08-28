@@ -905,4 +905,5 @@ clean-windows:
 
 clean-config:
 	rm -f ../etc/wazuh.mc
+	rm -f ../etc/wazuh.yml.tmp
 	rm -f Config.OS

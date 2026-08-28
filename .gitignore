@@ -14,6 +14,7 @@ src/LOCATION
 src/isbigendian.c
 etc/ossec.mc
 etc/wazuh.mc
+etc/wazuh.yml.tmp
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
