@@ -677,7 +677,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 }
 
 void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                                                      modules_log_level_t genericFailureLevel)
+                                                     modules_log_level_t genericFailureLevel)
 {
     if (result.stopped || !m_keepRunning.load())
     {
