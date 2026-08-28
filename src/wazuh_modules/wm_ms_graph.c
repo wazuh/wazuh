@@ -223,6 +223,7 @@ static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char
             if (retry_after > WM_MS_GRAPH_MAX_RETRY_AFTER_WARN) {
                 mtwarn(WM_MS_GRAPH_LOGTAG, "Retry-After value (%ds) for relationship '%s' exceeds (%ds).",
                     retry_after, relationship_name, WM_MS_GRAPH_MAX_RETRY_AFTER_WARN);
+                retry_after = WM_MS_GRAPH_MAX_RETRY_AFTER_WARN;
             }
             mtdebug1(WM_MS_GRAPH_LOGTAG, "Received HTTP 429 for relationship '%s'. Retrying after %ds (attempt %d/%d).",
                 relationship_name, retry_after, attempt + 1, WM_MS_GRAPH_MAX_RETRIES);
