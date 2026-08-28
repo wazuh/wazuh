@@ -342,7 +342,7 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         return false;
     }
 
-    minfo("FIM data was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
+    minfo("FIM was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
           (long)synced_id, current_id);
 
     bool any_failed = false;

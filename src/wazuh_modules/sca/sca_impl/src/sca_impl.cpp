@@ -1543,8 +1543,8 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
 
     LoggingHelper::getInstance().log(
         LOG_INFO,
-        "SCA data was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
-        std::to_string(currentId) + ". Sending a full snapshot.");
+        "SCA was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
+        std::to_string(currentId) + ". Resending a full snapshot.");
 
     // increaseVersions stays false: the manager builds indexer document ids as
     // clusterName_agentId_id, so under a new identity every document this snapshot writes is one
