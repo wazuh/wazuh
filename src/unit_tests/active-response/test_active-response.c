@@ -222,6 +222,8 @@ void test_is_valid_username_valid_with_consecutive_dots(void **state) {
     assert_int_equal(is_valid_username("."), 1);
 }
 
+// The 256 bound is the current contract, not a settled one: LOGIN_NAME_MAX counts
+// the NUL, so the real maximum is 255. Confirm before changing.
 void test_is_valid_username_length_boundary(void **state) {
     (void) state;
     char username[300];
@@ -233,14 +235,6 @@ void test_is_valid_username_length_boundary(void **state) {
     memset(username, 'a', 257);
     username[257] = '\0';
     assert_int_equal(is_valid_username(username), 0);
-}
-
-void test_is_valid_username_invalid_too_long(void **state) {
-    (void) state;
-    char long_username[300];
-    memset(long_username, 'a', 257);
-    long_username[257] = '\0';
-    assert_int_equal(is_valid_username(long_username), 0);
 }
 
 // Tests for get_username_from_json (the getter must apply is_valid_username)
@@ -298,7 +292,6 @@ int main(void) {
         cmocka_unit_test(test_is_valid_username_invalid_with_whitespace),
         cmocka_unit_test(test_is_valid_username_invalid_with_slash),
         cmocka_unit_test(test_is_valid_username_invalid_path_traversal),
-        cmocka_unit_test(test_is_valid_username_invalid_too_long),
         cmocka_unit_test(test_is_valid_username_valid_with_consecutive_dots),
         cmocka_unit_test(test_is_valid_username_length_boundary),
 
