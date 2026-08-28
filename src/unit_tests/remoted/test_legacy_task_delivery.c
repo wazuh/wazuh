@@ -37,7 +37,7 @@ typedef enum {
 
 bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version);
 agent_version_check_t agent_meta_check_version(const char *agent_id_str, const char *min_version, char **out_version);
-legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response);
+legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response);
 void legacy_upgrade_poll_cycle(void);
 void legacy_task_drain_clear_upgrade_replies(void);
 bool legacy_task_retry_list_contains(const char *task_id);
@@ -261,7 +261,7 @@ static void test_deliver_success(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("030", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("030", "t-030", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
     assert_false(no_response);
     cJSON_Delete(payload);
 }
@@ -304,7 +304,7 @@ static void test_deliver_write_step_chunks_large_file(void **state) {
 
     cJSON *payload = build_payload("big.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("031", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("031", "t-031", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
     assert_false(no_response);
     cJSON_Delete(payload);
 
@@ -325,7 +325,7 @@ static void test_deliver_fails_on_lock_restart_no_further_steps(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("032", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("032", "t-032", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     // A true no-ack: must propagate so the caller can defer this task to legacy_task_retry_list
     // instead of spending its whole in-cycle attempt budget on it.
     assert_true(no_response);
@@ -359,7 +359,7 @@ static void test_deliver_fails_on_write_step_no_retry(void **state) {
     // (proven separately at the poll-cycle level) is what retries a RETRYABLE result.
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("033", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("033", "t-033", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     assert_true(no_response);
     cJSON_Delete(payload);
 
@@ -395,7 +395,7 @@ static void test_deliver_fails_on_sha1_mismatch_no_upgrade_step(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("034", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("034", "t-034", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     // A sha1 mismatch is a rejection (the agent answered), not a no-response.
     assert_false(no_response);
     cJSON_Delete(payload);
@@ -413,7 +413,7 @@ static void test_deliver_fails_on_open_step(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("035", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("035", "t-035", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     assert_true(no_response);
     cJSON_Delete(payload);
 
@@ -443,7 +443,7 @@ static void test_deliver_open_step_not_ready_backs_off(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload, false, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036", "t-036", payload, false, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     // A structured rejection (the agent answered), not a no-response.
     assert_false(no_response);
     cJSON_Delete(payload);
@@ -464,7 +464,7 @@ static void test_deliver_open_step_malformed_response_backs_off(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("036b", payload, false, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036b", "t-036b", payload, false, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     // A malformed-but-present response is not a no-response: the agent did answer, just not in JSON.
     assert_false(no_response);
     cJSON_Delete(payload);
@@ -496,7 +496,7 @@ static void test_deliver_fails_on_close_step(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036", "t-036", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
     assert_true(no_response);
     cJSON_Delete(payload);
 
@@ -531,7 +531,7 @@ static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("037", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("037", "t-037", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
     assert_false(no_response);
     cJSON_Delete(payload);
 }
@@ -550,7 +550,7 @@ static void test_deliver_fails_on_invalid_payload_is_permanent(void **state) {
     // "installer" is intentionally omitted.
 
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("038", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("038", "t-038", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
     assert_false(no_response);
     cJSON_Delete(payload);
 }
@@ -574,7 +574,7 @@ static void test_deliver_fails_on_local_wpk_file_missing_is_permanent(void **sta
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("039", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("039", "t-039", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
     assert_false(no_response);
     cJSON_Delete(payload);
 
@@ -613,7 +613,7 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     bool no_response = false;
-    assert_int_equal(legacy_task_deliver_remote_upgrade("039b", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
+    assert_int_equal(legacy_task_deliver_remote_upgrade("039b", "t-039b", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
     // Critical invariant: the 'upgrade' step's lost ack must NEVER be reported as a no-response --
     // out_no_response is passed as NULL internally for this one step specifically, precisely so it
     // can never be redirected to legacy_task_retry_list (retrying risks a double install).
@@ -1165,6 +1165,77 @@ static void test_poll_cycle_eligible_agent_zero_pending_tasks(void **state) {
     os_free(keyentries);
 }
 
+/* A remote_upgrade task missing its 'task_id' field that also gets no response at all can't be
+ * keyed into legacy_task_retry_list -- must be loudly logged (merror), not silently dropped, since
+ * it's already 'delivered' in tasks.db (get_pending_tasks's own side effect) and will otherwise
+ * never be offered again. */
+static void test_poll_cycle_no_response_without_task_id_is_logged_not_retried(void **state) {
+    (void) state;
+
+    keyentry **keyentries;
+    os_calloc(1, sizeof(keyentry *), keyentries);
+    keyentries[0] = make_key("072", 84);
+    keys.keyentries = keyentries;
+    keys.keysize = 1;
+
+    expect_any(__wrap__mdebug2, formatted_msg); // "checking 1 connected agent(s)"
+
+    expect_cache_miss("072");
+    expect_wdb_version(72, "Wazuh v4.14.6");
+    expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
+
+    cJSON *up_payload_obj = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    char *up_payload_str = cJSON_PrintUnformatted(up_payload_obj);
+    cJSON *task_up = cJSON_CreateObject();
+    // "task_id" deliberately omitted.
+    cJSON_AddStringToObject(task_up, "task_type", "remote_upgrade");
+    cJSON_AddStringToObject(task_up, "payload", up_payload_str);
+    os_free(up_payload_str);
+    cJSON_Delete(up_payload_obj);
+
+    cJSON *tasks_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(tasks_array, task_up);
+
+    cJSON *response_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(response_obj, "status", "ok");
+    cJSON_AddItemToObject(response_obj, "tasks", tasks_array);
+    char *response = cJSON_PrintUnformatted(response_obj);
+    cJSON_Delete(response_obj);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, 84);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 84);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_any(__wrap_OS_SendSecureTCP, msg);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 84);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+
+    // lock_restart gets no response at all -- a single attempt (attempt 1 of 5, not the last), so
+    // this logs at debug1, not warning.
+    expect_any(__wrap__minfo, formatted_msg); // "delivering..."
+    expect_req_step(NULL, -1);
+    expect_any(__wrap__mdebug1, formatted_msg); // "no response for step targeting 'com'"
+    expect_any(__wrap__mdebug1, formatted_msg); // "'lock_restart' step failed, aborting push"
+
+    expect_string(__wrap__merror, formatted_msg,
+        "legacy_task_delivery: agent '072': a remote_upgrade task got no response but has no "
+        "'task_id', cannot add it to the retry list -- it will not be retried");
+
+    legacy_upgrade_poll_cycle();
+
+    os_free(response);
+    os_free(keyentries[0]->id);
+    os_free(keyentries[0]);
+    os_free(keyentries);
+}
+
 /* ---------------------------------------------------------------------- */
 /* legacy_task_retry_list -- direct unit coverage                          */
 /* ---------------------------------------------------------------------- */
@@ -1607,6 +1678,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_poll_cycle_invalid_payload_logged_and_dropped, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_unparsable_payload_logged_and_dropped, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_eligible_agent_zero_pending_tasks, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_poll_cycle_no_response_without_task_id_is_logged_not_retried, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_retry_list_add_and_contains, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_retry_list_add_dedup_same_task_id_is_noop, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_retry_list_purge_expired_removes_old_entries, test_setup, test_teardown),

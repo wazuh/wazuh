@@ -132,10 +132,12 @@
  * Keep this in sync with error_messages[ERROR_UPGRADES_NOT_ALLOWED] there if it ever changes. */
 #define LEGACY_TASK_AGENT_NOT_READY_MESSAGE "Upgrade module is disabled or not ready yet"
 
-/* Backoff applied once, only after an 'open' step rejected specifically with
- * LEGACY_TASK_AGENT_NOT_READY_MESSAGE, before the next push attempt -- gives the agent's
- * agent_upgrade module a real chance to finish starting up instead of burning all
- * LEGACY_TASK_MAX_PUSH_ATTEMPTS back-to-back within the same second */
+/* Backoff applied once, before the next push attempt, after an 'open' step either rejected
+ * specifically with LEGACY_TASK_AGENT_NOT_READY_MESSAGE or answered with a malformed (non-JSON)
+ * response -- both observed in practice as early-startup symptoms of the same readiness race (the
+ * agent_upgrade module hasn't finished starting up yet), see legacy_task_send_step()'s
+ * out_malformed doc comment. Gives the module a real chance to finish starting up instead of
+ * burning all LEGACY_TASK_MAX_PUSH_ATTEMPTS back-to-back within the same second. */
 #define LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC 15
 
 /* How often the poller drains pending clear_upgrade_result replies -- deliberately much shorter
@@ -185,7 +187,7 @@ static size_t legacy_task_retry_list_count = 0;
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) __attribute__((nonnull(1)));
 STATIC char *legacy_task_manager_socket_request(const char *request_str) __attribute__((nonnull));
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
-STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4)));
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 3, 5)));
 STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
 STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
@@ -498,6 +500,9 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
  * classification returned warrants a retry.
  *
  * @param agent_id Target agent identifier.
+ * @param task_id Task identifier -- only used for the delivering/delivered log lines, so a log-only
+ * postmortem (no access to tasks.db, e.g. after delete_old's retention window) can still tell which
+ * task a given push was for.
  * @param payload_obj Parsed task payload: {"wpk_file":...,"wpk_sha1":...,"installer":...}.
  * @param is_last_attempt Whether this is the final push attempt for this task this cycle -- see
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS's doc comment. Only affects the severity of retryable-failure
@@ -510,7 +515,7 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
  * @return LEGACY_TASK_PUSH_SUCCESS if all six steps succeeded and the reported sha1 matched,
  * otherwise LEGACY_TASK_PUSH_RETRYABLE or LEGACY_TASK_PUSH_PERMANENT depending on the failure.
  */
-STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) {
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) {
     cJSON *wpk_file_obj = cJSON_GetObjectItem(payload_obj, "wpk_file");
     cJSON *wpk_sha1_obj = cJSON_GetObjectItem(payload_obj, "wpk_sha1");
     cJSON *installer_obj = cJSON_GetObjectItem(payload_obj, "installer");
@@ -533,7 +538,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
     const char *wpk_basename = wpk_file;
 
-    minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s'", agent_id);
+    minfo("legacy_task_delivery: delivering remote_upgrade task '%s' to agent '%s' (wpk: '%s')", task_id, agent_id, wpk_file);
 
     // Step 1: lock_restart (execd, plain-text protocol)
     if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt)) {
@@ -733,7 +738,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         os_free(exit_status);
     }
 
-    minfo("legacy_task_delivery: successfully delivered remote_upgrade task to agent '%s'", agent_id);
+    minfo("legacy_task_delivery: successfully delivered remote_upgrade task '%s' to agent '%s' (wpk: '%s')", task_id, agent_id, wpk_file);
     return LEGACY_TASK_PUSH_SUCCESS;
 }
 
@@ -766,7 +771,7 @@ STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_
         bool is_last_attempt = (attempt == LEGACY_TASK_MAX_PUSH_ATTEMPTS);
         bool no_response = false;
 
-        push_result = legacy_task_deliver_remote_upgrade(agent_id, payload_json, is_last_attempt, &no_response);
+        push_result = legacy_task_deliver_remote_upgrade(agent_id, task_id, payload_json, is_last_attempt, &no_response);
 
         if (no_response) {
             *out_no_response = true;
@@ -1063,8 +1068,19 @@ STATIC void legacy_upgrade_poll_cycle(void) {
             bool no_response = false;
             legacy_task_attempt_delivery(agent_id, task_id, payload_json, &no_response);
 
-            if (no_response && has_task_id) {
-                legacy_task_retry_list_add(agent_id, task_id, payload_obj->valuestring, create_time);
+            if (no_response) {
+                if (has_task_id) {
+                    legacy_task_retry_list_add(agent_id, task_id, payload_obj->valuestring, create_time);
+                } else {
+                    // Can't be keyed into legacy_task_retry_list without a task_id. This task is
+                    // already 'delivered' in tasks.db (get_pending_tasks's own side effect) and
+                    // will now never be offered again -- loud on purpose, since silently dropping
+                    // it here would reopen the exact "delivered but lost forever" bug this whole
+                    // poller exists to close, just for this one edge case.
+                    merror("legacy_task_delivery: agent '%s': a remote_upgrade task got no response "
+                           "but has no 'task_id', cannot add it to the retry list -- it will not be "
+                           "retried", agent_id);
+                }
             }
             // Success, a rejection that exhausted its in-cycle attempt budget (already logged
             // inside legacy_task_attempt_delivery), or a permanent failure (already logged inside
