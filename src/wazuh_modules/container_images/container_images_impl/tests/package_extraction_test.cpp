@@ -37,6 +37,11 @@ namespace
     const std::string DPKG_STATUS_PATH {"var/lib/dpkg/status"};
     const std::string APK_DB_PATH {"lib/apk/db/installed"};
     const std::string APK_USR_DB_PATH {"usr/lib/apk/db/installed"};
+    const std::string RPM_SQLITE_PATH {"var/lib/rpm/rpmdb.sqlite"};
+    const std::string RPM_SQLITE_USR_PATH {"usr/lib/sysimage/rpm/rpmdb.sqlite"};
+    const std::string RPM_NDB_PATH {"var/lib/rpm/Packages.db"};
+    const std::string RPM_NDB_USR_PATH {"usr/lib/sysimage/rpm/Packages.db"};
+    const std::string RPM_BDB_PATH {"var/lib/rpm/Packages"};
 
     /// @brief Unique name for a temporary directory, so concurrent runs never collide.
     std::string uniqueName()
@@ -726,7 +731,7 @@ TEST_F(PackageExtractionTest, ComposerAppliesTheOwnFilesOfALayerAfterItsMarkers)
 TEST_F(PackageExtractionTest, ComposerRecordsTheFormatsThatAreNotImplementedYet)
 {
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember("var/lib/rpm/rpmdb.sqlite", "not parsed") +
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") +
                               tarMember("var/lib/pacman/local/desc", "not parsed") +
                               tarEnd()));
 
@@ -775,7 +780,7 @@ TEST_F(PackageExtractionTest, ComposerRetractsAnUnsupportedFormatWarningOnceItsP
     // removed in a later layer should not keep reporting rpm once nothing rpm-shaped
     // survives composition.
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember("var/lib/rpm/rpmdb.sqlite", "not parsed") + tarEnd()));
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") + tarEnd()));
     EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
 
     composer.apply(snapshotOf(tarMember("var/lib/.wh.rpm", "") + tarEnd()));
@@ -899,6 +904,266 @@ TEST_F(PackageExtractionTest, WolfiStyleApkDatabaseIsInventoried)
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"wolfi-base"}));
 }
 
+TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfASqliteDatabase)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+    bash.release = "9.el9";
+    bash.architecture = "x86_64";
+    bash.summary = "The GNU Bourne Again shell";
+    bash.vendor = "Rocky Enterprise Software Foundation";
+    bash.group = "Unspecified";
+    bash.sourceRpm = "bash-5.1.8-9.el9.src.rpm";
+    bash.size = 7802001;
+    bash.installTime = 1700000000;
+
+    const RpmParser parser;
+    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().name, "bash");
+    EXPECT_EQ(packages.front().version, "5.1.8-9.el9");
+    EXPECT_EQ(packages.front().architecture, "x86_64");
+    EXPECT_EQ(packages.front().type, "rpm");
+    EXPECT_EQ(packages.front().vendor, "Rocky Enterprise Software Foundation");
+    EXPECT_EQ(packages.front().category, "Unspecified");
+    EXPECT_EQ(packages.front().description, "The GNU Bourne Again shell");
+    EXPECT_EQ(packages.front().source, "bash-5.1.8-9.el9.src.rpm");
+    EXPECT_EQ(packages.front().size, 7802001);
+    EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_PATH);
+    EXPECT_FALSE(packages.front().installed.empty());
+}
+
+TEST_F(PackageExtractionTest, RpmParserReadsADatabaseInWriteAheadLogMode)
+{
+    // The rpmdb.sqlite an image layer carries is in write-ahead log mode. Reading it from
+    // the layer bytes has to account for that, or every current Red Hat and Fedora image
+    // is inventoried with no packages.
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    auto database {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
+    database[18] = 2;
+    database[19] = 2;
+
+    const RpmParser parser;
+    EXPECT_EQ(packageNames(parser.parse(database, RPM_SQLITE_PATH)), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfAnNdbDatabase)
+{
+    RpmPackage aaaBase;
+    aaaBase.name = "aaa_base";
+    aaaBase.version = "84.87";
+    aaaBase.release = "150300.10.20.1";
+    aaaBase.vendor = "SUSE LLC";
+
+    const RpmParser parser;
+    const auto packages {parser.parse(rpmNdbDatabase({rpmHeaderBlob(aaaBase)}), RPM_NDB_PATH)};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().name, "aaa_base");
+    EXPECT_EQ(packages.front().version, "84.87-150300.10.20.1");
+    EXPECT_EQ(packages.front().type, "rpm");
+    EXPECT_EQ(packages.front().vendor, "SUSE LLC");
+    EXPECT_EQ(packages.front().packageDbPath, RPM_NDB_PATH);
+}
+
+TEST_F(PackageExtractionTest, RpmParserReadsEveryPackageOfADatabase)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    RpmPackage glibc;
+    glibc.name = "glibc";
+    glibc.version = "2.34";
+
+    const RpmParser parser;
+
+    EXPECT_EQ(packageNames(parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_SQLITE_PATH)),
+              std::vector<std::string>({"bash", "glibc"}));
+    EXPECT_EQ(packageNames(parser.parse(rpmNdbDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_NDB_PATH)),
+              std::vector<std::string>({"bash", "glibc"}));
+}
+
+TEST_F(PackageExtractionTest, RpmParserKeepsTheEpochInTheVersion)
+{
+    // rpm orders versions by epoch first, so a version that carries one is only correct
+    // with the epoch kept, exactly as the package manager prints it.
+    RpmPackage gdbm;
+    gdbm.name = "gdbm-libs";
+    gdbm.version = "1.19";
+    gdbm.release = "4.el9";
+    gdbm.hasEpoch = true;
+    gdbm.epoch = 1;
+
+    const RpmParser parser;
+    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(gdbm)}), RPM_SQLITE_PATH)};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().version, "1:1.19-4.el9");
+}
+
+TEST_F(PackageExtractionTest, RpmParserReportsAPackageWithNoEpochWithoutAPrefix)
+{
+    RpmPackage basesystem;
+    basesystem.name = "basesystem";
+    basesystem.version = "11";
+    basesystem.release = "13.el9";
+
+    const RpmParser parser;
+    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(basesystem)}), RPM_SQLITE_PATH)};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().version, "11-13.el9");
+}
+
+TEST_F(PackageExtractionTest, RpmParserSkipsTheSigningKeys)
+{
+    // rpm keeps its trusted keys as packages in the same database. They are not installed
+    // software and the host package inventory drops them the same way.
+    RpmPackage key;
+    key.name = "gpg-pubkey";
+    key.version = "3228467c";
+
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    const RpmParser parser;
+    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(key), rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
+
+    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, RpmParserReportsNothingForContentThatIsNoDatabase)
+{
+    const RpmParser parser;
+
+    EXPECT_TRUE(parser.parse("", RPM_SQLITE_PATH).empty());
+    EXPECT_TRUE(parser.parse("not a database at all", RPM_SQLITE_PATH).empty());
+    EXPECT_TRUE(parser.parse(std::string("SQLite format 3\0 truncated", 26), RPM_SQLITE_PATH).empty());
+    EXPECT_TRUE(parser.parse(std::string("RpmP", 4) + std::string(60, '\0'), RPM_NDB_PATH).empty());
+}
+
+TEST_F(PackageExtractionTest, RpmParserSurvivesATruncatedDatabase)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    const RpmParser parser;
+    const auto sqlite {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
+    const auto ndb {rpmNdbDatabase({rpmHeaderBlob(bash)})};
+
+    // Half a database is not a database. Nothing is reported and nothing throws.
+    EXPECT_NO_THROW(parser.parse(sqlite.substr(0, sqlite.size() / 2), RPM_SQLITE_PATH));
+    EXPECT_TRUE(parser.parse(ndb.substr(0, ndb.size() - 16), RPM_NDB_PATH).empty());
+}
+
+TEST_F(PackageExtractionTest, RpmParserSkipsABlobItCannotRead)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    const RpmParser parser;
+    const auto packages
+    {
+        parser.parse(rpmSqliteDatabase({std::string("\xff\xff\xff\xff\x00\x00\x00\x10", 8), rpmHeaderBlob(bash)}),
+                     RPM_SQLITE_PATH)
+    };
+
+    // A blob declaring more index entries than it carries costs its own package only.
+    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, EveryRpmDatabaseLocationIsTracked)
+{
+    const auto& databases {knownPackageDatabases()};
+
+    const auto tracked = [&databases](const std::string & path)
+    {
+        return std::any_of(databases.begin(), databases.end(), [&path](const PackageDbLocation & location)
+        {
+            return location.path == path && location.parser != nullptr && location.parser->format() == "rpm";
+        });
+    };
+
+    // The Red Hat family keeps the database under /var, Fedora and the SUSE family under
+    // /usr, and both formats occur at both locations.
+    EXPECT_TRUE(tracked(RPM_SQLITE_PATH));
+    EXPECT_TRUE(tracked(RPM_SQLITE_USR_PATH));
+    EXPECT_TRUE(tracked(RPM_NDB_PATH));
+    EXPECT_TRUE(tracked(RPM_NDB_USR_PATH));
+}
+
+TEST_F(PackageExtractionTest, RpmDatabaseIsNotReportedAsAnUnsupportedFormat)
+{
+    // The Berkeley DB file sits in the same directory as the databases that are read, so
+    // a database this module parses must never be claimed by the unsupported list.
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) +
+                              tarMember("var/lib/rpm/.rpm.lock", "") + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+    EXPECT_TRUE(composer.unsupportedFormats().empty());
+}
+
+TEST_F(PackageExtractionTest, BerkeleyDbImageIsReportedAsAnUnsupportedFormat)
+{
+    // Reading it needs libdb pointed at the whole directory, so an image still carrying
+    // the pre-4.16 format is reported rather than parsed.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
+                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
+}
+
+TEST_F(PackageExtractionTest, ComposerDoesNotReportBothRpmLocationsOfTheSameImage)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    RpmPackage glibc;
+    glibc.name = "glibc";
+    glibc.version = "2.34";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) +
+                              tarMember(RPM_NDB_USR_PATH, rpmNdbDatabase({rpmHeaderBlob(glibc)})) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, SysimageRpmDatabaseIsInventoried)
+{
+    RpmPackage vim;
+    vim.name = "vim-data";
+    vim.version = "9.1.785";
+    vim.release = "1.fc39";
+    vim.hasEpoch = true;
+    vim.epoch = 2;
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_SQLITE_USR_PATH, rpmSqliteDatabase({rpmHeaderBlob(vim)})) + tarEnd()));
+
+    const auto packages {composer.packages()};
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().version, "2:9.1.785-1.fc39");
+    EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_USR_PATH);
+}
+
 // ---------------------------------------------------------------------------
 // Reader: end to end over the supported inputs.
 // ---------------------------------------------------------------------------
@@ -988,12 +1253,49 @@ TEST_F(PackageExtractionTest, PackageRemovedInALaterLayerIsNotReported)
 TEST_F(PackageExtractionTest, ImageWithNoSupportedDatabaseIsInventoriedWithZeroPackages)
 {
     ImageBuilder builder;
-    builder.addLayer(tarMember("var/lib/rpm/rpmdb.sqlite", "SQLite format 3") + tarEnd());
+    builder.addLayer(tarMember(RPM_BDB_PATH, "a Berkeley DB this module does not read") + tarEnd());
 
     ArchiveImageReader reader {builder.writeOciLayout()};
     const auto references {reader.discover().records};
 
     // The reference is still inventoried, so the scan reports the image it found.
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().packages.empty());
+}
+
+TEST_F(PackageExtractionTest, RpmImageIsInventoried)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+    bash.release = "9.el9";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    ASSERT_EQ(references.front().packages.size(), 1U);
+    EXPECT_EQ(references.front().packages.front().name, "bash");
+    EXPECT_EQ(references.front().packages.front().version, "5.1.8-9.el9");
+    EXPECT_EQ(references.front().packages.front().type, "rpm");
+}
+
+TEST_F(PackageExtractionTest, RpmDatabaseRemovedInALaterLayerIsNotReported)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+    builder.addLayer(tarMember("var/lib/.wh.rpm", "") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
     ASSERT_EQ(references.size(), 1U);
     EXPECT_TRUE(references.front().packages.empty());
 }

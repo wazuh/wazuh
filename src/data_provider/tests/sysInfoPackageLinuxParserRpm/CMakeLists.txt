@@ -39,6 +39,7 @@ target_link_libraries(
   gmock_main
   pthread
   dl
+  sqlite3
   FilesystemWrapper)
 
 add_test(NAME sysInfoPackageLinuxParserRPM_unit_test
