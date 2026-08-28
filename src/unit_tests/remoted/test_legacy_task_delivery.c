@@ -45,7 +45,7 @@ void legacy_task_drain_clear_upgrade_replies(void);
 #define LEGACY_TASK_MAX_PUSH_ATTEMPTS 5
 
 /* Must match LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC in legacy_task_delivery.c. */
-#define LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC 5
+#define LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC 15
 
 /* req_send_and_wait() is exercised entirely through this local mock -- it is the one function
  * this module uses to reach an agent, so every push-step assertion goes through it. */
@@ -421,6 +421,24 @@ static void test_deliver_open_step_not_ready_backs_off(void **state) {
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
     assert_int_equal(legacy_task_deliver_remote_upgrade("036", payload, false), LEGACY_TASK_PUSH_RETRYABLE);
+    cJSON_Delete(payload);
+}
+
+static void test_deliver_open_step_malformed_response_backs_off(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);            // lock_restart succeeds
+    expect_req_step("not json at all", 0); // open: present but malformed response
+    expect_any(__wrap__mdebug1, formatted_msg);  // "returned a malformed response for step targeting 'upgrade'"
+    expect_any(__wrap__mdebug1, formatted_msg); // "'open' step failed, aborting push"
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "'open' rejected as not ready yet, backing off..."
+    expect_value(__wrap_sleep, seconds, LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC);
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    assert_int_equal(legacy_task_deliver_remote_upgrade("036b", payload, false), LEGACY_TASK_PUSH_RETRYABLE);
     cJSON_Delete(payload);
 }
 
@@ -1443,6 +1461,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_sha1_mismatch_no_upgrade_step, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_open_step, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_open_step_not_ready_backs_off, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_open_step_malformed_response_backs_off, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_close_step, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_upgrade_exit_nonzero, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_invalid_payload_is_permanent, test_setup, test_teardown),
