@@ -99,7 +99,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         }
         /* Get manager IP */
         else if (strcmp(node[i]->element, xml_agent_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_agent_ip);
+            mwarn("The <%s> tag is deprecated, please use <manager><endpoint> instead.", xml_agent_ip);
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
                 merror(INVALID_IP, node[i]->content);
@@ -108,7 +108,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_agent_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_agent_hostname);
+            mwarn("The <%s> tag is deprecated, please use <manager><endpoint> instead.", xml_agent_hostname);
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
@@ -378,7 +378,7 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
      * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
      * whole point. The composed value is the one now in use, so pasting it changes
      * nothing about where the agent connects. */
-    minfo("<agent><manager><address> is not configured. Using <client><server><address> '%s' "
+    minfo("<agent><manager><endpoint> is not configured. Using <client><server><address> '%s' "
           "with the default port %d and the default endpoint prefix '%s'. Replace the "
           "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
           logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
@@ -973,8 +973,11 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     logr->server[0].retry_interval = retry_interval;
     logr->server_count = 1;
 
+    /* Names <endpoint>, not the <port> tag: since #38624 the port is a component of
+     * <endpoint>, so pointing the operator at a <port> element sends them looking for
+     * something that no longer exists in a 5.x configuration. */
     if (!port_set) {
-        minfo("<agent><manager><port> is not configured. Using the default port %d.",
+        minfo("No port in <agent><manager><endpoint>. Using the default port %d.",
               DEFAULT_HTTPS_REMOTE_PORT);
     }
 

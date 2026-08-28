@@ -406,7 +406,7 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><port> is not configured. Using the default port 1517.");
+                  "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
@@ -424,7 +424,7 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><port> is not configured. Using the default port 1517.");
+                  "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -903,7 +903,7 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
     memset(&cfg, 0, sizeof(cfg));
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> is not configured. Using <client><server><address> "
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
@@ -972,7 +972,7 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
     memset(&cfg, 0, sizeof(cfg));
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> is not configured. Using <client><server><address> "
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
@@ -1005,7 +1005,7 @@ static void test_legacy_client_takes_the_last_address(void **state) {
     memset(&cfg, 0, sizeof(cfg));
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> is not configured. Using <client><server><address> "
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.2:1517/wazuh-manager</endpoint>");
 
@@ -1043,7 +1043,7 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
     memset(&cfg, 0, sizeof(cfg));
 
     expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> is not configured. Using <client><server><address> "
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
