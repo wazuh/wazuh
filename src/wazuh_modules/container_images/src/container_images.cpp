@@ -85,8 +85,9 @@ void container_images_set_log_function(log_callback_t callback)
 void container_images_init(const unsigned int interval,
                            const bool scanOnStart,
                            const bool enabled,
-                           const char** localPaths,
-                           const unsigned int localPathsCount)
+                           const char** referenceTypes,
+                           const char** referenceValues,
+                           const unsigned int referencesCount)
 {
     try
     {
@@ -95,12 +96,28 @@ void container_images_init(const unsigned int interval,
         config.scanOnStart = scanOnStart;
         config.enabled = enabled;
 
-        for (unsigned int i = 0; i < localPathsCount; ++i)
+        for (unsigned int i = 0; i < referencesCount; ++i)
         {
-            if (localPaths && localPaths[i])
+            if (!referenceTypes || !referenceTypes[i] || !referenceValues || !referenceValues[i])
             {
-                config.localPaths.emplace_back(localPaths[i]);
+                continue;
             }
+
+            containerimages::ConfiguredReference reference;
+
+            // The configuration parser already rejects the entry names it does not know,
+            // so an unknown type here means the two sides disagree, and the reference is
+            // dropped rather than guessed.
+            if (!containerimages::parseReferenceType(referenceTypes[i], reference.type))
+            {
+                LoggingHelper::getInstance().log(LOG_WARNING,
+                                                 std::string {"Unknown reference type '"} + referenceTypes[i] +
+                                                 "', skipping it.");
+                continue;
+            }
+
+            reference.location = referenceValues[i];
+            config.references.push_back(std::move(reference));
         }
 
         ContainerImages::instance().init(config);

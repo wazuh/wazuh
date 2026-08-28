@@ -9,8 +9,8 @@
             value: INTERVAL
         - references:
             elements:
-              - local:
-                  value: LOCAL_PATH
+              - archive:
+                  value: ARCHIVE_PATH
 
     - section: syscheck
       elements:

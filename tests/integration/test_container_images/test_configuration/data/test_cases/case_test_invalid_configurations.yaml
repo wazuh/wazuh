@@ -4,7 +4,7 @@
     ENABLED: ''
     SCAN_ON_START: 'yes'
     INTERVAL: 1h
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     field: enabled
 
@@ -14,7 +14,7 @@
     ENABLED: 'maybe'
     SCAN_ON_START: 'yes'
     INTERVAL: 1h
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     field: enabled
 
@@ -24,7 +24,7 @@
     ENABLED: 'yes'
     SCAN_ON_START: ''
     INTERVAL: 1h
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     field: scan_on_start
 
@@ -34,7 +34,7 @@
     ENABLED: 'yes'
     SCAN_ON_START: 'yes'
     INTERVAL: ''
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     field: interval
 
@@ -44,16 +44,16 @@
     ENABLED: 'yes'
     SCAN_ON_START: 'yes'
     INTERVAL: 1y
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     field: interval
 
-- name: empty_local_reference
-  description: Verify that an empty local reference is rejected with an error
+- name: empty_archive_reference
+  description: Verify that an empty archive reference is rejected with an error
   configuration_parameters:
     ENABLED: 'yes'
     SCAN_ON_START: 'yes'
     INTERVAL: 1h
-    LOCAL_PATH: ''
+    ARCHIVE_PATH: ''
   metadata:
-    field: local
+    field: archive

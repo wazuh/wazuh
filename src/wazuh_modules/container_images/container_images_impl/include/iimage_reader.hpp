@@ -21,8 +21,9 @@ namespace containerimages
     /// @brief Whether a source could be read, and what that means for what it holds.
     enum class ReadStatus
     {
-        Success, ///< The source was read. The records are its current contents.
-        Failed,  ///< The source could not be read. Nothing is known about it this time.
+        Success,   ///< The source was read. The records are its current contents.
+        Failed,    ///< The source could not be read. Nothing is known about it this time.
+        Unchanged, ///< The source holds the image already stored, so it was not read again.
     };
 
     /// @brief The outcome of reading one source.
@@ -41,6 +42,12 @@ namespace containerimages
         static ImageReadResult failed()
         {
             return {ReadStatus::Failed, {}};
+        }
+
+        /// @brief The source still holds the image the caller already has stored.
+        static ImageReadResult unchanged()
+        {
+            return {ReadStatus::Unchanged, {}};
         }
     };
 

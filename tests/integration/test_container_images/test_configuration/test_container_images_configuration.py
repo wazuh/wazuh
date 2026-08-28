@@ -120,7 +120,7 @@ def test_container_images_invalid_configuration(test_configuration, test_metadat
     assertions:
         - For enabled / scan_on_start: an "Invalid content for tag" error is logged.
         - For interval: an "Invalid interval" error is logged.
-        - For an empty local reference: an "Empty 'local' reference" error is logged.
+        - For an empty archive reference: an "Empty 'archive' reference" error is logged.
 
     expected_result: PASS when the matching configuration error is logged for each invalid field.
     '''
@@ -128,8 +128,8 @@ def test_container_images_invalid_configuration(test_configuration, test_metadat
 
     if field == 'interval':
         pattern = patterns.CB_INVALID_INTERVAL
-    elif field == 'local':
-        pattern = patterns.CB_EMPTY_LOCAL_REFERENCE
+    elif field == 'archive':
+        pattern = patterns.CB_EMPTY_ARCHIVE_REFERENCE
     else:  # enabled / scan_on_start
         pattern = patterns.CB_INVALID_BOOL.replace('{0}', field)
 

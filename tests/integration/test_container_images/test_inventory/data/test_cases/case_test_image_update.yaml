@@ -3,6 +3,6 @@
   configuration_parameters:
     SCAN_ON_START: 'yes'
     INTERVAL: 5s
-    LOCAL_PATH: /tmp/wazuh-container-images/oci
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
   metadata:
     interval_seconds: 5
