@@ -66,7 +66,13 @@ namespace remoted::control
             return instance;
         }
 
-        remoted::common::LogThrottle& protocolErrorThrottle()
+        remoted::common::LogThrottle& nonOkResponseThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& parseErrorThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -353,7 +359,7 @@ namespace remoted::control
 
                   if (!isOk(response))
                   {
-                      if (const auto throttle = protocolErrorThrottle().record())
+                      if (const auto throttle = nonOkResponseThrottle().record())
                       {
                           LOGFN_WARN(logFn(),
                                      "WazuhDB returned a non-ok response to getAgentGroups: %llu error(s) in the "
@@ -401,7 +407,7 @@ namespace remoted::control
                   }
                   catch (...)
                   {
-                      if (const auto throttle = protocolErrorThrottle().record())
+                      if (const auto throttle = parseErrorThrottle().record())
                       {
                           LOGFN_WARN(logFn(),
                                      "WazuhDB getAgentGroups: could not parse the response: %llu error(s) in the "
