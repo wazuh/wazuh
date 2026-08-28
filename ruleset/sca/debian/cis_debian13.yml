@@ -4172,7 +4172,7 @@ checks:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid  && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid  && r:-F auid!=unset && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C uid!=euid|-C euid!=uid && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 6.2.3.3 Ensure events that modify the sudo log file are collected. (Automated)
   - id: 33255
