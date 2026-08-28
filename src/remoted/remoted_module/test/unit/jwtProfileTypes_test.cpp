@@ -34,11 +34,13 @@ TEST(JwtProfileTypes, ProfileConstantsArePinned)
     EXPECT_EQ(kJtiChars, 22u);
     EXPECT_EQ(kMaxTokenBytes, 4096u);
     EXPECT_EQ(kLifetimeSec, 60);
-    EXPECT_EQ(kMaxAgeSec, 60);
-    EXPECT_EQ(kMaxClockSkewSec, 30);
+    EXPECT_EQ(kMaxAgeSec, 43200);
+    EXPECT_EQ(kMaxClockSkewSec, 43200);
+    EXPECT_EQ(kDefaultAgeSec, 60);
+    EXPECT_EQ(kDefaultClockSkewSec, 30);
 }
 
-TEST(JwtProfileTypes, TimePolicyDefaultsToProfileMaxima)
+TEST(JwtProfileTypes, TimePolicyDefaultsToProfileDefaults)
 {
     constexpr TimePolicy policy;
     EXPECT_EQ(policy.maxAgeSec(), 60);
@@ -48,20 +50,20 @@ TEST(JwtProfileTypes, TimePolicyDefaultsToProfileMaxima)
 TEST(JwtProfileTypes, TimePolicyAcceptsTheWholeRangeAndNothingElse)
 {
     EXPECT_NO_THROW(TimePolicy(1, 0));
-    EXPECT_NO_THROW(TimePolicy(60, 30));
+    EXPECT_NO_THROW(TimePolicy(43200, 43200));
     const TimePolicy lowered {10, 5};
     EXPECT_EQ(lowered.maxAgeSec(), 10);
     EXPECT_EQ(lowered.skewSec(), 5);
 
     EXPECT_THROW(TimePolicy(0, 0), std::invalid_argument);
-    EXPECT_THROW(TimePolicy(61, 0), std::invalid_argument);
+    EXPECT_THROW(TimePolicy(43201, 0), std::invalid_argument);
     EXPECT_THROW(TimePolicy(-1, 0), std::invalid_argument);
     EXPECT_THROW(TimePolicy(60, -1), std::invalid_argument);
-    EXPECT_THROW(TimePolicy(60, 31), std::invalid_argument);
+    EXPECT_THROW(TimePolicy(60, 43201), std::invalid_argument);
 
-    EXPECT_TRUE(TimePolicy::tryMake(60, 30).has_value());
+    EXPECT_TRUE(TimePolicy::tryMake(43200, 43200).has_value());
     EXPECT_FALSE(TimePolicy::tryMake(0, 30).has_value());
-    EXPECT_FALSE(TimePolicy::tryMake(60, 31).has_value());
+    EXPECT_FALSE(TimePolicy::tryMake(60, 43201).has_value());
 }
 
 TEST(JwtProfileTypes, CanonicalAgentIdParsesDigitsAndPadsToThree)

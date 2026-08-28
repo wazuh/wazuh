@@ -3483,7 +3483,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
-    // jwt_* / auth_* (in-range, non-default values: the profile caps jwt_max_age at 60, skew at 30)
+    // jwt_* / auth_* (in-range, non-default values: the profile caps jwt_max_age and skew at 43200)
     will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);

@@ -4342,7 +4342,7 @@ paths:
               name: NewHost_2
               ip: 10.0.10.11
               id: "123"
-              key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+              key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               force:
                 enabled: True
                 disconnected_time:

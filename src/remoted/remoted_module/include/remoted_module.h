@@ -144,11 +144,12 @@ extern "C"
 
         // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
         int jwt_max_age;              ///< Max accepted token age, seconds: now - iat <= jwt_max_age + jwt_clock_skew.
-                                      ///< remoted.jwt_max_age, 1..60 (profile maximum 60); <=0 -> module default.
-                                      ///< The token's declared lifetime (exp - iat) is a fixed 60 s, NOT configurable.
+                                      ///< remoted.jwt_max_age, 1..43200 (profile ceiling; default 60); <=0 -> module
+                                      ///< default. The token's declared lifetime (exp - iat) is a fixed 60 s, NOT
+                                      ///< configurable.
         int jwt_clock_skew;           ///< Tolerated agent/manager clock difference, seconds, both directions.
-                                      ///< remoted.jwt_clock_skew, 0..30 (profile maximum 30). Zero is a VALID
-                                      ///< setting ("no tolerance"), so this field is only read when
+                                      ///< remoted.jwt_clock_skew, 0..43200 (profile ceiling; default 30). Zero is a
+                                      ///< VALID setting ("no tolerance"), so this field is only read when
                                       ///< jwt_clock_skew_set is non-zero; otherwise the module default applies.
         int jwt_clock_skew_set;       ///< Non-zero when jwt_clock_skew carries a configured value (remoted always
                                       ///< sets it). A zeroed struct therefore still means "module defaults".
