@@ -683,6 +683,40 @@ static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **st
  * of just "/" -- so a value mirrored from one config into the other keeps its meaning
  * instead of being fatal on one side and silently different on the other. */
 
+/* curl accepts ":0" and would go on to connect, and treats a trailing ":" as "no port"
+ * and silently defaults. Every installer parser rejects both, so the agent must too or
+ * the same value means different things either side of the install boundary. */
+
+static void test_agent_manager_endpoint_rejects_port_zero(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>10.0.0.5:0</endpoint></manager>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint '10.0.0.5:0': port 0 is out of the range 1-65535.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_a_trailing_colon(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>10.0.0.5:</endpoint></manager>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint '10.0.0.5:': a ':' must be followed by a port.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_agent_manager_empty_endpoint_is_rejected(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -879,6 +913,45 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The MSI reconfigures a preserved 4.x file in place and, with no <agent> block to
+ * target, writes the endpoint into <client><server>. Reading only <address> there left
+ * the upgraded agent with no manager at all and refusing to start. */
+
+static void test_legacy_client_reads_an_endpoint(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    assert_int_equal(parse_legacy_client(
+        "<server><endpoint>10.0.0.5:8443/gateway</endpoint></server>", &xml, &nodes, &cfg), 0);
+    assert_non_null(cfg.server);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 8443);
+    assert_string_equal(cfg.server[0].endpoint, "gateway");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* Bare host: the port and prefix fall back to the same defaults <agent><manager> uses. */
+
+static void test_legacy_client_endpoint_defaults_port_and_prefix(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    assert_int_equal(parse_legacy_client(
+        "<server><endpoint>10.0.0.5</endpoint></server>", &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1517);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
 
     cleanup(&xml, nodes, &cfg);
@@ -1738,6 +1811,8 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_is_parsed),
         cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_port_zero),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_trailing_colon),
         cmocka_unit_test(test_agent_manager_empty_endpoint_is_rejected),
         cmocka_unit_test(test_agent_manager_endpoint_outranks_the_deprecated_pair),
         cmocka_unit_test(test_agent_manager_endpoint_outranks_the_pair_whatever_the_order),
@@ -1748,6 +1823,8 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_dot_dot_segment),
         cmocka_unit_test(test_agent_manager_endpoint_too_long_is_rejected),
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
+        cmocka_unit_test(test_legacy_client_reads_an_endpoint),
+        cmocka_unit_test(test_legacy_client_endpoint_defaults_port_and_prefix),
         cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address),
         cmocka_unit_test(test_legacy_client_takes_the_last_address),
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),

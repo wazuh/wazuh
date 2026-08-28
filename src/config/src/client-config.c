@@ -16,6 +16,7 @@
 
 /* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
+#include <errno.h>
 #include "urlapi.h"
 
 /* if_nametoindex(), for resolving an IPv6 zone id to a scope id (#38624). Windows
@@ -26,6 +27,19 @@
 #else
 #include <net/if.h>
 #endif
+
+/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+ * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
+ * that passed validation here. */
+#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
+
+/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
+ * 256) for the same reason. */
+#define AGENT_SERVER_HOST_MAX_LEN 255
+
+static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                                  bool *port_present, char *endpoint, size_t endpoint_size,
+                                  uint32_t *scope_id);
 
 int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
@@ -262,7 +276,9 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
 {
     const char *xml_client_server = "server";
     const char *xml_client_addr = "address";
+    const char *xml_client_endpoint = "endpoint";
     char * address = NULL;
+    char * endpoint_value = NULL;
 
     agent * logr = (agent *)d1;
 
@@ -282,16 +298,61 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
         }
 
         for (int j = 0; chld_node[j]; j++) {
-            if (!chld_node[j]->element || !chld_node[j]->content ||
-                strcmp(chld_node[j]->element, xml_client_addr) != 0) {
+            if (!chld_node[j]->element || !chld_node[j]->content) {
                 continue;
             }
 
-            os_free(address);
-            os_strdup(chld_node[j]->content, address);
+            if (strcmp(chld_node[j]->element, xml_client_addr) == 0) {
+                os_free(address);
+                os_strdup(chld_node[j]->content, address);
+            } else if (strcmp(chld_node[j]->element, xml_client_endpoint) == 0) {
+                /* The MSI reconfigures a preserved 4.x file in place and, having no
+                 * <agent> block to target, writes the endpoint into this <server> one.
+                 * Reading only <address> here left that agent with no manager at all. */
+                os_free(endpoint_value);
+                os_strdup(chld_node[j]->content, endpoint_value);
+            }
         }
 
         OS_ClearNode(chld_node);
+    }
+
+    /* An <endpoint> written here by the installer carries the whole target, so it wins
+     * and is parsed exactly as one under <agent><manager> would be. */
+    if (endpoint_value) {
+        char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
+        char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
+        uint32_t scope_id = 0;
+        int port = DEFAULT_HTTPS_REMOTE_PORT;
+        bool port_present = false;
+
+        if (w_parse_agent_endpoint(endpoint_value, host, sizeof(host), &port, &port_present,
+                                   endpoint, sizeof(endpoint), &scope_id) == OS_INVALID) {
+            os_free(address);
+            os_free(endpoint_value);
+            return (OS_INVALID);
+        }
+
+        os_free(address);
+        os_free(endpoint_value);
+
+        os_calloc(2, sizeof(agent_server), logr->server);
+        os_strdup(host, logr->server[0].rip);
+
+        if (strchr(logr->server[0].rip, ':') != NULL) {
+            os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
+            OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+        }
+
+        if (endpoint[0] != '\0') {
+            os_strdup(endpoint, logr->server[0].endpoint);
+        }
+
+        logr->server[0].scope_id = scope_id;
+        logr->server[0].port = port;
+        logr->server_count = 1;
+
+        return (0);
     }
 
     if (!address) {
@@ -369,15 +430,6 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 
     return (0);
 }
-
-/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
- * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
- * that passed validation here. */
-#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
-
-/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
- * 256) for the same reason. */
-#define AGENT_SERVER_HOST_MAX_LEN 255
 
 /**
  * @brief Validate and normalize a present <endpoint> tag's content (#38492).
@@ -490,9 +542,17 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
 static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
 {
     if (OS_StrIsNum(zone)) {
-        long numeric = strtol(zone, NULL, 10);
+        char *end = NULL;
+        unsigned long numeric;
 
-        if (numeric <= 0 || numeric > UINT32_MAX) {
+        /* strtoul, not strtol: long is 32-bit on MinGW, where "> UINT32_MAX" is
+         * unreachable and an overflowing value came back as LONG_MAX and was accepted.
+         * errno is the only way to see that saturation. */
+        errno = 0;
+        numeric = strtoul(zone, &end, 10);
+
+        if (errno == ERANGE || end == zone || (end && *end != '\0') ||
+            numeric == 0 || numeric > UINT32_MAX) {
             merror("Invalid endpoint: IPv6 zone id '%s' is out of range.", zone);
             return OS_INVALID;
         }
@@ -660,11 +720,32 @@ static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size,
     curl_free(part);
     part = NULL;
 
+    /* A ':' with nothing after it is "no port" to curl, which would silently fall back
+     * to the default; the installers reject it, so reject it here too rather than let
+     * the same value mean different things either side of the install boundary. */
+    {
+        const char *authority_end = strchr(authority, '/');
+        size_t authority_len = authority_end ? (size_t)(authority_end - authority) : strlen(authority);
+
+        if (authority_len > 0 && authority[authority_len - 1] == ':') {
+            merror("Invalid endpoint '%s': a ':' must be followed by a port.", raw);
+            goto end;
+        }
+    }
+
     /* Deliberately without CURLU_DEFAULT_PORT: that substitutes curl's own https
      * default (443), not the agent's (1517). */
     if (curl_url_get(url, CURLUPART_PORT, &part, 0) == CURLUE_OK) {
-        /* curl has already range-checked this. */
-        *port = atoi(part);
+        /* Range-checked here: curl accepts ":0" and would happily go on to connect,
+         * while every installer parser rejects anything below 1. */
+        long parsed = atol(part);
+
+        if (parsed < 1 || parsed > 65535) {
+            merror("Invalid endpoint '%s': port %ld is out of the range 1-65535.", raw, parsed);
+            goto end;
+        }
+
+        *port = (int)parsed;
         *port_present = true;
         curl_free(part);
         part = NULL;
