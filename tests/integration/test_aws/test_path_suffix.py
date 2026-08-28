@@ -106,7 +106,18 @@ def test_path_suffix(
     only_logs_after = metadata['only_logs_after']
     path_suffix = metadata['path_suffix']
     expected_results = metadata['expected_results']
-    pattern = fr".*WARNING: Bucket:  -  No logs found in 'AWSLogs/{path_suffix}/'. Check the provided prefix.*\n*"
+    # The module signals an empty path_suffix with one of two messages depending on the runtime: the
+    # manager path emits find_account_ids' "No logs found ... Check the provided prefix"; the agent path
+    # emits check_bucket's "No files were found ... No logs will be processed" even in a healthy run.
+    # Accept either. This is safe against a broken/unseeded namespace: _copy_seeds_into_namespace fails the
+    # session fast if nothing seeds, so a run that reaches here always has the AWSLogs/ structure. '.*'
+    # before the suffix tolerates the '<run>/' prefix (issue #38194); both match locally (no namespace).
+    pattern = (
+        fr".*WARNING: Bucket:  -  (?:"
+        fr"No logs found in '.*AWSLogs/{path_suffix}/'. Check the provided prefix"
+        fr"|No files were found in '.*{path_suffix}/'. No logs will be processed"
+        fr").*\n*"
+    )
 
     parameters = [
         'wodles/aws/aws-s3',
@@ -116,6 +127,12 @@ def test_path_suffix(
         '--type', bucket_type,
         '--debug', '2'
     ]
+
+    # Under the per-run namespace (issue #38194) create_test_bucket injects a <path> into the config, so
+    # the module is invoked with --trail_prefix. No-op locally (no namespace -> no 'path' in metadata).
+    if metadata.get('path'):
+        parameters.insert(3, metadata['path'])
+        parameters.insert(3, '--trail_prefix')
 
     # Check AWS module started
     log_monitor.start(
@@ -151,9 +168,11 @@ def test_path_suffix(
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
     if expected_results:
+        # 'ns' is the per-run namespace prefix ('<run>/') injected under issue #38194, or '' locally.
+        ns = metadata.get('path', '')
         data = get_s3_db_row(table_name=bucket_type)
-        assert f"{bucket_name}/{path_suffix}/" == data.bucket_path
-        assert data.log_key.startswith(f"AWSLogs/{path_suffix}/")
+        assert f"{bucket_name}/{ns}{path_suffix}/" == data.bucket_path
+        assert data.log_key.startswith(f"{ns}AWSLogs/{path_suffix}/")
     else:
         assert not table_exists_or_has_values(table_name=bucket_type)
 
