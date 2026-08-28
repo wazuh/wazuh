@@ -249,6 +249,10 @@ cJSON *getRemoteConfig(void) {
         cJSON_AddStringToObject(https, "bind_addr", logr.https.bind_addr);
     }
 
+    if (logr.https.global_prefix) {
+        cJSON_AddStringToObject(https, "global_prefix", logr.https.global_prefix);
+    }
+
     if (logr.https.certificate) {
         cJSON_AddStringToObject(https, "certificate", logr.https.certificate);
     }

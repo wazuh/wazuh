@@ -138,9 +138,9 @@ there is no automatic migration.
 | `<remote><allowed-ips>` | Use the `ip` column in `client.keys` |
 | `<remote><denied-ips>` | Same |
 
-**New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `certificate`,
-`key`, `ca`, `verification_mode`, `ciphers`, `max_body_size`, `dual_stack`. `<remote><agents>` is
-unchanged. See
+**New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `global_prefix`,
+`certificate`, `key`, `ca`, `verification_mode`, `ciphers`, `max_body_size`, `dual_stack`.
+`<remote><agents>` is unchanged. See
 [Remoted configuration](../../ref/modules/remoted/configuration.md#https-configuration).
 
 On the agent side, a 4.x `ossec.conf` is **accepted and ignored** rather than rejected, so an

@@ -1404,6 +1404,7 @@ static void test_getRemoteConfig_reports_https_block(void **state) {
 
     logr.https.port = 1517;
     logr.https.bind_addr = "0.0.0.0";
+    logr.https.global_prefix = "/wazuh-manager";
     logr.https.certificate = "etc/certs/remoted.pem";
     logr.https.key = "etc/certs/remoted-key.pem";
     logr.https.ca = "etc/certs/root-ca.pem";
@@ -1419,6 +1420,7 @@ static void test_getRemoteConfig_reports_https_block(void **state) {
 
     assert_string_field(https, "port", "1517");
     assert_string_field(https, "bind_addr", "0.0.0.0");
+    assert_string_field(https, "global_prefix", "/wazuh-manager");
     assert_string_field(https, "certificate", "etc/certs/remoted.pem");
     assert_string_field(https, "key", "etc/certs/remoted-key.pem");
     assert_string_field(https, "ca", "etc/certs/root-ca.pem");
@@ -1531,9 +1533,12 @@ static void test_getRemoteConfig_omits_unset_verification_mode(void **state) {
     assert_non_null(https);
     assert_null(cJSON_GetObjectItem(https, "verification_mode"));
 
-    /* Same for every other option the operator did not set: absent, not invented. */
+    /* Same for every other option the operator did not set: absent, not invented. An unset
+     * global_prefix in particular must not be reported as "/": the module's default is its own,
+     * and "/" is also a value the operator can set explicitly. */
     assert_null(cJSON_GetObjectItem(https, "port"));
     assert_null(cJSON_GetObjectItem(https, "bind_addr"));
+    assert_null(cJSON_GetObjectItem(https, "global_prefix"));
     assert_null(cJSON_GetObjectItem(https, "dual_stack"));
 
     cJSON_Delete(root);
