@@ -435,9 +435,14 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
                             cJSON* next_url = cJSON_GetObjectItem(body_parse, "@odata.nextLink");
                             if (cJSON_IsString(next_url)) {
-                                memset(url, '\0', OS_SIZE_8192);
-                                snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
-                                next_page = true;
+                                if (wm_url_is_allowed(next_url->valuestring, auth_config->query_fqdn)) {
+                                    memset(url, '\0', OS_SIZE_8192);
+                                    snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
+                                    next_page = true;
+                                } else {
+                                    mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'.", auth_config->query_fqdn);
+                                    fail = true;
+                                }
                             }
 
                             cJSON_Delete(body_parse);
@@ -531,9 +536,13 @@ cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* a
 
                         cJSON* next_url = cJSON_GetObjectItem(body_parse, "@odata.nextLink");
                         if (cJSON_IsString(next_url)) {
-                            memset(url, '\0', OS_SIZE_8192);
-                            snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
-                            next_page = true;
+                            if (wm_url_is_allowed(next_url->valuestring, query_fqdn)) {
+                                memset(url, '\0', OS_SIZE_8192);
+                                snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
+                                next_page = true;
+                            } else {
+                                mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'.", query_fqdn);
+                            }
                         }
 
                         cJSON_Delete(body_parse);

@@ -277,6 +277,35 @@ char* wm_read_http_header_element(char *header, char *regex) {
     return element;
 }
 
+bool wm_url_is_allowed(const char *url, const char *host) {
+    if (!url || strncasecmp(url, "https://", 8)) {
+        return false;
+    }
+
+    if (!host) {
+        return true;
+    }
+
+    size_t host_len = strlen(host);
+
+    if (strncasecmp(url + 8, host, host_len)) {
+        return false;
+    }
+
+    const char *end = url + 8 + host_len;
+
+    if (*end == ':') {
+        if (!isdigit((unsigned char)*++end)) {
+            return false;
+        }
+        while (isdigit((unsigned char)*end)) {
+            end++;
+        }
+    }
+
+    return (*end == '/') || (*end == '?') || (*end == '#') || (*end == '\0');
+}
+
 void wm_free(wmodule * config) {
     wmodule *cur_module;
     wmodule *next_module;

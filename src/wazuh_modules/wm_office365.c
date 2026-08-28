@@ -426,7 +426,9 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             cJSON *blob = cJSON_GetArrayItem(blobs_array, i);
                             cJSON *content = cJSON_GetObjectItem(blob, "contentUri");
 
-                            if (content && (content->type == cJSON_String)) {
+                            if (content && (content->type == cJSON_String) && !wm_url_is_allowed(content->valuestring, NULL)) {
+                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring non-HTTPS content URI.");
+                            } else if (content && (content->type == cJSON_String)) {
                                 cJSON *logs_array = NULL;
 
                                 if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size, &buffer_size_reached, &error_msg), logs_array) {
@@ -470,6 +472,11 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                         if (!scan_finished) {
                             if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
+                            } else if (!wm_url_is_allowed(next_page, current_auth->management_fqdn)) {
+                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring next page URL out of '%s'.", current_auth->management_fqdn);
+                                os_free(next_page);
+                                scan_finished = 1;
+                                fail = 1;
                             } else {
                                 snprintf(url, sizeof(url), "%s", next_page);
                                 os_free(next_page);
