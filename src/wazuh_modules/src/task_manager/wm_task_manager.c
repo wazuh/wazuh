@@ -12,6 +12,7 @@
 #include "wmodules.h"
 #include "wm_task_manager_tasks.h"
 #include "wm_task_manager_parsing.h"
+#include "wm_manager_task_dispatcher.h"
 #include "os_net.h"
 #include "notify_op.h"
 
@@ -27,6 +28,22 @@ extern void mock_assert(const int result, const char* const expression,
 #else
 #define STATIC static
 #endif
+
+/**
+ * @brief Resolve the socket the routed manager task types' consumer listens on.
+ *
+ * Both sides read INV_SYNC_SOCK, so neither carries its own copy of the path. inventory-sync does
+ * have a socket_path field, but it sits behind that module's C-ABI header, which its own wrapper
+ * header deliberately does not include -- and its comment records that internal options carry
+ * integers only, so nothing can set it today. Reaching through the ABI to read a field that is
+ * always empty would buy a coupling this module is specifically built to avoid.
+ *
+ * If a real string configuration source ever appears, this is the seam: both sides must read it
+ * from one place, and a second copy of the default is the failure to avoid.
+ *
+ * @return Socket path. Never NULL.
+ */
+STATIC const char* wm_task_manager_consumer_socket(void);
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
@@ -56,9 +73,23 @@ const char *task_type_names[] = {
 /* Global config for access from dispatch functions */
 static wm_task_manager *g_task_manager_config = NULL;
 
+/* The manager task dispatcher. Module scope so the cleanup thread's watchdog can read the lanes
+ * it publishes, which is the whole of what is achievable about a hung handler: there is no
+ * cancellation primitive in the tree. */
+static wm_manager_task_dispatcher g_manager_task_dispatcher = {0};
+static bool g_manager_task_dispatcher_started = false;
+
 // Global notification queue for worker threads
 static wnotify_t *task_notify_queue = NULL;
 static pthread_mutex_t task_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+STATIC const char* wm_task_manager_consumer_socket(void) {
+    return INV_SYNC_SOCK;
+}
+
+wm_manager_task_dispatcher* wm_task_manager_dispatcher(void) {
+    return g_manager_task_dispatcher_started ? &g_manager_task_dispatcher : NULL;
+}
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     // Store config globally
@@ -290,6 +321,15 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
         }
     }
 
+    // Manager tasks. A failure here is not fatal to the module: the agent delivery path above is
+    // what remoted depends on, and taking it down because a manager task lane could not start
+    // would turn a degraded feature into an outage.
+    if (wm_manager_task_dispatcher_start(&g_manager_task_dispatcher, wm_task_manager_consumer_socket()) == 0) {
+        g_manager_task_dispatcher_started = true;
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Manager task dispatcher did not start; manager tasks will not run.");
+    }
+
     // Wait for dealer thread
     pthread_join(dealer_thread, NULL);
 
@@ -298,6 +338,14 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
         if (worker_threads[i]) {
             pthread_join(worker_threads[i], NULL);
         }
+    }
+
+    // Joined here, on the one thread modulesd itself joins, so the lanes come down inside the
+    // shared thirty second budget rather than being killed wherever they happen to be. That is
+    // what makes a half-written query to wazuh-db impossible rather than merely unlikely.
+    if (g_manager_task_dispatcher_started) {
+        wm_manager_task_dispatcher_stop(&g_manager_task_dispatcher);
+        g_manager_task_dispatcher_started = false;
     }
 
     os_free(worker_threads);

@@ -72,7 +72,22 @@ typedef struct _wm_task_get_pending_params {
     char *agent_id;
 } wm_task_get_pending_params;
 
+/* Forward declaration: the cleanup thread runs the manager task watchdog, but nothing else here
+ * needs the dispatcher's layout. */
+struct _wm_manager_task_dispatcher;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
+
+/**
+ * @brief The running manager task dispatcher, or NULL when it did not start.
+ *
+ * Exposed so the cleanup thread can run the watchdog without a thread of its own. Returning NULL
+ * rather than a zeroed dispatcher matters: a dispatcher that failed to start has no lanes, and a
+ * watchdog walking one would report on workers that do not exist.
+ *
+ * @return The dispatcher, or NULL.
+ */
+struct _wm_manager_task_dispatcher* wm_task_manager_dispatcher(void);
 
 // Parse XML configuration
 int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);

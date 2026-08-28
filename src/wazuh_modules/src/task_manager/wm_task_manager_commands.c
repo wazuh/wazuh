@@ -20,6 +20,7 @@
 #include "defs.h"
 #include "wazuhdb_op.h"
 #include "wm_task_manager_tasks.h"
+#include "wm_manager_task_dispatcher.h"
 
 // External references from wm_task_manager.c
 extern const char *task_type_names[];
@@ -72,6 +73,13 @@ void* wm_task_manager_clean_tasks(void *arg) {
             mtdebug2(WM_TASK_MANAGER_LOGTAG, "Task cleanup completed (TTL: %d seconds, interval: %d seconds)",
                      task_ttl, cleanup_interval);
         }
+
+        // The manager task watchdog rides this thread rather than taking one of its own. It only
+        // observes: with no cancellation primitive in the tree, making a hung handler visible
+        // instead of silent is the whole of what is achievable. Note the latency that implies --
+        // a stall is reported at most once per cleanup_interval, so this is a post-hoc record,
+        // not a live signal.
+        wm_manager_task_dispatcher_watchdog(wm_task_manager_dispatcher(), now);
 
         if (now >= next_vacuum) {
             char response[OS_MAXSTR + 1] = "";
