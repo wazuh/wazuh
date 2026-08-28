@@ -118,7 +118,7 @@ class SyscollectorIdentityTest : public ::testing::Test
 
         /// @brief init() with only the collectors a case needs. packages rides the VD lane,
         /// users the plain one, which is what makes the routing observable with two mocks.
-        static void initModule(bool packages, bool users)
+        static void initModule(bool packages, bool users, bool os = false)
         {
             const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
             EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(::testing::AnyNumber());
@@ -151,12 +151,26 @@ class SyscollectorIdentityTest : public ::testing::Test
         /// @brief Creates the schema, seeds the marker, and reopens: DBSync holds the database
         /// open for as long as the module is initialized, so a write from outside it is refused
         /// with SQLITE_BUSY while it is up.
-        static void initWithMarker(bool packages, bool users, int64_t marker)
+        static void initWithMarker(bool packages, bool users, int64_t marker, bool os = false)
         {
-            initModule(packages, users);
+            initModule(packages, users, os);
             Syscollector::instance().destroy();
             seedMarker(marker);
-            initModule(packages, users);
+            initModule(packages, users, os);
+        }
+
+        /// @brief Writes any metadata row, for the markers other than synced_agent_id.
+        static void seedMetadata(const std::string& key, int64_t value)
+        {
+            sqlite3* db = nullptr;
+            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+            const std::string statement =
+                "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" +
+                key + "', " + std::to_string(value) + ");";
+
+            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
+            sqlite3_close(db);
         }
 
         /// @brief Writes a row straight into table_metadata, which is where the marker lives.
@@ -307,6 +321,48 @@ TEST_F(SyscollectorIdentityTest, ChangedIdSkipsDisabledCollectors)
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(1).WillOnce(Return(true));
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+
+    EXPECT_EQ(readMarker(), 2);
+}
+
+// To the manager a re-enrolled agent is a new agent, and a new agent's first scan is the one
+// that indexes its vulnerabilities without alerting on each -- the chain the manager picks for
+// Option::VDFIRST. The agent only asks for it while vd_first_sync_completed is unset, so the
+// identity resync clears that marker and sends the whole VD inventory in one session.
+TEST_F(SyscollectorIdentityTest, ChangedIdSendsTheVDInventoryAsAFirstSync)
+{
+    // os as well as packages: m_vdSyncEnabled is m_packages && m_os, and without it the module
+    // sends the VD tables with Option::SYNC and the first-scan question never arises. The flag
+    // itself is computed in start(), which these cases do not call -- they inject protocols
+    // instead of letting the module build real ones -- so it is set here directly.
+    initModule(true, true, /* os */ true);
+    Syscollector::instance().destroy();
+    seedMarker(1);
+    // Armed, as it is on any agent that has synchronized before: without this the plain lane's
+    // own session would already ask for VDFIRST and the reset below would prove nothing.
+    seedMetadata("vd_first_sync_completed", 1787900000);
+    initModule(true, true, /* os */ true);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+    Syscollector::instance().m_vdSyncEnabled = true;
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
+
+    // The whole point: exactly one session carries the VD inventory, and it asks for the
+    // first-scan chain. The plain lane's own sessions also reach this protocol -- syncModule()
+    // drains both -- but they run before any VD row is queued, so they find nothing to send and
+    // ask under the marker that is still armed. Those are allowed; a second VDFIRST is not,
+    // since each one opens by deleting what the previous indexed.
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, Option::VDSYNC))
+    .Times(::testing::AnyNumber())
+    .WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, Option::VDFIRST))
+    .Times(1)
+    .WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
     Syscollector::instance().checkAgentIdentity();

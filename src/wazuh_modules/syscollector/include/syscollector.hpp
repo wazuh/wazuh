@@ -452,6 +452,9 @@ class EXPORTED Syscollector final
         ///         nullptr if neither is initialized.
         IAgentSyncProtocol* protocolForIndex(const std::string& index) const;
 
+        /// @brief Whether an index's data rides the VD protocol (system, packages, hotfixes).
+        static bool isVDIndex(const std::string& index);
+
         /// @brief Replaces the manager's copy of one table with what this agent currently holds.
         ///
         /// Bumps every row's version, clears the manager's index, re-persists the whole table and
@@ -466,7 +469,13 @@ class EXPORTED Syscollector final
         ///         the caller treats as "leave the integrity timestamp alone and retry". A failure
         ///         of the final synchronization itself returns true: the data reached the queue
         ///         and the ordinary sync cycle will drain it.
-        bool resyncTableToManager(const std::string& tableName, const std::string& index);
+        /// @param syncNow When false, the table is cleared and re-persisted but no session is
+        ///                opened, leaving the caller to send the queue. The identity resync uses
+        ///                that for the VD lane: its three indices have to reach the manager in
+        ///                one VDFirst session, which is the only one whose scan chain suppresses
+        ///                alerts, and each VDFirst session begins by deleting what the previous
+        ///                one indexed.
+        bool resyncTableToManager(const std::string& tableName, const std::string& index, bool syncNow = true);
 
         /// @brief Whether the collector that owns a table is enabled in the configuration.
         /// @param tableName dbsync table to check.

@@ -2531,12 +2531,17 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
     }
 }
 
-IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
+bool Syscollector::isVDIndex(const std::string& index)
 {
     // VD tables: system (os), packages, hotfixes
-    const bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                            index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                            index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+    return index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+           index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+           index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
+}
+
+IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
+{
+    const bool isVDTable = isVDIndex(index);
 
     if (isVDTable && m_spSyncProtocolVD)
     {
@@ -4832,7 +4837,7 @@ bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) cons
 // #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
 // are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
 // persist loop below still needs a manager, and that is what stays excluded.
-bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index)
+bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index, const bool syncNow)
 {
     try
     {
@@ -4952,6 +4957,13 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     // LCOV_EXCL_STOP
 
     m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
+
+    if (!syncNow)
+    {
+        // Left in the queue on purpose; the caller sends it.
+        return true;
+    }
+
     m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
     bool recoverySucceeded = syncModule(Mode::DELTA).success;
 
@@ -5010,47 +5022,105 @@ void Syscollector::checkAgentIdentity()
                   ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
 
     bool anyFailed = false;
+    std::vector<std::string> vdTablesResent;
 
-    // One resync per table, each ending in its own sync session, rather than clearing all
-    // thirteen indices and sending everything in one. It is the slower shape -- the wodle holds
-    // the scan mutex across this whole loop, including each table's round trip to the manager,
-    // and this is the same per-index cost the manager-driven recovery path already pays under
-    // the same lock -- but a failure stays contained: an index is only cleared immediately
-    // before its own rows are queued, so a session that never reaches the manager leaves the
-    // other twelve untouched, and the marker below can be gated on what each table proved
-    // individually. Clearing everything up front would put all thirteen behind a single point of
-    // failure.
-    for (const auto& [tableName, index] : INDEX_MAP)
+    // The plain lane keeps one session per table: an index is cleared immediately before its own
+    // rows are queued, so a session that never reaches the manager leaves the others untouched
+    // and the marker below stays gated on what each table proved individually.
+    //
+    // The VD lane cannot work that way. To the manager a re-enrolled agent is a new agent, and a
+    // new agent's first scan is the one that indexes its vulnerabilities without raising an alert
+    // for each -- the FirstFullScan chain, which drops TEventSendReport. The agent asks for it by
+    // sending Option::VDFIRST, which it does only while vd_first_sync_completed is unset. So the
+    // three VD indices are cleared and re-persisted here without sending, the marker is reset
+    // once they are all queued, and a single session carries them: one VDFirst session over the
+    // complete inventory. Sending them table by table would give the first one a partial
+    // inventory and re-arm the marker, leaving the rest to go out as VDSYNC and alert; and each
+    // VDFirst session opens with a deleteByQuery scoped to this agent, so a second one would
+    // delete what the first indexed. The cost is that the three are cleared before any is sent.
+    // Two passes, and the order matters: syncModule() drains both protocols, so a plain table's
+    // session would also flush whatever the VD lane had queued. Persisting the VD tables only
+    // after the last plain session is what keeps their rows together for the single VDFirst
+    // session below.
+    for (const int pass :
+            {
+                0, 1
+            })
     {
-        if (m_stopping.load())
+        for (const auto& [tableName, index] : INDEX_MAP)
         {
-            // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
-            // than recording a pass that never finished.
-            return;
+            if (m_stopping.load())
+            {
+                // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
+                // than recording a pass that never finished.
+                return;
+            }
+
+            if (!isCollectorEnabledForTable(tableName))
+            {
+                continue;
+            }
+
+            const bool vdTable = isVDIndex(index);
+
+            // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
+            if (vdTable != (pass == 1))
+            {
+                continue;
+            }
+
+            if (!resyncTableToManager(tableName, index, !vdTable))
+            {
+                // Keep going: the tables that can be resent should be, and aborting here would
+                // make every later pass re-upload the ones that already succeeded. The marker is
+                // what must not move -- recording it would claim the manager holds data it never
+                // received -- so remember the failure and leave it alone at the end.
+                anyFailed = true;
+            }
+            else if (vdTable)
+            {
+                // Queued, not sent. Its integrity clock waits for the session below to land.
+                vdTablesResent.push_back(tableName);
+            }
+            else
+            {
+                // Stamp the integrity clock exactly as the checksum loop does after its own
+                // resync. Without this, that loop -- same pass, same locked region, immediately
+                // behind this one -- can find the interval elapsed for a table this pass just
+                // full-replaced, ask the manager for a checksum it has had no chance to
+                // recompute, and issue a second notifyDataClean for it. Duplicated work at best,
+                // and if that second clean is ordered after the rows queued here, it deletes
+                // them.
+                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            }
+        }
+    }
+
+    if (!vdTablesResent.empty())
+    {
+        // Reset before sending, never after: synchronizeVDTables() reads this to choose the
+        // option, and persistVDFirstSyncIfNeeded() re-arms it once the session succeeds.
+        if (!updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, 0))
+        {
+            // Send anyway. Alerts for pre-existing findings are noise; VD indices left cleared
+            // with their rows still queued locally are missing data.
+            m_logFunction(LOG_WARNING,
+                          "Could not reset the VD first-sync marker; the vulnerability inventory "
+                          "will be resent as an ordinary synchronization.");
         }
 
-        if (!isCollectorEnabledForTable(tableName))
+        if (syncModule(Mode::DELTA).success)
         {
-            continue;
-        }
-
-        if (!resyncTableToManager(tableName, index))
-        {
-            // Keep going: the tables that can be resent should be, and aborting here would make
-            // every later pass re-upload the ones that already succeeded. The marker is what
-            // must not move -- recording it would claim the manager holds data it never
-            // received -- so remember the failure and leave it alone at the end.
-            anyFailed = true;
+            for (const auto& tableName : vdTablesResent)
+            {
+                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            }
         }
         else
         {
-            // Stamp the integrity clock exactly as the checksum loop does after its own resync.
-            // Without this, that loop -- same pass, same locked region, immediately behind this
-            // one -- can find the interval elapsed for a table this pass just full-replaced, ask
-            // the manager for a checksum it has had no chance to recompute, and issue a second
-            // notifyDataClean for it. Duplicated version-bump/select/re-persist work at best,
-            // and if that second clean is ordered after the rows queued here, it deletes them.
-            updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            // The rows stay queued and the marker stays unset, so the next cycle sends them as a
+            // VDFirst session too. The identity marker is what must not move.
+            anyFailed = true;
         }
     }
 

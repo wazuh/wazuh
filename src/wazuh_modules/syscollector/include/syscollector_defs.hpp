@@ -30,6 +30,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, FailedMarkerReadAdoptsNothing);                                              \
     FRIEND_TEST(SyscollectorIdentityTest, ChangedIdResendsEachTableOnItsOwnLane);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, ChangedIdSkipsDisabledCollectors);                                           \
+    FRIEND_TEST(SyscollectorIdentityTest, ChangedIdSendsTheVDInventoryAsAFirstSync);                                  \
     FRIEND_TEST(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing);                            \
     FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable)
 #else
