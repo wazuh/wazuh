@@ -728,6 +728,30 @@ static void test_agent_manager_deprecation_notice_keeps_the_configured_prefix(vo
     cleanup(&xml, nodes, &cfg);
 }
 
+/* The suggested line must bracket an IPv6 address, or its trailing group would be read as
+ * the port when pasted back. rip is the OS_ExpandIPv6'd form, which is what the agent is
+ * actually using, so the suggestion stays behaviour-preserving. */
+
+static void test_agent_manager_deprecation_notice_brackets_an_ipv6_address(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>2001:db8::1</address><port>8443</port></manager>";
+
+    expect_valid_ip("2001:db8::1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>[2001:0DB8:0000:0000:0000:0000:0000:0001]:8443"
+                  "/wazuh-manager</endpoint>");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.server[0].port, 8443);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -1695,6 +1719,7 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
         cmocka_unit_test(test_agent_manager_explicit_empty_endpoint_is_an_opt_out),
         cmocka_unit_test(test_agent_manager_deprecation_notice_keeps_the_configured_prefix),
+        cmocka_unit_test(test_agent_manager_deprecation_notice_brackets_an_ipv6_address),
         cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),
