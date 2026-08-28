@@ -378,7 +378,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 200
       json:
@@ -394,7 +394,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "751"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:
@@ -409,7 +409,7 @@ stages:
         name: "NewAgentPostInsert1"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:
@@ -424,7 +424,7 @@ stages:
         name: "NewAgentPostInsert1"
         ip: "any"
         id: "751"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefEXTRA"
     response:
       status_code: 400
       json:
@@ -438,7 +438,7 @@ stages:
       json:
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:
@@ -454,7 +454,7 @@ stages:
         name: "NewAgentPostInsertExtra"
         ip: "any"
         id: "753"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         extra: "Nothing"
     response:
       status_code: 200
@@ -470,7 +470,7 @@ stages:
         name: "NewAgentPostInsertMIP"
         id: "755"
         ip: "120.130.140.150"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 200
       json:
@@ -486,7 +486,7 @@ stages:
         name: "NewAgentPostInsertDIP"
         id: "756"
         ip: "120.130.140.150"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:
@@ -501,7 +501,7 @@ stages:
         name: "NewAgentPostInsert"
         id: "760"
         ip: "A.B.C.D"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:
@@ -516,7 +516,7 @@ stages:
         name: "NewAgentPostInsert"
         id: "760"
         ip: "333.333.333.333"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       status_code: 400
       json:

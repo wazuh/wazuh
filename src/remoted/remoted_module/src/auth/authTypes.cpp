@@ -35,12 +35,12 @@ namespace remoted::auth
     jwt_profile::v1::TimePolicy buildTimePolicy(int jwtMaxAge, int jwtClockSkew, bool jwtClockSkewSet)
     {
         // jwt_max_age: <= 0 is "unset" (the C-ABI's zeroed struct, or a garbage negative) -> profile
-        // maximum; 0 is outside its 1..60 range anyway. jwt_clock_skew: 0 is a VALID setting ("no
-        // tolerance", the bottom of its 0..30 range), so "unset" is signalled by the explicit
+        // default; 0 is outside its 1..43200 range anyway. jwt_clock_skew: 0 is a VALID setting ("no
+        // tolerance", the bottom of its 0..43200 range), so "unset" is signalled by the explicit
         // jwt_clock_skew_set flag instead -- a zeroed struct (no flag) still yields the module default.
         // Configured values are validated by TimePolicy itself, which throws outside the range.
-        const std::int64_t maxAge = jwtMaxAge > 0 ? jwtMaxAge : jwt_profile::v1::kMaxAgeSec;
-        const std::int64_t skew = jwtClockSkewSet ? jwtClockSkew : jwt_profile::v1::kMaxClockSkewSec;
+        const std::int64_t maxAge = jwtMaxAge > 0 ? jwtMaxAge : jwt_profile::v1::kDefaultAgeSec;
+        const std::int64_t skew = jwtClockSkewSet ? jwtClockSkew : jwt_profile::v1::kDefaultClockSkewSec;
         return jwt_profile::v1::TimePolicy {maxAge, skew};
     }
 

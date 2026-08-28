@@ -224,9 +224,10 @@ namespace remoted::auth
     struct AuthConfig
     {
         std::string supportedProtocolVersion {kSupportedProtocolVersion}; ///< Expected protocol-version header.
-        /// Accepted token age and clock skew for the `wazuh-agent+jwt` bearer: the profile maxima
+        /// Accepted token age and clock skew for the `wazuh-agent+jwt` bearer: the profile defaults
         /// (60 s / 30 s) unless remoted's `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal
-        /// options lower them (C-ABI `jwt_max_age` / `jwt_clock_skew`, see buildAuthConfig()).
+        /// options change them, within the profile ceiling (43200 s / 43200 s -- C-ABI `jwt_max_age`
+        /// / `jwt_clock_skew`, see buildAuthConfig()).
         jwt_profile::v1::TimePolicy timePolicy {};
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
     };
@@ -240,12 +241,12 @@ namespace remoted::auth
      *
      * The time policy is the one place a value can be rejected rather than defaulted: an unset
      * value (`jwt_max_age <= 0`; `jwt_clock_skew` without `jwt_clock_skew_set` -- zero skew is a
-     * valid setting) takes the profile maximum, but a configured value outside the profile range
-     * (which remoted's own getDefine_Int_default() range already prevents) throws
-     * std::invalid_argument -- the module must never start with a wider window than the profile
-     * allows.
+     * valid setting) takes the profile default (60 s / 30 s), but a configured value outside the
+     * profile ceiling (1..43200 / 0..43200, which remoted's own getDefine_Int_default() range
+     * already prevents) throws std::invalid_argument -- the module must never start with a wider
+     * window than the profile allows.
      *
-     * @throw std::invalid_argument if jwt_max_age > 60, or jwt_clock_skew_set with a skew outside 0..30.
+     * @throw std::invalid_argument if jwt_max_age > 43200, or jwt_clock_skew_set with a skew outside 0..43200.
      *
      * @param config Configuration handed by remoted.
      * @return Resolved AuthConfig.
@@ -254,8 +255,8 @@ namespace remoted::auth
 
     /**
      * @brief The C-ABI `jwt_max_age` / `jwt_clock_skew` (+ `jwt_clock_skew_set`) fields as a
-     *        TimePolicy: unset -> profile maximum; configured values validated (throws
-     *        std::invalid_argument outside the profile range, zero skew included as valid).
+     *        TimePolicy: unset -> profile default (60 s / 30 s); configured values validated
+     *        (throws std::invalid_argument outside the profile ceiling, zero skew included as valid).
      *        Shared by buildAuthConfig() and the enrollment config so both schemes read ONE policy.
      */
     jwt_profile::v1::TimePolicy buildTimePolicy(int jwtMaxAge, int jwtClockSkew, bool jwtClockSkewSet);
