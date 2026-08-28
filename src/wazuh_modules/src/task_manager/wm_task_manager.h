@@ -127,10 +127,12 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) __
  * 'pending' re-offers the task on a future get_pending_tasks call (retryable failure); 'failed'
  * leaves it terminal but distinguishable from a successful delivery.
  * @param task_id Task identifier
- * @param status New status ("pending" or "failed")
+ * @param status New status ("pending" or "failed"). Not re-validated here -- callers reaching
+ * this function through the socket already went through wm_task_manager_parse_update_status_params(),
+ * and wdb_parse_task_update_status() rejects anything else as the final authority.
  * @param agent_id Optional; if given and status is "pending", invalidates that agent's
  * "no pending tasks" cache entry so the reset task isn't hidden behind a stale cache hit
- * @return true on success, false on error or an invalid status
+ * @return true on success, false on error
  */
 bool wm_task_manager_update_task_status(const char *task_id, const char *status, const char *agent_id) __attribute__((nonnull(1, 2)));
 

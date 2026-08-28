@@ -1513,8 +1513,10 @@ int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_tim
  * Used to recover a task from the 'delivered' state set unconditionally by
  * wdb_task_get_pending() (a side effect of the read, not of a confirmed successful push -- see
  * wm_task_manager_get_pending_tasks()'s doc comment) once the actual outcome of a delivery
- * attempt is known: 'pending' re-offers it on the next get_pending call (retryable failure),
- * 'failed' leaves it terminal but distinguishable from a successful delivery.
+ * attempt is known: 'pending' re-offers it on the next get_pending call (retryable failure) and
+ * clears DELIVERY_TIME (the earlier attempt's stamp no longer applies -- the task hasn't been
+ * delivered again yet); 'failed' leaves it terminal but distinguishable from a successful
+ * delivery, and keeps DELIVERY_TIME so it still purges on the same cutoff as a 'delivered' row.
  * @param wdb The task struct database
  * @param task_id Task identifier
  * @param status New status ("pending" or "failed")
@@ -1531,7 +1533,7 @@ int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status);
 int wdb_task_cleanup_expired(wdb_t* wdb, int ttl);
 
 /**
- * Delete old expired/delivered tasks from the tasks DB.
+ * Delete old expired/delivered/failed tasks from the tasks DB.
  * @param wdb The task struct database
  * @param timestamp Cutoff timestamp (tasks older than this are deleted)
  * @return OS_SUCCESS on success, OS_INVALID on errors

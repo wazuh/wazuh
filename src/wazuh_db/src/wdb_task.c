@@ -142,8 +142,13 @@ int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status) 
 
     stmt = wdb->stmt[WDB_STMT_TASK_UPDATE_STATUS];
 
+    // status is bound twice: once for the SET, once for the CASE that decides whether
+    // DELIVERY_TIME gets cleared. Going back to 'pending' means the task hasn't actually been
+    // delivered (yet) again, so a stale DELIVERY_TIME from the earlier attempt shouldn't linger;
+    // 'failed' keeps it, since wdb_task_delete_old() purges 'failed' rows on that same cutoff.
     sqlite3_bind_text(stmt, 1, status, -1, NULL);
-    sqlite3_bind_text(stmt, 2, task_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, status, -1, NULL);
+    sqlite3_bind_text(stmt, 3, task_id, -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
@@ -181,7 +186,9 @@ int wdb_task_cleanup_expired(wdb_t* wdb, int ttl) {
 }
 
 /**
- * Delete old expired/delivered tasks from the tasks DB.
+ * Delete old expired/delivered/failed tasks from the tasks DB. A 'failed' row keeps the
+ * DELIVERY_TIME stamped by the original mark_delivered call (update_status never clears it), so
+ * it purges on the same cutoff as a 'delivered' one.
  * Keeps tasks for 24 hours after expiry/delivery for debugging.
  * @param wdb The task struct database
  * @param timestamp Cutoff timestamp (tasks older than this are deleted)

@@ -292,11 +292,9 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) {
 }
 
 bool wm_task_manager_update_task_status(const char *task_id, const char *status, const char *agent_id) {
-    if (strcmp(status, "pending") != 0 && strcmp(status, "failed") != 0) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid task status update requested for task %s: '%s'", task_id, status);
-        return false;
-    }
-
+    // "pending"/"failed" is validated at the socket entry point
+    // (wm_task_manager_parse_update_status_params()) and, as the final authority, by
+    // wdb_parse_task_update_status() -- not re-checked a third time here in between.
     cJSON *params = cJSON_CreateObject();
     cJSON_AddStringToObject(params, "task_id", task_id);
     cJSON_AddStringToObject(params, "status", status);
@@ -314,7 +312,20 @@ bool wm_task_manager_update_task_status(const char *task_id, const char *status,
         return false;
     }
 
+    // wm_task_manager_send_message_to_wdb() only reflects the wire-level "ok"/"err" prefix in
+    // error_code -- wdb_parse_task_update_status() always replies "ok {...}" even when the
+    // underlying UPDATE failed (same convention as create/mark_delivered), with the real outcome
+    // in this "error" field instead. Without checking it, a wazuh-db-side failure here would be
+    // reported back to the caller as success, defeating the whole point of this function: telling
+    // the Task Manager the delivery outcome reliably.
+    cJSON *db_error = cJSON_GetObjectItem(response, "error");
+    bool db_ok = cJSON_IsNumber(db_error) && db_error->valueint == 0;
     cJSON_Delete(response);
+
+    if (!db_ok) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to update status of task %s to '%s'", task_id, status);
+        return false;
+    }
 
     if (agent_id && strcmp(status, "pending") == 0) {
         wm_task_cache_invalidate(agent_id);

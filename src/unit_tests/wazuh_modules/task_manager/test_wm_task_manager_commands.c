@@ -316,21 +316,6 @@ void test_wm_task_manager_update_task_status_pending_no_agent_id(void **state)
     assert_true(result);
 }
 
-void test_wm_task_manager_update_task_status_invalid_status(void **state)
-{
-    (void) state;
-
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mterror, formatted_msg);
-
-    // No wdbc_query_ex mock queued -- an invalid status must be rejected before ever reaching
-    // the DB, a call here fails the test.
-
-    bool result = wm_task_manager_update_task_status("task-123", "delivered", "011");
-
-    assert_false(result);
-}
-
 void test_wm_task_manager_update_task_status_db_error(void **state)
 {
     (void) state;
@@ -343,6 +328,35 @@ void test_wm_task_manager_update_task_status_db_error(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_any(__wrap__mterror, formatted_msg);
+
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
+    expect_any(__wrap__mterror, formatted_msg);
+
+    bool result = wm_task_manager_update_task_status("task-123", "pending", "011");
+
+    assert_false(result);
+}
+
+/* wdb_parse_task_update_status() always replies "ok {...}" at the wire level -- even when the
+ * underlying UPDATE failed -- with the real outcome in the JSON body's "error" field instead
+ * (same convention as create/mark_delivered). This must be treated as a failure, not silently
+ * reported back to the caller as success: that would defeat the whole point of this function. */
+void test_wm_task_manager_update_task_status_wdb_semantic_failure(void **state)
+{
+    (void) state;
+    char *wdb_response = "ok {\"error\":-1}";
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    // No __wrap_wm_task_cache_invalidate mock queued -- a call here fails the test: a status
+    // update that never actually happened in the DB must not invalidate the agent's cache either.
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_any(__wrap__mterror, formatted_msg);
@@ -536,8 +550,8 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_update_task_status_pending_invalidates_cache),
         cmocka_unit_test(test_wm_task_manager_update_task_status_failed_no_cache_invalidate),
         cmocka_unit_test(test_wm_task_manager_update_task_status_pending_no_agent_id),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_invalid_status),
         cmocka_unit_test(test_wm_task_manager_update_task_status_db_error),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_wdb_semantic_failure),
         // wm_task_manager_dispatch tests
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_create_task, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_get_pending, teardown_string),

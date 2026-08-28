@@ -526,7 +526,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
     const char *wpk_basename = wpk_file;
 
-    minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s' (wpk: '%s')", agent_id, wpk_file);
+    minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s'", agent_id);
 
     // Step 1: lock_restart (execd, plain-text protocol)
     if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, is_last_attempt)) {
@@ -719,7 +719,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         os_free(exit_status);
     }
 
-    minfo("legacy_task_delivery: successfully delivered remote_upgrade task to agent '%s' (wpk: '%s')", agent_id, wpk_file);
+    minfo("legacy_task_delivery: successfully delivered remote_upgrade task to agent '%s'", agent_id);
     return LEGACY_TASK_PUSH_SUCCESS;
 }
 

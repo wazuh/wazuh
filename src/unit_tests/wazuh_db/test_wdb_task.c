@@ -343,7 +343,12 @@ void test_wdb_task_update_status_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "pending");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
+    // status is bound a second time, for the CASE that decides whether DELIVERY_TIME is cleared.
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "pending");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "task-123");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
@@ -391,6 +396,10 @@ void test_wdb_task_update_status_step_fail(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "failed");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "task-123");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
