@@ -94,6 +94,9 @@ namespace invsync::test
         /// What the VD scanner fake reports from currentFeedOffset(). Defaults to 0 so tests that
         /// don't set a session's feed_offset (also defaulting to 0) see a match and aren't gated.
         std::atomic<std::uint64_t> m_vdCurrentOffset {0};
+        /// What the VD scanner fake reports from scannerRunning(). Defaults to true: the offset
+        /// gate applies, as it does on a node with vulnerability detection enabled.
+        std::atomic<bool> m_vdScannerRunning {true};
         /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
@@ -432,6 +435,11 @@ namespace invsync::test
         bool feedReady() const override
         {
             return m_events->m_vdFeedReady.load();
+        }
+
+        bool scannerRunning() const override
+        {
+            return m_events->m_vdScannerRunning.load();
         }
 
         std::uint64_t currentFeedOffset() const override

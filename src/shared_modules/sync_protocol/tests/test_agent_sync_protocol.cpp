@@ -68,10 +68,9 @@ class AgentSyncProtocolTest : public ::testing::Test
             char* groups[] = {const_cast<char*>("group1")};
             metadata.groups = groups;
             metadata.groups_count = 1;
-            // A VD feed offset already received from the manager, so existing VDFIRST/VDSYNC
-            // tests exercise the same "normal" path they did before the NO_VD_OFFSET_ERROR
-            // gate (A11) existed; the gate itself is covered separately, with its own
-            // explicit metadata (see the NoVdOffset* tests below).
+            // A VD feed offset already received from the manager, so VDFIRST/VDSYNC tests
+            // exercise the ordinary case; the sessions sent with no offset at all have their
+            // own tests, with their own explicit metadata.
             metadata.vd_feed_offset = 12345;
             metadata_provider_update(&metadata);
 
@@ -1025,20 +1024,12 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
     runAndAck(Option::VDSYNC);
 }
 
-// A11: a VD sync must abort (no Start ever sent) when no feed offset has been received
-// from the manager yet -- the state right after an agent restart, before the first
-// /control notify reports one. Mirrors the NO_GROUPS_ERROR gate's shape exactly.
-TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
+// A call that collides with an in-flight synchronization runs no session, and says so: it is
+// reported as a success (the sync already running drains the same queue), but a caller that
+// records something about the session -- syscollector's VD first-sync marker -- must be able to
+// tell it apart from a session that actually went out.
+TEST_F(AgentSyncProtocolTest, ConcurrentCallReportsThatItRanNoSession)
 {
-    agent_metadata_t metadata = {};
-    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-    char* groups[] = {const_cast<char*>("group1")};
-    metadata.groups = groups;
-    metadata.groups_count = 1;
-    metadata.vd_feed_offset = 0; // Not yet received.
-    metadata_provider_update(&metadata);
-
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
@@ -1048,30 +1039,45 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-    .WillRepeatedly(Return(testData));
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
 
-    const int sendCountBefore = mockSyncTransport->sendCount();
-    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+    SyncModuleResult inFlight;
+    std::thread syncThread([this, &inFlight]()
+    {
+        inFlight = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+    });
 
-    EXPECT_FALSE(result.success);
-    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
-    EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No VD feed offset available"));
-    // Expected/benign, not a real failure: lets the caller (Syscollector::syncModule()) log
-    // this at INFO instead of WARNING.
-    EXPECT_TRUE(result.awaitingPrerequisite);
-    EXPECT_FALSE(result.managerNotReady);
+    // While that one waits for its response, a second caller must be turned away.
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    const SyncModuleResult concurrent = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_TRUE(concurrent.success);
+    EXPECT_TRUE(concurrent.sessionSkipped);
+
+    feedHttpResult(200);
+    syncThread.join();
+
+    EXPECT_TRUE(inFlight.success);
+    EXPECT_FALSE(inFlight.sessionSkipped);
 }
 
-// The gate is VD-specific (isUncappedSyncOption): a plain SYNC must proceed even with no
-// VD offset at all -- only VDFIRST/VDSYNC require one.
-TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
+// A VD sync is never held back for want of a feed offset: the agent reports whatever it last
+// heard (0 until the manager tells it otherwise) and the manager decides what that session is
+// worth -- 503 while its feed loads, accepted and indexed unscanned when its scanner is not
+// running. Gating here instead left agents on a manager with vulnerability detection disabled
+// with their packages never indexed at all (#38599).
+TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 {
     agent_metadata_t metadata = {};
     strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
     char* groups[] = {const_cast<char*>("group1")};
     metadata.groups = groups;
     metadata.groups_count = 1;
-    metadata.vd_feed_offset = 0;
+    metadata.vd_feed_offset = 0; // Never received one.
     metadata_provider_update(&metadata);
 
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -1091,14 +1097,58 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
     SyncModuleResult result;
     std::thread syncThread([this, &result]()
     {
-        result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+        result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
     feedHttpResult(200);
 
     syncThread.join();
+
     EXPECT_TRUE(result.success);
+    EXPECT_FALSE(result.awaitingPrerequisite);
+
+    // The session went out as a VD one, carrying the offset verbatim so the manager can judge it.
+    const auto raw = mockSyncTransport->lastMessage();
+    const auto* message = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(raw.data());
+    ASSERT_NE(message, nullptr);
+    const auto* fullSession = message->content_as_FullSession();
+    ASSERT_NE(fullSession, nullptr);
+    ASSERT_NE(fullSession->start(), nullptr);
+    EXPECT_EQ(fullSession->start()->option(), Wazuh::SyncSchema::Option::VDFirst);
+    EXPECT_EQ(fullSession->start()->feed_offset(), 0u);
+}
+
+// The groups gate is untouched by that: it is the one prerequisite the agent still cannot
+// synchronize without, and it applies to every option.
+TEST_F(AgentSyncProtocolTest, MissingGroupsStillAbortsAVdSyncWithoutSendingStart)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    metadata.groups = nullptr;
+    metadata.groups_count = 0;
+    metadata.vd_feed_offset = 0;
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(testData));
+
+    const int sendCountBefore = mockSyncTransport->sendCount();
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
+    EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No groups available"));
+    EXPECT_TRUE(result.awaitingPrerequisite);
+    EXPECT_FALSE(result.managerNotReady);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWhenPrefilterSelectedIt)
