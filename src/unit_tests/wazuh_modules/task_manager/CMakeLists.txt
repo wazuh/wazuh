@@ -51,6 +51,12 @@ list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND task_names "test_wm_manager_task_registry")
 list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}")
 
+# Reads /proc for real: the value of a process start time is precisely that it comes from the
+# kernel rather than from anything this process could be wrong about, so mocking it would test
+# the mock. Only the logging wrappers are needed.
+list(APPEND task_names "test_wm_manager_task_owner")
+list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
+
 list(APPEND task_names "test_wm_manager_task_client")
 list(APPEND task_flags "-Wl,--wrap,wdbc_query_ex_timeout -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_close \
                         -Wl,--wrap,time ${DEBUG_OP_WRAPPERS}")
