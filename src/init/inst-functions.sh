@@ -537,15 +537,36 @@ WriteAgent()
     # value falls back to the prompted address, with the reason already on stderr --
     # this path must still emit a usable template, and the operator is present to see
     # the message.
+    # $SERVER_IP/$HNAME come from install.sh's own prompt and are the base. WAZUH_MANAGER
+    # (with WAZUH_MANAGER_PORT) still composes a value, and WAZUH_MANAGER_ENDPOINT
+    # overrides everything when set.
     AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
       AGENT_ENDPOINT="$HNAME"
     fi
 
+    if [ "X${WAZUH_MANAGER}" != "X" ]; then
+      AGENT_ENDPOINT="${WAZUH_MANAGER}"
+    fi
+
+    # A bare IPv6 literal needs bracketing once it shares a value with the port.
+    case "${AGENT_ENDPOINT}" in
+      *:*:*) AGENT_ENDPOINT="[${AGENT_ENDPOINT}]" ;;
+    esac
+
+    if [ "X${WAZUH_MANAGER_PORT}" != "X" ]; then
+      AGENT_ENDPOINT="${AGENT_ENDPOINT}:${WAZUH_MANAGER_PORT}"
+    fi
+
+    # WAZUH_MANAGER_ENDPOINT wins outright once it is set, even if it fails validation:
+    # it carries the whole URL and the operator asked for it specifically, so falling back
+    # to a value composed from WAZUH_MANAGER would silently point the agent at a different
+    # manager. A bad value is reported here and written through, so the agent refuses it
+    # loudly at startup instead -- same rule as register_configure_agent.sh and
+    # InstallerScripts.vbs, which write no <manager> block at all in that case.
     if [ "X${WAZUH_MANAGER_ENDPOINT+x}" != "X" ]; then
-      if ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"; then
-        AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
-      fi
+      ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"
+      AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
     fi
 
     echo "      <endpoint>${AGENT_ENDPOINT}</endpoint>" >> $NEWCONFIG

@@ -335,6 +335,9 @@ add_parameter () {
 
 get_deprecated_vars () {
 
+    if [ -n "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
+        WAZUH_MANAGER=${WAZUH_MANAGER_IP}
+    fi
     if [ -n "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
         WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
     fi
@@ -364,6 +367,8 @@ get_deprecated_vars () {
 
 set_vars () {
 
+    export WAZUH_MANAGER
+    export WAZUH_MANAGER_PORT
     export WAZUH_MANAGER_ENDPOINT
     export WAZUH_REGISTRATION_SERVER
     export WAZUH_REGISTRATION_PORT
@@ -377,6 +382,7 @@ set_vars () {
     export WAZUH_AGENT_GROUP
     export ENROLLMENT_DELAY
     # The following variables are yet supported but all of them are deprecated
+    export WAZUH_MANAGER_IP
     export WAZUH_NOTIFY_TIME
     export WAZUH_AUTHD_SERVER
     export WAZUH_AUTHD_PORT
@@ -395,10 +401,10 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
-          WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
+          WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
           ENROLLMENT_DELAY)
@@ -550,30 +556,52 @@ main () {
 
     get_deprecated_vars
 
-    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and is now the
-    # only way to configure it: WAZUH_MANAGER and WAZUH_MANAGER_PORT are gone, along with
-    # the separate <address> and <port> tags they used to fill.
+    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and takes
+    # priority over everything else when set. WAZUH_MANAGER and WAZUH_MANAGER_PORT are
+    # kept working: an <endpoint> is synthesized from them, so every existing 4.x-era
+    # install command and dashboard snippet keeps configuring an agent correctly.
     #
-    # Tested with ${VAR+x} rather than -n so that an explicitly empty value is rejected
+    # ${VAR+x} rather than -n on the endpoint, so an explicitly empty value is rejected
     # instead of silently read as unset: "" used to be the prefix opt-out (#38614), and
     # an operator still passing it deserves the error rather than a default.
-    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ] || [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
             touch -f "${INSTALLDIR}/logs/ossec.log"
             chmod 660 "${INSTALLDIR}/logs/ossec.log"
             chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
         fi
 
-        # The value is written through as given, since <endpoint> now takes the same
-        # language this variable does; parsing here only validates it and reports why
-        # a bad one was refused.
-        if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
-            FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
+        if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+            # Written through as given: <endpoint> takes the same language this variable
+            # does, so parsing here only validates it and reports why a bad one was
+            # refused. A rejected value writes no <manager> block at all -- leaving the
+            # shipped placeholder makes the agent fail loudly at startup rather than
+            # silently connect somewhere the operator did not ask for.
+            if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
+                FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
+                add_adress_block
+            fi
+        else
+            # Only one <manager> block is supported; if WAZUH_MANAGER carries several
+            # comma-separated addresses, the last one prevails (server rotation was
+            # removed, #37702 restrictions 2/3), matching the client parser.
+            ADDRESSES=( ${WAZUH_MANAGER//,/ } )
+            FINAL_ENDPOINT="${ADDRESSES[$(( ${#ADDRESSES[@]} - 1 ))]}"
+
+            # A bare IPv6 literal has to be bracketed once it shares a value with the
+            # port, or its trailing group reads as one.
+            case "${FINAL_ENDPOINT}" in
+                *:*:*) FINAL_ENDPOINT="[${FINAL_ENDPOINT}]" ;;
+            esac
+
+            # Omitting the port leaves it to the agent's own default, so nothing is
+            # appended -- the resulting value stays the shortest one that means this.
+            if [ -n "${WAZUH_MANAGER_PORT}" ]; then
+                FINAL_ENDPOINT="${FINAL_ENDPOINT}:${WAZUH_MANAGER_PORT}"
+            fi
+
             add_adress_block
         fi
-        # A rejected value writes no <manager> block at all: leaving the shipped
-        # placeholder in place makes the agent fail loudly at startup rather than
-        # silently connect somewhere the operator did not ask for.
     fi
 
     if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then

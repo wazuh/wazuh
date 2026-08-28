@@ -87,7 +87,7 @@ runs:
           "/i"
           "`"${{ env.PACKAGE_PATH }}`""
           "/q"
-          "WAZUH_MANAGER_ENDPOINT=`"1.2.3.4`""
+          "WAZUH_MANAGER=`"1.2.3.4`""
           "/l installer.log"
         )
         Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
@@ -151,7 +151,7 @@ runs:
       if: inputs.platform == 'macos'
       shell: bash
       run: |
-        echo "WAZUH_MANAGER_ENDPOINT='1.2.3.4'" > /tmp/wazuh_envs
+        echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
         set -o pipefail
         sudo installer -pkg "${{ env.PACKAGE_PATH }}" -target / | sudo tee installer.log
         if grep -q "The install was successful" "installer.log"; then

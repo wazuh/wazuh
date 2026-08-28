@@ -257,6 +257,61 @@ rejected "is rejected for a non-numeric port"            "5.5.5.5:abc"
 rejected "is rejected for a trailing colon"              "5.5.5.5:"
 rejected "is rejected for an unbracketed IPv6 literal"   "2001:db8::1"
 
+# The 4.x-era variables are still supported: an equivalent <endpoint> is composed from
+# them, and WAZUH_MANAGER_ENDPOINT overrides them outright when set.
+legacy_case() {
+
+    local desc="$1" mgr="$2" port="$3" expected="$4"
+
+    export WAZUH_MANAGER="${mgr}"
+    [ -n "${port}" ] && export WAZUH_MANAGER_PORT="${port}"
+    check "WAZUH_MANAGER='${mgr}' WAZUH_MANAGER_PORT='${port}' ${desc}" \
+          "<manager><endpoint>${expected}</endpoint></manager>" \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER WAZUH_MANAGER_PORT
+
+}
+
+legacy_case "composes an endpoint"                "10.0.0.5"          ""     "10.0.0.5"
+legacy_case "appends an explicit port"            "10.0.0.5"          "8443" "10.0.0.5:8443"
+legacy_case "brackets a bare IPv6 literal"        "2001:db8::1"       "8443" "[2001:db8::1]:8443"
+legacy_case "keeps the last of several addresses" "a.example,b.example" ""   "b.example"
+
+# Precedence: the endpoint wins outright, and the old port must not leak into it.
+export WAZUH_MANAGER="10.0.0.5"
+export WAZUH_MANAGER_PORT="8443"
+export WAZUH_MANAGER_ENDPOINT="6.6.6.6:9999/proxy"
+check "WAZUH_MANAGER_ENDPOINT overrides WAZUH_MANAGER and WAZUH_MANAGER_PORT" \
+      '<manager><endpoint>6.6.6.6:9999/proxy</endpoint></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT
+
+# The deprecated alias still feeds WAZUH_MANAGER.
+export WAZUH_MANAGER_IP="10.0.0.7"
+check "WAZUH_MANAGER_IP still aliases WAZUH_MANAGER" \
+      '<manager><endpoint>10.0.0.7</endpoint></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER_IP
+
+# Priority is absolute: once WAZUH_MANAGER_ENDPOINT is set it decides the outcome, even
+# when its value is rejected. Falling back to WAZUH_MANAGER there would silently point the
+# agent at a different manager than the operator asked for.
+export WAZUH_MANAGER="10.0.0.5"
+export WAZUH_MANAGER_PORT="8443"
+export WAZUH_MANAGER_ENDPOINT="http://10.0.0.9/"
+check "a rejected WAZUH_MANAGER_ENDPOINT does not fall back to WAZUH_MANAGER" \
+      '<manager><address>MANAGER_IP</address></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT
+
+# An empty endpoint is a set value too, so it also wins -- and is rejected.
+export WAZUH_MANAGER="10.0.0.5"
+export WAZUH_MANAGER_ENDPOINT=""
+check "an empty WAZUH_MANAGER_ENDPOINT does not fall back to WAZUH_MANAGER" \
+      '<manager><address>MANAGER_IP</address></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_ENDPOINT
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

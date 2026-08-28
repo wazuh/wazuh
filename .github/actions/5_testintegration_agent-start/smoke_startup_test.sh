@@ -41,7 +41,7 @@ install_package(){
 
     log_info "Installing package: $package_path"
 
-    WAZUH_MANAGER_ENDPOINT="1.2.3.4" $install "$package_path"
+    WAZUH_MANAGER="1.2.3.4" $install "$package_path"
 
     # Verify installation
     if $check_package_status "wazuh-agent" >/dev/null 2>&1; then
