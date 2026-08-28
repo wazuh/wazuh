@@ -56,6 +56,19 @@ namespace containerimages
             std::string format() const override;
     };
 
+    /// @brief RPM based distributions: the sqlite and ndb package databases.
+    ///
+    /// The two formats hold the same package headers and differ only in how the headers
+    /// are stored, so one parser reads both and picks the format from the content. The
+    /// header parsing and the two format readers are the shared agent package reading,
+    /// so an image and a host are read by the same code.
+    class RpmParser final : public IPackageDbParser
+    {
+        public:
+            std::vector<ImagePackageRecord> parse(const std::string& content, const std::string& dbPath) const override;
+            std::string format() const override;
+    };
+
     /// @brief A package database this module knows how to parse, and where it lives.
     struct PackageDbLocation
     {

@@ -22,6 +22,11 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/zlib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/zstd/lib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper
+include_directories(${SRC_FOLDER}/external/sqlite/) # rpm sqlite database backend
+# The rpm header and database format readers are the shared agent package reading. They
+# are header only, so they are compiled here rather than linked, and the module gains no
+# dependency on libsysinfo.
+include_directories(${SRC_FOLDER}/data_provider/src/packages/)
 include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)

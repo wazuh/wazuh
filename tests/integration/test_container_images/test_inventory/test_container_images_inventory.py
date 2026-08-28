@@ -83,6 +83,16 @@ t6_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_unsupported_package_form
 t6_params, t6_metadata, t6_ids = configuration.get_test_cases_data(t6_cases_path)
 t6_configurations = configuration.load_configuration_template(config_path, t6_params, t6_metadata)
 
+# T7: an rpm sqlite database is inventoried.
+t7_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_sqlite.yaml')
+t7_params, t7_metadata, t7_ids = configuration.get_test_cases_data(t7_cases_path)
+t7_configurations = configuration.load_configuration_template(config_path, t7_params, t7_metadata)
+
+# T8: an rpm ndb database is inventoried.
+t8_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_ndb.yaml')
+t8_params, t8_metadata, t8_ids = configuration.get_test_cases_data(t8_cases_path)
+t8_configurations = configuration.load_configuration_template(config_path, t8_params, t8_metadata)
+
 
 def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
     """Block until the next 'Scan ended.' line. This is the race-free scan barrier."""
@@ -292,3 +302,63 @@ def test_container_images_unsupported_package_format(test_configuration, test_me
     warning_monitor.start(callback=callbacks.generate_callback(patterns.CB_UNSUPPORTED_PACKAGE_FORMAT),
                           timeout=30)
     assert warning_monitor.callback_result, 'The unsupported package format was not reported with a warning.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t7_configurations, t7_metadata), ids=t7_ids)
+def test_container_images_rpm_sqlite_database(test_configuration, test_metadata, prepare_rpm_sqlite_image,
+                                              set_wazuh_configuration, configure_local_internal_options,
+                                              truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image whose package database is an rpm sqlite one is inventoried
+                 with its packages, and that a version carrying an epoch keeps it.
+
+    test_phases:
+        - setup: write an OCI layout holding an rpm sqlite database, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - The packages of the rpm database are stored with the versions the database holds.
+        - A version carrying an epoch is stored with the epoch preserved.
+
+    expected_result: PASS when the rpm sqlite database is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages.get('bash') == '5.1.8-9.el9', f'bash is missing or has the wrong version: {packages}.'
+    # rpm orders versions by epoch first, so a version that carries one is only correct with it.
+    assert packages.get('gdbm-libs') == '1:1.19-4.el9', f'The epoch was not preserved: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t8_configurations, t8_metadata), ids=t8_ids)
+def test_container_images_rpm_ndb_database(test_configuration, test_metadata, prepare_rpm_ndb_image,
+                                           set_wazuh_configuration, configure_local_internal_options,
+                                           truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image whose package database is an rpm ndb one, kept under /usr,
+                 is inventoried with its packages.
+
+    test_phases:
+        - setup: write an OCI layout holding an rpm ndb database, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - The packages of the rpm database are stored with the versions the database holds.
+
+    expected_result: PASS when the rpm ndb database is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages.get('aaa_base') == '84.87-150300.10.20.1', \
+        f'aaa_base is missing or has the wrong version: {packages}.'

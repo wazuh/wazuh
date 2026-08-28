@@ -10,6 +10,11 @@
 
 #include "package_db_parser.hpp"
 
+#include "rpmDbNdbReader.hpp"
+#include "rpmDbSqliteReader.hpp"
+#include "rpmHeaderBlobParser.hpp"
+#include "timeHelper.h"
+
 #include <exception>
 #include <map>
 #include <sstream>
@@ -44,6 +49,43 @@ namespace
         catch (const std::exception&)
         {
             return 0;
+        }
+    }
+
+    /// @brief The version as the distribution expresses it: `[epoch:]version-release`.
+    ///
+    /// The epoch is part of how rpm orders versions, so it is kept whenever the package
+    /// carries one, including an explicit zero. A package with no epoch tag at all is
+    /// reported without the prefix, which is how the package manager prints it.
+    std::string rpmVersion(const RpmHeaderBlob::Package& header)
+    {
+        std::string version;
+
+        if (!header.epoch.empty())
+        {
+            version = header.epoch + ":";
+        }
+
+        version += header.version;
+
+        if (!header.release.empty())
+        {
+            version += "-" + header.release;
+        }
+
+        return version;
+    }
+
+    /// @brief The install date as ISO 8601, empty when the database records none.
+    std::string rpmInstallDate(const std::string& timestamp)
+    {
+        try
+        {
+            return Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(timestamp)));
+        }
+        catch (const std::exception&)
+        {
+            return {};
         }
     }
 
@@ -249,12 +291,62 @@ namespace containerimages
         return packages;
     }
 
+    std::string RpmParser::format() const
+    {
+        return "rpm";
+    }
+
+    std::vector<ImagePackageRecord> RpmParser::parse(const std::string& content, const std::string& dbPath) const
+    {
+        std::vector<ImagePackageRecord> packages;
+
+        const auto collect
+        {
+            [&packages, &dbPath, this](const uint8_t * blob, std::size_t size)
+            {
+                const auto header {RpmHeaderBlob::parse(blob, size)};
+
+                // The signing keys rpm keeps in the database are not installed software.
+                // The host package inventory drops them the same way.
+                if (!header.valid || header.name.empty() || header.name == "gpg-pubkey")
+                {
+                    return;
+                }
+
+                ImagePackageRecord package;
+                package.name = header.name;
+                package.version = rpmVersion(header);
+                package.architecture = header.architecture;
+                package.type = format();
+                package.vendor = header.vendor;
+                package.installed = rpmInstallDate(header.installTime);
+                package.category = header.group;
+                package.description = header.description;
+                package.source = header.source;
+                package.size = parseSize(header.size, 1);
+                package.packageDbPath = dbPath;
+
+                packages.push_back(std::move(package));
+            }
+        };
+
+        // The format is taken from the content, not from the path, so a database found at
+        // either of the two locations rpm uses is read the same way.
+        if (!RpmDbSqlite::readFromMemory(content.data(), content.size(), collect))
+        {
+            RpmDbNdb::readFromMemory(content.data(), content.size(), collect);
+        }
+
+        return packages;
+    }
+
     const std::vector<PackageDbLocation>& knownPackageDatabases()
     {
         // Built once and shared: the parsers hold no state, so one instance serves every
         // reference in every scan.
         static const auto DPKG_PARSER {std::make_shared<const DpkgParser>()};
         static const auto APK_PARSER {std::make_shared<const ApkParser>()};
+        static const auto RPM_PARSER {std::make_shared<const RpmParser>()};
 
         static const std::vector<PackageDbLocation> DATABASES
         {
@@ -262,6 +354,14 @@ namespace containerimages
             {"lib/apk/db/installed", APK_PARSER},
             // Wolfi and Chainguard images keep the apk database under /usr.
             {"usr/lib/apk/db/installed", APK_PARSER},
+            // rpm keeps its database under /var on the Red Hat family and under /usr on
+            // Fedora and the SUSE family. Both formats occur at both locations, and one
+            // image carries one database, so they are alternate locations of the same
+            // conceptual database and only the first one found is read.
+            {"var/lib/rpm/rpmdb.sqlite", RPM_PARSER},
+            {"usr/lib/sysimage/rpm/rpmdb.sqlite", RPM_PARSER},
+            {"var/lib/rpm/Packages.db", RPM_PARSER},
+            {"usr/lib/sysimage/rpm/Packages.db", RPM_PARSER},
         };
 
         return DATABASES;
@@ -271,10 +371,12 @@ namespace containerimages
     {
         static const std::vector<UnsupportedPackageDb> DATABASES
         {
-            // RPM has its own follow-up issue: it needs the header parsing that lives in
-            // shared agent code, and the database is Berkeley DB, sqlite or ndb.
-            {"var/lib/rpm/", true, "rpm"},
-            {"usr/lib/sysimage/rpm/", true, "rpm"},
+            // The Berkeley DB format rpm used before 4.16. Reading it needs libdb
+            // pointed at the whole database directory, so an image still carrying it is
+            // reported rather than parsed. Named by file, not by directory, so the sqlite
+            // and ndb databases in the same directory stay parsable.
+            {"var/lib/rpm/Packages", false, "rpm"},
+            {"usr/lib/sysimage/rpm/Packages", false, "rpm"},
             {"var/lib/pacman/local/", true, "pacman"},
             {"var/db/pkg/", true, "portage"},
             {"var/db/xbps/", true, "xbps"},

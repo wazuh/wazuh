@@ -109,18 +109,20 @@ namespace containerimages
                 return true;
             }
 
-            const auto unsupported {unsupportedFormatFor(entry.path)};
-
-            if (!unsupported.empty())
-            {
-                snapshot.unsupportedFormats[entry.path] = unsupported;
-                return true;
-            }
-
+            // A path a parser owns is never reported as unsupported. The two rpm formats
+            // this module reads sit in the same directory as the one it does not, so the
+            // registered paths are consulted first.
             if (!entry.isRegularFile || parserFor(entry.path) == nullptr)
             {
-                // Not a package database: the reader skips the content, so an image is
-                // read at the cost of its databases only.
+                const auto unsupported {unsupportedFormatFor(entry.path)};
+
+                if (!unsupported.empty())
+                {
+                    snapshot.unsupportedFormats[entry.path] = unsupported;
+                }
+
+                // Not a package database this module parses: the reader skips the
+                // content, so an image is read at the cost of its databases only.
                 return true;
             }
 

@@ -8,6 +8,8 @@ include_directories(
   ${SRC_FOLDER}/external/nlohmann/
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/external/zstd/lib/
+  ${SRC_FOLDER}/external/sqlite/
+  ${SRC_FOLDER}/data_provider/src/packages/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/src)

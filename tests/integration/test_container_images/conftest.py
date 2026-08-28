@@ -25,11 +25,14 @@ import io
 import json
 import os
 import shutil
+import sqlite3
+import struct
 import tarfile
 import tempfile
 from pathlib import Path
 
 import pytest
+from wazuh_testing.constants.paths import WAZUH_PATH
 
 
 # Where the tests place the image inputs they ask the module to scan. A fresh, unpredictable
@@ -39,7 +42,10 @@ LOCAL_IMAGES_ROOT = tempfile.mkdtemp(prefix='wazuh-container-images-')
 
 DPKG_STATUS_PATH = 'var/lib/dpkg/status'
 APK_DB_PATH = 'lib/apk/db/installed'
-RPM_DB_PATH = 'var/lib/rpm/rpmdb.sqlite'
+RPM_SQLITE_DB_PATH = 'var/lib/rpm/rpmdb.sqlite'
+RPM_NDB_DB_PATH = 'usr/lib/sysimage/rpm/Packages.db'
+# The Berkeley DB format rpm used before 4.16, which the module recognizes but does not read.
+RPM_BDB_PATH = 'var/lib/rpm/Packages'
 
 
 def dpkg_status(packages: list) -> str:
@@ -81,12 +87,15 @@ def apk_installed(packages: list) -> str:
 
 
 def _layer_blob(files: dict, compress: bool = True) -> bytes:
-    """Build one image layer: a tar holding ``{in-image path: content}``, gzip by default."""
+    """Build one image layer: a tar holding ``{in-image path: content}``, gzip by default.
+
+    The content is text for the stanza-based databases and bytes for the binary ones.
+    """
     raw = io.BytesIO()
 
     with tarfile.open(fileobj=raw, mode='w') as tar:
         for path, content in files.items():
-            payload = content.encode()
+            payload = content if isinstance(content, bytes) else content.encode()
             info = tarfile.TarInfo(name=path)
             info.size = len(payload)
             tar.addfile(info, io.BytesIO(payload))
@@ -102,6 +111,93 @@ def _config_blob(seed: str) -> bytes:
         'os.version': '12',
         '_seed': seed,
     }).encode()
+
+
+def rpm_header_blob(name: str, version: str, release: str, epoch: int = None, architecture: str = 'x86_64') -> bytes:
+    """Build one rpm header blob, the structure every rpm database backend stores.
+
+    The blob is an index of 16-byte entries followed by the data section they point into,
+    all big endian.
+    """
+    TYPE_INT32, TYPE_STRING, TYPE_I18NSTRING = 4, 6, 9
+
+    index = b''
+    section = b''
+
+    def add(tag, kind, value):
+        nonlocal index, section
+        index += struct.pack('>IIII', tag, kind, len(section), 1)
+
+        if kind == TYPE_INT32:
+            section += struct.pack('>I', value)
+        else:
+            section += value.encode() + b'\x00'
+
+    add(1000, TYPE_STRING, name)
+    add(1001, TYPE_STRING, version)
+    add(1002, TYPE_STRING, release)
+
+    if epoch is not None:
+        add(1003, TYPE_INT32, epoch)
+
+    add(1004, TYPE_I18NSTRING, f'short description of {name}')
+    add(1008, TYPE_INT32, 1700000000)
+    add(1009, TYPE_INT32, 2048)
+    add(1011, TYPE_STRING, 'Wazuh Inc.')
+    add(1016, TYPE_I18NSTRING, 'Unspecified')
+    add(1022, TYPE_STRING, architecture)
+
+    return struct.pack('>II', len(index) // 16, len(section)) + index + section
+
+
+def rpm_sqlite_db(packages: list) -> bytes:
+    """Build an ``rpmdb.sqlite`` holding one header blob per package.
+
+    Written in write-ahead log mode and checkpointed, which is the shape rpm leaves in an
+    image layer.
+    """
+    directory = tempfile.mkdtemp(prefix='wazuh-rpmdb-')
+    path = os.path.join(directory, 'rpmdb.sqlite')
+
+    connection = sqlite3.connect(path)
+    connection.execute('PRAGMA journal_mode=WAL')
+    connection.execute('CREATE TABLE Packages (hnum INTEGER PRIMARY KEY, blob BLOB NOT NULL)')
+
+    for name, version, release, epoch in packages:
+        connection.execute('INSERT INTO Packages (blob) VALUES (?)',
+                           (rpm_header_blob(name, version, release, epoch),))
+
+    connection.commit()
+    connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+    connection.close()
+
+    content = Path(path).read_bytes()
+    shutil.rmtree(directory, ignore_errors=True)
+
+    return content
+
+
+def rpm_ndb_db(packages: list) -> bytes:
+    """Build a ``Packages.db`` holding one header blob per package.
+
+    One slot page behind the 32-byte header, and the blobs from the second page on, each
+    behind its own 16-byte header. Every field is little endian.
+    """
+    BLOCK, PAGE = 16, 4096
+    slots = b''
+    payloads = b''
+
+    for number, (name, version, release, epoch) in enumerate(packages, start=1):
+        blob = rpm_header_blob(name, version, release, epoch)
+        slots += b'Slot' + struct.pack('<III', number, (PAGE + len(payloads)) // BLOCK,
+                                       -(-(BLOCK + len(blob)) // BLOCK))
+        payloads += b'BlbS' + struct.pack('<III', number, 1, len(blob)) + blob
+        payloads += b'\x00' * (-len(payloads) % BLOCK)
+
+    header = b'RpmP' + struct.pack('<IIII', 0, 1, 1, len(packages) + 1)
+    header += b'\x00' * (32 - len(header))
+
+    return header + slots + b'\x00' * (PAGE - 32 - len(slots)) + payloads
 
 
 def write_oci_layout(path: str, layers: list, seed: str = 'v1', ref_name: str = 'debian:12') -> None:
@@ -185,13 +281,42 @@ def write_saved_archive(path: str, layers: list, seed: str = 'v1', ref_name: str
         tar.addfile(info, io.BytesIO(manifest_body))
 
 
+def reset_module_database() -> None:
+    """Remove the module's own database so a case starts from an empty inventory.
+
+    The tests assert on the whole packages table, and the database survives the agent
+    restart between cases, so without this a case reads the rows an earlier case stored
+    and the suite only passes when each test is run on its own.
+    """
+    db_dir = Path(WAZUH_PATH) / 'queue' / 'container_images' / 'db'
+
+    for stored in db_dir.glob('*.db*'):
+        stored.unlink(missing_ok=True)
+
+
+def point_configuration_at(test_configuration: dict, path: str) -> None:
+    """Point the configured ``<archive>`` reference at the image the fixture just wrote.
+
+    The test cases carry a placeholder path, while the images are written under a fresh
+    per-run directory, so the reference is completed here instead of in the case file.
+    """
+    for section in test_configuration.get('sections', []):
+        if section.get('section') != 'container_images':
+            continue
+
+        for element in section.get('elements', []):
+            for reference in element.get('references', {}).get('elements', []):
+                for entry in reference.values():
+                    entry['value'] = path
+
+
 @pytest.fixture()
-def prepare_local_image(request: pytest.FixtureRequest):
+def prepare_local_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI image layout with one dpkg layer, and clean it up afterwards.
 
-    The layout path is ``LOCAL_IMAGES_ROOT/oci``, matching the ARCHIVE_PATH used in the
-    configuration templates. Returns a callable the test uses to rebuild the image, with a new
-    configuration digest and, optionally, a new package set.
+    The layout is written under ``LOCAL_IMAGES_ROOT`` and the configured reference is pointed
+    at it. Returns a callable the test uses to rebuild the image, with a new configuration
+    digest and, optionally, a new package set.
     """
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci')
     initial_layers = [{DPKG_STATUS_PATH: dpkg_status([('curl', '7.88.1-10'), ('tar', '1.34+dfsg-1')])}]
@@ -201,13 +326,16 @@ def prepare_local_image(request: pytest.FixtureRequest):
         write_oci_layout(layout_path, layers if layers is not None else initial_layers, seed=seed,
                          ref_name=ref_name)
 
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
     yield _update_image
 
     shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
 
 
 @pytest.fixture()
-def prepare_saved_archive(request: pytest.FixtureRequest):
+def prepare_saved_archive(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down a saved image archive with one apk layer, and clean it up afterwards.
 
     The archive path is ``LOCAL_IMAGES_ROOT/image.tar``.
@@ -217,13 +345,16 @@ def prepare_saved_archive(request: pytest.FixtureRequest):
                         [{APK_DB_PATH: apk_installed([('busybox', '1.36.1-r5'), ('musl', '1.2.4-r2')])}],
                         ref_name='alpine:3.19')
 
+    reset_module_database()
+    point_configuration_at(test_configuration, archive_path)
+
     yield archive_path
 
     shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
 
 
 @pytest.fixture()
-def prepare_layered_image(request: pytest.FixtureRequest):
+def prepare_layered_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI layout whose second layer upgrades a package installed by the first.
 
     The image must be inventoried with the version the last layer provides, which is what the
@@ -235,13 +366,16 @@ def prepare_layered_image(request: pytest.FixtureRequest):
         {DPKG_STATUS_PATH: dpkg_status([('curl', '8.5.0-2'), ('tar', '1.34+dfsg-1')])},
     ])
 
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
     yield layout_path
 
     shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
 
 
 @pytest.fixture()
-def prepare_whiteout_image(request: pytest.FixtureRequest):
+def prepare_whiteout_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI layout whose second layer deletes the database of the first.
 
     The second layer removes the dpkg database through an OverlayFS deletion marker and brings
@@ -253,16 +387,52 @@ def prepare_whiteout_image(request: pytest.FixtureRequest):
         {'var/lib/dpkg/.wh.status': '', APK_DB_PATH: apk_installed([('busybox', '1.36.1-r5')])},
     ], ref_name='mixed:latest')
 
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
     yield layout_path
 
     shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
 
 
 @pytest.fixture()
-def prepare_unsupported_image(request: pytest.FixtureRequest):
+def prepare_unsupported_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI layout whose only package database is one that is not parsed yet."""
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm')
-    write_oci_layout(layout_path, [{RPM_DB_PATH: 'SQLite format 3\x00'}], ref_name='rocky:9')
+    write_oci_layout(layout_path, [{RPM_BDB_PATH: 'a Berkeley DB hash file'}], ref_name='centos:7')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_rpm_sqlite_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose package database is an rpm sqlite one."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-sqlite')
+    database = rpm_sqlite_db([('bash', '5.1.8', '9.el9', None), ('gdbm-libs', '1.19', '4.el9', 1)])
+    write_oci_layout(layout_path, [{RPM_SQLITE_DB_PATH: database}], ref_name='rockylinux:9')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose package database is an rpm ndb one, under /usr."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-ndb')
+    database = rpm_ndb_db([('aaa_base', '84.87', '150300.10.20.1', None)])
+    write_oci_layout(layout_path, [{RPM_NDB_DB_PATH: database}], ref_name='opensuse/leap:15.5')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
 
     yield layout_path
 
