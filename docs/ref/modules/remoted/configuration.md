@@ -829,7 +829,9 @@ database.
 - **Allowed values:** Integer from `1` to `3600`
 - **Note:** `last_keepalive` is refreshed by the first notify that is **not** throttled, that is,
   the first one arriving at or after the end of a window. A throttled notify never reaches the
-  database, so the effective staleness of `last_keepalive` is up to one whole window.
+  database, so the effective staleness of `last_keepalive` is up to one whole window. Two writes
+  ignore the window: the first host-carrying notify, and the first notify after a `startup`
+  (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
 - **Note:** Keep it below half of `<global><agents_disconnection_time>` (default `15m`); remoted
   warns at startup from half upward. The staleness monitord compares against the threshold is the
   throttle plus the agent's notify interval, so any value at or above half can disconnect agents

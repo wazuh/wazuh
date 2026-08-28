@@ -408,6 +408,8 @@ sequenceDiagram
        host-carrying notify bypasses the throttle, so host/os data lands as soon as the agent reports it
        even if an earlier metadata-less notify already consumed the window
      - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
+     - A `/startup` resets the agent's window, so the first notify after a (re)start always writes:
+       startup leaves the agent `pending` in wazuh-db and only a write lifts it to `active`
    - Calculates `settings_hash` (SHA256 of `limits` + `cluster.name` **only** -- NOT groups; see
      `hashCache.cpp`'s `getSettingsHash()`, which caches one value for the whole process, so it is
      necessarily agent-independent)
