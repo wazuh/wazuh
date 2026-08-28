@@ -1158,10 +1158,13 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
               "clear_upgrade_result", agent_id, error_obj->valueint, message);
     } else {
         // A non-zero error means the agent's own upgrade attempt failed (bad package, wrong arch,
-        // disk full, etc.) -- this must be visible at ERROR/WARNING, not INFO, or it silently
-        // disappears from any severity-filtered log monitoring/alerting.
-        merror("legacy_task_delivery: agent '%s' reported upgrade result (error %d: %s), replying with "
-               "clear_upgrade_result", agent_id, error_obj->valueint, message);
+        // disk full, etc.). Warning, not info: at info it disappears from any severity-filtered
+        // log monitoring. Warning, not error: the delivery itself succeeded and the manager has
+        // nothing left to do or fix here -- the cause and the actionable detail live in the
+        // agent's own logs/upgrade.log, and a fleet-wide install problem would otherwise raise one
+        // error per agent for a condition the manager can neither retry nor act on.
+        mwarn("legacy_task_delivery: agent '%s' reported upgrade result (error %d: %s), replying with "
+              "clear_upgrade_result", agent_id, error_obj->valueint, message);
     }
 
     cJSON_Delete(ack);

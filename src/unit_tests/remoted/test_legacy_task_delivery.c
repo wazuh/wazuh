@@ -1491,9 +1491,10 @@ void test_process_upgrade_ack_success_replies_clear_upgrade_result(void **state)
 void test_process_upgrade_ack_failure_still_replies_clear_upgrade_result(void **state) {
     (void) state;
 
-    // A non-zero error is a genuine agent-side upgrade failure and must be logged at ERROR, not
-    // INFO, so it isn't silently missed by severity-filtered log monitoring.
-    expect_any(__wrap__merror, formatted_msg); // "reported upgrade result ..."
+    // A non-zero error is a genuine agent-side upgrade failure: warning, so it isn't silently
+    // missed by severity-filtered log monitoring, but not error -- the delivery itself succeeded
+    // and the manager has nothing to retry or fix.
+    expect_any(__wrap__mwarn, formatted_msg); // "reported upgrade result ..."
 
     bool result = legacy_task_process_upgrade_ack("002",
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
