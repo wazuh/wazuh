@@ -192,6 +192,28 @@ TEST(TransportDiagnosticsTest, IdentityInjectionRendersTheConsumerVocabulary)
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("inventory sync server fully stopped."));
 }
 
+/// The clamp warning fires only when the ceiling moved the value, so a reserve that fits under it
+/// left no trace, and that reserve is what an operator sizes max_parallel_connections against.
+TEST(TransportDiagnosticsTest, TheStartupLineReportsTheResolvedRouteClasses)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("diag_classes");
+    auto server = makeUdsHttpServer();
+
+    auto config = configFor(path);
+    config.serverName = "test";
+    config.maxConnections = 64;
+    config.reservedControlConnections = 8; // under the ceiling of 64 / 4, so the clamp stays quiet
+    server->start(config);
+
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("max 64 connection(s), 8 reserved for control, "
+                                                      "56 data session(s)"))
+        << "the startup line must report the resolved reserve and the data session cap";
+
+    server->stopAccepting();
+    server->stop();
+}
+
 TEST(TransportDiagnosticsTest, TheBudgetHintSentenceRendersOnlyWhenConfigured)
 {
     LogRecorder::clear();

@@ -349,7 +349,7 @@ wazuh_modules.inventory_sync_server_session_query_batch_size=0
 ```
 
 - **Default value:** `0` (1000 documents)
-- **Allowed values:** 0 to 100000
+- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`)
 - **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
   per query.
 

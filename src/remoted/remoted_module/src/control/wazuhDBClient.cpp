@@ -317,7 +317,18 @@ namespace remoted::control
                                     std::function<void(SocketError)> callback)
     {
         std::string command = "global " + queryName + " " + params.dump();
-        query(command, [callback = std::move(callback)](SocketError err, const std::string&) { callback(err); });
+        query(command,
+              [callback = std::move(callback)](SocketError err, const std::string& response)
+              {
+                  // wazuh-db reports application failures as "err ..." over a healthy socket, so
+                  // the transport status alone calls every one of them a success.
+                  if (err == SocketError::None && !isOk(response))
+                  {
+                      err = SocketError::ProtocolError;
+                  }
+
+                  callback(err);
+              });
     }
 
     void WazuhDBClient::getAgentGroups(AgentId id, std::function<void(SocketError, std::vector<std::string>)> callback)

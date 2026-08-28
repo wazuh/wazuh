@@ -338,8 +338,19 @@ class ActiveResponseHelpers:
         docs_by_index: Dict[str, Set[str]] = {}
 
         for ar in ars:
-            index = ar.doc_source["event"]["index"]
-            doc_id = ar.doc_source["event"]["doc_id"]
+            try:
+                index = ar.doc_source["event"]["index"]
+                doc_id = ar.doc_source["event"]["doc_id"]
+            except (KeyError, TypeError):
+                index = doc_id = None
+
+            # AR_SCHEMA constrains `wazuh` only, so `event` and both of these can be any JSON value.
+            # Checked before the insert rather than caught after it: a null index is hashable, so it
+            # raises nothing here and comes back as a 400 from mget instead. Either way one document
+            # aborted the work for the whole page, which this loop builds before any I/O.
+            if not isinstance(index, str) or not isinstance(doc_id, str) or not index or not doc_id:
+                ActiveResponseHelpers.logger.debug(f"Active response `{ar.doc_id}` carries no usable event reference.")
+                continue
 
             docs_by_index.setdefault(index, set()).add(doc_id)
 
@@ -436,12 +447,16 @@ class ActiveResponseBuilder:
         ars_with_events = []
 
         for ar in self._ars:
+            # Bound before the try: the handler's message reads both. isinstance, not `or {}`:
+            # a non-empty string `event` is truthy and has no .get().
+            event_ref = ar.doc_source.get("event")
+            event_ref = event_ref if isinstance(event_ref, dict) else {}
+            index_id = event_ref.get("index")
+            event_id = event_ref.get("doc_id")
             try:
-                index_id = ar.doc_source["event"]["index"]
-                event_id = ar.doc_source["event"]["doc_id"]
                 ar.event = events[index_id][event_id]
                 ars_with_events.append(ar)
-            except KeyError:
+            except (KeyError, TypeError):
                 self.logger.debug(
                     f"Expected event `{event_id}` (`{index_id}`) not found."
                     f"{' Discarding related active response.' if not allow_empty_event else ''}"

@@ -827,10 +827,25 @@ database.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This must stay at or above the agent's notify cadence, or every notify becomes a
-  database write. It must also stay well below `<global><agents_disconnection_time>` (default
-  `15m`), since a throttled notify is what refreshes `last_keepalive` -- set the throttle above
-  the disconnection time and active agents are reported as disconnected.
+- **Note:** `last_keepalive` is refreshed by the first notify that is **not** throttled, that is,
+  the first one arriving at or after the end of a window. A throttled notify never reaches the
+  database, so the effective staleness of `last_keepalive` is up to one whole window. Two writes
+  ignore the window: the first host-carrying notify, and the first notify after a `startup`
+  (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
+- **Note:** Keep it below half of `<global><agents_disconnection_time>` (default `15m`); remoted
+  warns at startup from half upward. The staleness monitord compares against the threshold is the
+  throttle plus the agent's notify interval, so any value at or above half can disconnect agents
+  that are answering normally. Half rather than just below the threshold also bounds detection:
+  monitord's sweep period is the disconnection time itself, so detection lands anywhere between
+  one and two times it.
+- **Note:** A value at or below the fleet's notify cadence suppresses nothing: the throttle can
+  only drop a notify that arrives inside an open window. This is not checked at startup, because
+  remoted does not know the agent's `notify_time`.
+- **Note:** 5.x agents only. A 4.x keepalive is written by the legacy path, ungated, so a sizing
+  table built from this option has to count 5.x agents alone.
+- **Note:** The throttle state lives in remoted's in-memory registry, which is per node. An agent
+  alternating between cluster nodes is throttled independently on each, so its worst-case
+  database write rate is one write per window **per node**.
 
 #### remoted.control_groups_refresh_interval
 
@@ -838,7 +853,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This is the propagation latency an agent sees for a centralised-configuration change.
+- **Note:** This is the propagation latency an agent sees for a change of group **membership**
+  only. Group **content** travels on a different path: the merged-groups watcher picks up a
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds while membership
+  waits out this interval. At the defaults that is roughly 60 s against 10 s, and at the maximum
+  of `3600` the two differ by about two orders of magnitude.
+- **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
+  `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
 
 #### remoted.control_wdb_request_connections
 

@@ -59,6 +59,7 @@ void * close_fp_main(void * args);
 void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 // STATIC in secure.c, which expands to nothing under WAZUH_UNIT_TESTING.
 bool discard_legacy_agent_message(const char* msg, const char* agent_id);
+void remoted_module_control_config(remoted_module_config_t *rm_config);
 
 /* Setup/teardown */
 
@@ -3747,6 +3748,56 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
+/* Tests remoted_module_control_config: the eight control_* options, in read order. */
+
+static void queue_control_config_defines(int keepalive_throttle)
+{
+    will_return(__wrap_getDefine_Int_default, 60);    // control_groups_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 4);     // control_wdb_request_connections
+    will_return(__wrap_getDefine_Int_default, 2000);  // control_wdb_roundtrip_deadline
+    will_return(__wrap_getDefine_Int_default, 10000); // control_wdb_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 4);     // control_tm_concurrency
+    will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
+    will_return(__wrap_getDefine_Int_default, 10000); // control_tm_max_queue_size
+    will_return(__wrap_getDefine_Int_default, keepalive_throttle);
+}
+
+void test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    // 450 = exactly half: the smallest value the guard must catch (throttle + notify interval can
+    // cross the threshold from here up).
+    queue_control_config_defines(450);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "'remoted.control_keepalive_throttle' (450 s) is at or above half of <agents_disconnection_time> "
+                  "(900 s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+                  "are answering normally are marked disconnected. Keep it below half.");
+
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    remoted_module_control_config(&rm_config);
+
+    assert_int_equal(rm_config.keepalive_throttle_sec, 450);
+}
+
+void test_remoted_module_control_config_silent_below_disconnection_time(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    // No expect_string for __wrap__mwarn: an unexpected warning fails the test. 449 sits just
+    // under half of 900.
+    queue_control_config_defines(449);
+
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    remoted_module_control_config(&rm_config);
+
+    assert_int_equal(rm_config.keepalive_throttle_sec, 449);
+}
+
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
 {
     (void) state;
@@ -3888,6 +3939,9 @@ int main(void)
         cmocka_unit_test(test_remoted_enrollment_config_read_config_fails_closed),
         // Tests w_remoted_build_module_config
         cmocka_unit_test(test_w_remoted_build_module_config_all_fields_populated),
-        cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty)};
+        cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty),
+        // Tests remoted_module_control_config
+        cmocka_unit_test(test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time),
+        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

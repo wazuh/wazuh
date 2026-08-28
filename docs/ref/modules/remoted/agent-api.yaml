@@ -379,7 +379,10 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
         "500":
-          description: wazuh-db failed while resolving the agent's groups during `startup`.
+          description: |
+            wazuh-db failed while resolving the agent's groups. `startup` always answers this way;
+            `notify` only when there is no cached membership to fall back on (first contact since
+            the module started) -- with a cache, the stale membership is served instead.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }

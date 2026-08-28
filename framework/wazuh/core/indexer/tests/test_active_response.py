@@ -15,6 +15,29 @@ from wazuh.core.indexer.active_response import (
     ActiveResponseHelpers,
 )
 
+GOOD_EVENT_DOC = {"event": {"index": "idx", "doc_id": "1"}}
+ONE_FOUND_DOC = {"docs": [{"_index": "idx", "_id": "1", "_source": {"k": "v"}, "found": True}]}
+
+# Everything AR_SCHEMA lets through in `event`, since it constrains `wazuh` and nothing else.
+# The unhashable doc_id sits on its own index on purpose: on `idx` the good AR would refill the
+# set setdefault() had already inserted, and the empty-ids query would never happen.
+UNUSABLE_EVENT_DOCS = [
+    {"wazuh": {"active_response": {"location": "local"}}},
+    {"event": None},
+    {"event": "abc"},
+    {"event": 5},
+    {"event": ["x"]},
+    {"event": {"index": {}, "doc_id": "1"}},
+    {"event": {"index": None, "doc_id": "1"}},
+    {"event": {"index": "", "doc_id": "1"}},
+    {"event": {"index": "idx", "doc_id": None}},
+    {"event": {"index": "other-idx", "doc_id": {}}},
+]
+
+
+def _ar(doc_source):
+    return ActiveResponse(doc_source=doc_source, bookmark=ActiveResponseBookmark())
+
 
 class TestActiveResponseBookmark:
     """Tests for ActiveResponseBookmark."""
@@ -316,6 +339,24 @@ class TestActiveResponseHelpers:
 
             assert result == {}
 
+        @pytest.mark.parametrize("doc_source", UNUSABLE_EVENT_DOCS)
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_unusable_event_does_not_discard_the_page(self, mock_client, doc_source):
+            # `event` is optional and unconstrained. Some of these raise on the lookup; the rest
+            # are hashable and would reach mget as a poisoned index or id and come back a 400.
+            # Either way the loop runs before any I/O, so one of them took down the whole page.
+            client = AsyncMock()
+            client.mget.return_value = ONE_FOUND_DOC
+            mock_client.return_value.__aenter__.return_value = client
+
+            result = await ActiveResponseHelpers.get_events_by_ar([_ar(doc_source), _ar(GOOD_EVENT_DOC)])
+
+            assert result == {"idx": {"1": {"k": "v"}}}
+            # The query actually issued: a mocked mget hides a poisoned index or an empty id list,
+            # so the call itself is what has to be asserted, not just the absence of an exception.
+            client.mget.assert_awaited_once_with(index="idx", body={"ids": ["1"]})
+
 
 class TestActiveResponseBuilder:
     """Tests for ActiveResponseBuilder."""
@@ -439,6 +480,30 @@ class TestActiveResponseBuilder:
 
             assert builder._ars == [ar]
             assert builder._ars[0].event is None
+
+        @pytest.mark.parametrize("doc_source", UNUSABLE_EVENT_DOCS)
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar")
+        async def test_enrich_unusable_event_is_discarded(self, mock_events, doc_source):
+            # Reachable only once get_events_by_ar() stops raising: the handler's log line reads
+            # both names, and a truthy non-mapping reached .get() on a str/int/list outside the try.
+            mock_events.return_value = {"idx": {"1": {"k": "v"}}}
+
+            logger = MagicMock()
+            good = _ar(GOOD_EVENT_DOC)
+
+            builder = ActiveResponseBuilder(
+                logger=logger,
+                all_agents=[],
+                bookmark_file=MagicMock(),
+            )
+            builder._ars = [_ar(doc_source), good]
+
+            await builder.enrich_ar_with_events_info(allow_empty_event=False)
+
+            assert builder._ars == [good]
+            assert builder._ars[0].event == {"k": "v"}
+            logger.debug.assert_called()
 
     class TestDispatch:
         """Tests for dispatch."""

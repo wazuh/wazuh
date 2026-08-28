@@ -41,6 +41,16 @@ namespace remoted::scanvd
     class ScanVdHandlerImpl final : public remoted::endpoints::scanvd::ScanVdHandler
     {
     public:
+        // VD answers the scan POST at ADMISSION into its bounded dispatch queue -- inline route
+        // work, never the scan itself -- so this is a local-socket round trip measured in
+        // milliseconds. 5 s is pure headroom for a loaded box; anything slower is indistinguishable
+        // from VD being down, and the honest answer to the agent is the same 503 either way.
+        static constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 5;
+        static constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
+        /// Total downstream budget for one scan, for the facade's startup check.
+        static constexpr long long VD_SCAN_BUDGET_MS =
+            (VD_SCAN_READ_TIMEOUT_SECONDS + VD_SCAN_WRITE_TIMEOUT_SECONDS) * 1000;
+
         /**
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw
          * filesystem path (e.g. "/queue/sockets/vd-http.sock") -- NOT a "unix://" URI; see

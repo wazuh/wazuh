@@ -963,6 +963,10 @@ namespace wazuh::uds_http
              * behind by the request's own reads -- readable-per-cache while a recv() would say
              * EAGAIN -- which falsely condemned ~1% of group-committed responses whose request
              * arrived in more than one segment. A real read only completes on actual data or EOF.
+             *
+             * Transport-level only: the byte reservation lives in the RequestContext with the
+             * payload, so a peer that gives up mid-flush frees its fd, registry entry and
+             * connection slot here while its bytes stay charged until the handler drops the request.
              */
             void watchPeerDuringDeferral()
             {
@@ -2101,7 +2105,8 @@ namespace wazuh::uds_http
         // reports it at debug level.
         LOGFN_INFO(m_impl->state->log,
                    "%s server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
-                   "max %zu connection(s), %zu byte in-flight budget, %zu byte body cap, %zu byte per-request "
+                   "max %zu connection(s), %zu reserved for control, %zu data session(s), %zu byte in-flight "
+                   "budget, %zu byte body cap, %zu byte per-request "
                    "overhead; timeouts s: header=%zu body=%zu response=%zu write=%zu drain=%zu).",
                    m_impl->state->config.serverName.c_str(),
                    m_impl->socketPath.c_str(),
@@ -2109,6 +2114,8 @@ namespace wazuh::uds_http
                    threadCount,
                    m_impl->state->config.concurrentAccepts,
                    m_impl->state->config.maxConnections,
+                   m_impl->state->config.reservedControlConnections,
+                   m_impl->state->config.dataPolicy.maxSessions,
                    m_impl->state->config.maxInFlightBytes,
                    m_impl->state->config.maxBodySize,
                    m_impl->state->perRequestOverhead,
