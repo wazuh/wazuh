@@ -212,10 +212,12 @@ std::string ModuleConfig::baseUrl() const
     if (ipv6)
     {
         host = "[" + serverHost;
+
         if (serverScopeId != 0)
         {
             host += "%25" + std::to_string(serverScopeId);
         }
+
         host += "]";
     }
 
