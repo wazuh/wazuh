@@ -229,6 +229,8 @@ class WazuhException(Exception):
                               'being deleted from the indexer. Retry in a few seconds, or use a '
                               'different agent ID'
                },
+        1764: {'message': 'Vulnerability scanning requires agent version 5.0 or higher.'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

@@ -4741,7 +4741,7 @@ paths:
                       - '001'
                       - '003'
                     total_affected_items: 2
-                    total_failed_items: 2
+                    total_failed_items: 3
                     failed_items:
                       - error:
                           code: 1701
@@ -4753,6 +4753,11 @@ paths:
                           message: "Vulnerability scan queue is full, please retry later"
                         id:
                           - '004'
+                      - error:
+                          code: 1764
+                          message: "Vulnerability scanning requires agent version 5.0 or higher."
+                        id:
+                          - '005'
                   message: "Scan was requested for some agents"
                   error: 2
 
