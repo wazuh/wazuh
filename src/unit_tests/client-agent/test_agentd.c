@@ -387,6 +387,13 @@ static void expect_valid_server_ip(void)
     expect_string(__wrap_OS_IsValidIP, ip_address, "10.0.0.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
+
+    /* #38624: every config_report fixture still spells the manager as the deprecated
+     * <address>/<port> pair, so ClientConf() also logs the single <endpoint> that
+     * replaces it. Asserting the text here pins the suggestion these fixtures produce. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 }
 
 /* <config_report> absent -> ClientConf() must leave it enabled, with the
