@@ -183,8 +183,14 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
 
 /* Default reverse-proxy prefix applied when <endpoint> can't be present at all
  * (legacy <client><server> configs, e.g. after a 4.x->5.x WPK upgrade that never
- * rewrites ossec.conf) or is left unconfigured. Must mirror the manager's own
- * default global_prefix (src/remoted/remoted_module, #38491). */
+ * rewrites ossec.conf) or is left unconfigured.
+ *
+ * This does NOT mirror remoted's compiled default, which is "/" -- endpoints served
+ * unprefixed (remote-config.h, #38491). What makes the two agree is the shipped
+ * etc/wazuh-manager.conf writing <global_prefix>/wazuh-manager/</global_prefix>
+ * explicitly, so a packaged manager and a default agent match. A manager whose
+ * operator deletes that line serves unprefixed and will 404 a default agent, which
+ * is what the trailing-slash opt-out (<endpoint>host:port/</endpoint>) is for. */
 #define DEFAULT_AGENT_ENDPOINT_PREFIX "wazuh-manager"
 
 #endif /* CAGENTD_H */
