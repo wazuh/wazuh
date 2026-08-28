@@ -206,6 +206,183 @@ static void test_pong_digest(const char * shared_key, const char * hostname, con
     OS_SHA512_Hex(md, output);
 }
 
+
+typedef struct test_fluent_server_t {
+    int sock;
+    X509 * cert;
+    EVP_PKEY * key;
+    const char * shared_key;
+    const char * helo_extra_key;
+    bool auth_result;
+    const char * reason;
+    const char * hostname;
+} test_fluent_server_t;
+
+/* Fluent collector that completes the handshake and answers with the given PONG fields */
+static void * test_fluent_server_run(void * arg) {
+    test_fluent_server_t * server = (test_fluent_server_t *)arg;
+    static const char nonce[] = "0123456789abcdef";
+    SSL_CTX * ctx = SSL_CTX_new(TLS_method());
+    msgpack_sbuffer sbuf;
+    msgpack_packer pk;
+    msgpack_unpacker unp;
+    msgpack_unpacked result;
+    os_sha512 digest;
+    char salt[16] = {0};
+    SSL * ssl;
+    BIO * bio;
+    int read_b;
+
+    SSL_CTX_use_certificate(ctx, server->cert);
+    SSL_CTX_use_PrivateKey(ctx, server->key);
+
+    ssl = SSL_new(ctx);
+    bio = BIO_new_socket(server->sock, 0);
+    SSL_set_bio(ssl, bio, bio);
+
+    if (SSL_accept(ssl) != 1) {
+        goto end;
+    }
+
+    /* Send HELO */
+
+    msgpack_sbuffer_init(&sbuf);
+    msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
+    msgpack_pack_array(&pk, 2);
+    msgpack_pack_str(&pk, 4);
+    msgpack_pack_str_body(&pk, "HELO", 4);
+    msgpack_pack_map(&pk, server->helo_extra_key ? 2 : 1);
+    msgpack_pack_str(&pk, 5);
+    msgpack_pack_str_body(&pk, "nonce", 5);
+    msgpack_pack_str(&pk, sizeof(nonce) - 1);
+    msgpack_pack_str_body(&pk, nonce, sizeof(nonce) - 1);
+
+    if (server->helo_extra_key) {
+        msgpack_pack_str(&pk, strlen(server->helo_extra_key));
+        msgpack_pack_str_body(&pk, server->helo_extra_key, strlen(server->helo_extra_key));
+        msgpack_pack_true(&pk);
+    }
+
+    SSL_write(ssl, sbuf.data, sbuf.size);
+    msgpack_sbuffer_destroy(&sbuf);
+
+    /* Receive PING and take the salt */
+
+    msgpack_unpacker_init(&unp, 4096);
+    msgpack_unpacked_init(&result);
+    msgpack_unpacker_reserve_buffer(&unp, 4096);
+    read_b = SSL_read(ssl, msgpack_unpacker_buffer(&unp), 4096);
+
+    if (read_b > 0) {
+        msgpack_unpacker_buffer_consumed(&unp, read_b);
+
+        if (msgpack_unpacker_next(&unp, &result) == MSGPACK_UNPACK_SUCCESS) {
+            memcpy(salt, result.data.via.array.ptr[2].via.str.ptr, sizeof(salt));
+        }
+    }
+
+    /* Send PONG */
+
+    test_pong_digest(server->shared_key, server->hostname, nonce, sizeof(nonce) - 1, salt, sizeof(salt), digest);
+
+    msgpack_sbuffer_init(&sbuf);
+    msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
+    msgpack_pack_array(&pk, 5);
+    msgpack_pack_str(&pk, 4);
+    msgpack_pack_str_body(&pk, "PONG", 4);
+
+    if (server->auth_result) {
+        msgpack_pack_true(&pk);
+    } else {
+        msgpack_pack_false(&pk);
+    }
+
+    msgpack_pack_str(&pk, strlen(server->reason));
+    msgpack_pack_str_body(&pk, server->reason, strlen(server->reason));
+    msgpack_pack_str(&pk, strlen(server->hostname));
+    msgpack_pack_str_body(&pk, server->hostname, strlen(server->hostname));
+    msgpack_pack_str(&pk, strlen(digest));
+    msgpack_pack_str_body(&pk, digest, strlen(digest));
+
+    SSL_write(ssl, sbuf.data, sbuf.size);
+    msgpack_sbuffer_destroy(&sbuf);
+    msgpack_unpacked_destroy(&result);
+    msgpack_unpacker_destroy(&unp);
+
+end:
+    SSL_free(ssl);
+    SSL_CTX_free(ctx);
+    return NULL;
+}
+
+/* Run the TLS handshake against a local collector that answers with the given PONG fields */
+static int test_fluent_hs_tls(wm_fluent_t * fluent, bool auth_result, const char * reason, const char * hostname, const char * helo_extra_key) {
+    EVP_PKEY * ca_key = test_tls_gen_key();
+    X509 * ca_cert = test_tls_gen_cert(ca_key, "Wazuh Test CA", NULL, NULL, NULL);
+    EVP_PKEY * server_key = test_tls_gen_key();
+    X509 * server_cert = test_tls_gen_cert(server_key, "fluentd", "DNS:fluentd.internal", ca_cert, ca_key);
+    struct timeval timeout = { .tv_sec = 10 };
+    test_fluent_server_t server;
+    pthread_t thread;
+    int sockets[2];
+    int retval;
+    FILE * fp;
+
+    signal(SIGPIPE, SIG_IGN);
+
+    fp = fopen(TEST_CA_PATH, "w");
+    assert_non_null(fp);
+    PEM_write_X509(fp, ca_cert);
+    fclose(fp);
+
+    assert_int_equal(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+    setsockopt(sockets[0], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sockets[1], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    fluent->address = "fluentd.internal";
+    fluent->certificate = TEST_CA_PATH;
+    fluent->port = 24224;
+    fluent->shared_key = "secret_key";
+    fluent->user_name = "";
+    fluent->user_pass = "";
+    fluent->client_sock = sockets[0];
+
+    server.sock = sockets[1];
+    server.cert = server_cert;
+    server.key = server_key;
+    server.shared_key = fluent->shared_key;
+    server.helo_extra_key = helo_extra_key;
+    server.auth_result = auth_result;
+    server.reason = reason;
+    server.hostname = hostname;
+    assert_int_equal(pthread_create(&thread, NULL, test_fluent_server_run, &server), 0);
+
+    retval = wm_fluent_hs_tls(fluent);
+
+    pthread_join(thread, NULL);
+
+    SSL_free(fluent->ssl);
+    fluent->ssl = NULL;
+    SSL_CTX_free(fluent->ctx);
+    fluent->ctx = NULL;
+    fluent->address = NULL;
+    fluent->certificate = NULL;
+    fluent->shared_key = NULL;
+    fluent->user_name = NULL;
+    fluent->user_pass = NULL;
+    fluent->client_sock = -1;
+
+    close(sockets[0]);
+    close(sockets[1]);
+    X509_free(server_cert);
+    EVP_PKEY_free(server_key);
+    X509_free(ca_cert);
+    EVP_PKEY_free(ca_key);
+    unlink(TEST_CA_PATH);
+
+    return retval;
+}
+
 // Tests
 void test_check_config_no_tag(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
@@ -825,6 +1002,53 @@ void test_check_pong_no_digest(void **state) {
     assert_int_equal(wm_fluent_check_pong(data->fluent, &helo, &pong, salt, sizeof(salt)), -1);
 }
 
+
+void test_sanitize_control_characters(void **state) {
+    char * sanitized = wm_fluent_sanitize("line\r\nforged\ttail", 17);
+
+    assert_string_equal(sanitized, "line__forged_tail");
+    free(sanitized);
+}
+
+void test_sanitize_keeps_printable_characters(void **state) {
+    char * sanitized = wm_fluent_sanitize("fluentd.internal", 16);
+
+    assert_string_equal(sanitized, "fluentd.internal");
+    free(sanitized);
+}
+
+void test_hs_tls_sanitizes_rejection_reason(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mtdebug1, tag, "fluent-forward");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap__mtdebug2, tag, "fluent-forward");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Unexpected key: evil__key");
+
+    expect_string(__wrap__mtwarn, tag, "fluent-forward");
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "Authentication error: the Fluent server rejected the connection: denied__wazuh-modulesd:fluent-forward: INFO: Connected to host 'forged'");
+
+    assert_int_equal(test_fluent_hs_tls(data->fluent, false,
+                                        "denied\r\nwazuh-modulesd:fluent-forward: INFO: Connected to host 'forged'",
+                                        "collector", "evil\r\nkey"), -1);
+}
+
+void test_hs_tls_sanitizes_server_hostname(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mtdebug1, tag, "fluent-forward");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap__mtinfo, tag, "fluent-forward");
+    expect_string(__wrap__mtinfo, formatted_msg,
+                  "Connected to host 'collector__wazuh-modulesd:fluent-forward: ERROR: forged' (fluentd.internal:24224)");
+
+    assert_int_equal(test_fluent_hs_tls(data->fluent, true, "",
+                                        "collector\r\nwazuh-modulesd:fluent-forward: ERROR: forged", NULL), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -891,6 +1115,14 @@ int main(void) {
     cmocka_unit_test_setup_teardown(test_check_pong_invalid_digest, test_setup, test_teardown),
     /* Test PONG message holding no shared key digest */
     cmocka_unit_test_setup_teardown(test_check_pong_no_digest, test_setup, test_teardown),
+
+    /* Test sanitization of strings received from the server */
+    cmocka_unit_test_setup_teardown(test_sanitize_control_characters, test_setup, test_teardown),
+    cmocka_unit_test_setup_teardown(test_sanitize_keeps_printable_characters, test_setup, test_teardown),
+    /* Test that the rejection reason cannot forge log entries */
+    cmocka_unit_test_setup_teardown(test_hs_tls_sanitizes_rejection_reason, test_setup, test_teardown),
+    /* Test that the server hostname cannot forge log entries */
+    cmocka_unit_test_setup_teardown(test_hs_tls_sanitizes_server_hostname, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
