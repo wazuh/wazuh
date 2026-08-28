@@ -1364,8 +1364,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // not something this check introduces: the checksum loop below has always run
                 // the same primitive under the same mutexes, and after a re-enrollment every
                 // table mismatches, so it did the same work later rather than less of it.
-                // Shrinking that critical section around the manager round trip is tracked
-                // separately.
+                // Shrinking that critical section around the manager round trip is #38705.
                 if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
                                                   directories_snapshot)) {
                     // Both markers move together, and only once the resync above proved the
