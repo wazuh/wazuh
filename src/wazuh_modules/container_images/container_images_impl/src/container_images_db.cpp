@@ -94,6 +94,13 @@ namespace
         return Utils::asciiToHex(hash.hash());
     }
 
+    /// @brief A string column of a selected row, empty when absent or null.
+    std::string stringOf(const nlohmann::json& row, const char* field)
+    {
+        const auto value {row.find(field)};
+        return value != row.end() && value->is_string() ? value->get<std::string>() : std::string {};
+    }
+
     nlohmann::json referenceRow(const containerimages::ImageReferenceRecord& reference)
     {
         nlohmann::json row;
@@ -254,6 +261,95 @@ namespace containerimages
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Container images inventory cleared.");
+    }
+
+    std::optional<ImageReferenceRecord> ContainerImagesDB::loadStored(const std::string& sourceType,
+                                                                      const std::string& location)
+    {
+        // The values come from the module's own configuration, not from an image, but they
+        // still reach a SQL string here, so anything that could end the quoted literal is
+        // refused rather than escaped.
+        if (sourceType.find('\'') != std::string::npos || location.find('\'') != std::string::npos)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Refusing to read back a source whose name is not quotable.");
+            return std::nullopt;
+        }
+
+        const auto filter {"WHERE reference_type = '" + sourceType + "' AND reference_value = '" + location + "'"};
+
+        ImageReferenceRecord record;
+        bool found {false};
+
+        const auto referenceCallback = [&record, &found](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            found = true;
+            record.source = {stringOf(row, "reference_type"), stringOf(row, "reference_value")};
+            record.configDigest = stringOf(row, "image_config_digest");
+            record.manifestDigest = stringOf(row, "manifest_digest");
+            record.tag = stringOf(row, "tag");
+            record.os = stringOf(row, "platform_os");
+            record.architecture = stringOf(row, "platform_architecture");
+            record.variant = stringOf(row, "platform_variant");
+            record.osVersion = stringOf(row, "platform_os_version");
+
+            const auto tags {nlohmann::json::parse(stringOf(row, "tags"), nullptr, false)};
+
+            if (tags.is_array())
+            {
+                for (const auto& tag : tags)
+                {
+                    if (tag.is_string())
+                    {
+                        record.tags.push_back(tag.get<std::string>());
+                    }
+                }
+            }
+        };
+
+        auto referenceQuery = SelectQuery::builder()
+                              .table(REFERENCES_TABLE)
+                              .columnList({"reference_type", "reference_value", "image_config_digest",
+                                           "manifest_digest", "image_name", "tag", "tags", "platform_os",
+                                           "platform_architecture", "platform_variant", "platform_os_version"})
+                              .rowFilter(filter)
+                              .build();
+        m_dbSync->selectRows(referenceQuery.query(), referenceCallback);
+
+        if (!found)
+        {
+            return std::nullopt;
+        }
+
+        const auto packageCallback = [&record](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            ImagePackageRecord package;
+            package.name = stringOf(row, "name");
+            package.version = stringOf(row, "version_");
+            package.architecture = stringOf(row, "architecture");
+            package.type = stringOf(row, "type");
+            package.vendor = stringOf(row, "vendor");
+            package.installed = stringOf(row, "installed");
+            package.path = stringOf(row, "path");
+            package.category = stringOf(row, "category");
+            package.description = stringOf(row, "description");
+            package.size = row.contains("size") && row.at("size").is_number() ? row.at("size").get<std::int64_t>() : 0;
+            package.priority = stringOf(row, "priority");
+            package.multiarch = stringOf(row, "multiarch");
+            package.source = stringOf(row, "source");
+            package.packageDbPath = stringOf(row, "package_db_path");
+            record.packages.push_back(std::move(package));
+        };
+
+        auto packageQuery = SelectQuery::builder()
+                            .table(PACKAGES_TABLE)
+                            .columnList({"name", "version_", "architecture", "type", "vendor", "installed", "path",
+                                         "category", "description", "size", "priority", "multiarch", "source",
+                                         "package_db_path"})
+                            .rowFilter(filter)
+                            .build();
+        m_dbSync->selectRows(packageQuery.query(), packageCallback);
+
+        return record;
     }
 
     void ContainerImagesDB::syncReferences(const std::vector<ImageReferenceRecord>& references,

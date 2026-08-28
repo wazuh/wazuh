@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,19 @@ namespace containerimages
             /// from any reference is reported as DELETED. (DBSync transaction deletion is
             /// table-scoped, so packages must be synced as one set, not per reference.)
             void syncPackages(const std::vector<ImageReferenceRecord>& references, const DeltaCallback& onDelta);
+
+            /// @brief Read back what is stored for one source location.
+            ///
+            /// Used to carry a source's inventory unchanged into a scan that could not read
+            /// it. The synchronization is over the whole table, so a source left out of the
+            /// synced set is reported as deleted; handing back what is already stored is
+            /// what leaves it alone instead.
+            ///
+            /// @param sourceType  Reference type of the source.
+            /// @param location    Location of the source.
+            /// @return The stored record with its packages, or nothing when the source has
+            ///         no inventory stored.
+            std::optional<ImageReferenceRecord> loadStored(const std::string& sourceType, const std::string& location);
 
             /// @brief The CREATE TABLE statements for both tables (exposed for tests/inspection).
             static std::string getCreateStatement();

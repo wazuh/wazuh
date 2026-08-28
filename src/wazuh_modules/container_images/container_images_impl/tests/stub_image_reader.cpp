@@ -19,7 +19,7 @@ namespace containerimages
         return "local";
     }
 
-    std::vector<ImageReferenceRecord> StubImageReader::discover()
+    ImageReadResult StubImageReader::discover()
     {
         const int scan = s_scanCount++;
 
@@ -89,6 +89,6 @@ namespace containerimages
             reference.packages.push_back(added);
         }
 
-        return {reference};
+        return ImageReadResult::success({reference});
     }
 } // namespace containerimages

@@ -28,7 +28,7 @@ namespace containerimages
     class StubImageReader final : public IImageReader
     {
         public:
-            std::vector<ImageReferenceRecord> discover() override;
+            ImageReadResult discover() override;
             std::string sourceType() const override;
 
         private:
