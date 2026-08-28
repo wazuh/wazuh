@@ -46,6 +46,11 @@ list(
 list(APPEND task_names "test_wm_task_manager_tasks")
 list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
 
+# The registry is pure data plus pure functions, so nothing here needs a socket, a thread or a
+# database: only the logging wrappers, and getDefine_Int_default for the timeout ordering check.
+list(APPEND task_names "test_wm_manager_task_registry")
+list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}")
+
 # Compilig tests
 list(LENGTH task_names count)
 math(EXPR count "${count} - 1")
