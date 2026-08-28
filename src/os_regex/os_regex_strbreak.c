@@ -62,7 +62,7 @@ char **OS_StrBreak(char match, const char *_str, size_t size)
         i++;
 
         /* If before match value exists backslash, skip it. */
-        if((count < size - 1) && (*str == match) &&
+        if((count + 1 < size) && (*str == match) &&
            (str_ant && *str_ant == '\\')) {
 
             aux_str = calloc(strlen(tmp_str)+1, sizeof(char));
@@ -79,7 +79,7 @@ char **OS_StrBreak(char match, const char *_str, size_t size)
             continue;
         }
 
-        if ((count < size - 1) && (*str == match)) {
+        if ((count + 1 < size) && (*str == match)) {
 
             ret[count] = (char *)calloc(i, sizeof(char));
 
