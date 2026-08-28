@@ -14,8 +14,10 @@
 #include "endpoints/syncEndpoint.hpp" // agentIdHeader() -- one header name for every route
 #include "loggerHelper.h"
 #include "sync/fullSessionValidator.hpp" // isNumericAgentId(), padAgentId()
+#include "sync/stateIndexAllowlist.hpp"  // AGENT_DELETION_SCOPE_BY_ID
 #include <uds_http_server/logThrottle.hpp>
 
+#include <exception>
 #include <string>
 #include <utility>
 
@@ -81,7 +83,8 @@ namespace invsync::endpoints::delete_agent
             }
 
             const auto pipeline = deps.pipeline.lock();
-            if (!pipeline)
+            const auto asyncIndexer = deps.asyncIndexer.lock();
+            if (!pipeline || !asyncIndexer)
             {
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
@@ -100,6 +103,50 @@ namespace invsync::endpoints::delete_agent
             // worker queue as the agent's sessions (FIFO ordering is the whole point, doc 04 §1).
             const auto agentId = invsync::sync::padAgentId(agentIdIt->second);
             item.session.agentId = agentId;
+
+            /*
+             * The BY-ID half, and it goes FIRST.
+             *
+             * AGENT_DELETION_SCOPE_BY_ID holds one document per agent whose `_id` IS the agent id --
+             * the padded form below, which is what POST /config and POST /stats write because
+             * remoted authenticates and forwards the canonical 3-character id. They are written
+             * through the async connector's accumulating queue, so queueing their deletes on that
+             * same queue is what orders them after a report it has already accepted: the queue is
+             * FIFO, so anything enqueued before this point is applied before it. First rather than
+             * after the pipeline enqueue for exactly that reason -- every microsecond of delay here
+             * is a microsecond in which one more report could slip in behind the deletion.
+             *
+             * A by-id delete also needs no index refresh (unlike the pipeline's delete-by-query), so
+             * a report the queue pushed moments ago is still deletable, and deleting a document that
+             * is not there is a no-op the whole chain ignores -- which is what makes authd's retry
+             * of an already-purged agent free.
+             *
+             * If the pipeline then refuses the item below, these deletes have already been queued.
+             * That is harmless: they are idempotent, the agent is gone from client.keys so nothing
+             * will write those documents again, and authd retries the whole deletion until it is
+             * accepted.
+             */
+            try
+            {
+                for (const auto& index : invsync::sync::AGENT_DELETION_SCOPE_BY_ID)
+                {
+                    asyncIndexer->bulkDelete(agentId, index);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                // Unreachable with the compile-time index names in that scope (the connector only
+                // rejects an empty index or id), so this is the branch that keeps a future change
+                // honest: the caller must hear about a deletion that was not fully queued.
+                LOGFN_ERROR(logFn(),
+                            "Could not queue the deletion of agent %s's configuration and statistics "
+                            "documents: %s. The caller must retry.",
+                            agentId.c_str(),
+                            e.what());
+                deps.requestCounters.count(503);
+                responder->send(errorResponse(503, "Service unavailable"));
+                return;
+            }
 
             if (!pipeline->enqueue(std::move(item)))
             {

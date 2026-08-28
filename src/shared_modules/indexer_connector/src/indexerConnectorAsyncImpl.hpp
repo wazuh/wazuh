@@ -340,9 +340,10 @@ public:
                 size_t clusterBlockedCount = 0;
                 for (const auto& item : itemsArray)
                 {
-                    // Try to find the operation element (could be "index", "create")
+                    // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
+                    bool isDelete = false;
 
                     if (item["index"].get(operationElement) == simdjson::SUCCESS)
                     {
@@ -351,6 +352,11 @@ public:
                     else if (item["create"].get(operationElement) == simdjson::SUCCESS)
                     {
                         foundOperation = true;
+                    }
+                    else if (item["delete"].get(operationElement) == simdjson::SUCCESS)
+                    {
+                        foundOperation = true;
+                        isDelete = true;
                     }
 
                     if (!foundOperation)
@@ -420,8 +426,9 @@ public:
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                   "Error %s document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
                                    "Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
@@ -436,7 +443,8 @@ public:
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   "Error %s document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
@@ -690,6 +698,55 @@ public:
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
+        bulkData.append("\n");
+        m_queue->push(std::move(bulkData));
+    }
+
+    /**
+     * @brief Queue a delete of ONE document by id, into the same bulk queue as bulkIndex().
+     *
+     * The queue is the point. It is FIFO, and a batch that fails is pushed back to its FRONT, so a
+     * delete queued after an index of the same document is applied after it -- in the same bulk or
+     * a later one, never before. A caller that has to remove a document whose own earlier index()
+     * may still be sitting in this queue cannot get that ordering any other way: a delete issued
+     * through a different connector races the queue, and a `_delete_by_query` would not even see an
+     * unrefreshed document.
+     *
+     * Deleting a document that is not there is not an error: the item comes back `404`
+     * ("result": "not_found") with no `error` element, and the response handler above only inspects
+     * `index`/`create` items, so it is ignored. That makes repeating a delete free.
+     */
+    void bulkDelete(std::string_view id, std::string_view index)
+    {
+        constexpr auto FORMATTED_SIZE {24}; // {"delete":{"_index":"","_id":""}} + newline
+        constexpr auto ID_SIZE {64};
+
+        if (index.empty())
+        {
+            LOGFN_ERROR(
+                m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            throw IndexerConnectorException("Index name cannot be empty");
+        }
+
+        if (id.empty())
+        {
+            // A delete action without an `_id` is not a no-op, it is a malformed bulk item that
+            // would fail the whole request. There is no by-query form here on purpose.
+            LOGFN_ERROR(m_logFn,
+                        "Document id cannot be empty for a delete in index %.*s",
+                        static_cast<int>(index.size()),
+                        index.data());
+            throw IndexerConnectorException("Document id cannot be empty for a delete");
+        }
+
+        std::string bulkData;
+        bulkData.reserve(index.size() + ID_SIZE + FORMATTED_SIZE);
+
+        bulkData.append(R"({"delete":{"_index":")");
+        bulkData.append(index);
+        bulkData.append(R"(","_id":")");
+        appendEscapedId(bulkData, id);
+        bulkData.append(R"("}})");
         bulkData.append("\n");
         m_queue->push(std::move(bulkData));
     }

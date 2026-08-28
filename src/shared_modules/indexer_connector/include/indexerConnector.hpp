@@ -477,6 +477,26 @@ public:
     void indexDataStream(std::string_view index, std::string_view data);
 
     /**
+     * @brief Queue the deletion of ONE document by id.
+     *
+     * Enqueued into the SAME queue as index(), which is what this method is for: the queue is FIFO
+     * (and a failed batch is retried from its front), so a deletion queued after an index() of the
+     * same document is always applied after it. A caller that has to remove a document whose own
+     * index() may still be pending here cannot get that ordering from anything else -- a delete
+     * issued through another connector races this queue, and a `_delete_by_query` would not even see
+     * a document that has not been refreshed yet.
+     *
+     * Fire-and-forget like index(), and idempotent: deleting a document that is not there comes back
+     * as a per-item `404 not_found`, which is not an error and is not reported anywhere.
+     *
+     * @param id ID of the document to delete. Must not be empty.
+     * @param index Index name. Must not be empty.
+     *
+     * @throws IndexerConnectorException if @p id or @p index is empty.
+     */
+    void deleteById(std::string_view id, std::string_view index);
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.

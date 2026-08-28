@@ -37,6 +37,7 @@ flowchart TB
     REME -.->|the agent's own HTTP response| CLI
     PIPE -->|bulk / deleteByQuery / updateByQuery / search| IDX[(wazuh-indexer)]
     LANE -->|"inventory bulk (only if the scan succeeded)"| IDX
+    DELR -->|"by-id delete of the two wazuh-agent-* documents,\nqueued on the async connector that writes them"| IDX
     ORCH -->|its own connector| IDX
 ```
 
@@ -189,15 +190,27 @@ production adapter is confined to a single translation unit (`src/vd/vdScannerAd
 
 `DELETE /agents` (and its `POST /agents/delete` alias, for C callers whose HTTP helper only
 speaks POST) deletes every document of one agent across the whole deletion scope —
-`wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` — scoped to this cluster: a
-`deleteByQuery` on each, then one flush. The two `wazuh-agent-*` indices are named explicitly
-because they sit outside the state family. The production caller is `wazuh-manager-authd`, right
-after it removes the agent from `client.keys` and Wazuh DB.
+`wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. The production caller is
+`wazuh-manager-authd`, right after it removes the agent from `client.keys` and Wazuh DB.
 
-The deletion is not executed inline: it is enqueued on the TARGET agent's pipeline shard as a
-special item kind, so it orders FIFO against any in-flight session of that same agent — a
-delete-then-reenroll can never resurrect state, and a scan in flight for that agent is respected
-through the same registry.
+**Two halves, one per writer.** A document can only be deleted in the right ORDER by the connector
+that writes it, and this module writes through two, so the scope is split accordingly
+(`AGENT_DELETION_SCOPE_BY_QUERY` / `AGENT_DELETION_SCOPE_BY_ID`):
+
+- `wazuh-states-*` — written by the sync pipeline, deleted by a cluster-scoped `deleteByQuery` on
+  that connector, then one flush. Not executed inline: it is enqueued on the TARGET agent's pipeline
+  shard as a special item kind, so it orders FIFO against any in-flight session of that same agent —
+  a delete-then-reenroll can never resurrect state, and a scan in flight for that agent is respected
+  through the same registry.
+- `wazuh-agent-config` and `wazuh-agent-stats` — written by `POST /config` and `POST /stats` through
+  the **asynchronous** connector, which accumulates reports and pushes them in batches. Deleted by
+  **document id**, queued on that same connector at admission. The queue is FIFO, so a report it has
+  accepted but not yet pushed is applied before the delete queued behind it; and a by-id delete
+  resolves against the live version map, so it is unaffected by the index refresh interval. These two
+  are deliberately NOT in the by-query scope: a delete-by-query on the sync connector could neither
+  drain that queue nor see an unrefreshed document, which is how a report accepted moments before a
+  deletion used to land after it and outlive the agent. Both are named exactly (not a `wazuh-agent-*`
+  wildcard) so a future index sharing that prefix is not wiped by accident.
 
 **The route answers at admission.** `200 {"status":"queued"}` means the deletion was recorded and
 queued, not that the documents are gone; the item travels without a responder and the purge's own
@@ -215,20 +228,17 @@ version conflict, which `conflicts: "proceed"` counts separately) fails it inste
 success, because with the agent gone nothing would ever overwrite what was missed. A failure is
 logged, and authd — which keeps the deletion queued and persisted until it is accepted — retries it.
 
-Two windows this does NOT cover on its own, both of which leave a document behind while still
-reporting success:
+One window this does NOT cover on its own, which leaves a document behind while still reporting
+success:
 
-- The **index refresh interval**: a delete-by-query is a search, so documents the agent's last session
-  wrote before the index refreshed are invisible to it. Refreshing each index first closed this, but
-  `_refresh` needs the `indices:admin/refresh` privilege that the manager's least-privilege indexer
-  role does not grant — every deletion failed with `403` — so it was removed pending that privilege.
-  **This is why the caller delays the purge**: authd holds each deletion for `authd.purge_delay`
-  seconds before relaying it, so the refresh (and, in a cluster, the worker nodes' `client.keys`
-  reload) has already happened by the time the query runs. See
-  [authd's architecture](../authd/architecture.md).
-- The **asynchronous write queue**: `POST /config` and `POST /stats` are written through the
-  asynchronous connector, whose queue the deletion cannot drain, so a report still queued when the
-  deletion runs lands after it and recreates that agent's document.
+- The **index refresh interval**, for `wazuh-states-*`: a delete-by-query is a search, so documents
+  the agent's last session wrote before the index refreshed are invisible to it. Refreshing each index
+  first closed this, but `_refresh` needs the `indices:admin/refresh` privilege that the manager's
+  least-privilege indexer role does not grant — every deletion failed with `403` — so it was removed
+  pending that privilege. **This is why the caller delays the purge**: authd holds each deletion for
+  `authd.purge_delay` seconds before relaying it, so the refresh (and, in a cluster, the worker nodes'
+  `client.keys` reload) has already happened by the time the query runs. See
+  [authd's architecture](../authd/architecture.md). The by-id half is not exposed to this window.
 
 ## The transport
 

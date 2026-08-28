@@ -173,6 +173,78 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexAddsToQueue)
     SUCCEED();
 }
 
+/*
+ * THE property bulkDelete() exists for: a delete queued after an index of the SAME document is
+ * applied after it, so the document ends up gone.
+ *
+ * Its caller is a whole-agent deletion that has to remove a document whose own index() may still be
+ * sitting in this queue. Nothing else can give it that ordering: a delete through another connector
+ * races this queue, and a `_delete_by_query` cannot see a document that has not been refreshed yet.
+ *
+ * The assertion runs over the concatenation of every payload sent, in send order, so it holds
+ * whether the two actions share one bulk or land in consecutive ones.
+ */
+TEST_F(IndexerConnectorAsyncTest, BulkDeleteIsAppliedAfterAnIndexOfTheSameDocument)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    static constexpr auto INDEX_ACTION {R"({"index":{"_index":"wazuh-agent-config","_id":"007"}})"};
+    static constexpr auto DELETE_ACTION {R"({"delete":{"_index":"wazuh-agent-config","_id":"007"}})"};
+
+    std::promise<void> deleteSentPromise;
+    auto deleteSentFuture = deleteSentPromise.get_future();
+    std::atomic<bool> signalled {false};
+
+    // Signalling from INSIDE the mock is what synchronizes the read of receivedData below: the
+    // future's wait is the happens-after edge with the connector's own bulk thread.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &deleteSentPromise, &signalled](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters configParams)
+            {
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                if (!this->receivedData.empty() && this->receivedData.back().find(DELETE_ACTION) != std::string::npos &&
+                    !signalled.exchange(true))
+                {
+                    deleteSentPromise.set_value();
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("007", "wazuh-agent-config", R"({"field":"value"})");
+    connector.bulkDelete("007", "wazuh-agent-config");
+
+    ASSERT_EQ(deleteSentFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "the queued delete was never sent";
+
+    std::string sent;
+    for (const auto& payload : receivedData)
+    {
+        sent += payload;
+    }
+
+    const auto indexAt = sent.find(INDEX_ACTION);
+    const auto deleteAt = sent.find(DELETE_ACTION);
+    ASSERT_NE(indexAt, std::string::npos) << sent;
+    ASSERT_NE(deleteAt, std::string::npos) << sent;
+    EXPECT_LT(indexAt, deleteAt) << "the delete must reach the indexer AFTER the index it removes: " << sent;
+}
+
+/// An action without an `_id`, or without an index, would be a malformed bulk item that fails the
+/// whole request -- so it is refused at the call site instead. There is no by-query form here.
+TEST_F(IndexerConnectorAsyncTest, BulkDeleteRejectsAnEmptyIdOrIndex)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkDelete("", "wazuh-agent-config"), IndexerConnectorException);
+    EXPECT_THROW(connector.bulkDelete("007", ""), IndexerConnectorException);
+}
+
 // Configuration tests
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithMultipleHosts)
 {

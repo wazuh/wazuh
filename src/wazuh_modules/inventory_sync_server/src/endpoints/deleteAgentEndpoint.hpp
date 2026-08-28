@@ -13,6 +13,7 @@
 #define _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 
 #include "common/metricNames.hpp" // invsync::metrics::RequestCounters
+#include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
@@ -38,6 +39,18 @@ namespace invsync::endpoints::delete_agent
      * running purge, and blocked every key write meanwhile (no new agent could enroll). The purge's
      * own outcome stays observable in this module's log, never on this wire; the same contract
      * POST /vulnerability-detector/scan already moved to, for the same reason.
+     *
+     * TWO HALVES, ONE PER WRITER (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID):
+     *
+     *  - `wazuh-states-*` is written by the sync pipeline, so the pipeline item above deletes it by
+     *    query, ordered behind that agent's in-flight sessions by the shard FIFO.
+     *  - `wazuh-agent-config` and `wazuh-agent-stats` are written by POST /config and POST /stats
+     *    through the ASYNC connector, which accumulates reports and pushes them in batches. This
+     *    route queues a by-id delete for each of them ON THAT SAME QUEUE, which is the only way to
+     *    order them after a report the queue has accepted but not yet pushed: it is FIFO. Deleting
+     *    them from the pipeline instead is what let a report in flight outlive the agent -- the
+     *    delete-by-query could neither drain that queue nor, being a SEARCH, see a document that had
+     *    not been refreshed yet.
      */
 
     /// @brief The verb of the canonical route.
@@ -69,9 +82,13 @@ namespace invsync::endpoints::delete_agent
     /**
      * @brief Everything the handler needs, captured by value at registration.
      *
-     * Both weak, like every other route: the facade's stop() resets them and the weak capture keeps
-     * that reset destructive. The connector is only the admission availability check; the pipeline
-     * worker re-checks its own at dispatch.
+     * All weak, like every other route: the facade's stop() resets them and the weak capture keeps
+     * that reset destructive. `indexer` is only the admission availability check; the pipeline
+     * worker re-checks its own at dispatch. `asyncIndexer` is the connector that WROTE the two
+     * AGENT_DELETION_SCOPE_BY_ID documents, and the only one whose queue can order their deletion
+     * after a report it has already accepted -- it is not availability-checked, because that queue
+     * is designed to buffer through an outage and the check above already covers "the indexer is
+     * unreachable".
      *
      * requestCounters is the same sync.requests.total.* family the sync route holds (dedupe by
      * name on one manager). This route answers AT ADMISSION, so every response it produces is sent
@@ -84,6 +101,7 @@ namespace invsync::endpoints::delete_agent
     {
         std::weak_ptr<invsync::sync::SyncPipeline> pipeline;
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
+        std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> asyncIndexer;
         invsync::metrics::RequestCounters requestCounters;
     };
 

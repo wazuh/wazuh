@@ -110,9 +110,17 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
+        /// On the seam for DELETE /agents' sake, never called by this endpoint -- recorded so a
+        /// regression that made /stats delete something would fail a test instead of passing.
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            deleted.emplace_back(std::string {id}, std::string {index});
+        }
+
         /// Recorded writes, as (document id, index, document).
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
+        std::vector<std::pair<std::string, std::string>> deleted;
 
     private:
         bool m_available;

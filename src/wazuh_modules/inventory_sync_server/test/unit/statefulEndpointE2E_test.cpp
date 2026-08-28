@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <unistd.h>
 #include <vector>
 
@@ -317,7 +318,18 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
     EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, aliasHead).status);
 
-    // Both callers are already free, so the purges have to be waited for: 2 deletions x 3 indices.
+    /*
+     * A deletion has TWO halves, one per writer, and this E2E is where the facade's wiring of both
+     * is proved end to end (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID):
+     *
+     *  - by query, on the sync connector, deferred to the agent's pipeline shard: the states pattern
+     *    only -- one per deletion, so two here;
+     *  - by document id, on the ASYNC connector that writes `wazuh-agent-config` and
+     *    `wazuh-agent-stats`, queued at admission -- two per deletion, so four here.
+     *
+     * Only the first half has to be waited for: both callers are already free, but the by-id half
+     * was queued on the handler's own thread before the response was sent.
+     */
     const auto deleteByQueries = [this]
     {
         std::size_t count = 0;
@@ -328,14 +340,12 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
         return count;
     };
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (deleteByQueries() < 6U && std::chrono::steady_clock::now() < deadline)
+    while (deleteByQueries() < 2U && std::chrono::steady_clock::now() < deadline)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
     }
-    ASSERT_EQ(6U, deleteByQueries()) << "both queued deletions must still reach the indexer";
+    ASSERT_EQ(2U, deleteByQueries()) << "both queued deletions must still reach the indexer";
 
-    // Each deletion deletes across its whole scope: wazuh-states-* plus the two wazuh-agent-*
-    // indices, which live outside the state family and used to outlive the agent.
     std::vector<std::string> deletedIndices;
     std::vector<std::string> deletedAgents;
     for (const auto& op : m_events->syncOps())
@@ -347,13 +357,24 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
         }
     }
 
-    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
-    std::vector<std::string> expectedIndices {scope};
-    expectedIndices.insert(expectedIndices.end(), scope.begin(), scope.end());
-    EXPECT_EQ(expectedIndices, deletedIndices);
+    // The states pattern, and NOT the two wazuh-agent-* indices: a by-query pass on this connector
+    // could not order against a report still sitting in the async connector's queue, which is why
+    // those two moved to the by-id half below.
+    EXPECT_EQ(std::vector<std::string>({"wazuh-states-*", "wazuh-states-*"}), deletedIndices);
     // Padded like every document _id: the first deletion is agent 9, the second agent 10.
-    EXPECT_EQ(std::vector<std::string>({"009", "009", "009", "010", "010", "010"}), deletedAgents);
+    EXPECT_EQ(std::vector<std::string>({"009", "010"}), deletedAgents);
     EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each queued delete must end in its own flush";
+
+    // The by-id half, on the connector that WROTE those two documents. Queued at admission, so it is
+    // already recorded -- no waiting, which is itself part of the contract.
+    const auto asyncOps = m_events->asyncOps();
+    ASSERT_EQ(4U, asyncOps.size()) << "two deletions x AGENT_DELETION_SCOPE_BY_ID";
+    const std::vector<std::tuple<std::string, std::string, std::string>> expectedAsyncOps {
+        {"bulkDelete", "009", "wazuh-agent-config"},
+        {"bulkDelete", "009", "wazuh-agent-stats"},
+        {"bulkDelete", "010", "wazuh-agent-config"},
+        {"bulkDelete", "010", "wazuh-agent-stats"}};
+    EXPECT_EQ(expectedAsyncOps, asyncOps);
 
     const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
                                 "Content-Length: 0\r\nConnection: close\r\n\r\n";
