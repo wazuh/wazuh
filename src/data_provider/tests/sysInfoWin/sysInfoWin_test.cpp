@@ -106,6 +106,56 @@ TEST_F(SysInfoWinTest, testHF_PRODUCT_Valids_Format)
     }
 }
 
+TEST_F(SysInfoWinTest, IsBareNumericVersion)
+{
+    // Bare numeric versions: candidates for the VERSIONINFO fallback.
+    EXPECT_TRUE(PackageWindowsHelper::isBareNumericVersion("6.3.3"));
+    EXPECT_TRUE(PackageWindowsHelper::isBareNumericVersion("6.3"));
+    EXPECT_TRUE(PackageWindowsHelper::isBareNumericVersion("1.2.3.4"));
+    // Already detailed, or not numeric: no fallback needed/possible.
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion("6.3.3-1121"));
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion("6.3.3-h14"));
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion("14.40.33816"));
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion("6"));
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion(""));
+    EXPECT_FALSE(PackageWindowsHelper::isBareNumericVersion("1.2.3.4.5"));
+}
+
+TEST_F(SysInfoWinTest, ResolveExecutablePathFromDisplayIcon)
+{
+    // Quoted path with a trailing icon index.
+    EXPECT_EQ("C:\\Program Files\\PaloAlto Networks\\GlobalProtect\\PanGPA.exe",
+              PackageWindowsHelper::resolveExecutablePath("\"C:\\Program Files\\PaloAlto Networks\\GlobalProtect\\PanGPA.exe\",0"));
+    // Quoted path with no icon index.
+    EXPECT_EQ("C:\\App\\app.exe", PackageWindowsHelper::resolveExecutablePath("\"C:\\App\\app.exe\""));
+    // Unquoted path with a trailing icon index.
+    EXPECT_EQ("C:\\App\\app.exe", PackageWindowsHelper::resolveExecutablePath("C:\\App\\app.exe,0"));
+    // Unquoted path, no icon index.
+    EXPECT_EQ("C:\\App\\app.exe", PackageWindowsHelper::resolveExecutablePath("C:\\App\\app.exe"));
+    // Environment variable expansion.
+    EXPECT_EQ(std::string(std::getenv("SystemRoot") ? std::getenv("SystemRoot") : "") + "\\app.exe",
+              PackageWindowsHelper::resolveExecutablePath("%SystemRoot%\\app.exe"));
+    // Not an executable: no VERSIONINFO resource to read.
+    EXPECT_EQ("", PackageWindowsHelper::resolveExecutablePath("C:\\Windows\\System32\\shell32.dll,-15"));
+    EXPECT_EQ("", PackageWindowsHelper::resolveExecutablePath("C:\\App\\app.ico"));
+    EXPECT_EQ("", PackageWindowsHelper::resolveExecutablePath(""));
+}
+
+TEST_F(SysInfoWinTest, IsVersionRefinement)
+{
+    // Genuine refinements: base version extended with a separator.
+    EXPECT_TRUE(PackageWindowsHelper::isVersionRefinement("6.3.3", "6.3.3-1121"));
+    EXPECT_TRUE(PackageWindowsHelper::isVersionRefinement("6.3.3", "6.3.3-h14"));
+    EXPECT_TRUE(PackageWindowsHelper::isVersionRefinement("6.3", "6.3.3"));
+    EXPECT_TRUE(PackageWindowsHelper::isVersionRefinement("1.2", "1.2+build5"));
+    // Not a refinement: an unrelated or merely-longer version must not be substituted in.
+    EXPECT_FALSE(PackageWindowsHelper::isVersionRefinement("6.3.3", "6.3.30"));
+    EXPECT_FALSE(PackageWindowsHelper::isVersionRefinement("6.3.3", "0.0.0.0"));
+    EXPECT_FALSE(PackageWindowsHelper::isVersionRefinement("6.3.3", "6.3.3"));
+    EXPECT_FALSE(PackageWindowsHelper::isVersionRefinement("6.3.3", "6.3"));
+    EXPECT_FALSE(PackageWindowsHelper::isVersionRefinement("6.3.3", ""));
+}
+
 //  Test: Windows Management Instrumentation (WMI) to retrieve installed hotfixes
 TEST_F(SysInfoWinTest, WmiLocatorCreationFailure)
 {

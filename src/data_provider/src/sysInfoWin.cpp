@@ -450,6 +450,26 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     version = value;
                 }
 
+                if (!version.empty() && PackageWindowsHelper::isBareNumericVersion(version))
+                {
+                    std::string displayIcon;
+
+                    if (packageReg.string("DisplayIcon", displayIcon))
+                    {
+                        const auto exePath { PackageWindowsHelper::resolveExecutablePath(displayIcon) };
+
+                        if (!exePath.empty())
+                        {
+                            const auto productVersion { PackageWindowsHelper::getProductVersion(exePath) };
+
+                            if (!productVersion.empty() && PackageWindowsHelper::isVersionRefinement(version, productVersion))
+                            {
+                                version = productVersion;
+                            }
+                        }
+                    }
+                }
+
                 if (packageReg.string("Publisher", value))
                 {
                     vendor = value;

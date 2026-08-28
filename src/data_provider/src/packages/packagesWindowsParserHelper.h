@@ -260,6 +260,96 @@ namespace PackageWindowsHelper
 
         return version;
     }
+
+    /*
+     * @brief Checks whether a version string is a bare numeric version (no build/hotfix qualifier).
+     *
+     * DisplayVersion values with no separator beyond dots are the ones an installer may have
+     * under-reported relative to the executable's own VERSIONINFO resource, and are the only
+     * ones worth spending a file read on to look for a more detailed version.
+     *
+     * @param[in] version Version string to check.
+     *
+     * @return Returns true if the version is composed of 2 to 4 dot-separated numeric components.
+     */
+    static bool isBareNumericVersion(const std::string& version)
+    {
+        static const std::regex bareVersionRegex{R"(^[0-9]+(\.[0-9]+){1,3}$)"};
+        return std::regex_match(version, bareVersionRegex);
+    }
+
+    /*
+     * @brief Resolves the executable path published on a package's DisplayIcon value.
+     *
+     * DisplayIcon commonly points at the package's main executable, optionally quoted and
+     * followed by a ",<icon index>" suffix (e.g. "C:\App\app.exe",0). Paths pointing at
+     * anything other than an executable (a shared system icon, a bare .ico file) are rejected,
+     * since there is no VERSIONINFO resource to read from them.
+     *
+     * @param[in] displayIcon Raw DisplayIcon registry value.
+     *
+     * @return Returns the resolved executable path, or an empty string if none can be resolved.
+     */
+    static std::string resolveExecutablePath(std::string displayIcon)
+    {
+        if (displayIcon.empty())
+        {
+            return {};
+        }
+
+        if (displayIcon.front() == '"')
+        {
+            const auto closingQuote { displayIcon.find('"', 1) };
+            displayIcon = displayIcon.substr(1, closingQuote == std::string::npos ? std::string::npos : closingQuote - 1);
+        }
+        else
+        {
+            // Unquoted "<path>,<icon index>" — only strip the suffix if it's actually numeric,
+            // since an unquoted path could legitimately contain a comma.
+            const auto comma { displayIcon.rfind(',') };
+
+            if (comma != std::string::npos && displayIcon.find_first_not_of("-0123456789", comma + 1) == std::string::npos)
+            {
+                displayIcon = displayIcon.substr(0, comma);
+            }
+        }
+
+        if (displayIcon.find('%') != std::string::npos)
+        {
+            char expanded[MAX_PATH] {};
+
+            if (ExpandEnvironmentStringsA(displayIcon.c_str(), expanded, MAX_PATH))
+            {
+                displayIcon = expanded;
+            }
+        }
+
+        return Utils::endsWith(Utils::toLowerCase(displayIcon), ".exe") ? displayIcon : std::string();
+    }
+
+    /*
+     * @brief Checks whether a candidate version is a genuine refinement of a base version.
+     *
+     * A refinement must extend the base version with a separator, not just happen to share it
+     * as a string prefix (e.g. "6.3.30" is not a refinement of "6.3.3"), so that an executable's
+     * unrelated VERSIONINFO value is never mistaken for extra detail on the reported version.
+     *
+     * @param[in] baseVersion Version read from the package registry key.
+     * @param[in] candidateVersion Version read from the executable's VERSIONINFO resource.
+     *
+     * @return Returns true if candidateVersion refines baseVersion.
+     */
+    static bool isVersionRefinement(const std::string& baseVersion, const std::string& candidateVersion)
+    {
+        if (candidateVersion.size() <= baseVersion.size()
+                || candidateVersion.compare(0, baseVersion.size(), baseVersion) != 0)
+        {
+            return false;
+        }
+
+        const auto nextChar { candidateVersion[baseVersion.size()] };
+        return nextChar == '-' || nextChar == '.' || nextChar == '+';
+    }
 };
 
 #endif // _PACKAGES_WINDOWS_PARSER_HELPER_H
