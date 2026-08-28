@@ -232,7 +232,7 @@ namespace containerimages
         return SOURCE_TYPE;
     }
 
-    std::vector<ImageReferenceRecord> LocalImageReader::discover()
+    ImageReadResult LocalImageReader::discover()
     {
         // Nothing below may escape: this runs on the module thread, and an exception here
         // unwinds the whole scan loop and takes the module down for the lifetime of the
@@ -245,7 +245,7 @@ namespace containerimages
             if (m_layoutPath.empty() || !std::filesystem::is_directory(path, errorCode))
             {
                 logWarn("Local path is not a directory: " + m_layoutPath);
-                return {};
+                return ImageReadResult::failed();
             }
 
             const auto format = detectFormat(path);
@@ -254,10 +254,10 @@ namespace containerimages
             {
                 logWarn("NOT IMPLEMENTED: local format '" + formatName(format) + "' at '" + m_layoutPath +
                         "' is not supported yet, skipping.");
-                return {};
+                return ImageReadResult::failed();
             }
 
-            return readOciLayout(path);
+            return ImageReadResult::success(readOciLayout(path));
         }
         catch (const std::exception& ex)
         {
@@ -268,7 +268,7 @@ namespace containerimages
             logWarn("Could not read the local path '" + m_layoutPath + "': unknown error.");
         }
 
-        return {};
+        return ImageReadResult::failed();
     }
 
     std::vector<ImageReferenceRecord> LocalImageReader::readOciLayout(const std::filesystem::path& layoutPath)

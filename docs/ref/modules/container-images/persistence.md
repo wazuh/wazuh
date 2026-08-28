@@ -93,14 +93,22 @@ edit or reorder existing entries. An agent whose database is behind replays only
 entries; rewriting an earlier one makes it skip a step. A database with no recorded version
 is recreated from the CREATE TABLE statements.
 
-### 4. Cleanup
+### 4. Reads that did not happen
+
+The inventory is stored as one set covering every configured source, so a source left out of
+that set is reported as deleted. A source that could not be read is therefore not left out:
+what an earlier scan stored for it is carried into this scan unchanged, and a warning names
+it. An empty read is different and is stored as the emptiness it reports, because a source
+that was read and holds nothing really is empty.
+
+### 5. Cleanup
 
 `ContainerImagesDB::dropTables()` removes every row from both tables while keeping the schema
 and its recorded version, so the inventory this module owns does not survive as stale state
 when the module is disabled or uninstalled, and a later re-enable reuses the same database
 instead of triggering a recreate.
 
-### 5. Inventory source (extraction deferred)
+### 6. Inventory source (extraction deferred)
 
 The reader factory (`makeReader`) returns a `LocalImageReader` bound to each configured
 `<local>` path, so what is stored comes from the layouts the user configured. Package
@@ -111,7 +119,7 @@ The three delta types are exercised by a test double (`stub_image_reader`) that 
 inventory across scans. It is built into the test binary only, never into the shipped
 library, so an agent can never persist synthetic inventory.
 
-### 6. Image identity on the package row
+### 7. Image identity on the package row
 
 A package row carries `reference_type` and `reference_value`, which identify the source type
 and the path it was found under. It deliberately does **not** repeat the image digest, name,
