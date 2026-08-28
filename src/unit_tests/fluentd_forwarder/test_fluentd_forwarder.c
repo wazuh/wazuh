@@ -19,12 +19,18 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
+#include <pthread.h>
+#include <signal.h>
+#include <openssl/pem.h>
+#include <openssl/x509v3.h>
+
 typedef struct test_struct {
     wm_fluent_t *fluent;
     cJSON * configuration_dump;
 } test_struct_t;
 
 #define SOCKET_PATH "/tmp/socket-tmp"
+#define TEST_CA_PATH "/tmp/wm_fluent_test_ca.pem"
 
 time_t __wrap_time(int time) {
     check_expected(time);
@@ -68,6 +74,136 @@ void assert_int_ge(int X, int Y) {
     } else {
         assert_false(false);
     }
+}
+
+
+// TLS test helpers
+
+typedef struct test_tls_server_t {
+    int sock;
+    X509 * cert;
+    EVP_PKEY * key;
+} test_tls_server_t;
+
+static EVP_PKEY * test_tls_gen_key() {
+    return EVP_EC_gen("P-256");
+}
+
+/* Generate a certificate. If ca_cert is NULL, a self-signed CA certificate is
+   generated, otherwise a leaf certificate holding the given subjectAltName */
+static X509 * test_tls_gen_cert(EVP_PKEY * key, const char * cn, const char * san, X509 * ca_cert, EVP_PKEY * ca_key) {
+    X509 * cert = X509_new();
+    X509V3_CTX ctx;
+    X509_EXTENSION * ext;
+
+    X509_set_version(cert, 2);
+    ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+    X509_gmtime_adj(X509_getm_notBefore(cert), -3600);
+    X509_gmtime_adj(X509_getm_notAfter(cert), 3600);
+    X509_set_pubkey(cert, key);
+    X509_NAME_add_entry_by_txt(X509_get_subject_name(cert), "CN", MBSTRING_ASC, (const unsigned char *)cn, -1, -1, 0);
+    X509_set_issuer_name(cert, X509_get_subject_name(ca_cert ? ca_cert : cert));
+
+    X509V3_set_ctx_nodb(&ctx);
+    X509V3_set_ctx(&ctx, ca_cert ? ca_cert : cert, cert, NULL, NULL, 0);
+
+    ext = san ? X509V3_EXT_conf_nid(NULL, &ctx, NID_subject_alt_name, san)
+              : X509V3_EXT_conf_nid(NULL, &ctx, NID_basic_constraints, "critical,CA:TRUE");
+    X509_add_ext(cert, ext, -1);
+    X509_EXTENSION_free(ext);
+
+    X509_sign(cert, ca_key ? ca_key : key, EVP_sha256());
+    return cert;
+}
+
+static void * test_tls_server_run(void * arg) {
+    test_tls_server_t * server = (test_tls_server_t *)arg;
+    SSL_CTX * ctx = SSL_CTX_new(TLS_method());
+    SSL * ssl;
+    BIO * bio;
+
+    SSL_CTX_use_certificate(ctx, server->cert);
+    SSL_CTX_use_PrivateKey(ctx, server->key);
+
+    ssl = SSL_new(ctx);
+    bio = BIO_new_socket(server->sock, 0);
+    SSL_set_bio(ssl, bio, bio);
+    SSL_accept(ssl);
+
+    SSL_free(ssl);
+    SSL_CTX_free(ctx);
+    return NULL;
+}
+
+/* Run a TLS handshake against a local server whose certificate holds the given
+   subjectAltName, and is signed by the CA that the module is configured to trust */
+static int test_tls_connect(wm_fluent_t * fluent, const char * address, const char * san) {
+    EVP_PKEY * ca_key = test_tls_gen_key();
+    X509 * ca_cert = test_tls_gen_cert(ca_key, "Wazuh Test CA", NULL, NULL, NULL);
+    EVP_PKEY * server_key = test_tls_gen_key();
+    X509 * server_cert = test_tls_gen_cert(server_key, "fluentd", san, ca_cert, ca_key);
+    struct timeval timeout = { .tv_sec = 10 };
+    test_tls_server_t server;
+    pthread_t thread;
+    int sockets[2];
+    int retval;
+    FILE * fp;
+
+    signal(SIGPIPE, SIG_IGN);
+
+    fp = fopen(TEST_CA_PATH, "w");
+    assert_non_null(fp);
+    PEM_write_X509(fp, ca_cert);
+    fclose(fp);
+
+    assert_int_equal(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+    setsockopt(sockets[0], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sockets[1], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    server.sock = sockets[1];
+    server.cert = server_cert;
+    server.key = server_key;
+    assert_int_equal(pthread_create(&thread, NULL, test_tls_server_run, &server), 0);
+
+    fluent->address = (char *)address;
+    fluent->certificate = TEST_CA_PATH;
+    fluent->client_sock = sockets[0];
+
+    retval = wm_fluent_ssl_connect(fluent);
+
+    pthread_join(thread, NULL);
+
+    SSL_free(fluent->ssl);
+    fluent->ssl = NULL;
+    SSL_CTX_free(fluent->ctx);
+    fluent->ctx = NULL;
+    fluent->address = NULL;
+    fluent->certificate = NULL;
+    fluent->client_sock = -1;
+
+    close(sockets[0]);
+    close(sockets[1]);
+    X509_free(server_cert);
+    EVP_PKEY_free(server_key);
+    X509_free(ca_cert);
+    EVP_PKEY_free(ca_key);
+    unlink(TEST_CA_PATH);
+
+    return retval;
+}
+
+static void test_pong_digest(const char * shared_key, const char * hostname, const char * nonce, size_t nonce_size, const char * salt, size_t salt_size, os_sha512 output) {
+    unsigned char md[SHA512_DIGEST_LENGTH];
+    EVP_MD_CTX * ctx = EVP_MD_CTX_new();
+
+    EVP_DigestInit(ctx, EVP_sha512());
+    EVP_DigestUpdate(ctx, salt, salt_size);
+    EVP_DigestUpdate(ctx, hostname, strlen(hostname));
+    EVP_DigestUpdate(ctx, nonce, nonce_size);
+    EVP_DigestUpdate(ctx, shared_key, strlen(shared_key));
+    EVP_DigestFinal(ctx, md, NULL);
+    EVP_MD_CTX_free(ctx);
+    OS_SHA512_Hex(md, output);
 }
 
 // Tests
@@ -628,6 +764,67 @@ void test_send_json_message_socket_error_unable_connect_again(void **state) {
     unlink(SOCKET_PATH);
 }
 
+
+void test_ssl_connect_certificate_name_mismatch(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_any(__wrap__mterror, formatted_msg);
+
+    assert_int_equal(test_tls_connect(data->fluent, "fluentd.internal", "DNS:evil.example.com"), -1);
+}
+
+void test_ssl_connect_certificate_name_match(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    assert_int_equal(test_tls_connect(data->fluent, "fluentd.internal", "DNS:fluentd.internal"), 0);
+}
+
+void test_check_pong_valid_digest(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    wm_fluent_helo_t helo = { .nonce = "nonce", .nonce_size = 5 };
+    wm_fluent_pong_t pong = { .auth_result = 1, .server_hostname = "fluentd.internal" };
+    char salt[16] = "0123456789abcde";
+    os_sha512 digest;
+
+    data->fluent->shared_key = "secret_key";
+    test_pong_digest(data->fluent->shared_key, pong.server_hostname, helo.nonce, helo.nonce_size, salt, sizeof(salt), digest);
+    pong.shared_key_hexdigest = digest;
+
+    assert_int_equal(wm_fluent_check_pong(data->fluent, &helo, &pong, salt, sizeof(salt)), 0);
+}
+
+void test_check_pong_invalid_digest(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    wm_fluent_helo_t helo = { .nonce = "nonce", .nonce_size = 5 };
+    wm_fluent_pong_t pong = { .auth_result = 1, .server_hostname = "fluentd.internal" };
+    char salt[16] = "0123456789abcde";
+    os_sha512 digest;
+
+    data->fluent->shared_key = "secret_key";
+    test_pong_digest("wrong_key", pong.server_hostname, helo.nonce, helo.nonce_size, salt, sizeof(salt), digest);
+    pong.shared_key_hexdigest = digest;
+
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "Authentication error: the Fluent server did not prove knowledge of the shared key.");
+
+    assert_int_equal(wm_fluent_check_pong(data->fluent, &helo, &pong, salt, sizeof(salt)), -1);
+}
+
+void test_check_pong_no_digest(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    wm_fluent_helo_t helo = { .nonce = "nonce", .nonce_size = 5 };
+    wm_fluent_pong_t pong = { .auth_result = 1, .server_hostname = "fluentd.internal" };
+    char salt[16] = "0123456789abcde";
+
+    data->fluent->shared_key = "secret_key";
+
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "The Fluent server sent a PONG message with no shared key digest.");
+
+    assert_int_equal(wm_fluent_check_pong(data->fluent, &helo, &pong, salt, sizeof(salt)), -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -683,6 +880,17 @@ int main(void) {
     cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_unable_connect, test_setup, test_teardown),
     /* Test unable to connect with socket in second try */
     cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_unable_connect_again, test_setup, test_teardown),
+
+    /* Test TLS connection to a server whose certificate does not match the configured address */
+    cmocka_unit_test_setup_teardown(test_ssl_connect_certificate_name_mismatch, test_setup, test_teardown),
+    /* Test TLS connection to a server whose certificate matches the configured address */
+    cmocka_unit_test_setup_teardown(test_ssl_connect_certificate_name_match, test_setup, test_teardown),
+    /* Test PONG message holding a valid shared key digest */
+    cmocka_unit_test_setup_teardown(test_check_pong_valid_digest, test_setup, test_teardown),
+    /* Test PONG message holding an invalid shared key digest */
+    cmocka_unit_test_setup_teardown(test_check_pong_invalid_digest, test_setup, test_teardown),
+    /* Test PONG message holding no shared key digest */
+    cmocka_unit_test_setup_teardown(test_check_pong_no_digest, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
