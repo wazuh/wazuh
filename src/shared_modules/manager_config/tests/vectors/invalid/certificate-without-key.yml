@@ -1,0 +1,4 @@
+remote:
+  https:
+    certificate: etc/certs/a.pem
+    key: ""
