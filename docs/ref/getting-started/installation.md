@@ -410,7 +410,7 @@ The address is the only mandatory component; anything omitted takes its default,
 
 A **trailing slash with nothing after it** opts out of the prefix entirely, for a server that runs without one. Note the difference from omitting the slash: `192.168.0.60` gets the default prefix, while `192.168.0.60/` gets none.
 
-An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. IPv6 zone ids (`[fe80::1%25eth0]`) are not supported yet — configure `<interface_index>` directly in `ossec.conf` instead.
+An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. A link-local IPv6 address may carry a zone id, written with the `%` percent-encoded as `%25` — `[fe80::1%25eth0]` or `[fe80::1%257]`. An interface name is resolved to its index while the configuration is parsed, so a name that does not exist on the host is rejected there rather than failing later as an obscure connection error.
 
 A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
 

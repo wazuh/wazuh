@@ -112,8 +112,8 @@ typedef enum hc_result_t
  */
 typedef struct hc_config_t
 {
-    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2). A bare,
-    ///< unbracketed IPv6 literal; baseUrl() brackets it for the wire.
+    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
+    ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
     uint16_t server_port;          ///< Manager HTTPS port.
     uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
     ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;

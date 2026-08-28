@@ -203,8 +203,6 @@ cJSON *getAgentConfig(void) {
             if (agt->server[i].endpoint)
                 cJSON_AddStringToObject(server, "endpoint", agt->server[i].endpoint);
 
-            /* #38624: reported as scope_id now -- the value comes from <endpoint>'s IPv6
-             * zone id, not the removed <interface_index> tag. */
             if (agt->server[i].scope_id)
                 cJSON_AddNumberToObject(server, "scope_id", agt->server[i].scope_id);
 
