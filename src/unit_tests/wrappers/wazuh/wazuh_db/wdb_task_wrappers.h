@@ -27,10 +27,6 @@ int __wrap_wdb_task_mark_delivered(__attribute__((unused)) wdb_t* wdb,
                                    const char *task_id,
                                    time_t delivery_time);
 
-int __wrap_wdb_task_update_status(__attribute__((unused)) wdb_t* wdb,
-                                  const char *task_id,
-                                  const char *status);
-
 int __wrap_wdb_task_cleanup_expired(__attribute__((unused)) wdb_t* wdb,
                                     int ttl);
 

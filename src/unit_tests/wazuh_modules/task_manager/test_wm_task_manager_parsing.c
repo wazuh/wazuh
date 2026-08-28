@@ -25,7 +25,6 @@ int wm_task_manager_parse_message(const char* buffer, void** params, char** erro
 char* wm_task_manager_parse_error_response(const char *error, const char *message);
 char* wm_task_manager_parse_create_response(const char *task_id);
 char* wm_task_manager_parse_get_pending_response(cJSON *tasks);
-char* wm_task_manager_parse_update_status_response(void);
 
 // Setup / teardown
 
@@ -77,26 +76,6 @@ static int teardown_get_pending_params(void **state) {
     return 0;
 }
 
-static int teardown_update_status_params(void **state) {
-    if (state[0]) {
-        wm_task_update_status_params *params = (wm_task_update_status_params*)state[0];
-        if (params->task_id) {
-            os_free(params->task_id);
-        }
-        if (params->status) {
-            os_free(params->status);
-        }
-        if (params->agent_id) {
-            os_free(params->agent_id);
-        }
-        os_free(params);
-    }
-    if (state[1]) {
-        char *error = (char*)state[1];
-        os_free(error);
-    }
-    return 0;
-}
 
 static int teardown_error_only(void **state) {
     if (state[1]) {
@@ -163,122 +142,6 @@ void test_wm_task_manager_parse_message_get_pending_ok(void **state)
 
     wm_task_get_pending_params *get_params = (wm_task_get_pending_params*)params;
     assert_string_equal(get_params->agent_id, "002");
-}
-
-void test_wm_task_manager_parse_message_update_status_ok(void **state)
-{
-    const char *message = "{"
-                         "\"action\":\"update_task_status\","
-                         "\"task_id\":\"task-123\","
-                         "\"status\":\"pending\","
-                         "\"agent_id\":\"011\""
-                         "}";
-
-    void *params = NULL;
-    char *error = NULL;
-
-    int ret = wm_task_manager_parse_message(message, &params, &error);
-
-    state[0] = params;
-    state[1] = error;
-
-    assert_int_equal(ret, WM_TASK_MANAGER_UPDATE_STATUS);
-    assert_non_null(params);
-    assert_null(error);
-
-    wm_task_update_status_params *update_params = (wm_task_update_status_params*)params;
-    assert_string_equal(update_params->task_id, "task-123");
-    assert_string_equal(update_params->status, "pending");
-    assert_string_equal(update_params->agent_id, "011");
-}
-
-void test_wm_task_manager_parse_message_update_status_no_agent_id(void **state)
-{
-    const char *message = "{"
-                         "\"action\":\"update_task_status\","
-                         "\"task_id\":\"task-123\","
-                         "\"status\":\"failed\""
-                         "}";
-
-    void *params = NULL;
-    char *error = NULL;
-
-    int ret = wm_task_manager_parse_message(message, &params, &error);
-
-    state[0] = params;
-    state[1] = error;
-
-    assert_int_equal(ret, WM_TASK_MANAGER_UPDATE_STATUS);
-    assert_non_null(params);
-    assert_null(error);
-
-    wm_task_update_status_params *update_params = (wm_task_update_status_params*)params;
-    assert_string_equal(update_params->task_id, "task-123");
-    assert_string_equal(update_params->status, "failed");
-    assert_null(update_params->agent_id);
-}
-
-void test_wm_task_manager_parse_message_update_status_missing_task_id(void **state)
-{
-    const char *message = "{\"action\":\"update_task_status\",\"status\":\"pending\"}";
-
-    void *params = NULL;
-    char *error = NULL;
-
-    int ret = wm_task_manager_parse_message(message, &params, &error);
-
-    state[0] = params;
-    state[1] = error;
-
-    assert_int_equal(ret, OS_INVALID);
-    assert_null(params);
-    assert_non_null(error);
-
-    cJSON *error_json = cJSON_Parse(error);
-    assert_string_equal(cJSON_GetObjectItem(error_json, "message")->valuestring, "Missing or invalid 'task_id'");
-    cJSON_Delete(error_json);
-}
-
-void test_wm_task_manager_parse_message_update_status_missing_status(void **state)
-{
-    const char *message = "{\"action\":\"update_task_status\",\"task_id\":\"task-123\"}";
-
-    void *params = NULL;
-    char *error = NULL;
-
-    int ret = wm_task_manager_parse_message(message, &params, &error);
-
-    state[0] = params;
-    state[1] = error;
-
-    assert_int_equal(ret, OS_INVALID);
-    assert_null(params);
-    assert_non_null(error);
-
-    cJSON *error_json = cJSON_Parse(error);
-    assert_string_equal(cJSON_GetObjectItem(error_json, "message")->valuestring, "Missing or invalid 'status'");
-    cJSON_Delete(error_json);
-}
-
-void test_wm_task_manager_parse_message_update_status_invalid_status(void **state)
-{
-    const char *message = "{\"action\":\"update_task_status\",\"task_id\":\"task-123\",\"status\":\"delivered\"}";
-
-    void *params = NULL;
-    char *error = NULL;
-
-    int ret = wm_task_manager_parse_message(message, &params, &error);
-
-    state[0] = params;
-    state[1] = error;
-
-    assert_int_equal(ret, OS_INVALID);
-    assert_null(params);
-    assert_non_null(error);
-
-    cJSON *error_json = cJSON_Parse(error);
-    assert_string_equal(cJSON_GetObjectItem(error_json, "message")->valuestring, "Invalid 'status', expected 'pending' or 'failed'");
-    cJSON_Delete(error_json);
 }
 
 void test_wm_task_manager_parse_message_invalid_json(void **state)
@@ -445,34 +308,12 @@ void test_wm_task_manager_parse_get_pending_response_empty(void **state)
     cJSON_Delete(json);
 }
 
-// Tests for wm_task_manager_parse_update_status_response
-
-void test_wm_task_manager_parse_update_status_response_ok(void **state)
-{
-    char *response = wm_task_manager_parse_update_status_response();
-
-    state[0] = response;
-
-    assert_non_null(response);
-
-    cJSON *json = cJSON_Parse(response);
-    assert_non_null(json);
-    assert_non_null(cJSON_GetObjectItem(json, "status"));
-    assert_string_equal(cJSON_GetObjectItem(json, "status")->valuestring, "ok");
-
-    cJSON_Delete(json);
-}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_parse_message tests
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_create_task_ok, teardown_create_params),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_get_pending_ok, teardown_get_pending_params),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_update_status_ok, teardown_update_status_params),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_update_status_no_agent_id, teardown_update_status_params),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_update_status_missing_task_id, teardown_error_only),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_update_status_missing_status, teardown_error_only),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_update_status_invalid_status, teardown_error_only),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_invalid_json, teardown_error_only),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_missing_action, teardown_error_only),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_unknown_action, teardown_error_only),
@@ -484,8 +325,6 @@ int main(void) {
         // wm_task_manager_parse_get_pending_response tests
         cmocka_unit_test_teardown(test_wm_task_manager_parse_get_pending_response_ok, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_get_pending_response_empty, teardown_string),
-        // wm_task_manager_parse_update_status_response tests
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_update_status_response_ok, teardown_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

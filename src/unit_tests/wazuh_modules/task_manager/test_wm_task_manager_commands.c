@@ -29,7 +29,6 @@ char* wm_task_manager_dispatch(const char *msg);
 char* wm_task_manager_create_task(const char *agent_id, wm_task_type task_type, const char *payload_json,
                                   const char *source_id, time_t create_time, int max_payload_bytes);
 cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks);
-bool wm_task_manager_update_task_status(const char *task_id, const char *status, const char *agent_id);
 
 // Setup / teardown
 
@@ -236,136 +235,6 @@ void test_wm_task_manager_get_pending_tasks_no_tasks_caches_empty(void **state)
     assert_int_equal(cJSON_GetArraySize(tasks), 0);
 }
 
-// Tests for wm_task_manager_update_task_status
-
-void test_wm_task_manager_update_task_status_pending_invalidates_cache(void **state)
-{
-    (void) state;
-    const char *task_id = "task-123";
-    const char *agent_id = "011";
-    char *wdb_response = "ok {\"error\":0}";
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, wdb_response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    expect_string(__wrap_wm_task_cache_invalidate, agent_id, agent_id);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    bool result = wm_task_manager_update_task_status(task_id, "pending", agent_id);
-
-    assert_true(result);
-}
-
-void test_wm_task_manager_update_task_status_failed_no_cache_invalidate(void **state)
-{
-    (void) state;
-    const char *task_id = "task-123";
-    const char *agent_id = "017";
-    char *wdb_response = "ok {\"error\":0}";
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, wdb_response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    // 'failed' is terminal -- no cache invalidation expected (no __wrap_wm_task_cache_invalidate
-    // mock queued; a call here fails the test).
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    bool result = wm_task_manager_update_task_status(task_id, "failed", agent_id);
-
-    assert_true(result);
-}
-
-void test_wm_task_manager_update_task_status_pending_no_agent_id(void **state)
-{
-    (void) state;
-    const char *task_id = "task-123";
-    char *wdb_response = "ok {\"error\":0}";
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, wdb_response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    // No agent_id given -- no cache invalidation attempted regardless of status.
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    bool result = wm_task_manager_update_task_status(task_id, "pending", NULL);
-
-    assert_true(result);
-}
-
-void test_wm_task_manager_update_task_status_db_error(void **state)
-{
-    (void) state;
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, NULL);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mterror, formatted_msg);
-
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mterror, formatted_msg);
-
-    bool result = wm_task_manager_update_task_status("task-123", "pending", "011");
-
-    assert_false(result);
-}
-
-/* wdb_parse_task_update_status() always replies "ok {...}" at the wire level -- even when the
- * underlying UPDATE failed -- with the real outcome in the JSON body's "error" field instead
- * (same convention as create/mark_delivered). This must be treated as a failure, not silently
- * reported back to the caller as success: that would defeat the whole point of this function. */
-void test_wm_task_manager_update_task_status_wdb_semantic_failure(void **state)
-{
-    (void) state;
-    char *wdb_response = "ok {\"error\":-1}";
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, wdb_response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    // No __wrap_wm_task_cache_invalidate mock queued -- a call here fails the test: a status
-    // update that never actually happened in the DB must not invalidate the agent's cache either.
-
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mterror, formatted_msg);
-
-    bool result = wm_task_manager_update_task_status("task-123", "pending", "011");
-
-    assert_false(result);
-}
-
 // Tests for wm_task_manager_dispatch
 
 void test_wm_task_manager_dispatch_create_task(void **state)
@@ -476,44 +345,6 @@ void test_wm_task_manager_dispatch_get_pending(void **state)
     cJSON_Delete(json);
 }
 
-void test_wm_task_manager_dispatch_update_status(void **state)
-{
-    const char *message = "{\"action\":\"update_task_status\",\"task_id\":\"task-999\","
-                           "\"status\":\"pending\",\"agent_id\":\"011\"}";
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    char *wdb_response = "ok {\"error\":0}";
-
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
-    will_return(__wrap_wdbc_query_ex, wdb_response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    expect_string(__wrap_wm_task_cache_invalidate, agent_id, "011");
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    char *response = wm_task_manager_dispatch(message);
-
-    state[0] = response;
-
-    assert_non_null(response);
-
-    cJSON *json = cJSON_Parse(response);
-    assert_non_null(json);
-    assert_non_null(cJSON_GetObjectItem(json, "status"));
-    assert_string_equal(cJSON_GetObjectItem(json, "status")->valuestring, "ok");
-
-    cJSON_Delete(json);
-}
-
 void test_wm_task_manager_dispatch_invalid_message(void **state)
 {
     const char *message = "{invalid json}";
@@ -546,16 +377,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_with_cache_miss, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_with_cache_hit, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_no_tasks_caches_empty, teardown_json),
-        // wm_task_manager_update_task_status tests
-        cmocka_unit_test(test_wm_task_manager_update_task_status_pending_invalidates_cache),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_failed_no_cache_invalidate),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_pending_no_agent_id),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_db_error),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_wdb_semantic_failure),
         // wm_task_manager_dispatch tests
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_create_task, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_get_pending, teardown_string),
-        cmocka_unit_test_teardown(test_wm_task_manager_dispatch_update_status, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_invalid_message, teardown_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

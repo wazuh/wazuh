@@ -93,7 +93,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_user_version_get \
 
 list(APPEND wdb_tests_names "test_wdb_task_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_create -Wl,--wrap,wdb_task_get_pending -Wl,--wrap,wdb_task_mark_delivered \
-                             -Wl,--wrap,wdb_task_update_status \
                              -Wl,--wrap,wdb_task_cleanup_expired -Wl,--wrap,wdb_task_delete_old -Wl,--wrap,wdb_open_tasks \
                              ${DEBUG_OP_WRAPPERS}")
 

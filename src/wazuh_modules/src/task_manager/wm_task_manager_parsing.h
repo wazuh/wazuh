@@ -19,7 +19,6 @@
  * Supported actions:
  * - create_task
  * - get_pending_tasks
- * - update_task_status
  *
  * Example create_task:
  * {
@@ -40,16 +39,6 @@
  *     "agent_id": "001"
  * }
  *
- * Example update_task_status:
- * {
- *     "action": "update_task_status",
- *     "task_id": "12345678-1234-5678-1234-567812345678",
- *     "status": "pending",
- *     "agent_id": "001"
- * }
- * ("agent_id" is optional -- only used to invalidate that agent's "no pending tasks" cache
- * entry when "status" is "pending")
- *
  * @param buffer message to be parsed
  * @param params on success command params will be stored here (caller must free)
  * @param error on error, error message will be stored here (caller must free)
@@ -57,7 +46,6 @@
  * @retval OS_INVALID on errors
  * @retval WM_TASK_MANAGER_CREATE for create_task action
  * @retval WM_TASK_MANAGER_GET_PENDING for get_pending_tasks action
- * @retval WM_TASK_MANAGER_UPDATE_STATUS for update_task_status action
  */
 int wm_task_manager_parse_message(const char* buffer, void** params, char** error);
 
@@ -103,17 +91,5 @@ char* wm_task_manager_parse_create_response(const char *task_id);
  * @return response JSON string (caller must free)
  */
 char* wm_task_manager_parse_get_pending_response(cJSON *tasks);
-
-/**
- * Create success response JSON for update_task_status
- *
- * Example:
- * {
- *     "status": "ok"
- * }
- *
- * @return response JSON string (caller must free)
- */
-char* wm_task_manager_parse_update_status_response(void);
 
 #endif

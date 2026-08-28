@@ -45,14 +45,13 @@ global get-agent-info 5
 task create {"task_id":"a1b2c3","agent_id":"5","task_type":"upgrade","payload":"{\"version\":\"5.0.0\"}"}
 task get_pending {"agent_id":"5","max_tasks":50}
 task mark_delivered {"task_id":"a1b2c3","delivery_time":1700000500}
-task update_status {"task_id":"a1b2c3","status":"pending"}
 ```
 
 > **Note on `update-connection-status`:** the `status_code` field (numeric) is required in addition to `id`, `connection_status`, and `sync_status`. Omitting it causes the query to be rejected with `err Invalid JSON data`.
 
 > **Note on `get-agent-info`:** the agent ID argument is a **plain integer**, not a JSON object — the parser (`wdb_parse_global_get_agent_info`) runs `atoi()` directly on the raw token. Passing a JSON object such as `{"agent_id":5}` does **not** produce an error: `atoi()` silently parses it as `0`, so the query resolves to agent `0` instead of failing. Always use the bare-integer syntax shown above.
 
-The `task` subcommands are: `create`, `get_pending`, `mark_delivered`, `update_status`, `cleanup_expired`, `delete_old`, and `sql` (raw SQL against `tasks.db`, analogous to the `sql` subcommand on other databases).
+The `task` subcommands are: `create`, `get_pending`, `mark_delivered`, `cleanup_expired`, `delete_old`, and `sql` (raw SQL against `tasks.db`, analogous to the `sql` subcommand on other databases).
 
 ## Databases
 
@@ -89,19 +88,11 @@ Task status values (see `src/wazuh_db/src/wdb_task.c`):
 
 | Status | Set by | When |
 |--------|--------|------|
-| `pending` | `wdb_task_create()` (`task create`); or `wdb_task_update_status()` (`task update_status`, `status: "pending"`) resetting a `delivered` row | Default status on insert; or a delivery attempt reported back as retryable |
+| `pending` | `wdb_task_create()` (`task create`) | Default status assigned when a task row is inserted |
 | `delivered` | `wdb_task_mark_delivered()` (`task mark_delivered`) | Task has been handed to the agent/consumer; also stamps `DELIVERY_TIME` |
-| `failed` | `wdb_task_update_status()` (`task update_status`, `status: "failed"`) | A `delivered` task whose delivery attempt was reported back as a permanent failure — terminal, distinguishable from a successful delivery |
 | `expired` | `wdb_task_cleanup_expired()` (`task cleanup_expired`) | Task is still `pending` and its `CREATE_TIME` is older than the given TTL cutoff |
 
-There is no `In progress`, `Done`, `Timeout`, or `Cancelled` status. `pending` and `delivered` are no
-longer a one-way street: `task update_status` can move a `delivered` row back to `pending` (retried
-on a future `get_pending` call) or forward to `failed` (terminal). Nothing does this automatically —
-it only happens if a consumer explicitly reports a delivery outcome; a task that's never reported on
-still just stays `delivered`, same as before this action existed. `task delete_old`
-(`wdb_task_delete_old()`) permanently **deletes** rows that are `expired` (past their `CREATE_TIME`
-cutoff) or `delivered`/`failed` (past their `DELIVERY_TIME` cutoff, which `update_status` does not
-clear) — it does not set a status.
+There is no `In progress`, `Done`, `Failed`, `Timeout`, or `Cancelled` status — the task lifecycle only moves `pending` → `delivered` or `pending` → `expired`. Rows are not updated further after that: `task delete_old` (`wdb_task_delete_old()`) permanently **deletes** rows that are `expired` (past their `CREATE_TIME` cutoff) or `delivered` (past their `DELIVERY_TIME` cutoff) — it does not set a status.
 
 ## Key source files
 

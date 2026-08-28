@@ -115,7 +115,6 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_CREATE,
     WDB_STMT_TASK_GET_PENDING,
     WDB_STMT_TASK_MARK_DELIVERED,
-    WDB_STMT_TASK_UPDATE_STATUS,
     WDB_STMT_TASK_CLEANUP_EXPIRED,
     WDB_STMT_TASK_DELETE_OLD,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
@@ -1445,17 +1444,6 @@ int wdb_parse_task_get_pending(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_mark_delivered(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the task update_status request.
- *
- * @param [in] wdb The task struct database.
- * @param parameters JSON with the parameters (task_id, status)
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
  * @brief Function to parse the task cleanup_expired request.
  *
  * @param [in] wdb The task struct database.
@@ -1508,23 +1496,6 @@ int wdb_task_get_pending(wdb_t* wdb, const char *agent_id, int max_tasks, cJSON 
 int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_time);
 
 /**
- * Update a task's status in the tasks DB.
- *
- * Used to recover a task from the 'delivered' state set unconditionally by
- * wdb_task_get_pending() (a side effect of the read, not of a confirmed successful push -- see
- * wm_task_manager_get_pending_tasks()'s doc comment) once the actual outcome of a delivery
- * attempt is known: 'pending' re-offers it on the next get_pending call (retryable failure) and
- * clears DELIVERY_TIME (the earlier attempt's stamp no longer applies -- the task hasn't been
- * delivered again yet); 'failed' leaves it terminal but distinguishable from a successful
- * delivery, and keeps DELIVERY_TIME so it still purges on the same cutoff as a 'delivered' row.
- * @param wdb The task struct database
- * @param task_id Task identifier
- * @param status New status ("pending" or "failed")
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status);
-
-/**
  * Mark expired tasks in the tasks DB.
  * @param wdb The task struct database
  * @param ttl Time-to-live in seconds
@@ -1533,7 +1504,7 @@ int wdb_task_update_status(wdb_t* wdb, const char *task_id, const char *status);
 int wdb_task_cleanup_expired(wdb_t* wdb, int ttl);
 
 /**
- * Delete old expired/delivered/failed tasks from the tasks DB.
+ * Delete old expired/delivered tasks from the tasks DB.
  * @param wdb The task struct database
  * @param timestamp Cutoff timestamp (tasks older than this are deleted)
  * @return OS_SUCCESS on success, OS_INVALID on errors

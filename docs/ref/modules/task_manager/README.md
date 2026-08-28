@@ -20,14 +20,12 @@ Source: [src/wazuh_modules/src/task_manager/](../../../../src/wazuh_modules/src/
 
 The Task Manager owns the lifecycle of *tasks* — small, typed JSON records that instruct an agent to perform an action. It exposes a JSON-based IPC interface over a Unix domain socket and persists tasks in the `tasks.db` SQLite database (managed by Wazuh DB). The Task Manager itself never delivers a task to an agent — it only stores `create_task` calls and hands back pending ones on `get_pending_tasks`, marking them delivered as it does. Delivery is the consumer's job: `remoted`'s own task-polling thread is the current consumer, and it pushes `remote_upgrade` tasks over the agent's existing session.
 
-`get_pending_tasks` marks a task `delivered` purely as a side effect of the read, before the consumer has actually attempted delivery. A consumer that later finds out delivery didn't succeed can report that outcome back with `update_task_status`, moving the task to `pending` (retryable — offered again on a future `get_pending_tasks` call) or `failed` (terminal, distinguishable from a real delivery). Reporting back is opt-in and best-effort: a consumer that never calls it (or a call that itself fails) leaves the task `delivered`, exactly as before this action existed.
-
 Key properties of the current implementation:
 
 - **Task-type based** — a task is not tied to a single module. Four task types are supported today: `active_response`, `remote_upgrade`, `agent_restart`, and `agent_reload`.
 - **Deterministic task IDs** — task IDs are UUID-like strings derived from `SHA-256(source_id : agent_id : task_type : create_time)`, so the same logical task produced on different cluster nodes has the same ID and is not duplicated.
-- **Delivery outcome is opt-in, not tracked automatically** — the Task Manager itself never watches or times out a delivery. It stores tasks, hands them out on `get_pending_tasks` (marking them delivered as it does), and expires never-picked-up ones after their TTL. A consumer may additionally call `update_task_status` to report whether a delivery actually succeeded; if it never does, the task simply stays `delivered`.
-- **In-memory cache** — caches "no pending tasks" state per agent to reduce database queries from high-frequency agent polls without risk of re-delivering tasks. `update_task_status` invalidates this cache for the agent when moving a task back to `pending`, so a reset task isn't hidden behind a stale "no pending tasks" entry.
+- **Fire-and-forget** — the Task Manager does not track task execution results. It stores tasks, delivers them to the agent, marks them as delivered, and expires them after their TTL.
+- **In-memory cache** — caches "no pending tasks" state per agent to reduce database queries from high-frequency agent polls without risk of re-delivering tasks.
 - **Multi-threaded architecture** — uses a dealer thread to accept connections and a pool of 8 worker threads to process requests concurrently, matching the WazuhDB architecture. Worker threads use `wnotify` for event-driven I/O and maintain persistent connections to optimize performance.
 - **Runs on every manager node** — the listener socket and cleanup thread start on both master and worker nodes so any node can create tasks and serve them to the agents connected to it.
 
@@ -50,7 +48,7 @@ Each task carries a free-form JSON `payload` whose contents are defined by the p
 
 The Task Manager listens on the Unix domain socket `queue/sockets/task.sock` (`WM_TASK_MODULE_SOCK`). Messages are JSON documents; the socket uses the Wazuh secure TCP framing (`OS_SendSecureTCP` / `OS_RecvSecureTCP`).
 
-Three actions are accepted:
+Two actions are accepted:
 
 ### `create_task`
 
@@ -116,59 +114,26 @@ Successful response:
 
 Calling `get_pending_tasks` also **marks the returned tasks as delivered** in `tasks.db`. Delivery is recorded only on the node that served the request; the Task Manager does not propagate delivery state across cluster nodes.
 
-### `update_task_status`
-
-Lets a consumer report the outcome of a delivery attempt for a task it previously received from
-`get_pending_tasks` (and which is therefore already `delivered`).
-
-Request:
-
-```json
-{"action": "update_task_status", "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f", "status": "pending", "agent_id": "001"}
-```
-
-- `task_id` — required string.
-- `status` — required, one of `pending` (retryable failure — re-offered on a future `get_pending_tasks` call) or `failed` (terminal — permanent failure, distinguishable from a successful delivery). No other value is accepted; the Task Manager's own terminal states (`expired`, and `delivered` itself) can't be requested through this action.
-- `agent_id` — optional. When present and `status` is `pending`, invalidates that agent's "no pending tasks" cache entry (if any), so the reset task isn't hidden behind a stale cache hit.
-
-Successful response:
-
-```json
-{"status": "ok"}
-```
-
-Error response: same envelope as the other actions (`{"error": "<code>", "message": "<description>"}`); additional codes: `update_failed`.
-
-This is best-effort from the Task Manager's point of view: nothing polls or times out a `delivered`
-task on its own. If the consumer never calls this action — or the call itself fails (Task Manager
-unreachable, `wazuh-db` error) — the task simply stays `delivered`, same as before this action
-existed.
-
 ---
 
 ## Task lifecycle
 
-```mermaid
-stateDiagram-v2
-    [*] --> pending: create_task
-    pending --> delivered: get_pending_tasks (delivery_time recorded, cache updated)
-    pending --> expired: after task_ttl (cleanup thread)
-    delivered --> pending: update_task_status, status pending
-    delivered --> failed: update_task_status, status failed
-    failed --> [*]: after 24h by delivery_time (cleanup thread)
-    delivered --> [*]: after 24h by delivery_time (cleanup thread)
-    expired --> [*]: after 24h by create_time (cleanup thread)
+```
+create_task ─► pending (stored in tasks.db)
+                 │
+                 ▼
+       get_pending_tasks ─► delivered (delivery_time recorded, cache updated)
+                              │
+                              ▼
+        (after task_ttl)   expired (marked by cleanup thread)
+                              │
+                              ▼
+        (after 24 h)        deleted (removed by cleanup thread)
 ```
 
 - The cleanup thread runs every `cleanup_interval` seconds. It sends `task cleanup_expired` and `task delete_old` queries to Wazuh DB and, once a day, `task sql VACUUM;`.
 - A task that never got picked up by an agent transitions `pending → expired → deleted`.
-- A task that was delivered and never has its status updated stays as `delivered` until it is
-  deleted by the cleanup thread — the pre-`update_task_status` behavior, still the default for any
-  consumer that doesn't call it.
-- A consumer that calls `update_task_status` can instead move a `delivered` task back to `pending`
-  (offered again on a future `get_pending_tasks` call — nothing caps how many times this can
-  happen, other than the task's own `task_ttl`/`create_time` cutoff, which is untouched by these
-  transitions) or forward to `failed` (terminal; deleted on the same cutoff as `delivered`).
+- A task that was delivered stays as `delivered` until it is deleted by the cleanup thread.
 
 ---
 
@@ -197,9 +162,8 @@ Tasks are stored in the `tasks.db` database managed by Wazuh DB. The Task Manage
 | `task create`          | Task Manager → wazuh-db | Persist a new task row                                    |
 | `task get_pending`     | Task Manager → wazuh-db | Fetch pending tasks for an agent                          |
 | `task mark_delivered`  | Task Manager → wazuh-db | Record `delivery_time` for a task                         |
-| `task update_status`   | Task Manager → wazuh-db | Move a `delivered` task to `pending` or `failed`          |
 | `task cleanup_expired` | Task Manager → wazuh-db | Mark tasks older than `task_ttl` as expired               |
-| `task delete_old`      | Task Manager → wazuh-db | Remove `expired` tasks past their TTL, and `delivered`/`failed` tasks past their `delivery_time` cutoff |
+| `task delete_old`      | Task Manager → wazuh-db | Remove tasks older than one day from the expiration point |
 | `task sql VACUUM;`     | Task Manager → wazuh-db | Daily database compaction                                 |
 
 See the [Wazuh DB module documentation](../wazuh_db/README.md) for the underlying schema.
@@ -241,7 +205,7 @@ This design allows multiple concurrent connections from remoted's `/control` end
 | ---------------------------- | ---------------------------------------------------------------------------- |
 | `wm_task_manager.c`          | Module entry point, dealer thread, worker pool, and multi-threaded dispatcher |
 | `wm_task_manager_parsing.c`  | JSON request parsing and response building                                   |
-| `wm_task_manager_commands.c` | Wazuh DB IPC, `create_task`/`get_pending_tasks`/`update_task_status` handlers, cleanup thread |
+| `wm_task_manager_commands.c` | Wazuh DB IPC, `create_task` and `get_pending_tasks` handlers, cleanup thread |
 | `wm_task_manager_tasks.c`    | Deterministic task ID generation and in-memory task cache                    |
 
 ---

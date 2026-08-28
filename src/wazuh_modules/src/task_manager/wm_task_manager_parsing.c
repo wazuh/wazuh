@@ -38,14 +38,6 @@ STATIC wm_task_create_params* wm_task_manager_parse_create_params(const cJSON *r
  */
 STATIC wm_task_get_pending_params* wm_task_manager_parse_get_pending_params(const cJSON *request, char **error_message);
 
-/**
- * Parse update_task_status action parameters
- * @param request parsed JSON request
- * @param error_message message in case of error
- * @return update status params if success, NULL otherwise
- */
-STATIC wm_task_update_status_params* wm_task_manager_parse_update_status_params(const cJSON *request, char **error_message);
-
 int wm_task_manager_parse_message(const char* buffer, void** params, char** error) {
     cJSON *root = NULL;
     int retval = OS_INVALID;
@@ -69,11 +61,6 @@ int wm_task_manager_parse_message(const char* buffer, void** params, char** erro
             *params = (wm_task_get_pending_params *)wm_task_manager_parse_get_pending_params(root, &error_message);
             if (!error_message) {
                 retval = WM_TASK_MANAGER_GET_PENDING;
-            }
-        } else if (strcmp(action->valuestring, "update_task_status") == 0) {
-            *params = (wm_task_update_status_params *)wm_task_manager_parse_update_status_params(root, &error_message);
-            if (!error_message) {
-                retval = WM_TASK_MANAGER_UPDATE_STATUS;
             }
         } else {
             mterror(WM_TASK_MANAGER_LOGTAG, "Unknown action: %s", action->valuestring);
@@ -188,41 +175,6 @@ STATIC wm_task_get_pending_params* wm_task_manager_parse_get_pending_params(cons
     return params;
 }
 
-STATIC wm_task_update_status_params* wm_task_manager_parse_update_status_params(const cJSON *request, char **error_message) {
-    wm_task_update_status_params *params = NULL;
-
-    cJSON *task_id_obj = cJSON_GetObjectItem(request, "task_id");
-    if (!task_id_obj || !cJSON_IsString(task_id_obj)) {
-        *error_message = strdup("Missing or invalid 'task_id'");
-        return NULL;
-    }
-
-    cJSON *status_obj = cJSON_GetObjectItem(request, "status");
-    if (!status_obj || !cJSON_IsString(status_obj)) {
-        *error_message = strdup("Missing or invalid 'status'");
-        return NULL;
-    }
-
-    const char *status_str = status_obj->valuestring;
-    if (strcmp(status_str, "pending") != 0 && strcmp(status_str, "failed") != 0) {
-        *error_message = strdup("Invalid 'status', expected 'pending' or 'failed'");
-        return NULL;
-    }
-
-    os_calloc(1, sizeof(wm_task_update_status_params), params);
-    params->task_id = strdup(task_id_obj->valuestring);
-    params->status = strdup(status_str);
-
-    cJSON *agent_id_obj = cJSON_GetObjectItem(request, "agent_id");
-    if (agent_id_obj && cJSON_IsString(agent_id_obj)) {
-        params->agent_id = strdup(agent_id_obj->valuestring);
-    } else {
-        params->agent_id = NULL;
-    }
-
-    return params;
-}
-
 char* wm_task_manager_parse_error_response(const char *error, const char *message) {
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddStringToObject(resp, "error", error);
@@ -273,17 +225,3 @@ char* wm_task_manager_parse_get_pending_response(cJSON *tasks) {
     return response;
 }
 
-char* wm_task_manager_parse_update_status_response(void) {
-    cJSON *resp = cJSON_CreateObject();
-    cJSON_AddStringToObject(resp, "status", "ok");
-
-    char *response = cJSON_PrintUnformatted(resp);
-    cJSON_Delete(resp);
-
-    if (!response) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to serialize update_status response");
-        return strdup("{\"error\":\"serialization_failed\"}");
-    }
-
-    return response;
-}

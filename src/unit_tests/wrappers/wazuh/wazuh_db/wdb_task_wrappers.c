@@ -47,15 +47,6 @@ int __wrap_wdb_task_mark_delivered(__attribute__((unused)) wdb_t* wdb,
     return mock();
 }
 
-int __wrap_wdb_task_update_status(__attribute__((unused)) wdb_t* wdb,
-                                  const char *task_id,
-                                  const char *status) {
-    check_expected(task_id);
-    check_expected(status);
-
-    return mock();
-}
-
 int __wrap_wdb_task_cleanup_expired(__attribute__((unused)) wdb_t* wdb,
                                     int ttl) {
     check_expected(ttl);

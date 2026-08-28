@@ -25,33 +25,36 @@
  * type -- so the version check must run strictly before calling it for a given agent, or a
  * >= v5.0.0 agent's tasks would be permanently stranded.
  *
- * A push is retried up to LEGACY_TASK_MAX_PUSH_ATTEMPTS times, all in-memory within this same call
- * to legacy_upgrade_poll_cycle(), for the wire-level failure classes a retry can plausibly fix (see
- * legacy_task_push_result_t). Two classes are never retried at all: anything strictly local to the
- * manager or the task payload itself (a malformed task, a missing local WPK file, an installer that
- * already ran and reported failure) since repeating the identical push changes nothing; and losing
- * the ack on the 'upgrade' step specifically, since we can't tell whether the agent already started
- * running the installer before the ack was lost -- retrying there risks a double install, which is
- * worse than losing the task. Each retryable attempt logs at `debug1`, except the last one (no more
- * attempts left), which logs at `warning` -- so a task that recovers within its attempt budget
- * never produces log noise above debug, and only a task that's about to be given up on raises its
- * voice.
+ * A push is retried up to LEGACY_TASK_MAX_PUSH_ATTEMPTS times, in-memory, for the wire-level
+ * rejection classes a retry can plausibly fix (see legacy_task_push_result_t). Two classes are
+ * never retried at all: anything strictly local to the manager or the task payload itself (a
+ * malformed task, a missing local WPK file, an installer that already ran and reported failure)
+ * since repeating the identical push changes nothing; and losing the ack on the 'upgrade' step
+ * specifically, since we can't tell whether the agent already started running the installer
+ * before the ack was lost -- retrying there risks a double install, which is worse than losing the
+ * task. Each retryable attempt logs at `debug1`, except the last one (no more attempts left),
+ * which logs at `warning` -- so a task that recovers within its attempt budget never produces log
+ * noise above debug, and only a task that's about to be given up on raises its voice.
+ *
+ * A *rejection* (the agent answered, just not with success) and a true *no-response* (nothing came
+ * back at all within response_timeout) are handled very differently, because they cost very
+ * differently: a rejection is cheap to retry (the agent replied in milliseconds), so this poller
+ * spends its whole in-cycle attempt budget on those. A no-response costs a full response_timeout
+ * per attempt -- burning all LEGACY_TASK_MAX_PUSH_ATTEMPTS on that would block this whole poll
+ * cycle's sweep of every other agent for minutes. So the very first no-response for a task cuts
+ * the in-cycle loop short (see legacy_task_attempt_delivery()) and hands the task to
+ * legacy_task_retry_list -- a small in-memory list this poller checks at the start of every future
+ * cycle, giving the task another shot without blocking the rest of the sweep.
  *
  * Because get_pending_tasks marks a task 'delivered' purely as a side effect of reading it (see
  * above), a push that then fails would otherwise be silently lost forever: nothing else ever
- * offers that task again. legacy_task_report_push_result() closes that gap by reporting the final
- * outcome back to the Task Manager once every in-cycle attempt is exhausted (or immediately on a
- * permanent failure): either way the task is moved to a terminal 'failed' state, distinguishable
- * from a successful delivery. There is deliberately no 'pending' outcome here -- 'delivered' only
- * ever meant "handed to this poller", never "handed to the agent", so once this poller has a task
- * it owns retrying it to exhaustion itself; it never hands it back to the Task Manager to be
- * re-offered on some future poll cycle. This report-back is itself best-effort over the same
- * `queue/sockets/task.sock` socket -- if it fails too (Task Manager unreachable, response lost),
- * the task simply stays 'delivered' with no further retry, which is no worse than the behavior
- * before this existed. One case stays genuinely unrecoverable regardless: if the *original*
- * get_pending_tasks response itself is lost after the Task Manager already marked the task
- * delivered server-side, this poller never even learns the task_id and has nothing to report
- * back with.
+ * offers that task again. legacy_task_retry_list is what keeps a no-response failure from being
+ * lost this way -- everything else (a rejection that exhausted its in-cycle attempts, or a
+ * permanent failure) is simply logged and dropped: this poller does not report a task's outcome
+ * back to the Task Manager in any way, so `tasks.db` has no way to distinguish a task that
+ * ultimately failed from one that succeeded -- both stay 'delivered'. This is a deliberate
+ * trade-off: simplicity over that distinction, with the manager's own logs as the only
+ * observability into a genuine failure.
  *
  * The synchronous per-step ack reuses remoted's own request/response machinery (req_create() /
  * the req_table hash / the per-node condition variable in request.c) directly, through the
@@ -101,16 +104,24 @@
  * agent metadata. */
 #define LEGACY_TASK_STARTUP_DELAY_SEC 65
 
-/* Fixed cap on push attempts per task, per poll cycle -- deliberately not configurable. A bounded
- * retry here only smooths over a transient wire hiccup within the few seconds a push takes; if it
- * hasn't recovered by the Nth attempt, retrying more won't help. Keep this a plain counted loop --
- * never a wait-until-condition loop -- so it can never become unbounded.
+/* Fixed cap on in-cycle push attempts per task -- deliberately not configurable. A bounded retry
+ * here only smooths over a transient wire hiccup within the few seconds a push takes; if it hasn't
+ * recovered by the Nth attempt, retrying more won't help. Keep this a plain counted loop -- never a
+ * wait-until-condition loop -- so it can never become unbounded.
  *
- * All retrying happens in-memory, within this single call to legacy_upgrade_poll_cycle() -- a
- * retryable failure is never reported back to the Task Manager as 'pending' to be picked up again
- * on a future poll cycle (see legacy_task_report_push_result()'s doc comment). Only once every
- * attempt here has been exhausted does the task get reported 'failed'. */
+ * Only applies to *rejections* (the agent answered, just not with success) -- the very first true
+ * no-response cuts this loop short instead of spending it, see legacy_task_attempt_delivery(). A
+ * rejection that exhausts every attempt here is simply logged and dropped, never added to
+ * legacy_task_retry_list: it already got its full budget of chances this cycle. */
 #define LEGACY_TASK_MAX_PUSH_ATTEMPTS 5
+
+/* Bounds for legacy_task_retry_list, the small in-memory list of tasks whose push got no response
+ * at all and is deferred to a future poll cycle instead of blocking this one (see the file header
+ * comment). Both deliberately mirror wm_task_manager.h's WM_TASK_DEFAULT_MAX_TASKS_PER_POLL /
+ * WM_TASK_DEFAULT_TTL defaults rather than including that header: this poller only ever consumes a
+ * task's payload, it never touches the Task Manager's own config. */
+#define LEGACY_TASK_RETRY_LIST_MAX_SIZE 100
+#define LEGACY_TASK_RETRY_MAX_AGE_SEC 3600
 
 /* The agent's own wm_agent_upgrade_com.c rejects the 'open' step with exactly this text
  * (ERROR_UPGRADES_NOT_ALLOWED) when its agent_upgrade module hasn't finished starting up yet --
@@ -152,16 +163,41 @@ typedef enum {
     LEGACY_TASK_PUSH_PERMANENT
 } legacy_task_push_result_t;
 
+/* One task deferred to a future poll cycle because its push got no response at all -- see the
+ * file header comment and LEGACY_TASK_RETRY_LIST_MAX_SIZE/LEGACY_TASK_RETRY_MAX_AGE_SEC. Holds the
+ * raw payload string exactly as returned by get_pending_tasks, so retrying it needs no further
+ * Task Manager round trip -- it's re-parsed with cJSON_Parse() each time it's retried. */
+typedef struct {
+    char *agent_id;
+    char *task_id;
+    char *payload_json;
+    time_t create_time;
+    int attempts;
+} legacy_task_retry_entry_t;
+
+/* Fixed-capacity, compacted (no gaps) array of pointers -- only ever touched by this module's own
+ * poller thread, so no lock is needed, same assumption pending_clear_upgrade_replies makes for its
+ * queue. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it; legacy_task_retry_list_count tracks how many of
+ * the leading slots are actually populated. */
+static legacy_task_retry_entry_t *legacy_task_retry_list[LEGACY_TASK_RETRY_LIST_MAX_SIZE];
+static size_t legacy_task_retry_list_count = 0;
+
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) __attribute__((nonnull(1)));
 STATIC char *legacy_task_manager_socket_request(const char *request_str) __attribute__((nonnull));
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
-STATIC void legacy_task_report_push_result(const char *agent_id, const char *task_id, const char *status) __attribute__((nonnull));
-STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt) __attribute__((nonnull(1, 2)));
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
-STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4)));
+STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
 STATIC void legacy_upgrade_poll_cycle(void);
 STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
 STATIC void legacy_task_drain_clear_upgrade_replies(void);
+STATIC void legacy_task_retry_list_free_entry(legacy_task_retry_entry_t *entry);
+STATIC void legacy_task_retry_list_remove_at(size_t index);
+STATIC void legacy_task_retry_list_purge_expired(void);
+STATIC bool legacy_task_retry_list_contains(const char *task_id) __attribute__((nonnull));
+STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t create_time) __attribute__((nonnull));
+STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t agent_count);
 
 void legacy_task_delivery_init(void) {
     pending_clear_upgrade_replies = linked_queue_init();
@@ -180,6 +216,10 @@ void legacy_task_delivery_teardown(void) {
 
         linked_queue_free(pending_clear_upgrade_replies);
         pending_clear_upgrade_replies = NULL;
+    }
+
+    while (legacy_task_retry_list_count > 0) {
+        legacy_task_retry_list_remove_at(0);
     }
 }
 
@@ -234,13 +274,10 @@ STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version
 /**
  * @brief Send a pre-serialized request to the Task Manager socket and return its raw response.
  *
- * Shared connect/send/recv plumbing for every Task Manager socket action this poller uses
- * (legacy_task_get_pending()'s `get_pending_tasks` and legacy_task_report_push_result()'s
- * `update_task_status`) -- the OS_ConnectUnixDomain/OS_SendSecureTCP/OS_RecvSecureTCP/close
- * sequence is identical either way. Deliberately does no JSON parsing and no logging of its own:
- * the two callers send different requests and want different wording/severity when the round
- * trip fails, so both stay with each of them; a connect failure and a timed-out response are
- * folded into the same NULL return here rather than distinguished, since neither caller could act
+ * Connect/send/recv plumbing for legacy_task_get_pending()'s `get_pending_tasks` action.
+ * Deliberately does no JSON parsing and no logging of its own -- the caller wants specific
+ * wording/severity when the round trip fails; a connect failure and a timed-out response are
+ * folded into the same NULL return here rather than distinguished, since the caller couldn't act
  * on that distinction differently anyway.
  *
  * @param request_str Pre-serialized JSON request to send.
@@ -321,58 +358,6 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
 }
 
 /**
- * @brief Report the final outcome of a delivery back to the Task Manager, for a task already
- * marked 'delivered' as a side effect of legacy_task_get_pending() reading it (see the file
- * header comment) -- without this, a push that fails after that read is silently lost forever.
- *
- * Only ever called with "failed" -- whether every in-cycle retry attempt was exhausted or the
- * failure was permanent from the start, this poller owns the task once it has read it and never
- * hands it back to the Task Manager as 'pending' for some future poll cycle to re-offer (see the
- * file header comment). Best-effort: if this call itself fails (Task Manager unreachable, etc.),
- * the task simply stays 'delivered' with no further retry, exactly as before this existed -- no
- * worse than the prior behavior.
- *
- * @param agent_id Agent identifier (unused by this call today -- kept only because
- * legacy_task_manager_socket_request()'s request shape includes it for symmetry with
- * legacy_task_get_pending(), and the Task Manager's update_task_status action accepts it).
- * @param task_id Task identifier.
- * @param status New status to report -- always "failed".
- */
-STATIC void legacy_task_report_push_result(const char *agent_id, const char *task_id, const char *status) {
-    cJSON *request = cJSON_CreateObject();
-    cJSON_AddStringToObject(request, "action", "update_task_status");
-    cJSON_AddStringToObject(request, "task_id", task_id);
-    cJSON_AddStringToObject(request, "status", status);
-    cJSON_AddStringToObject(request, "agent_id", agent_id);
-    char *request_str = cJSON_PrintUnformatted(request);
-    cJSON_Delete(request);
-
-    char *response = legacy_task_manager_socket_request(request_str);
-    os_free(request_str);
-
-    if (!response) {
-        mwarn("legacy_task_delivery: agent '%s': could not reach the Task Manager to report task '%s' as '%s' "
-              "-- the task stays 'delivered' and will not be retried", agent_id, task_id, status);
-        return;
-    }
-
-    cJSON *json_response = cJSON_Parse(response);
-    os_free(response);
-
-    cJSON *response_status = json_response ? cJSON_GetObjectItem(json_response, "status") : NULL;
-
-    if (!json_response || !cJSON_IsString(response_status) || strcmp(response_status->valuestring, "ok") != 0) {
-        mwarn("legacy_task_delivery: agent '%s': Task Manager rejected reporting task '%s' as '%s' "
-              "-- the task stays 'delivered' and will not be retried", agent_id, task_id, status);
-    } else {
-        mdebug1("legacy_task_delivery: agent '%s': task '%s' reported to the Task Manager as '%s'",
-                agent_id, task_id, status);
-    }
-
-    cJSON_Delete(json_response);
-}
-
-/**
  * @brief Send one wire-protocol step to an agent and wait for its synchronous ack.
  *
  * Builds "<target> <rest>" and hands it to req_send_and_wait(), which frames it exactly like
@@ -393,13 +378,18 @@ STATIC void legacy_task_report_push_result(const char *agent_id, const char *tas
  * bound yet, so whatever answers on its behalf doesn't speak the JSON protocol at all. Left
  * untouched (not set to anything, including false) on every other outcome -- callers must
  * initialize *out_malformed themselves before the call.
+ * @param out_no_response If non-NULL, set to true when the agent didn't answer at all within
+ * response_timeout -- a true no-response, distinct from a fast rejection or malformed response:
+ * see legacy_task_attempt_delivery() for why this matters (it cuts the in-cycle retry loop short
+ * instead of spending it). Left untouched on every other outcome -- callers must initialize
+ * *out_no_response themselves before the call.
  * @param is_last_attempt Whether this is the final push attempt for this task this cycle (see
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS) -- controls the severity of any failure logged here: `debug1`
  * for an attempt that still has budget left to recover on its own, `warning` for the one that
  * doesn't.
  * @return true on a successful ack, false on any send/timeout/error response.
  */
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool is_last_attempt) {
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) {
     size_t payload_len = strlen(target) + 1 + strlen(rest);
     char *payload;
     os_malloc(payload_len + 1, payload);
@@ -414,6 +404,9 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
             mwarn("legacy_task_delivery: agent '%s': no response for step targeting '%s'", agent_id, target);
         } else {
             mdebug1("legacy_task_delivery: agent '%s': no response for step targeting '%s'", agent_id, target);
+        }
+        if (out_no_response) {
+            *out_no_response = true;
         }
         os_free(response);
         return false;
@@ -479,16 +472,17 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
  * @param out_data If non-NULL and the step succeeds, set to the agent's "message" field
  * (caller-owned, must be freed with os_free) -- carries the sha1 or the installer exit code.
  * @param out_malformed Forwarded to legacy_task_send_step() -- see its doc comment.
+ * @param out_no_response Forwarded to legacy_task_send_step() -- see its doc comment.
  * @param is_last_attempt Forwarded to legacy_task_send_step() -- see its doc comment.
  * @return true on success.
  */
-STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool is_last_attempt) {
+STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) {
     cJSON *cmd = cJSON_CreateObject();
     cJSON_AddStringToObject(cmd, "command", command_name);
     cJSON_AddItemToObject(cmd, "parameters", params);
     char *cmd_str = cJSON_PrintUnformatted(cmd);
 
-    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, is_last_attempt);
+    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, out_no_response, is_last_attempt);
 
     os_free(cmd_str);
     cJSON_Delete(cmd);
@@ -508,10 +502,15 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
  * @param is_last_attempt Whether this is the final push attempt for this task this cycle -- see
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS's doc comment. Only affects the severity of retryable-failure
  * logging; permanent failures always log at `error` regardless, since they're never retried.
+ * @param out_no_response Set to true if any of the five *retryable* steps (lock_restart, open,
+ * write, close, sha1) got no response at all -- never set for the 'upgrade' step, whose lost ack
+ * is always PERMANENT (see that step's own comment) and must never be redirected to
+ * legacy_task_retry_list. Left untouched (not set to anything, including false) on every other
+ * outcome -- callers must initialize *out_no_response themselves before the call.
  * @return LEGACY_TASK_PUSH_SUCCESS if all six steps succeeded and the reported sha1 matched,
  * otherwise LEGACY_TASK_PUSH_RETRYABLE or LEGACY_TASK_PUSH_PERMANENT depending on the failure.
  */
-STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt) {
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) {
     cJSON *wpk_file_obj = cJSON_GetObjectItem(payload_obj, "wpk_file");
     cJSON *wpk_sha1_obj = cJSON_GetObjectItem(payload_obj, "wpk_sha1");
     cJSON *installer_obj = cJSON_GetObjectItem(payload_obj, "installer");
@@ -537,10 +536,11 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s'", agent_id);
 
     // Step 1: lock_restart (execd, plain-text protocol)
-    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, is_last_attempt)) {
+    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt)) {
         // debug1 while attempts remain, warning on the last one -- retryable, and either a later
-        // attempt in this same cycle recovers or this poller gives up and reports it 'failed' (see
-        // legacy_task_report_push_result()). Nothing is actually lost yet either way.
+        // in-cycle attempt recovers, a no-response defers it to legacy_task_retry_list for a future
+        // cycle, or every in-cycle attempt is spent and this poller simply logs and drops it (see
+        // the file header comment). Nothing is actually lost yet either way.
         if (is_last_attempt) {
             mwarn("legacy_task_delivery: agent '%s': 'lock_restart' step failed, aborting push", agent_id);
         } else {
@@ -558,7 +558,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 
         char *reject_message = NULL;
         bool malformed = false;
-        bool ok = legacy_task_send_upgrade_step(agent_id, "open", params, &reject_message, &malformed, is_last_attempt);
+        bool ok = legacy_task_send_upgrade_step(agent_id, "open", params, &reject_message, &malformed, out_no_response, is_last_attempt);
 
         if (!ok) {
             // debug1/warning ladder -- see the lock_restart step's comment.
@@ -621,7 +621,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
             cJSON_AddStringToObject(params, "file", wpk_basename);
             os_free(base64);
 
-            write_ok = legacy_task_send_upgrade_step(agent_id, "write", params, NULL, NULL, is_last_attempt);
+            write_ok = legacy_task_send_upgrade_step(agent_id, "write", params, NULL, NULL, out_no_response, is_last_attempt);
 
             if (!write_ok) {
                 break;
@@ -649,7 +649,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "file", wpk_basename);
 
-        if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL, NULL, is_last_attempt)) {
+        if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL, NULL, out_no_response, is_last_attempt)) {
             // debug1/warning ladder -- see the lock_restart step's comment.
             if (is_last_attempt) {
                 mwarn("legacy_task_delivery: agent '%s': 'close' step failed, aborting push", agent_id);
@@ -667,7 +667,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         cJSON_AddStringToObject(params, "file", wpk_basename);
 
         char *reported_sha1 = NULL;
-        bool ok = legacy_task_send_upgrade_step(agent_id, "sha1", params, &reported_sha1, NULL, is_last_attempt);
+        bool ok = legacy_task_send_upgrade_step(agent_id, "sha1", params, &reported_sha1, NULL, out_no_response, is_last_attempt);
 
         if (!ok) {
             // debug1/warning ladder -- see the lock_restart step's comment.
@@ -705,7 +705,10 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         cJSON_AddStringToObject(params, "installer", installer);
 
         char *exit_status = NULL;
-        bool ok = legacy_task_send_upgrade_step(agent_id, "upgrade", params, &exit_status, NULL, is_last_attempt);
+        // out_no_response deliberately not forwarded here (passed NULL instead): this step is
+        // always PERMANENT on failure, ack lost or not, and must never be redirected to
+        // legacy_task_retry_list -- see this function's own doc comment.
+        bool ok = legacy_task_send_upgrade_step(agent_id, "upgrade", params, &exit_status, NULL, NULL, is_last_attempt);
 
         if (!ok) {
             // Always ERROR, regardless of is_last_attempt: this is classified PERMANENT below and
@@ -735,6 +738,54 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 }
 
 /**
+ * @brief Attempt one task's delivery, spending up to LEGACY_TASK_MAX_PUSH_ATTEMPTS in-memory
+ * retries on *rejections*, but breaking out the first time an attempt gets no response at all.
+ *
+ * A rejection is cheap to retry (the agent answered in milliseconds); a no-response costs a full
+ * response_timeout per attempt, so spending the whole attempt budget on it would block this poll
+ * cycle's sweep of every other agent for minutes (see the file header comment). The caller is
+ * expected to add the task to legacy_task_retry_list when this returns with *out_no_response set,
+ * instead of treating it the same as an exhausted-rejection RETRYABLE result.
+ *
+ * @param agent_id Target agent identifier.
+ * @param task_id Task identifier (only used for the "giving up" log line).
+ * @param payload_json Parsed task payload, forwarded to legacy_task_deliver_remote_upgrade().
+ * @param out_no_response Set to true if the loop broke early due to a true no-response failure;
+ * set to false otherwise. Always set (unlike the lower-level functions' out params).
+ * @return The push result from the last attempt made.
+ */
+STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) {
+    legacy_task_push_result_t push_result = LEGACY_TASK_PUSH_RETRYABLE;
+    int attempt;
+
+    *out_no_response = false;
+
+    for (attempt = 1;
+         attempt <= LEGACY_TASK_MAX_PUSH_ATTEMPTS && push_result == LEGACY_TASK_PUSH_RETRYABLE;
+         attempt++) {
+        bool is_last_attempt = (attempt == LEGACY_TASK_MAX_PUSH_ATTEMPTS);
+        bool no_response = false;
+
+        push_result = legacy_task_deliver_remote_upgrade(agent_id, payload_json, is_last_attempt, &no_response);
+
+        if (no_response) {
+            *out_no_response = true;
+            break;
+        }
+    }
+
+    if (push_result == LEGACY_TASK_PUSH_RETRYABLE && !*out_no_response) {
+        // Every in-cycle attempt this poller is willing to spend on this task is now spent on
+        // rejections -- this poller does not report a task's outcome anywhere (see the file
+        // header comment), so this is simply the final word on it in the log.
+        mwarn("legacy_task_delivery: agent '%s': task '%s' did not succeed after %d attempt(s) of "
+              "rejections, giving up", agent_id, task_id, LEGACY_TASK_MAX_PUSH_ATTEMPTS);
+    }
+
+    return push_result;
+}
+
+/**
  * @brief Send `clear_upgrade_result` to an agent over the existing upgrade command channel.
  *
  * This is what stops the agent's ack retry loop
@@ -748,9 +799,188 @@ STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) {
 
     // Not part of the push-attempt retry loop -- always pass true so a failure here keeps logging
     // at its usual severity regardless of any in-progress task delivery.
-    if (!legacy_task_send_upgrade_step(agent_id, "clear_upgrade_result", params, NULL, NULL, true)) {
+    if (!legacy_task_send_upgrade_step(agent_id, "clear_upgrade_result", params, NULL, NULL, NULL, true)) {
         mwarn("legacy_task_delivery: agent '%s': failed to deliver 'clear_upgrade_result', "
               "the agent may keep resending its upgrade acknowledgment", agent_id);
+    }
+}
+
+/**
+ * @brief Free one legacy_task_retry_list entry (its owned strings and the struct itself).
+ */
+STATIC void legacy_task_retry_list_free_entry(legacy_task_retry_entry_t *entry) {
+    if (entry) {
+        os_free(entry->agent_id);
+        os_free(entry->task_id);
+        os_free(entry->payload_json);
+        os_free(entry);
+    }
+}
+
+/**
+ * @brief Remove the entry at the given index from legacy_task_retry_list, freeing it and shifting
+ * every later entry down by one slot to keep the array gap-free.
+ *
+ * @param index Index to remove; must be < legacy_task_retry_list_count.
+ */
+STATIC void legacy_task_retry_list_remove_at(size_t index) {
+    legacy_task_retry_list_free_entry(legacy_task_retry_list[index]);
+
+    for (size_t i = index; i + 1 < legacy_task_retry_list_count; i++) {
+        legacy_task_retry_list[i] = legacy_task_retry_list[i + 1];
+    }
+
+    legacy_task_retry_list_count--;
+    legacy_task_retry_list[legacy_task_retry_list_count] = NULL;
+}
+
+/**
+ * @brief Discard every legacy_task_retry_list entry older than LEGACY_TASK_RETRY_MAX_AGE_SEC.
+ *
+ * Run once at the start of every poll cycle, before retrying anything in the list -- without
+ * this, a task for an agent that never comes back ready would be retried forever.
+ */
+STATIC void legacy_task_retry_list_purge_expired(void) {
+    time_t now = time(0);
+
+    for (size_t i = 0; i < legacy_task_retry_list_count; /* no increment: removal shifts i's slot */) {
+        if (now - legacy_task_retry_list[i]->create_time > LEGACY_TASK_RETRY_MAX_AGE_SEC) {
+            mdebug1("legacy_task_delivery: agent '%s': task '%s' dropped from the retry list, "
+                    "older than %ds", legacy_task_retry_list[i]->agent_id,
+                    legacy_task_retry_list[i]->task_id, LEGACY_TASK_RETRY_MAX_AGE_SEC);
+            legacy_task_retry_list_remove_at(i);
+        } else {
+            i++;
+        }
+    }
+}
+
+/**
+ * @brief Check whether a task_id is already present in legacy_task_retry_list.
+ */
+STATIC bool legacy_task_retry_list_contains(const char *task_id) {
+    for (size_t i = 0; i < legacy_task_retry_list_count; i++) {
+        if (strcmp(legacy_task_retry_list[i]->task_id, task_id) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @brief Add a task to legacy_task_retry_list, to be retried on a future poll cycle.
+ *
+ * No-op (with a debug log) if task_id is already present -- get_pending_tasks can never return
+ * the same task_id twice (it's already 'delivered' after the first read), but a reordering could
+ * still hand this function the same task twice within unusual call patterns, and a silent
+ * duplicate would otherwise retry it twice per cycle. If the list is already at
+ * LEGACY_TASK_RETRY_LIST_MAX_SIZE, the single oldest entry (by create_time) is evicted first to
+ * make room -- an unbounded list is worse than losing the oldest, presumably least likely to still
+ * matter, entry.
+ *
+ * @param agent_id Agent identifier.
+ * @param task_id Task identifier.
+ * @param payload_json Raw payload string exactly as returned by get_pending_tasks (copied).
+ * @param create_time Task's original creation time (from get_pending_tasks's own "create_time"),
+ * not the time it's added to this list -- age is measured from when the Task Manager created the
+ * task, not from when this poller first failed to deliver it.
+ */
+STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t create_time) {
+    if (legacy_task_retry_list_contains(task_id)) {
+        mdebug1("legacy_task_delivery: agent '%s': task '%s' is already in the retry list, not duplicating",
+                agent_id, task_id);
+        return;
+    }
+
+    if (legacy_task_retry_list_count >= LEGACY_TASK_RETRY_LIST_MAX_SIZE) {
+        size_t oldest = 0;
+
+        for (size_t i = 1; i < legacy_task_retry_list_count; i++) {
+            if (legacy_task_retry_list[i]->create_time < legacy_task_retry_list[oldest]->create_time) {
+                oldest = i;
+            }
+        }
+
+        mwarn("legacy_task_delivery: retry list full (%d entries), dropping oldest task '%s' for "
+              "agent '%s' to make room for task '%s' for agent '%s'", LEGACY_TASK_RETRY_LIST_MAX_SIZE,
+              legacy_task_retry_list[oldest]->task_id, legacy_task_retry_list[oldest]->agent_id,
+              task_id, agent_id);
+        legacy_task_retry_list_remove_at(oldest);
+    }
+
+    legacy_task_retry_entry_t *entry;
+    os_calloc(1, sizeof(legacy_task_retry_entry_t), entry);
+    os_strdup(agent_id, entry->agent_id);
+    os_strdup(task_id, entry->task_id);
+    os_strdup(payload_json, entry->payload_json);
+    entry->create_time = create_time;
+    entry->attempts = 1;
+
+    legacy_task_retry_list[legacy_task_retry_list_count++] = entry;
+
+    mdebug1("legacy_task_delivery: agent '%s': task '%s' added to the retry list for a future poll cycle",
+            agent_id, task_id);
+}
+
+/**
+ * @brief Retry every legacy_task_retry_list entry whose agent is currently connected.
+ *
+ * Called once at the start of every poll cycle, before the normal get_pending_tasks sweep --
+ * LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds this to a small, cheap scan. An entry whose agent isn't
+ * connected right now is simply left in the list for a later cycle to try again.
+ *
+ * @param connected_agent_ids Agent IDs from this cycle's connected-agent snapshot.
+ * @param agent_count Number of entries in connected_agent_ids.
+ */
+STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t agent_count) {
+    for (size_t i = 0; i < legacy_task_retry_list_count; /* conditional increment below */) {
+        legacy_task_retry_entry_t *entry = legacy_task_retry_list[i];
+        bool agent_connected = false;
+
+        for (size_t j = 0; j < agent_count; j++) {
+            if (strcmp(connected_agent_ids[j], entry->agent_id) == 0) {
+                agent_connected = true;
+                break;
+            }
+        }
+
+        if (!agent_connected) {
+            i++;
+            continue;
+        }
+
+        cJSON *payload_json = cJSON_Parse(entry->payload_json);
+
+        if (!payload_json) {
+            // Can't happen in practice (this string came from a successful cJSON_Parse the first
+            // time this task was seen), but a corrupted entry here must not be retried forever.
+            merror("legacy_task_delivery: agent '%s': task '%s' has an unparsable payload in the "
+                   "retry list, dropping it", entry->agent_id, entry->task_id);
+            legacy_task_retry_list_remove_at(i);
+            continue;
+        }
+
+        entry->attempts++;
+        mdebug1("legacy_task_delivery: agent '%s': retrying task '%s' from the retry list (attempt %d)",
+                entry->agent_id, entry->task_id, entry->attempts);
+
+        bool no_response = false;
+        legacy_task_push_result_t push_result = legacy_task_attempt_delivery(entry->agent_id, entry->task_id,
+                                                                              payload_json, &no_response);
+        cJSON_Delete(payload_json);
+
+        if (no_response) {
+            // Still no response; leave it in the list (attempts already incremented above) for a
+            // future cycle. Don't advance i: the array didn't shift.
+            i++;
+        } else {
+            // Success, a rejection that exhausted its in-cycle budget, or a permanent failure --
+            // either way this poller is done with it (see the file header comment on why nothing
+            // gets reported anywhere for any of these three outcomes).
+            (void) push_result;
+            legacy_task_retry_list_remove_at(i);
+        }
     }
 }
 
@@ -774,6 +1004,9 @@ STATIC void legacy_upgrade_poll_cycle(void) {
 
     mdebug2("legacy_task_delivery: checking %zu connected agent(s)", agent_count);
 
+    legacy_task_retry_list_purge_expired();
+    legacy_task_retry_list_process(agent_ids, agent_count);
+
     for (size_t i = 0; i < agent_count; i++) {
         const char *agent_id = agent_ids[i];
         char *version = NULL;
@@ -796,29 +1029,26 @@ STATIC void legacy_upgrade_poll_cycle(void) {
             cJSON *task_type_obj = cJSON_GetObjectItem(task, "task_type");
             cJSON *task_id_obj = cJSON_GetObjectItem(task, "task_id");
             cJSON *payload_obj = cJSON_GetObjectItem(task, "payload");
+            cJSON *create_time_obj = cJSON_GetObjectItem(task, "create_time");
 
             const char *task_type = cJSON_IsString(task_type_obj) ? task_type_obj->valuestring : NULL;
             bool has_task_id = cJSON_IsString(task_id_obj);
             const char *task_id = has_task_id ? task_id_obj->valuestring : "unknown";
+            time_t create_time = cJSON_IsNumber(create_time_obj) ? (time_t) create_time_obj->valuedouble : time(0);
 
             if (!task_type || strcmp(task_type, LEGACY_TASK_TYPE_REMOTE_UPGRADE) != 0) {
                 minfo("legacy_task_delivery: task type '%s' not supported for legacy agents, not delivered "
                       "(task '%s', agent '%s')", task_type ? task_type : "unknown", task_id, agent_id);
-                // Permanent for this agent: a pre-v5.0.0 agent has no legacy delivery path at all
-                // for any task type other than remote_upgrade (see the file header comment) --
-                // retrying on a future poll cycle would hit the exact same rejection.
-                if (has_task_id) {
-                    legacy_task_report_push_result(agent_id, task_id, "failed");
-                }
+                // Never reintroduced later: a pre-v5.0.0 agent has no legacy delivery path at all
+                // for any task type other than remote_upgrade (see the file header comment), so
+                // retrying would hit the exact same rejection. Just logged, not added to
+                // legacy_task_retry_list.
                 continue;
             }
 
             if (!cJSON_IsString(payload_obj)) {
                 merror("legacy_task_delivery: task '%s' for agent '%s' has an invalid payload, not delivered", task_id, agent_id);
-                // Permanent: the payload shape is wrong regardless of how many times it's read.
-                if (has_task_id) {
-                    legacy_task_report_push_result(agent_id, task_id, "failed");
-                }
+                // The payload shape is wrong regardless of how many times it's read -- logged, not retried.
                 continue;
             }
 
@@ -826,36 +1056,20 @@ STATIC void legacy_upgrade_poll_cycle(void) {
 
             if (!payload_json) {
                 merror("legacy_task_delivery: task '%s' for agent '%s' has an unparsable payload, not delivered", task_id, agent_id);
-                // Permanent: same malformed payload string every time.
-                if (has_task_id) {
-                    legacy_task_report_push_result(agent_id, task_id, "failed");
-                }
+                // Same malformed payload string every time -- logged, not retried.
                 continue;
             }
 
-            legacy_task_push_result_t push_result = LEGACY_TASK_PUSH_RETRYABLE;
-            for (int attempt = 1;
-                 attempt <= LEGACY_TASK_MAX_PUSH_ATTEMPTS && push_result == LEGACY_TASK_PUSH_RETRYABLE;
-                 attempt++) {
-                bool is_last_attempt = (attempt == LEGACY_TASK_MAX_PUSH_ATTEMPTS);
-                push_result = legacy_task_deliver_remote_upgrade(agent_id, payload_json, is_last_attempt);
-            }
+            bool no_response = false;
+            legacy_task_attempt_delivery(agent_id, task_id, payload_json, &no_response);
 
-            if (push_result == LEGACY_TASK_PUSH_RETRYABLE) {
-                // Every attempt this poller is willing to spend on this task this cycle is now
-                // spent -- this poller owns the task once it reads it (see the file header
-                // comment) and never hands it back to the Task Manager as 'pending' for a future
-                // cycle to re-offer, so this is the final word on it: failed.
-                mwarn("legacy_task_delivery: agent '%s': task '%s' did not succeed after %d attempt(s), "
-                      "giving up and reporting it as failed",
-                      agent_id, task_id, LEGACY_TASK_MAX_PUSH_ATTEMPTS);
-
-                if (has_task_id) {
-                    legacy_task_report_push_result(agent_id, task_id, "failed");
-                }
-            } else if (push_result == LEGACY_TASK_PUSH_PERMANENT && has_task_id) {
-                legacy_task_report_push_result(agent_id, task_id, "failed");
+            if (no_response && has_task_id) {
+                legacy_task_retry_list_add(agent_id, task_id, payload_obj->valuestring, create_time);
             }
+            // Success, a rejection that exhausted its in-cycle attempt budget (already logged
+            // inside legacy_task_attempt_delivery), or a permanent failure (already logged inside
+            // legacy_task_deliver_remote_upgrade): nothing further to do for any of those -- see
+            // the file header comment on why this poller doesn't report a task's outcome anywhere.
 
             cJSON_Delete(payload_json);
         }
