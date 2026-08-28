@@ -838,6 +838,274 @@ void test_wdb_manager_task_get_by_agent_not_found(void **state) {
     assert_null(task);
 }
 
+/* wdb_manager_task_retention */
+
+void test_wdb_manager_task_retention_by_age_only(void **state) {
+    wdb_t *wdb = *state;
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.terminal_before = 7000;
+    retention.dead_letter_before = 3000;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int64_call(1, 7000, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 4);
+
+    // dead_letter is aged out on its own, longer window rather than with the others.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int64_call(1, 3000, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
+
+    // No schedule cap and no ceiling were asked for, so neither runs: any statement expectation
+    // beyond those above would go unconsumed and fail this test.
+    assert_int_equal(wdb_manager_task_retention(wdb, &retention, &stats), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_age")->valueint, 5);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_schedule")->valueint, 0);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_ceiling")->valueint, 0);
+
+    cJSON_Delete(stats);
+}
+
+void test_wdb_manager_task_retention_trims_each_schedule(void **state) {
+    wdb_t *wdb = *state;
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.history_per_schedule = 20;
+
+    // The schedule ids are collected in full before any deletion: both statements read
+    // MANAGER_TASKS, so deleting while the cursor walks it is not safe.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "agent_disconnect_sweep");
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "log_rotate_daily");
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_disconnect_sweep", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "agent_disconnect_sweep", SQLITE_OK);
+    expect_sqlite3_bind_int_call(3, 20, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 3);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "log_rotate_daily", SQLITE_OK);
+    expect_sqlite3_bind_text_call(2, "log_rotate_daily", SQLITE_OK);
+    expect_sqlite3_bind_int_call(3, 20, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 0);
+
+    assert_int_equal(wdb_manager_task_retention(wdb, &retention, &stats), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_schedule")->valueint, 3);
+
+    cJSON_Delete(stats);
+}
+
+void test_wdb_manager_task_retention_ceiling_evicts_the_excess(void **state) {
+    wdb_t *wdb = *state;
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.max_rows = 100;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 130);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // Exactly the overshoot, no more.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int_call(1, 30, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 30);
+
+    assert_int_equal(wdb_manager_task_retention(wdb, &retention, &stats), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_ceiling")->valueint, 30);
+    assert_int_equal(cJSON_GetObjectItem(stats, "remaining")->valueint, 100);
+
+    cJSON_Delete(stats);
+}
+
+void test_wdb_manager_task_retention_ceiling_reports_what_it_could_not_evict(void **state) {
+    wdb_t *wdb = *state;
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.max_rows = 100;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 130);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int_call(1, 30, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 12);
+
+    // The ceiling can only evict terminal rows, so a table that is mostly pending stays over it.
+    // The caller needs to see that rather than assume the ceiling always holds.
+    assert_int_equal(wdb_manager_task_retention(wdb, &retention, &stats), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_ceiling")->valueint, 12);
+    assert_int_equal(cJSON_GetObjectItem(stats, "remaining")->valueint, 118);
+
+    cJSON_Delete(stats);
+}
+
+void test_wdb_manager_task_retention_ceiling_not_reached(void **state) {
+    wdb_t *wdb = *state;
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.max_rows = 100;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 100);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // Exactly at the ceiling is not over it, so no eviction statement runs at all.
+    assert_int_equal(wdb_manager_task_retention(wdb, &retention, &stats), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(stats, "by_ceiling")->valueint, 0);
+
+    cJSON_Delete(stats);
+}
+
+/* Schedules */
+
+void test_wdb_manager_task_schedule_get_found(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *schedule = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_old", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "agent_delete_old");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 8000);
+    expect_value(__wrap_sqlite3_column_int, iCol, 2);
+    will_return(__wrap_sqlite3_column_int, 0);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_schedule_get(wdb, "agent_delete_old", &schedule), OS_SUCCESS);
+    assert_int_equal(cJSON_GetObjectItem(schedule, "next_run_at")->valueint, 8000);
+    assert_int_equal(cJSON_GetObjectItem(schedule, "enabled")->valueint, 0);
+
+    cJSON_Delete(schedule);
+}
+
+void test_wdb_manager_task_schedule_upsert_inserts_when_new(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *previous = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "log_rotate_daily", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // Insert order: schedule id first.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "log_rotate_daily", SQLITE_OK);
+    expect_sqlite3_bind_int64_call(2, 9000, SQLITE_OK);
+    expect_sqlite3_bind_int_call(3, 1, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    assert_int_equal(wdb_manager_task_schedule_upsert(wdb, "log_rotate_daily", 9000, 1, &previous), OS_SUCCESS);
+
+    // Absent, and the caller needs that: only a schedule that already existed and was disabled
+    // can be undergoing a disabled-to-enabled transition.
+    assert_null(previous);
+}
+
+void test_wdb_manager_task_schedule_upsert_returns_previous_enabled(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *previous = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_old", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "agent_delete_old");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 100);
+    expect_value(__wrap_sqlite3_column_int, iCol, 2);
+    will_return(__wrap_sqlite3_column_int, 0);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    // Update order: schedule id last.
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int64_call(1, 9000, SQLITE_OK);
+    expect_sqlite3_bind_int_call(2, 1, SQLITE_OK);
+    expect_sqlite3_bind_text_call(3, "agent_delete_old", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    assert_int_equal(wdb_manager_task_schedule_upsert(wdb, "agent_delete_old", 9000, 1, &previous), OS_SUCCESS);
+
+    // Previously disabled, now enabled: the transition the dispatcher acts on, and it survives a
+    // restart only because ENABLED is stored rather than read from configuration each time.
+    assert_non_null(previous);
+    assert_int_equal(cJSON_GetObjectItem(previous, "enabled")->valueint, 0);
+
+    cJSON_Delete(previous);
+}
+
+void test_wdb_manager_task_schedule_list_due(void **state) {
+    wdb_t *wdb = *state;
+    cJSON *schedules = NULL;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_int64_call(1, 9000, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "agent_disconnect_sweep");
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 8900);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_schedule_list_due(wdb, 9000, &schedules), OS_SUCCESS);
+    assert_int_equal(cJSON_GetArraySize(schedules), 1);
+
+    cJSON_Delete(schedules);
+}
+
+void test_wdb_manager_task_schedule_has_active(void **state) {
+    wdb_t *wdb = *state;
+    bool active = false;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_old", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_schedule_has_active(wdb, "agent_delete_old", &active), OS_SUCCESS);
+    assert_true(active);
+}
+
+void test_wdb_manager_task_schedule_has_no_active(void **state) {
+    wdb_t *wdb = *state;
+    bool active = true;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_bind_text_call(1, "agent_delete_old", SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+
+    assert_int_equal(wdb_manager_task_schedule_has_active(wdb, "agent_delete_old", &active), OS_SUCCESS);
+    assert_false(active);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -889,6 +1157,19 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_fail_type, test_setup, test_teardown),
         // wdb_manager_task_get_by_agent
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_get_by_agent_not_found, test_setup, test_teardown),
+        // wdb_manager_task_retention
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_retention_by_age_only, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_retention_trims_each_schedule, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_retention_ceiling_evicts_the_excess, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_retention_ceiling_reports_what_it_could_not_evict, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_retention_ceiling_not_reached, test_setup, test_teardown),
+        // Schedules
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_get_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_upsert_inserts_when_new, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_upsert_returns_previous_enabled, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_list_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_has_active, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_manager_task_schedule_has_no_active, test_setup, test_teardown),
         // Argument validation
         cmocka_unit_test_setup_teardown(test_wdb_manager_task_rejects_missing_arguments, test_setup, test_teardown),
     };

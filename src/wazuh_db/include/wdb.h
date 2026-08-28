@@ -138,6 +138,18 @@ typedef enum wdb_stmt {
     WDB_STMT_MANAGER_TASK_COUNT_BY_TYPE_STATUS,
     WDB_STMT_MANAGER_TASK_PENDING_TYPES,
     WDB_STMT_MANAGER_TASK_FAIL_BY_TYPE,
+    WDB_STMT_MANAGER_TASK_DELETE_TERMINAL_OLD,
+    WDB_STMT_MANAGER_TASK_DELETE_DEAD_LETTER_OLD,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_IDS,
+    WDB_STMT_MANAGER_TASK_TRIM_SCHEDULE_HISTORY,
+    WDB_STMT_MANAGER_TASK_COUNT_ALL,
+    WDB_STMT_MANAGER_TASK_EVICT,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_GET,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_INSERT,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_UPDATE,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_SET_NEXT_RUN,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_LIST_DUE,
+    WDB_STMT_MANAGER_TASK_SCHEDULE_HAS_ACTIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
@@ -1678,6 +1690,93 @@ int wdb_manager_task_pending_types(wdb_t *wdb, cJSON **types);
 int wdb_manager_task_fail_type(wdb_t *wdb, const char *task_type, const char *last_error);
 
 /**
+ * @brief The three retention rules, applied in the order the fields are declared.
+ *
+ * Every bound is optional: a zero disables that rule.
+ */
+typedef struct wdb_manager_task_retention_t {
+    long long terminal_before;    ///< Drop completed, failed and superseded rows that ended before this.
+    long long dead_letter_before; ///< Drop dead_letter rows that ended before this, on its own window.
+    int history_per_schedule;     ///< Keep at most this many finished runs per schedule.
+    int max_rows;                 ///< Hard ceiling on the table, evicting terminal rows by status order.
+} wdb_manager_task_retention_t;
+
+/**
+ * @brief Apply the retention rules to MANAGER_TASKS.
+ *
+ * Only terminal rows are ever removed. A pending manager task is never expired by age, which is
+ * the opposite of what cleanup_expired does to TASKS and is deliberate: aging out pending rows
+ * would destroy exactly the long-outage work this queue exists to survive.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] retention Bounds to apply.
+ * @param[out] stats Counts removed by each rule, plus the rows remaining. Caller frees. May be NULL.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_retention(wdb_t *wdb, const wdb_manager_task_retention_t *retention, cJSON **stats);
+
+/**
+ * @brief Fetch one schedule's persisted state.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] schedule_id Schedule to fetch.
+ * @param[out] schedule {schedule_id, next_run_at, enabled}, or NULL when absent. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_schedule_get(wdb_t *wdb, const char *schedule_id, cJSON **schedule);
+
+/**
+ * @brief Insert or update one schedule's persisted state, reporting what was there before.
+ *
+ * The previous row is returned rather than acted on: whether a disabled-to-enabled transition
+ * should reset the next run is a policy the dispatcher owns. All wazuh-db has to do is make that
+ * transition observable across a restart, which is why ENABLED is stored and not merely read
+ * from configuration each time.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] schedule_id Schedule to write.
+ * @param[in] next_run_at Next run timestamp to store.
+ * @param[in] enabled Whether the schedule spawns instances.
+ * @param[out] previous The row as it was, or NULL when the schedule is new. Caller frees. May be NULL.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_schedule_upsert(wdb_t *wdb,
+                                     const char *schedule_id,
+                                     long long next_run_at,
+                                     int enabled,
+                                     cJSON **previous);
+
+/**
+ * @brief Advance one schedule's next run.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] schedule_id Schedule to advance.
+ * @param[in] next_run_at New timestamp.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_schedule_set_next_run(wdb_t *wdb, const char *schedule_id, long long next_run_at);
+
+/**
+ * @brief List the enabled schedules whose next run is due.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] now Current time.
+ * @param[out] schedules Array of {schedule_id, next_run_at}. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_schedule_list_due(wdb_t *wdb, long long now, cJSON **schedules);
+
+/**
+ * @brief Whether a schedule still has a non-terminal instance.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] schedule_id Schedule to check.
+ * @param[out] active Set to true when a pending or claimed instance exists.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_schedule_has_active(wdb_t *wdb, const char *schedule_id, bool *active);
+
+/**
  * @brief Render a MANAGER_TASKS row as JSON, omitting NULL columns.
  *
  * @param[in] stmt Statement positioned on a row selecting the full column list.
@@ -1720,6 +1819,12 @@ int wdb_parse_manager_task_list(wdb_t *wdb, const cJSON *parameters, char *outpu
 int wdb_parse_manager_task_count(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_pending_types(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_fail_type(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_retention(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_schedule_upsert(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_schedule_get(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_schedule_set_next_run(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_schedule_list_due(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_schedule_has_active(wdb_t *wdb, const cJSON *parameters, char *output);
 
 int wdb_parse_task_create(wdb_t* wdb, const cJSON *parameters, char* output);
 

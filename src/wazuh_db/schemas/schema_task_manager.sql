@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS MANAGER_TASKS (
     NEXT_ATTEMPT_AT INTEGER NOT NULL,
     SCHEDULE_ID TEXT,
     SCHEDULED_RUN_AT INTEGER,
+    /* When the row reached a terminal state. Retention is measured from here rather than from
+       CREATE_TIME, or a task created eight days ago and completed a minute ago would be evicted
+       immediately by a seven-day window. TASKS solves the same problem with DELIVERY_TIME. */
+    END_TIME INTEGER,
     CHECK (STATUS IN ('pending', 'claimed', 'completed', 'failed', 'dead_letter', 'superseded'))
 );
 

@@ -546,8 +546,9 @@ cJSON* wdb_manager_task_row_to_json(sqlite3_stmt *stmt) {
         [9] = "defer_count",
         [11] = "next_attempt_at",
         [13] = "scheduled_run_at",
+        [14] = "end_time",
     };
-    const int COLUMN_COUNT = 14;
+    const int COLUMN_COUNT = 15;
     cJSON *task = cJSON_CreateObject();
 
     for (int column = 0; column < COLUMN_COUNT; column++) {
@@ -865,6 +866,349 @@ int wdb_manager_task_fail_type(wdb_t *wdb, const char *task_type, const char *la
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
+    return OS_SUCCESS;
+}
+
+/**
+ * @brief Run a prepared DELETE and report how many rows it removed.
+ *
+ * @param[out] removed Incremented by the number of rows deleted.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+STATIC int wdb_manager_task_step_delete(wdb_t *wdb, sqlite3_stmt *stmt, int *removed) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    *removed += sqlite3_changes(wdb->db);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_retention(wdb_t *wdb, const wdb_manager_task_retention_t *retention, cJSON **stats) {
+    sqlite3_stmt *stmt = NULL;
+    cJSON *schedule_ids = NULL;
+    int by_age = 0;
+    int by_schedule = 0;
+    int by_ceiling = 0;
+    int remaining = 0;
+    int result = 0;
+
+    if (!wdb || !retention) {
+        return OS_INVALID;
+    }
+
+    if (stats) {
+        *stats = NULL;
+    }
+
+    // Age, for the three ordinary terminal states.
+    if (retention->terminal_before > 0) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_DELETE_TERMINAL_OLD, &stmt) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+
+        sqlite3_bind_int64(stmt, 1, retention->terminal_before);
+
+        if (wdb_manager_task_step_delete(wdb, stmt, &by_age) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+    }
+
+    // Age, for dead_letter, on its own longer window.
+    if (retention->dead_letter_before > 0) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_DELETE_DEAD_LETTER_OLD, &stmt) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+
+        sqlite3_bind_int64(stmt, 1, retention->dead_letter_before);
+
+        if (wdb_manager_task_step_delete(wdb, stmt, &by_age) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+    }
+
+    // Per-schedule history cap. The schedule ids are collected before any deletion rather than
+    // deleted while the cursor walks them, because both statements read MANAGER_TASKS.
+    if (retention->history_per_schedule > 0) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SCHEDULE_IDS, &stmt) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+
+        schedule_ids = cJSON_CreateArray();
+
+        while (result = wdb_step(stmt), result == SQLITE_ROW) {
+            const char *schedule_id = (const char *)sqlite3_column_text(stmt, 0);
+            cJSON_AddItemToArray(schedule_ids, cJSON_CreateString(schedule_id ? schedule_id : ""));
+        }
+
+        if (result != SQLITE_DONE) {
+            merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+            sqlite3_reset(stmt);
+            cJSON_Delete(schedule_ids);
+            return OS_INVALID;
+        }
+
+        sqlite3_reset(stmt);
+
+        cJSON *schedule_id = NULL;
+
+        cJSON_ArrayForEach(schedule_id, schedule_ids) {
+            if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_TRIM_SCHEDULE_HISTORY, &stmt) != OS_SUCCESS) {
+                cJSON_Delete(schedule_ids);
+                return OS_INVALID;
+            }
+
+            sqlite3_bind_text(stmt, 1, schedule_id->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 2, schedule_id->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt, 3, retention->history_per_schedule);
+
+            if (wdb_manager_task_step_delete(wdb, stmt, &by_schedule) != OS_SUCCESS) {
+                cJSON_Delete(schedule_ids);
+                return OS_INVALID;
+            }
+        }
+
+        cJSON_Delete(schedule_ids);
+    }
+
+    // The hard ceiling, last, so it only ever sees what the other two rules left behind.
+    if (retention->max_rows > 0) {
+        if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_COUNT_ALL, &stmt) != OS_SUCCESS) {
+            return OS_INVALID;
+        }
+
+        if (wdb_step(stmt) != SQLITE_ROW) {
+            merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+            sqlite3_reset(stmt);
+            return OS_INVALID;
+        }
+
+        remaining = sqlite3_column_int(stmt, 0);
+
+        sqlite3_reset(stmt);
+
+        if (remaining > retention->max_rows) {
+            if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_EVICT, &stmt) != OS_SUCCESS) {
+                return OS_INVALID;
+            }
+
+            sqlite3_bind_int(stmt, 1, remaining - retention->max_rows);
+
+            if (wdb_manager_task_step_delete(wdb, stmt, &by_ceiling) != OS_SUCCESS) {
+                return OS_INVALID;
+            }
+
+            remaining -= by_ceiling;
+        }
+    }
+
+    if (stats) {
+        *stats = cJSON_CreateObject();
+        cJSON_AddNumberToObject(*stats, "by_age", by_age);
+        cJSON_AddNumberToObject(*stats, "by_schedule", by_schedule);
+        cJSON_AddNumberToObject(*stats, "by_ceiling", by_ceiling);
+
+        // Reported so the caller can tell that the ceiling was reached and could not be met,
+        // which means only dead_letter rows are left and is worth an error rather than silence.
+        cJSON_AddNumberToObject(*stats, "remaining", remaining);
+    }
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_schedule_get(wdb_t *wdb, const char *schedule_id, cJSON **schedule) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !schedule_id || !schedule) {
+        return OS_INVALID;
+    }
+
+    *schedule = NULL;
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SCHEDULE_GET, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, schedule_id, -1, NULL);
+
+    result = wdb_step(stmt);
+
+    if (result != SQLITE_ROW) {
+        if (result != SQLITE_DONE) {
+            merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        }
+
+        sqlite3_reset(stmt);
+
+        return result == SQLITE_DONE ? OS_SUCCESS : OS_INVALID;
+    }
+
+    *schedule = cJSON_CreateObject();
+
+    const char *column = (const char *)sqlite3_column_text(stmt, 0);
+
+    cJSON_AddStringToObject(*schedule, "schedule_id", column ? column : "");
+    cJSON_AddNumberToObject(*schedule, "next_run_at", sqlite3_column_int64(stmt, 1));
+    cJSON_AddNumberToObject(*schedule, "enabled", sqlite3_column_int(stmt, 2));
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_schedule_upsert(wdb_t *wdb,
+                                     const char *schedule_id,
+                                     long long next_run_at,
+                                     int enabled,
+                                     cJSON **previous) {
+    sqlite3_stmt *stmt = NULL;
+    cJSON *existing = NULL;
+
+    if (!wdb || !schedule_id) {
+        return OS_INVALID;
+    }
+
+    if (previous) {
+        *previous = NULL;
+    }
+
+    // The previous row is read and handed back rather than acted on here. Whether a
+    // disabled-to-enabled transition should reset NEXT_RUN_AT is a policy the dispatcher owns;
+    // wazuh-db only has to make the transition observable across a restart.
+    if (wdb_manager_task_schedule_get(wdb, schedule_id, &existing) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_prepare(wdb,
+                                 existing ? WDB_STMT_MANAGER_TASK_SCHEDULE_UPDATE
+                                          : WDB_STMT_MANAGER_TASK_SCHEDULE_INSERT,
+                                 &stmt) != OS_SUCCESS) {
+        cJSON_Delete(existing);
+        return OS_INVALID;
+    }
+
+    if (existing) {
+        sqlite3_bind_int64(stmt, 1, next_run_at);
+        sqlite3_bind_int(stmt, 2, enabled);
+        sqlite3_bind_text(stmt, 3, schedule_id, -1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 1, schedule_id, -1, NULL);
+        sqlite3_bind_int64(stmt, 2, next_run_at);
+        sqlite3_bind_int(stmt, 3, enabled);
+    }
+
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        cJSON_Delete(existing);
+        return OS_INVALID;
+    }
+
+    if (previous) {
+        *previous = existing;
+    } else {
+        cJSON_Delete(existing);
+    }
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_schedule_set_next_run(wdb_t *wdb, const char *schedule_id, long long next_run_at) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb || !schedule_id) {
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SCHEDULE_SET_NEXT_RUN, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_int64(stmt, 1, next_run_at);
+    sqlite3_bind_text(stmt, 2, schedule_id, -1, NULL);
+
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Deliberately uncommitted. A crash between the instance insert and this advance re-derives
+    // the same deterministic task id on the next attempt, so the primary key collision makes the
+    // double spawn a no-op and no cross-table transaction is needed.
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_schedule_list_due(wdb_t *wdb, long long now, cJSON **schedules) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !schedules) {
+        return OS_INVALID;
+    }
+
+    *schedules = cJSON_CreateArray();
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SCHEDULE_LIST_DUE, &stmt) != OS_SUCCESS) {
+        cJSON_Delete(*schedules);
+        *schedules = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_int64(stmt, 1, now);
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        const char *schedule_id = (const char *)sqlite3_column_text(stmt, 0);
+        cJSON *entry = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(entry, "schedule_id", schedule_id ? schedule_id : "");
+        cJSON_AddNumberToObject(entry, "next_run_at", sqlite3_column_int64(stmt, 1));
+        cJSON_AddItemToArray(*schedules, entry);
+    }
+
+    if (result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        cJSON_Delete(*schedules);
+        *schedules = NULL;
+        return OS_INVALID;
+    }
+
+    sqlite3_reset(stmt);
+
+    return OS_SUCCESS;
+}
+
+int wdb_manager_task_schedule_has_active(wdb_t *wdb, const char *schedule_id, bool *active) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (!wdb || !schedule_id || !active) {
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_prepare(wdb, WDB_STMT_MANAGER_TASK_SCHEDULE_HAS_ACTIVE, &stmt) != OS_SUCCESS) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, schedule_id, -1, NULL);
+
+    result = wdb_step(stmt);
+
+    if (result != SQLITE_ROW && result != SQLITE_DONE) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_reset(stmt);
+        return OS_INVALID;
+    }
+
+    // A pending or claimed instance suppresses the next spawn. Under a multi-batch handler that
+    // means the effective interval becomes "however long the run takes", which is intended: a
+    // sweep should not start again while the previous one is still walking.
+    *active = (result == SQLITE_ROW);
+
+    sqlite3_reset(stmt);
 
     return OS_SUCCESS;
 }

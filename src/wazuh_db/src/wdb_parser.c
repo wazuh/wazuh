@@ -46,6 +46,12 @@ static const manager_task_command_t MANAGER_TASK_COMMANDS[] = {
     {"count_manager_tasks", wdb_parse_manager_task_count, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
     {"get_pending_manager_task_types", wdb_parse_manager_task_pending_types, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
     {"fail_manager_tasks_by_type", wdb_parse_manager_task_fail_type, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
+    {"manager_task_retention", wdb_parse_manager_task_retention, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
+    {"upsert_manager_task_schedule", wdb_parse_manager_task_schedule_upsert, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"get_manager_task_schedule", wdb_parse_manager_task_schedule_get, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"set_manager_task_schedule_next_run", wdb_parse_manager_task_schedule_set_next_run, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
+    {"get_due_manager_task_schedules", wdb_parse_manager_task_schedule_list_due, w_inc_task_manager_task_poll, w_inc_task_manager_task_poll_time},
+    {"manager_task_schedule_has_active", wdb_parse_manager_task_schedule_has_active, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
 };
 
 /**
@@ -2568,4 +2574,139 @@ int wdb_parse_manager_task_fail_type(wdb_t *wdb, const cJSON *parameters, char *
     }
 
     return wdb_manager_task_respond(OS_SUCCESS, NULL, output);
+}
+
+int wdb_parse_manager_task_retention(wdb_t *wdb, const cJSON *parameters, char *output) {
+    wdb_manager_task_retention_t retention = {0};
+    cJSON *stats = NULL;
+
+    retention.terminal_before = wdb_manager_task_opt_number(parameters, "terminal_before", 0);
+    retention.dead_letter_before = wdb_manager_task_opt_number(parameters, "dead_letter_before", 0);
+    retention.history_per_schedule = (int)wdb_manager_task_opt_number(parameters, "history_per_schedule", 0);
+    retention.max_rows = (int)wdb_manager_task_opt_number(parameters, "max_rows", 0);
+
+    if (wdb_manager_task_retention(wdb, &retention, &stats) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, stats, output);
+}
+
+int wdb_parse_manager_task_schedule_upsert(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *previous = NULL;
+    const char *schedule_id = NULL;
+    long long next_run_at = 0;
+    int enabled = 0;
+
+    schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
+    if (!schedule_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upsert manager task schedule: 'parsing schedule_id error'");
+        return OS_INVALID;
+    }
+
+    next_run_at = wdb_manager_task_opt_number(parameters, "next_run_at", 0);
+    enabled = wdb_manager_task_opt_bool(parameters, "enabled") ? 1 : 0;
+
+    if (wdb_manager_task_schedule_upsert(wdb, schedule_id, next_run_at, enabled, &previous) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+
+    // Absent when the schedule is new. The caller needs the distinction: only a schedule that was
+    // already there and disabled can be undergoing a disabled-to-enabled transition.
+    if (previous) {
+        cJSON_AddItemToObject(response, "previous", previous);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_schedule_get(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *schedule = NULL;
+    const char *schedule_id = NULL;
+
+    schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
+    if (!schedule_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get manager task schedule: 'parsing schedule_id error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_schedule_get(wdb, schedule_id, &schedule) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+
+    if (schedule) {
+        cJSON_AddItemToObject(response, "schedule", schedule);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_schedule_set_next_run(wdb_t *wdb, const cJSON *parameters, char *output) {
+    const char *schedule_id = NULL;
+    cJSON *next_run_at_json = NULL;
+
+    schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
+    if (!schedule_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set manager task schedule next run: 'parsing schedule_id error'");
+        return OS_INVALID;
+    }
+
+    // Required rather than defaulted: a missing next_run_at silently treated as zero would make
+    // the schedule permanently overdue and fire on every poll.
+    next_run_at_json = cJSON_GetObjectItem(parameters, "next_run_at");
+    if (!next_run_at_json || !cJSON_IsNumber(next_run_at_json)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set manager task schedule next run: 'parsing next_run_at error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_schedule_set_next_run(wdb, schedule_id, (long long)next_run_at_json->valuedouble) ==
+        OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, NULL, output);
+}
+
+int wdb_parse_manager_task_schedule_list_due(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *schedules = NULL;
+    long long now = 0;
+
+    now = wdb_manager_task_opt_number(parameters, "now", (long long)time(NULL));
+
+    if (wdb_manager_task_schedule_list_due(wdb, now, &schedules) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "schedules", schedules);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_schedule_has_active(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    const char *schedule_id = NULL;
+    bool active = false;
+
+    schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
+    if (!schedule_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error check manager task schedule: 'parsing schedule_id error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_schedule_has_active(wdb, schedule_id, &active) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "active", active);
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
 }
