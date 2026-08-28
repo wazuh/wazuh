@@ -438,45 +438,42 @@ function ParseManagerEndpoint($raw) {
     return $true
 }
 
-# A WPK upgrade never rewrites ossec.conf, so this script meets three config shapes and
-# has to read all of them (#38624):
+# A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
+# to read both (#38624):
 #
-#   v2    <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
-#   5.0.0 <agent><manager> with separate <address>, <port> and a prefix-only <endpoint>
-#   4.x   <client><server><address>, with no endpoint concept at all
+#   current  <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
+#   upgraded the deprecated <agent><manager><address>/<port>, or a 4.x
+#            <client><server><address> -- neither has an endpoint concept
 #
-# The two <endpoint> spellings cannot be told apart by value -- "wazuh-manager" is both a
-# legal prefix and a legal hostname -- so, exactly as Read_Agent_Manager() does, the
-# presence of <address> decides which one is in play.
-$server_address = get_conf_value "agent" "manager" "address"
+# <endpoint> always carries the whole target, so no disambiguation is needed: its presence
+# alone decides, exactly as Read_Agent_Manager() does. get_conf_value returns $null for
+# "tag absent" and "" for "tag present but empty", so test against $null specifically.
+$server_address = $null
 $server_port = $null
 $server_endpoint = $null
+$combined_endpoint = get_conf_value "agent" "manager" "endpoint"
 
-if (-Not [string]::IsNullOrEmpty($server_address)) {
-    # 5.0.0 shape: <endpoint> holds only the prefix. get_conf_value returns $null for
-    # "tag absent" vs "" for "tag present but empty", so check for $null specifically --
-    # IsNullOrEmpty would collapse both into the default and silently override the
-    # operator's opt-out, which is the defect #38658 fixed.
-    $server_port = get_conf_value "agent" "manager" "port"
-    $server_endpoint = get_conf_value "agent" "manager" "endpoint"
-    if ($null -eq $server_endpoint) {
-        $server_endpoint = "wazuh-manager"
+if ($null -ne $combined_endpoint) {
+    # Split the one value the same way the agent's parser does. An empty <endpoint> fails
+    # here just as it does there, leaving $server_address unset for the check below.
+    if (ParseManagerEndpoint $combined_endpoint) {
+        $server_address = $MEP_HOST
+        $server_port = $MEP_PORT
+        $server_endpoint = $MEP_ENDPOINT
     }
 } else {
-    $combined_endpoint = get_conf_value "agent" "manager" "endpoint"
+    # Compose the same target the agent composes internally from the deprecated tags:
+    # the address, <port> or its 1517 default, and the default prefix.
+    $server_address = get_conf_value "agent" "manager" "address"
+    $server_port = get_conf_value "agent" "manager" "port"
 
-    if (-Not [string]::IsNullOrEmpty($combined_endpoint)) {
-        # v2 shape: split the one value the same way the agent's parser does.
-        if (ParseManagerEndpoint $combined_endpoint) {
-            $server_address = $MEP_HOST
-            $server_port = $MEP_PORT
-            $server_endpoint = $MEP_ENDPOINT
-        }
-    } else {
-        # 4.x shape: no endpoint concept, so take the manager's defaults for both.
+    if ([string]::IsNullOrEmpty($server_address)) {
+        # 4.x shape. Its <port> is not read by the agent either, so leave it defaulted.
         $server_address = get_conf_value "client" "server" "address"
-        $server_endpoint = "wazuh-manager"
+        $server_port = $null
     }
+
+    $server_endpoint = "wazuh-manager"
 }
 
 if ([string]::IsNullOrEmpty($server_port)) {

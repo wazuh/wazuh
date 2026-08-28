@@ -678,52 +678,73 @@ static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **st
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_explicit_empty_endpoint_is_an_opt_out(void **state) {
+/* An empty <endpoint> is an error, not an opt-out. The manager rejects an empty
+ * <global_prefix> the same way, and both sides spell "serve/expect no prefix" as a path
+ * of just "/" -- so a value mirrored from one config into the other keeps its meaning
+ * instead of being fatal on one side and silently different on the other. */
+
+static void test_agent_manager_empty_endpoint_is_rejected(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
 
-    /* The 5.0.0 spelling, still accepted so an agent upgraded by a WPK -- which never
-     * rewrites ossec.conf -- keeps connecting (#38624). <address> present means
-     * <endpoint> carries only the prefix, and an empty one is the deliberate opt-out
-     * it always was. The combined spelling of the same thing is
-     * test_agent_manager_endpoint_trailing_slash_opts_out. */
-    const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint></endpoint></manager>";
+    const char *xml_str = "<manager><endpoint></endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
-    expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
-                  "single <endpoint>10.0.0.5:1517/</endpoint>");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint '': a manager address is required.");
 
-    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
-    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
-    assert_int_equal(cfg.server[0].port, 1517);
-    assert_null(cfg.server[0].endpoint);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-/* The suggested replacement must be built from the RESOLVED values, not the defaults.
- * With a prefix-only <endpoint> alongside <address>, suggesting the default prefix would
- * hand the operator a line that silently moves the agent to a different path. */
+/* <endpoint> carries the whole target and outranks the deprecated pair, whichever order
+ * they appear in -- the 5.0.0 spelling that put only a prefix here never shipped, so a
+ * value like "gateway/foo" is a host and a path, not a bare prefix. */
 
-static void test_agent_manager_deprecation_notice_keeps_the_configured_prefix(void **state) {
+static void test_agent_manager_endpoint_outranks_the_deprecated_pair(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
 
     const char *xml_str =
         "<manager><address>10.0.0.5</address><port>8443</port>"
-        "<endpoint>gateway/foo</endpoint></manager>";
+        "<endpoint>proxy.example:9000/gateway/foo</endpoint></manager>";
 
     expect_valid_ip("10.0.0.5");
-    expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
-                  "single <endpoint>10.0.0.5:8443/gateway/foo</endpoint>");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<agent><manager><address> and <port> are ignored when <endpoint> is "
+                  "configured; <endpoint> carries the whole target.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "proxy.example");
+    assert_int_equal(cfg.server[0].port, 9000);
     assert_string_equal(cfg.server[0].endpoint, "gateway/foo");
-    assert_int_equal(cfg.server[0].port, 8443);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* Document order must not decide the winner: the same block with <endpoint> written
+ * first resolves identically. */
+
+static void test_agent_manager_endpoint_outranks_the_pair_whatever_the_order(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><endpoint>proxy.example:9000/gateway/foo</endpoint>"
+        "<address>10.0.0.5</address><port>8443</port></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<agent><manager><address> and <port> are ignored when <endpoint> is "
+                  "configured; <endpoint> carries the whole target.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "proxy.example");
+    assert_int_equal(cfg.server[0].port, 9000);
+    assert_string_equal(cfg.server[0].endpoint, "gateway/foo");
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1717,8 +1738,9 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_is_parsed),
         cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
-        cmocka_unit_test(test_agent_manager_explicit_empty_endpoint_is_an_opt_out),
-        cmocka_unit_test(test_agent_manager_deprecation_notice_keeps_the_configured_prefix),
+        cmocka_unit_test(test_agent_manager_empty_endpoint_is_rejected),
+        cmocka_unit_test(test_agent_manager_endpoint_outranks_the_deprecated_pair),
+        cmocka_unit_test(test_agent_manager_endpoint_outranks_the_pair_whatever_the_order),
         cmocka_unit_test(test_agent_manager_deprecation_notice_brackets_an_ipv6_address),
         cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),

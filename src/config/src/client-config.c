@@ -730,30 +730,19 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     int j;
     char f_ip[128];
     char * rip = NULL;
+    char * legacy_rip = NULL;
     char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
     char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
     /* Default values */
     uint32_t scope_id = 0;
     int port = DEFAULT_HTTPS_REMOTE_PORT;
     bool port_set = false;
+    int legacy_port = DEFAULT_HTTPS_REMOTE_PORT;
+    bool legacy_port_set = false;
     bool endpoint_set = false;
     bool legacy_tags_used = false;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
-
-    /* <endpoint>'s meaning depends on whether the deprecated <address> is present
-     * alongside it, and the two cannot be told apart from the value: "wazuh-manager"
-     * is both a legal prefix (5.0.0 spelling) and a legal hostname (the combined
-     * spelling). So decide first, in its own pass -- XML children arrive in document
-     * order, and <endpoint> may well come before <address>. */
-    bool legacy_address_present = false;
-
-    for (j = 0; node[j]; j++) {
-        if (node[j]->element && strcmp(node[j]->element, xml_agent_addr) == 0) {
-            legacy_address_present = true;
-            break;
-        }
-    }
 
     /* Get parameters for each configurated server*/
 
@@ -766,15 +755,17 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             return (OS_INVALID);
         }
         /* Deprecated: <address> and <port> were folded into <endpoint> (#38624). Still
-         * read, because a WPK upgrade never rewrites ossec.conf -- an agent installed
-         * by a 5.0.0 package restarts on the new binary with the old three tags, and
-         * refusing them would strand it. */
+         * read so a hand-written configuration, or one left by a 5.0.0 development build
+         * using the previous spelling, keeps working -- an upgrade never rewrites
+         * ossec.conf. No released package emitted them: <agent><manager> itself landed
+         * after v5.0.0-beta4. A real 4.x file spells this <client><server><address>,
+         * which Read_Legacy_Client_Address() handles. */
         else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
-                rip = node[j]->content;
+                legacy_rip = node[j]->content;
             } else if (strchr(node[j]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s", node[j]->content);
-                rip = f_ip;
+                legacy_rip = f_ip;
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
@@ -786,30 +777,25 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
 
-            if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
+            if (legacy_port = atoi(node[j]->content), legacy_port <= 0 || legacy_port > 65535) {
+                merror(PORT_ERROR, legacy_port);
                 return (OS_INVALID);
             }
 
-            port_set = true;
+            legacy_port_set = true;
             legacy_tags_used = true;
         } else if (strcmp(node[j]->element, xml_agent_endpoint) == 0) {
-            if (legacy_address_present) {
-                /* 5.0.0 spelling: <endpoint> holds only the reverse-proxy prefix and
-                 * <address>/<port> carry the rest. An empty value stays the deliberate
-                 * opt-out (#38614). */
-                if (w_normalize_agent_endpoint(node[j]->content, endpoint, sizeof(endpoint)) == OS_INVALID) {
-                    return (OS_INVALID);
-                }
-                endpoint_set = true;
-            } else if (w_parse_agent_endpoint(node[j]->content, host, sizeof(host), &port,
-                                              &port_set, endpoint, sizeof(endpoint),
-                                              &scope_id) == OS_INVALID) {
+            /* <endpoint> always carries the whole target (#38624). The 5.0.0 spelling
+             * that put only a prefix here shipped in no public release, so there is no
+             * configuration in the field where this value means anything else -- and
+             * without that case "wazuh-manager" is unambiguously a hostname. */
+            if (w_parse_agent_endpoint(node[j]->content, host, sizeof(host), &port,
+                                       &port_set, endpoint, sizeof(endpoint),
+                                       &scope_id) == OS_INVALID) {
                 return (OS_INVALID);
-            } else {
-                rip = host;
-                endpoint_set = true;
             }
+
+            endpoint_set = true;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
             minfo("Ignoring the 'protocol' option. Switching to TCP.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0 ||
@@ -822,6 +808,23 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
         }
+    }
+
+    /* <endpoint> wins over the deprecated pair whatever order they appeared in: it is
+     * the canonical spelling, and the installers give WAZUH_MANAGER_ENDPOINT the same
+     * priority over WAZUH_MANAGER/WAZUH_MANAGER_PORT. */
+    if (endpoint_set) {
+        rip = host;
+
+        if (legacy_tags_used) {
+            mwarn("<agent><manager><address> and <port> are ignored when <endpoint> is "
+                  "configured; <endpoint> carries the whole target.");
+            legacy_tags_used = false;
+        }
+    } else {
+        rip = legacy_rip;
+        port = legacy_port;
+        port_set = legacy_port_set;
     }
 
     if (!rip) {

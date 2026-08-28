@@ -276,44 +276,38 @@ probe_server() {
     return $?
 }
 
-# A WPK upgrade never rewrites ossec.conf, so this script meets three config shapes and
-# has to read all of them (#38624):
+# A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
+# to read both (#38624):
 #
-#   v2    <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
-#   5.0.0 <agent><manager> with separate <address>, <port> and a prefix-only <endpoint>
-#   4.x   <client><server><address>, with no endpoint concept at all
+#   current  <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
+#   upgraded the deprecated <agent><manager><address>/<port>, or a 4.x
+#            <client><server><address> -- neither has an endpoint concept
 #
-# The two <endpoint> spellings cannot be told apart by value -- "wazuh-manager" is both a
-# legal prefix and a legal hostname -- so, exactly as Read_Agent_Manager() does, the
-# presence of <address> decides which one is in play.
-SERVER_ADDRESS=$(xml_value agent manager address)
-
-if [ -n "${SERVER_ADDRESS}" ]; then
-    # 5.0.0 shape: <endpoint> holds only the prefix.
-    SERVER_PORT=$(xml_value agent manager port)
-    SERVER_ENDPOINT=$(xml_value agent manager endpoint)
-    # An entirely absent tag defaults to the manager's own default prefix, while a
-    # present-but-empty one is a deliberate opt-out (#38492). xml_value returns "" for
-    # both, so an empty value needs the separate presence scan to tell them apart --
-    # collapsing them is the defect #38658 fixed.
-    if [ -z "${SERVER_ENDPOINT}" ] && ! xml_tag_present agent manager endpoint; then
-        SERVER_ENDPOINT="wazuh-manager"
-    fi
-else
+# <endpoint> always carries the whole target, so no disambiguation is needed: its presence
+# alone decides, exactly as Read_Agent_Manager() does.
+if xml_tag_present agent manager endpoint; then
     COMBINED_ENDPOINT=$(xml_value agent manager endpoint)
 
-    if [ -n "${COMBINED_ENDPOINT}" ]; then
-        # v2 shape: split the one value the same way the agent's parser does.
-        if parse_manager_endpoint "${COMBINED_ENDPOINT}"; then
-            SERVER_ADDRESS="${MEP_HOST}"
-            SERVER_PORT="${MEP_PORT}"
-            SERVER_ENDPOINT="${MEP_ENDPOINT}"
-        fi
-    else
-        # 4.x shape: no endpoint concept, so take the manager's defaults for both.
-        SERVER_ADDRESS=$(xml_value client server address)
-        SERVER_ENDPOINT="wazuh-manager"
+    # Split the one value the same way the agent's parser does. An empty <endpoint> fails
+    # here just as it does there, leaving SERVER_ADDRESS unset for the check below.
+    if parse_manager_endpoint "${COMBINED_ENDPOINT}"; then
+        SERVER_ADDRESS="${MEP_HOST}"
+        SERVER_PORT="${MEP_PORT}"
+        SERVER_ENDPOINT="${MEP_ENDPOINT}"
     fi
+else
+    # Compose the same target the agent composes internally from the deprecated tags:
+    # the address, <port> or its 1517 default, and the default prefix.
+    SERVER_ADDRESS=$(xml_value agent manager address)
+    SERVER_PORT=$(xml_value agent manager port)
+
+    if [ -z "${SERVER_ADDRESS}" ]; then
+        # 4.x shape. Its <port> is not read by the agent either, so leave it defaulted.
+        SERVER_ADDRESS=$(xml_value client server address)
+        SERVER_PORT=""
+    fi
+
+    SERVER_ENDPOINT="wazuh-manager"
 fi
 
 if [ -z "${SERVER_PORT}" ]; then
