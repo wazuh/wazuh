@@ -2507,7 +2507,14 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // Eight initializers for eight fields: localTransportUnavailable sits between
     // awaitingPrerequisite and sentAnything, and omitting it would silently put sentAnything in
     // its place -- two consecutive bools, so nothing would fail to compile.
-    return {overallSuccess, std::move(failureReason), false, false, 0, false, false, sentAnything};
+    // Designated, not positional: this struct grows from more than one direction and its new
+    // fields are all bool, so a list written for the old shape still compiles and binds values
+    // to the wrong members. That is not hypothetical -- rebasing onto #38656, which appends
+    // sessionSkipped, left this list one short and fed sentAnything into sessionSkipped, which
+    // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
+    return {.success = overallSuccess,
+            .failureReason = std::move(failureReason),
+            .sentAnything = sentAnything};
 }
 // LCOV_EXCL_STOP
 
