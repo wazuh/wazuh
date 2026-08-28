@@ -313,9 +313,18 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
     logr->server_count = 1;
 
+    /* A 4.x file has no <endpoint> at all, so say exactly what to write -- this is the
+     * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
+     * whole point. The composed value is the one now in use, so pasting it changes
+     * nothing about where the agent connects. */
     minfo("<agent><manager><address> is not configured. Using <client><server><address> '%s' "
-          "with the default port %d and the default endpoint prefix '%s'.",
-          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
+          "with the default port %d and the default endpoint prefix '%s'. Replace the "
+          "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
+          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
+          (strchr(logr->server[0].rip, ':') != NULL) ? "[" : "",
+          logr->server[0].rip,
+          (strchr(logr->server[0].rip, ':') != NULL) ? "]" : "",
+          DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
 
     return (0);
 }
@@ -820,12 +829,6 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         return (OS_INVALID);
     }
 
-    if (legacy_tags_used) {
-        mwarn("<agent><manager><address> and <port> are deprecated: configure a single "
-              "<endpoint> carrying the whole target instead (e.g. <endpoint>%s:%d/%s</endpoint>). "
-              "They are still read so an upgraded agent keeps connecting, and will be removed.",
-              rip, port, DEFAULT_AGENT_ENDPOINT_PREFIX);
-    }
 
     /* Single <manager> block: the last one prevails (#37702 restriction 2) and
      * server rotation is removed (restriction 3), so replace any previous entry
@@ -864,6 +867,24 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     }
     logr->server[0].scope_id = scope_id;
     logr->server[0].port = port;
+
+    /* #38624: <address>/<port> still work, but tell the operator exactly what to write
+     * instead. The suggestion is built from the values just resolved -- not from the
+     * defaults -- so a prefix-only <endpoint> in the same block is preserved and pasting
+     * the line back cannot change where the agent connects. INFO rather than WARNING:
+     * nothing is wrong, the configuration is simply written in the older spelling. */
+    if (legacy_tags_used) {
+        /* The trailing '/' is always emitted: with a prefix it separates it, and with
+         * none it is the opt-out spelling -- so an <endpoint></endpoint> opt-out is
+         * suggested back as "host:port/" and keeps meaning the same thing. An IPv6
+         * literal is bracketed, or its trailing group would read as the port. */
+        const bool is_ipv6 = strchr(logr->server[0].rip, ':') != NULL;
+
+        minfo("<agent><manager><address> and <port> are deprecated. Replace them with a "
+              "single <endpoint>%s%s%s:%d/%s</endpoint>",
+              is_ipv6 ? "[" : "", logr->server[0].rip, is_ipv6 ? "]" : "",
+              port, endpoint);
+    }
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;
     logr->server_count = 1;

@@ -691,12 +691,39 @@ static void test_agent_manager_explicit_empty_endpoint_is_an_opt_out(void **stat
     const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint></endpoint></manager>";
 
     expect_valid_ip("10.0.0.5");
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>10.0.0.5:1517/</endpoint>");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
     assert_int_equal(cfg.server[0].port, 1517);
     assert_null(cfg.server[0].endpoint);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The suggested replacement must be built from the RESOLVED values, not the defaults.
+ * With a prefix-only <endpoint> alongside <address>, suggesting the default prefix would
+ * hand the operator a line that silently moves the agent to a different path. */
+
+static void test_agent_manager_deprecation_notice_keeps_the_configured_prefix(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>10.0.0.5</address><port>8443</port>"
+        "<endpoint>gateway/foo</endpoint></manager>";
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>10.0.0.5:8443/gateway/foo</endpoint>");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].endpoint, "gateway/foo");
+    assert_int_equal(cfg.server[0].port, 8443);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -798,7 +825,8 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
+                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &xml, &nodes, &cfg), 0);
@@ -827,7 +855,8 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
+                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -859,7 +888,8 @@ static void test_legacy_client_takes_the_last_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
+                  "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
+                  "<client><server> block with a single <endpoint>10.0.0.2:1517/wazuh-manager</endpoint>");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -896,7 +926,8 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><address> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'.");
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
+                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
@@ -1663,6 +1694,7 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),
         cmocka_unit_test(test_agent_manager_explicit_empty_endpoint_is_an_opt_out),
+        cmocka_unit_test(test_agent_manager_deprecation_notice_keeps_the_configured_prefix),
         cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),
