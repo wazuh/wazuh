@@ -9,7 +9,7 @@
  */
 
 #include "container_images_impl.hpp"
-#include "local_image_reader.hpp"
+#include "archive_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
 #include <chrono>
@@ -52,13 +52,32 @@ namespace
 
 namespace containerimages
 {
-    std::unique_ptr<IImageReader> makeReader(const std::string& path)
+    std::unique_ptr<IImageReader> makeReader(const ConfiguredReference& reference,
+                                            const std::string& knownConfigDigest)
     {
-        return std::make_unique<LocalImageReader>(path);
+        switch (reference.type)
+        {
+            case ReferenceType::Archive:
+                return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest);
+
+            case ReferenceType::Registry:
+                logWarn("NOT IMPLEMENTED: the '<ref>' reference '" + reference.location +
+                        "' needs remote registry support, which is not available yet. Skipping it.");
+                return nullptr;
+
+            case ReferenceType::EngineStore:
+                logWarn("NOT IMPLEMENTED: the '<local>' reference '" + reference.location +
+                        "' needs container engine support, which is not available yet. Skipping it.");
+                return nullptr;
+
+            default:
+                logWarn("Unknown reference type for '" + reference.location + "', skipping it.");
+                return nullptr;
+        }
     }
 
     ContainerImagesImpl::ContainerImagesImpl(ContainerImagesConfig config,
-                                             std::function<std::unique_ptr<IImageReader>(const std::string&)> readerFactory,
+                                             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> readerFactory,
                                              std::shared_ptr<ContainerImagesDB> db)
         : m_config {std::move(config)}
         , m_readerFactory {std::move(readerFactory)}
@@ -87,9 +106,9 @@ namespace containerimages
 
     std::size_t ContainerImagesImpl::scanOnce()
     {
-        if (m_config.localPaths.empty())
+        if (m_config.references.empty())
         {
-            logInfo("No local sources configured, nothing to scan.");
+            logInfo("No references configured, nothing to scan.");
             return 0;
         }
 
@@ -98,10 +117,30 @@ namespace containerimages
         std::vector<ImageReferenceRecord> references;
 
         std::size_t unreadable {0};
+        std::size_t unchanged {0};
 
-        for (const auto& path : m_config.localPaths)
+        for (const auto& configured : m_config.references)
         {
-            const auto reader {m_readerFactory(path)};
+            {
+                // Checked once per reference rather than continuously inside a reader: a
+                // reader already in progress runs to completion (bounded work is the
+                // reader's own job, see the caps in ArchiveImageReader), but a stop that
+                // lands mid-scan stops the scan from starting any reference it has not
+                // reached yet, instead of reading every configured source regardless.
+                std::lock_guard<std::mutex> lock {m_mutex};
+
+                if (m_stopRequested)
+                {
+                    // Abandoned, not finished. What was collected so far describes only the
+                    // references the scan reached, and storing it would report every
+                    // reference it never got to as deleted.
+                    logDebug("Stop requested, abandoning the scan without storing its partial result.");
+                    return 0;
+                }
+            }
+
+            auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
+            const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {})};
 
             if (!reader)
             {
@@ -110,26 +149,39 @@ namespace containerimages
 
             auto result {reader->discover()};
 
-            if (result.status == ReadStatus::Failed)
+            if (result.status == ReadStatus::Unchanged)
             {
-                // A source that could not be read says nothing about what it holds, so its
-                // stored inventory is carried into this scan unchanged. Leaving it out
-                // would hand the synchronization an empty set for that source, and every
-                // record it owns would be reported as deleted on a scan that never saw it.
-                ++unreadable;
-
-                auto stored {m_db->loadStored(reader->sourceType(), path)};
+                // The image still reports the digest already stored, so its layers were not
+                // read. What is stored is its current inventory, and it is handed back so
+                // the storage layer sees it as present rather than gone.
+                ++unchanged;
 
                 if (stored)
                 {
-                    logWarn("Source '" + path + "' could not be read. Keeping the " +
+                    references.push_back(std::move(*stored));
+                }
+
+                continue;
+            }
+
+            if (result.status == ReadStatus::Failed)
+            {
+                // A reference that could not be read says nothing about what it holds, so
+                // its stored inventory is carried into this scan unchanged. Leaving it out
+                // would hand the storage layer an empty set for that reference, and every
+                // record it owns would be reported as deleted on a scan that never saw it.
+                ++unreadable;
+
+                if (stored)
+                {
+                    logWarn("Reference '" + configured.location + "' could not be read. Keeping the " +
                             std::to_string(stored->packages.size()) +
                             " package(s) already stored for it, which are left as they were.");
                     references.push_back(std::move(*stored));
                 }
                 else
                 {
-                    logWarn("Source '" + path + "' could not be read, and nothing is stored for it.");
+                    logWarn("Reference '" + configured.location + "' could not be read, and nothing is stored for it.");
                 }
 
                 continue;
@@ -167,7 +219,13 @@ namespace containerimages
         if (unreadable > 0)
         {
             logWarn("Scan ended with " + std::to_string(unreadable) +
-                    " source(s) that could not be read. Their inventory is the one stored by an earlier scan.");
+                    " reference(s) that could not be read. Their inventory is the one stored by an earlier scan.");
+        }
+
+        if (unchanged > 0)
+        {
+            logDebug(std::to_string(unchanged) +
+                     " reference(s) still hold the image already stored, so their layers were not read.");
         }
 
         logInfo("Scan ended. " + std::to_string(references.size()) + " references, " +

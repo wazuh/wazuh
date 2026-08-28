@@ -42,8 +42,9 @@ EXPORTED void container_images_set_log_function(log_callback_t callback);
 EXPORTED void container_images_init(const unsigned int interval,
                                     const bool scanOnStart,
                                     const bool enabled,
-                                    const char** localPaths,
-                                    const unsigned int localPathsCount);
+                                    const char** referenceTypes,
+                                    const char** referenceValues,
+                                    const unsigned int referencesCount);
 
 EXPORTED void container_images_start();
 
@@ -59,8 +60,9 @@ typedef void (*container_images_set_log_function_func)(log_callback_t callback);
 typedef void (*container_images_init_func)(const unsigned int interval,
                                            const bool scanOnStart,
                                            const bool enabled,
-                                           const char** localPaths,
-                                           const unsigned int localPathsCount);
+                                           const char** referenceTypes,
+                                           const char** referenceValues,
+                                           const unsigned int referencesCount);
 typedef void (*container_images_start_func)();
 typedef void (*container_images_stop_func)();
 typedef void (*container_images_release_resources_func)();

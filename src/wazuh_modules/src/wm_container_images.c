@@ -91,14 +91,14 @@ static void wm_container_images_log_callback(const modules_log_level_t level, co
 }
 
 static void wm_container_images_log_config(const wm_container_images_t *data) {
-    minfo("Configuration loaded: enabled=%s, scan_on_start=%s, interval=%u, local references=%d.",
+    minfo("Configuration loaded: enabled=%s, scan_on_start=%s, interval=%u, references=%d.",
           data->enabled ? "yes" : "no",
           data->scan_on_start ? "yes" : "no",
           data->interval,
-          data->local_paths_count);
+          data->references_count);
 
-    for (int i = 0; i < data->local_paths_count; i++) {
-        mdebug1("Local reference configured: '%s'.", data->local_paths[i]);
+    for (int i = 0; i < data->references_count; i++) {
+        mdebug1("Reference configured: <%s>%s.", data->references[i].type, data->references[i].value);
     }
 }
 
@@ -147,8 +147,26 @@ void *wm_container_images_main(wm_container_images_t *data) {
 
     container_images_set_log_function_ptr(wm_container_images_log_callback);
 
+    // The bridge takes the entry types and the values as two parallel arrays, so the
+    // struct layout stays on this side of the library boundary.
+    const char **reference_types = NULL;
+    const char **reference_values = NULL;
+
+    if (data->references_count > 0) {
+        os_calloc((size_t)data->references_count, sizeof(char *), reference_types);
+        os_calloc((size_t)data->references_count, sizeof(char *), reference_values);
+
+        for (int i = 0; i < data->references_count; i++) {
+            reference_types[i] = data->references[i].type;
+            reference_values[i] = data->references[i].value;
+        }
+    }
+
     container_images_init_ptr(data->interval, data->scan_on_start, data->enabled,
-                              (const char**)data->local_paths, (unsigned int)data->local_paths_count);
+                              reference_types, reference_values, (unsigned int)data->references_count);
+
+    os_free(reference_types);
+    os_free(reference_values);
 
     wm_container_images_log_config(data);
 
@@ -184,11 +202,12 @@ void wm_container_images_stop(__attribute__((unused)) wm_container_images_t *dat
 
 void wm_container_images_destroy(wm_container_images_t *data) {
     if (data) {
-        if (data->local_paths) {
-            for (int i = 0; i < data->local_paths_count; i++) {
-                os_free(data->local_paths[i]);
+        if (data->references) {
+            for (int i = 0; i < data->references_count; i++) {
+                os_free(data->references[i].type);
+                os_free(data->references[i].value);
             }
-            os_free(data->local_paths);
+            os_free(data->references);
         }
         os_free(data);
     }
@@ -202,12 +221,22 @@ cJSON *wm_container_images_dump(const wm_container_images_t *data) {
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
 
-    if (data->local_paths && data->local_paths_count > 0) {
-        cJSON *references = cJSON_CreateArray();
-        for (int i = 0; i < data->local_paths_count; i++) {
-            cJSON_AddItemToArray(references, cJSON_CreateString(data->local_paths[i]));
+    if (data->references && data->references_count > 0) {
+        cJSON *references = cJSON_CreateObject();
+
+        // One array per entry type, so the dump mirrors the configuration block.
+        for (int i = 0; i < data->references_count; i++) {
+            cJSON *entries = cJSON_GetObjectItem(references, data->references[i].type);
+
+            if (!entries) {
+                entries = cJSON_CreateArray();
+                cJSON_AddItemToObject(references, data->references[i].type, entries);
+            }
+
+            cJSON_AddItemToArray(entries, cJSON_CreateString(data->references[i].value));
         }
-        cJSON_AddItemToObject(wm_wd, "local", references);
+
+        cJSON_AddItemToObject(wm_wd, "references", references);
     }
 
     cJSON_AddItemToObject(root, "container_images", wm_wd);
