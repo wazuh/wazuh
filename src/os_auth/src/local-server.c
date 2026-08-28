@@ -761,18 +761,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
             message += 7;
         }
 
-        // Duplicate-agent rejections are ordinary enrollment policy, not a manager-side fault --
-        // auth.c itself logs the identical check at info/warning when it runs on the master
-        // directly (see w_auth_validate_data()). Escalating them to error here, just because this
-        // bridge is what happens to answer a worker's forwarded request, would misrepresent them.
-        // Every other code (invalid group, agent limit, malformed request, cluster comms) already
-        // logs at error on the master's own path, so it stays error here too.
-        if (master_error_code == ERRORS[EDUPIP].code || master_error_code == ERRORS[EDUPNAME].code ||
-            master_error_code == ERRORS[EDUPID].code) {
-            mwarn("ERROR %d: %s.", master_error_code, message);
-        } else {
-            merror("ERROR %d: %s.", master_error_code, message);
-        }
+        mwarn("Error %d: %s.", master_error_code, message);
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.
