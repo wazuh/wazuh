@@ -58,12 +58,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
-        bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
-
-        /// @copydoc IAgentSyncProtocol::notifyDataCleanResult
-        SyncModuleResult notifyDataCleanResult(const std::vector<std::string>& indices,
-                                               Option option = Option::SYNC,
-                                               bool trackConsecutiveFailures = false) override;
+        SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                         Option option = Option::SYNC,
+                                         bool trackConsecutiveFailures = false) override;
 
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;

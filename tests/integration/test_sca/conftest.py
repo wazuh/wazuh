@@ -259,6 +259,35 @@ def clean_sca_db():
     yield
 
 
+@pytest.fixture(scope="module", autouse=True)
+def set_agent_config(request: pytest.FixtureRequest):
+    if not hasattr(request.module, "test_configuration"):
+        return
+
+    configurations = getattr(request.module, "test_configuration")
+    # <agent> is the 5.x name for what 4.x spelled <client> (#38103) -- the legacy tag is only
+    # read for <client><server><address> as a fallback, so <port> would be silently ignored under it.
+    agent_conf = {
+        "section": "agent",
+        "elements": [
+            {
+                "manager": {
+                    "elements": [
+                        {"address": {"value": "127.0.0.1"}},
+                        {"port": {"value": 1517}},
+                        {"endpoint": {"value": ""}},
+                    ]
+                }
+            }
+        ],
+    }
+
+    for index, _ in enumerate(configurations):
+        configurations[index]["sections"].append(agent_conf)
+
+    request.module.test_configuration = configurations
+
+
 @pytest.fixture(autouse=True)
 def _wait_agent_exit_after_test():
     """After each test, wait for the agent process to fully exit on Windows.

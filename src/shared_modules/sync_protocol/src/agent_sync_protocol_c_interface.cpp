@@ -258,7 +258,7 @@ extern "C" {
             if (indices_vec.empty()) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->notifyDataClean(indices_vec);
+            return wrapper->impl->notifyDataClean(indices_vec).success;
         }
         catch (const std::exception& ex)
         {

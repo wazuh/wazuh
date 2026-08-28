@@ -264,13 +264,18 @@ class SecurityConfigurationAssessment
         SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
-        /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING otherwise. Shared
-        /// by syncModule() and performRecovery() so both apply the same tolerance policy to any
-        /// failure a sync/recovery attempt returns, including one from synchronizeDatabaseSnapshot()'s
+        /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
+        /// @p genericFailureLevel) otherwise. Shared by syncModule(), performRecovery() and
+        /// executeFlushSync() so all three apply the same tolerance policy to any failure a
+        /// sync/recovery/flush attempt returns, including one from synchronizeDatabaseSnapshot()'s
         /// DataClean step. (#38579)
         /// @param result The failed result (caller must not call this when result.success is true).
         /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
-        void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel);
+        /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
+        /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
+        /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+        void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
+                            modules_log_level_t genericFailureLevel = LOG_WARNING);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate

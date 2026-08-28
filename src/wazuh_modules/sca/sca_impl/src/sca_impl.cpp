@@ -676,7 +676,8 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     return result.success;
 }
 
-void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel)
+void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
+                                                      modules_log_level_t genericFailureLevel)
 {
     if (result.stopped || !m_keepRunning.load())
     {
@@ -709,7 +710,7 @@ void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& res
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA " + operationLabel + " failed" +
+        LoggingHelper::getInstance().log(genericFailureLevel, "SCA " + operationLabel + " failed" +
                                          (result.failureReason.empty() ? "." : ": " + result.failureReason));
     }
 }
@@ -763,7 +764,7 @@ bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::str
 
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        return m_spSyncProtocol->notifyDataClean(indices).success;
     }
 
     return false;
@@ -949,43 +950,9 @@ int SecurityConfigurationAssessment::executeFlushSync()
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
     }
-    else if (result.stopped || !m_keepRunning.load())
-    {
-        // Not a real failure: the flush sync was aborted because the module is stopping.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
-        return -1;
-    }
-    else if (result.awaitingPrerequisite)
-    {
-        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
-        // most commonly right after enrollment/restart. Expected to clear on its own.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
-        return -1;
-    }
-    else if ((result.managerNotReady || result.localTransportUnavailable) &&
-             result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
-    {
-        // Either the manager is not ready for this agent yet, or the local sync intake itself
-        // isn't reachable yet -- both mostly right after a restart -- and the sync has not
-        // failed enough times in a row to suspect it will not clear. Not an error yet.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
-                                         " Will retry next cycle.");
-        return -1;
-    }
-    else if (result.managerNotReady || result.localTransportUnavailable)
-    {
-        // Neither condition has cleared for several cycles in a row: this is no longer a restart
-        // hiccup, so it must stay visible.
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
-                                         std::to_string(result.consecutiveFailures) + " times in a row: " +
-                                         result.failureReason);
-        return -1;
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");
-        return -1;
-    }
+
+    logSyncFailure(result, "flush", LOG_ERROR);
+    return -1;
 }
 
 void SecurityConfigurationAssessment::resume()
@@ -1364,7 +1331,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         // payload and could permanently drop whatever didn't fit in that one session).
         // trackConsecutiveFailures=true: this DataClean is part of the periodic sync/recovery cycle,
         // so its outcome should feed the same manager-not-ready streak synchronizeModule() relies on.
-        SyncModuleResult dataCleanResult = m_spSyncProtocol->notifyDataCleanResult({SCA_SYNC_INDEX}, Option::SYNC, true);
+        SyncModuleResult dataCleanResult = m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}, Option::SYNC, true);
 
         if (!dataCleanResult.success)
         {
@@ -1842,7 +1809,7 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
 
     while (!dataCleanSent && m_keepRunning)
     {
-        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices).success;
 
         if (!dataCleanSent && m_keepRunning)
         {

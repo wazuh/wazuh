@@ -66,28 +66,22 @@ class IAgentSyncProtocol
         ///
         /// This method sends DataClean messages for each index in the provided vector.
         /// Sent as one FullSession carrying Start, a DataClean per index, and End.
-        /// Upon receiving Ok, it clears the local database and returns true.
-        /// @param indices Vector of index names to clean
-        /// @param option Synchronization option.
-        /// @return true if notification completed successfully and database was cleared, false otherwise
-        virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
-
-        /// @brief Same as @ref notifyDataClean, but reports the same detail synchronizeModule() does
-        /// (manager-not-ready / consecutive-failure streak) instead of a bare bool, so a caller that
-        /// needs to distinguish a transient "manager not ready yet" hiccup from a real failure -- to
-        /// decide log severity or apply the same retry tolerance used elsewhere -- doesn't have to guess.
+        /// Upon receiving Ok, it clears the local database. Reports the same detail
+        /// synchronizeModule() does (manager-not-ready / local-transport-unavailable /
+        /// consecutive-failure streak), so a caller that needs to distinguish a transient
+        /// hiccup from a real failure -- to decide log severity or apply the same retry
+        /// tolerance used elsewhere -- doesn't have to guess from a bare bool.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
         /// @param trackConsecutiveFailures Whether this call's outcome should feed the same
-        /// consecutive-failure streak synchronizeModule() tracks on this instance. Pass true only from
-        /// a periodic-sync path where a DataClean failure genuinely represents "this cycle failed";
-        /// leave false (the default, matching @ref notifyDataClean's prior behavior) for ad hoc
-        /// DataClean calls (e.g. policy-removal cleanup) that aren't part of that cycle and would
-        /// otherwise skew its tolerance window.
+        /// consecutive-failure streak synchronizeModule() tracks on this instance. Pass true only
+        /// from a periodic-sync path where a DataClean failure genuinely represents "this cycle
+        /// failed"; leave false (the default) for ad hoc DataClean calls (e.g. policy-removal
+        /// cleanup) that aren't part of that cycle and would otherwise skew its tolerance window.
         /// @return SyncModuleResult with success flag and failure detail if unsuccessful
-        virtual SyncModuleResult notifyDataCleanResult(const std::vector<std::string>& indices,
-                                                       Option option = Option::SYNC,
-                                                       bool trackConsecutiveFailures = false) = 0;
+        virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                                 Option option = Option::SYNC,
+                                                 bool trackConsecutiveFailures = false) = 0;
 
         /// @brief Fetches pending DataValue items from the persistent queue without marking them.
         /// @param onlyDataValues If true, only returns items with is_data_context=false

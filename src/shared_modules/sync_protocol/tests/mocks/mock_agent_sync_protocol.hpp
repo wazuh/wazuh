@@ -21,9 +21,7 @@ class MockAgentSyncProtocol : public IAgentSyncProtocol
 
         MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups, (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
 
-        MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>& indices, Option option), (override));
-
-        MOCK_METHOD(SyncModuleResult, notifyDataCleanResult, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
+        MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
 
         MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
 

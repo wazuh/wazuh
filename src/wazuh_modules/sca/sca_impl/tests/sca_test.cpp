@@ -769,7 +769,7 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         {"sync", 1}
     });
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
     .WillOnce(testing::Invoke([](const std::string&,
@@ -815,8 +815,8 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult{true}));
     // After the first sync, periodic syncs call synchronizeModule() directly and never go
-    // through the snapshot-rebuild path (notifyDataCleanResult + persistDifference per item).
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(testing::_, testing::_, testing::_))
+    // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_, testing::_))
     .Times(0);
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
     .Times(0);
@@ -931,7 +931,7 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLo
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return());
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
     EXPECT_CALL(*mockSyncProtocol, persistDifference(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
     .Times(0);
@@ -961,7 +961,7 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogs
     .WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
@@ -988,7 +988,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDefer
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return());
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
@@ -1016,7 +1016,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
     .WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
@@ -1030,7 +1030,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
 // logSyncFailure() treats localTransportUnavailable the same as managerNotReady (same tolerance,
 // same escalation) -- companion to the ManagerNotReady pair above, covering the local-socket-down
 // case that only became reachable through performRecovery() once it started routing through
-// notifyDataCleanResult(). (#38579)
+// notifyDataClean(). (#38579)
 TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranceLogsDeferred)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1044,7 +1044,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranc
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return());
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
 
     m_logOutput.clear();
@@ -1069,7 +1069,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceL
     .WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
-    EXPECT_CALL(*mockSyncProtocol, notifyDataCleanResult(::testing::_, Option::SYNC, true))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
 
     m_logOutput.clear();

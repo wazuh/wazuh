@@ -600,15 +600,9 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
             .localTransportUnavailable = false};
 }
 
-bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
-                                        Option option)
-{
-    return notifyDataCleanResult(indices, option).success;
-}
-
-SyncModuleResult AgentSyncProtocol::notifyDataCleanResult(const std::vector<std::string>& indices,
-                                                          Option option,
-                                                          bool trackConsecutiveFailures)
+SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
+                                                    Option option,
+                                                    bool trackConsecutiveFailures)
 {
     if (indices.empty())
     {
