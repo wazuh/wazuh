@@ -229,6 +229,8 @@ class WazuhException(Exception):
                               'being deleted from the indexer. Retry in a few seconds, or use a '
                               'different agent ID'
                },
+        1764: {'message': 'Vulnerability scanning requires agent version 5.0 or higher.'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'
@@ -437,9 +439,17 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
+
+        # Vulnerability scan
+        8001: {'message': 'Vulnerability detection module has not been initialized yet'},
+        8002: {'message': 'Vulnerability detection feed is not ready yet'},
+        8003: {'message': 'Vulnerability scanner is not ready yet'},
+        8004: {'message': 'Indexer is not available for vulnerability scanning'},
+        8005: {'message': 'Vulnerability scan queue is full, please retry later'},
+        8006: {'message': 'Vulnerability scanner module is shutting down'},
     }
 
-    # Reserve agent upgrade custom errors
+    # Reserve vulnerability scan's remaining custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
                    for key in range(8007, 9000)})
