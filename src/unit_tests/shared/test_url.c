@@ -17,6 +17,12 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
+#if LIBCURL_VERSION_NUM >= 0x075500
+#define EXPECTED_PROTOCOLS_OPT CURLOPT_PROTOCOLS_STR
+#else
+#define EXPECTED_PROTOCOLS_OPT CURLOPT_PROTOCOLS
+#endif
+
 /* setup/teardown */
 static int group_setup(void ** state) {
     test_mode = 1;
@@ -217,6 +223,10 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(wrap_curl_easy_perform, curl, curl);
         will_return(wrap_curl_easy_perform, (CURLcode) 9);
 
@@ -260,6 +270,10 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -322,6 +336,10 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
@@ -365,6 +383,10 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -431,6 +453,10 @@ void test_wurl_http_request_curl_easy_perform_fail_timeout(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
@@ -478,6 +504,10 @@ void test_wurl_http_request_curl_easy_perform_fail_timeout(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -547,6 +577,10 @@ void test_wurl_http_request_curl_easy_setopt_fail(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, (CURLcode) 49);
@@ -587,6 +621,10 @@ void test_wurl_http_request_curl_easy_setopt_fail(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -650,6 +688,10 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_USERPWD);
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
@@ -702,6 +744,10 @@ void test_wurl_http_request_success(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, EXPECTED_PROTOCOLS_OPT);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 

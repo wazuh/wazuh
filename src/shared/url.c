@@ -508,6 +508,12 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     res += curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
     res += curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
 
+#if LIBCURL_VERSION_NUM >= 0x075500
+    res += curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https");
+#else
+    res += curl_easy_setopt(curl, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#endif
+
     if (userpass) {
         res += curl_easy_setopt(curl, CURLOPT_USERPWD, userpass);
     }
