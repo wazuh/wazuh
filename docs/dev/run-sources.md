@@ -123,7 +123,7 @@ This will generate the MSI installer package.
 Once the package is generated, install it using the command line with the server address and the required registration password:
 
 ```batch
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>"
+wazuh-agent-*.msi /q WAZUH_MANAGER_ENDPOINT="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>"
 ```
 
 **Important**: Replace `10.0.0.2` with the correct server IP address, and `<PASSWORD>` with the registration password retrieved from the manager (e.g., from `/var/wazuh-manager/etc/authd.pass`).

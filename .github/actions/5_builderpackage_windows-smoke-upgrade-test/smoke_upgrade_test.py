@@ -76,7 +76,7 @@ def install_package(package_path):
     print(f"Installing Wazuh from: {package_path}")
 
     temp_log_path = r"C:\win-agent-base\msiexec_install.log"
-    cmd = ["msiexec", "/i", package_path, "/qn", "/norestart", "/q", "WAZUH_MANAGER=1.1.1.1", "/l", temp_log_path]
+    cmd = ["msiexec", "/i", package_path, "/qn", "/norestart", "/q", "WAZUH_MANAGER_ENDPOINT=1.1.1.1", "/l", temp_log_path]
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:

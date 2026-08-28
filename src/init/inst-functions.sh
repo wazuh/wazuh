@@ -452,12 +452,8 @@ ParseManagerEndpoint()
                     return 1
                     ;;
             esac
-            case "${MEP_HOST}" in
-                *%*)
-                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': IPv6 zone ids are not supported yet; set <interface_index> in ossec.conf instead." >&2
-                    return 1
-                    ;;
-            esac
+            # A zone id (%25<iface>) stays part of the host: the agent resolves it
+            # with if_nametoindex() at startup (#38624).
             ;;
         *:*:*)
             echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}." >&2
@@ -533,30 +529,25 @@ WriteAgent()
     echo "  <agent>" >> $NEWCONFIG
     echo "    <manager>" >> $NEWCONFIG
 
-    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624), so when it
-    # is set it supersedes the address this function would otherwise take from
-    # install.sh's own $SERVER_IP/$HNAME prompt. Tested with ${VAR+x} rather than -n so
-    # an explicitly empty value is rejected instead of silently read as unset: "" used
-    # to be the prefix opt-out (#38614), and an operator still passing it deserves the
-    # error rather than the default prefix. A rejected value falls back to the prompted
-    # address and the defaults, with the reason already reported on stderr.
-    AGENT_ADDRESS="$SERVER_IP"
+    # <endpoint> carries the whole connection target (#38624). WAZUH_MANAGER_ENDPOINT
+    # supplies it directly when set; otherwise it is composed from install.sh's own
+    # $SERVER_IP/$HNAME prompt, which is the only address this path has. Tested with
+    # ${VAR+x} rather than -n so an explicitly empty value is rejected instead of
+    # silently read as unset: "" used to be the prefix opt-out (#38614). A rejected
+    # value falls back to the prompted address, with the reason already on stderr --
+    # this path must still emit a usable template, and the operator is present to see
+    # the message.
+    AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
-      AGENT_ADDRESS="$HNAME"
+      AGENT_ENDPOINT="$HNAME"
     fi
-    AGENT_PORT="${DEFAULT_MANAGER_PORT}"
-    AGENT_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
 
     if [ "X${WAZUH_MANAGER_ENDPOINT+x}" != "X" ]; then
       if ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"; then
-        AGENT_ADDRESS="${MEP_HOST}"
-        AGENT_PORT="${MEP_PORT}"
-        AGENT_ENDPOINT="${MEP_ENDPOINT}"
+        AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
       fi
     fi
 
-    echo "      <address>${AGENT_ADDRESS}</address>" >> $NEWCONFIG
-    echo "      <port>${AGENT_PORT}</port>" >> $NEWCONFIG
     echo "      <endpoint>${AGENT_ENDPOINT}</endpoint>" >> $NEWCONFIG
     echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then

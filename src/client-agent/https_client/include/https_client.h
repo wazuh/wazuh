@@ -112,8 +112,12 @@ typedef enum hc_result_t
  */
 typedef struct hc_config_t
 {
-    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
+    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2). A bare,
+    ///< unbracketed IPv6 literal; baseUrl() brackets it for the wire.
     uint16_t server_port;          ///< Manager HTTPS port.
+    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
+    ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
+    ///< 0 -> no zone, which is every IPv4 and non-link-local address.
     char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
     ///< prepended to every request target (e.g. "/endpoint/stateless");
     ///< empty -> unprefixed, today's behavior. A routing matter only: the

@@ -279,7 +279,7 @@ sudo dpkg -i wazuh-agent_*.deb
 You can optionally specify configuration parameters (such as the manager IP and the required registration password):
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
+sudo WAZUH_MANAGER_ENDPOINT='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
 ```
 
 #### Red Hat-based platforms
@@ -291,7 +291,7 @@ sudo rpm -ivh wazuh-agent-*.rpm
 You can optionally specify configuration parameters:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_MANAGER_ENDPOINT='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### SUSE-based platforms
@@ -303,7 +303,7 @@ sudo rpm -ivh wazuh-agent-*.rpm
 You can optionally specify configuration parameters:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_MANAGER_ENDPOINT='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### Starting the agent
@@ -333,7 +333,7 @@ sudo installer -pkg wazuh-agent-*.pkg -target /
 You can optionally specify configuration parameters by writing them to `/tmp/wazuh_envs` before running the installer:
 
 ```bash
-echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_REGISTRATION_PASSWORD='<PASSWORD>'" >> /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
+echo "WAZUH_MANAGER_ENDPOINT='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_REGISTRATION_PASSWORD='<PASSWORD>'" >> /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
 Start the agent service:
@@ -359,7 +359,7 @@ wazuh-agent-*.msi /q
 You can optionally specify configuration parameters:
 
 ```powershell
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>" WAZUH_AGENT_NAME="windows-server-01"
+wazuh-agent-*.msi /q WAZUH_MANAGER_ENDPOINT="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>" WAZUH_AGENT_NAME="windows-server-01"
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
@@ -380,14 +380,8 @@ Get-Service -Name wazuh
 
 #### Server connection
 
-**`WAZUH_MANAGER`**\
-Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server.
-
-**`WAZUH_MANAGER_PORT`**\
-Defines the port used to communicate with the Wazuh server. Default: `1517`.
-
 **`WAZUH_MANAGER_ENDPOINT`**\
-The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. When set, it supersedes both `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT`.
+The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. This is the only way to point an agent at a manager: the former `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT` variables, and the separate `<address>` and `<port>` settings they wrote, were removed.
 
 ```
 WAZUH_MANAGER_ENDPOINT = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
@@ -414,6 +408,18 @@ An `https://` scheme is accepted and ignored if present; any other scheme is rej
 
 A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
 
+The value is written verbatim into the agent's configuration, which takes the same grammar:
+
+```xml
+<agent>
+  <manager>
+    <endpoint>192.168.0.60:1517/wazuh-manager/</endpoint>
+  </manager>
+</agent>
+```
+
+An agent upgraded in place keeps whatever `ossec.conf` it already had, so the older spelling with separate `<address>`, `<port>` and a prefix-only `<endpoint>` is still read. It logs a deprecation warning and will stop being accepted in a future release; rewrite it as a single `<endpoint>` when convenient.
+
 #### Enrollment configuration
 
 A 5.0 agent enrolls over the **same** connection and TLS configuration it uses for everything else —
@@ -423,10 +429,10 @@ certificate settings of its own.
 
 > The four variables below are still accepted so an existing deployment script keeps working, but a
 > 5.0 agent **ignores** them: they write `<enrollment>` options that were removed in 5.0. Point
-> `WAZUH_MANAGER` at the server and configure TLS once, for the whole connection.
+> `WAZUH_MANAGER_ENDPOINT` at the server and configure TLS once, for the whole connection.
 
 **`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
-Formerly the address of a separate enrollment server. Enrollment now always targets `WAZUH_MANAGER`.
+Formerly the address of a separate enrollment server. Enrollment now always targets `WAZUH_MANAGER_ENDPOINT`.
 
 **`WAZUH_REGISTRATION_PORT`** *(ignored in 5.0)*\
 Formerly the port of the legacy enrollment listener (`1515`). Enrollment now uses `WAZUH_MANAGER_PORT`.

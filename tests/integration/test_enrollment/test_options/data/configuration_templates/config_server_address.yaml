@@ -9,7 +9,5 @@
       elements:
           - manager:
               elements:
-              - address:
-                  value: SERVER_ADDRESS
               - endpoint:
-                  value: ''
+                  value: 'SERVER_ADDRESS:1517/'

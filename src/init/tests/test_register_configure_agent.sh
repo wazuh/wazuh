@@ -188,10 +188,11 @@ check "the commented-out block does not absorb the insertion" \
 unset WAZUH_REGISTRATION_SERVER
 
 # WAZUH_MANAGER_ENDPOINT (#38624) carries the whole connection target --
-# host[:port][/prefix] -- which the script splits back into the three tags the agent
-# reads. Only the host is mandatory; an omitted port or prefix takes its default.
+# host[:port][/prefix] -- and <endpoint> now takes that same language, so an accepted
+# value is written into the config verbatim. Only the host is mandatory; an omitted
+# port or prefix takes its default when the agent parses the tag at startup.
 #
-# Collapses the emitted block to one line so a case reads as the tags it produced.
+# Collapses the emitted block to one line so a case reads as the tag it produced.
 manager_block() {
 
     printf '%s\n' "$1" | awk '
@@ -202,83 +203,59 @@ manager_block() {
 
 }
 
-endpoint_case() {
+# An accepted value reaches <endpoint> unchanged.
+accepted() {
 
-    local desc="$1" value="$2" expected="$3"
+    local desc="$1" value="$2"
 
     export WAZUH_MANAGER_ENDPOINT="${value}"
     check "WAZUH_MANAGER_ENDPOINT='${value}' ${desc}" \
-          "${expected}" "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+          "<manager><endpoint>${value}</endpoint></manager>" \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
     unset WAZUH_MANAGER_ENDPOINT
 
 }
 
-# One row per accepted shape, asserting all three tags together rather than <endpoint>
-# alone -- the split is the thing under test, so a case that got the prefix right and
-# the port wrong has to fail.
-endpoint_case "takes both defaults" "5.5.5.5" \
-    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
-endpoint_case "accepts a hostname" "dasd.net" \
-    '<manager><address>dasd.net</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
-endpoint_case "takes an explicit port" "5.5.5.5:8443" \
-    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/wazuh-manager/</endpoint></manager>'
-endpoint_case "takes an explicit prefix" "5.5.5.5/proxy" \
-    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/proxy/</endpoint></manager>'
-endpoint_case "takes a multi-segment prefix" "5.5.5.5:8443/a/b" \
-    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/a/b/</endpoint></manager>'
-endpoint_case "tolerates an https:// scheme" "https://5.5.5.5:8443/proxy/" \
-    '<manager><address>5.5.5.5</address><port>8443</port><endpoint>/proxy/</endpoint></manager>'
-endpoint_case "matches the scheme case-insensitively" "HTTPS://5.5.5.5/proxy" \
-    '<manager><address>5.5.5.5</address><port>1517</port><endpoint>/proxy/</endpoint></manager>'
-endpoint_case "drops the brackets from an IPv6 literal" "[2001:db8::1]:8443/proxy" \
-    '<manager><address>2001:db8::1</address><port>8443</port><endpoint>/proxy/</endpoint></manager>'
-endpoint_case "accepts a bracketed IPv6 literal with no port" "[2001:db8::1]" \
-    '<manager><address>2001:db8::1</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>'
+# A grammar violation writes no <manager> block at all, leaving the shipped placeholder
+# so the agent fails loudly at startup instead of connecting somewhere unintended.
+rejected() {
 
-# The distinction the whole grammar turns on, and the one a naive split loses: no '/'
-# at all means "default prefix", a trailing '/' with nothing after it is the operator's
-# deliberate opt-out (#38614) and has to survive as an empty tag.
-endpoint_case "with a trailing slash opts out of the prefix" "5.5.5.5/" \
-    '<manager><address>5.5.5.5</address><port>1517</port><endpoint></endpoint></manager>'
-endpoint_case "opts out with an explicit port too" "5.5.5.5:1517/" \
-    '<manager><address>5.5.5.5</address><port>1517</port><endpoint></endpoint></manager>'
+    local desc="$1" value="$2"
 
-# Grammar violations write no <manager> block, leaving the shipped one in place so the
-# agent fails loudly at startup instead of connecting somewhere unintended.
-untouched='<manager><address>MANAGER_IP</address></manager>'
-endpoint_case "is rejected when empty" "" "${untouched}"
-endpoint_case "is rejected with no host" "/wazuh-manager/" "${untouched}"
-endpoint_case "is rejected for a non-https scheme" "http://5.5.5.5/" "${untouched}"
-endpoint_case "is rejected for an out-of-range port" "5.5.5.5:99999" "${untouched}"
-endpoint_case "is rejected for a non-numeric port" "5.5.5.5:abc" "${untouched}"
-endpoint_case "is rejected for a trailing colon" "5.5.5.5:" "${untouched}"
-endpoint_case "is rejected for an unbracketed IPv6 literal" "2001:db8::1" "${untouched}"
-endpoint_case "is rejected for an IPv6 zone id" "[fe80::1%25eth0]" "${untouched}"
+    export WAZUH_MANAGER_ENDPOINT="${value}"
+    check "WAZUH_MANAGER_ENDPOINT='${value}' ${desc}" \
+          '<manager><address>MANAGER_IP</address></manager>' \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER_ENDPOINT
 
-# WAZUH_MANAGER keeps working exactly as before when the combined value is not set --
-# this is what leaves every existing install command and documented example alone.
-export WAZUH_MANAGER="10.0.0.5"
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER alone still writes the block with both defaults" \
-      '<manager><address>10.0.0.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>' \
-      "$(manager_block "${actual}")"
+}
 
-export WAZUH_MANAGER_PORT="8443"
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_PORT alone still sets the port" \
-      '<manager><address>10.0.0.5</address><port>8443</port><endpoint>/wazuh-manager/</endpoint></manager>' \
-      "$(manager_block "${actual}")"
+accepted "takes both defaults"                      "5.5.5.5"
+accepted "accepts a hostname"                       "dasd.net"
+accepted "takes an explicit port"                   "5.5.5.5:8443"
+accepted "takes an explicit prefix"                 "5.5.5.5/proxy"
+accepted "takes a multi-segment prefix"             "5.5.5.5:8443/a/b"
+accepted "tolerates an https:// scheme"             "https://5.5.5.5:8443/proxy/"
+accepted "matches the scheme case-insensitively"    "HTTPS://5.5.5.5/proxy"
+accepted "accepts a bracketed IPv6 literal"         "[2001:db8::1]:8443/proxy"
+accepted "accepts a bracketed IPv6 with no port"    "[2001:db8::1]"
+# v2 resolves the zone id with if_nametoindex() at startup, so the installer passes it
+# through rather than refusing it as v1 did.
+accepted "accepts an IPv6 zone id"                  "[fe80::1%25eth0]"
 
-# The combined value wins over both, and WAZUH_MANAGER_PORT must not clobber the port
-# it parsed out.
-export WAZUH_MANAGER_ENDPOINT="6.6.6.6:9999/proxy"
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_ENDPOINT supersedes WAZUH_MANAGER and WAZUH_MANAGER_PORT" \
-      '<manager><address>6.6.6.6</address><port>9999</port><endpoint>/proxy/</endpoint></manager>' \
-      "$(manager_block "${actual}")"
-unset WAZUH_MANAGER_ENDPOINT
-unset WAZUH_MANAGER_PORT
-unset WAZUH_MANAGER
+# The distinction the whole grammar turns on: no '/' at all means "default prefix", a
+# trailing '/' with nothing after it is the operator's deliberate opt-out (#38614).
+# Both are written verbatim; the agent tells them apart when it parses the tag.
+accepted "with a trailing slash opts out of the prefix" "5.5.5.5/"
+accepted "opts out with an explicit port too"           "5.5.5.5:1517/"
+
+rejected "is rejected when empty"                        ""
+rejected "is rejected with no host"                      "/wazuh-manager/"
+rejected "is rejected for a non-https scheme"            "http://5.5.5.5/"
+rejected "is rejected for an out-of-range port"          "5.5.5.5:99999"
+rejected "is rejected for a non-numeric port"            "5.5.5.5:abc"
+rejected "is rejected for a trailing colon"              "5.5.5.5:"
+rejected "is rejected for an unbracketed IPv6 literal"   "2001:db8::1"
 
 echo
 echo "${checks} checks, ${failures} failed"

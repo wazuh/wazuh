@@ -78,7 +78,7 @@ static void test_ssl_full_verification_mode(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl>"
         "<certificate>/etc/wazuh/agent.pem</certificate>"
         "<key>/etc/wazuh/agent.key</key>"
@@ -87,7 +87,6 @@ static void test_ssl_full_verification_mode(void **state) {
         "<ciphers>TLS_AES_256_GCM_SHA384</ciphers>"
         "</ssl>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
@@ -110,10 +109,9 @@ static void test_ssl_ciphers_accepts_a_tls13_suite_list(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.ssl.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
 
@@ -126,10 +124,9 @@ static void test_ssl_ciphers_rejects_a_tls12_cipher_string(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>HIGH:!aNULL</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.");
 
@@ -145,10 +142,9 @@ static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
 
     /* Every element is empty, so there is no suite at all. */
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>:::</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
 
@@ -166,10 +162,9 @@ static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: ':TLS_AES_128_GCM_SHA256' has an empty cipher suite name.");
 
@@ -184,10 +179,9 @@ static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256:' has an empty cipher suite name.");
 
@@ -202,10 +196,9 @@ static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384' "
                   "has an empty cipher suite name.");
@@ -221,10 +214,9 @@ static void test_ssl_certificate_verification_mode(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><verification_mode>certificate</verification_mode></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_CERT);
 
@@ -237,10 +229,9 @@ static void test_ssl_none_verification_mode(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><verification_mode>none</verification_mode></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
 
@@ -253,10 +244,9 @@ static void test_ssl_system_verification_mode(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><verification_mode>system</verification_mode></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_SYSTEM);
 
@@ -271,9 +261,8 @@ static void test_ssl_zero_initialized_reads_as_full(void **state) {
     /* No <ssl> block at all: a zero-initialized struct reads as FULL
      * (AGENT_VERIFY_FULL == 0), so a caller that never sets a default still
      * fails closed rather than silently disabling verification. */
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
 
@@ -288,12 +277,11 @@ static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
     /* The parser never invents a verification mode, which is what lets ClientConf
      * own the agent's own default of NONE: with no <ssl> block the value the
      * caller came in with is still there afterwards. */
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.ssl.verification_mode = AGENT_VERIFY_NONE;
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent_into(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
 
@@ -306,10 +294,9 @@ static void test_ssl_invalid_verification_mode_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><verification_mode>bogus</verification_mode></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "(1235): Invalid value for element 'verification_mode': bogus.");
 
@@ -324,10 +311,9 @@ static void test_ssl_invalid_tag_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><bogus_tag>x</bogus_tag></ssl>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "(1230): Invalid element in the configuration: 'bogus_tag'.");
 
@@ -343,9 +329,8 @@ static void test_manager_address_and_explicit_port(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>8443</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:8443</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -379,11 +364,9 @@ static void test_second_manager_block_prevails_with_warning(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1514</port></manager>"
-        "<manager><address>10.0.0.2</address><port>8443</port></manager>";
+        "<manager><endpoint>10.0.0.1:1514</endpoint></manager>"
+        "<manager><endpoint>10.0.0.2:8443</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.1");
-    expect_valid_ip("10.0.0.2");
     expect_string(__wrap__mwarn, formatted_msg,
                   "Only one <manager> block is supported; the last one prevails.");
 
@@ -403,9 +386,8 @@ static void test_agent_manager_address_and_port_are_parsed(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.5</address><port>1600</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.5:1600</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -421,9 +403,8 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.5</address></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><port> is not configured. Using the default port 1517.");
 
@@ -440,14 +421,215 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.5</address></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><port> is not configured. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* #38624: <endpoint> carries the whole target, in the same language the
+ * WAZUH_MANAGER_ENDPOINT installation variable accepts. Only the host is mandatory. */
+
+static void test_agent_manager_endpoint_accepts_a_hostname(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>manager.example.com:8443/proxy</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "manager.example.com");
+    assert_int_equal(cfg.server[0].port, 8443);
+    assert_string_equal(cfg.server[0].endpoint, "proxy");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The scheme is optional because the installers write an operator's value through
+ * verbatim and a bare address is the common spelling. When present it must be the
+ * one transport actually served. */
+
+static void test_agent_manager_endpoint_tolerates_an_https_scheme(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>HttPS://10.0.0.5:8443/gateway</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 8443);
+    assert_string_equal(cfg.server[0].endpoint, "gateway");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_a_non_https_scheme(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>http://10.0.0.5/gateway</endpoint></manager>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint 'http://10.0.0.5/gateway': unsupported scheme 'http'; "
+                  "only https is served.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The distinction the whole grammar turns on: no separator at all means the default
+ * prefix, a trailing separator with nothing after it is the deliberate opt-out
+ * (#38614). curl cannot tell these apart -- CURLUPART_PATH reports "/" for both --
+ * so losing it would silently reinstate the default and undo #38658's fix. */
+
+static void test_agent_manager_endpoint_trailing_slash_opts_out(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1517);
+    assert_null(cfg.server[0].endpoint);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_no_slash_keeps_the_default_prefix(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Same address as the opt-out case above, one character apart. */
+    const char *xml_str = "<manager><endpoint>10.0.0.5:1517</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* IPv6 literals are bracketed so their colons cannot be read as the port separator.
+ * The brackets are dropped from rip: OS_IsValidIP does not match a bracketed literal
+ * and ModuleConfig::baseUrl() re-brackets it for the wire. */
+
+static void test_agent_manager_endpoint_accepts_a_bracketed_ipv6(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>[2001:db8::1]:8443/gateway</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    /* Brackets are stripped, then OS_ExpandIPv6() writes the literal out in full --
+     * the same normalization <address> has always had for an IPv6 value. */
+    assert_string_equal(cfg.server[0].rip, "2001:0DB8:0000:0000:0000:0000:0000:0001");
+    assert_int_equal(cfg.server[0].port, 8443);
+    assert_int_equal(cfg.server[0].scope_id, 0);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_resolves_a_numeric_ipv6_zone(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* A numeric zone passes through without consulting the interface table, so this
+     * asserts a fixed scope id without depending on the host's interface names. */
+    const char *xml_str = "<manager><endpoint>[fe80::1%257]:1517</endpoint></manager>";
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "FE80:0000:0000:0000:0000:0000:0000:0001");
+    assert_int_equal(cfg.server[0].scope_id, 7);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_an_unknown_ipv6_zone(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><endpoint>[fe80::1%25wz-no-such-if]:1517</endpoint></manager>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint: no network interface named 'wz-no-such-if' on this host.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* A configuration value has to be exact, so a component this grammar has no slot for
+ * is an error rather than something quietly dropped. */
+
+static void test_agent_manager_endpoint_rejects_a_query_string(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>10.0.0.5/gateway?debug=1</endpoint></manager>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid endpoint '10.0.0.5/gateway?debug=1': a query string is not allowed.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_embedded_credentials(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>user:pass@10.0.0.5:1517</endpoint></manager>";
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_an_out_of_range_port(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<manager><endpoint>10.0.0.5:99999</endpoint></manager>";
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_manager_endpoint_rejects_a_missing_host(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* The 5.0.0 prefix-only spelling, arriving without the <address> that used to
+     * accompany it: there is no host to connect to. */
+    const char *xml_str = "<manager><endpoint>/wazuh-manager/</endpoint></manager>";
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -458,9 +640,8 @@ static void test_agent_manager_endpoint_is_parsed(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>wazuh-manager</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/wazuh-manager</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -474,9 +655,8 @@ static void test_agent_manager_endpoint_strips_leading_and_trailing_slashes(void
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>/wazuh-manager/</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/wazuh-manager/</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -489,9 +669,8 @@ static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **st
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint>/</endpoint></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_null(cfg.server[0].endpoint);
@@ -504,15 +683,19 @@ static void test_agent_manager_explicit_empty_endpoint_is_an_opt_out(void **stat
     xml_node **nodes;
     agent cfg;
 
-    /* An explicitly present but empty <endpoint> is a deliberate opt-out of
-     * prefixing, distinct from the tag being absent entirely (which now
-     * defaults to "wazuh-manager" -- see
-     * test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent). */
+    /* The 5.0.0 spelling, still accepted so an agent upgraded by a WPK -- which never
+     * rewrites ossec.conf -- keeps connecting (#38624). <address> present means
+     * <endpoint> carries only the prefix, and an empty one is the deliberate opt-out
+     * it always was. The combined spelling of the same thing is
+     * test_agent_manager_endpoint_trailing_slash_opts_out. */
     const char *xml_str = "<manager><address>10.0.0.5</address><port>1517</port><endpoint></endpoint></manager>";
 
     expect_valid_ip("10.0.0.5");
+    expect_any(__wrap__mwarn, formatted_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1517);
     assert_null(cfg.server[0].endpoint);
 
     cleanup(&xml, nodes, &cfg);
@@ -524,9 +707,8 @@ static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) 
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>gateway/wazuh-manager</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/gateway/wazuh-manager</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "gateway/wazuh-manager");
@@ -540,11 +722,10 @@ static void test_agent_manager_endpoint_rejects_an_invalid_character(void **stat
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>wazuh manager</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/wazuh~manager</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint 'wazuh manager': only letters, digits, '-', '_', '.', "
+                  "Invalid endpoint 'wazuh~manager': only letters, digits, '-', '_', '.', "
                   "and '/' (as a segment separator) are allowed.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -558,9 +739,8 @@ static void test_agent_manager_endpoint_rejects_a_doubled_slash(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>gateway//wazuh</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/gateway//wazuh</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid endpoint 'gateway//wazuh': empty path segment (repeated '/').");
 
@@ -575,9 +755,8 @@ static void test_agent_manager_endpoint_rejects_a_dot_dot_segment(void **state) 
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>1517</port><endpoint>../etc</endpoint></manager>";
+        "<manager><endpoint>10.0.0.5:1517/../etc</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid endpoint '../etc': '.' and '..' are not allowed path segments.");
 
@@ -597,13 +776,12 @@ static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
     memset(long_endpoint, 'a', sizeof(long_endpoint) - 1);
     long_endpoint[sizeof(long_endpoint) - 1] = '\0';
     snprintf(xml_str, sizeof(xml_str),
-             "<manager><address>10.0.0.5</address><port>1517</port><endpoint>%s</endpoint></manager>",
+             "<manager><endpoint>10.0.0.5:1517/%s</endpoint></manager>",
              long_endpoint);
     // Built from the same long_endpoint, not hand-typed, so the 'a' count can never drift from it.
     snprintf(expected_msg, sizeof(expected_msg), "Invalid endpoint '%s': longer than 128 characters.",
              long_endpoint);
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__merror, formatted_msg, expected_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -723,11 +901,10 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
 
-    expect_valid_ip("10.0.0.5");
     expect_string(__wrap__mwarn, formatted_msg,
                   "Only one <manager> block is supported; the last one prevails.");
 
-    assert_int_equal(parse_agent_into("<manager><address>10.0.0.5</address><port>1600</port></manager>",
+    assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                       &agent_xml, &agent_nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
@@ -746,9 +923,7 @@ static void test_legacy_client_is_ignored_once_agent_set_the_address(void **stat
     xml_node **legacy_nodes;
     agent cfg;
 
-    expect_valid_ip("10.0.0.5");
-
-    assert_int_equal(parse_agent("<manager><address>10.0.0.5</address><port>1600</port></manager>",
+    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
@@ -771,13 +946,12 @@ static void test_agent_block_reads_the_legacy_client_options(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<ssl><verification_mode>full</verification_mode></ssl>"
         "<config-profile>debian, debian8</config-profile>"
         "<notify_time>20</notify_time>"
         "<auto_restart>yes</auto_restart>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -802,10 +976,9 @@ static void test_fresh_install_template_shape(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<config-profile>debian, debian8</config-profile>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -844,7 +1017,7 @@ static void test_enrollment_kept_options_are_parsed(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<enrollment>"
         "<enabled>no</enabled>"
         "<agent_name>my-agent</agent_name>"
@@ -855,8 +1028,10 @@ static void test_enrollment_kept_options_are_parsed(void **state) {
         "<delay_after_enrollment>30</delay_after_enrollment>"
         "</enrollment>";
 
-    expect_valid_ip("10.0.0.1");
+    /* <enrollment><agent_address> still goes through OS_IsValidIP; only the
+     * <manager> block moved off it when <address> was folded into <endpoint>. */
     expect_valid_ip("10.0.0.15");
+
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_false(cfg.enrollment.enabled);
@@ -876,10 +1051,9 @@ static void test_enrollment_use_source_ip_yes(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<enrollment><use_source_ip>yes</use_source_ip></enrollment>";
 
-    expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_true(cfg.enrollment.use_source_ip);
@@ -896,7 +1070,7 @@ static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<enrollment>"
         "<manager_address>old-manager.example</manager_address>"
         "<port>1515</port>"
@@ -907,7 +1081,6 @@ static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state
         "<agent_key_path>/etc/wazuh/agent.key</agent_key_path>"
         "</enrollment>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg,
                   "<manager_address> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
@@ -949,10 +1122,9 @@ static void test_enrollment_unknown_element_is_still_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<enrollment><nonsense>1</nonsense></enrollment>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -968,10 +1140,9 @@ static void test_batch_size_and_interval_are_parsed(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><size>1MB</size><interval>10s</interval></batch>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 1024 * 1024);
@@ -986,9 +1157,8 @@ static void test_batch_is_unset_when_absent(void **state) {
     agent cfg;
 
     /* Zero is what the transport module reads as "apply your own default". */
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 0);
@@ -1003,10 +1173,9 @@ static void test_batch_size_without_a_suffix_is_bytes(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><size>2048</size></batch>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 2048);
@@ -1022,10 +1191,9 @@ static void test_batch_zero_size_is_rejected(void **state) {
     /* A zero payload can never carry an event; refuse it rather than let it
      * read as "unset" and silently fall back to the default. */
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><size>0</size></batch>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "(1235): Invalid value for element 'size': 0.");
 
@@ -1043,10 +1211,9 @@ static void test_batch_size_beyond_the_cap_is_rejected(void **state) {
      * a 32-bit agent's size_t wraps past 4 GiB, and 4 GiB exactly wraps to zero,
      * which every reader downstream takes as "unset". */
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><size>2GB</size></batch>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "(1235): Invalid value for element 'size': 2GB.");
 
@@ -1061,10 +1228,9 @@ static void test_batch_interval_beyond_a_day_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><interval>2d</interval></batch>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "(1235): Invalid value for element 'interval': 2d.");
 
@@ -1079,10 +1245,9 @@ static void test_batch_invalid_tag_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<batch><nonsense>1</nonsense></batch>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -1172,7 +1337,7 @@ static void test_read_agent_batch_takes_the_limits_from_the_file(void **state) {
     agent_batch batch = {0};
 
     write_conf("<ossec_config><agent>"
-               "<manager><address>10.0.0.1</address></manager>"
+               "<manager><endpoint>10.0.0.1</endpoint></manager>"
                "<batch><size>3MB</size><interval>45s</interval></batch>"
                "</agent></ossec_config>");
 
@@ -1190,7 +1355,7 @@ static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void **
     agent_batch batch = { .size = 777, .interval = 42 };
 
     write_conf("<ossec_config><agent>"
-               "<manager><address>10.0.0.1</address></manager>"
+               "<manager><endpoint>10.0.0.1</endpoint></manager>"
                "</agent></ossec_config>");
 
     w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
@@ -1303,10 +1468,9 @@ static void test_time_reconnect_is_deprecated(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<time-reconnect>60</time-reconnect>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__mwarn, formatted_msg,
                   "The <time-reconnect> option is deprecated and no longer has any effect.");
 
@@ -1320,9 +1484,8 @@ static void test_max_retries_is_deprecated(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port><max_retries>3</max_retries></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><max_retries>3</max_retries></manager>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__mwarn, formatted_msg,
                   "The <max_retries> option is deprecated and no longer has any effect.");
 
@@ -1336,9 +1499,8 @@ static void test_retry_interval_is_deprecated(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port><retry_interval>5</retry_interval></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><retry_interval>5</retry_interval></manager>";
 
-    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__mwarn, formatted_msg,
                   "The <retry_interval> option is deprecated and no longer has any effect.");
 
@@ -1361,9 +1523,8 @@ static void test_reports_are_off_when_absent(void **state) {
      * that field to 1 before parsing (see test_agentd.c), so a real agent with
      * no <config_report> block ships with it enabled. Only <stats_report> is
      * actually off by default end-to-end. */
-    const char *xml_str = "<manager><address>10.0.0.1</address><port>1517</port></manager>";
+    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.enabled, 0);
@@ -1382,10 +1543,9 @@ static void test_reports_are_independent_of_each_other(void **state) {
     /* The issue requires two separate toggles: enabling stats must leave the
      * config push alone. */
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<stats_report><enabled>yes</enabled><interval>30s</interval></stats_report>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.enabled, 1);
@@ -1401,11 +1561,10 @@ static void test_reports_accept_time_suffixes(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<stats_report><enabled>yes</enabled><interval>2m</interval></stats_report>"
         "<config_report><enabled>yes</enabled><interval>1h</interval></config_report>";
 
-    expect_valid_ip("10.0.0.1");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.interval, 120);
@@ -1420,10 +1579,9 @@ static void test_report_enabled_rejects_a_non_boolean(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<config_report><enabled>maybe</enabled></config_report>";
 
-    expect_valid_ip("10.0.0.1");
     expect_any(__wrap__merror, formatted_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -1437,10 +1595,9 @@ static void test_report_interval_beyond_a_day_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<stats_report><interval>2d</interval></stats_report>";
 
-    expect_valid_ip("10.0.0.1");
     expect_any(__wrap__merror, formatted_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -1454,10 +1611,9 @@ static void test_report_invalid_tag_is_rejected(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<manager><address>10.0.0.1</address><port>1517</port></manager>"
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<stats_report><cadence>30s</cadence></stats_report>";
 
-    expect_valid_ip("10.0.0.1");
     expect_any(__wrap__merror, formatted_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -1491,6 +1647,18 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_address_and_port_are_parsed),
         cmocka_unit_test(test_agent_manager_port_defaults_to_1517),
         cmocka_unit_test(test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent),
+        cmocka_unit_test(test_agent_manager_endpoint_accepts_a_hostname),
+        cmocka_unit_test(test_agent_manager_endpoint_tolerates_an_https_scheme),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_non_https_scheme),
+        cmocka_unit_test(test_agent_manager_endpoint_trailing_slash_opts_out),
+        cmocka_unit_test(test_agent_manager_endpoint_no_slash_keeps_the_default_prefix),
+        cmocka_unit_test(test_agent_manager_endpoint_accepts_a_bracketed_ipv6),
+        cmocka_unit_test(test_agent_manager_endpoint_resolves_a_numeric_ipv6_zone),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_an_unknown_ipv6_zone),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_query_string),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_embedded_credentials),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_an_out_of_range_port),
+        cmocka_unit_test(test_agent_manager_endpoint_rejects_a_missing_host),
         cmocka_unit_test(test_agent_manager_endpoint_is_parsed),
         cmocka_unit_test(test_agent_manager_endpoint_strips_leading_and_trailing_slashes),
         cmocka_unit_test(test_agent_manager_endpoint_of_just_slashes_is_no_endpoint),

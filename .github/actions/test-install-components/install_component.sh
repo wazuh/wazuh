@@ -22,7 +22,7 @@ else
     exit 1
 fi
 
-WAZUH_MANAGER="10.0.0.2" $install "/packages/$package_name"| tee /packages/status.log
+WAZUH_MANAGER_ENDPOINT="10.0.0.2" $install "/packages/$package_name"| tee /packages/status.log
 grep -i " installed.*wazuh-$target" $installed_log| tee -a /packages/status.log
 
 # Retrieve wazuh gid and uid

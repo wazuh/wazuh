@@ -34,24 +34,20 @@ mep_error() {
 
 }
 
-# Split WAZUH_MANAGER_ENDPOINT's combined value (#38624) into the three tags the
-# agent still reads today, setting MEP_HOST / MEP_PORT / MEP_ENDPOINT.
+# Validate WAZUH_MANAGER_ENDPOINT's value against the <endpoint> grammar (#38624):
 #
 #   [https://] host [:port] [/[prefix]]
 #
-# Only the host is mandatory. An omitted port or prefix takes the default above.
-# The one subtlety: "no '/' at all" and "a trailing '/' with nothing after it" are
-# different answers -- the first means "default prefix", the second is the operator's
-# deliberate opt-out (#38614) and has to reach the parser as <endpoint></endpoint>.
+# Only the host is mandatory; an omitted port or prefix takes its default at startup.
+# <endpoint> now takes this same language, so the value is written into the config
+# verbatim and this only decides whether to write it at all -- catching a typo during
+# install, with the reason in ossec.log, rather than leaving the agent to fail later.
+# MEP_HOST / MEP_PORT / MEP_ENDPOINT are still set, for callers that want the split.
 #
 # Kept in lockstep with WriteAgent()'s copy in inst-functions.sh and with
 # ParseManagerEndpoint() in src/win32/InstallerScripts.vbs; a change here belongs in
 # all three. Deliberately parameter-expansion only, no grep/sed/awk: this runs from
 # package post-install, before anything guarantees a usable PATH.
-#
-# Grammar violations are the only thing rejected here. Anything grammatically well
-# formed is written through for the startup parser to validate, the same way
-# WAZUH_MANAGER's value already is.
 parse_manager_endpoint() {
 
     mep_raw="$1"
@@ -126,12 +122,8 @@ parse_manager_endpoint() {
                     return 1
                     ;;
             esac
-            case "${MEP_HOST}" in
-                *%*)
-                    mep_error "${mep_raw}" "IPv6 zone ids are not supported yet; set <interface_index> in ossec.conf instead."
-                    return 1
-                    ;;
-            esac
+            # A zone id (%25<iface>, percent-encoded inside a URL) stays part of the
+            # host: the agent resolves it with if_nametoindex() at startup (#38624).
             ;;
         *:*:*)
             mep_error "${mep_raw}" "an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}."
@@ -322,8 +314,6 @@ add_adress_block() {
 
     {
         echo "    <manager>"
-        echo "      <address>${FINAL_ADDRESS}</address>"
-        echo "      <port>${FINAL_PORT}</port>"
         echo "      <endpoint>${FINAL_ENDPOINT}</endpoint>"
         echo "    </manager>"
     } >> "${TMP_SERVER}"
@@ -345,9 +335,6 @@ add_parameter () {
 
 get_deprecated_vars () {
 
-    if [ -n "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
-        WAZUH_MANAGER=${WAZUH_MANAGER_IP}
-    fi
     if [ -n "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
         WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
     fi
@@ -377,8 +364,6 @@ get_deprecated_vars () {
 
 set_vars () {
 
-    export WAZUH_MANAGER
-    export WAZUH_MANAGER_PORT
     export WAZUH_MANAGER_ENDPOINT
     export WAZUH_REGISTRATION_SERVER
     export WAZUH_REGISTRATION_PORT
@@ -392,7 +377,6 @@ set_vars () {
     export WAZUH_AGENT_GROUP
     export ENROLLMENT_DELAY
     # The following variables are yet supported but all of them are deprecated
-    export WAZUH_MANAGER_IP
     export WAZUH_NOTIFY_TIME
     export WAZUH_AUTHD_SERVER
     export WAZUH_AUTHD_PORT
@@ -411,10 +395,10 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
-          WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
+          WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
           ENROLLMENT_DELAY)
@@ -566,49 +550,30 @@ main () {
 
     get_deprecated_vars
 
-    # WAZUH_MANAGER_ENDPOINT now carries the whole connection target (#38624), so it
-    # supersedes WAZUH_MANAGER and WAZUH_MANAGER_PORT when set. Those two keep working
-    # untouched when it is not, which is what leaves every existing install command and
-    # every documented example alone.
-    ENDPOINT_SUPPLIED_PORT="no"
-
+    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and is now the
+    # only way to configure it: WAZUH_MANAGER and WAZUH_MANAGER_PORT are gone, along with
+    # the separate <address> and <port> tags they used to fill.
+    #
     # Tested with ${VAR+x} rather than -n so that an explicitly empty value is rejected
     # instead of silently read as unset: "" used to be the prefix opt-out (#38614), and
-    # an operator still passing it deserves the error rather than the default prefix.
-    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ] || [ -n "${WAZUH_MANAGER}" ]; then
+    # an operator still passing it deserves the error rather than a default.
+    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
             touch -f "${INSTALLDIR}/logs/ossec.log"
             chmod 660 "${INSTALLDIR}/logs/ossec.log"
             chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
         fi
 
-        if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
-            if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
-                FINAL_ADDRESS="${MEP_HOST}"
-                FINAL_PORT="${MEP_PORT}"
-                FINAL_ENDPOINT="${MEP_ENDPOINT}"
-                ENDPOINT_SUPPLIED_PORT="yes"
-                add_adress_block
-            fi
-            # A rejected value writes no <manager> block at all: there is nothing
-            # sensible to split it into, and leaving the shipped placeholder in place
-            # makes the agent fail loudly at startup rather than silently connect
-            # somewhere the operator did not ask for.
-        else
-            # Only one <manager> block is supported; if WAZUH_MANAGER carries several
-            # comma-separated addresses, the last one prevails (server rotation was
-            # removed, #37702 restrictions 2/3), matching the client parser.
-            ADDRESSES=( ${WAZUH_MANAGER//,/ } )
-            FINAL_ADDRESS="${ADDRESSES[$(( ${#ADDRESSES[@]} - 1 ))]}"
-            FINAL_PORT="${DEFAULT_MANAGER_PORT}"
-            FINAL_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
+        # The value is written through as given, since <endpoint> now takes the same
+        # language this variable does; parsing here only validates it and reports why
+        # a bad one was refused.
+        if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
+            FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
             add_adress_block
         fi
-    fi
-
-    # Skipped when the combined value already set the port, so it cannot clobber it.
-    if [ "${ENDPOINT_SUPPLIED_PORT}" != "yes" ]; then
-        edit_value_tag "port" "${WAZUH_MANAGER_PORT}"
+        # A rejected value writes no <manager> block at all: leaving the shipped
+        # placeholder in place makes the agent fail loudly at startup rather than
+        # silently connect somewhere the operator did not ask for.
     fi
 
     if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then

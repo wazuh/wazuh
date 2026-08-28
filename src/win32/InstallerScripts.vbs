@@ -50,8 +50,10 @@ private sub mep_log(home_dir, objFSO, raw, reason)
     objLog.Close
 end sub
 
-' Splits WAZUH_MANAGER_ENDPOINT's combined value (#38624) into MEP_HOST / MEP_PORT /
-' MEP_ENDPOINT, the three tags the agent still reads:
+' Validates WAZUH_MANAGER_ENDPOINT against the <endpoint> grammar (#38624). <endpoint>
+' takes this same language, so an accepted value is written into the config verbatim
+' and this only decides whether to write it at all. MEP_HOST / MEP_PORT / MEP_ENDPOINT
+' are still set, for callers that want the split:
 '
 '   [https://] host [:port] [/[prefix]]
 '
@@ -126,10 +128,8 @@ private function ParseManagerEndpoint(raw, home_dir, objFSO)
                 Exit Function
             End If
         End If
-        If InStr(MEP_HOST, "%") > 0 Then
-            mep_log home_dir, objFSO, raw, "IPv6 zone ids are not supported yet; set <interface_index> in ossec.conf instead."
-            Exit Function
-        End If
+        ' A zone id (%25<iface>) stays part of the host: the agent resolves it with
+        ' if_nametoindex() at startup (#38624).
     Else
         colons = 0
         For i = 1 To Len(authority)
@@ -206,21 +206,19 @@ public function config()
 
     home_dir = Replace(args(0), Chr(34), "")
     OS_VERSION = Replace(args(1), Chr(34), "")
-    WAZUH_MANAGER = Replace(args(2), Chr(34), "")
-    WAZUH_MANAGER_PORT = Replace(args(3), Chr(34), "")
-    NOTIFY_TIME = Replace(args(4), Chr(34), "")
-    WAZUH_REGISTRATION_SERVER = Replace(args(5), Chr(34), "")
-    WAZUH_REGISTRATION_PORT = Replace(args(6), Chr(34), "")
-    WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
-    WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
-    WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
-    WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
-    WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
-    WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
-    WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
-    ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
-    WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
+    NOTIFY_TIME = Replace(args(2), Chr(34), "")
+    WAZUH_REGISTRATION_SERVER = Replace(args(3), Chr(34), "")
+    WAZUH_REGISTRATION_PORT = Replace(args(4), Chr(34), "")
+    WAZUH_REGISTRATION_PASSWORD = Replace(args(5), Chr(34), "")
+    WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(6), Chr(34), "")
+    WAZUH_TIME_RECONNECT = Replace(args(7), Chr(34), "")
+    WAZUH_REGISTRATION_CA = Replace(args(8), Chr(34), "")
+    WAZUH_REGISTRATION_CERTIFICATE = Replace(args(9), Chr(34), "")
+    WAZUH_REGISTRATION_KEY = Replace(args(10), Chr(34), "")
+    WAZUH_AGENT_NAME = Replace(args(11), Chr(34), "")
+    WAZUH_AGENT_GROUP = Replace(args(12), Chr(34), "")
+    ENROLLMENT_DELAY = Replace(args(13), Chr(34), "")
+    WAZUH_MANAGER_ENDPOINT = Replace(args(14), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -238,86 +236,42 @@ public function config()
         strText = objFile.ReadAll
         objFile.Close
 
-        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
+        If WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
 
-            ' WAZUH_MANAGER_ENDPOINT now carries the whole connection target (#38624), so
-            ' it supersedes WAZUH_MANAGER and WAZUH_MANAGER_PORT when set. Those two keep
-            ' working untouched when it is not.
+            ' WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and is
+            ' now the only way to configure it: WAZUH_MANAGER and WAZUH_MANAGER_PORT are
+            ' gone, along with the separate <address> and <port> tags they filled.
             '
             ' The MSI's inability to carry a PROPERTY="" through the property table, which
-            ' the previous "/" sentinel existed to work around, stops mattering here: the
-            ' opt-out is now spelled host/ and is non-empty, so it survives on its own.
-            endpoint_supplied = False
-            endpoint_rejected = False
+            ' the old "/" sentinel worked around, stops mattering: the opt-out is spelled
+            ' host/ and is non-empty, so it survives the property table on its own.
             If WAZUH_MANAGER_ENDPOINT <> "" Then
                 If ParseManagerEndpoint(WAZUH_MANAGER_ENDPOINT, home_dir, objFSO) Then
-                    endpoint_supplied = True
-                Else
-                    endpoint_rejected = True
-                End If
-            End If
-
-            ' A rejected value writes no <manager> block at all -- not even falling back
-            ' to WAZUH_MANAGER. There is nothing sensible to split it into, and the
-            ' operator did give an explicit instruction, so quietly connecting somewhere
-            ' else is worse than leaving the shipped placeholder for the agent to fail
-            ' loudly on at startup. Matches register_configure_agent.sh.
-            If endpoint_supplied or (WAZUH_MANAGER <> "" and Not endpoint_rejected) Then
-                Set re = new regexp
-                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
-                If endpoint_supplied Then
-                    ' The combined grammar carries exactly one host.
-                    ip_list=Array(MEP_HOST)
-                    block_port = MEP_PORT
-                    block_endpoint = MEP_ENDPOINT
-                ElseIf InStr(WAZUH_MANAGER,",") Then
-                    ip_list=Split(WAZUH_MANAGER,",")
-                    block_port = MEP_DEFAULT_PORT
-                    block_endpoint = MEP_DEFAULT_ENDPOINT
-                Else
-                    ip_list=Array(WAZUH_MANAGER)
-                    block_port = MEP_DEFAULT_PORT
-                    block_endpoint = MEP_DEFAULT_ENDPOINT
-                End If
-
-                not_replaced = True
-                formatted_list = vbCrLf
-                ' A 5.x file is <agent><manager>; a 4.x file preserved across an upgrade
-                ' is <client><server>, and the 5.x parser reads an address out of that
-                ' one only under <server> -- writing <manager> there would strand the
-                ' agent with no manager address.
-                If InStr(strText, "<agent>") > 0 Then
-                    inner_tag = "manager"
-                Else
-                    inner_tag = "server"
-                End If
-                for i=0 to UBound(ip_list)
-                    If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <" & inner_tag & ">" & vbCrLf
-                        formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                        formatted_list = formatted_list & "      <port>" & block_port & "</port>" & vbCrLf
-                        formatted_list = formatted_list & "      <endpoint>" & block_endpoint & "</endpoint>" & vbCrLf
-                        if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </" & inner_tag & ">"
-                        Else
-                            formatted_list = formatted_list & "    </" & inner_tag & ">" & vbCrLf
-                        End If
-                    End If
-                next
-                strText = re.Replace(strText, formatted_list)
-            End If
-
-            ' Skipped when the combined value already set the port, so it cannot clobber
-            ' it. The <endpoint> tag needs no separate rewrite any more: it is written
-            ' with the rest of the <manager> block above, from the same parsed value.
-            If WAZUH_MANAGER_PORT <> "" and Not endpoint_supplied Then ' manager server_port
-                If InStr(strText, "<port>") > 0 Then
                     Set re = new regexp
-                    re.Pattern = "<port>.*</port>"
-                    re.Global = True
-                    strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
-                End If
+                    re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
 
+                    ' A 5.x file is <agent><manager>; a 4.x file preserved across an
+                    ' upgrade is <client><server>, and the 5.x parser reads this block out
+                    ' of that one only under <server> -- writing <manager> there would
+                    ' strand the agent with no manager configured.
+                    If InStr(strText, "<agent>") > 0 Then
+                        inner_tag = "manager"
+                    Else
+                        inner_tag = "server"
+                    End If
+
+                    ' Written through as given: <endpoint> takes the same language this
+                    ' property does, so the agent does the splitting at startup.
+                    formatted_list = vbCrLf & _
+                        "    <" & inner_tag & ">" & vbCrLf & _
+                        "      <endpoint>" & WAZUH_MANAGER_ENDPOINT & "</endpoint>" & vbCrLf & _
+                        "    </" & inner_tag & ">"
+
+                    strText = re.Replace(strText, formatted_list)
+                End If
+                ' A rejected value writes no block at all, leaving the shipped placeholder
+                ' so the agent fails loudly at startup rather than silently connecting
+                ' somewhere the operator did not ask for. Matches the shell installers.
             End If
 
             If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then
@@ -344,7 +298,7 @@ public function config()
             End If
         End If
 
-        If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" or WAZUH_MANAGER <> "" Then
+        If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
             enrollment_list = "    <enrollment>" & vbCrLf
             enrollment_list = enrollment_list & "      <enabled>yes</enabled>" & vbCrLf
             enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf

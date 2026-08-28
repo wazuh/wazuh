@@ -66,7 +66,7 @@ uninstall_agent(){
 install_agent(){
     local pkg_file=$1
 
-    echo "WAZUH_MANAGER='1.1.1.1'" > /tmp/wazuh_envs && installer -pkg $pkg_file -target / | tee '/tmp/installer.log'
+    echo "WAZUH_MANAGER_ENDPOINT='1.1.1.1'" > /tmp/wazuh_envs && installer -pkg $pkg_file -target / | tee '/tmp/installer.log'
     launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist
     if grep -iqE "The (upgrade|install) was successful" /tmp/installer.log; then
         local version_installed=$(get_wazuh_version)

@@ -348,29 +348,142 @@ function probe_server($server, $port, $endpoint) {
     }
 }
 
-# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-$server_address = get_conf_value "agent" "manager" "address"
-if ([string]::IsNullOrEmpty($server_address)) {
-    $server_address = get_conf_value "client" "server" "address"
+# Defaults for the components an <endpoint> value leaves out, matching the agent's own
+# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
+$MEP_DEFAULT_PORT = "1517"
+$MEP_DEFAULT_ENDPOINT = "wazuh-manager"
+
+# Split a combined <endpoint> value (#38624) into $MEP_HOST / $MEP_PORT / $MEP_ENDPOINT:
+#
+#   [https://] host [:port] [/[prefix]]
+#
+# Only the host is mandatory. "No '/' at all" means the default prefix; "a trailing '/'
+# with nothing after it" is the operator's deliberate opt-out (#38614) and yields "".
+#
+# Same logic as parse_manager_endpoint() in src/init/pkg_installer.sh; duplicated because
+# this script ships inside the WPK and runs standalone, with nothing to import.
+function ParseManagerEndpoint($raw) {
+    $script:MEP_HOST = ""
+    $script:MEP_PORT = $MEP_DEFAULT_PORT
+    $script:MEP_ENDPOINT = $MEP_DEFAULT_ENDPOINT
+
+    if ([string]::IsNullOrEmpty($raw)) {
+        return $false
+    }
+
+    $rest = $raw
+
+    # Optional scheme, only where no '/' precedes the "://" so a path containing it
+    # cannot be mistaken for one.
+    $p = $rest.IndexOf("://")
+    if ($p -ge 0) {
+        $scheme = $rest.Substring(0, $p)
+        if (-Not $scheme.Contains("/")) {
+            if ($scheme.ToLower() -ne "https") {
+                return $false
+            }
+            $rest = $rest.Substring($p + 3)
+        }
+    }
+
+    # Authority up to the first '/', prefix after it. Whether that '/' was there at all
+    # is what separates "default prefix" from "opt-out".
+    $p = $rest.IndexOf("/")
+    if ($p -ge 0) {
+        $authority = $rest.Substring(0, $p)
+        $path = $rest.Substring($p + 1)
+        $path_given = $true
+    } else {
+        $authority = $rest
+        $path = ""
+        $path_given = $false
+    }
+
+    $port_given = ""
+    if ($authority.StartsWith("[")) {
+        $p = $authority.IndexOf("]")
+        if ($p -lt 0) { return $false }
+        $script:MEP_HOST = $authority.Substring(1, $p - 1)
+        $after = $authority.Substring($p + 1)
+        if ($after -ne "") {
+            if ($after.StartsWith(":")) { $port_given = $after.Substring(1) } else { return $false }
+        }
+    } else {
+        $colons = ($authority.ToCharArray() | Where-Object { $_ -eq ':' }).Count
+        if ($colons -gt 1) {
+            return $false
+        } elseif ($colons -eq 1) {
+            $p = $authority.IndexOf(":")
+            $script:MEP_HOST = $authority.Substring(0, $p)
+            $port_given = $authority.Substring($p + 1)
+        } else {
+            $script:MEP_HOST = $authority
+        }
+    }
+
+    if ([string]::IsNullOrEmpty($script:MEP_HOST)) { return $false }
+
+    if ($port_given -ne "") {
+        if ($port_given -notmatch '^[0-9]+$') { return $false }
+        if ([int64]$port_given -lt 1 -or [int64]$port_given -gt 65535) { return $false }
+        $script:MEP_PORT = $port_given
+    } elseif ($authority.EndsWith(":")) {
+        return $false
+    }
+
+    if ($path_given) {
+        $script:MEP_ENDPOINT = $path.Trim('/')
+    }
+
+    return $true
 }
 
-# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-$server_port = get_conf_value "agent" "manager" "port"
+# A WPK upgrade never rewrites ossec.conf, so this script meets three config shapes and
+# has to read all of them (#38624):
+#
+#   v2    <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
+#   5.0.0 <agent><manager> with separate <address>, <port> and a prefix-only <endpoint>
+#   4.x   <client><server><address>, with no endpoint concept at all
+#
+# The two <endpoint> spellings cannot be told apart by value -- "wazuh-manager" is both a
+# legal prefix and a legal hostname -- so, exactly as Read_Agent_Manager() does, the
+# presence of <address> decides which one is in play.
+$server_address = get_conf_value "agent" "manager" "address"
+$server_port = $null
+$server_endpoint = $null
+
+if (-Not [string]::IsNullOrEmpty($server_address)) {
+    # 5.0.0 shape: <endpoint> holds only the prefix. get_conf_value returns $null for
+    # "tag absent" vs "" for "tag present but empty", so check for $null specifically --
+    # IsNullOrEmpty would collapse both into the default and silently override the
+    # operator's opt-out, which is the defect #38658 fixed.
+    $server_port = get_conf_value "agent" "manager" "port"
+    $server_endpoint = get_conf_value "agent" "manager" "endpoint"
+    if ($null -eq $server_endpoint) {
+        $server_endpoint = "wazuh-manager"
+    }
+} else {
+    $combined_endpoint = get_conf_value "agent" "manager" "endpoint"
+
+    if (-Not [string]::IsNullOrEmpty($combined_endpoint)) {
+        # v2 shape: split the one value the same way the agent's parser does.
+        if (ParseManagerEndpoint $combined_endpoint) {
+            $server_address = $MEP_HOST
+            $server_port = $MEP_PORT
+            $server_endpoint = $MEP_ENDPOINT
+        }
+    } else {
+        # 4.x shape: no endpoint concept, so take the manager's defaults for both.
+        $server_address = get_conf_value "client" "server" "address"
+        $server_endpoint = "wazuh-manager"
+    }
+}
+
 if ([string]::IsNullOrEmpty($server_port)) {
     $server_port = "1517"
 }
-
-# The 5x agent reads the server endpoint from the <agent> block, defaulting to the manager's own
-# default reverse-proxy prefix only when the tag is genuinely absent -- e.g. when upgrading from a
-# 4.x agent, whose <client><server> block never had this tag at all (mirrors
-# DEFAULT_AGENT_ENDPOINT_PREFIX, src/config/include/client-config.h). A present-but-empty
-# <endpoint></endpoint> is a deliberate opt-out and must be honored as-is: get_conf_value already
-# returns $null for "tag absent" vs. "" for "tag present but empty", so check for $null
-# specifically -- [string]::IsNullOrEmpty would collapse both cases into the default and silently
-# override the opt-out.
-$server_endpoint = get_conf_value "agent" "manager" "endpoint"
 if ($null -eq $server_endpoint) {
-    $server_endpoint = "wazuh-manager"
+    $server_endpoint = ""
 }
 $server_endpoint = $server_endpoint.Trim('/')
 

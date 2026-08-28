@@ -356,7 +356,7 @@ jobs:
       - name: Test install Windows agent
         shell: pwsh
         run: |
-          Start-Process -FilePath "src/win32/${{ env.PACKAGE_NAME }}" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
+          Start-Process -FilePath "src/win32/${{ env.PACKAGE_NAME }}" -ArgumentList '/q WAZUH_MANAGER_ENDPOINT="1.1.1.1" /l installer.log' -Wait
           $installerfile = Get-Content installer.log
           if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
             Write-Output "Installation successfully."

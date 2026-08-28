@@ -203,8 +203,10 @@ cJSON *getAgentConfig(void) {
             if (agt->server[i].endpoint)
                 cJSON_AddStringToObject(server, "endpoint", agt->server[i].endpoint);
 
-            if (agt->server[i].network_interface)
-                cJSON_AddNumberToObject(server, "interface_index", agt->server[i].network_interface);
+            /* #38624: reported as scope_id now -- the value comes from <endpoint>'s IPv6
+             * zone id, not the removed <interface_index> tag. */
+            if (agt->server[i].scope_id)
+                cJSON_AddNumberToObject(server, "scope_id", agt->server[i].scope_id);
 
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);

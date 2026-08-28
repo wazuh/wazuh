@@ -81,6 +81,157 @@ xml_tag_present() {
         grep -o "<$2>.*</$2>" | grep -qE "<$3>[^<]*</$3>|<$3[[:space:]]*/>"
 }
 
+# Defaults for the components an <endpoint> value leaves out, matching the agent's own
+# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
+DEFAULT_MANAGER_PORT="1517"
+DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
+
+mep_error() {
+
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Invalid <endpoint> '${1}': ${2}" >> ./logs/upgrade.log
+
+}
+
+# Split a combined <endpoint> value (#38624) into MEP_HOST / MEP_PORT / MEP_ENDPOINT.
+# Same logic as parse_manager_endpoint() in register_configure_agent.sh,
+# ParseManagerEndpoint() in inst-functions.sh and its VBScript twin; duplicated because
+# this script ships inside the WPK and runs standalone, with nothing to source.
+parse_manager_endpoint() {
+
+    mep_raw="$1"
+    mep_rest="$mep_raw"
+    MEP_HOST=""
+    MEP_PORT="${DEFAULT_MANAGER_PORT}"
+    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
+
+    if [ -z "${mep_raw}" ]; then
+        mep_error "${mep_raw}" "a manager address is required."
+        return 1
+    fi
+
+    # Optional scheme. Only treated as one when no '/' precedes the "://", so a
+    # path that happens to contain "://" cannot be mistaken for a scheme.
+    case "${mep_rest}" in
+        *"://"*)
+            mep_scheme="${mep_rest%%://*}"
+            case "${mep_scheme}" in
+                */*) ;;
+                *)
+                    mep_rest="${mep_rest#*://}"
+                    case "${mep_scheme}" in
+                        [Hh][Tt][Tt][Pp][Ss]) ;;
+                        *)
+                            mep_error "${mep_raw}" "unsupported scheme '${mep_scheme}://'; only https is served."
+                            return 1
+                            ;;
+                    esac
+                    ;;
+            esac
+            ;;
+    esac
+
+    # Authority up to the first '/', the prefix after it. Whether that '/' was
+    # there at all is what separates "default prefix" from "opt-out".
+    case "${mep_rest}" in
+        */*)
+            mep_authority="${mep_rest%%/*}"
+            mep_path="${mep_rest#*/}"
+            mep_path_given="yes"
+            ;;
+        *)
+            mep_authority="${mep_rest}"
+            mep_path=""
+            mep_path_given="no"
+            ;;
+    esac
+
+    # Host and optional port. A bracketed IPv6 literal ends at ']'; brackets exist
+    # only to keep its colons apart from the port's and are dropped here, because
+    # <address> wants the bare literal (OS_IsValidIP does not match a bracketed one,
+    # and ModuleConfig::baseUrl re-brackets it for the URL itself).
+    mep_port_given=""
+    case "${mep_authority}" in
+        "["*)
+            case "${mep_authority}" in
+                *"]"*) ;;
+                *)
+                    mep_error "${mep_raw}" "unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'."
+                    return 1
+                    ;;
+            esac
+            MEP_HOST="${mep_authority#[}"
+            MEP_HOST="${MEP_HOST%%]*}"
+            mep_after="${mep_authority#*]}"
+            case "${mep_after}" in
+                "") ;;
+                ":"*) mep_port_given="${mep_after#:}" ;;
+                *)
+                    mep_error "${mep_raw}" "unexpected '${mep_after}' after the bracketed address."
+                    return 1
+                    ;;
+            esac
+            # A zone id (%25<iface>, percent-encoded inside a URL) stays part of the
+            # host: the agent resolves it with if_nametoindex() at startup (#38624).
+            ;;
+        *:*:*)
+            mep_error "${mep_raw}" "an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}."
+            return 1
+            ;;
+        *:*)
+            MEP_HOST="${mep_authority%:*}"
+            mep_port_given="${mep_authority##*:}"
+            ;;
+        *)
+            MEP_HOST="${mep_authority}"
+            ;;
+    esac
+
+    if [ -z "${MEP_HOST}" ]; then
+        mep_error "${mep_raw}" "a manager address is required."
+        return 1
+    fi
+
+    if [ -n "${mep_port_given}" ]; then
+        case "${mep_port_given}" in
+            ''|*[!0-9]*)
+                mep_error "${mep_raw}" "port '${mep_port_given}' is not a number."
+                return 1
+                ;;
+        esac
+        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
+            mep_error "${mep_raw}" "port '${mep_port_given}' is outside 1-65535."
+            return 1
+        fi
+        MEP_PORT="${mep_port_given}"
+    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
+        mep_error "${mep_raw}" "trailing ':' with no port."
+        return 1
+    fi
+
+    if [ "${mep_path_given}" = "yes" ]; then
+        while :; do
+            case "${mep_path}" in
+                /*) mep_path="${mep_path#/}" ;;
+                *) break ;;
+            esac
+        done
+        while :; do
+            case "${mep_path}" in
+                */) mep_path="${mep_path%/}" ;;
+                *) break ;;
+            esac
+        done
+        if [ -z "${mep_path}" ]; then
+            MEP_ENDPOINT=""
+        else
+            MEP_ENDPOINT="/${mep_path}/"
+        fi
+    fi
+
+    return 0
+
+}
+
 # Check that the manager answers on the HTTPS control port. Every endpoint,
 # including the health probe, is served under the manager's global_prefix
 # (#38491) -- an unprefixed request always gets a 404, so the probe URL must
@@ -125,31 +276,51 @@ probe_server() {
     return $?
 }
 
-# The 5x agent reads the manager address from <agent><manager>, falling back to <client><server> when upgrading from 4x versions.
+# A WPK upgrade never rewrites ossec.conf, so this script meets three config shapes and
+# has to read all of them (#38624):
+#
+#   v2    <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
+#   5.0.0 <agent><manager> with separate <address>, <port> and a prefix-only <endpoint>
+#   4.x   <client><server><address>, with no endpoint concept at all
+#
+# The two <endpoint> spellings cannot be told apart by value -- "wazuh-manager" is both a
+# legal prefix and a legal hostname -- so, exactly as Read_Agent_Manager() does, the
+# presence of <address> decides which one is in play.
 SERVER_ADDRESS=$(xml_value agent manager address)
-if [ -z "${SERVER_ADDRESS}" ]; then
-    SERVER_ADDRESS=$(xml_value client server address)
+
+if [ -n "${SERVER_ADDRESS}" ]; then
+    # 5.0.0 shape: <endpoint> holds only the prefix.
+    SERVER_PORT=$(xml_value agent manager port)
+    SERVER_ENDPOINT=$(xml_value agent manager endpoint)
+    # An entirely absent tag defaults to the manager's own default prefix, while a
+    # present-but-empty one is a deliberate opt-out (#38492). xml_value returns "" for
+    # both, so an empty value needs the separate presence scan to tell them apart --
+    # collapsing them is the defect #38658 fixed.
+    if [ -z "${SERVER_ENDPOINT}" ] && ! xml_tag_present agent manager endpoint; then
+        SERVER_ENDPOINT="wazuh-manager"
+    fi
+else
+    COMBINED_ENDPOINT=$(xml_value agent manager endpoint)
+
+    if [ -n "${COMBINED_ENDPOINT}" ]; then
+        # v2 shape: split the one value the same way the agent's parser does.
+        if parse_manager_endpoint "${COMBINED_ENDPOINT}"; then
+            SERVER_ADDRESS="${MEP_HOST}"
+            SERVER_PORT="${MEP_PORT}"
+            SERVER_ENDPOINT="${MEP_ENDPOINT}"
+        fi
+    else
+        # 4.x shape: no endpoint concept, so take the manager's defaults for both.
+        SERVER_ADDRESS=$(xml_value client server address)
+        SERVER_ENDPOINT="wazuh-manager"
+    fi
 fi
 
-# The 5x agent reads the manager port from <agent><manager>, falling back to 1517 when upgrading from 4x versions.
-SERVER_PORT=$(xml_value agent manager port)
 if [ -z "${SERVER_PORT}" ]; then
     SERVER_PORT=1517
 fi
 
-# The 5x agent reads the manager endpoint from <agent><manager>, defaulting to
-# "wazuh-manager" -- the manager's own default global_prefix -- only when the tag
-# is genuinely absent (upgrading from 4x, or a config predating this default,
-# #38492). A present-but-empty <endpoint></endpoint> is a deliberate opt-out and
-# must be honored as-is, not collapsed into the default -- xml_value alone can't
-# tell "absent" from "present but empty" apart (both yield ""), so an empty value
-# needs the separate xml_tag_present scan to decide which one it is. That scan only
-# runs when the value is empty, so the common case stays a single pass over the file.
 # Strip any leading/trailing '/' so the probe URL never doubles one up.
-SERVER_ENDPOINT=$(xml_value agent manager endpoint)
-if [ -z "${SERVER_ENDPOINT}" ] && ! xml_tag_present agent manager endpoint; then
-    SERVER_ENDPOINT="wazuh-manager"
-fi
 SERVER_ENDPOINT=$(echo "${SERVER_ENDPOINT}" | sed -e 's|^/*||' -e 's|/*$||')
 
 if [ -z "${SERVER_ADDRESS}" ]; then
