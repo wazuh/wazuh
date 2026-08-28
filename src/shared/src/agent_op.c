@@ -304,6 +304,24 @@ int auth_connect() {
 #endif
 }
 
+// Connect to Agentd with a receive deadline. Returns socket or -1 on error.
+int auth_connect_timeout(__attribute__((unused)) int recv_timeout) {
+#ifndef WIN32
+    char sockname[PATH_MAX + 1];
+
+    strncpy(sockname, AUTH_LOCAL_SOCK, sizeof(sockname) - 1);
+    sockname[sizeof(sockname) - 1] = '\0';
+
+    // Kept separate from auth_connect() rather than replacing it, because external_socket_connect
+    // also imposes a hardcoded 5 second send timeout that no current caller has asked for.
+    // Note only the receive side takes the parameter: a caller that has to bound its total time,
+    // rather than the time of any one call, needs an elapsed-time budget of its own as well.
+    return external_socket_connect(sockname, recv_timeout);
+#else
+    return -1;
+#endif
+}
+
 // Close socket if valid.
 int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
