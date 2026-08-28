@@ -551,6 +551,10 @@ WriteAgent()
 
     # A bare IPv6 literal needs bracketing once it shares a value with the port.
     case "${AGENT_ENDPOINT}" in
+      # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
+      # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
+      # InstallerScripts.vbs.
+      \[*) ;;
       *:*:*) AGENT_ENDPOINT="[${AGENT_ENDPOINT}]" ;;
     esac
 

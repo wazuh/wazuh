@@ -564,6 +564,13 @@ main () {
     # ${VAR+x} rather than -n on the endpoint, so an explicitly empty value is rejected
     # instead of silently read as unset: "" used to be the prefix opt-out (#38614), and
     # an operator still passing it deserves the error rather than a default.
+    # WAZUH_MANAGER_PORT only ever qualifies an address, so on its own there is nothing
+    # to attach it to and no <manager> block gets written at all. Say so instead of
+    # accepting the run and leaving the operator to discover the port was ignored.
+    if [ -z "${WAZUH_MANAGER_ENDPOINT+x}" ] && [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_MANAGER_PORT}" ]; then
+        echo "WAZUH_MANAGER_PORT was set without WAZUH_MANAGER or WAZUH_MANAGER_ENDPOINT; it has no effect on its own." >&2
+    fi
+
     if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ] || [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
             touch -f "${INSTALLDIR}/logs/ossec.log"
@@ -591,6 +598,10 @@ main () {
             # A bare IPv6 literal has to be bracketed once it shares a value with the
             # port, or its trailing group reads as one.
             case "${FINAL_ENDPOINT}" in
+                # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
+                # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
+                # InstallerScripts.vbs.
+                \[*) ;;
                 *:*:*) FINAL_ENDPOINT="[${FINAL_ENDPOINT}]" ;;
             esac
 

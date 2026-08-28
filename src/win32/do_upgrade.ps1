@@ -339,7 +339,16 @@ function probe_server($server, $port, $endpoint) {
     try {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
         $path = if ([string]::IsNullOrEmpty($endpoint)) { "/" } else { "/$endpoint/" }
-        $response = Invoke-WebRequest -Uri "https://$($server):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+
+        # $server holds an IPv6 literal unbracketed, the way <endpoint> stores it. A URL
+        # needs it bracketed again or Invoke-WebRequest rejects the value as malformed
+        # and the upgrade aborts with "manager is not reachable".
+        $host_part = $server
+        if ($host_part.Contains(":") -And -Not $host_part.StartsWith("[")) {
+            $host_part = "[$host_part]"
+        }
+
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
         return $false

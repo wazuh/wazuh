@@ -239,6 +239,15 @@ parse_manager_endpoint() {
 probe_server() {
     PROBE_TIMEOUT=5
 
+    # MEP_HOST holds an IPv6 literal unbracketed, the way <endpoint> stores it. A URL
+    # needs it bracketed again or curl, wget and Invoke-WebRequest all reject the value
+    # as malformed and the upgrade aborts with "manager is not reachable".
+    PROBE_HOST="${1}"
+    case "${PROBE_HOST}" in
+        \[*) ;;
+        *:*:*) PROBE_HOST="[${PROBE_HOST}]" ;;
+    esac
+
     # An empty endpoint (the <endpoint></endpoint> opt-out, #38492) must probe the
     # bare root: "/${3}/" would emit "//", and the manager's HTTP router does not
     # collapse duplicate slashes -- it 404s them, so the probe would fail against
@@ -250,12 +259,12 @@ probe_server() {
     fi
 
     if command -v curl > /dev/null 2>&1; then
-        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}${PROBE_PATH}"
+        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         return $?
     fi
 
     if command -v wget > /dev/null 2>&1; then
-        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}${PROBE_PATH}"
+        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         return $?
     fi
 
