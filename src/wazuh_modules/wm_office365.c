@@ -426,8 +426,9 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             cJSON *blob = cJSON_GetArrayItem(blobs_array, i);
                             cJSON *content = cJSON_GetObjectItem(blob, "contentUri");
 
-                            if (content && (content->type == cJSON_String) && !wm_url_is_allowed(content->valuestring, NULL)) {
-                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring non-HTTPS content URI.");
+                            if (content && (content->type == cJSON_String) && !wm_url_is_allowed(content->valuestring, current_auth->management_fqdn)) {
+                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring content URI out of '%s'.", current_auth->management_fqdn);
+                                fail = 1;
                             } else if (content && (content->type == cJSON_String)) {
                                 cJSON *logs_array = NULL;
 
