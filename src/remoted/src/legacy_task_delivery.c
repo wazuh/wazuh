@@ -580,8 +580,9 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
                 // real chance to finish starting up before the next attempt instead of retrying
                 // immediately, see LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC's doc comment. Skipped
                 // on the last attempt: there is no next attempt left to back off for.
-                mdebug1("legacy_task_delivery: agent '%s': 'open' rejected as not ready yet, "
-                        "backing off %ds before the next attempt", agent_id, LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC);
+                mdebug1("legacy_task_delivery: agent '%s': 'open' %s, backing off %ds before the next attempt",
+                        agent_id, is_not_ready ? "rejected as not ready yet" : "answered with a malformed response",
+                        LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC);
                 sleep(LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC);
             }
 
@@ -929,11 +930,13 @@ STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id
 }
 
 /**
- * @brief Retry every legacy_task_retry_list entry whose agent is currently connected.
+ * @brief Retry every legacy_task_retry_list entry whose agent is currently connected and still
+ * confirmed below v5.0.0.
  *
  * Called once at the start of every poll cycle, before the normal get_pending_tasks sweep --
  * LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds this to a small, cheap scan. An entry whose agent isn't
- * connected right now is simply left in the list for a later cycle to try again.
+ * connected right now, or whose version no longer gates it in, is simply left in the list for a
+ * later cycle to try again; only LEGACY_TASK_RETRY_MAX_AGE_SEC ever retires one.
  *
  * @param connected_agent_ids Agent IDs from this cycle's connected-agent snapshot.
  * @param agent_count Number of entries in connected_agent_ids.
@@ -951,6 +954,16 @@ STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t ag
         }
 
         if (!agent_connected) {
+            i++;
+            continue;
+        }
+
+        // Re-gate on version, exactly as the normal sweep does before delivering anything: an
+        // entry can sit here for up to LEGACY_TASK_RETRY_MAX_AGE_SEC, long enough for the agent to
+        // reach v5.0.0 by some other route and reconnect, and a >= v5.0.0 agent must never be sent
+        // legacy push steps. Left in the list rather than dropped, since this also covers an agent
+        // whose version simply isn't known yet; the age bound is what eventually retires it.
+        if (!legacy_task_agent_is_pre_v5(entry->agent_id, NULL)) {
             i++;
             continue;
         }

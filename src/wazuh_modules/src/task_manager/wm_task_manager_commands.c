@@ -290,4 +290,3 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) {
 
     return tasks;
 }
-

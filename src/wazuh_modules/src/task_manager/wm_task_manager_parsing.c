@@ -224,4 +224,3 @@ char* wm_task_manager_parse_get_pending_response(cJSON *tasks) {
 
     return response;
 }
-

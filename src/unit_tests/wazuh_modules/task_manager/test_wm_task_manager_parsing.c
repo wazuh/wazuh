@@ -76,7 +76,6 @@ static int teardown_get_pending_params(void **state) {
     return 0;
 }
 
-
 static int teardown_error_only(void **state) {
     if (state[1]) {
         char *error = (char*)state[1];
@@ -307,7 +306,6 @@ void test_wm_task_manager_parse_get_pending_response_empty(void **state)
 
     cJSON_Delete(json);
 }
-
 
 int main(void) {
     const struct CMUnitTest tests[] = {

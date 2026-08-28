@@ -1351,6 +1351,12 @@ static void test_poll_cycle_no_response_defers_to_retry_list_then_succeeds_next_
     keys.keysize = 1;
 
     expect_any(__wrap__mdebug2, formatted_msg); // "checking 1 connected agent(s)"
+
+    // The retry list re-gates on version before pushing, same as the normal sweep: an entry can
+    // outlive the agent's own upgrade to v5.0.0 by another route.
+    expect_cache_miss("070");
+    expect_wdb_version(70, "Wazuh v4.14.6");
+
     expect_any(__wrap__mdebug1, formatted_msg); // "retrying task '...' from the retry list (attempt 2)"
 
     FILE *fake_file = tmpfile();
@@ -1415,6 +1421,41 @@ static void test_poll_cycle_retry_list_entry_skipped_when_agent_not_connected(vo
     legacy_upgrade_poll_cycle();
 
     assert_true(legacy_task_retry_list_contains("t-071"));
+
+    os_free(keyentries[0]->id);
+    os_free(keyentries[0]);
+    os_free(keyentries);
+}
+
+static void test_poll_cycle_retry_list_entry_skipped_when_agent_is_now_v5(void **state) {
+    (void) state;
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "task '...' added to the retry list..."
+    legacy_task_retry_list_add("072", "t-072", "{}", time(0));
+
+    keyentry **keyentries;
+    os_calloc(1, sizeof(keyentry *), keyentries);
+    keyentries[0] = make_key("072", 84);
+    keys.keyentries = keyentries;
+    keys.keysize = 1;
+
+    expect_any(__wrap__mdebug2, formatted_msg); // "checking 1 connected agent(s)"
+
+    // The agent reached v5.0.0 by another route while its task sat in the retry list. No
+    // req_send_and_wait mock is queued: pushing a legacy step to it would fail the test.
+    // Version-gated twice this cycle -- once by the retry list, once by the normal sweep.
+    expect_cache_miss("072");
+    expect_wdb_version(72, "Wazuh v5.0.0");
+    expect_any(__wrap__mdebug2, formatted_msg); // "is on 'v5.0.0' (>= v5.0.0), skipping"
+
+    expect_cache_miss("072");
+    expect_wdb_version(72, "Wazuh v5.0.0");
+    expect_any(__wrap__mdebug2, formatted_msg); // same, from the normal sweep
+
+    legacy_upgrade_poll_cycle();
+
+    // Kept, not dropped: only the age bound retires an entry the gate keeps rejecting.
+    assert_true(legacy_task_retry_list_contains("t-072"));
 
     os_free(keyentries[0]->id);
     os_free(keyentries[0]);
@@ -1686,6 +1727,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_retry_list_evicts_oldest_when_full, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_no_response_defers_to_retry_list_then_succeeds_next_cycle, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_retry_list_entry_skipped_when_agent_not_connected, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_poll_cycle_retry_list_entry_skipped_when_agent_is_now_v5, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_success_replies_clear_upgrade_result, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_failure_still_replies_clear_upgrade_result, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_malformed_json_ignored, test_setup, test_teardown),
