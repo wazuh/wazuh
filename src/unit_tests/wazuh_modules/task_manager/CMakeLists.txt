@@ -51,6 +51,10 @@ list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND task_names "test_wm_manager_task_registry")
 list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND task_names "test_wm_manager_task_client")
+list(APPEND task_flags "-Wl,--wrap,wdbc_query_ex_timeout -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_close \
+                        -Wl,--wrap,time ${DEBUG_OP_WRAPPERS}")
+
 # Compilig tests
 list(LENGTH task_names count)
 math(EXPR count "${count} - 1")

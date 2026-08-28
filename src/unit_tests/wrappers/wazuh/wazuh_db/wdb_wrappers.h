@@ -30,6 +30,10 @@ int __wrap_wdbc_parse_result(char* result, char** payload);
 
 int __wrap_wdbc_query_ex(int* sock, const char* query, char* response, const int len);
 
+int __wrap_wdbc_query_ex_timeout(int* sock, const char* query, char* response, const int len, int timeout);
+
+int __wrap_wdbc_close(int* sock);
+
 cJSON* __wrap_wdbc_query_parse_json(int* sock, const char* query, char* response, const int len);
 
 wdbc_result __wrap_wdbc_query_parse(int* sock, const char* query, char* response, const int len, char** payload);
