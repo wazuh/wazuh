@@ -56,6 +56,15 @@ endif(FSANITIZE)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pipe -Wall -Wextra")
+
+if(WAZUH_USER)
+  add_definitions(-DUSER=\"${WAZUH_USER}\")
+endif(WAZUH_USER)
+
+if(WAZUH_GROUP)
+  add_definitions(-DGROUPGLOBAL=\"${WAZUH_GROUP}\")
+endif(WAZUH_GROUP)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -DWIN_EXPORT)
@@ -64,6 +73,14 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_definitions(-DINOTIFY_ENABLED -DLinux -D_XOPEN_SOURCE=600 -D_GNU_SOURCE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+if(ENABLE_AUDIT)
+  add_definitions(-DENABLE_AUDIT)
+endif(ENABLE_AUDIT)
+
+if(CLIENT)
+  add_definitions(-DCLIENT)
+endif(CLIENT)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   add_definitions(-DSOLARIS=ON)
@@ -82,7 +99,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
+    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
 )
 
 if(APPLE)
@@ -132,8 +149,9 @@ if (UNIX)
     endif(NOT APPLE)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         if(NOT CMAKE_CHECK_CENTOS5)
-            set_target_properties(wazuh-syscheckd PROPERTIES POSITION_INDEPENDENT_CODE ON)
-            set_property(TARGET wazuh-syscheckd APPEND_STRING PROPERTY LINK_FLAGS " -pie")
+            if(CMAKE_POSITION_INDEPENDENT_CODE)
+                set_property(TARGET wazuh-syscheckd APPEND_STRING PROPERTY LINK_FLAGS " -pie")
+            endif(CMAKE_POSITION_INDEPENDENT_CODE)
             add_subdirectory("src/ebpf")
             target_link_libraries(wazuh-syscheckd fimebpf)
         endif(NOT CMAKE_CHECK_CENTOS5)

@@ -174,6 +174,7 @@ CLEANFULL?=no
 DEFINES=-DOSSECHIDS
 DEFINES+=-DUSER=\"${WAZUH_USER}\"
 DEFINES+=-DGROUPGLOBAL=\"${WAZUH_GROUP}\"
+CMAKE_OPTS+=-DWAZUH_USER=${WAZUH_USER} -DWAZUH_GROUP=${WAZUH_GROUP}
 
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
@@ -187,16 +188,18 @@ else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
 		HARDENING_STACK_FLAG := -fstack-protector-strong
 endif
-		HARDENING_FLAGS := $(HARDENING_STACK_FLAG)
+		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 ifeq (,$(filter ${DEBUG},YES yes y Y 1))
+		HARDENING_FLAGS := $(HARDENING_STACK_FLAG)
 ifneq (${CHECK_CENTOS5},YES)
 		HARDENING_FLAGS += -D_FORTIFY_SOURCE=2
 endif
-endif
 		OSSEC_CFLAGS+=$(HARDENING_FLAGS) -fPIE
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib' -Wl,-z,relro -Wl,-z,now -pie
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib' -Wl,-z,relro -Wl,-z,now -pie
+		OSSEC_LDFLAGS+=-Wl,-z,relro -Wl,-z,now -pie
+		AR_LDFLAGS+=-Wl,-z,relro -Wl,-z,now -pie
 		CMAKE_OPTS+=-DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_CXX_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_EXE_LINKER_FLAGS="-Wl,-z,relro -Wl,-z,now" -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,relro -Wl,-z,now"
+endif
 ifeq (${CHECK_ALPINE},YES)
 		OSSEC_LIBS+=-lintl
 		DEFINES+=-DALPINE
@@ -435,6 +438,7 @@ endif
 
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
         DEFINES+=-DENABLE_AUDIT
+        CMAKE_OPTS+=-DENABLE_AUDIT=ON
 endif
 
 ifeq (${COVERITY}, YES)
@@ -595,6 +599,7 @@ endif # TARGET
 
 ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT
+	CMAKE_OPTS+=-DCLIENT=ON
 endif
 
 ifeq (${TARGET},local)
