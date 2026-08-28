@@ -41,5 +41,13 @@ CB_SYNC_PROTOCOL_INITIALIZED = fr'{PREFIX}DEBUG: Sync protocol initialized with 
 # Configuration-parser errors (emitted with the wmodules prefix).
 CB_INVALID_INTERVAL = fr"{WMODULES_PREFIX}ERROR: Invalid interval at module 'container_images'."
 CB_INVALID_BOOL = fr"{WMODULES_PREFIX}ERROR: Invalid content for tag '{{0}}' at module 'container_images'."
-CB_EMPTY_LOCAL_REFERENCE = fr"{WMODULES_PREFIX}ERROR: Empty 'local' reference at module 'container_images'."
-CB_UNSUPPORTED_REFERENCE = fr"{WMODULES_PREFIX}WARNING: Reference type '{{0}}' is not supported yet at module 'container_images', ignoring it."
+CB_EMPTY_ARCHIVE_REFERENCE = fr"{WMODULES_PREFIX}ERROR: Empty 'archive' reference at module 'container_images'."
+CB_UNKNOWN_REFERENCE_TYPE = fr"{WMODULES_PREFIX}WARNING: No such reference type '{{0}}' at module 'container_images', ignoring it."
+
+# Reference types the grammar accepts but the module does not implement yet. These are logged by
+# the C++ library, so they carry the module prefix rather than the configuration one.
+CB_REFERENCE_NOT_IMPLEMENTED = fr"{PREFIX}WARNING: NOT IMPLEMENTED: the '<{{0}}>' reference .* Skipping it\."
+
+# A package format that is recognized but not parsed yet: the image is still inventoried, with
+# zero packages.
+CB_UNSUPPORTED_PACKAGE_FORMAT = fr"{PREFIX}WARNING: NOT IMPLEMENTED: image at '.*' uses the package format\(s\) .*, which are recognized but not supported yet\. Reporting zero packages\."

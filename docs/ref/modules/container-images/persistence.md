@@ -3,10 +3,9 @@
 This document describes how the Container Images module stores the package inventory it
 discovers, and the technical decisions behind the storage model.
 
-> **Status:** image **references** are read from the configured on-disk layouts and stored.
-> Package **extraction** from image layers is a later stage, so the packages table stays empty
-> on a real scan today. The package path is exercised by the unit tests, which drive the
-> storage layer directly, and extraction will fill it without changing this layer.
+> **Status:** image references and their packages are read from the configured inputs on disk
+> and stored. RPM extraction is a later stage, so an RPM-based image is stored with zero
+> packages today; adding it fills the same rows without changing this layer.
 
 Synchronizing this inventory with the manager is a separate concern and is not part of this
 layer. The delta callback described below is the seam it attaches to.
@@ -95,11 +94,15 @@ is recreated from the CREATE TABLE statements.
 
 ### 4. Reads that did not happen
 
-The inventory is stored as one set covering every configured source, so a source left out of
-that set is reported as deleted. A source that could not be read is therefore not left out:
-what an earlier scan stored for it is carried into this scan unchanged, and a warning names
-it. An empty read is different and is stored as the emptiness it reports, because a source
-that was read and holds nothing really is empty.
+The inventory is stored as one set covering every configured reference, so a reference left
+out of that set is reported as deleted. A reference that could not be read is therefore not
+left out: what an earlier scan stored for it is carried into this scan unchanged, and a
+warning names it. An empty read is different and is stored as the emptiness it reports,
+because a reference that was read and holds nothing really is empty. A scan cut short by a
+stop is abandoned rather than stored, for the same reason.
+
+An image still reporting the configuration digest already stored is not read again either,
+and its stored inventory is kept: its contents cannot have changed.
 
 ### 5. Cleanup
 
@@ -108,16 +111,16 @@ and its recorded version, so the inventory this module owns does not survive as 
 when the module is disabled or uninstalled, and a later re-enable reuses the same database
 instead of triggering a recreate.
 
-### 6. Inventory source (extraction deferred)
+### 6. Inventory source
 
-The reader factory (`makeReader`) returns a `LocalImageReader` bound to each configured
-`<local>` path, so what is stored comes from the layouts the user configured. Package
-extraction from image layers is not implemented yet, so those references carry no packages
-and the packages table stays empty on a real scan.
+The reader factory (`makeReader`) returns an `ArchiveImageReader` bound to each configured
+`<archive>` reference, so everything stored comes from the images the user configured: the
+references from the image metadata, the packages from the package databases their layers
+carry. The module holds no synthetic reader, so an agent cannot persist inventory it did not
+find.
 
-The three delta types are exercised by a test double (`stub_image_reader`) that mutates its
-inventory across scans. It is built into the test binary only, never into the shipped
-library, so an agent can never persist synthetic inventory.
+The three delta types are exercised by the unit tests over images built on disk, whose layers
+change between scans.
 
 ### 7. Image identity on the package row
 
@@ -140,7 +143,9 @@ the sync layer is built.
 | File | Role |
 |------|------|
 | `container_images_impl/include/image_inventory_types.hpp` | Adds `ImagePackageRecord`; references carry their packages. |
-| `container_images_impl/tests/stub_image_reader.*` | Test double: a mutating inventory source, built into the test binary only. |
+| `container_images_impl/{include,src}/archive_image_reader.*` | Reads the configured inputs on disk and returns references with their packages. |
+| `container_images_impl/{include,src}/layer_reader.*`, `layer_composer.*`, `byte_stream.*` | Stream a layer, compose the layers of an image, and keep only its package databases. |
+| `container_images_impl/{include,src}/package_db_parser.*` | The package database formats: parsed, and recognized but not implemented yet. |
 | `container_images_impl/{include,src}/container_images_db.*` | Owns DBSync, holds the CREATE TABLE statements and the upgrade list, runs the transactions, emits deltas. |
 | `container_images_impl/{include,src}/container_images_impl.*` | Orchestrator: scan -> DB -> delta callback. |
 | `container_images/{include,src}/container_images.{h,hpp,cpp}` | C ABI + facade; initializes DBSync. |
@@ -165,7 +170,7 @@ its own callback.
 
 ## Open items
 
-- Add package extraction from image layers (dpkg / apk / rpm), which is what fills the packages table on a real scan.
+- Add RPM package extraction, which needs the header parsing that lives in shared agent code. Until it lands, an RPM-based image is stored with zero packages.
 - Manager synchronization: index names and indexer templates, ECS field mapping for the event
   payload, and whether a document limit / promotion is needed. The `sync` column already
   exists so a limit can be layered on without a migration.

@@ -25,12 +25,14 @@
 
 namespace containerimages
 {
-    /// @brief Builds the reader used to gather the inventory for a scan.
+    /// @brief Builds the reader for one configured reference.
     ///
-    /// Single seam through which future source types are selected. At this stage every
-    /// configured source is a local on-disk image layout, so it returns a LocalImageReader
-    /// bound to the given path.
-    std::unique_ptr<IImageReader> makeReader(const std::string& path);
+    /// Single seam through which source types are selected. `<archive>` is served by the
+    /// archive reader; the reference types that are accepted but not implemented yet
+    /// report themselves here and yield no reader, so the configuration grammar does not
+    /// change when one of them is implemented.
+    std::unique_ptr<IImageReader> makeReader(const ConfiguredReference& reference,
+                                            const std::string& knownConfigDigest);
 
     /// @brief Orchestrates the module: owns the configuration, the scan loop and the local
     /// database.
@@ -41,7 +43,7 @@ namespace containerimages
             /// @param readerFactory Factory used to build a reader (overridable for tests).
             /// @param db Optional database layer (overridable for tests).
             ContainerImagesImpl(ContainerImagesConfig config,
-                                std::function<std::unique_ptr<IImageReader>(const std::string&)> readerFactory = makeReader,
+                                std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> readerFactory = makeReader,
                                 std::shared_ptr<ContainerImagesDB> db = nullptr);
 
             /// @brief Run the scan loop until stop() is called. Blocks the caller.
@@ -84,7 +86,7 @@ namespace containerimages
                          std::uint64_t version);
 
             ContainerImagesConfig m_config;
-            std::function<std::unique_ptr<IImageReader>(const std::string&)> m_readerFactory;
+            std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> m_readerFactory;
             std::shared_ptr<ContainerImagesDB> m_db;
             bool m_running {false};
             bool m_stopRequested {false};

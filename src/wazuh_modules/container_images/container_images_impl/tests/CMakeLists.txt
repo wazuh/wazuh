@@ -6,6 +6,8 @@ include_directories(
   ${SRC_FOLDER}/external/googletest/googletest/include/
   ${SRC_FOLDER}/external/googletest/googlemock/include/
   ${SRC_FOLDER}/external/nlohmann/
+  ${SRC_FOLDER}/external/zlib/
+  ${SRC_FOLDER}/external/zstd/lib/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/src)
@@ -42,13 +44,12 @@ if(NOT DBSYNC_LIB)
   set(DBSYNC_LIB dbsync)
 endif()
 
-# stub_image_reader.cpp is a test double and is deliberately built here rather than into
-# the module library, so the shipped library cannot produce synthetic inventory.
-add_executable(container_images_unit_test container_images_test.cpp stub_image_reader.cpp)
+add_executable(container_images_unit_test container_images_test.cpp
+                                          package_extraction_test.cpp)
 # The DB tests exercise a real DBSync instance, so the real libraries are linked
 # (not mocks). wazuhext provides the hash/string helpers.
 target_link_libraries(container_images_unit_test
-  PRIVATE ContainerImagesImpl ${DBSYNC_LIB} wazuhext)
+  PRIVATE ContainerImagesImpl ${DBSYNC_LIB} wazuhext ext_zstd)
 
 # Two libdbsync.so exist (the agent's under build/lib and a standalone one under
 # shared_modules/dbsync/build/lib). They are not byte-identical and mixing them crashes the

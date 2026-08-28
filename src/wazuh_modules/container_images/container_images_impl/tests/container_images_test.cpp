@@ -1,8 +1,8 @@
 #include "container_images_config.hpp"
 #include "container_images_db.hpp"
 #include "container_images_impl.hpp"
-#include "local_image_reader.hpp"
-#include "stub_image_reader.hpp"
+#include "archive_image_reader.hpp"
+#include "image_fixtures.hpp"
 #include "ci_logging_helper.hpp"
 
 #include "dbsync.hpp"
@@ -114,6 +114,27 @@ namespace
         return fixture;
     }
 
+    /// @brief Writes a single-image layout whose layer carries a dpkg database.
+    std::unique_ptr<OciLayoutFixture> buildSingleImageLayoutWithPackages()
+    {
+        const std::string LAYER_DIGEST {"layerdigest111111111111111111111111111111111111111111111111111111"};
+
+        auto fixture = std::make_unique<OciLayoutFixture>();
+        fixture->writeMarker();
+
+        fixture->writeBlob(CONFIG_DIGEST, R"({"os":"linux","architecture":"amd64"})");
+        fixture->writeBlob(LAYER_DIGEST,
+                           imagefixtures::gzip(imagefixtures::tarMember("var/lib/dpkg/status",
+                                                                        imagefixtures::dpkgStanza("curl", "7.88.1-10")) +
+                                               imagefixtures::tarEnd()));
+        fixture->writeBlob(MANIFEST_DIGEST,
+                           R"({"config":{"digest":"sha256:)" + CONFIG_DIGEST +
+                           R"("},"layers":[{"digest":"sha256:)" + LAYER_DIGEST + R"("}]})");
+        fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"("}]})");
+
+        return fixture;
+    }
+
     /// @brief Writes a layout whose index holds the given raw `manifests` array.
     std::unique_ptr<OciLayoutFixture> buildLayoutWithIndex(const std::string& index)
     {
@@ -134,29 +155,29 @@ class ContainerImagesTest : public ::testing::Test
         }
 };
 
-TEST_F(ContainerImagesTest, LocalReaderSourceType)
+TEST_F(ContainerImagesTest, ArchiveReaderSourceType)
 {
-    LocalImageReader reader("");
-    EXPECT_EQ(reader.sourceType(), "local");
+    ArchiveImageReader reader("");
+    EXPECT_EQ(reader.sourceType(), "archive");
 }
 
-TEST_F(ContainerImagesTest, LocalReaderEmptyPathReturnsNothing)
+TEST_F(ContainerImagesTest, ArchiveReaderEmptyPathReturnsNothing)
 {
-    LocalImageReader reader("");
+    ArchiveImageReader reader("");
     EXPECT_TRUE(reader.discover().records.empty());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderMissingLayoutReturnsNothing)
+TEST_F(ContainerImagesTest, ArchiveReaderMissingLayoutReturnsNothing)
 {
-    LocalImageReader reader("/nonexistent/path/to/layout");
+    ArchiveImageReader reader("/nonexistent/path/to/layout");
     EXPECT_TRUE(reader.discover().records.empty());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderReadsSingleReference)
+TEST_F(ContainerImagesTest, ArchiveReaderReadsSingleReference)
 {
     const auto fixture = buildSingleImageLayout();
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     const auto references = reader.discover().records;
 
     ASSERT_EQ(references.size(), 1U);
@@ -167,90 +188,89 @@ TEST_F(ContainerImagesTest, LocalReaderReadsSingleReference)
     EXPECT_EQ(reference.architecture, "amd64");
     EXPECT_EQ(reference.variant, "v8");
     EXPECT_EQ(reference.tag, "alpine:latest");
-    EXPECT_EQ(reference.source.sourceType, "local");
+    EXPECT_EQ(reference.source.sourceType, "archive");
     EXPECT_EQ(reference.source.location, fixture->path());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderUnknownFormatReturnsNothing)
+TEST_F(ContainerImagesTest, ArchiveReaderUnknownFormatReturnsNothing)
 {
     // A directory that exists but holds no recognizable layout.
     const auto dir = std::filesystem::temp_directory_path() / (uniqueName() + "_unknown_fmt");
     std::filesystem::remove_all(dir);
     std::filesystem::create_directories(dir);
 
-    LocalImageReader reader(dir.string());
+    ArchiveImageReader reader(dir.string());
     EXPECT_TRUE(reader.discover().records.empty());
 
     std::filesystem::remove_all(dir);
 }
 
-TEST_F(ContainerImagesTest, LocalReaderDockerArchiveNotImplemented)
+TEST_F(ContainerImagesTest, ArchiveReaderContainerdStoreNotImplemented)
 {
-    // A docker-save archive directory (manifest.json, no oci-layout) is detected
-    // but not supported yet: it must be skipped, returning no references.
-    const auto dir = std::filesystem::temp_directory_path() / (uniqueName() + "_docker_archive");
+    // The containerd content store is read through the container engine, which is the
+    // `<local>` reference type and a follow-up issue.
+    const auto dir = std::filesystem::temp_directory_path() / (uniqueName() + "_containerd");
     std::filesystem::remove_all(dir);
-    std::filesystem::create_directories(dir);
-    std::ofstream(dir / "manifest.json") << "[]";
+    std::filesystem::create_directories(dir / "io.containerd.content.v1.content");
 
-    LocalImageReader reader(dir.string());
+    ArchiveImageReader reader(dir.string());
     EXPECT_TRUE(reader.discover().records.empty());
 
     std::filesystem::remove_all(dir);
 }
 
-TEST_F(ContainerImagesTest, LocalReaderRejectsTraversalDigest)
+TEST_F(ContainerImagesTest, ArchiveReaderRejectsTraversalDigest)
 {
     // A digest that escapes the layout directory must never reach the filesystem.
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":"sha256:../../../../etc/hostname"}]})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_TRUE(reader.discover().records.empty());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderRejectsDriveRelativeDigest)
+TEST_F(ContainerImagesTest, ArchiveReaderRejectsDriveRelativeDigest)
 {
     // "C:foo" splits at the first colon and passes a separator blacklist, but on
     // Windows operator/ would replace the layout path with a drive-relative one.
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":"sha256:C:foo"}]})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_TRUE(reader.discover().records.empty());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestEntryIsSkipped)
+TEST_F(ContainerImagesTest, ArchiveReaderNonObjectManifestEntryIsSkipped)
 {
     const auto fixture = buildLayoutWithIndex(R"({"manifests":["oops"]})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
-TEST_F(ContainerImagesTest, LocalReaderNonStringDigestIsSkipped)
+TEST_F(ContainerImagesTest, ArchiveReaderNonStringDigestIsSkipped)
 {
     const auto fixture = buildLayoutWithIndex(R"({"manifests":[{"digest":123}]})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
-TEST_F(ContainerImagesTest, LocalReaderNonObjectManifestConfigIsSkipped)
+TEST_F(ContainerImagesTest, ArchiveReaderNonObjectManifestConfigIsSkipped)
 {
     const auto fixture = buildSingleImageLayout();
     fixture->writeBlob(MANIFEST_DIGEST, R"({"config":"x"})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_NO_THROW(EXPECT_TRUE(reader.discover().records.empty()));
 }
 
-TEST_F(ContainerImagesTest, LocalReaderUnparseableConfigBlobKeepsReferenceWithoutMetadata)
+TEST_F(ContainerImagesTest, ArchiveReaderUnparseableConfigBlobKeepsReferenceWithoutMetadata)
 {
     // The image reference is still known from the manifest, so it is reported; only
     // the platform metadata is missing. What must not happen is an exception.
     const auto fixture = buildSingleImageLayout();
     fixture->writeBlob(CONFIG_DIGEST, "{not json");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
 
     std::vector<ImageReferenceRecord> references;
     ASSERT_NO_THROW(references = reader.discover().records);
@@ -259,12 +279,12 @@ TEST_F(ContainerImagesTest, LocalReaderUnparseableConfigBlobKeepsReferenceWithou
     EXPECT_TRUE(references.front().architecture.empty());
 }
 
-TEST_F(ContainerImagesTest, LocalReaderWrongTypedConfigFieldIsIgnored)
+TEST_F(ContainerImagesTest, ArchiveReaderWrongTypedConfigFieldIsIgnored)
 {
     const auto fixture = buildSingleImageLayout();
     fixture->writeBlob(CONFIG_DIGEST, R"({"os":5,"architecture":"amd64"})");
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
 
     std::vector<ImageReferenceRecord> references;
     ASSERT_NO_THROW(references = reader.discover().records);
@@ -274,7 +294,7 @@ TEST_F(ContainerImagesTest, LocalReaderWrongTypedConfigFieldIsIgnored)
 }
 
 #ifndef _WIN32
-TEST_F(ContainerImagesTest, LocalReaderSkipsNonRegularBlob)
+TEST_F(ContainerImagesTest, ArchiveReaderSkipsNonRegularBlob)
 {
     // Opening a FIFO with no writer blocks forever, which would hang the module
     // thread past the point where a stop can reach it.
@@ -288,10 +308,114 @@ TEST_F(ContainerImagesTest, LocalReaderSkipsNonRegularBlob)
         GTEST_SKIP() << "FIFOs are not available on this filesystem.";
     }
 
-    LocalImageReader reader(fixture->path());
+    ArchiveImageReader reader(fixture->path());
     EXPECT_TRUE(reader.discover().records.empty());
 }
 #endif
+
+TEST_F(ContainerImagesTest, ArchiveReaderKeepsOnlyOneImageOfAMultiManifestIndex)
+{
+    // Two full images, such as `docker save debian:12 ubuntu:24.04` produces, not a
+    // multi-platform variant of one. The references table's primary key is
+    // (reference_type, reference_value): one row per reference, so more than one
+    // descriptor for the same location must not become more than one record.
+    const std::string CONFIG_DIGEST_2 {"configdigest2222222222222222222222222222222222222222222222222222"};
+    const std::string MANIFEST_DIGEST_2 {"manifestdigest22222222222222222222222222222222222222222222222222"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(CONFIG_DIGEST_2, R"({"os":"linux","architecture":"arm64"})");
+    fixture->writeBlob(MANIFEST_DIGEST_2, R"({"config":{"digest":"sha256:)" + CONFIG_DIGEST_2 + R"("}})");
+    fixture->writeIndex(R"({"manifests":[)"
+                        R"({"digest":"sha256:)" + MANIFEST_DIGEST +
+                        R"(","annotations":{"org.opencontainers.image.ref.name":"debian:12"}},)" +
+                        R"({"digest":"sha256:)" + MANIFEST_DIGEST_2 +
+                        R"(","annotations":{"org.opencontainers.image.ref.name":"ubuntu:24.04"}}]})");
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().tag, "debian:12");
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderSkipsAttestationManifestEntries)
+{
+    // buildx and containerd both write "unknown"/"unknown" as the platform of an
+    // attestation or provenance manifest entry; it carries no image content and must
+    // not compete with the real image for the one reference row this location can hold.
+    const std::string ATTESTATION_CONFIG_DIGEST {"attestationconfig111111111111111111111111111111111111111111111"};
+    const std::string ATTESTATION_MANIFEST_DIGEST {"attestationmanifest11111111111111111111111111111111111111111111"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(ATTESTATION_CONFIG_DIGEST, R"({"os":"unknown","architecture":"unknown"})");
+    fixture->writeBlob(ATTESTATION_MANIFEST_DIGEST,
+                       R"({"config":{"digest":"sha256:)" + ATTESTATION_CONFIG_DIGEST + R"("}})");
+    fixture->writeIndex(R"({"manifests":[)"
+                        R"({"digest":"sha256:)" + MANIFEST_DIGEST +
+                        R"(","annotations":{"org.opencontainers.image.ref.name":"alpine:latest"}},)" +
+                        R"({"digest":"sha256:)" + ATTESTATION_MANIFEST_DIGEST +
+                        R"(","platform":{"os":"unknown","architecture":"unknown"}}]})");
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().tag, "alpine:latest");
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderBoundsAFanOutIndexInsteadOfRunningForSeconds)
+{
+    // A self-referencing index with fan-out N is walked N^5 times without a shared
+    // visited-digest set and a total node budget: MAX_INDEX_DEPTH alone bounds nesting,
+    // not fan-out. The review measured N=12 at ~4.1s on a real harness; this uses a
+    // slightly higher N so an unfixed traversal would run for several seconds, while
+    // the fix keeps it near-instant regardless of N (every distinct digest here is
+    // visited once, thanks to the shared visited set). A wall-clock ceiling is the only
+    // externally observable signal for a bug that is fundamentally about unbounded
+    // work, which is how the review itself measured it; the margin between "fixed"
+    // (tens of milliseconds) and "unfixed" (several seconds) is large enough not to
+    // flake on a loaded CI machine.
+    constexpr int FAN_OUT {14};
+
+    auto fixture = std::make_unique<OciLayoutFixture>();
+    fixture->writeMarker();
+
+    std::vector<std::string> digests;
+
+    for (int i = 0; i < FAN_OUT; ++i)
+    {
+        digests.push_back("cyclenode" + std::to_string(i) + std::string(40, '0'));
+    }
+
+    std::string manifestsArray;
+
+    for (const auto& digest : digests)
+    {
+        manifestsArray += manifestsArray.empty() ? "" : ",";
+        manifestsArray += R"({"digest":"sha256:)" + digest + R"("})";
+    }
+
+    const std::string nodeBody {R"({"manifests":[)" + manifestsArray + R"(]})"};
+
+    for (const auto& digest : digests)
+    {
+        fixture->writeBlob(digest, nodeBody);
+    }
+
+    fixture->writeIndex(nodeBody);
+
+    ArchiveImageReader reader(fixture->path());
+
+    const auto start {std::chrono::steady_clock::now()};
+    const auto references {reader.discover().records};
+    const auto elapsed {std::chrono::steady_clock::now() - start};
+
+    EXPECT_LT(elapsed, std::chrono::seconds(5));
+    // Every node here is a nested index pointing at other nested indexes, never a real
+    // manifest with a config digest, so no reference is ever produced either way; the
+    // bound under test is the elapsed time, not this.
+    EXPECT_TRUE(references.empty());
+}
 
 // ---------------------------------------------------------------------------
 // Persistence layer (ContainerImagesDB) — DBSync round trip and deltas.
@@ -544,7 +668,7 @@ TEST_F(ContainerImagesDBTest, ImplScanOnceReturnsReferenceCount)
     const auto fixture = buildSingleImageLayout();
 
     ContainerImagesConfig config;
-    config.localPaths = {fixture->path()};
+    config.references = {{ReferenceType::Archive, fixture->path()}};
 
     ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
     EXPECT_EQ(impl.scanOnce(), 1U);
@@ -556,7 +680,7 @@ TEST_F(ContainerImagesDBTest, ImplScanOnceAggregatesMultipleSources)
     const auto second = buildSingleImageLayout();
 
     ContainerImagesConfig config;
-    config.localPaths = {first->path(), second->path()};
+    config.references = {{ReferenceType::Archive, first->path()}, {ReferenceType::Archive, second->path()}};
 
     ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
     EXPECT_EQ(impl.scanOnce(), 2U);
@@ -564,10 +688,10 @@ TEST_F(ContainerImagesDBTest, ImplScanOnceAggregatesMultipleSources)
 
 TEST_F(ContainerImagesDBTest, ImplNoSourcesScansNothing)
 {
-    ContainerImagesConfig config; // no localPaths
+    ContainerImagesConfig config; // no references
 
     int factoryCalls = 0;
-    ContainerImagesImpl impl(config, [&factoryCalls](const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
@@ -577,37 +701,13 @@ TEST_F(ContainerImagesDBTest, ImplNoSourcesScansNothing)
     EXPECT_EQ(factoryCalls, 0);
 }
 
-TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
-{
-    std::vector<std::string> factoryPaths;
-
-    ContainerImagesConfig config;
-    config.localPaths = {"/some/path"};
-
-    ContainerImagesImpl impl(config, [&factoryPaths](const std::string & path)
-    {
-        factoryPaths.push_back(path);
-        return std::unique_ptr<IImageReader>(nullptr);
-    }, std::make_shared<ContainerImagesDB>(m_dbPath));
-
-    EXPECT_EQ(impl.scanOnce(), 0U);
-
-    // The factory is driven by the configured path, not by a fixed one.
-    ASSERT_EQ(factoryPaths.size(), 1U);
-    EXPECT_EQ(factoryPaths.front(), "/some/path");
-}
-
 namespace
 {
-    /// @brief A reader whose outcome each test sets: what it holds, or a failed read.
+    /// @brief A reader whose outcome each test sets.
     class OutcomeReader final : public IImageReader
     {
         public:
-            OutcomeReader(ImageReadResult result, std::string type)
-                : m_result {std::move(result)}
-                , m_type {std::move(type)}
-            {
-            }
+            OutcomeReader(ImageReadResult result) : m_result {std::move(result)} {}
 
             ImageReadResult discover() override
             {
@@ -616,19 +716,18 @@ namespace
 
             std::string sourceType() const override
             {
-                return m_type;
+                return "archive";
             }
 
         private:
             ImageReadResult m_result;
-            std::string m_type;
     };
 
     /// @brief One reference with @p packages packages, found at @p location.
     ImageReferenceRecord recordAt(const std::string& location, int packages)
     {
         ImageReferenceRecord reference;
-        reference.source = {"local", location};
+        reference.source = {"archive", location};
         reference.tag = "debian:12";
         reference.configDigest = "sha256:config-aaaa";
         reference.manifestDigest = "sha256:manifest-aaaa";
@@ -648,78 +747,51 @@ namespace
 
         return reference;
     }
+
+    std::size_t storedPackages(const std::string& dbPath)
+    {
+        return storedRows(dbPath, PACKAGES_TABLE, {"name", "version_"}).size();
+    }
+
+    std::size_t storedReferences(const std::string& dbPath)
+    {
+        return storedRows(dbPath, REFERENCES_TABLE, {"reference_type", "reference_value"}).size();
+    }
 } // namespace
 
 TEST_F(ContainerImagesDBTest, AFailedReadKeepsTheInventoryAlreadyStored)
 {
-    // A source that cannot be read this time says nothing about what it holds, so what an
-    // earlier scan stored for it must survive. Leaving it out of the synced set would have
-    // the storage layer report every one of its records as deleted.
+    // A reference that cannot be read this time says nothing about what it holds, so what
+    // an earlier scan stored for it must survive. Leaving it out of the synced set would
+    // have the storage layer report every one of its records as deleted.
     ContainerImagesConfig config;
-    config.localPaths = {"/images/a"};
+    config.references = {{ReferenceType::Archive, "/images/a"}};
 
     bool readable {true};
-    const auto factory = [&readable](const std::string & path) -> std::unique_ptr<IImageReader>
+    const auto factory = [&readable](const ConfiguredReference & reference,
+                                     const std::string&) -> std::unique_ptr<IImageReader>
     {
-        return std::make_unique<OutcomeReader>(readable ? ImageReadResult::success({recordAt(path, 3)})
-                                               : ImageReadResult::failed(),
-                                               "local");
+        return std::make_unique<OutcomeReader>(readable
+                                               ? ImageReadResult::success({recordAt(reference.location, 3)})
+                                               : ImageReadResult::failed());
     };
 
-    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
-    ContainerImagesImpl impl(config, factory, db);
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
 
     impl.scanOnce();
-    ASSERT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 3U);
+    ASSERT_EQ(storedPackages(m_dbPath), 3U);
 
     readable = false;
     impl.scanOnce();
 
-    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value"}).size(), 1U);
-    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 3U);
+    EXPECT_EQ(storedReferences(m_dbPath), 1U);
+    EXPECT_EQ(storedPackages(m_dbPath), 3U);
 }
 
-TEST_F(ContainerImagesDBTest, AFailedReadDoesNotCostTheOtherSources)
+TEST_F(ContainerImagesDBTest, AnEmptyReadStillRemovesWhatTheReferenceHeld)
 {
-    // One source failing must not disturb the inventory of the ones that were read.
-    ContainerImagesConfig config;
-    config.localPaths = {"/images/a", "/images/b"};
-
-    const auto factory = [](const std::string & path) -> std::unique_ptr<IImageReader>
-    {
-        if (path == "/images/b")
-        {
-            return std::make_unique<OutcomeReader>(ImageReadResult::failed(), "local");
-        }
-
-        return std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 4)}), "local");
-    };
-
-    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
-
-    {
-        // Both readable once, so both have something stored to preserve.
-        ContainerImagesImpl seed(config, [](const std::string & path)
-        {
-            return std::unique_ptr<IImageReader>(
-                       std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 4)}), "local"));
-        }, db);
-        seed.scanOnce();
-    }
-
-    ASSERT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 8U);
-
-    ContainerImagesImpl impl(config, factory, db);
-    impl.scanOnce();
-
-    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value"}).size(), 2U);
-    EXPECT_EQ(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).size(), 8U);
-}
-
-TEST_F(ContainerImagesDBTest, AnEmptySourceStillRemovesWhatItHeld)
-{
-    // The other half of the rule: a source that was read and holds nothing really is empty,
-    // so its records go. This is what separates an empty read from a failed one.
+    // The other half of the rule: a reference that was read and holds nothing really is
+    // empty, so its records go. This is what separates an empty read from a failed one.
     //
     // Asserted on what the storage layer reports rather than on rows read back through a
     // second connection, so the test says the same thing whatever the storage library's
@@ -751,36 +823,103 @@ TEST_F(ContainerImagesDBTest, AnEmptySourceStillRemovesWhatItHeld)
     EXPECT_EQ(deletedPackages, 3U);
 }
 
-TEST_F(ContainerImagesDBTest, StoredInventoryIsReadBackWithItsFields)
+TEST_F(ContainerImagesDBTest, AnUnchangedReferenceKeepsItsStoredInventory)
 {
+    // The reader reports the image still holds the stored digest, so it did not read the
+    // layers. The stored inventory is that image's inventory, and it stays.
     ContainerImagesConfig config;
-    config.localPaths = {"/images/a"};
+    config.references = {{ReferenceType::Archive, "/images/a"}};
 
-    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
-    ContainerImagesImpl impl(config, [](const std::string & path)
+    bool firstScan {true};
+    std::string digestSeenByTheReader;
+
+    const auto factory = [&](const ConfiguredReference & reference,
+                             const std::string & knownConfigDigest) -> std::unique_ptr<IImageReader>
     {
-        return std::unique_ptr<IImageReader>(
-                   std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(path, 2)}), "local"));
-    }, db);
+        digestSeenByTheReader = knownConfigDigest;
+
+        if (firstScan)
+        {
+            return std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 5)}));
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::unchanged());
+    };
+
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
 
     impl.scanOnce();
+    ASSERT_EQ(storedPackages(m_dbPath), 5U);
+    EXPECT_TRUE(digestSeenByTheReader.empty());   // nothing stored yet on the first scan
 
-    const auto stored {db->loadStored("local", "/images/a")};
+    firstScan = false;
+    impl.scanOnce();
 
-    ASSERT_TRUE(stored.has_value());
-    EXPECT_EQ(stored->source.sourceType, "local");
-    EXPECT_EQ(stored->source.location, "/images/a");
-    EXPECT_EQ(stored->configDigest, "sha256:config-aaaa");
-    EXPECT_EQ(stored->manifestDigest, "sha256:manifest-aaaa");
-    EXPECT_EQ(stored->tag, "debian:12");
-    EXPECT_EQ(stored->os, "linux");
-    EXPECT_EQ(stored->architecture, "amd64");
-    ASSERT_EQ(stored->packages.size(), 2U);
-    EXPECT_EQ(stored->packages.front().name, "pkg-0");
-    EXPECT_EQ(stored->packages.front().type, "deb");
-    EXPECT_EQ(stored->packages.front().packageDbPath, "var/lib/dpkg/status");
+    // The digest of the stored image is handed to the reader, which is what lets it decide.
+    EXPECT_EQ(digestSeenByTheReader, "sha256:config-aaaa");
+    EXPECT_EQ(storedReferences(m_dbPath), 1U);
+    EXPECT_EQ(storedPackages(m_dbPath), 5U);
+}
 
-    EXPECT_FALSE(db->loadStored("local", "/images/never-scanned").has_value());
+TEST_F(ContainerImagesDBTest, AStopMidScanStoresNothing)
+{
+    // A scan cut short by a stop describes only the references it reached. Storing that
+    // would report every reference it never got to as deleted.
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}, {ReferenceType::Archive, "/images/b"}};
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+
+    {
+        ContainerImagesImpl seed(config, [](const ConfiguredReference & reference, const std::string&)
+        {
+            return std::unique_ptr<IImageReader>(
+                       std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 4)})));
+        }, db);
+        seed.scanOnce();
+    }
+
+    ASSERT_EQ(storedReferences(m_dbPath), 2U);
+    ASSERT_EQ(storedPackages(m_dbPath), 8U);
+
+    ContainerImagesImpl* self {nullptr};
+    auto stopping = [&](const ConfiguredReference & reference, const std::string&) -> std::unique_ptr<IImageReader>
+    {
+        if (self != nullptr)
+        {
+            self->stop();   // the stop lands while the scan is between references
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 4)}));
+    };
+
+    ContainerImagesImpl impl(config, stopping, db);
+    self = &impl;
+    impl.scanOnce();
+
+    EXPECT_EQ(storedReferences(m_dbPath), 2U);
+    EXPECT_EQ(storedPackages(m_dbPath), 8U);
+}
+
+TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
+{
+    std::vector<ConfiguredReference> factoryReferences;
+
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/some/path"}};
+
+    ContainerImagesImpl impl(config, [&factoryReferences](const ConfiguredReference & reference, const std::string&)
+    {
+        factoryReferences.push_back(reference);
+        return std::unique_ptr<IImageReader>(nullptr);
+    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    EXPECT_EQ(impl.scanOnce(), 0U);
+
+    // The factory is driven by the configured reference, not by a fixed one.
+    ASSERT_EQ(factoryReferences.size(), 1U);
+    EXPECT_EQ(factoryReferences.front().location, "/some/path");
+    EXPECT_EQ(factoryReferences.front().type, ReferenceType::Archive);
 }
 
 TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)
@@ -790,7 +929,7 @@ TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)
     const auto fixture = buildSingleImageLayout();
 
     ContainerImagesConfig config;
-    config.localPaths = {fixture->path()};
+    config.references = {{ReferenceType::Archive, fixture->path()}};
 
     {
         ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
@@ -800,27 +939,33 @@ TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)
     const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value", "image_config_digest"})};
 
     ASSERT_EQ(rows.size(), 1U);
-    EXPECT_EQ(rows.front().at("reference_type"), "local");
+    EXPECT_EQ(rows.front().at("reference_type"), "archive");
     EXPECT_EQ(rows.front().at("reference_value"), fixture->path());
     EXPECT_EQ(rows.front().at("image_config_digest"), "sha256:" + CONFIG_DIGEST);
 }
 
-TEST_F(ContainerImagesDBTest, ScanOnceWithStubReaderPersistsPackages)
+TEST_F(ContainerImagesDBTest, ScanOncePersistsThePackagesFoundInTheImage)
 {
-    // The stub reader is a test double injected through the factory seam. It carries
-    // packages, which the on-disk reader cannot produce yet, so it is what proves the
-    // scan-to-storage path end to end for the packages table.
+    // End to end over the real reader: an image built on disk, its packages extracted from
+    // the layer, and the rows stored. Nothing synthetic takes part.
+    const auto fixture = buildSingleImageLayoutWithPackages();
+
     ContainerImagesConfig config;
     config.dbPath = m_dbPath;
-    config.localPaths = {"/stubbed/source"};
+    config.references = {{ReferenceType::Archive, fixture->path()}};
 
-    ContainerImagesImpl impl(config, [](const std::string&)
     {
-        return std::unique_ptr<IImageReader>(new StubImageReader());
-    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+        ContainerImagesImpl impl(config, makeReader, std::make_shared<ContainerImagesDB>(m_dbPath));
+        EXPECT_EQ(impl.scanOnce(), 1U);
+    }
 
-    EXPECT_EQ(impl.scanOnce(), 1U);
-    EXPECT_FALSE(storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_"}).empty());
+    const auto rows {storedRows(m_dbPath, PACKAGES_TABLE, {"name", "version_", "type", "package_db_path"})};
+
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("name"), "curl");
+    EXPECT_EQ(rows.front().at("version_"), "7.88.1-10");
+    EXPECT_EQ(rows.front().at("type"), "deb");
+    EXPECT_EQ(rows.front().at("package_db_path"), "var/lib/dpkg/status");
 }
 
 TEST_F(ContainerImagesDBTest, ImplDisabledDoesNotScan)
@@ -830,9 +975,9 @@ TEST_F(ContainerImagesDBTest, ImplDisabledDoesNotScan)
     ContainerImagesConfig config;
     config.enabled = false;
     config.scanOnStart = true;
-    config.localPaths = {"/some/path"};
+    config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [&factoryCalls](const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
@@ -849,9 +994,9 @@ TEST_F(ContainerImagesDBTest, ImplFailingScanDoesNotEndTheModule)
     ContainerImagesConfig config;
     config.scanOnStart = true;
     config.interval = 1;
-    config.localPaths = {"/some/path"};
+    config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [](const std::string&) -> std::unique_ptr<IImageReader>
+    ContainerImagesImpl impl(config, [](const ConfiguredReference&, const std::string&) -> std::unique_ptr<IImageReader>
     {
         throw std::runtime_error("reader failure");
     }, std::make_shared<ContainerImagesDB>(m_dbPath));
@@ -892,9 +1037,9 @@ TEST_F(ContainerImagesDBTest, ImplStopBeforeRunDoesNotScan)
     ContainerImagesConfig config;
     config.scanOnStart = true;
     config.interval = 3600;
-    config.localPaths = {"/some/path"};
+    config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [&factoryCalls](const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);

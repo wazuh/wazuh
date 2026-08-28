@@ -1,21 +1,25 @@
 # Container Images
 
-The **Container Images** module introduces agent-side support for collecting inventory from container images. In the first development stage, the module discovers image references from configured local OCI image layouts and reads basic image metadata during periodic scans.
+The **Container Images** module introduces agent-side support for collecting inventory from container images. The module discovers image references from configured image inputs on disk and inventories the packages their layers contain during periodic scans.
 
 The module is implemented as an **agent-only** `wazuh-modulesd` module. It follows the same module layout used by other inventory components: a C glue layer handles configuration and lifecycle, while a C++ shared library contains the scan logic.
 
-> **Note:** This stage covers module scaffolding, local OCI layout discovery, metadata reading, logging, and local persistence of the package inventory. Package extraction from image layers, change events, manager synchronization, indexing, Vulnerability Detector integration, and runtime or registry readers are not implemented yet.
+> **Note:** This stage covers image discovery from saved archives and OCI image layouts, package extraction for the `dpkg` and `apk` formats, and local persistence of the inventory. RPM extraction, change events, manager synchronization, indexing, Vulnerability Detector integration, and the container engine and registry readers are not implemented yet.
 
 ## Overview
 
-Container Images scans configured image sources and reports what it discovers in the agent logs. The current implementation focuses on local OCI image layouts, which can be read directly from disk without a container daemon.
+Container Images scans configured image sources, stores what it finds in a local database, and reports the scan in the agent logs. The inputs are images on disk, which are read without a container daemon: saved image archives and OCI image layout directories.
 
 ### Key Features
 
 - **Agent-only module**: The shared library that performs the scan is built for agent targets only. The C glue is compiled everywhere, so the manager validates the configuration but never runs the module.
 - **Periodic scanning**: Supports scan on start and interval-based rescans.
-- **Local OCI layout reader**: Reads OCI image layouts from configured local paths.
-- **Format detection**: Detects unsupported local formats, logs them, and skips them safely.
+- **Digest check**: An image still reporting the configuration digest already stored is not read again, so an unchanged image costs its metadata and nothing more.
+- **Read failure handling**: A reference that cannot be read keeps the inventory an earlier scan stored for it, instead of having it reported as deleted.
+- **Archive reader**: Reads saved image archives (`docker save`) and OCI image layout directories.
+- **Streaming layer reader**: Streams layer blobs, gzip-compressed, zstd-compressed or plain, without extracting an image to disk.
+- **Package extraction**: Composes the image layers in manifest order, applies the OverlayFS deletion markers, and parses the `dpkg` and `apk` databases.
+- **Format detection**: Detects the inputs and package formats that are not implemented yet, logs them, and continues.
 - **C/C++ module split**: Uses the same dynamic-library pattern as other Wazuh modules.
 - **Extensible reader interface**: New source types can be added through the `IImageReader` interface.
 
@@ -24,18 +28,38 @@ Container Images scans configured image sources and reports what it discovers in
 1. **Configuration**: The agent parses the `<container_images>` block in `ossec.conf`.
 2. **Startup**: `wazuh-modulesd` loads `libcontainer_images.so` and initializes the C++ implementation.
 3. **Scanning**: The module scans on start when configured, then waits for the next interval.
-4. **Discovery**: Each configured local path is inspected and read when it contains an OCI image layout.
-5. **Logging**: The module logs discovered image references and the scan summary.
+4. **Discovery**: Each configured reference is read, and the images it holds are enumerated from the image metadata.
+5. **Extraction**: The layers of each image are streamed in manifest order, and the package databases they carry are parsed.
+6. **Persistence**: The references and their packages are stored in the local database, which reports what changed since the previous scan.
+7. **Logging**: The module logs the discovered image references and the scan summary.
 
 ## Supported Sources
 
-| Source | Status | Description |
-|--------|--------|-------------|
-| Local OCI image layout | Supported | A local directory containing an OCI image layout. |
-| Docker archive | Detected only | The format is detected and skipped. |
-| containerd content store | Detected only | The format is detected and skipped. |
-| Runtime sockets | Not implemented | Reserved for a future stage. |
-| Remote registries | Not implemented | Reserved for a future stage. |
+| Source | Entry | Status | Description |
+|--------|-------|--------|-------------|
+| Saved image archive | `<archive>` | Supported | The output of `docker save`, holding either an OCI layout or the older `manifest.json` layout. |
+| OCI image layout | `<archive>` | Supported | A directory containing an OCI image layout. |
+| Container engine store | `<local>` | Not implemented | Accepted by the configuration and reported. |
+| Remote registries | `<ref>` | Not implemented | Accepted by the configuration and reported. |
+
+## Supported Package Formats
+
+| Format | Status |
+|--------|--------|
+| dpkg (`var/lib/dpkg/status`) | Parsed. Installed packages only. |
+| apk (`lib/apk/db/installed`, `usr/lib/apk/db/installed`) | Parsed. |
+| rpm, pacman, portage, xbps, swupd | Recognized. The image is inventoried with zero packages and a warning. |
+
+## Supported Layer Compressions
+
+| Compression | Status |
+|-------------|--------|
+| gzip | Decompressed. |
+| zstd | Decompressed. |
+| none | Read as a plain tar. |
+| xz, bzip2, lz4 | Recognized. The layer is skipped with a warning. |
+
+gzip, zstd and none are the compressions the OCI image specification defines for a layer. The rest cannot appear in a conformant image, and are recognized so that a layer using one is reported rather than read as if it were corrupt.
 
 ## Quick Start
 
@@ -49,7 +73,7 @@ Add a `<container_images>` block to the agent `ossec.conf` file:
   <scan_on_start>yes</scan_on_start>
   <interval>1h</interval>
   <references>
-    <local>/path/to/oci/layout</local>
+    <archive>/var/tmp/images/myapp.tar</archive>
   </references>
 </container_images>
 ```
@@ -59,24 +83,22 @@ Add a `<container_images>` block to the agent `ossec.conf` file:
 Run the agent with debug logging enabled and check the `wazuh-modulesd:container_images` log entries:
 
 ```sql
-wazuh-modulesd:container_images: INFO: Configuration loaded: enabled=yes, scan_on_start=yes, interval=3600, local references=1.
-wazuh-modulesd:container_images: DEBUG: Local reference configured: '/path/to/oci/layout'.
+wazuh-modulesd:container_images: INFO: Configuration loaded: enabled=yes, scan_on_start=yes, interval=3600, references=1.
+wazuh-modulesd:container_images: DEBUG: Reference configured: <archive>/var/tmp/images/myapp.tar.
 wazuh-modulesd:container_images: DEBUG: Module initialized.
 wazuh-modulesd:container_images: DEBUG: Scan on start.
 wazuh-modulesd:container_images: INFO: Scan started.
-wazuh-modulesd:container_images: DEBUG: Discovered image reference /path/to/oci/layout (local) digest=sha256:d529dd0c....
-wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 0 packages.
+wazuh-modulesd:container_images: DEBUG: Parsed 132 packages from 'var/lib/dpkg/status'.
+wazuh-modulesd:container_images: DEBUG: Reference '/var/tmp/images/myapp.tar' manifest=sha256:d529dd0c... packages=132.
+wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 132 packages.
 ```
-
-Package counts stay at zero until extraction from image layers lands: the module discovers and
-stores image references, not their package contents.
 
 ## Current Limitations
 
-- Package extraction from image layers is not implemented.
+- RPM package extraction is not implemented; an RPM-based image is inventoried with zero packages and a warning.
 - Agent Sync Protocol synchronization is not implemented, so the stored inventory stays on the agent.
 - Vulnerability Detector integration is not implemented.
-- Runtime, registry, archive, Windows, and Kubernetes integrations are not implemented.
+- Container engine, registry, Windows, and Kubernetes integrations are not implemented.
 
 ## Documentation
 
