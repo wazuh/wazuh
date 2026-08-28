@@ -443,6 +443,18 @@ void w_inc_task_sql_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_task_commit() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.commit_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_commit_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.commit_time, &time, &wdb_state.queries_breakdown.task_breakdown.commit_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_task_create() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.task_breakdown.tasks.create_queries++;
@@ -500,6 +512,66 @@ void w_inc_task_delete_old() {
 void w_inc_task_delete_old_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_create() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_create_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_claim() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_claim_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_requeue() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_requeue_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_result() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_result_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_get() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_manager_task_get_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_time, &time, &wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -621,6 +693,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddItemToObject(_task_breakdown, "db", _task_db);
 
     cJSON_AddNumberToObject(_task_db, "sql", wdb_state_cpy.queries_breakdown.task_breakdown.sql_queries);
+    cJSON_AddNumberToObject(_task_db, "commit", wdb_state_cpy.queries_breakdown.task_breakdown.commit_queries);
 
     cJSON *_task_tables = cJSON_CreateObject();
     cJSON_AddItemToObject(_task_breakdown, "tables", _task_tables);
@@ -633,6 +706,15 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_task_tables_tasks, "mark_delivered", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.mark_delivered_queries);
     cJSON_AddNumberToObject(_task_tables_tasks, "cleanup_expired", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.cleanup_expired_queries);
     cJSON_AddNumberToObject(_task_tables_tasks, "delete_old", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_queries);
+
+    cJSON *_task_tables_manager_tasks = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_tables, "manager_tasks", _task_tables_manager_tasks);
+
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "create", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.create_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "claim", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.claim_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "requeue", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.requeue_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "result", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.result_queries);
+    cJSON_AddNumberToObject(_task_tables_manager_tasks, "get", wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.get_queries);
 
     cJSON *_time = cJSON_CreateObject();
     cJSON_AddItemToObject(_metrics, "time", _time);
@@ -717,6 +799,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddItemToObject(_task_breakdown_t, "db", _task_db_t);
 
     cJSON_AddNumberToObject(_task_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.sql_time));
+    cJSON_AddNumberToObject(_task_db_t, "commit", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.commit_time));
 
     cJSON *_task_tables_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_task_breakdown_t, "tables", _task_tables_t);
@@ -729,6 +812,15 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_task_tables_tasks_t, "mark_delivered", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.mark_delivered_time));
     cJSON_AddNumberToObject(_task_tables_tasks_t, "cleanup_expired", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.cleanup_expired_time));
     cJSON_AddNumberToObject(_task_tables_tasks_t, "delete_old", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_time));
+
+    cJSON *_task_tables_manager_tasks_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_tables_t, "manager_tasks", _task_tables_manager_tasks_t);
+
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "create", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.create_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "claim", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.claim_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "requeue", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.requeue_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "result", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.result_time));
+    cJSON_AddNumberToObject(_task_tables_manager_tasks_t, "get", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.manager_tasks.get_time));
 
     return wdb_state_json;
 }
@@ -774,11 +866,17 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
 STATIC uint64_t get_task_time(wdb_state_t *state){
     struct timeval task_time;
 
-    timeradd(&state->queries_breakdown.task_breakdown.sql_time, &state->queries_breakdown.task_breakdown.tasks.create_time, &task_time);
+    timeradd(&state->queries_breakdown.task_breakdown.sql_time, &state->queries_breakdown.task_breakdown.commit_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.create_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.get_pending_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.mark_delivered_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.cleanup_expired_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.delete_old_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.create_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.claim_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.requeue_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.result_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.manager_tasks.get_time, &task_time);
 
     return timeval_to_milis(task_time);
 }

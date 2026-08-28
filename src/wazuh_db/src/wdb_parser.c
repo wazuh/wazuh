@@ -9,10 +9,52 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuhdb_op.h"
 #include "wdb.h"
 #include "cJSON.h"
 #include "wdb_state.h"
+
+/**
+ * @brief One manager task sub-command: its wire name, its handler and its counters.
+ *
+ * Registering a sub-command is a row in MANAGER_TASK_COMMANDS below, not another branch in the
+ * task actor's if-chain.
+ */
+typedef struct manager_task_command_t {
+    const char *name;
+    int (*handler)(wdb_t *wdb, const cJSON *parameters, char *output);
+    void (*inc_calls)(void);
+    void (*inc_time)(struct timeval time);
+} manager_task_command_t;
+
+static const manager_task_command_t MANAGER_TASK_COMMANDS[] = {
+    {"create_manager_task", wdb_parse_manager_task_create, w_inc_task_manager_task_create, w_inc_task_manager_task_create_time},
+    {"claim_manager_task", wdb_parse_manager_task_claim, w_inc_task_manager_task_claim, w_inc_task_manager_task_claim_time},
+    {"requeue_manager_task", wdb_parse_manager_task_requeue, w_inc_task_manager_task_requeue, w_inc_task_manager_task_requeue_time},
+    {"set_manager_task_result", wdb_parse_manager_task_result, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
+    {"get_manager_task", wdb_parse_manager_task_get, w_inc_task_manager_task_get, w_inc_task_manager_task_get_time},
+};
+
+/**
+ * @brief Look up a manager task sub-command by its wire name.
+ *
+ * @return The command, or NULL when the name is not one.
+ */
+STATIC const manager_task_command_t* wdb_manager_task_command(const char *name) {
+    for (size_t i = 0; i < sizeof(MANAGER_TASK_COMMANDS) / sizeof(*MANAGER_TASK_COMMANDS); i++) {
+        if (strcmp(MANAGER_TASK_COMMANDS[i].name, name) == 0) {
+            return &MANAGER_TASK_COMMANDS[i];
+        }
+    }
+
+    return NULL;
+}
 
 sqlite3 * wdb_global_pre(void **wdb_ctx)
 {
@@ -689,17 +731,35 @@ int wdb_parse(char * input, char * output, int peer) {
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
-        if (next = wstr_chr(query, ' '), !next) {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            wdb_pool_leave(wdb);
-            return OS_INVALID;
+        // The argument separator is optional: sub-commands that take no parameters, such as
+        // "commit", are a whole query on their own. Sub-commands that do take parameters reject a
+        // NULL argument in their own branch below, with the same message this used to emit.
+        if (next = wstr_chr(query, ' '), next) {
+            *next++ = '\0';
         }
 
-        *next++ = '\0';
+        const manager_task_command_t *manager_command = wdb_manager_task_command(query);
 
-        if (!strcmp("create", query)) {
+        if (manager_command) {
+            manager_command->inc_calls();
+
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = manager_command->handler(wdb, parameters_json, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                manager_command->inc_time(diff);
+                cJSON_Delete(parameters_json);
+            }
+        } else if (!strcmp("create", query)) {
             w_inc_task_create();
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -799,6 +859,23 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_task_delete_old_time(diff);
             cJSON_Delete(parameters_json);
+        } else if (!strcmp("commit", query)) {
+            // Ends the deferred transaction that every wdb_task_* write opens, making the writes
+            // durable at the caller's request instead of whenever wazuh-db's background loop next
+            // fires (commit_time_min idle / commit_time_max ceiling). An "ok" from a write is not
+            // by itself a durability acknowledgement.
+            w_inc_task_commit();
+            gettimeofday(&begin, 0);
+            if (wdb_commit2(wdb) < 0) {
+                mdebug1("Task DB Cannot end transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = OS_INVALID;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_commit_time(diff);
         } else if (!strcmp("sql", query)) {
             w_inc_task_sql();
             if (!next) {
@@ -806,8 +883,18 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
+            } else if (wdb_commit2(wdb) < 0) {
+                // The scheduled user of this path is the daily VACUUM, which SQLite refuses to run
+                // inside a transaction, and cleanup_expired or delete_old may have left the
+                // deferred one open earlier in the same iteration of the module's cleanup loop.
+                // End it and release the prepared statements first, as the global vacuum path does.
+                mdebug1("Task DB Cannot end transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = OS_INVALID;
             } else {
                 sql = next;
+
+                wdb_finalize_all_statements(wdb);
 
                 gettimeofday(&begin, 0);
                 data = wdb_exec(wdb->db, sql);
@@ -2066,4 +2153,242 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
     cJSON_Delete(response);
 
     return result;
+}
+
+/* Manager tasks.
+ *
+ * These sub-commands are the shared ingress for both producers: the Task Manager reaches them
+ * over queue/tasks/task and authd reaches them directly on the wazuh-db socket it already holds.
+ * Validation therefore belongs here rather than in the module's own parser, which authd never
+ * passes through. */
+
+/**
+ * @brief Read an optional string parameter.
+ *
+ * @return The value, or NULL when absent or not a string.
+ */
+STATIC const char* wdb_manager_task_opt_string(const cJSON *parameters, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(parameters, key);
+    return (item && cJSON_IsString(item)) ? item->valuestring : NULL;
+}
+
+/**
+ * @brief Read an optional numeric parameter.
+ */
+STATIC long long wdb_manager_task_opt_number(const cJSON *parameters, const char *key, long long fallback) {
+    cJSON *item = cJSON_GetObjectItem(parameters, key);
+    return (item && cJSON_IsNumber(item)) ? (long long)item->valuedouble : fallback;
+}
+
+/**
+ * @brief Read an optional boolean parameter.
+ */
+STATIC bool wdb_manager_task_opt_bool(const cJSON *parameters, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(parameters, key);
+    return item && cJSON_IsTrue(item);
+}
+
+/**
+ * @brief Emit a manager task response, taking ownership of the payload object.
+ */
+STATIC int wdb_manager_task_respond(int error, cJSON *response, char *output) {
+    char *out = NULL;
+
+    if (!response) {
+        response = cJSON_CreateObject();
+    }
+
+    cJSON_AddNumberToObject(response, "error", error);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return error < 0 ? error : OS_SUCCESS;
+}
+
+int wdb_parse_manager_task_create(wdb_t *wdb, const cJSON *parameters, char *output) {
+    wdb_manager_task_create_t task = {0};
+    char *surviving_task_id = NULL;
+    cJSON *response = NULL;
+    int result = 0;
+
+    task.task_id = wdb_manager_task_opt_string(parameters, "task_id");
+    if (!task.task_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error create manager task: 'parsing task_id error'");
+        return OS_INVALID;
+    }
+
+    task.task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task.task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error create manager task: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    task.payload = wdb_manager_task_opt_string(parameters, "payload");
+    if (!task.payload) {
+        snprintf(output, OS_MAXSTR + 1, "err Error create manager task: 'parsing payload error'");
+        return OS_INVALID;
+    }
+
+    // Bounded here rather than at the dispatcher, because an oversized row is writable but never
+    // claimable: the claim response carries the payload back through the same OS_MAXSTR buffer.
+    // Under a task type that retries forever, that would be a row spinning on nothing.
+    if (!wdb_manager_task_payload_fits(task.payload)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error create manager task: 'payload too large'");
+        return OS_INVALID;
+    }
+
+    task.agent_id = wdb_manager_task_opt_string(parameters, "agent_id");
+    task.schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
+    task.scheduled_run_at = wdb_manager_task_opt_number(parameters, "scheduled_run_at", 0);
+    task.create_time = wdb_manager_task_opt_number(parameters, "create_time", (long long)time(NULL));
+    task.next_attempt_at = wdb_manager_task_opt_number(parameters, "next_attempt_at", 0);
+    task.coalesce = wdb_manager_task_opt_bool(parameters, "coalesce");
+    task.max_pending = (int)wdb_manager_task_opt_number(parameters, "max_pending", 0);
+
+    result = wdb_manager_task_create(wdb, &task, &surviving_task_id);
+
+    if (result == OS_INVALID) {
+        os_free(surviving_task_id);
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "result", wdb_manager_task_result_name(result));
+
+    // Always the surviving row's id, not necessarily the one that was asked for: on a coalesce
+    // or a collision the caller must track the row that actually exists.
+    if (surviving_task_id) {
+        cJSON_AddStringToObject(response, "task_id", surviving_task_id);
+        os_free(surviving_task_id);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_claim(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *task = NULL;
+    const char *task_type = NULL;
+    const char *owner = NULL;
+    long long now = 0;
+
+    task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    if (!task_type) {
+        snprintf(output, OS_MAXSTR + 1, "err Error claim manager task: 'parsing task_type error'");
+        return OS_INVALID;
+    }
+
+    owner = wdb_manager_task_opt_string(parameters, "owner");
+    if (!owner) {
+        snprintf(output, OS_MAXSTR + 1, "err Error claim manager task: 'parsing owner error'");
+        return OS_INVALID;
+    }
+
+    now = wdb_manager_task_opt_number(parameters, "now", (long long)time(NULL));
+
+    if (wdb_manager_task_claim(wdb, task_type, owner, now, &task) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+
+    // No eligible row is a normal, frequent answer, not an error: the field is simply absent.
+    if (task) {
+        cJSON_AddItemToObject(response, "task", task);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_requeue(wdb_t *wdb, const cJSON *parameters, char *output) {
+    wdb_manager_task_requeue_t requeue = {0};
+    cJSON *response = NULL;
+    int result = 0;
+
+    requeue.task_id = wdb_manager_task_opt_string(parameters, "task_id");
+    if (!requeue.task_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error requeue manager task: 'parsing task_id error'");
+        return OS_INVALID;
+    }
+
+    requeue.task_type = wdb_manager_task_opt_string(parameters, "task_type");
+    requeue.agent_id = wdb_manager_task_opt_string(parameters, "agent_id");
+    requeue.last_error = wdb_manager_task_opt_string(parameters, "last_error");
+    requeue.next_attempt_at = wdb_manager_task_opt_number(parameters, "next_attempt_at", (long long)time(NULL));
+    requeue.attempts = (int)wdb_manager_task_opt_number(parameters, "attempts", 0);
+    requeue.defer_count = (int)wdb_manager_task_opt_number(parameters, "defer_count", 0);
+    requeue.coalesce = wdb_manager_task_opt_bool(parameters, "coalesce");
+
+    result = wdb_manager_task_requeue(wdb, &requeue);
+
+    if (result == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "result", wdb_manager_task_result_name(result));
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
+}
+
+int wdb_parse_manager_task_result(wdb_t *wdb, const cJSON *parameters, char *output) {
+    const char *task_id = NULL;
+    const char *status = NULL;
+    const char *last_error = NULL;
+    int attempts = 0;
+    int defer_count = 0;
+
+    task_id = wdb_manager_task_opt_string(parameters, "task_id");
+    if (!task_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set manager task result: 'parsing task_id error'");
+        return OS_INVALID;
+    }
+
+    status = wdb_manager_task_opt_string(parameters, "status");
+
+    // Only the three terminal states are reachable here. Returning a row to 'pending' is the
+    // requeue sub-command's job, which has counters and a competing-row check this one lacks.
+    if (!status || (strcmp(status, "completed") != 0 && strcmp(status, "failed") != 0 &&
+                    strcmp(status, "dead_letter") != 0)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set manager task result: 'parsing status error'");
+        return OS_INVALID;
+    }
+
+    last_error = wdb_manager_task_opt_string(parameters, "last_error");
+    attempts = (int)wdb_manager_task_opt_number(parameters, "attempts", 0);
+    defer_count = (int)wdb_manager_task_opt_number(parameters, "defer_count", 0);
+
+    if (wdb_manager_task_set_result(wdb, task_id, status, last_error, attempts, defer_count) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, NULL, output);
+}
+
+int wdb_parse_manager_task_get(wdb_t *wdb, const cJSON *parameters, char *output) {
+    cJSON *response = NULL;
+    cJSON *task = NULL;
+    const char *task_id = NULL;
+
+    task_id = wdb_manager_task_opt_string(parameters, "task_id");
+    if (!task_id) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get manager task: 'parsing task_id error'");
+        return OS_INVALID;
+    }
+
+    if (wdb_manager_task_get(wdb, task_id, &task) == OS_INVALID) {
+        return wdb_manager_task_respond(OS_INVALID, NULL, output);
+    }
+
+    response = cJSON_CreateObject();
+
+    if (task) {
+        cJSON_AddItemToObject(response, "task", task);
+    }
+
+    return wdb_manager_task_respond(OS_SUCCESS, response, output);
 }

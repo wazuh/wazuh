@@ -93,9 +93,24 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_TASK_MARK_DELIVERED] = "UPDATE TASKS SET STATUS = 'delivered', DELIVERY_TIME = ? WHERE TASK_ID = ?;",
     [WDB_STMT_TASK_CLEANUP_EXPIRED] = "UPDATE TASKS SET STATUS = 'expired' WHERE STATUS = 'pending' AND CREATE_TIME < ?;",
     [WDB_STMT_TASK_DELETE_OLD] = "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
+    // Manager task commands. TASK_TYPE is deliberately opaque here: wazuh-db never validates it
+    // against a list of known types, so registering a new manager task is a change to the Task
+    // Manager's handler registry alone and needs nothing on this side.
+    [WDB_STMT_MANAGER_TASK_FIND_PENDING_BY_AGENT] = "SELECT TASK_ID FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? AND STATUS = 'pending' LIMIT 1;",
+    [WDB_STMT_MANAGER_TASK_COUNT_PENDING_BY_TYPE] = "SELECT COUNT(*) FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = 'pending';",
+    [WDB_STMT_MANAGER_TASK_INSERT] = "INSERT INTO MANAGER_TASKS (TASK_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, AGENT_ID, STATUS, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?);",
+    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMABLE] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = 'pending' AND NEXT_ATTEMPT_AT <= ? ORDER BY NEXT_ATTEMPT_AT LIMIT 1;",
+    [WDB_STMT_MANAGER_TASK_CLAIM] = "UPDATE MANAGER_TASKS SET STATUS = 'claimed', OWNER = ?, CLAIM_TIME = ? WHERE TASK_ID = ?;",
+    [WDB_STMT_MANAGER_TASK_FIND_COMPETING_PENDING] = "SELECT TASK_ID, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? AND STATUS = 'pending' AND TASK_ID <> ? LIMIT 1;",
+    [WDB_STMT_MANAGER_TASK_INHERIT_COUNTERS] = "UPDATE MANAGER_TASKS SET ATTEMPTS = ?, DEFER_COUNT = ? WHERE TASK_ID = ?;",
+    [WDB_STMT_MANAGER_TASK_SUPERSEDE] = "UPDATE MANAGER_TASKS SET STATUS = 'superseded', LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_ID = ?;",
+    [WDB_STMT_MANAGER_TASK_REQUEUE] = "UPDATE MANAGER_TASKS SET STATUS = 'pending', NEXT_ATTEMPT_AT = ?, ATTEMPTS = ?, DEFER_COUNT = ?, LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_ID = ?;",
+    [WDB_STMT_MANAGER_TASK_SET_RESULT] = "UPDATE MANAGER_TASKS SET STATUS = ?, LAST_ERROR = ?, ATTEMPTS = ?, DEFER_COUNT = ?, OWNER = NULL, CLAIM_TIME = NULL WHERE TASK_ID = ?;",
+    [WDB_STMT_MANAGER_TASK_GET] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, CREATE_TIME, STATUS, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT, LAST_ERROR, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT FROM MANAGER_TASKS WHERE TASK_ID = ?;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
+    [WDB_STMT_PRAGMA_SYNCHRONOUS_FULL] = "PRAGMA synchronous=2;",
 };
 
 /**
@@ -244,6 +259,28 @@ wdb_t * wdb_open_tasks() {
                 return NULL;
             }
         }
+
+        // Both PRAGMAs are applied on every open, not only when the database is created: an
+        // existing tasks.db from an earlier release would otherwise stay in rollback-journal
+        // mode forever. Neither may run inside a transaction, and none is open at this point.
+        wdb_set_journal_wal(wdb);
+
+        // Deliberately FULL rather than global's NORMAL. Under WAL, NORMAL lets a committed
+        // transaction be lost to a host crash until the next checkpoint, which is precisely the
+        // guarantee manager tasks are stored here to obtain.
+        wdb_set_synchronous_full(wdb);
+
+        // The schema is applied on every open, not only when the file is created, so a table
+        // added by a later release also appears in a database that already exists. Every
+        // statement in it is IF NOT EXISTS, which makes this idempotent -- and equally means it
+        // cannot alter a table that is already present. Changing the shape of an existing table
+        // needs a real upgrade path, the way wdb_upgrade_global provides one for global.db.
+        if (wdb_apply_schema(wdb->db, schema_task_manager_sql) != OS_SUCCESS) {
+            merror("Couldn't apply the schema to SQLite database '%s'", path);
+            wdb_close(wdb, false);
+            wdb_pool_leave(wdb);
+            return NULL;
+        }
     }
 
     return wdb;
@@ -302,27 +339,15 @@ int wdb_create_global(const char *path) {
     return wdb_create_file(path, schema_global_sql);
 }
 
-/* Create new database file from SQL script */
-int wdb_create_file(const char *path, const char *source) {
-    const char *ROOT = "root";
+int wdb_apply_schema(sqlite3 *db, const char *source) {
     const char *sql;
     const char *tail;
-    sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
-    uid_t uid;
-    gid_t gid;
-
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        return OS_INVALID;
-    }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             mdebug1("Preparing statement: %s", sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
             return OS_INVALID;
         }
 
@@ -336,12 +361,32 @@ int wdb_create_file(const char *path, const char *source) {
         default:
             mdebug1("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
-            sqlite3_close_v2(db);
             return OS_INVALID;
 
         }
 
         sqlite3_finalize(stmt);
+    }
+
+    return OS_SUCCESS;
+}
+
+/* Create new database file from SQL script */
+int wdb_create_file(const char *path, const char *source) {
+    const char *ROOT = "root";
+    sqlite3 *db;
+    uid_t uid;
+    gid_t gid;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
+        mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return OS_INVALID;
+    }
+
+    if (wdb_apply_schema(db, source) != OS_SUCCESS) {
+        sqlite3_close_v2(db);
+        return OS_INVALID;
     }
 
     sqlite3_close_v2(db);
@@ -1201,17 +1246,60 @@ STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_t
     return 0;
 }
 
-int wdb_set_synchronous_normal(wdb_t * wdb) {
+/**
+ * @brief Apply one of the synchronous-mode PRAGMAs to a database session.
+ *
+ * @param[in] wdb The database structure.
+ * @param[in] stmt_index Index in SQL_STMT of the PRAGMA to run.
+ * @return Returns 0 on success or -1 if an error occurs.
+ */
+STATIC int wdb_set_synchronous_mode(wdb_t * wdb, wdb_stmt stmt_index) {
     int returnState = 0;
     char * sqlError = NULL;
 
-    sqlite3_exec(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL], NULL, NULL, &sqlError);
+    sqlite3_exec(wdb->db, SQL_STMT[stmt_index], NULL, NULL, &sqlError);
 
     if (sqlError != NULL) {
         merror("Cannot set synchronous mode: '%s'", sqlError);
         sqlite3_free(sqlError);
         returnState = -1;
     }
+
+    return returnState;
+}
+
+int wdb_set_synchronous_normal(wdb_t * wdb) {
+    return wdb_set_synchronous_mode(wdb, WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL);
+}
+
+int wdb_set_synchronous_full(wdb_t * wdb) {
+    return wdb_set_synchronous_mode(wdb, WDB_STMT_PRAGMA_SYNCHRONOUS_FULL);
+}
+
+int wdb_set_journal_wal(wdb_t * wdb) {
+    sqlite3_stmt * stmt = NULL;
+    int returnState = -1;
+
+    if (wdb_prepare(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], -1, &stmt, NULL) != SQLITE_OK) {
+        merror("Cannot prepare journal mode statement: '%s'", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    // PRAGMA journal_mode yields the resulting mode as a single row. A refusal is reported as
+    // that row holding something other than "wal", not as an error code, so it must be read back.
+    if (wdb_step(stmt) == SQLITE_ROW) {
+        const char * mode = (const char *)sqlite3_column_text(stmt, 0);
+
+        if (mode != NULL && strcasecmp(mode, "wal") == 0) {
+            returnState = 0;
+        } else {
+            mwarn("Cannot set journal mode to WAL, database remains in '%s' mode", mode ? mode : "unknown");
+        }
+    } else {
+        merror("Cannot set journal mode to WAL: '%s'", sqlite3_errmsg(wdb->db));
+    }
+
+    sqlite3_finalize(stmt);
 
     return returnState;
 }

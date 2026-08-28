@@ -117,9 +117,22 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_MARK_DELIVERED,
     WDB_STMT_TASK_CLEANUP_EXPIRED,
     WDB_STMT_TASK_DELETE_OLD,
+    // Manager task statements
+    WDB_STMT_MANAGER_TASK_FIND_PENDING_BY_AGENT,
+    WDB_STMT_MANAGER_TASK_COUNT_PENDING_BY_TYPE,
+    WDB_STMT_MANAGER_TASK_INSERT,
+    WDB_STMT_MANAGER_TASK_SELECT_CLAIMABLE,
+    WDB_STMT_MANAGER_TASK_CLAIM,
+    WDB_STMT_MANAGER_TASK_FIND_COMPETING_PENDING,
+    WDB_STMT_MANAGER_TASK_INHERIT_COUNTERS,
+    WDB_STMT_MANAGER_TASK_SUPERSEDE,
+    WDB_STMT_MANAGER_TASK_REQUEUE,
+    WDB_STMT_MANAGER_TASK_SET_RESULT,
+    WDB_STMT_MANAGER_TASK_GET,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
+    WDB_STMT_PRAGMA_SYNCHRONOUS_FULL,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -271,6 +284,19 @@ int wdb_create_global(const char *path);
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
+
+/**
+ * @brief Run every statement of an embedded SQL schema against an open database.
+ *
+ * Applying a schema whose statements are all IF NOT EXISTS is idempotent, so this may be called
+ * on an existing database to pick up tables added by a later release. It cannot alter a table
+ * that already exists.
+ *
+ * @param[in] db Open database handle.
+ * @param[in] source Schema text, as embedded by embed_sql.cmake.
+ * @return OS_SUCCESS on success, OS_INVALID if any statement failed to prepare or step.
+ */
+int wdb_apply_schema(sqlite3 *db, const char *source);
 
 /**
  * @brief Rebuild database.
@@ -1419,6 +1445,158 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
+/* Manager tasks */
+
+/**
+ * @brief Outcome of a manager task queue operation.
+ *
+ * Values start at 1 so that none of them can be mistaken for OS_SUCCESS or OS_INVALID.
+ */
+typedef enum manager_task_result_t {
+    WDB_MANAGER_TASK_CREATED = 1,   ///< A new row was inserted.
+    WDB_MANAGER_TASK_COALESCED,     ///< A pending row for the same agent and type already existed.
+    WDB_MANAGER_TASK_COLLIDED,      ///< The task id is already present.
+    WDB_MANAGER_TASK_QUEUE_FULL,    ///< The pending set for this type is at its admission bound.
+    WDB_MANAGER_TASK_REQUEUED,      ///< The row went back to pending.
+    WDB_MANAGER_TASK_SUPERSEDED     ///< A pending row had taken this row's slot; it was retired.
+} manager_task_result_t;
+
+/**
+ * @brief Everything needed to create one manager task.
+ *
+ * Passed as a struct rather than as an argument list so that a task type needing a new field
+ * does not churn every call site. Per-type policy (coalesce, max_pending) is carried here
+ * because the dispatcher holds it as data in its handler registry; wazuh-db has no notion of
+ * which task types exist.
+ */
+typedef struct wdb_manager_task_create_t {
+    const char *task_id;        ///< 64 hex characters, derived per type.
+    const char *task_type;      ///< Opaque to wazuh-db.
+    const char *payload;        ///< The consumer's request body verbatim.
+    const char *agent_id;       ///< NULL for tasks with no agent subject.
+    const char *schedule_id;    ///< NULL unless spawned by a schedule.
+    long long scheduled_run_at; ///< 0 unless spawned by a schedule.
+    long long create_time;
+    long long next_attempt_at;  ///< Falls back to create_time when unset.
+    bool coalesce;              ///< Fold into an existing pending row for the same agent and type.
+    int max_pending;            ///< 0 for unbounded, else refuse once the pending set is this large.
+} wdb_manager_task_create_t;
+
+/**
+ * @brief Everything needed to return one manager task to the pending state.
+ */
+typedef struct wdb_manager_task_requeue_t {
+    const char *task_id;
+    const char *task_type;      ///< Only read when coalesce is set.
+    const char *agent_id;       ///< Only read when coalesce is set.
+    const char *last_error;     ///< May be NULL.
+    long long next_attempt_at;
+    int attempts;
+    int defer_count;
+    bool coalesce;
+} wdb_manager_task_requeue_t;
+
+/**
+ * @brief Create a manager task, applying the per-type coalescing and admission policies.
+ *
+ * Commits before returning, so a successful reply is a durability acknowledgement.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task Task to create.
+ * @param[out] surviving_task_id Set to the id of the row the caller should track: the new row,
+ *             the row it coalesced into, or the row it collided with. Caller frees. May be NULL.
+ * @return A manager_task_result_t value, or OS_INVALID on error.
+ */
+int wdb_manager_task_create(wdb_t *wdb, const wdb_manager_task_create_t *task, char **surviving_task_id);
+
+/**
+ * @brief Claim the next eligible task of one type for a lane.
+ *
+ * Commits before returning: an uncommitted claim can roll back while its lane is still
+ * executing, which lets a second lane claim the same work.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_type Type to claim. One type per call; the claim index is seeked, not scanned.
+ * @param[in] owner Lane identity, as process id, process start time and lane id.
+ * @param[in] now Current time; rows are eligible when NEXT_ATTEMPT_AT is at or before it.
+ * @param[out] task Claimed task, or NULL when none was eligible. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_claim(wdb_t *wdb, const char *task_type, const char *owner, long long now, cJSON **task);
+
+/**
+ * @brief Return a claimed task to the pending state, or retire it if its slot has been taken.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] requeue Row to re-queue and the counters to write.
+ * @return WDB_MANAGER_TASK_REQUEUED or WDB_MANAGER_TASK_SUPERSEDED, or OS_INVALID on error.
+ */
+int wdb_manager_task_requeue(wdb_t *wdb, const wdb_manager_task_requeue_t *requeue);
+
+/**
+ * @brief Write a terminal outcome and release ownership of the row.
+ *
+ * Deliberately does not commit; see the note at the head of wdb_manager_task.c.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_id Row to retire.
+ * @param[in] status One of completed, failed or dead_letter.
+ * @param[in] last_error May be NULL.
+ * @param[in] attempts Value to store; never lower than the row's current value.
+ * @param[in] defer_count Value to store.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_set_result(wdb_t *wdb,
+                                const char *task_id,
+                                const char *status,
+                                const char *last_error,
+                                int attempts,
+                                int defer_count);
+
+/**
+ * @brief Fetch one manager task by id.
+ *
+ * @param[in] wdb Tasks database.
+ * @param[in] task_id Row to fetch.
+ * @param[out] task The row, or NULL when it does not exist. Caller frees.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_manager_task_get(wdb_t *wdb, const char *task_id, cJSON **task);
+
+/**
+ * @brief Render a MANAGER_TASKS row as JSON, omitting NULL columns.
+ *
+ * @param[in] stmt Statement positioned on a row selecting the full column list.
+ * @return A new cJSON object. Caller frees.
+ */
+cJSON* wdb_manager_task_row_to_json(sqlite3_stmt *stmt);
+
+/**
+ * @brief Wire name of a manager_task_result_t value.
+ *
+ * @param[in] result Value returned by a queue operation.
+ * @return A static string; "unknown" for an unrecognised value.
+ */
+const char* wdb_manager_task_result_name(int result);
+
+/**
+ * @brief Whether a payload stays within the manager task size bound once JSON-escaped.
+ *
+ * An oversized payload is writable but never claimable, since the claim response carries it back
+ * through the same fixed response buffer, so it is refused at creation instead.
+ *
+ * @param[in] payload Raw payload text.
+ * @return true when the payload fits.
+ */
+bool wdb_manager_task_payload_fits(const char *payload);
+
+/* Manager task sub-command handlers, reached through the task actor's command table. */
+int wdb_parse_manager_task_create(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_claim(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_requeue(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_result(wdb_t *wdb, const cJSON *parameters, char *output);
+int wdb_parse_manager_task_get(wdb_t *wdb, const cJSON *parameters, char *output);
+
 int wdb_parse_task_create(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
@@ -1547,5 +1725,30 @@ void wdbcom_dispatch(char* request, char* output);
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
  */
 int wdb_set_synchronous_normal(wdb_t * wdb);
+
+/**
+ * @brief Set the synchronous mode of the SQLite database session to FULL.
+ *
+ * Unlike NORMAL, FULL guarantees that a transaction reported as committed survives a host
+ * crash or power loss without waiting for the next WAL checkpoint. Databases whose purpose
+ * is durability (tasks.db) must use this mode; see wdb_open_tasks().
+ *
+ * @param[in] wdb The database structure.
+ * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
+ */
+int wdb_set_synchronous_full(wdb_t * wdb);
+
+/**
+ * @brief Set the journal mode of the SQLite database session to WAL.
+ *
+ * Must be called before any transaction is opened on the session: PRAGMA journal_mode is a
+ * no-op inside a transaction. The resulting mode is read back and a warning is logged if the
+ * engine refused the change (which it does, for instance, on some network filesystems),
+ * because the failure is otherwise silent.
+ *
+ * @param[in] wdb The database structure.
+ * @return Returns 0 on success or -1 if the journal mode could not be set to WAL.
+ */
+int wdb_set_journal_wal(wdb_t * wdb);
 
 #endif

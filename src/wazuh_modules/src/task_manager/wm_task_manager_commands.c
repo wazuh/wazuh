@@ -41,7 +41,7 @@ void* wm_task_manager_clean_tasks(void *arg) {
     int cleanup_interval = (config->cleanup_interval > 0) ? config->cleanup_interval : WM_TASK_DEFAULT_CLEANUP_INTERVAL;
     int task_ttl = (config->task_ttl > 0) ? config->task_ttl : WM_TASK_DEFAULT_TTL;
 
-    while (1) {
+    while (!wm_shutdown_requested) {
         time_t now = time(0);
         time_t sleep_time = 0;
 
@@ -91,7 +91,9 @@ void* wm_task_manager_clean_tasks(void *arg) {
 
         sleep_time = (next_cleanup < next_vacuum) ? next_cleanup : next_vacuum;
 
-        w_sleep_until(sleep_time);
+        // w_sleep_until() is an uninterruptible poll, so a SIGTERM arriving right after a cleanup
+        // pass would go unnoticed for a whole cleanup_interval.
+        wm_sleep_until_interruptible(sleep_time);
 
     #ifdef WAZUH_UNIT_TESTING
         break;

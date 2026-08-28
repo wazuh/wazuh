@@ -38,7 +38,7 @@ list(APPEND task_names "test_wm_task_manager_commands")
 list(
   APPEND
   task_flags
-  "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until \
+  "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,wm_sleep_until_interruptible \
                         -Wl,--wrap,wm_task_cache_get -Wl,--wrap,wm_task_cache_set -Wl,--wrap,wm_task_cache_invalidate \
                         -Wl,--wrap,wm_task_manager_generate_task_id \
                         ${DEBUG_OP_WRAPPERS}")
