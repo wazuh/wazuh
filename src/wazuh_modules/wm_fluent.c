@@ -15,6 +15,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/x509v3.h>
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha512/sha512_op.h"
 #include "shared.h"
@@ -60,8 +61,9 @@ static void wm_fluent_pong_free(wm_fluent_pong_t * pong);
 static int wm_fluent_recv(wm_fluent_t * fluent, msgpack_unpacker * unp);
 static int wm_fluent_unpack(wm_fluent_t * fluent, msgpack_unpacker * unp, msgpack_unpacked * result);
 static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent);
-static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo);
+static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo, char * salt, size_t salt_size);
 static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
+static int wm_fluent_check_pong(wm_fluent_t * fluent, const wm_fluent_helo_t * helo, const wm_fluent_pong_t * pong, const char * salt, size_t salt_size);
 static int wm_fluent_hs_tls(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size);
@@ -240,6 +242,11 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
     return 0;
 }
 
+static int wm_fluent_address_is_ip(const char * address) {
+    struct in6_addr addr;
+    return inet_pton(AF_INET, address, &addr) == 1 || inet_pton(AF_INET6, address, &addr) == 1;
+}
+
 static int wm_fluent_ssl_ctx(wm_fluent_t * fluent) {
     /* Free old context */
 
@@ -289,6 +296,23 @@ static int wm_fluent_ssl_connect(wm_fluent_t * fluent) {
     fluent->ssl = SSL_new(fluent->ctx);
     if (!fluent->ssl) {
         merror("Cannot create SSL structure: %s", ERR_reason_error_string(ERR_get_error()));
+        return -1;
+    }
+
+    /* Bind the expected server identity, so that SSL_connect() also checks the
+       peer certificate's name against the configured address */
+
+    if (fluent->certificate) {
+        SSL_set_hostflags(fluent->ssl, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+        if (!SSL_set1_host(fluent->ssl, fluent->address)) {
+            merror("Cannot set expected peer name '%s'", fluent->address);
+            return -1;
+        }
+    }
+
+    if (!wm_fluent_address_is_ip(fluent->address) && !SSL_set_tlsext_host_name(fluent->ssl, fluent->address)) {
+        merror("Cannot set server name indication '%s'", fluent->address);
         return -1;
     }
 
@@ -492,8 +516,7 @@ end:
     return helo;
 }
 
-static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo) {
-    char salt[16];
+static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo, char * salt, size_t salt_size) {
     char hostname[512] = "";
     os_sha512 shared_key_hexdigest;
     os_sha512 password = {0};
@@ -504,7 +527,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     assert(fluent);
     assert(helo);
 
-    randombytes(salt, sizeof(salt));
+    randombytes(salt, salt_size);
     if (gethostname(hostname, sizeof(hostname) - 1)) {
         mwarn("Unable to get hostname due to: '%s'.", strerror(errno));
         return OS_INVALID;
@@ -516,7 +539,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
         unsigned char md[SHA512_DIGEST_LENGTH];
         EVP_MD_CTX *ctx = EVP_MD_CTX_new();
         EVP_DigestInit(ctx, EVP_sha512());
-        EVP_DigestUpdate(ctx, salt, sizeof(salt));
+        EVP_DigestUpdate(ctx, salt, salt_size);
         EVP_DigestUpdate(ctx, hostname, strlen(hostname));
         EVP_DigestUpdate(ctx, helo->nonce, helo->nonce_size);
         EVP_DigestUpdate(ctx, fluent->shared_key, strlen(fluent->shared_key));
@@ -551,8 +574,8 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     msgpack_pack_str_body(&pk, "PING", 4);
     msgpack_pack_str(&pk, strlen(hostname));
     msgpack_pack_str_body(&pk, hostname, strlen(hostname));
-    msgpack_pack_str(&pk, sizeof(salt));
-    msgpack_pack_str_body(&pk, salt, sizeof(salt));
+    msgpack_pack_str(&pk, salt_size);
+    msgpack_pack_str_body(&pk, salt, salt_size);
     msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
     msgpack_pack_str_body(&pk, shared_key_hexdigest, OS_SHA512_LEN - 1);
 
@@ -636,8 +659,38 @@ end:
     return pong;
 }
 
+/* Verify that the server knows the shared key, as the Fluent Forward protocol defines */
+static int wm_fluent_check_pong(wm_fluent_t * fluent, const wm_fluent_helo_t * helo, const wm_fluent_pong_t * pong, const char * salt, size_t salt_size) {
+    unsigned char md[SHA512_DIGEST_LENGTH];
+    os_sha512 shared_key_hexdigest;
+    EVP_MD_CTX * ctx;
+
+    if (!(pong->server_hostname && pong->shared_key_hexdigest)) {
+        merror("The Fluent server sent a PONG message with no shared key digest.");
+        return -1;
+    }
+
+    ctx = EVP_MD_CTX_new();
+    EVP_DigestInit(ctx, EVP_sha512());
+    EVP_DigestUpdate(ctx, salt, salt_size);
+    EVP_DigestUpdate(ctx, pong->server_hostname, strlen(pong->server_hostname));
+    EVP_DigestUpdate(ctx, helo->nonce, helo->nonce_size);
+    EVP_DigestUpdate(ctx, fluent->shared_key, strlen(fluent->shared_key));
+    EVP_DigestFinal(ctx, md, NULL);
+    EVP_MD_CTX_free(ctx);
+    OS_SHA512_Hex(md, shared_key_hexdigest);
+
+    if (strcmp(shared_key_hexdigest, pong->shared_key_hexdigest) != 0) {
+        merror("Authentication error: the Fluent server did not prove knowledge of the shared key.");
+        return -1;
+    }
+
+    return 0;
+}
+
 static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     int retval = -1;
+    char salt[16];
 
     /* TLS mode */
 
@@ -656,7 +709,7 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     }
 
     wm_fluent_pong_t * pong = NULL;
-    if (wm_fluent_send_ping(fluent, helo) < 0) {
+    if (wm_fluent_send_ping(fluent, helo, salt, sizeof(salt)) < 0) {
         merror("Cannot send PING message to server");
         goto end;
     }
@@ -671,6 +724,10 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
 
     if (!pong->auth_result) {
         mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "Unknown reason");
+        goto end;
+    }
+
+    if (wm_fluent_check_pong(fluent, helo, pong, salt, sizeof(salt)) < 0) {
         goto end;
     }
 
