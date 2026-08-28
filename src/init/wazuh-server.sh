@@ -205,8 +205,10 @@ status()
             if [ -f ${DIR}/var/run/${i}.failed ]; then
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"failed"}'
-                else
+                elif [ "`cat ${DIR}/var/run/${i}.failed 2>/dev/null`" = "refused" ]; then
                     echo "${i} refused its configuration..."
+                else
+                    echo "${i} failed to start..."
                 fi
             elif [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
@@ -244,9 +246,10 @@ testconfig()
             else
                 echo "${i}: Configuration error. Exiting"
             fi
-            if [ ! -f ${DIR}/var/run/.restart ]; then
-                touch ${DIR}/var/run/${i}.failed
-            fi
+            # Unconditionally: the wipe at the top of this function already replaced the old
+            # .restart guard's job, and keeping the guard here would leave a restart with a
+            # refused configuration reporting plain "not running".
+            echo "refused" > ${DIR}/var/run/${i}.failed
             rm -f ${DIR}/var/run/*.start
             rm -f ${DIR}/var/run/.restart
             unlock;
@@ -427,7 +430,8 @@ start_service()
                     echo "${i} did not start correctly.";
                 fi
                 rm -f ${DIR}/var/run/${i}.start
-                touch ${DIR}/var/run/${i}.failed
+                # Same marker the framework reads as 'failed'; the content tells status why.
+                echo "start" > ${DIR}/var/run/${i}.failed
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
                 unlock;
