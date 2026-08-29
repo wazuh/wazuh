@@ -563,8 +563,7 @@
         "wpk_repository": {
           "type": "string",
           "minLength": 1,
-          "default": "packages.wazuh.com/5.x/wpk/",
-          "description": "WPK repository (host/path, no scheme)."
+          "description": "WPK repository (host/path, no scheme). No default: left unset, agent-upgrade picks the repository by the target agent version."
         }
       }
     },

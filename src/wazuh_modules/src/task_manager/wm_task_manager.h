@@ -77,6 +77,10 @@ extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 // Parse XML configuration
 int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
+// Reader of the `task-manager` section of the effective YAML document (etc/wazuh-manager.yml); `module`
+// must already be initialised by wm_task_manager_read(NULL, NULL, module). A NULL section keeps the defaults.
+int wm_task_manager_read_json(const cJSON *section, wmodule *module);
+
 /**
  * Set tasks status to TIMEOUT after they are IN PROGRESS for a long period of time.
  * Delete entries older than a configurable period of time from the tasks DB.

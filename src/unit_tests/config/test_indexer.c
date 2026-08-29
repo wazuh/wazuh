@@ -718,6 +718,45 @@ void test_success_certificate_authorities_1_entry(void **state) {
     cJSON_free(json_result);
 }
 
+/* Read_Indexer_JSON: the effective `indexer` section of etc/wazuh-manager.yml becomes indexer_config; an
+ * empty host list (the schema default for an absent section) or a NULL section leaves it NULL. */
+
+void test_read_indexer_json_sets_global_config(void **state) {
+    (void) state;
+    const char *section_str = "{\"hosts\":[\"https://10.0.0.1:9200\"],\"ssl\":{\"certificate_authorities\":[\"ca.pem\"],\"certificate\":\"c.pem\",\"key\":\"k.pem\"}}";
+    cJSON *section = cJSON_Parse(section_str);
+
+    assert_int_equal(Read_Indexer_JSON(section), OS_SUCCESS);
+    cJSON_Delete(section);
+
+    assert_non_null(indexer_config);
+    char *json_result = cJSON_PrintUnformatted(indexer_config);
+    assert_string_equal(json_result, section_str);
+    cJSON_free(json_result);
+}
+
+void test_read_indexer_json_empty_hosts_is_null(void **state) {
+    (void) state;
+    cJSON *section = cJSON_Parse("{\"hosts\":[]}");
+
+    assert_int_equal(Read_Indexer_JSON(section), OS_SUCCESS);
+    cJSON_Delete(section);
+
+    assert_null(indexer_config);
+}
+
+void test_read_indexer_json_null_section_replaces_previous(void **state) {
+    (void) state;
+    cJSON *section = cJSON_Parse("{\"hosts\":[\"https://10.0.0.1:9200\"]}");
+
+    assert_int_equal(Read_Indexer_JSON(section), OS_SUCCESS);
+    cJSON_Delete(section);
+    assert_non_null(indexer_config);
+
+    assert_int_equal(Read_Indexer_JSON(NULL), OS_SUCCESS);
+    assert_null(indexer_config);
+}
+
 int main(void) {
     const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_success_valid_configuration_host_IP, setup_test_read, teardown_test_read),
@@ -743,6 +782,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_success_host_1_entry, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_certificate_authorities_0_entries, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_success_certificate_authorities_1_entry, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_indexer_json_sets_global_config, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_indexer_json_empty_hosts_is_null, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_indexer_json_null_section_replaces_previous, setup_test_read, teardown_test_read),
     };
     return cmocka_run_group_tests(tests_configuration, NULL, NULL);
 }

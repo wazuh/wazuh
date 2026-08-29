@@ -57,6 +57,12 @@ extern const char *upgrade_json_keys[];
 // Parse XML configuration
 int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
+#ifndef CLIENT
+// Reader of the `agent-upgrade` section of the effective YAML document (etc/wazuh-manager.yml); `module`
+// must already be initialised by wm_agent_upgrade_read(NULL, NULL, module). A NULL section keeps the defaults.
+int wm_agent_upgrade_read_json(const cJSON *section, wmodule *module);
+#endif
+
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 
 #endif

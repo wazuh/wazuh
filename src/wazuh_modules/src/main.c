@@ -20,6 +20,8 @@
 #ifdef CLIENT
 #include "agent_sync_protocol_c_interface.h"
 #include "client-config.h"
+#else
+#include "mconf-config.h"
 #endif
 
 static void wm_help();                  // Print help.
@@ -42,11 +44,16 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
+#ifdef CLIENT
+#define WM_GETOPT_CONF ""
+#else
+#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (etc/wazuh-manager.yml)
+#endif
 #ifdef WAZUH_RUNTIME_USER
     const char *runtime_user = WAZUH_RUNTIME_USER;
-    const char *getopt_options = "dfhtu:";
+    const char *getopt_options = "dfhtu:" WM_GETOPT_CONF;
 #else
-    const char *getopt_options = "dfht";
+    const char *getopt_options = "dfht" WM_GETOPT_CONF;
 #endif
 
     /* Set the name */
@@ -83,6 +90,14 @@ int main(int argc, char **argv)
             test_config = 1;
             flag_foreground = 1;
             break;
+#ifndef CLIENT
+        case 'c':
+            if (!optarg) {
+                merror_exit("-c needs an argument");
+            }
+            wm_config_path = optarg;
+            break;
+#endif
 #ifdef WAZUH_RUNTIME_USER
         case 'u':
             runtime_user = optarg;
@@ -127,8 +142,16 @@ int main(int argc, char **argv)
 
     wm_setup();
 
-    if (test_config)
+    if (test_config) {
+#ifndef CLIENT
+        // -t also checks the files the configuration points to (certificates...), like the other
+        // manager daemons; the document itself was already loaded and read by wm_config().
+        if (w_mconf_validate(wm_config_path) < 0) {
+            exit(EXIT_FAILURE);
+        }
+#endif
         exit(EXIT_SUCCESS);
+    }
 
     minfo(STARTUP_MSG, (int)getpid());
     mdebug1("Available processors: %d", get_nproc());
@@ -187,16 +210,24 @@ void wm_help()
 {
     print_out("Wazuh Module Manager - %s\nWazuh Inc.", __wazuh_version);
     print_out(" ");
-#ifdef WAZUH_RUNTIME_USER
-    print_out("Usage: %s -[d|f|h|t] [-u <user>]", ARGV0);
+#ifdef CLIENT
+#define WM_HELP_CONF ""
 #else
-    print_out("Usage: %s -[d|f|h|t]", ARGV0);
+#define WM_HELP_CONF " [-c <config>]"
+#endif
+#ifdef WAZUH_RUNTIME_USER
+    print_out("Usage: %s -[d|f|h|t] [-u <user>]" WM_HELP_CONF, ARGV0);
+#else
+    print_out("Usage: %s -[d|f|h|t]" WM_HELP_CONF, ARGV0);
 #endif
     print_out(" ");
     print_out("    -d    Increase debug mode.");
     print_out("    -f    Run in foreground.");
     print_out("    -h    Print this help.");
     print_out("    -t    Test configuration.");
+#ifndef CLIENT
+    print_out("    -c <config> Configuration file to use (default: %s).", WAZUHCONF_YML);
+#endif
 #ifdef WAZUH_RUNTIME_USER
     print_out("    -u <user> Run as user (default: %s).", WAZUH_RUNTIME_USER);
 #endif
@@ -208,7 +239,7 @@ void wm_help()
 
 void wm_setup()
 {
-    // Read XML settings and internal options
+    // Read the configuration (etc/wazuh-manager.yml on the manager, XML on the agent) and internal options
 
     if (wm_config() < 0) {
         exit(EXIT_FAILURE);

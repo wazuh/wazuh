@@ -104,8 +104,9 @@ TEST(Load, EffectiveDefaultsFromEmptyFile)
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/indexer/hosts").Get(effective)->Size(), 0u) << "absent indexer: empty hosts";
-    EXPECT_STREQ(rapidjson::Pointer("/agent-upgrade/wpk_repository").Get(effective)->GetString(),
-                 "packages.wazuh.com/5.x/wpk/");
+    EXPECT_EQ(rapidjson::Pointer("/agent-upgrade/wpk_repository").Get(effective), nullptr)
+        << "no default: the module picks the repository by target agent version";
+    EXPECT_TRUE(rapidjson::Pointer("/agent-upgrade/enabled").Get(effective)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/task-manager/task_ttl").Get(effective)->GetInt(), 3600);
     EXPECT_STREQ(rapidjson::Pointer("/cluster/node_type").Get(effective)->GetString(), "master");
     EXPECT_EQ(rapidjson::Pointer("/cluster/nodes").Get(effective)->Size(), 1u);
