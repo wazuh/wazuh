@@ -31,6 +31,17 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node);
  */
 int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE);
 
+#ifndef CLIENT
+struct cJSON;
+/**
+ * @brief Reader of the `wdb` section of the effective YAML document (etc/wazuh-manager.yml, see mconf-config.h).
+ *
+ * @param wdb The section returned by w_mconf_section("wdb"); NULL or an absent backup block keeps the defaults.
+ * @return OS_SUCCESS, or OS_INVALID when a value breaks the rules the schema cannot express.
+ */
+int Read_WazuhDB_JSON(const struct cJSON *wdb);
+#endif
+
 /**
  * @brief Allocates the memory for all the configuration nodes declared in wdb_backup_db and sets the default
  *        values for all the settings.

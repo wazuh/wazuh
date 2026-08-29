@@ -106,6 +106,7 @@ written from the `WAZUH_REMOTE_*` installation variables by `WriteRemoteYaml()`)
 
 ## Consumers
 
-Today: `bin/wazuh-manager-conf` and the installer (validation of the generated file). Planned: remoted, authd, monitord,
-wazuh-db and modulesd (`mconf_load` at startup, `mconf_section_json` per section), the engine (`manager_config::Document`),
+Today: `bin/wazuh-manager-conf`, the installer (validation of the generated file) and the C daemons remoted, authd, monitord
+and wazuh-db through libconfig's `w_mconf_*()` (`src/config/src/mconf-config.c`: one load per process without file checks,
+`-t` validates with them, `getconfig` returns the effective sections). Planned: modulesd, the engine (`manager_config::Document`),
 `wazuh-server.sh` (`get`/`validate`) and, through the installed schema copy, the Python framework.

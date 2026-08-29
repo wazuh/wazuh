@@ -18,6 +18,7 @@
 #include "wazuh_db-config.h"
 #include "wdb.h"
 #include "wazuhdb_op.h"
+#include "../../external/cJSON/cJSON.h"
 
 /* setup/teardown */
 
@@ -399,6 +400,66 @@ void test_Read_WazuhDB_Backup_valid_config2(void **state)
     OS_ClearXML(&xml);
 }
 
+/* Read_WazuhDB_JSON tests: the effective `wdb` section of etc/wazuh-manager.yml */
+
+void test_Read_WazuhDB_JSON_effective_defaults(void **state)
+{
+    cJSON *wdb = cJSON_Parse("{\"backup\":{\"global\":{\"enabled\":true,\"interval\":\"1d\",\"max_files\":3}}}");
+    assert_non_null(wdb);
+
+    assert_int_equal(Read_WazuhDB_JSON(wdb), OS_SUCCESS);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled, 1);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval, 86400);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files, 3);
+
+    cJSON_Delete(wdb);
+}
+
+void test_Read_WazuhDB_JSON_interval_int_and_disabled(void **state)
+{
+    cJSON *wdb = cJSON_Parse("{\"backup\":{\"global\":{\"enabled\":false,\"interval\":3600,\"max_files\":1}}}");
+    assert_non_null(wdb);
+
+    assert_int_equal(Read_WazuhDB_JSON(wdb), OS_SUCCESS);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled, 0);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval, 3600);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files, 1);
+
+    cJSON_Delete(wdb);
+}
+
+void test_Read_WazuhDB_JSON_absent_keeps_defaults(void **state)
+{
+    cJSON *empty = cJSON_Parse("{}");
+
+    /* The settings are group-wide: start again from wdb_init_conf() defaults */
+    wdb_free_conf();
+    wdb_init_conf();
+
+    assert_int_equal(Read_WazuhDB_JSON(NULL), OS_SUCCESS);
+    assert_int_equal(Read_WazuhDB_JSON(empty), OS_SUCCESS);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled, 1);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval, 86400);
+    assert_int_equal(wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files, 3);
+
+    cJSON_Delete(empty);
+}
+
+void test_Read_WazuhDB_JSON_rejects_zero_interval_and_max_files(void **state)
+{
+    cJSON *interval = cJSON_Parse("{\"backup\":{\"global\":{\"interval\":0}}}");
+    cJSON *max_files = cJSON_Parse("{\"backup\":{\"global\":{\"max_files\":0}}}");
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'interval': 0.");
+    assert_int_equal(Read_WazuhDB_JSON(interval), OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'max_files': 0.");
+    assert_int_equal(Read_WazuhDB_JSON(max_files), OS_INVALID);
+
+    cJSON_Delete(interval);
+    cJSON_Delete(max_files);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -420,6 +481,11 @@ int main(void)
         cmocka_unit_test(test_Read_WazuhDB_Backup_maxfiles_invalid_value),
         cmocka_unit_test(test_Read_WazuhDB_Backup_valid_config),
         cmocka_unit_test(test_Read_WazuhDB_Backup_valid_config2),
+        // Tests Read_WazuhDB_JSON (etc/wazuh-manager.yml)
+        cmocka_unit_test(test_Read_WazuhDB_JSON_effective_defaults),
+        cmocka_unit_test(test_Read_WazuhDB_JSON_interval_int_and_disabled),
+        cmocka_unit_test(test_Read_WazuhDB_JSON_absent_keeps_defaults),
+        cmocka_unit_test(test_Read_WazuhDB_JSON_rejects_zero_interval_and_max_files),
     };
 
     return cmocka_run_group_tests(tests, wazuh_db_setup, wazuh_db_teardown);

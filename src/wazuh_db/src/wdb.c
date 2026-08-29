@@ -13,6 +13,7 @@
 #include "wazuhdb_op.h"
 #include "wmodules.h"
 #include "wazuhdb_op.h"
+#include "mconf-config.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -25,8 +26,6 @@
 #define MAX_ATTEMPTS 1000
 
 /* Variables */
-
-_Config gconfig;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
@@ -1121,32 +1120,13 @@ cJSON* wdb_get_internal_config() {
     return root;
 }
 
+/* getconfig "wdb": the effective `wdb` section of etc/wazuh-manager.yml (schema defaults applied),
+ * exactly what Read_WazuhDB_JSON() loaded into wconfig. */
 cJSON* wdb_get_config() {
     cJSON *root = cJSON_CreateObject();
-    cJSON* wdb_config = cJSON_CreateObject();
-    cJSON* j_wdb_backup = cJSON_CreateArray();
+    cJSON *wdb = w_mconf_section("wdb");
 
-    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        cJSON* j_wdb_backup_settings_node = cJSON_CreateObject();
-
-        switch (i) {
-            case WDB_GLOBAL_BACKUP:
-                cJSON_AddStringToObject(j_wdb_backup_settings_node, "database", "global");
-                break;
-            default:
-                break;
-        }
-
-        cJSON_AddBoolToObject(j_wdb_backup_settings_node, "enabled", wconfig.wdb_backup_settings[i]->enabled);
-        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "interval", wconfig.wdb_backup_settings[i]->interval);
-        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "max_files", wconfig.wdb_backup_settings[i]->max_files);
-
-        cJSON_AddItemToArray(j_wdb_backup, j_wdb_backup_settings_node);
-    }
-
-    cJSON_AddItemToObject(wdb_config, "backup", j_wdb_backup);
-    cJSON_AddItemToObject(root, "wdb", wdb_config);
-
+    cJSON_AddItemToObject(root, "wdb", wdb != NULL ? wdb : cJSON_CreateObject());
     return root;
 }
 
