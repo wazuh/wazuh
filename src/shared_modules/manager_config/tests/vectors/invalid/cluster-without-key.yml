@@ -1,0 +1,4 @@
+# P58: the shared key has no default; a cluster section must carry it.
+cluster:
+  name: wazuh
+  node_name: node01

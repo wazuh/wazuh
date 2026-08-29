@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include <cJSON.h>
+#include "mconf_hook.h"
 
 #ifdef WIN32
 #define localtime_r(x, y) localtime_s(y, x)
@@ -277,6 +278,40 @@ void w_logging_init(){
     os_logging_config();
 }
 
+#ifndef CLIENT
+/* Manager: `logging.log_format` of the effective etc/wazuh-manager.yml, through the hook libconfig
+ * registers (mconf_hook.h). Without a provider or a document (libwazuhshared.so as the engine loads it,
+ * unit tests) the format is plain -- not fatal: the daemon reports the configuration error when it loads
+ * the file itself. The schema already restricts the list to "plain"/"json". */
+void os_logging_config(){
+  cJSON * logging = w_mconf_hook_section("logging");
+  const cJSON * format = logging != NULL ? cJSON_GetObjectItem(logging, "log_format") : NULL;
+  const cJSON * item = NULL;
+
+  pid = (int)getpid();
+  flags.log_plain = 0;
+  flags.log_json = 0;
+
+  if (cJSON_IsArray(format)) {
+    cJSON_ArrayForEach(item, format) {
+      if (!cJSON_IsString(item) || item->valuestring == NULL) {
+        continue;
+      }
+      if (strcmp(item->valuestring, "plain") == 0) {
+        flags.log_plain = 1;
+      } else if (strcmp(item->valuestring, "json") == 0) {
+        flags.log_json = 1;
+      }
+    }
+  }
+
+  if (!flags.log_plain && !flags.log_json) {
+    flags.log_plain = 1;
+  }
+
+  cJSON_Delete(logging);
+}
+#else
 void os_logging_config(){
   OS_XML xml;
   const char * xmlf[] = {WAZUHCONFIG, "logging", "log_format", NULL};
@@ -331,6 +366,7 @@ void os_logging_config(){
     OS_ClearXML(&xml);
   }
 }
+#endif /* CLIENT */
 
 cJSON *getLoggingConfig(void) {
 

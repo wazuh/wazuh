@@ -43,6 +43,8 @@ It replaces the pseudo-XML `ReadConfig`/`os_xml` path and the four "bypass" read
 - **Ports**: a disabled listener (`remote.legacy.enabled: false`, `auth.disabled: true`) does not reserve its port.
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
   off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
+- **`cluster.key` is required and has no default** (P58): a well-known default key would be a shared secret; the
+  installer always generates one, and a `cluster` section without `key` fails with `required`.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
   default; the reader (`Read_Remote_JSON`) fills `127.0.0.1` only when the listener is IPv4.
 

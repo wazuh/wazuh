@@ -28,7 +28,9 @@ struct cJSON;
  *
  * The existence of the certificate/key files named in the document is NOT checked here (the daemons
  * start exactly as they do today; `-t` and `wazuh-manager-conf validate` check them, see
- * w_mconf_validate()). A second call is a no-op: the document is immutable for the life of the process.
+ * w_mconf_validate()). One document at a time: a second call with the same path is a no-op, a call
+ * with a different path (`-c`) replaces the document -- libwazuh's readers (cluster_utils.c,
+ * debug_op.c, see mconf_hook.h) may have made libconfig load the default file before main() got here.
  *
  * @param cfgfile Path of the YAML file (WAZUHCONF_YML or the `-c` argument).
  * @return 0 on success, -1 otherwise (the reason is logged with CONFIG_YAML_INVALID).

@@ -239,7 +239,7 @@ TEST(Semantics, CertificateWithoutKeyAndPortCollisionsAndDotSegments)
 {
     EXPECT_EQ(parseKo("remote:\n  https:\n    certificate: a.pem\n    key: \"\"\n").pointer, "/remote/https/key");
     EXPECT_EQ(parseKo("remote:\n  legacy:\n    port: 1515\nauth:\n  port: 1515\n").pointer, "/auth/port");
-    EXPECT_EQ(parseKo("cluster:\n  port: 1517\n").pointer, "/cluster/port")
+    EXPECT_EQ(parseKo("cluster:\n  key: 0123456789abcdef0123456789abcdef\n  port: 1517\n").pointer, "/cluster/port")
         << "collides with remote.https.port default";
     EXPECT_EQ(parseKo("remote:\n  https:\n    global_prefix: /a/../b/\n").pointer, "/remote/https/global_prefix");
     // a disabled listener does not reserve its port

@@ -12,6 +12,7 @@
 #include "shared.h"
 #include "string_op.h"
 #include "mconf-config.h"
+#include "mconf_hook.h"
 #include "manager_config/manager_config_c.h"
 
 /* One document per process (RF-7): loaded by the daemon's *Config() entry point, read by every
@@ -22,12 +23,18 @@ static char g_mconf_file[PATH_MAX + 1];
 int w_mconf_load(const char *cfgfile) {
     char err[OS_SIZE_2048] = {0};
 
-    if (g_mconf != NULL) {
-        return 0;
-    }
-
     if (cfgfile == NULL || *cfgfile == '\0') {
         cfgfile = WAZUHCONF_YML;
+    }
+
+    if (g_mconf != NULL) {
+        if (strcmp(g_mconf_file, cfgfile) == 0) {
+            return 0;
+        }
+        /* The hook provider may have loaded the default file before main() parsed `-c`: the file the
+         * daemon asks for wins. */
+        mdebug1("Replacing the manager configuration loaded from '%s' with '%s'.", g_mconf_file, cfgfile);
+        w_mconf_free();
     }
 
     /* home = NULL: relative paths resolve against the current working directory, which the daemons
@@ -42,6 +49,29 @@ int w_mconf_load(const char *cfgfile) {
 
     snprintf(g_mconf_file, sizeof(g_mconf_file), "%s", cfgfile);
     return 0;
+}
+
+/* Provider registered in libwazuh (mconf_hook.h) so cluster_utils.c and debug_op.c read their sections
+ * from the effective document. It may run inside the logging path itself (w_logging_init() is lazy), so
+ * when nothing is loaded yet it loads the default file silently; the daemon reports the real error when
+ * it calls w_mconf_load(). */
+static struct cJSON *w_mconf_hook_provider(const char *section) {
+    if (g_mconf == NULL) {
+        char err[OS_SIZE_2048] = {0};
+        mconf_t *conf = NULL;
+
+        if (mconf_load_ex(WAZUHCONF_YML, NULL, 0, &conf, err, sizeof(err)) != 0) {
+            return NULL;
+        }
+        g_mconf = conf;
+        snprintf(g_mconf_file, sizeof(g_mconf_file), "%s", WAZUHCONF_YML);
+    }
+
+    return w_mconf_section(section);
+}
+
+__attribute__((constructor)) static void w_mconf_register_hook(void) {
+    w_mconf_hook_set(w_mconf_hook_provider);
 }
 
 int w_mconf_validate(const char *cfgfile) {

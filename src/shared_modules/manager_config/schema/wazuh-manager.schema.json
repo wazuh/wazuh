@@ -602,6 +602,7 @@
     "cluster": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["key"],
       "description": "Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type also read by the C daemons and the engine).",
       "properties": {
         "name": {
@@ -626,7 +627,6 @@
         "key": {
           "type": "string",
           "pattern": "^[A-Za-z0-9]{32}$",
-          "default": "fd3350b86d239654e34866ab3c4988a8",
           "description": "32-character shared key; the installer generates a random one."
         },
         "port": {
