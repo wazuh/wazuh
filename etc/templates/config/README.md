@@ -45,8 +45,7 @@
     <ossec_config>
         <agent>
           <manager>
-            <address>192.168.10.100</address>
-            <port>1517</port>
+            <endpoint>192.168.10.100:1517/wazuh-manager/</endpoint>
           </manager>
           <config-profile>distribution, distributionVersion</config-profile>
         </agent>

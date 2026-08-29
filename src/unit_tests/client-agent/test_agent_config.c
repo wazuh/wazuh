@@ -67,7 +67,7 @@ static void with_servers(void)
 
     test_servers[1].rip = "192.168.0.2";
     test_servers[1].port = 1518;
-    test_servers[1].network_interface = 3;
+    test_servers[1].scope_id = 3;
     test_servers[1].max_retries = 7;
     test_servers[1].retry_interval = 20;
 
@@ -198,12 +198,12 @@ static void test_reports_every_manager(void **state)
     assert_number_field(first, "port", 1517);
     assert_number_field(first, "max_retries", 5);
     assert_number_field(first, "retry_interval", 10);
-    assert_null(cJSON_GetObjectItem(first, "interface_index"));
+    assert_null(cJSON_GetObjectItem(first, "scope_id"));
 
     cJSON *second = cJSON_GetArrayItem(managers, 1);
     assert_string_field(second, "address", "192.168.0.2");
     assert_number_field(second, "port", 1518);
-    assert_number_field(second, "interface_index", 3);
+    assert_number_field(second, "scope_id", 3);
 
     cJSON_Delete(root);
 }

@@ -20,11 +20,13 @@ typedef struct agent_flags_t {
 } agent_flags_t;
 
 typedef struct agent_server {
-    char * rip;
-    int port;
-    char * endpoint; ///< <endpoint> (#38492): optional reverse-proxy path segment, normalized
-                     ///< (no leading/trailing '/'); NULL when unset -- today's unprefixed behavior.
-    uint32_t network_interface;
+    char * rip;      ///< Host parsed out of <endpoint> (#38624): IPv4, hostname, or a bare
+                     ///< (unbracketed) IPv6 literal, which ModuleConfig::baseUrl() re-brackets.
+    int port;        ///< Port from <endpoint>, or DEFAULT_HTTPS_REMOTE_PORT when omitted.
+    char * endpoint; ///< Reverse-proxy path prefix from <endpoint> (#38492/#38624), normalized
+                     ///< (no leading/trailing '/'); NULL when the operator opted out of a prefix.
+    uint32_t scope_id; ///< IPv6 zone id from <endpoint> (#38624), resolved through
+                       ///< if_nametoindex(); 0 when the address carries no zone.
     int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
     int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).
 } agent_server;
@@ -181,8 +183,14 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
 
 /* Default reverse-proxy prefix applied when <endpoint> can't be present at all
  * (legacy <client><server> configs, e.g. after a 4.x->5.x WPK upgrade that never
- * rewrites ossec.conf) or is left unconfigured. Must mirror the manager's own
- * default global_prefix (src/remoted/remoted_module, #38491). */
+ * rewrites ossec.conf) or is left unconfigured.
+ *
+ * This does NOT mirror remoted's compiled default, which is "/" -- endpoints served
+ * unprefixed (remote-config.h, #38491). What makes the two agree is the shipped
+ * etc/wazuh-manager.conf writing <global_prefix>/wazuh-manager/</global_prefix>
+ * explicitly, so a packaged manager and a default agent match. A manager whose
+ * operator deletes that line serves unprefixed and will 404 a default agent, which
+ * is what the trailing-slash opt-out (<endpoint>host:port/</endpoint>) is for. */
 #define DEFAULT_AGENT_ENDPOINT_PREFIX "wazuh-manager"
 
 #endif /* CAGENTD_H */

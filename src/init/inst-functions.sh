@@ -365,6 +365,155 @@ GenerateService()
 }
 
 ##########
+# ParseManagerEndpoint() $1=WAZUH_MANAGER_ENDPOINT's value
+#
+# Splits the combined connection target (#38624) into MEP_HOST / MEP_PORT /
+# MEP_ENDPOINT, the three tags the agent still reads:
+#
+#   [https://] host [:port] [/[prefix]]
+#
+# Only the host is mandatory. Note that "no '/' at all" means "default prefix" while
+# "a trailing '/' with nothing after it" is the deliberate opt-out (#38614) and must
+# come out as an empty <endpoint></endpoint>.
+#
+# Byte-for-byte the same logic as parse_manager_endpoint() in
+# register_configure_agent.sh and ParseManagerEndpoint() in
+# src/win32/InstallerScripts.vbs -- a change in one belongs in all three. It is
+# duplicated rather than shared because register_configure_agent.sh ships inside the
+# packages and cannot source this file (the relative . ./src/init/template-select.sh
+# here assumes a repo checkout at CWD, which a post-install script does not have).
+##########
+DEFAULT_MANAGER_PORT="1517"
+DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
+
+ParseManagerEndpoint()
+{
+    mep_raw="$1"
+    mep_rest="$mep_raw"
+    MEP_HOST=""
+    MEP_PORT="${DEFAULT_MANAGER_PORT}"
+    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
+
+    if [ "X${mep_raw}" = "X" ]; then
+        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
+        return 1
+    fi
+
+    case "${mep_rest}" in
+        *"://"*)
+            mep_scheme="${mep_rest%%://*}"
+            case "${mep_scheme}" in
+                */*) ;;
+                *)
+                    mep_rest="${mep_rest#*://}"
+                    case "${mep_scheme}" in
+                        [Hh][Tt][Tt][Pp][Ss]) ;;
+                        *)
+                            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unsupported scheme '${mep_scheme}://'; only https is served." >&2
+                            return 1
+                            ;;
+                    esac
+                    ;;
+            esac
+            ;;
+    esac
+
+    case "${mep_rest}" in
+        */*)
+            mep_authority="${mep_rest%%/*}"
+            mep_path="${mep_rest#*/}"
+            mep_path_given="yes"
+            ;;
+        *)
+            mep_authority="${mep_rest}"
+            mep_path=""
+            mep_path_given="no"
+            ;;
+    esac
+
+    mep_port_given=""
+    case "${mep_authority}" in
+        "["*)
+            case "${mep_authority}" in
+                *"]"*) ;;
+                *)
+                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'." >&2
+                    return 1
+                    ;;
+            esac
+            MEP_HOST="${mep_authority#[}"
+            MEP_HOST="${MEP_HOST%%]*}"
+            mep_after="${mep_authority#*]}"
+            case "${mep_after}" in
+                "") ;;
+                ":"*) mep_port_given="${mep_after#:}" ;;
+                *)
+                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unexpected '${mep_after}' after the bracketed address." >&2
+                    return 1
+                    ;;
+            esac
+            # A zone id (%25<iface>) stays part of the host: the agent resolves it
+            # with if_nametoindex() at startup (#38624).
+            ;;
+        *:*:*)
+            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}." >&2
+            return 1
+            ;;
+        *:*)
+            MEP_HOST="${mep_authority%:*}"
+            mep_port_given="${mep_authority##*:}"
+            ;;
+        *)
+            MEP_HOST="${mep_authority}"
+            ;;
+    esac
+
+    if [ "X${MEP_HOST}" = "X" ]; then
+        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
+        return 1
+    fi
+
+    if [ "X${mep_port_given}" != "X" ]; then
+        case "${mep_port_given}" in
+            ''|*[!0-9]*)
+                echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is not a number." >&2
+                return 1
+                ;;
+        esac
+        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
+            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is outside 1-65535." >&2
+            return 1
+        fi
+        MEP_PORT="${mep_port_given}"
+    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
+        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': trailing ':' with no port." >&2
+        return 1
+    fi
+
+    if [ "${mep_path_given}" = "yes" ]; then
+        while : ; do
+            case "${mep_path}" in
+                /*) mep_path="${mep_path#/}" ;;
+                *) break ;;
+            esac
+        done
+        while : ; do
+            case "${mep_path}" in
+                */) mep_path="${mep_path%/}" ;;
+                *) break ;;
+            esac
+        done
+        if [ "X${mep_path}" = "X" ]; then
+            MEP_ENDPOINT=""
+        else
+            MEP_ENDPOINT="/${mep_path}/"
+        fi
+    fi
+
+    return 0
+}
+
+##########
 # WriteAgent() $1="no_locafiles" or empty
 ##########
 WriteAgent()
@@ -379,22 +528,52 @@ WriteAgent()
     # <client> is renamed to <agent> in 5.x; the inner block stays <manager>.
     echo "  <agent>" >> $NEWCONFIG
     echo "    <manager>" >> $NEWCONFIG
-    if [ "X${HNAME}" = "X" ]; then
-      echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
-    else
-      echo "      <address>$HNAME</address>" >> $NEWCONFIG
+
+    # <endpoint> carries the whole connection target (#38624). WAZUH_MANAGER_ENDPOINT
+    # supplies it directly when set; otherwise it is composed from install.sh's own
+    # $SERVER_IP/$HNAME prompt, which is the only address this path has. Tested with
+    # ${VAR+x} rather than -n so an explicitly empty value is rejected instead of
+    # silently read as unset: "" used to be the prefix opt-out (#38614). A rejected
+    # value falls back to the prompted address, with the reason already on stderr --
+    # this path must still emit a usable template, and the operator is present to see
+    # the message.
+    # $SERVER_IP/$HNAME come from install.sh's own prompt and are the base. WAZUH_MANAGER
+    # (with WAZUH_MANAGER_PORT) still composes a value, and WAZUH_MANAGER_ENDPOINT
+    # overrides everything when set.
+    AGENT_ENDPOINT="$SERVER_IP"
+    if [ "X${HNAME}" != "X" ]; then
+      AGENT_ENDPOINT="$HNAME"
     fi
-    echo "      <port>1517</port>" >> $NEWCONFIG
-    # Unset -> default to the manager's own default prefix. Explicitly set,
-    # even to an empty string, is the operator's own choice and is written
-    # verbatim -- including WAZUH_MANAGER_ENDPOINT="", which reaches the
-    # client parser's <endpoint></endpoint> opt-out (#38492). ${VAR:-x} alone
-    # can't tell those two cases apart, so check ${VAR+x} first.
-    if [ "X${WAZUH_MANAGER_ENDPOINT+x}" = "X" ]; then
-      echo "      <endpoint>/wazuh-manager/</endpoint>" >> $NEWCONFIG
-    else
-      echo "      <endpoint>${WAZUH_MANAGER_ENDPOINT}</endpoint>" >> $NEWCONFIG
+
+    if [ "X${WAZUH_MANAGER}" != "X" ]; then
+      AGENT_ENDPOINT="${WAZUH_MANAGER}"
     fi
+
+    # A bare IPv6 literal needs bracketing once it shares a value with the port.
+    case "${AGENT_ENDPOINT}" in
+      # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
+      # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
+      # InstallerScripts.vbs.
+      \[*) ;;
+      *:*:*) AGENT_ENDPOINT="[${AGENT_ENDPOINT}]" ;;
+    esac
+
+    if [ "X${WAZUH_MANAGER_PORT}" != "X" ]; then
+      AGENT_ENDPOINT="${AGENT_ENDPOINT}:${WAZUH_MANAGER_PORT}"
+    fi
+
+    # WAZUH_MANAGER_ENDPOINT wins outright once it is set, even if it fails validation:
+    # it carries the whole URL and the operator asked for it specifically, so falling back
+    # to a value composed from WAZUH_MANAGER would silently point the agent at a different
+    # manager. A bad value is reported here and written through, so the agent refuses it
+    # loudly at startup instead -- same rule as register_configure_agent.sh and
+    # InstallerScripts.vbs, which write no <manager> block at all in that case.
+    if [ "X${WAZUH_MANAGER_ENDPOINT+x}" != "X" ]; then
+      ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"
+      AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
+    fi
+
+    echo "      <endpoint>${AGENT_ENDPOINT}</endpoint>" >> $NEWCONFIG
     echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}

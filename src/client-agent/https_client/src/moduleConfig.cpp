@@ -34,6 +34,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     ModuleConfig typed;
     typed.serverHost = boundedString(config.server_host, sizeof(config.server_host));
     typed.serverPort = orDefault<uint16_t>(config.server_port, 443);
+    typed.serverScopeId = config.server_scope_id;
     typed.serverEndpoint = boundedString(config.server_endpoint, sizeof(config.server_endpoint));
     typed.agentId = boundedString(config.agent_id, sizeof(config.agent_id));
     typed.agentKeyHex = boundedString(config.agent_key, sizeof(config.agent_key));
@@ -202,7 +203,23 @@ std::string ModuleConfig::baseUrl() const
     // https://[2001:db8::1]:443, not https://2001:db8::1:443. Hostnames and
     // IPv4 never contain ':'; an already-bracketed value is left as is.
     const bool ipv6 = serverHost.find(':') != std::string::npos && serverHost.front() != '[';
-    const std::string host = ipv6 ? "[" + serverHost + "]" : serverHost;
+
+    // A link-local IPv6 address needs its zone id to be dialable, and inside a URL the
+    // zone separator '%' must itself be percent-encoded, hence "%25" (#38624). Only
+    // meaningful for an IPv6 literal: an IPv4 or hostname never carries a scope.
+    std::string host = serverHost;
+
+    if (ipv6)
+    {
+        host = "[" + serverHost;
+
+        if (serverScopeId != 0)
+        {
+            host += "%25" + std::to_string(serverScopeId);
+        }
+
+        host += "]";
+    }
 
     // serverEndpoint is NOT joined in here: #38491 (the manager's global
     // prefix) routes on the prefixed request-target, so callers fold it into

@@ -3,9 +3,5 @@
         elements:
             - manager:
                 elements:
-                - address:
-                    value: '127.0.0.1'
-                - port:
-                    value: '1517'
                 - endpoint:
-                    value: ''
+                    value: '127.0.0.1:1517/'

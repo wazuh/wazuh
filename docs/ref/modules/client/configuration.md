@@ -26,21 +26,50 @@ Manager connection configuration block.
 
 **Sub-options:**
 
+#### endpoint
+
+The complete connection target: the manager's address, optionally a port, and optionally the
+URL path prefix it is served under. This one option replaces the separate `address` and `port`
+tags.
+
+```
+endpoint = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+```
+
+- **Required:** Yes — `host` is the only mandatory part.
+- **Allowed values:** `host` is an IPv4 address, a hostname, or a **bracketed** IPv6 literal
+  (the brackets keep its colons from reading as the port separator, and are dropped from the
+  stored value). A link-local IPv6 address may carry a zone id with `%` percent-encoded as
+  `%25`; an interface name is resolved to its index while the configuration is parsed, so an
+  unknown name is rejected there. `port` defaults to `1517`. An `https://` scheme is accepted
+  and ignored; any other scheme is rejected.
+- **Example:** `192.168.1.100`, `manager.example.com:8443/gateway`,
+  `[2001:db8::1]:1517`, `[fe80::1%25eth0]:1517`
+- **Note on the prefix:** omitting the slash entirely selects the default prefix
+  `wazuh-manager`, matching a manager whose `<remote><https><global_prefix>` is the shipped
+  `/wazuh-manager/`. A **trailing slash with nothing after it** is the explicit opt-out for a
+  manager serving unprefixed endpoints — so `192.168.1.100` and `192.168.1.100/` mean
+  different things. This mirrors the manager, where `<global_prefix>` is `/` to serve no
+  prefix; on both sides an **empty** value is a configuration error, not an opt-out. A prefix
+  mismatch between the two surfaces as `404`.
+
 #### address
 
-Manager IP address or hostname.
+**DEPRECATED:** folded into `endpoint`. Still read so that an agent upgraded in place — an
+upgrade never rewrites `ossec.conf` — keeps connecting: the agent composes the target from
+`address`, `port` (or its `1517` default) and the default prefix, and logs at `INFO` the single
+`<endpoint>` line that replaces them. If `endpoint` is also present it wins, whatever the order,
+and `address`/`port` are ignored with a warning.
 
-- **Required:** Yes (at least one manager must be defined)
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 - **Example:** `192.168.1.100`, `manager.example.com`, `::1`
 
 #### port
 
-Manager port number for the agent's HTTPS connection.
+**DEPRECATED:** folded into `endpoint`. See `address`.
 
 - **Default value:** `1517`
 - **Allowed values:** Valid port number (1-65535)
-- **Example:** `1517`
 - **Note:** A `<port>` inside a legacy `<client><server>` block is not read.
 
 #### protocol
@@ -53,27 +82,14 @@ Manager port number for the agent's HTTPS connection.
 
 #### max_retries
 
-Maximum connection retry attempts before failing over to next server.
-
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Note:** Only applicable when multiple servers are configured
+**DEPRECATED:** parsed but ignored. Server rotation and the connection-retry loop were removed
+with the HTTPS transport; the parser accepts the tag so an upgraded configuration does not fail
+and logs that it no longer has any effect.
 
 #### retry_interval
 
-Time in seconds to wait between connection retry attempts.
+**DEPRECATED:** parsed but ignored. See `max_retries`.
 
-- **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
-- **Note:** Applies when retrying connection to the same server
-
-#### interface_index
-
-Network interface index to bind for manager connection.
-
-- **Default value:** Auto-select
-- **Allowed values:** Positive integer (interface index number)
-- **Note:** Platform-specific; forces agent to use specific network interface
 
 ### ssl
 
@@ -261,7 +277,9 @@ Use agent's source IP address for enrollment instead of configured address.
 #### Removed options
 
 The following options are **no longer used**: `manager_address`, `port`,
-`interface_index` (superseded by `<agent><manager>`) and `ssl_cipher`,
+`interface_index` (superseded by `<agent><manager>`; the interface for a link-local
+IPv6 manager is now the zone id inside `<endpoint>`, e.g.
+`<endpoint>[fe80::1%25eth0]:1517</endpoint>`) and `ssl_cipher`,
 `server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
 `<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
 `ossec.conf`, which an in-place upgrade does not rewrite — still starts the

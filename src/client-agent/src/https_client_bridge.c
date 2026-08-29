@@ -1568,6 +1568,9 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->server && agt->server[0].rip) {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
+        /* #38624: the IPv6 zone id, already resolved to a numeric scope by the config
+         * parser, so a link-local manager address is dialed on the right interface. */
+        config->server_scope_id = agt->server[0].scope_id;
 
         /* #38492: shared with w_https_client_enroll() via this same function,
          * so the /enroll request target gets the configured <endpoint> path
