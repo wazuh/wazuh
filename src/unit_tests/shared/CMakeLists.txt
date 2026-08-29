@@ -253,7 +253,11 @@ list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS} -Wl,--wrap=getpid")
 endif()
 
 list(APPEND shared_tests_names "test_fs_op")
-list(APPEND shared_tests_flags " ")
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(APPEND shared_tests_flags "-Wl,--wrap,stat -Wl,--wrap,statfs")
+else()
+    list(APPEND shared_tests_flags " ")
+endif()
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")

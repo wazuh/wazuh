@@ -100,6 +100,22 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
     return __real_stat(__file, __buf);
 }
 
+#ifdef __linux__
+extern int __real_statfs(const char * __file, struct statfs * __buf) __attribute__((weak));
+int __wrap_statfs(const char * __file, struct statfs * __buf) {
+    struct statfs * mock_buf;
+    if (test_mode) {
+        check_expected(__file);
+        mock_buf = mock_type(struct statfs *);
+        if (mock_buf != NULL) {
+            memcpy(__buf, mock_buf, sizeof(struct statfs));
+        }
+        return mock_type(int);
+    }
+    return __real_statfs(__file, __buf);
+}
+#endif
+
 mode_t __wrap_umask(mode_t mode) {
     check_expected(mode);
     return mock();
