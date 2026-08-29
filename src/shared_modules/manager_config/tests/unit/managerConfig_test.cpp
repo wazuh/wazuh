@@ -260,9 +260,14 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
     auto ok = manager_config::Document::parse("", options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(ok)) << std::get<manager_config::Error>(ok).what();
     auto ko = manager_config::Document::parse(
-        "indexer:\n  hosts: [\"https://h:9200\"]\n  ssl:\n    certificate: etc/certs/missing.pem\n", options);
+        "remote:\n  https:\n    certificate: etc/certs/missing.pem\n    key: etc/certs/remoted-key.pem\n", options);
     ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
-    EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/indexer/ssl/certificate");
+    EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/certificate");
+    // indexer.ssl.* is never checked: the installer does not create those files (P60).
+    auto indexerOk = manager_config::Document::parse(
+        "indexer:\n  hosts: [\"https://h:9200\"]\n  ssl:\n    certificate: etc/certs/missing.pem\n", options);
+    EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
+        << std::get<manager_config::Error>(indexerOk).what();
     std::filesystem::remove_all(dir);
 }
 
@@ -282,6 +287,15 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     }
     char err[512] = {0};
     mconf_t* conf = nullptr;
+    // check_files == 0: the daemons load without requiring the certificate files (P44: `-t` checks them)
+    mconf_t* unchecked = nullptr;
+    const auto emptyHome = std::filesystem::temp_directory_path() / "manager_config_utest_capi_empty";
+    std::filesystem::create_directories(emptyHome);
+    EXPECT_EQ(mconf_load(file.c_str(), emptyHome.c_str(), &unchecked, err, sizeof err), -1);
+    EXPECT_EQ(unchecked, nullptr);
+    ASSERT_EQ(mconf_load_ex(file.c_str(), emptyHome.c_str(), 0, &unchecked, err, sizeof err), 0) << err;
+    mconf_free(unchecked);
+    std::filesystem::remove_all(emptyHome);
     ASSERT_EQ(mconf_load(file.c_str(), home.c_str(), &conf, err, sizeof err), 0) << err;
     ASSERT_NE(conf, nullptr);
     char* remote = mconf_section_json(conf, "remote");

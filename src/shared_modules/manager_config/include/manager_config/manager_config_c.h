@@ -22,6 +22,13 @@ extern "C"
      */
     int mconf_load(const char* path, const char* home, mconf_t** out, char* err, size_t errlen);
 
+    /**
+     * Same as mconf_load with an explicit file-existence policy: check_files == 0 skips the check of the
+     * certificate/key files named in the document (daemon start-up: the files are validated by `-t` and by
+     * `wazuh-manager-conf validate`, not by the loader — P44).
+     */
+    int mconf_load_ex(const char* path, const char* home, int check_files, mconf_t** out, char* err, size_t errlen);
+
     /** Same as mconf_load without keeping the document (bin/<daemon> -t). 0 = valid. */
     int mconf_validate(const char* path, const char* home, char* err, size_t errlen);
 

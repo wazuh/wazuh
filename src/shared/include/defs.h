@@ -324,6 +324,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #endif
 
+/* Manager configuration in YAML (etc/wazuh-manager.yml). Read by the manager daemons through
+ * libconfig's w_mconf_*() (src/config/src/mconf-config.c); the XML WAZUHCONF above coexists
+ * until every consumer has moved. */
+#if !defined(CLIENT) && !defined(WIN32)
+#define WAZUHCONF_YML "etc/wazuh-manager.yml"
+#endif
+
 #ifndef WAZUHCONFIG
 #ifndef WIN32
 #ifdef CLIENT

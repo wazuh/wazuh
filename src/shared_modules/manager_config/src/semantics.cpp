@@ -108,6 +108,9 @@ namespace manager_config::detail
             }
         }
 
+        // Only the files the manager itself owns: the installer generates the HTTPS/authd certificate and the
+        // operator provides the rest. indexer.ssl.* is deliberately not checked (the installer never creates
+        // those files and the indexer connector reports them at runtime), otherwise a fresh install could not start.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",
@@ -115,24 +118,11 @@ namespace manager_config::detail
                                         "/remote/https/ca",
                                         "/auth/ssl_agent_ca",
                                         "/auth/ssl_manager_cert",
-                                        "/auth/ssl_manager_key",
-                                        "/indexer/ssl/certificate",
-                                        "/indexer/ssl/key"})
+                                        "/auth/ssl_manager_key"})
             {
                 if (auto error = checkFile(str(get(doc, pointer)), pointer, options))
                 {
                     return error;
-                }
-            }
-            if (const auto* cas = get(doc, "/indexer/ssl/certificate_authorities"); cas != nullptr && cas->IsArray())
-            {
-                for (rapidjson::SizeType i = 0; i < cas->Size(); ++i)
-                {
-                    const std::string pointer = "/indexer/ssl/certificate_authorities/" + std::to_string(i);
-                    if (auto error = checkFile(str(&(*cas)[i]), pointer.c_str(), options))
-                    {
-                        return Error {pointer, error->message};
-                    }
                 }
             }
         }

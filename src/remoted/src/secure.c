@@ -13,6 +13,7 @@
 #include "agent_metadata_db.h"
 #include "os_net.h"
 #include "remoted.h"
+#include "mconf-config.h"
 #include "remoted_op.h"
 #include "state.h"
 #include "wazuhdb_queries_op.h"
@@ -332,7 +333,7 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
 }
 
 /**
- * @brief Read authd's own <auth> config block (NOT logr's <remote> settings) into the
+ * @brief Read authd's own `auth` section (NOT logr's `remote` settings) into the
  *        enrollment fields of the C-ABI struct, plus the `remoted.enroll_*`/`remoted.authd_*`
  *        internal options for the bridge's operational knobs.
  *
@@ -344,7 +345,11 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
     authd_config_t authd_cfg;
     memset(&authd_cfg, 0, sizeof(authd_cfg));
 
-    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+    // authd's section of the effective YAML document RemotedConfig() already loaded: same file as
+    // remoted's own settings, so a `-c` override reaches the enrollment policy too.
+    cJSON *auth_section = w_mconf_section("auth");
+
+    if (auth_section != NULL && Read_Authd_JSON(auth_section, &authd_cfg) == 0) {
         // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
         // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
         // enrollment chapter of remoted_module/README.md for the verified analysis.
@@ -361,6 +366,7 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
         rm_config->enrollment_enabled = false;
     }
 
+    cJSON_Delete(auth_section);
     os_free(authd_cfg.ciphers);
     os_free(authd_cfg.agent_ca);
     os_free(authd_cfg.manager_cert);

@@ -28,9 +28,10 @@ namespace
         }
     }
 
-    manager_config::LoadOptions options(const char* home)
+    manager_config::LoadOptions options(const char* home, bool checkFiles = true)
     {
         manager_config::LoadOptions opts;
+        opts.checkFiles = checkFiles;
         if (home != nullptr && *home != '\0')
         {
             opts.home = home;
@@ -55,6 +56,11 @@ extern "C"
 
     int mconf_load(const char* path, const char* home, mconf_t** out, char* err, size_t errlen)
     {
+        return mconf_load_ex(path, home, 1, out, err, errlen);
+    }
+
+    int mconf_load_ex(const char* path, const char* home, int check_files, mconf_t** out, char* err, size_t errlen)
+    {
         if (path == nullptr || out == nullptr)
         {
             setError(err, errlen, "mconf_load: invalid arguments");
@@ -63,7 +69,7 @@ extern "C"
         *out = nullptr;
         try
         {
-            auto result = manager_config::Document::load(path, options(home));
+            auto result = manager_config::Document::load(path, options(home, check_files != 0));
             if (auto* error = std::get_if<manager_config::Error>(&result))
             {
                 setError(err, errlen, error->what());

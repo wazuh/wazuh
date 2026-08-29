@@ -13,7 +13,7 @@ It replaces the pseudo-XML `ReadConfig`/`os_xml` path and the four "bypass" read
 | RF-1 | One YAML 1.2 document with a mapping root; multi-document, anchors/aliases, explicit tags and non-mapping roots are rejected; an empty file is the empty mapping | `src/yamlToJson.cpp` |
 | RF-2 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
 | RF-3 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
-| RF-4 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of certificate files (relative to the manager home) | `src/semantics.cpp` |
+| RF-4 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; `indexer.ssl.*` is not checked — the installer never creates those files, the connector reports them at runtime) | `src/semantics.cpp` |
 | RF-5 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable) | `src/manager_config.cpp` |
 | RF-6 | Any path (`-c`) is honoured by every section of the process | `Document::load(path)` |
 | RF-7 | Load once, read concurrently, no hot reload | immutable `Document` |
@@ -42,7 +42,9 @@ It replaces the pseudo-XML `ReadConfig`/`os_xml` path and the four "bypass" read
   absence is meaningful ("module default / inferred").
 - **Ports**: a disabled listener (`remote.legacy.enabled: false`, `auth.disabled: true`) does not reserve its port.
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
-  off or create the files under a temporary home.
+  off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
+- **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
+  default; the reader (`Read_Remote_JSON`) fills `127.0.0.1` only when the listener is IPv4.
 
 ## Layout
 
