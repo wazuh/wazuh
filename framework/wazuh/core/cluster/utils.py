@@ -17,7 +17,7 @@ from glob import glob
 from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
@@ -28,59 +28,36 @@ logger = logging.getLogger('wazuh')
 api_operation_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_operation_lock")
 
 
-def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
-    """Read cluster configuration from wazuh-manager.conf.
+def read_cluster_config(config_file=None) -> typing.Dict:
+    """Read the cluster configuration from etc/wazuh-manager.yml.
 
-    If some fields are missing in the wazuh-manager.conf cluster configuration, they are replaced
-    with default values.
-    If there is no cluster configuration at all, the default configuration is marked as disabled.
+    The section comes from the effective document: every option the file omits takes the default of the schema
+    (the same one the C daemons and the engine use), so there is no separate default table here.
 
     Parameters
     ----------
     config_file : str
-        Path to configuration file.
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+        Path to configuration file. Default: common.MANAGER_CONF.
+
+    Raises
+    ------
+    WazuhError(3006)
+        The configuration could not be read or is invalid.
 
     Returns
     -------
     config_cluster : dict
         Dictionary with cluster configuration.
     """
-    cluster_default_configuration = {
-        'node_type': 'master',
-        'name': 'wazuh',
-        'node_name': 'node01',
-        'key': 'fd3350b86d239654e34866ab3c4988a8',
-        'port': 1516,
-        'bind_addr': '127.0.0.1',
-        'nodes': ['127.0.0.1'],
-        'hidden': 'no'
-    }
-
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
+        config_cluster = get_manager_conf(section='cluster', conf_file=config_file or common.MANAGER_CONF)['cluster']
     except WazuhException as e:
-            if e.code == 1106:
-                # If no cluster configuration is present in wazuh configuration file, return the default configuration.
-                return cluster_default_configuration
-
-            raise WazuhError(3006, extra_message=e.message)
+        raise WazuhError(3006, extra_message=e.message)
     except Exception as e:
         raise WazuhError(3006, extra_message=str(e))
 
-    # If any value is missing from user's cluster configuration, add the default one.
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
-    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhError(3004, extra_message="Cluster port must be an integer.")
-
-    config_cluster['port'] = int(config_cluster['port'])
-
-    if config_cluster['node_type'] not in {'master', 'worker'}:
-        raise WazuhError(3004, extra_message=f"Invalid node type {config_cluster['node_type']}. Correct values are master and worker")
-
+    # Types and ranges (port, node_type, key...) are guaranteed by the schema; check_cluster_config() keeps only
+    # what the schema cannot express (reserved addresses).
     return config_cluster
 
 
@@ -296,7 +273,7 @@ def safe_join(base_path: str, *paths: str) -> str:
 
 
 @lru_cache()
-def read_config(config_file=common.OSSEC_CONF):
+def read_config(config_file=None):
     """Get the cluster configuration.
 
     Parameters

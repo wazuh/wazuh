@@ -34,42 +34,28 @@ default_cluster_config = {
 
 
 def test_read_cluster_config():
-    """Verify that read_cluster function returns, in this case, the default configuration."""
-    config = utils.read_cluster_config()
-    assert config == default_cluster_config
+    """read_cluster_config() returns the effective `cluster` section of etc/wazuh-manager.yml and maps read errors to 3006."""
+    effective = dict(default_cluster_config, hidden=False)
 
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=WazuhError(1001)):
-        with pytest.raises(WazuhError, match='.* 3006 .*'):
-            utils.read_cluster_config()
-
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=SystemExit):
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            utils.read_cluster_config(from_import=True)
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 0
-
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=KeyError(1)):
-        with pytest.raises(WazuhError, match='.* 3006 .*'):
-            utils.read_cluster_config()
-
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', return_value={'cluster': effective}) as get_conf:
         utils.read_config.cache_clear()
-        default_cluster_config.pop('hidden')
         config = utils.read_cluster_config()
+        assert config == effective
+        assert config['hidden'] is False
+        get_conf.assert_called_once_with(section='cluster', conf_file=utils.common.MANAGER_CONF)
+
         config_simple = utils.read_config()
         assert config == config_simple
-        assert config == default_cluster_config
+        utils.read_config.cache_clear()
 
-        default_cluster_config['node_type'] = 'client'
-        with pytest.raises(WazuhError, match='.* 3004 .*'):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', side_effect=WazuhError(1130, '/cluster/port')):
+        with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
 
-        default_cluster_config['port'] = 'None'
-        with pytest.raises(WazuhError, match='.* 3004 .*'):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', side_effect=KeyError(1)):
+        with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
 
-    # The cached entry aliases default_cluster_config, mutated above. Evict it so the rest of the
-    # session does not read a config with node_type 'client'.
     utils.read_config.cache_clear()
 
 
@@ -277,7 +263,7 @@ def test_get_cluster_items():
                 "extra_valid": False,
                 "description": "shared configuration files",
             },
-            "excluded_files": ["wazuh-manager.conf"],
+            "excluded_files": ["wazuh-manager.conf", "wazuh-manager.yml"],
             "excluded_extensions": ["~", ".tmp", ".lock", ".swp"],
         },
         "intervals": {

@@ -324,6 +324,18 @@ _XML_WITH_CLUSTER_KEY = """\
   </global>
 </ossec_config>"""
 
+_YAML_WITH_CLUSTER_KEY = """\
+# manager configuration
+cluster:
+  name: wazuh
+  node_name: master-node
+  # the shared key
+  key: SECRETCLUSTERKEY   # inline comment
+  port: 1516
+global:
+  key: this_should_not_be_masked
+"""
+
 _XML_WITHOUT_CLUSTER_KEY = """\
 <ossec_config>
   <cluster>
@@ -354,6 +366,44 @@ _XML_MULTILINE_KEY = """\
 
 
 # --- mask_sensitive_config with raw XML payload ---
+
+def test_mask_sensitive_config_raw_yaml_without_permissions(db_setup):
+    """cluster.key is masked in the YAML text (etc/wazuh-manager.yml) for users without update permissions; other
+    `key:` entries and comments are untouched."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _YAML_WITH_CLUSTER_KEY
+
+    result = get_conf_raw()
+    assert 'SECRETCLUSTERKEY' not in result
+    assert '  key: *****   # inline comment\n' in result
+    assert 'this_should_not_be_masked' in result
+    assert '  # the shared key\n' in result
+
+
+def test_mask_sensitive_config_raw_yaml_with_permissions(db_setup):
+    """Users with cluster:update_config get the real YAML text."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _YAML_WITH_CLUSTER_KEY
+
+    assert get_conf_raw() == _YAML_WITH_CLUSTER_KEY
+
+
+@pytest.mark.parametrize('text, path, expected', [
+    ('cluster:\n  key: abc\n', 'cluster.key', 'cluster:\n  key: *****\n'),
+    ('cluster:\n  name: x\n\n  key: abc\nother:\n  key: keep\n', 'cluster.key', 'cluster:\n  name: x\n\n  key: *****\nother:\n  key: keep\n'),
+    ('other:\n  key: keep\n', 'cluster.key', 'other:\n  key: keep\n'),
+    ('cluster:\n  key: abc # c\n', 'cluster.key', 'cluster:\n  key: ***** # c\n'),
+    ('a:\n  b:\n    c: deep\n', 'a.b.c', 'a:\n  b:\n    c: *****\n'),
+])
+def test_mask_yaml_by_path(db_setup, text, path, expected):
+    assert db_setup._mask_yaml_by_path(text, path, '*****') == expected
+
 
 def test_mask_sensitive_config_raw_xml_without_permissions(db_setup):
     """Raw XML cluster key is masked for unprivileged users."""

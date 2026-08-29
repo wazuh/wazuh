@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from configparser import NoOptionError, RawConfigParser
 from io import StringIO
@@ -20,6 +19,7 @@ from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.manager_conf import load_manager_conf, schema as manager_conf_schema
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
 logger = logging.getLogger('wazuh')
@@ -288,28 +288,6 @@ def _conf2json(src_xml: str, dst_json: dict):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _wazuhconf2json(xml_conf: str) -> dict:
-    """Return wazuh-manager.conf in JSON from XML.
-
-    Parameters
-    ----------
-    xml_conf : str
-        Configuration to be parsed to JSON.
-
-    Returns
-    -------
-    dict
-        Final JSON with the wazuh-manager.conf content.
-    """
-    final_json = {}
-
-    for root in list(xml_conf):
-        if root.tag.lower() == "wazuh_config":
-            _conf2json(root, final_json)
-
-    return final_json
-
-
 def _agentconf2json(xml_conf: str) -> dict:
     """Return agent.conf in JSON from XML.
 
@@ -498,69 +476,52 @@ def _merged_mg2json(file_path: str) -> List[dict]:
 
 
 # Main functions
-def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
-                   from_import: bool = False, distinct: bool = False) -> dict:
-    """Return wazuh-manager.conf (manager) as dictionary.
+def get_manager_conf(section: str = None, field: str = None, conf_file: str = None) -> dict:
+    """Return the effective manager configuration (etc/wazuh-manager.yml, schema defaults applied) as a dictionary.
 
     Parameters
     ----------
     section : str
-        Filters by section
+        Filters by section (a top-level key of the schema).
     field : str
-        Filters by field in section (i.e. included).
+        Filters by field in section.
     conf_file : str
-        Path of the configuration file to read. Default: common.OSSEC_CONF
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
-    distinct : bool
-        Look for distinct values.
+        Path of the configuration file to read. Default: common.MANAGER_CONF
 
     Raises
     ------
     WazuhError(1101)
-        Requested component does not exist.
+        The configuration file cannot be read.
     WazuhError(1102)
-        Invalid section.
+        Invalid section (not defined by the schema).
     WazuhError(1103)
         Invalid field in section.
     WazuhError(1106)
         Requested section not present in configuration.
+    WazuhError(1130)
+        The file does not match the schema.
+    WazuhError(1131)
+        YAML syntax error.
 
     Returns
     -------
     dict
-        wazuh-manager.conf (manager) as dictionary.
+        Effective configuration as dictionary.
     """
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(conf_file)
-
-        # Parse XML to JSON
-        data = _wazuhconf2json(xml_data)
-    except Exception as e:
-        if not from_import:
-            raise WazuhError(1101, extra_message=str(e))
-        else:
-            print(f"wazuh-manager-apid: There is an error in the wazuh-manager.conf file: {str(e)}")
-            sys.exit(0)
+    data = load_manager_conf(conf_file)
 
     if section:
+        if section not in manager_conf_schema().get('properties', {}):
+            raise WazuhError(1102, extra_message=section)
         try:
             data = {section: data[section]}
         except KeyError as e:
-            if section not in CONF_SECTIONS.keys():
-                raise WazuhError(1102, extra_message=e.args[0])
-            else:
-                raise WazuhError(1106, extra_message=e.args[0])
+            raise WazuhError(1106, extra_message=e.args[0])
 
     if section and field:
         try:
-            if isinstance(data[section], list):
-                data = {section: [{field: item[field]} for item in data[section]]}
-            else:
-                field_data = data[section][field]
-                data = {section: {field: field_data}}
-        except KeyError:
+            data = {section: {field: data[section][field]}}
+        except (KeyError, TypeError):
             raise WazuhError(1103)
 
     return data
@@ -966,16 +927,12 @@ def get_active_configuration(component: str, configuration: str) -> dict:
         The active configuration the manager is currently using.
     """
     sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
-    component_socket_mapping = {'agent': 'engine-api-http.sock', 'analysis': 'engine-api-http.sock', 'auth': 'auth.sock',
-                                'com': 'com', 'integrator': 'integrator',
-                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
-                                'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',
-                                'wmodules': 'wmodules.sock'}
-    component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
-                                    'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
-                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
-                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'sockets',
-                                    'wmodules': 'sockets'}
+    # Only the daemons of the 5.x manager answer `getconfig`; the sections they return are the effective
+    # ones of etc/wazuh-manager.yml (native booleans and integers, durations as written).
+    component_socket_mapping = {'auth': 'auth.sock', 'monitor': 'monitor.sock', 'request': 'remote.sock',
+                                'wazuh-manager-db': 'wdb.sock', 'wmodules': 'wmodules.sock'}
+    component_socket_dir_mapping = {'auth': 'sockets', 'monitor': 'sockets', 'request': 'sockets',
+                                    'wazuh-manager-db': 'sockets', 'wmodules': 'sockets'}
 
     if not component or not configuration:
         raise WazuhError(1307)
@@ -1054,8 +1011,8 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
 
-        # Include password if auth->use_password enabled and authd.pass file exists
-        if data.get('auth', {}).get('use_password') == 'yes':
+        # Include password if auth.use_password is enabled (a boolean in the effective section) and authd.pass exists
+        if data.get('auth', {}).get('use_password') is True:
             try:
                 with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
                     data['authd.pass'] = f.read().rstrip()
@@ -1066,24 +1023,3 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
                          extra_message=f'{component}:{configuration}')
-
-
-def write_ossec_conf(new_conf: str):
-    """Replace the current wazuh configuration (wazuh-manager.conf) with the provided configuration.
-
-    Parameters
-    ----------
-    new_conf : str
-        The new configuration to be applied.
-
-    Raises
-    ------
-    WazuhError(1126)
-        Error updating ossec configuration.
-    """
-    try:
-        with open(common.OSSEC_CONF, 'w') as f:
-            f.writelines(new_conf)
-    except Exception as e:
-        raise WazuhError(1126, extra_message=str(e))
-

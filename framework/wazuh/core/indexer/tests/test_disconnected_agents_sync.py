@@ -425,7 +425,7 @@ async def test_run_cluster_name_sync_no_agents(mock_get, mock_check, task):
     DisconnectedAgentSyncTasks, "_get_disconnected_agents", return_value=[{"id": "001"}]
 )
 @patch(
-    "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
+    "wazuh.core.indexer.disconnected_agents.get_manager_conf",
     return_value={"cluster": {}},
 )
 async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, mock_check, task):
@@ -447,7 +447,7 @@ async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, mock_c
     return_value={"001": "clusterA"},
 )
 @patch(
-    "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
+    "wazuh.core.indexer.disconnected_agents.get_manager_conf",
     return_value={"cluster": {"name": "clusterA"}},
 )
 async def test_run_cluster_name_sync_no_update_needed(
@@ -618,7 +618,7 @@ async def test_get_cluster_name_from_indexer_exception(manager, logger):
 
 @pytest.mark.asyncio
 @patch(
-    "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
+    "wazuh.core.indexer.disconnected_agents.get_manager_conf",
     side_effect=Exception("Config error"),
 )
 async def test_init_ossec_conf_error(mock_conf, manager, logger):
@@ -636,7 +636,7 @@ def test_init_without_server_or_logger():
     Verify fallback logger initialization when dependencies are missing.
     """
     with patch(
-        "wazuh.core.indexer.disconnected_agents.get_ossec_conf", side_effect=Exception
+        "wazuh.core.indexer.disconnected_agents.get_manager_conf", side_effect=Exception
     ):
         task = DisconnectedAgentSyncTasks(server=None, logger=None, cluster_items={})
         assert task.logger.name == "disconnected_agent_sync_task"
@@ -668,7 +668,7 @@ async def test_run_loop_exception_handling(mock_sleep, mock_check, task):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+@patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
 @patch.object(DisconnectedAgentSyncTasks, "_get_cluster_name_from_indexer")
 @patch.object(DisconnectedAgentSyncTasks, "_get_disconnected_agents")
 async def test_run_cluster_name_sync_full_flow(
@@ -792,7 +792,7 @@ async def test_run_cluster_name_sync_warning_on_indexer_unavailable(task):
 
     with patch.object(task, "check_indexer", new_callable=AsyncMock):
         with patch(
-            "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
+            "wazuh.core.indexer.disconnected_agents.get_manager_conf",
             return_value={"cluster": {"name": "cluster-test"}},
         ):
             with patch.object(

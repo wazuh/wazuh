@@ -247,7 +247,7 @@ def test_get_script_arguments(argument_parser_mock):
     from wazuh.core import common
 
     wazuh_manager_clusterd.common = common
-    with patch.object(wazuh_manager_clusterd.common, 'OSSEC_CONF', 'testing/path'):
+    with patch.object(wazuh_manager_clusterd.common, 'MANAGER_CONF', 'testing/path'):
         wazuh_manager_clusterd.get_script_arguments()
         argument_parser_mock.assert_called_once_with()
         argument_parser_mock.return_value.add_argument.assert_has_calls(
@@ -262,7 +262,7 @@ def test_get_script_arguments(argument_parser_mock):
              call('-r', help='Run as root', action='store_true', dest='root'),
              call('-t', help='Test configuration', action='store_true', dest='test_config'),
              call('-c', help='Configuration file to use', type=str, metavar='config', dest='config_file',
-                  default=common.OSSEC_CONF)])
+                  default=common.MANAGER_CONF)])
 
 
 @patch('scripts.wazuh_manager_clusterd.sys.exit', side_effect=sys.exit)

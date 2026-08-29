@@ -105,7 +105,7 @@ async def test_get_cached_indexer_config_caches_result():
     """Test that config is cached and not re-read on subsequent calls."""
     config = {"indexer": {"hosts": ["localhost:9200"]}}
 
-    with patch("wazuh.core.indexer.indexer.get_ossec_conf", return_value=config) as mock_get_conf, \
+    with patch("wazuh.core.indexer.indexer.get_manager_conf", return_value=config) as mock_get_conf, \
          patch("wazuh.core.indexer.indexer.os.path.getmtime", return_value=123456.0):
         # First call - should read config
         result1 = await _get_cached_indexer_config()
@@ -130,7 +130,7 @@ async def test_get_cached_indexer_config_invalidates_on_file_change():
     config1 = {"indexer": {"hosts": ["localhost:9200"]}}
     config2 = {"indexer": {"hosts": ["localhost:9201"]}}
 
-    with patch("wazuh.core.indexer.indexer.get_ossec_conf", side_effect=[config1, config2]) as mock_get_conf, \
+    with patch("wazuh.core.indexer.indexer.get_manager_conf", side_effect=[config1, config2]) as mock_get_conf, \
          patch("wazuh.core.indexer.indexer.os.path.getmtime", side_effect=[123456.0, 789012.0]):
         # First call
         result1 = await _get_cached_indexer_config()

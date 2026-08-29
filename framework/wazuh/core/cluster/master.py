@@ -22,7 +22,7 @@ from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.indexer.metrics_snapshot import MetricsSnapshotTasks
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -1051,7 +1051,7 @@ class Master(server.AbstractServer):
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
 
         try:
-            _indexer_conf = get_ossec_conf(section="indexer")
+            _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
             self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
                                                                       cluster_items=self.cluster_items)
             self.active_response_task = ActiveResponseFetchTask(self)
@@ -1068,7 +1068,7 @@ class Master(server.AbstractServer):
             self.tasks.append(lambda: self.indexer_task_manager.manage_indexer_tasks(indexer_tasks))
         else:
             self.logger.warning(
-                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer is not configured in etc/wazuh-manager.yml (indexer.hosts is empty) or it is unavailable; "
                 "Indexer tasks will not be started."
             )
 
