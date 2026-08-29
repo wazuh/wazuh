@@ -9,6 +9,7 @@ on:
       - src/shared_modules/indexer_connector/**
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
+      - src/shared_modules/manager_config/**
       - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/vulnerability_scanner/**
       - .github/workflows/5_codelinter_clangformat.yml
@@ -95,6 +96,17 @@ jobs:
           path: src/shared_modules/utils
           id: utils
 
+      # Manager configuration (etc/wazuh-manager.yml reader and CLI)
+      - name: Manager config - Coding style
+        id: manager_config_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/manager_config
+          id: manager_config
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -118,6 +130,10 @@ jobs:
 
           if [ "${{ steps.utils_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS Utils"
+          fi
+
+          if [ "${{ steps.manager_config_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS ManagerConfig"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then

@@ -22,17 +22,9 @@
 
 static const char *TEST_CONF_PATH = "test_config-elements.conf";
 
-/* The root element depends on whether the config library under test was built
- * for an agent, and the test cannot ask CLIENT: the unit-test build never defines it, while the library it links does
- * for agent targets. WAZUHCONFIG is derived from CLIENT, so it is unusable here
- * for the same reason -- it would expand to the manager's root element in a
- * binary linked against an agent library. TEST_AGENT_TARGET comes from
- * CMakeLists.txt, which does know the target. */
-#ifdef TEST_AGENT_TARGET
+/* ReadConfig() only parses agent files: ossec.conf on the agent and agent.conf everywhere.
+ * The manager's own configuration is YAML, so the root element is the same in both targets. */
 #define CONF_ROOT "ossec_config"
-#else
-#define CONF_ROOT "wazuh_config"
-#endif
 
 #define CONF_OPEN  "<" CONF_ROOT ">"
 #define CONF_CLOSE "</" CONF_ROOT ">"

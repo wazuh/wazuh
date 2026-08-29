@@ -3412,7 +3412,7 @@ void test_remoted_module_https_config_defaults(void** state)
     remoted_module_https_config(&rm_config);
 
     // port and http_max_body_size are not read here -- they come from
-    // wazuh-manager.conf (<remote>), not internal options; untouched means 0.
+    // wazuh-manager.yml (remote), not internal options; untouched means 0.
     assert_int_equal(rm_config.port, 0);
     assert_int_equal(rm_config.io_threads, 0);
     assert_int_equal(rm_config.http_worker_threads, 0);
@@ -3489,7 +3489,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     remoted_module_https_config(&rm_config);
 
     // port and http_max_body_size are not read here -- they come from
-    // wazuh-manager.conf (<remote>), not internal options; untouched means 0.
+    // wazuh-manager.yml (remote), not internal options; untouched means 0.
     assert_int_equal(rm_config.port, 0);
     assert_int_equal(rm_config.io_threads, 8);
     assert_int_equal(rm_config.http_worker_threads, 16);

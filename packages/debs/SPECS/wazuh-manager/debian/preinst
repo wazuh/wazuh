@@ -161,7 +161,7 @@ case "$1" in
             prepare_tmp_dir
         fi
 
-        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.conf ] ; then
+        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.yml ] ; then
             touch ${WAZUH_TMP_DIR}/create_conf
         fi
 

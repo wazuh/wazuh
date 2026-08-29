@@ -388,8 +388,10 @@ UpdateOldVersions()
     WAZUH_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
     WAZUH_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
 
-    # config file -> config file.orig
-    cp -pr $WAZUH_CONF_FILE $WAZUH_CONF_FILE_ORIG
+    # config file -> config file.orig (a manager older than the YAML configuration has no such file yet)
+    if [ -f "$WAZUH_CONF_FILE" ]; then
+        cp -pr $WAZUH_CONF_FILE $WAZUH_CONF_FILE_ORIG
+    fi
 
     # Delete old service
     if [ -f /etc/init.d/ossec ]; then

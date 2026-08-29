@@ -79,7 +79,7 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int port;                        ///< HTTPS listening port. Regular remote setting (wazuh-manager.conf),
+        int port;                        ///< HTTPS listening port. Regular remote setting (wazuh-manager.yml),
                                          ///< not an internal option. <=0 -> module default.
         bool worker_node;                ///< true if this manager is a cluster worker node.
         char cluster_name[256];          ///< Cluster name.
@@ -89,7 +89,7 @@ extern "C"
         int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
                                          ///< (see remoted.http_worker_threads).
         long http_max_body_size;         ///< Transport body cap, bytes. Regular remote.https setting
-                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module
+                                         ///< (wazuh-manager.yml), not an internal option. <=0 -> module
                                          ///< default.
         int http_read_timeout;           ///< Seconds to wait for a full request on a connection (also covers
                                          ///< the TLS handshake window). <=0 -> module default

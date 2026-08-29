@@ -16,19 +16,13 @@
 ## Templates
 . ./src/init/template-select.sh
 
+# Agent templates (etc/ossec.conf, XML).
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
-GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
-AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
-CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
-
-VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
-INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
-
-# YAML twins of the manager templates (etc/wazuh-manager.yml, generated next to the XML during the migration).
+# Manager templates (etc/wazuh-manager.yml): one YAML fragment per section.
 HEADER_YML_TEMPLATE="./etc/templates/config/generic/manager/header.yml.template"
 GLOBAL_YML_TEMPLATE="./etc/templates/config/generic/manager/global.yml.template"
 LOGGING_YML_TEMPLATE="./etc/templates/config/generic/manager/logging.yml.template"
@@ -70,49 +64,26 @@ WriteSyscheck()
 
 ##########
 # DisableAuthd()
+# `auth` section with authd disabled (installer answer or AUTHD="no").
 ##########
 DisableAuthd()
 {
-    echo "  <!-- Configuration for wazuh-manager-authd -->" >> $NEWCONFIG
-    echo "  <auth>" >> $NEWCONFIG
-    echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-    echo "    <port>1515</port>" >> $NEWCONFIG
-    echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
-    echo "    <purge>yes</purge>" >> $NEWCONFIG
-    echo "    <use_password>no</use_password>" >> $NEWCONFIG
-    echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
-    echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
-    echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or
-    # owns its own cert/key pair, so even in this <disabled>yes</disabled> block these point at
-    # remoted's, keeping the value valid in the (rare) case an operator later flips <disabled> back
-    # to "no" by hand instead of regenerating the whole file. Same custom-certificate override as
-    # the enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
-    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
-    echo "  </auth>" >> $NEWCONFIG
+    echo "# Configuration for wazuh-manager-authd" >> $NEWCONFIG
+    echo "auth:" >> $NEWCONFIG
+    echo "  disabled: true" >> $NEWCONFIG
+    echo "  port: 1515" >> $NEWCONFIG
+    echo "  use_source_ip: false" >> $NEWCONFIG
+    echo "  purge: true" >> $NEWCONFIG
+    echo "  use_password: false" >> $NEWCONFIG
+    echo "  ciphers: \"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\"" >> $NEWCONFIG
+    echo "  # ssl_agent_ca: etc/certs/ca.pem" >> $NEWCONFIG
+    echo "  ssl_verify_host: false" >> $NEWCONFIG
+    # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or owns its own
+    # cert/key pair, so even in this disabled block these point at remoted's, keeping the value valid if an
+    # operator later flips `disabled` back to false by hand. Same custom-certificate override as the enabled path.
+    echo "  ssl_manager_cert: \"${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}\"" >> $NEWCONFIG
+    echo "  ssl_manager_key: \"${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}\"" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-}
-
-##########
-# DisableAuthdYaml() — YAML twin of DisableAuthd()
-##########
-DisableAuthdYaml()
-{
-    echo "# Configuration for wazuh-manager-authd" >> $NEWCONFIG_YML
-    echo "auth:" >> $NEWCONFIG_YML
-    echo "  disabled: true" >> $NEWCONFIG_YML
-    echo "  port: 1515" >> $NEWCONFIG_YML
-    echo "  use_source_ip: false" >> $NEWCONFIG_YML
-    echo "  purge: true" >> $NEWCONFIG_YML
-    echo "  use_password: false" >> $NEWCONFIG_YML
-    echo "  ciphers: \"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\"" >> $NEWCONFIG_YML
-    echo "  # ssl_agent_ca: etc/certs/ca.pem" >> $NEWCONFIG_YML
-    echo "  ssl_verify_host: false" >> $NEWCONFIG_YML
-    # Same unified manager certificate as DisableAuthd() (see the comment there).
-    echo "  ssl_manager_cert: \"${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}\"" >> $NEWCONFIG_YML
-    echo "  ssl_manager_key: \"${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}\"" >> $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
 }
 
 ##########
@@ -697,19 +668,10 @@ WriteAgent()
 RemoteVarError()
 {
     echo "ERROR: Invalid value '$2' for installation variable $1: $3" >&2
-    # $NEWCONFIG/$NEWCONFIG_YML are always scratch files (./wazuh.conf.temp and ./wazuh.yml.temp for the
-    # generator, ./etc/wazuh.mc and ./etc/wazuh.yml.tmp for install.sh), consumed only after a complete write.
-    rm -f "$NEWCONFIG" "$NEWCONFIG_YML"
+    # $NEWCONFIG is always a scratch file (./wazuh.conf.temp for the generator, ./etc/wazuh.mc for
+    # install.sh), consumed only after a complete write.
+    rm -f "$NEWCONFIG"
     exit 1
-}
-
-CheckRemoteXmlSafe()
-{
-    [ -z "$2" ] && return 0
-    case "$2" in
-        *[\&\<\>\"\']*)
-            RemoteVarError "$1" "$2" "the characters & < > \" ' are not allowed";;
-    esac
 }
 
 # Values copied verbatim into a double-quoted YAML scalar: no quotes, backslashes or control characters.
@@ -870,7 +832,6 @@ ValidateRemoteVars()
                            WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS \
                            WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
-        CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
         CheckRemoteYamlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
 
@@ -936,124 +897,62 @@ ValidateRemoteVars()
 
 ##########
 # WriteRemote()
-# Writes the <remote> block. Every value can be customized at installation
-# time through the WAZUH_REMOTE_* variables; options with no built-in
-# default are only written when their variable is set.
+# `remote` section from the WAZUH_REMOTE_* variables (see etc/preloaded-vars.conf).
+# Text values coming from the environment are double-quoted (CheckRemoteYamlSafe),
+# numbers are bare, yes/no become true/false and the protocol list is a YAML sequence.
 ##########
 WriteRemote()
 {
     ValidateRemoteVars
 
-    echo "  <remote>" >> $NEWCONFIG
-    echo "    <https>" >> $NEWCONFIG
-    echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
-    echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}</bind_addr>" >> $NEWCONFIG
-    echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
-    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
-    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "remote:" >> $NEWCONFIG
+    echo "  https:" >> $NEWCONFIG
+    echo "    port: ${WAZUH_REMOTE_HTTPS_PORT:-1517}" >> $NEWCONFIG
+    echo "    bind_addr: \"${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}\"" >> $NEWCONFIG
+    echo "    global_prefix: \"${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}\"" >> $NEWCONFIG
+    echo "    certificate: \"${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}\"" >> $NEWCONFIG
+    echo "    key: \"${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}\"" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
-        echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
+        echo "    ca: \"${WAZUH_REMOTE_HTTPS_CA}\"" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" ]; then
-        echo "      <verification_mode>${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}</verification_mode>" >> $NEWCONFIG
+        echo "    verification_mode: ${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_CIPHERS}" ]; then
-        echo "      <ciphers>${WAZUH_REMOTE_HTTPS_CIPHERS}</ciphers>" >> $NEWCONFIG
+        echo "    ciphers: \"${WAZUH_REMOTE_HTTPS_CIPHERS}\"" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}" ]; then
-        echo "      <max_body_size>${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}</max_body_size>" >> $NEWCONFIG
+        echo "    max_body_size: \"${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}\"" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_DUAL_STACK}" ]; then
-        echo "      <dual_stack>${WAZUH_REMOTE_HTTPS_DUAL_STACK}</dual_stack>" >> $NEWCONFIG
+        echo "    dual_stack: $(YesNoToBool "${WAZUH_REMOTE_HTTPS_DUAL_STACK}")" >> $NEWCONFIG
     fi
-    echo "    </https>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    echo "    <legacy>" >> $NEWCONFIG
-    echo "      <enabled>${WAZUH_REMOTE_LEGACY_ENABLED:-yes}</enabled>" >> $NEWCONFIG
-    echo "      <port>${WAZUH_REMOTE_LEGACY_PORT:-1514}</port>" >> $NEWCONFIG
-    echo "      <protocol>${WAZUH_REMOTE_LEGACY_PROTOCOL:-tcp}</protocol>" >> $NEWCONFIG
-    if [ -n "${WAZUH_REMOTE_LEGACY_IPV6}" ]; then
-        echo "      <ipv6>${WAZUH_REMOTE_LEGACY_IPV6}</ipv6>" >> $NEWCONFIG
-    fi
-    # With an IPv6 listener and no explicit address, local_ip is left out so
-    # that remoted applies its own IPv6 default instead of 127.0.0.1.
-    if [ -n "${WAZUH_REMOTE_LEGACY_LOCAL_IP}" ] || [ "X${WAZUH_REMOTE_LEGACY_IPV6}" != "Xyes" ]; then
-        echo "      <local_ip>${WAZUH_REMOTE_LEGACY_LOCAL_IP:-127.0.0.1}</local_ip>" >> $NEWCONFIG
-    fi
-    echo "      <queue_size>${WAZUH_REMOTE_LEGACY_QUEUE_SIZE:-131072}</queue_size>" >> $NEWCONFIG
-    if [ -n "${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}" ]; then
-        echo "      <rids_closing_time>${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}</rids_closing_time>" >> $NEWCONFIG
-    fi
-    if [ -n "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" ]; then
-        echo "      <connection_overtake_time>${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}</connection_overtake_time>" >> $NEWCONFIG
-    fi
-    echo "    </legacy>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    echo "    <agents>" >> $NEWCONFIG
-    echo "      <allow_higher_versions>${WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS:-no}</allow_higher_versions>" >> $NEWCONFIG
-    echo "    </agents>" >> $NEWCONFIG
-    echo "  </remote>" >> $NEWCONFIG
-}
-
-##########
-# WriteRemoteYaml()
-# YAML twin of WriteRemote(): same WAZUH_REMOTE_* variables, same defaults and
-# omission rules. Text values coming from the environment are double-quoted
-# (CheckRemoteYamlSafe), numbers are bare, yes/no become true/false and the
-# protocol list is a YAML sequence.
-##########
-WriteRemoteYaml()
-{
-    ValidateRemoteVars
-
-    echo "remote:" >> $NEWCONFIG_YML
-    echo "  https:" >> $NEWCONFIG_YML
-    echo "    port: ${WAZUH_REMOTE_HTTPS_PORT:-1517}" >> $NEWCONFIG_YML
-    echo "    bind_addr: \"${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}\"" >> $NEWCONFIG_YML
-    echo "    global_prefix: \"${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}\"" >> $NEWCONFIG_YML
-    echo "    certificate: \"${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}\"" >> $NEWCONFIG_YML
-    echo "    key: \"${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}\"" >> $NEWCONFIG_YML
-    if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
-        echo "    ca: \"${WAZUH_REMOTE_HTTPS_CA}\"" >> $NEWCONFIG_YML
-    fi
-    if [ -n "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" ]; then
-        echo "    verification_mode: ${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" >> $NEWCONFIG_YML
-    fi
-    if [ -n "${WAZUH_REMOTE_HTTPS_CIPHERS}" ]; then
-        echo "    ciphers: \"${WAZUH_REMOTE_HTTPS_CIPHERS}\"" >> $NEWCONFIG_YML
-    fi
-    if [ -n "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}" ]; then
-        echo "    max_body_size: \"${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}\"" >> $NEWCONFIG_YML
-    fi
-    if [ -n "${WAZUH_REMOTE_HTTPS_DUAL_STACK}" ]; then
-        echo "    dual_stack: $(YesNoToBool "${WAZUH_REMOTE_HTTPS_DUAL_STACK}")" >> $NEWCONFIG_YML
-    fi
-    echo "  legacy:" >> $NEWCONFIG_YML
-    echo "    enabled: $(YesNoToBool "${WAZUH_REMOTE_LEGACY_ENABLED:-yes}")" >> $NEWCONFIG_YML
-    echo "    port: ${WAZUH_REMOTE_LEGACY_PORT:-1514}" >> $NEWCONFIG_YML
+    echo "  legacy:" >> $NEWCONFIG
+    echo "    enabled: $(YesNoToBool "${WAZUH_REMOTE_LEGACY_ENABLED:-yes}")" >> $NEWCONFIG
+    echo "    port: ${WAZUH_REMOTE_LEGACY_PORT:-1514}" >> $NEWCONFIG
     PROTO_LIST=""
     OLD_IFS="$IFS"; IFS=','
     for PROTO_WORD in ${WAZUH_REMOTE_LEGACY_PROTOCOL:-tcp}; do
         PROTO_LIST="${PROTO_LIST:+${PROTO_LIST}, }${PROTO_WORD}"
     done
     IFS="$OLD_IFS"
-    echo "    protocol: [${PROTO_LIST}]" >> $NEWCONFIG_YML
+    echo "    protocol: [${PROTO_LIST}]" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_LEGACY_IPV6}" ]; then
-        echo "    ipv6: $(YesNoToBool "${WAZUH_REMOTE_LEGACY_IPV6}")" >> $NEWCONFIG_YML
+        echo "    ipv6: $(YesNoToBool "${WAZUH_REMOTE_LEGACY_IPV6}")" >> $NEWCONFIG
     fi
     # Same rule as WriteRemote(): no local_ip for an IPv6 listener without an explicit address.
     if [ -n "${WAZUH_REMOTE_LEGACY_LOCAL_IP}" ] || [ "X${WAZUH_REMOTE_LEGACY_IPV6}" != "Xyes" ]; then
-        echo "    local_ip: \"${WAZUH_REMOTE_LEGACY_LOCAL_IP:-127.0.0.1}\"" >> $NEWCONFIG_YML
+        echo "    local_ip: \"${WAZUH_REMOTE_LEGACY_LOCAL_IP:-127.0.0.1}\"" >> $NEWCONFIG
     fi
-    echo "    queue_size: ${WAZUH_REMOTE_LEGACY_QUEUE_SIZE:-131072}" >> $NEWCONFIG_YML
+    echo "    queue_size: ${WAZUH_REMOTE_LEGACY_QUEUE_SIZE:-131072}" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}" ]; then
-        echo "    rids_closing_time: \"${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}\"" >> $NEWCONFIG_YML
+        echo "    rids_closing_time: \"${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}\"" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" ]; then
-        echo "    connection_overtake_time: ${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" >> $NEWCONFIG_YML
+        echo "    connection_overtake_time: ${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" >> $NEWCONFIG
     fi
-    echo "  agents:" >> $NEWCONFIG_YML
-    echo "    allow_higher_versions: $(YesNoToBool "${WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS:-no}")" >> $NEWCONFIG_YML
+    echo "  agents:" >> $NEWCONFIG
+    echo "    allow_higher_versions: $(YesNoToBool "${WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS:-no}")" >> $NEWCONFIG
 }
 
 ##########
@@ -1063,46 +962,40 @@ WriteManager()
 {
     NO_LOCALFILES=$1
 
-    HEADERS=$(SetHeaders "Manager")
+    HEADERS=$(SetHeaders "Manager" "${HEADER_YML_TEMPLATE}")
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<wazuh_config>" >> $NEWCONFIG
-
-    GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
-
-    echo "$GLOBAL_CONTENT" >> $NEWCONFIG
+    cat ${GLOBAL_YML_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    cat ${LOGGING_YML_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     WriteRemote
     echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
-    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    cat ${VULN_YML_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Indexer
-    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
+    cat ${INDEXER_YML_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
-        # Same custom-certificate override WriteRemote()'s <https> block already honors (see
-        # GenerateHttpsManagerCert() above): authd's <ssl_manager_cert>/<ssl_manager_key> must
+        # Same custom-certificate override WriteRemote()'s https block already honors (see
+        # GenerateHttpsManagerCert() above): authd's ssl_manager_cert/ssl_manager_key must
         # point at whatever file the manager's HTTPS listener actually loads, or authd fails to
         # start (ENOENT) whenever a custom certificate is supplied -- GenerateHttpsManagerCert()
-        # correctly skips generating the default etc/certs/remoted.pem in that case, but
-        # auth.template's cert paths used to stay hardcoded to it regardless.
+        # correctly skips generating the default etc/certs/remoted.pem in that case.
         WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
         WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
+        sed -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
             -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
-            "${AUTH_TEMPLATE}" >> $NEWCONFIG
+            "${AUTH_YML_TEMPLATE}" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd
@@ -1114,51 +1007,7 @@ WriteManager()
         CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
     fi
     # Writting cluster configuration
-    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    echo "</wazuh_config>" >> $NEWCONFIG
-
-    # YAML twin (etc/wazuh-manager.yml): same sections and the same cluster key.
-    WriteManagerYaml
-}
-
-##########
-# WriteManagerYaml()
-# YAML twin of WriteManager() (etc/wazuh-manager.yml): same sections, same
-# order and the same CLUSTER_KEY. Called by WriteManager() once the key exists.
-##########
-WriteManagerYaml()
-{
-    HEADERS=$(SetHeaders "Manager" "${HEADER_YML_TEMPLATE}")
-    echo "$HEADERS" > $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
-
-    cat ${GLOBAL_YML_TEMPLATE} >> $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
-
-    cat ${LOGGING_YML_TEMPLATE} >> $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
-
-    WriteRemoteYaml
-    echo "" >> $NEWCONFIG_YML
-
-    cat ${VULN_YML_TEMPLATE} >> $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
-
-    cat ${INDEXER_YML_TEMPLATE} >> $NEWCONFIG_YML
-    echo "" >> $NEWCONFIG_YML
-
-    if [ "X${AUTHD}" = "Xyes" ]; then
-        sed -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
-            "${AUTH_YML_TEMPLATE}" >> $NEWCONFIG_YML
-        echo "" >> $NEWCONFIG_YML
-    else
-        DisableAuthdYaml
-    fi
-
-    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_YML_TEMPLATE}" >> $NEWCONFIG_YML
+    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_YML_TEMPLATE}" >> $NEWCONFIG
 }
 
 InstallCommon()
@@ -1171,16 +1020,14 @@ InstallCommon()
       WAZUH_GROUP='wazuh-manager'
       WAZUH_USER='wazuh-manager'
       WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
-      WAZUH_CONF_SRC='../etc/wazuh-manager.conf'
-      WAZUH_CONF_YML_SRC='../etc/wazuh-manager.yml'
+      WAZUH_CONF_SRC='../etc/wazuh-manager.yml'
   elif [ ${INSTYPE} = 'agent' ]; then
       WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
       WAZUH_CONF_SRC='../etc/ossec-agent.conf'
   fi
 
   if [ ${INSTYPE} = 'manager' ]; then
-      WAZUH_CONF="wazuh-manager.conf"
-      WAZUH_CONF_YML="wazuh-manager.yml"
+      WAZUH_CONF="wazuh-manager.yml"
       WAZUH_LOGFILE="wazuh-manager.log"
       WAZUH_LOGJSON="wazuh-manager.json"
   else
@@ -1544,48 +1391,27 @@ InstallCommon()
     if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
         if [ ! -f ../etc/wazuh.mc ]; then
             echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
-            YAML_TMP_ARG=""
-            if [ "X${INSTYPE}" = "Xmanager" ]; then
-                YAML_TMP_ARG="../etc/wazuh.yml.tmp"
-            fi
-            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" ${YAML_TMP_ARG} > ../etc/wazuh.mc; then
+            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
                 rm -f ../etc/wazuh.mc
                 echo "WARNING: unable to regenerate ../etc/wazuh.mc."
             fi
         fi
 
         if [ -f ../etc/wazuh.mc ]; then
+            if [ "X${INSTYPE}" = "Xmanager" ]; then
+                # The generated etc/wazuh-manager.yml must validate against the embedded schema before it is
+                # installed (file existence is not checked: the certificates are generated later in the installation).
+                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
+                    echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
+                    exit 1
+                fi
+            fi
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
         fi
     fi
-
-    # YAML configuration (etc/wazuh-manager.yml), generated together with the XML during the migration.
-    if [ "X${INSTYPE}" = "Xmanager" ] && [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF_YML} ]; then
-        if [ ! -f ../etc/wazuh.yml.tmp ]; then
-            echo "WARNING: missing ../etc/wazuh.yml.tmp. Regenerating YAML configuration template."
-            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" ../etc/wazuh.yml.tmp > /dev/null; then
-                rm -f ../etc/wazuh.yml.tmp
-                echo "WARNING: unable to regenerate ../etc/wazuh.yml.tmp."
-            fi
-        fi
-
-        if [ -f ../etc/wazuh.yml.tmp ]; then
-            # The generated file must validate against the embedded schema before it is installed
-            # (file existence is not checked: the certificates are generated later in the installation).
-            if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.yml.tmp; then
-                echo "ERROR: the generated ${WAZUH_CONF_YML} is not a valid manager configuration."
-                exit 1
-            fi
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.yml.tmp ${INSTALLDIR}/etc/${WAZUH_CONF_YML}
-        else
-            echo "WARNING: unable to generate ${WAZUH_CONF_YML} with desired configurations, using default configurations from ${WAZUH_CONF_YML_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_YML_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF_YML}
-        fi
-    fi
-
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
   if [ "X${INSTYPE}" = "Xagent" ]; then

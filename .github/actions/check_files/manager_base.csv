@@ -43,7 +43,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/etc/certs,root,wazuh-manager,1770,directory,drwxrwx--T,,
 /var/wazuh-manager/etc/certs/remoted.pem,wazuh-manager,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/etc/certs/remoted-key.pem,wazuh-manager,wazuh-manager,640,file,-rw-r-----,,
-/var/wazuh-manager/etc/wazuh-manager.conf,root,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/wazuh-manager.yml,root,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/indexer-plugins,root,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/etc/indexer-plugins/metrics-agents.json,root,wazuh-manager,640,file,-rw-r-----,,

@@ -21,7 +21,7 @@ Use()
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
   echo "   - installation_path (optional): changes the default path '/var/wazuh-manager' for server and '/var/ossec' for agent"
-  echo "   - yaml_output (optional, manager only): also write the YAML configuration (etc/wazuh-manager.yml) to this file"
+  echo " The manager configuration is YAML (etc/wazuh-manager.yml); the agent one is XML (etc/ossec.conf)."
 }
 
 # Read script values
@@ -45,15 +45,10 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
   if [ "$#" -ge "5" ]; then
     INSTALLDIR="$5"
   fi
-  YAML_OUT=""
-  if [ "$#" -ge "6" ]; then
-    YAML_OUT="$6"
-  fi
 
   # Default values definition
   SERVER_IP="MANAGER_IP"
   NEWCONFIG="./wazuh.conf.temp"
-  NEWCONFIG_YML="./wazuh.yml.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
   SYSCOLLECTOR="yes"
@@ -64,9 +59,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   if [ -r "$NEWCONFIG" ]; then
       rm "$NEWCONFIG"
-  fi
-  if [ -r "$NEWCONFIG_YML" ]; then
-      rm "$NEWCONFIG_YML"
   fi
 
   if [ "$INSTYPE" = "server" ]; then
@@ -80,12 +72,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   cat "$NEWCONFIG"
   rm "$NEWCONFIG"
-
-  # The manager also produces its YAML twin (same cluster key); copy it where the caller asked.
-  if [ -n "$YAML_OUT" ] && [ -f "$NEWCONFIG_YML" ]; then
-    cp "$NEWCONFIG_YML" "$YAML_OUT"
-  fi
-  rm -f "$NEWCONFIG_YML"
 
   exit 0
 else
