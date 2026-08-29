@@ -60,9 +60,9 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
 
 /**
  * Gate remote_upgrade task creation on two independent remoted settings that both live in the
- * same <remote> config block: (1) <remote><legacy> delivery being enabled, when the agent is
+ * same `remote` section: (1) remote.legacy delivery being enabled, when the agent is
  * still below v5.0.0 (with it disabled there is no way to deliver the task to that agent at
- * all), and (2) <remote><https><verification_mode> being 'none' when the target is v5.0.0+ (no
+ * all), and (2) remote.https.verification_mode being 'none' when the target is v5.0.0+ (no
  * 5.x agent can speak HTTPS yet, so it may be unable to reconnect). Reads the `remote` section of
  * the manager configuration wm_config() loaded (etc/wazuh-manager.yml, the same document remoted
  * reads) -- no IPC, no shared live config between the two daemons -- but only once per call, since a

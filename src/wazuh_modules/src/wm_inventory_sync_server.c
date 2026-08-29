@@ -468,7 +468,7 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
     }
 
     /* Reported so `getconfig wmodules` can answer what this module is actually running with.
-     * Secrets-free by construction: the <indexer> block, the only part of the configuration that
+     * Secrets-free by construction: the indexer section, the only part of the configuration that
      * can carry credentials, is deliberately excluded. */
     cJSON* config = cJSON_CreateObject();
     cJSON_AddNumberToObject(config, "io_threads", data->config->io_threads);

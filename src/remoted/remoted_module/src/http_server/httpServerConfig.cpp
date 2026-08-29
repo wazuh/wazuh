@@ -67,7 +67,7 @@ namespace
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 
-    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular <remote>
+    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular remote
     // setting rather than an internal option, but resolved the same way: positive wins).
     std::size_t resolveUnsigned(const long configValue, const std::size_t defaultValue)
     {

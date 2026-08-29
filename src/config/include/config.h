@@ -11,28 +11,22 @@
 #ifndef HCONFIG_H
 #define HCONFIG_H
 
-#define CGLOBAL       0000000001
 #define CSYSCHECK     0000000004
 #define CROOTCHECK    0000000010
 #define CLOCALFILE    0000000040
-#define CREMOTE       0000000100
 #define CCLIENT       0000000200
 #define CAGENT_CONFIG 0000010000
 #define CWMODULE      0000200000
-#define CAUTHD        0001000000
 #define CLGCSOCKET    0010000000
-#define WAZUHDB       0040000000
 #define ATAMPERING    0200000000
 
 #define MAX_NEEDED_TAGS 4
 
 #define BITMASK(modules)   (\
-                            (modules & CGLOBAL       ) | (modules & CSYSCHECK     ) |\
-                            (modules & CROOTCHECK    ) | (modules & CLOCALFILE    ) |\
-                            (modules & CREMOTE       ) | (modules & CCLIENT       ) |\
+                            (modules & CSYSCHECK     ) | (modules & CROOTCHECK    ) |\
+                            (modules & CLOCALFILE    ) | (modules & CCLIENT       ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
-                            (modules & CAUTHD        ) |\
-                            (modules & CLGCSOCKET    ) | (modules & WAZUHDB       ) )
+                            (modules & CLGCSOCKET    ) )
 
 
 
@@ -44,7 +38,6 @@
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
-int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
 /* Readers of the effective YAML document (etc/wazuh-manager.yml, see mconf-config.h): the cJSON
  * argument is the section returned by w_mconf_section(); NULL/absent keys keep the caller defaults.
@@ -56,7 +49,6 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1);
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
-int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
@@ -90,14 +82,11 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 #ifndef WIN32
-int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
 int Read_Authd_JSON(const struct cJSON *auth, void *d1);
 #endif
 #endif
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
-int Read_Vulnerability_Detection(const OS_XML *xml, XML_NODE nodes, void *d1, const bool old_vd);
-int Read_Indexer(const char* config_file);
 #ifndef CLIENT
 /* Readers of the effective YAML document (etc/wazuh-manager.yml, see mconf-config.h) used by modulesd:
  * `vulnerability-detection` (d1 = wmodule **; a NULL section creates no module) and `indexer` (sets
@@ -106,7 +95,6 @@ int Read_Vulnerability_Detection_JSON(const struct cJSON *vd, void *d1);
 int Read_Indexer_JSON(const struct cJSON *indexer);
 #endif
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
-int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 /**

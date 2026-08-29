@@ -12,24 +12,7 @@
 #ifndef WAZUH_DB_CONFIG_H
 #define WAZUH_DB_CONFIG_H
 
-/**
- * @brief This method will read the nodes of the main configuration block "wdb".
- *
- * @param xml The configuration file to read.
- * @param chld_node The "wdb" configuration block.
- * @return int OS_SUCCESS if the configuration was read with no errors, OS_INVALID otherwise.
- */
-int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node);
 
-/**
- * @brief This method will read the "backup" configuration block of Wazuh-DB.
- *
- * @param xml The configuration file to read.
- * @param node The "backup" configuration block.
- * @param BACKUP_NODE A valid configuration node declared in the enumeration wdb_backup_db.
- * @return int OS_SUCCESS if the configuration was read with no errors, OS_INVALID otherwise.
- */
-int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE);
 
 #ifndef CLIENT
 struct cJSON;

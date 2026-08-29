@@ -84,13 +84,13 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "enabled")));
     #ifdef TEST_SERVER
     assert_non_null(cJSON_GetObjectItem(conf, "wpk_repository"));
     assert_string_equal(cJSON_GetObjectItem(conf, "wpk_repository")->valuestring, "wazuh.com/packages");
     #else
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "ca_verification")));
     cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_non_null(certs);
     assert_int_equal(cJSON_GetArraySize(certs), 1);
@@ -125,10 +125,10 @@ void test_wm_agent_upgrade_dump_disabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "enabled")));
     #ifndef TEST_SERVER
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "ca_verification")));
     cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_null(certs);
     #endif

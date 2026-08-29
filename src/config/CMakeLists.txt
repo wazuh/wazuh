@@ -45,7 +45,11 @@ file(GLOB CONFIG_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 # Remove manager-only config parsers from agent builds
 if("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent")
   list(REMOVE_ITEM CONFIG_CORE_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/authd-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/global-config.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/indexer-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/remote-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wazuh_db-config.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-task-manager.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-vulnerability-detection.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/mconf-config.c")

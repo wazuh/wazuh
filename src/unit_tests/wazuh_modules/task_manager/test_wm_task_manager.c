@@ -93,7 +93,7 @@ void test_wm_task_manager_dump_enabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "task-manager");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "enabled")));
 }
 
 void test_wm_task_manager_dump_disabled(void **state)
@@ -110,7 +110,7 @@ void test_wm_task_manager_dump_disabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "task-manager");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "enabled")));
 }
 
 void test_wm_task_manager_destroy(void **state)
