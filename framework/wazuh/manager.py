@@ -392,9 +392,9 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 @mask_sensitive_config()
 @expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
-def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
+def read_manager_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Wrapper for get_manager_conf.
+    """Read the manager configuration file (etc/wazuh-manager.yml), as the effective document or as raw text.
 
     Parameters
     ----------
@@ -457,7 +457,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
-def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
+def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     """Replace the manager configuration (etc/wazuh-manager.yml) with the provided one.
 
     The new text is checked before anything is written (YAML syntax, schema, protected sections); the file is then

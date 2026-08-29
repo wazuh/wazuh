@@ -190,6 +190,19 @@ def test_body_validate_content_type():
     TestModel.validate_content_type(request, content_type)
 
 
+def test_body_validate_content_type_collection():
+    """Test class Body `validate_content_type` method with several accepted content types."""
+    accepted = ('application/octet-stream', 'application/yaml')
+
+    TestModel.validate_content_type(RequestMock('application/yaml'), accepted)
+    TestModel.validate_content_type(RequestMock('application/octet-stream'), accepted)
+
+    with pytest.raises(ProblemException) as exc:
+        TestModel.validate_content_type(RequestMock('application/xml'), accepted)
+
+    assert exc.value.ext['code'] == 6002
+
+
 def test_body_validate_content_type_ko():
     """Test class Body `validate_content_type` method exceptions."""
     request = RequestMock(JSON_CONTENT_TYPE)

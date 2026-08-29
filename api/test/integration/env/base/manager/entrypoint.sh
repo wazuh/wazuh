@@ -3,20 +3,23 @@
 # Apply API configuration
 cp -rf /tmp_volume/config/* /var/wazuh-manager/ && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
-# Modify wazuh configuration file
-for conf_file in /tmp_volume/configuration_files/*.conf; do
-  python3 /tools/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf $conf_file
+# Modify the manager configuration file (etc/wazuh-manager.yml): merge the YAML fragments of the environment, then
+# set the node-specific options. PyYAML comes with the manager's Python.
+MANAGER_CONF=/var/wazuh-manager/etc/wazuh-manager.yml
+YAML_MERGE="/var/wazuh-manager/framework/python/bin/python3 /tools/yaml_merge.py"
+for conf_file in /tmp_volume/configuration_files/*.yml; do
+  [ -e "$conf_file" ] && $YAML_MERGE merge $MANAGER_CONF $conf_file
 done
 
-  sed -i "s:<node>127.0.0.1</node>:<node>$1</node>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  $YAML_MERGE set $MANAGER_CONF cluster.nodes "[$1]"
+  $YAML_MERGE set $MANAGER_CONF cluster.node_name "$2"
   sed -i "s:validate_responses=False:validate_responses=True:g" /var/wazuh-manager/api/scripts/wazuh_manager_apid.py
-  sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "s:<local_ip>127.0.0.1</local_ip>:<local_ip>0.0.0.0</local_ip>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" /var/wazuh-manager/etc/wazuh-manager.conf
+  $YAML_MERGE set $MANAGER_CONF cluster.bind_addr 0.0.0.0
+  $YAML_MERGE set $MANAGER_CONF remote.legacy.local_ip 0.0.0.0
+  $YAML_MERGE set $MANAGER_CONF cluster.key 9d273b53510fef702b54a92e9cffc82e
 
 if [ "$3" != "master" ]; then
-    sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+    $YAML_MERGE set $MANAGER_CONF cluster.node_type worker
 fi
 
 cp -rf /tmp_volume/configuration_files/config/* /var/wazuh-manager/

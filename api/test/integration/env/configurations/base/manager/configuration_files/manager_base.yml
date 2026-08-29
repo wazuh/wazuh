@@ -1,0 +1,25 @@
+# Base manager configuration of the API integration environment, merged into etc/wazuh-manager.yml by the
+# entrypoint (tools/yaml_merge.py). Node-specific values (node_name, nodes, node_type) are set afterwards.
+cluster:
+  name: wazuh
+  node_name: node01
+  node_type: master
+  key: key
+  port: 1516
+  bind_addr: 0.0.0.0
+  nodes:
+    - 127.0.0.1
+  hidden: false
+
+auth:
+  use_source_ip: false
+
+remote:
+  legacy:
+    enabled: true
+    protocol:
+      - tcp
+
+vulnerability-detection:
+  enabled: false
+  feed-update-interval: 60m

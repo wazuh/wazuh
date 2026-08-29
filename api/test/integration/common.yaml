@@ -103,44 +103,42 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_wazuh_conf:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-      </global>
+  valid_wazuh_conf: |
+    # etc/wazuh-manager.yml of worker1 (the whole file is replaced: cluster.key is mandatory)
+    global:
+      agents_disconnection_time: 20s
+      agents_disconnection_alert_time: 100s
 
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
+    logging:
+      log_format:
+        - plain
 
-      <remote>
-        <legacy>
-          <port>1514</port>
-          <protocol>tcp</protocol>
-          <local_ip>0.0.0.0</local_ip>
-        </legacy>
-      </remote>
+    remote:
+      legacy:
+        enabled: true
+        port: 1514
+        protocol:
+          - tcp
+        local_ip: 0.0.0.0
 
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
+    vulnerability-detection:
+      enabled: false
+      feed-update-interval: 60m
 
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
-    </wazuh_config>
+    cluster:
+      name: wazuh
+      node_name: worker1
+      node_type: worker
+      key: 9d273b53510fef702b54a92e9cffc82e
+      port: 1516
+      bind_addr: 0.0.0.0
+      nodes:
+        - wazuh-master
 
-  invalid_wazuh_conf:
-    <wazuh_config>
-      <global>
-      </global>
+  invalid_wazuh_conf: |
+    # Valid YAML that violates the schema: booleans are true/false (1130 at /auth/use_password)
+    auth:
+      use_password: yes
 
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
-
-      <remote>
-    </wazuh_config>
+    cluster:
+      key: 9d273b53510fef702b54a92e9cffc82e
