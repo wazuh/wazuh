@@ -108,7 +108,10 @@ written from the `WAZUH_REMOTE_*` installation variables by `WriteRemoteYaml()`)
 
 ## Consumers
 
-Today: `bin/wazuh-manager-conf`, the installer (validation of the generated file) and the C daemons remoted, authd, monitord
-and wazuh-db through libconfig's `w_mconf_*()` (`src/config/src/mconf-config.c`: one load per process without file checks,
-`-t` validates with them, `getconfig` returns the effective sections). Planned: modulesd, the engine (`manager_config::Document`),
-`wazuh-server.sh` (`get`/`validate`) and, through the installed schema copy, the Python framework.
+Today: `bin/wazuh-manager-conf`; the installer (validation of the generated file); the C daemons remoted, authd, monitord,
+wazuh-db and modulesd through libconfig's `w_mconf_*()` (`src/config/src/mconf-config.c`: one load per process without file
+checks, `-t` validates with them, `getconfig` returns the effective sections); the engine (`wazuh-manager-analysisd`) through the
+C++ API — `src/engine/source/base/src/managerConfig.cpp` links `libmanager_config.a` from `build/lib`, loads the document once and
+registers it as the section provider of `libwazuhshared.so` (`w_mconf_hook_set`) so the logging format and cluster getters inside
+the shared library read the same file; and `wazuh-server.sh` (`validate` before any daemon `-t`, `get cluster.node_type`,
+`get auth.disabled`). Planned: the Python framework, through the installed schema copy.

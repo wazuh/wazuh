@@ -105,22 +105,6 @@ FuncType getFunction(std::string_view name)
  */
 void setLoggerTag(std::string_view tag);
 
-/**
- * @brief Get the JSON indexer configuration.
- * @return std::string The JSON configuration string for the indexer.
- *
- * This wrapper function retrieves the current JSON indexer configuration
- * from the shared library.
- */
-std::string getJsonIndexerCnf();
-
-/**
- * @brief Get the cluster name and node name.
- * @return std::pair<std::string, std::string> A pair containing the cluster name and node name.
- * @throws std::runtime_error If the function pointers cannot be retrieved or if the functions return null.
- */
-std::pair<std::string, std::string> getClusterNameAndNodeName();
-
 } // namespace base::libwazuhshared
 
 #endif // _BASE_LIBWAZUHSHARED_HPP
