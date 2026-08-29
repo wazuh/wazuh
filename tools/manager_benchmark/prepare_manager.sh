@@ -4,30 +4,33 @@ set -euo pipefail
 # prepare_manager.sh — Configure a local manager for agent-mode benchmarking.
 #
 # Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be
-# open and password-free. This script makes the <auth> block:
-#     <disabled>no</disabled>
-#     <remote_enrollment>yes</remote_enrollment>
-#     <use_password>no</use_password>
-#     <max_agents>N</max_agents>          (only when --max-agents is given)
-# and removes etc/authd.pass.
+# open and password-free. This script sets, in etc/wazuh-manager.yml:
+#     auth:
+#       disabled: false
+#       remote_enrollment: true
+#       use_password: false
+# removes etc/authd.pass and, only when --max-agents is given, sets the internal
+# option `authd.max_agents=N` in etc/wazuh-manager-internal-options.conf (it is
+# not a configuration-file option).
 #
 # Why explicitly: the compiled default is use_password=0, but upstream #36705
 # turned the shared password ON BY DEFAULT in the installer, so a fresh install
 # rejects unauthenticated enrollment until this is undone.
 #
-# It is idempotent: re-running it converges to the same block. It edits the
-# config in place (a .bak is written once) and restarts the manager unless
-# --no-restart is given.
+# It is idempotent: re-running it converges to the same values. It edits the
+# files in place (a .bak of each is written once; the rewritten YAML loses its
+# comments, the .bak keeps them), validates the result with
+# bin/wazuh-manager-conf (schema rules, not file existence) and restarts the
+# manager unless --no-restart is given.
 #
 # Usage:
 #   sudo ./prepare_manager.sh [--conf PATH] [--max-agents N] [--no-restart]
 # ---------------------------------------------------------------------------
 
-CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+CONF="/var/wazuh-manager/etc/wazuh-manager.yml"
 MAX_AGENTS=""
 RESTART=true
 CONTROL="/var/wazuh-manager/bin/wazuh-manager-control"
-PYTHON="${PYTHON:-python3}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -43,71 +46,80 @@ done
 
 if [[ ! -f "$CONF" ]]; then
     echo "Error: config not found: $CONF" >&2
-    echo "  Is the manager installed? Pass --conf to point at wazuh-manager.conf." >&2
+    echo "  Is the manager installed? Pass --conf to point at wazuh-manager.yml." >&2
     exit 1
 fi
 
+# The manager home is the parent of etc/: its own Python ships PyYAML and its CLI validates the file.
+HOME_DIR="$(cd "$(dirname "$CONF")/.." && pwd)"
+PYTHON="${PYTHON:-}"
+if [[ -z "$PYTHON" ]]; then
+    if [[ -x "$HOME_DIR/framework/python/bin/python3" ]]; then
+        PYTHON="$HOME_DIR/framework/python/bin/python3"
+    else
+        PYTHON="python3"
+    fi
+fi
+INTERNAL_OPTIONS="$(dirname "$CONF")/wazuh-manager-internal-options.conf"
+MCONF="$HOME_DIR/bin/wazuh-manager-conf"
+
 echo "Configuring open, password-free enrollment in $CONF ..."
-MAX_AGENTS="$MAX_AGENTS" "$PYTHON" - "$CONF" <<'PY'
-import os, re, sys
+"$PYTHON" - "$CONF" <<'PY'
+import os, sys
+import yaml
 
 path = sys.argv[1]
-max_agents = os.environ.get("MAX_AGENTS", "").strip()
 with open(path, "r", encoding="utf-8") as fh:
     original = fh.read()
-text = original
+document = yaml.safe_load(original) or {}
+if not isinstance(document, dict):
+    sys.stderr.write(f"{path}: the document root must be a mapping; is this a manager config?\n")
+    sys.exit(2)
 
-def set_child(block, tag, value):
-    """Set <tag>value</tag> inside an <auth> block string, adding it if absent."""
-    pat = re.compile(rf"<{tag}>.*?</{tag}>", re.DOTALL)
-    if pat.search(block):
-        return pat.sub(f"<{tag}>{value}</{tag}>", block)
-    # insert just before </auth>, preserving indentation of the closing tag
-    return re.sub(r"([ \t]*)</auth>", rf"    <{tag}>{value}</{tag}>\n\1</auth>", block, count=1)
-
-auth_pat = re.compile(r"<auth>.*?</auth>", re.DOTALL)
-m = auth_pat.search(text)
-if m:
-    block = m.group(0)
+auth = document.setdefault("auth", {})
+if not isinstance(auth, dict):
+    auth = document["auth"] = {}
+wanted = {"disabled": False, "remote_enrollment": True, "use_password": False}
+if any(auth.get(key) != value for key, value in wanted.items()):
+    auth.update(wanted)
+    bak = path + ".bak"
+    if not os.path.exists(bak):
+        with open(bak, "w", encoding="utf-8") as fh:
+            fh.write(original)
+    with open(path, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(document, fh, sort_keys=False, default_flow_style=False)
+    print("  auth section updated")
 else:
-    # No <auth> block: create one before the closing root tag. The 5.x manager
-    # config root is <wazuh_config>; older configs use <ossec_config>.
-    block = ("<auth>\n"
-             "    <disabled>no</disabled>\n"
-             "    <remote_enrollment>yes</remote_enrollment>\n"
-             "    <use_password>no</use_password>\n"
-             "  </auth>")
-    idx = -1
-    for root_close in ("</wazuh_config>", "</ossec_config>"):
-        idx = text.rfind(root_close)
-        if idx != -1:
-            break
-    if idx == -1:
-        sys.stderr.write("no </wazuh_config> or </ossec_config> found; is this a manager config?\n")
-        sys.exit(2)
-    text = text[:idx] + "  " + block + "\n" + text[idx:]
-    m = auth_pat.search(text)
-    block = m.group(0)
-
-new_block = block
-new_block = set_child(new_block, "disabled", "no")
-new_block = set_child(new_block, "remote_enrollment", "yes")
-new_block = set_child(new_block, "use_password", "no")
-if max_agents:
-    new_block = set_child(new_block, "max_agents", max_agents)
-
-if new_block != block:
-    text = text[:m.start()] + new_block + text[m.end():]
-
-# One-time backup, then write.
-bak = path + ".bak"
-if not os.path.exists(bak):
-    with open(bak, "w", encoding="utf-8") as fh:
-        fh.write(original)
-with open(path, "w", encoding="utf-8") as fh:
-    fh.write(text)
-print("  auth block updated")
+    print("  auth section already set")
 PY
+
+if [[ -n "$MAX_AGENTS" ]]; then
+    echo "Setting authd.max_agents=$MAX_AGENTS in $INTERNAL_OPTIONS ..."
+    if [[ ! -f "$INTERNAL_OPTIONS" ]]; then
+        echo "Error: internal options file not found: $INTERNAL_OPTIONS" >&2
+        exit 1
+    fi
+    if ! grep -qx "authd.max_agents=$MAX_AGENTS" "$INTERNAL_OPTIONS"; then
+        [[ -f "$INTERNAL_OPTIONS.bak" ]] || cp -p "$INTERNAL_OPTIONS" "$INTERNAL_OPTIONS.bak"
+        if grep -q '^authd\.max_agents=' "$INTERNAL_OPTIONS"; then
+            sed -i "s/^authd\.max_agents=.*/authd.max_agents=$MAX_AGENTS/" "$INTERNAL_OPTIONS"
+        else
+            printf '\n# Enrollment cap for agent-mode benchmarks (prepare_manager.sh)\nauthd.max_agents=%s\n' "$MAX_AGENTS" >> "$INTERNAL_OPTIONS"
+        fi
+        echo "  authd.max_agents updated"
+    else
+        echo "  authd.max_agents already set"
+    fi
+fi
+
+# Syntax, schema and cross-field rules only: whether the certificates the file names exist is the
+# manager's business at start-up, not this script's (it may run against a copy or a fresh install).
+if [[ -x "$MCONF" ]]; then
+    "$MCONF" -H "$HOME_DIR" -f "$CONF" --skip-file-checks validate
+    echo "  $CONF validates"
+else
+    echo "Note: $MCONF not found; skipping validation." >&2
+fi
 
 PASS_FILE="$(dirname "$CONF")/authd.pass"
 if [[ -f "$PASS_FILE" ]]; then

@@ -54,8 +54,8 @@ def test_insert(json_dst, section_name, option, value):
 
 
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
-    ({'global': {'label': 5}}, 'global', {'label': 4}),
-    ({'cluster': {'label': 5}}, 'cluster', {'label': 4})
+    ({'syscheck': {'label': 5}}, 'syscheck', {'label': 4}),
+    ({'anti_tampering': {'label': 5}}, 'anti_tampering', {'label': 4})
 ])
 def test_insert_section(json_dst, section_name, section_data):
     """Checks insert_section function."""
@@ -79,58 +79,28 @@ def test_read_option():
         data = fromstring(f.read())
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
-        data = fromstring(f.read())
-        EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'feed-update-interval': '60m'}
-        )
-        for section in data:
-            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
-                                                                                     EXPECTED_VALUES[section.tag])
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
-        data = fromstring(f.read())
-        EXPECTED_VALUES = MappingProxyType(
-            {
-                'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
-                'username': 'admin',
-                'password': 'admin',
-            }
-        )
-        for section in data:
-            assert configuration._read_option('indexer', section) == (section.tag,
-                                                                    EXPECTED_VALUES[section.tag])
+def test_conf_sections_are_agent_only():
+    """CONF_SECTIONS only describes agent.conf sections: the manager's own ones live in etc/wazuh-manager.yml."""
+    manager_sections = {'remote', 'global', 'auth', 'cluster', 'indexer', 'vulnerability-detection'}
+
+    assert not manager_sections & set(configuration.CONF_SECTIONS)
+    assert {'syscheck', 'rootcheck', 'localfile', 'sca', 'active-response'} <= set(configuration.CONF_SECTIONS)
 
 
-def test_read_option_remote_legacy():
-    """<remote><legacy> must expose 'protocol' as a list, matching the former flat <remote><protocol>."""
+def test_agentconf2json_ignores_manager_sections():
+    """An agent.conf carrying manager sections keeps the agent ones and drops the rest without failing."""
     xml_conf = fromstring(
-        '<remote><legacy><port>1514</port><protocol>tcp,udp</protocol></legacy></remote>'
+        '<root><agent_config os="Linux">'
+        '<syscheck><frequency>43200</frequency></syscheck>'
+        '<remote><legacy><port>1514</port></legacy></remote>'
+        '<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>'
+        '</agent_config></root>'
     )
 
-    for section in xml_conf:
-        name, value = configuration._read_option('remote', section)
-        assert name == 'legacy'
-        assert value == {'port': '1514', 'protocol': ['tcp', 'udp']}
+    result = configuration._agentconf2json(xml_conf)
 
-
-def test_read_option_remote_https():
-    """<remote><https> options must be exposed as scalars, not wrapped in single-element lists."""
-    xml_conf = fromstring(
-        '<remote><https><port>9443</port><bind_addr>0.0.0.0</bind_addr>'
-        '<certificate>etc/remoted-https/server.crt</certificate>'
-        '<verification_mode>full</verification_mode></https></remote>'
-    )
-
-    for section in xml_conf:
-        name, value = configuration._read_option('remote', section)
-        assert name == 'https'
-        assert value == {
-            'port': '9443',
-            'bind_addr': '0.0.0.0',
-            'certificate': 'etc/remoted-https/server.crt',
-            'verification_mode': 'full',
-        }
+    assert result == [{'filters': {'os': 'Linux'}, 'config': {'syscheck': {'frequency': '43200'}}}]
 
 
 @pytest.mark.parametrize("configuration_file, expected_values", [
@@ -260,7 +230,7 @@ def test_get_agent_conf():
 def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
-            configuration.get_file_conf(filename='wazuh-manager.conf', group_id='default', type_conf='conf',
+            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf',
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):

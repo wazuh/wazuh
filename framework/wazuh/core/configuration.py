@@ -36,13 +36,8 @@ CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
-    'remote': {'type': 'duplicate', 'list_options': []},
 
     'client': {'type': 'merge', 'list_options': []},
-    'global': {
-        'type': 'merge',
-        'list_options': []
-    },
     'syscollector': {
         'type': 'merge',
         'list_options': []
@@ -55,30 +50,14 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'merge',
         'list_options': ['directories', 'ignore', 'nodiff']
     },
-    'auth': {
-        'type': 'merge',
-        'list_options': []
-    },
 
     'logging': {
         'type': 'last',
         'list_options': []
     },
-    'cluster': {
-        'type': 'last',
-        'list_options': ['nodes']
-    },
     'sca': {
         'type': 'merge',
         'list_options': ['policies']
-    },
-    'vulnerability-detection': {
-        'type': 'last',
-        'list_options': []
-    },
-    'indexer': {
-        'type': 'last',
-        'list_options': ['hosts']
     },
     'anti_tampering': {
         'type': 'last',
@@ -188,9 +167,7 @@ def _read_option(section_name: str, opt: str) -> tuple:
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
-    elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'sca' and opt_name == 'policies') or \
-            (section_name == 'indexer' and opt_name == 'hosts')    :
+    elif section_name == 'sca' and opt_name == 'policies':
         opt_value = [child.text for child in opt]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
@@ -199,29 +176,6 @@ def _read_option(section_name: str, opt: str) -> tuple:
                              re.sub('(?:(\n) +)', '',
                                     tostring(opt, encoding='unicode').replace('\\<', '<').replace('\\>', '>')
                                     ).strip()).group(1)
-    elif section_name == 'remote' and opt_name == 'protocol':
-        opt_value = [elem.strip() for elem in opt.text.split(',')]
-    elif section_name == 'remote' and opt_name == 'legacy':
-        # <remote><legacy> nests the classic TCP/UDP options (including <protocol>, a
-        # comma-separated list). The generic branch below would recurse with the
-        # child's own tag as section_name, losing the fact that it's inside 'legacy',
-        # so 'protocol' is special-cased here instead of relying on that recursion.
-        opt_value = {}
-        for child in opt:
-            child_name = child.tag.lower()
-            if child_name == 'protocol':
-                opt_value[child_name] = [elem.strip() for elem in child.text.split(',')]
-            else:
-                _, opt_value[child_name] = _read_option(child_name, child)
-    elif section_name == 'remote' and opt_name == 'https':
-        # <remote><https> only has scalar leaf options (port, bind_addr, certificate,
-        # key, ca, verification_mode, ciphers, max_body_size). The generic branch below
-        # wraps every child value in a list, which is meant for repeatable elements, so
-        # it's bypassed here the same way as <legacy>.
-        opt_value = {}
-        for child in opt:
-            child_name = child.tag.lower()
-            _, opt_value[child_name] = _read_option(child_name, child)
     else:
         if opt.attrib or list(opt):
             opt_value = {}
@@ -279,7 +233,7 @@ def _conf2json(src_xml: str, dst_json: dict):
 
         for option in list(section):
             option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
+            if type(option_value) is list:
                 for ov in option_value:
                     _insert(section_json, section_name, option_name, ov)
             else:

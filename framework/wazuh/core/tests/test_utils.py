@@ -1638,7 +1638,7 @@ def test_select_array(select, required_fields, expected_result):
 
 def test_to_relative_path():
     """Test to_relative_path function."""
-    path = 'etc/wazuh-manager.conf'
+    path = 'etc/wazuh-manager.yml'
     assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)

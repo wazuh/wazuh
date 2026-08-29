@@ -33,9 +33,9 @@ sudo ./prepare_manager.sh                                    # one-time: open, p
 **The cluster name is read from the manager's own config.** The server answers `403` to any session
 whose `cluster_name` is not its own, and the scenarios only ship a placeholder, so getting this wrong
 means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
-`run_benchmark.sh` reads `<cluster><name>` from
-`/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
-used. `--cluster` overrides it. The cluster **node** is not sent at all: sessions declare no
+`run_benchmark.sh` reads `cluster.name` from
+`/var/wazuh-manager/etc/wazuh-manager.yml` (through `bin/wazuh-manager-conf get`, so defaults apply) —
+`--conf` points it elsewhere — and prints which value it used. `--cluster` overrides it. The cluster **node** is not sent at all: sessions declare no
 `cluster_node` (the manager never validated it and is dropping its last consumer), so there is no
 `--cluster-node` and nothing to detect.
 
@@ -43,7 +43,7 @@ A **remote** `--manager` is deliberately never auto-detected: the local config w
 different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass
 `--cluster` explicitly; the effective value is recorded in each run's `params.json`.
 
-If the manager configures a **global endpoint prefix** (`<remote><https><global_prefix>`), agent mode
+If the manager configures a **global endpoint prefix** (`remote.https.global_prefix`), agent mode
 needs it too — and, exactly like the cluster name, it is read from the local manager's config when
 `--global-prefix` is not given, so a default installation needs no flag. A **remote** `--manager` is
 not auto-detected for the same reason, and `/` forces the unprefixed paths against a manager that
@@ -149,9 +149,11 @@ show up in the manager's log as `reason=feed_update`. Full contract in
 ## Manager preparation (agent mode)
 
 Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be open and password-free.
-`prepare_manager.sh` sets the `<auth>` block to `disabled=no`, `remote_enrollment=yes`,
-`use_password=no` (optionally `max_agents=N`) and removes `etc/authd.pass`. It is idempotent and
-writes a one-time `.bak`. The compiled default is already `use_password=0`, but upstream #36705 turned
+`prepare_manager.sh` sets the `auth` section of `etc/wazuh-manager.yml` to `disabled: false`,
+`remote_enrollment: true`, `use_password: false` (optionally the internal option `authd.max_agents=N` in
+`etc/wazuh-manager-internal-options.conf`), validates the file with `bin/wazuh-manager-conf` and removes
+`etc/authd.pass`. It is idempotent and writes a one-time `.bak` of each file it rewrites (the YAML loses its
+comments; the `.bak` keeps them). The compiled default is already `use_password=0`, but upstream #36705 turned
 the shared password **on by default in the installer**, so a fresh install rejects unauthenticated
 enrollment until this is undone.
 

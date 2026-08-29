@@ -323,7 +323,7 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[wazuh-manager.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
+                              f"[wazuh-manager.yml](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
                               f"ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",

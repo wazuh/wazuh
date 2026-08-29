@@ -4,6 +4,7 @@
 
 """api/test/integration/env/tools/yaml_merge.py: the helper the integration environment uses to edit etc/wazuh-manager.yml."""
 
+import filecmp
 import importlib.util
 import os
 
@@ -11,6 +12,9 @@ import yaml
 
 TOOL = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'test', 'integration', 'env', 'tools',
                     'yaml_merge.py')
+# The development environment (api/tools/env) ships its own copy: its docker build context cannot reach the tavern one.
+DEV_ENV_COPY = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'tools', 'env', 'wazuh-manager',
+                            'yml', 'yaml_merge.py')
 
 spec = importlib.util.spec_from_file_location('yaml_merge', TOOL)
 yaml_merge = importlib.util.module_from_spec(spec)
@@ -50,3 +54,8 @@ def test_main_merge_and_set_round_trip(tmp_path):
         'cluster': {'name': 'wazuh', 'nodes': ['wazuh-master'], 'key': '9d273b53510fef702b54a92e9cffc82e'},
         'vulnerability-detection': {'enabled': False},
     }
+
+
+def test_dev_env_copy_is_identical():
+    """api/tools/env/wazuh-manager/yml/yaml_merge.py must not drift from the tavern environment's copy."""
+    assert filecmp.cmp(TOOL, DEV_ENV_COPY, shallow=False)

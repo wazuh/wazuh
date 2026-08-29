@@ -450,7 +450,7 @@ def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
-        "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
+        "'/var/wazuh-manage/etc/wazuh-manager.yml'.")
 ])
 @patch('wazuh.manager.validate_manager_conf')
 def test_validation(mock_validate_manager_conf, error_flag, error_msg):

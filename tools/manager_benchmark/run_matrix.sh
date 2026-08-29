@@ -30,7 +30,7 @@ cd "$SCRIPT_DIR"
 # Empty means "let run_benchmark.sh read it from the manager's own config"; pass
 # --cluster only for a remote manager, or to override what the config says.
 CLUSTER=""
-# The manager's <remote><https><global_prefix>, when it has one. Unlike the cluster name
+# The manager's remote.https.global_prefix, when it has one. Unlike the cluster name
 # it is never read from the config: pass it, or every agent-mode run in the matrix 404s.
 GLOBAL_PREFIX=""
 SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"

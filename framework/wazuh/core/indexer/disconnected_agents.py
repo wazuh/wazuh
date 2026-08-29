@@ -385,17 +385,17 @@ class DisconnectedAgentSyncTasks:
             if not agent_ids:
                 self.logger.info("No valid agent IDs found for cluster-name sync")
                 return
-            # Read cluster name from wazuh-manager.conf
+            # Read cluster name from wazuh-manager.yml
             try:
                 conf = get_manager_conf(section="cluster")
                 cluster_name = conf.get("cluster", {}).get("name")
             except Exception as e:
-                self.logger.error(f"Failed reading cluster name from wazuh-manager.conf: {e}")
+                self.logger.error(f"Failed reading cluster name from wazuh-manager.yml: {e}")
                 return
 
             if not cluster_name:
                 self.logger.warning(
-                    "Cluster name not found in wazuh-manager.conf; aborting sync"
+                    "Cluster name not found in wazuh-manager.yml; aborting sync"
                 )
                 return
 

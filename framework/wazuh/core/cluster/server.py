@@ -314,7 +314,7 @@ class AbstractServer:
         concurrency_test : int
             Number of requests to do in the concurrency test.
         configuration : dict
-            wazuh-manager.conf cluster configuration.
+            wazuh-manager.yml cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
         logger : Logger object
