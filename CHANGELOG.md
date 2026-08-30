@@ -45,6 +45,7 @@
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
 | [#38436](https://github.com/wazuh/wazuh/issues/38436) | Standardized the manager's Unix socket names and layout: every socket ends in `.sock`, carries an `-http` marker when it speaks HTTP, and lives in `queue/sockets/`. The sockets that were under `queue/db/`, `queue/tasks/` and `queue/cluster/` moved there, leaving those directories holding only their data. An upgraded installation keeps the old socket files as dead entries until a clean install. |
+| [#38714](https://github.com/wazuh/wazuh/issues/38714) | Replaced the XML manager configuration (`etc/wazuh-manager.conf`) with the schema-validated YAML `etc/wazuh-manager.yml` (`etc/wazuh-manager.schema.json`), checked by `bin/wazuh-manager-conf`, every daemon's `-t` and the control script before start-up; the framework and the API read and write it as YAML. |
 
 #### Removed
 
