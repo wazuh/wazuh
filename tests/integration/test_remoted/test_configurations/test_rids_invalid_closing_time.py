@@ -4,6 +4,8 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
+import re
+
 import pytest
 
 from pathlib import Path
@@ -69,5 +71,12 @@ def test_rids_closing_time_invalid(test_configuration, test_metadata, configure_
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=generate_callback(patterns.WARNING_INVALID_VALUE_FOR, replacement={"option": 'rids_closing_time'}))
+    value = str(test_metadata['rids_closing_time'])
+    if re.fullmatch(r'[0-9]+[smhdw]?', value):
+        # Well-formed for the schema but rejected by remoted itself (e.g. 0s): warning and default value.
+        log_monitor.start(callback=generate_callback(patterns.WARNING_INVALID_VALUE_FOR, replacement={"option": 'rids_closing_time'}))
+    else:
+        # Malformed duration (e.g. 4S): refused by the configuration schema with its JSON pointer.
+        log_monitor.start(callback=generate_callback(regex=patterns.INVALID_CONFIGURATION,
+                                                     replacement={"pointer": "/remote/legacy/rids_closing_time"}))
     assert log_monitor.callback_result

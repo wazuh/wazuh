@@ -231,6 +231,17 @@ status()
     fi
 }
 
+# Appends the configuration validator's verdict to the manager log with the daemons' line format:
+# one ERROR line per validator message, then the CRITICAL every daemon -t used to emit.
+log_config_error()
+{
+    stamp=$(date '+%Y/%m/%d %H:%M:%S')
+    echo "$1" | while IFS= read -r line; do
+        [ -n "$line" ] && echo "${stamp} wazuh-manager-control: ERROR: ${line}" >> ${DIR}/logs/wazuh-manager.log
+    done
+    echo "${stamp} wazuh-manager-control: CRITICAL: (1202): Configuration error at 'etc/${WAZUH_CONF}'." >> ${DIR}/logs/wazuh-manager.log
+}
+
 testconfig()
 {
     # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
@@ -240,11 +251,15 @@ testconfig()
 
     # The whole file first (YAML, schema, cross-field rules and the files it references): fails fast
     # with the JSON pointer of the offending option before any daemon runs its own -t.
-    ${MCONF} validate
+    MCONF_ERROR=$(${MCONF} validate 2>&1)
     if [ $? != 0 ]; then
+        # The daemons never see a refused file, so the verdict goes to the log too, where the
+        # daemons' own -t failures have always been reported.
+        log_config_error "${MCONF_ERROR}"
         if [ $USE_JSON = true ]; then
             echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
         else
+            echo "${MCONF_ERROR}" >&2
             echo "${WAZUH_CONF}: Configuration error. Exiting"
         fi
         rm -f ${DIR}/var/run/*.start

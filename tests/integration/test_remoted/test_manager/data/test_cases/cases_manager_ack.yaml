@@ -1,41 +1,46 @@
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'TCP'
+    PROTOCOL:
+    - tcp
   metadata:
-    protocol: 'TCP'
-
+    protocol: TCP
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'UDP'
+    PROTOCOL:
+    - udp
   metadata:
-    protocol: 'UDP'
-
+    protocol: UDP
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'TCP,UDP'
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
-    protocol: 'TCP'
-
+    protocol: TCP
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'TCP,UDP'
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
-    protocol: 'UDP'
-
+    protocol: UDP
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'UDP'
-
+    protocol: UDP
 - name: Command config wazuh manager
   description: Command config wazuh manager
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'TCP'
+    protocol: TCP

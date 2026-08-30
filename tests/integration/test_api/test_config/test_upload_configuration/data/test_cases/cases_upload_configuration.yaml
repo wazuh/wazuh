@@ -1,35 +1,20 @@
-- name: UPLOAD_ONE_BLOCK_CONFIG
-  description: Upload one block configuration
+- name: UPLOAD_ONE_SECTION_CONFIG
+  description: Upload a configuration with one section
   configuration_parameters: null
   metadata:
-    body: >
-      <wazuh_config>
-        <remote>
-          <legacy>
-            <port>1514</port>
-          </legacy>
-        </remote>
-      </wazuh_config>
+    body: |
+      remote:
+        legacy:
+          port: 1514
     expected_code: 200
-
-- name: UPLOAD_TWO_BLOCKS_CONFIG
-  description: Upload two blocks configuration
+- name: UPLOAD_TWO_SECTIONS_CONFIG
+  description: Upload a configuration with two sections
   configuration_parameters: null
   metadata:
-    body: >
-      <wazuh_config>
-        <remote>
-          <legacy>
-            <port>1514</port>
-          </legacy>
-        </remote>
-      </wazuh_config>
-
-      <wazuh_config>
-        <remote>
-          <legacy>
-            <port>514</port>
-          </legacy>
-        </remote>
-      </wazuh_config>
+    body: |
+      remote:
+        legacy:
+          port: 514
+      auth:
+        port: 1515
     expected_code: 200

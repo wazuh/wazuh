@@ -1,53 +1,60 @@
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'UDP'
-    command_request: 'agent getconfig disconnected'
-    expected_answer: 'Cannot send request'
-
+    protocol: UDP
+    command_request: agent getconfig disconnected
+    expected_answer: Cannot send request
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'TCP'
-    command_request: 'agent getconfig disconnected'
-    expected_answer: 'Cannot send request'
-
+    protocol: TCP
+    command_request: agent getconfig disconnected
+    expected_answer: Cannot send request
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'TCP'
-    command_request: 'agent getconfig client'
+    protocol: TCP
+    command_request: agent getconfig client
     expected_answer: '"client":{'
-
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'UDP'
-    command_request: 'agent getconfig client'
+    protocol: UDP
+    command_request: agent getconfig client
     expected_answer: '"client":{'
-
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'TCP'
-    command_request: 'logcollector getstate'
+    protocol: TCP
+    command_request: logcollector getstate
     expected_answer: '"error":0'
-
 - name: test request agent info
   description: test request agent info
   configuration_parameters:
-    PROTOCOL: 'UDP,TCP'
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
-    protocol: 'UDP'
-    command_request: 'logcollector getstate'
+    protocol: UDP
+    command_request: logcollector getstate
     expected_answer: '"error":0'

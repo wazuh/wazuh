@@ -1,23 +1,34 @@
 - name: test shared configuration
   description: test shared configuration
   configuration_parameters:
-    PROTOCOL: 'TCP'
+    PROTOCOL:
+    - tcp
   metadata:
-    protocol: 'TCP'
-    patterns: ['.*up file.*merged.mg.*','.*default.*','.*close file.*']
-
+    protocol: TCP
+    patterns:
+    - .*up file.*merged.mg.*
+    - .*default.*
+    - .*close file.*
 - name: test shared configuration
   description: test shared configuration
   configuration_parameters:
-    PROTOCOL: 'UDP'
+    PROTOCOL:
+    - udp
   metadata:
-    protocol: 'UDP'
-    patterns: ['.*up file.*merged.mg.*','.*default.*','.*close file.*']
-
+    protocol: UDP
+    patterns:
+    - .*up file.*merged.mg.*
+    - .*default.*
+    - .*close file.*
 - name: test shared configuration
   description: test shared configuration
   configuration_parameters:
-    PROTOCOL: 'TCP,UDP'
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
-    protocol: 'TCP'
-    patterns: ['.*up file.*merged.mg.*','.*default.*','.*close file.*']
+    protocol: TCP
+    patterns:
+    - .*up file.*merged.mg.*
+    - .*default.*
+    - .*close file.*

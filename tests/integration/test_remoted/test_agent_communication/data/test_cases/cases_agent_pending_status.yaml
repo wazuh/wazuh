@@ -1,78 +1,83 @@
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: TCP
+    PORT: 1514
+    PROTOCOL:
+    - tcp
   metadata:
     port: '1514'
     protocol: TCP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '56000'
-    PROTOCOL: TCP
+    PORT: 56000
+    PROTOCOL:
+    - tcp
   metadata:
     port: '56000'
     protocol: TCP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: UDP
+    PORT: 1514
+    PROTOCOL:
+    - udp
   metadata:
     port: '1514'
     protocol: UDP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '56000'
-    PROTOCOL: UDP
+    PORT: 56000
+    PROTOCOL:
+    - udp
   metadata:
     port: '56000'
     protocol: UDP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '1514'
     protocol: TCP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '56000'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 56000
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '56000'
     protocol: TCP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '1514'
     protocol: UDP
     agents_number: 2
-
 - name: agetn pending status
   description: agetn pending status
   configuration_parameters:
-    PORT: '56000'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 56000
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '56000'
     protocol: UDP

@@ -1,79 +1,80 @@
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '1s'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 1s
   metadata:
     port: '1514'
-    rids_closing_time: '1s'
-
+    rids_closing_time: 1s
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '30s'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 30s
   metadata:
     port: '1514'
-    rids_closing_time: '30s'
-
+    rids_closing_time: 30s
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '1m'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 1m
   metadata:
     port: '1514'
-    rids_closing_time: '1m'
-
+    rids_closing_time: 1m
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '30m'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 30m
   metadata:
     port: '1514'
-    rids_closing_time: '30m'
-
+    rids_closing_time: 30m
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '1h'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 1h
   metadata:
     port: '1514'
-    rids_closing_time: '1h'
-
+    rids_closing_time: 1h
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '30h'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 30h
   metadata:
     port: '1514'
-    rids_closing_time: '30h'
-
+    rids_closing_time: 30h
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '1d'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 1d
   metadata:
     port: '1514'
-    rids_closing_time: '1d'
-
+    rids_closing_time: 1d
 - name: Command config wazuh manager for rids closing time
   description: Command config wazuh manager for rids closing time
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'TCP'
-    RIDS_CLOSING_TIME: '30d'
+    PORT: 1514
+    PROTOCOL:
+    - tcp
+    RIDS_CLOSING_TIME: 30d
   metadata:
     port: '1514'
-    rids_closing_time: '30d'
+    rids_closing_time: 30d

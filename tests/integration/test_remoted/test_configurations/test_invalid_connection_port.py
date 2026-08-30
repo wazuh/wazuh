@@ -16,7 +16,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.modules.remoted.patterns import INVALID_VALUE_FOR_PORT_NUMBER, CONFIGURATION_ERROR
+from wazuh_testing.modules.remoted.patterns import INVALID_CONFIGURATION, CONFIGURATION_ERROR
 
 
 # Set pytest marks.
@@ -66,11 +66,9 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=generate_callback(regex=INVALID_VALUE_FOR_PORT_NUMBER, replacement={"port": test_metadata['port_number']}))
-    assert test_metadata['port_number'] in log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/wazuh-manager.conf"}))
+    # A port outside 1-65535 is refused by the configuration schema, with its JSON pointer.
+    log_monitor.start(callback=generate_callback(regex=INVALID_CONFIGURATION, replacement={"pointer": "/remote/legacy/port"}))
     assert log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/wazuh-manager.conf")))
+    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/wazuh-manager.yml")))
     assert log_monitor.callback_result

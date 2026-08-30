@@ -198,7 +198,8 @@ def set_wazuh_configuration(request: pytest.FixtureRequest, test_configuration: 
     """Set wazuh configuration
 
     Args:
-        test_configuration (dict): Configuration template data to write in the ossec.conf
+        test_configuration (dict): Configuration template data to write in the configuration file:
+                                   `fragments` (YAML sections, manager) or `sections` (XML, agent).
     """
     # Save current configuration
     backup_config = configuration.get_wazuh_conf()
@@ -218,9 +219,16 @@ def set_wazuh_configuration(request: pytest.FixtureRequest, test_configuration: 
         else:
             template = file.read_file_lines(os.fspath(template_spec))
 
-    test_config = configuration.set_section_wazuh_conf(
-        test_configuration.get("sections"), template=template
-    )
+    if "fragments" in test_configuration:
+        # Manager: YAML sections of etc/wazuh-manager.yml (each one replaces the whole section).
+        test_config = configuration.set_manager_conf(
+            test_configuration["fragments"], template=template
+        )
+    else:
+        # Agent: XML sections of etc/ossec.conf.
+        test_config = configuration.set_section_wazuh_conf(
+            test_configuration.get("sections"), template=template
+        )
 
     # Set new configuration
     configuration.write_wazuh_conf(test_config)

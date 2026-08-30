@@ -1,39 +1,40 @@
 - name: test invalid protocols communication
   description: test invalid protocols communication
   configuration_parameters:
-    PROTOCOL: 'TCP'
-    PORT: '1514'
+    PROTOCOL:
+    - tcp
+    PORT: 1514
   metadata:
-    protocol: 'UDP'
+    protocol: UDP
     port: '1514'
     agents_number: 2
-
 - name: test invalid protocols communication
   description: test invalid protocols communication
   configuration_parameters:
-    PROTOCOL: 'UDP'
-    PORT: '1514'
+    PROTOCOL:
+    - udp
+    PORT: 1514
   metadata:
-    protocol: 'TCP'
+    protocol: TCP
     port: '1514'
     agents_number: 2
-
 - name: test invalid protocols communication
   description: test invalid protocols communication
   configuration_parameters:
-    PROTOCOL: 'TCP'
-    PORT: '56000'
+    PROTOCOL:
+    - tcp
+    PORT: 56000
   metadata:
-    protocol: 'UDP'
+    protocol: UDP
     port: '56000'
     agents_number: 2
-
 - name: test invalid protocols communication
   description: test invalid protocols communication
   configuration_parameters:
-    PROTOCOL: 'UDP'
-    PORT: '56000'
+    PROTOCOL:
+    - udp
+    PORT: 56000
   metadata:
-    protocol: 'TCP'
+    protocol: TCP
     port: '56000'
     agents_number: 2

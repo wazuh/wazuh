@@ -1,6 +1,6 @@
 - name: Command config wazuh manager for valid local ip
   description: Command config wazuh manager for for valid local ip
   configuration_parameters:
-    LOCAL_IP: ''
+    LOCAL_IP: null
   metadata:
     local_ip: ''

@@ -17,7 +17,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR, INVALID_ELEMENT_IN_CONFIGURATION
+from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR, INVALID_CONFIGURATION
 
 
 # Set pytest marks.
@@ -69,11 +69,10 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
 
-    log_monitor.start(callback=generate_callback(INVALID_ELEMENT_IN_CONFIGURATION))
+    # An unknown option is refused by the configuration schema (additionalProperties), with its JSON pointer.
+    log_monitor.start(callback=generate_callback(regex=INVALID_CONFIGURATION,
+                                                 replacement={"pointer": f"/remote/{test_metadata['element_type']}"}))
     assert test_metadata['element_type'] in log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": conf_path}))
-    assert log_monitor.callback_result
 
     log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', conf_path)))
     assert log_monitor.callback_result

@@ -1,13 +1,8 @@
-- sections:
-    - section: remote
-      elements:
-        - legacy:
-            elements:
-              - port:
-                  value: PORT
-              - protocol:
-                  value: 'TCP'
-              - queue_size:
-                  value: 131072
-              - rids_closing_time:
-                  value: 30
+- fragments:
+    remote:
+      legacy:
+        port: PORT
+        protocol:
+        - tcp
+        queue_size: 131072
+        rids_closing_time: 30

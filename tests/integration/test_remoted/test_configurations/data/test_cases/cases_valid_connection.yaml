@@ -1,78 +1,88 @@
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '1514'
-    PROTOCOL: 'UDP'
+    PORT: 1514
+    PROTOCOL:
+    - udp
   metadata:
     port: '1514'
-    valid_protocol: ['UDP']
-
-
+    valid_protocol:
+    - UDP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '514'
-    PROTOCOL: 'UDP'
+    PORT: 514
+    PROTOCOL:
+    - udp
   metadata:
     port: '514'
-    valid_protocol: ['UDP']
-
-
+    valid_protocol:
+    - UDP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '553'
-    PROTOCOL: 'TCP'
+    PORT: 553
+    PROTOCOL:
+    - tcp
   metadata:
     port: '553'
-    valid_protocol: ['TCP']
-
-
+    valid_protocol:
+    - TCP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '23467'
-    PROTOCOL: 'TCP'
+    PORT: 23467
+    PROTOCOL:
+    - tcp
   metadata:
     port: '23467'
-    valid_protocol: ['TCP']
-
-
+    valid_protocol:
+    - TCP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '1209'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 1209
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '1209'
-    valid_protocol: ['TCP','UDP']
-
-
+    valid_protocol:
+    - TCP
+    - UDP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '2134'
-    PROTOCOL: 'TCP,UDP'
+    PORT: 2134
+    PROTOCOL:
+    - tcp
+    - udp
   metadata:
     port: '2134'
-    valid_protocol: ['TCP','UDP']
-
-
+    valid_protocol:
+    - TCP
+    - UDP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '55632'
-    PROTOCOL: 'UDP,TCP'
+    PORT: 55632
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
     port: '55632'
-    valid_protocol: ['UDP','TCP']
-
-
+    valid_protocol:
+    - UDP
+    - TCP
 - name: Command config wazuh manager for valid connection
   description: Command config wazuh manager for valid connections
   configuration_parameters:
-    PORT: '2134'
-    PROTOCOL: 'UDP,TCP'
+    PORT: 2134
+    PROTOCOL:
+    - udp
+    - tcp
   metadata:
     port: '2134'
-    valid_protocol: ['UDP','TCP']
+    valid_protocol:
+    - UDP
+    - TCP

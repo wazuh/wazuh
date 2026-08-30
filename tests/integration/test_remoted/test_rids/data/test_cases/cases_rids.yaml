@@ -1,39 +1,46 @@
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     agents_number: 1
-    check_close: [False]
-
+    check_close:
+    - false
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     agents_number: 1
-    check_close: [True]
-
+    check_close:
+    - true
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     agents_number: 3
-    check_close: [True, True, True]
-
+    check_close:
+    - true
+    - true
+    - true
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     agents_number: 3
-    check_close: [False, False, False]
-
+    check_close:
+    - false
+    - false
+    - false
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     agents_number: 3
-    check_close: [True, False, True]
+    check_close:
+    - true
+    - false
+    - true

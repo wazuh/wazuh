@@ -1,13 +1,8 @@
-- sections:
-    - section: remote
-      elements:
-        - legacy:
-            elements:
-              - port:
-                  value: 1514
-              - ipv6:
-                  value: 'IPV6'
-              - local_ip:
-                  value: 'LOCAL_IP'
-              - protocol:
-                  value: TCP
+- fragments:
+    remote:
+      legacy:
+        port: 1514
+        ipv6: IPV6
+        local_ip: LOCAL_IP
+        protocol:
+        - tcp
