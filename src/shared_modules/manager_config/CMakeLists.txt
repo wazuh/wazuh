@@ -54,6 +54,9 @@ if(DEFINED VERSION_FILE)
   target_compile_definitions(wazuh-manager-conf PRIVATE WAZUH_MANAGER_CONF_VERSION="${VERSION_FILE}")
 endif()
 set_target_properties(wazuh-manager-conf PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin)
+# The CLI runs during package postinst on hosts whose system libstdc++ may be older than the
+# toolchain's: resolve the bundled lib/ first, exactly like the daemons (src/cmake/WazuhRpath.cmake).
+wazuh_set_runtime_rpath(wazuh-manager-conf)
 
 if(UNIT_TEST)
   enable_testing()
