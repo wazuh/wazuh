@@ -1,5 +1,5 @@
 #!/bin/bash
-# Switches <remote><https><global_prefix> on manager node 1 and restarts remoted.
+# Switches remote.https.global_prefix on manager node 1 and restarts remoted.
 #
 # Usage: ./set_manager_global_prefix.sh /wazuh-manager/ | / | <any value, to test rejection>
 #
@@ -19,38 +19,19 @@ set -euo pipefail
 
 PREFIX="${1:?usage: $0 /wazuh-manager/ | / | <any value, to test rejection>}"
 
-MANAGER_HOME=/var/wazuh-manager
-CONFIG="$MANAGER_HOME/etc/wazuh-manager.conf"
-PREFIX_LINE="      <global_prefix>${PREFIX}</global_prefix>"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+MANAGER_HOME="${MANAGER_HOME:-/var/wazuh-manager}"
+source "$HERE/lib_manager_paths.sh"
 
-python3 - "$CONFIG" "$PREFIX_LINE" <<'PYTHON'
-import re
-import sys
-
-config_path, prefix_line = sys.argv[1], sys.argv[2]
-with open(config_path) as handle:
-    text = handle.read()
-
-# Drop any previous <global_prefix> and re-insert right after <bind_addr> (the shipped
-# ordering); fall back to right after <port> for a config without a bind_addr line.
-text = re.sub(r'^\s*<global_prefix>.*</global_prefix>\n', '', text, flags=re.M)
-if re.search(r'^\s*<bind_addr>.*</bind_addr>\n', text, flags=re.M):
-    text = re.sub(r'(^\s*<bind_addr>.*</bind_addr>\n)', r'\1' + prefix_line + '\n',
-                  text, count=1, flags=re.M)
-else:
-    text = re.sub(r'(^\s*<https>\n\s*<port>.*</port>\n)', r'\1' + prefix_line + '\n',
-                  text, count=1, flags=re.M)
-
-with open(config_path, 'w') as handle:
-    handle.write(text)
-PYTHON
+# etc/wazuh-manager.yml: remote.https.global_prefix (an invalid value is written as-is, see above).
+set_https_options global_prefix="$PREFIX"
 
 echo "==> configuration now:"
-sed -n '/<https>/,/<\/https>/p' "$CONFIG" | sed 's/^/    /'
+show_https | sed 's/^/    /'
 
-pkill -f '/var/wazuh-manager/bin/[w]azuh-manager-remoted' 2>/dev/null || true
+pkill -f "$MANAGER_HOME/bin/[w]azuh-manager-remoted" 2>/dev/null || true
 sleep 2
-/var/wazuh-manager/bin/wazuh-manager-remoted
+"$MANAGER_HOME/bin/wazuh-manager-remoted"
 
 for _ in $(seq 1 40); do
     if ss -ltn 2>/dev/null | grep -q ':1517'; then
@@ -61,5 +42,5 @@ for _ in $(seq 1 40); do
 done
 
 echo "==> remoted never started listening. Log:"
-tail -12 /var/wazuh-manager/logs/wazuh-manager.log
+tail -12 "$MANAGER_HOME/logs/wazuh-manager.log"
 exit 1

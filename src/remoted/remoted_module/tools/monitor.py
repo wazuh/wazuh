@@ -106,7 +106,7 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pid", type=int, default=None, help="PID to watch (default: find wazuh-manager-remoted).")
     parser.add_argument("--port", type=int, default=1517,
-                        help="Port whose connections to count (the <remote><https><port> default).")
+                        help="Port whose connections to count (the remote.https.port default).")
     parser.add_argument("--interval", type=float, default=0.1, help="Seconds between samples.")
     parser.add_argument("--duration", type=float, default=30.0, help="Seconds to sample for.")
     parser.add_argument("--quiet", action="store_true", help="Only print the summary, not the timeline.")

@@ -63,17 +63,16 @@ class ManagerPaths:
 
 
 
-# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# --- Global endpoint prefix (remote.https.global_prefix) ----------------------------------------
 # Applied to every target when building the URL. Authentication does not cover the target (the
 # bearer token binds the agent's identity only), so a mismatch with the manager's configured
 # prefix surfaces as 404 (route not found), never as 401.
 #
 # Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
 # test, so when --global-prefix is not given it is read from that manager's own configuration
-# instead of making every invocation repeat it -- a default installation needs no flag. An
-# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
-
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+# (etc/wazuh-manager.yml, through its CLI so defaults apply) instead of making every invocation
+# repeat it -- a default installation needs no flag. An explicit value always wins; pass '/' to
+# force the unprefixed paths against a prefixed manager (--manager-home names the installation).
 
 GLOBAL_PREFIX = ""
 
@@ -84,31 +83,31 @@ def normalize_global_prefix(raw: str) -> str:
     return "/" + stripped if stripped else ""
 
 
-def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
-    """Reads <remote><https><global_prefix> out of the manager's configuration.
+def global_prefix_from_conf(manager_home: str = DEFAULT_MANAGER_HOME) -> str:
+    """Reads the effective remote.https.global_prefix of the manager installed at `manager_home`.
 
-    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
-    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
-    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
-    caller needs no separate "not detected" case.
+    Asks the manager's own CLI (bin/wazuh-manager-conf get) so the value is the one remoted
+    serves, defaults included. Returns "" when the CLI or the configuration file is missing or
+    the option is not set, which is what "no prefix" means to the caller.
     """
+    cli = os.path.join(manager_home, "bin", "wazuh-manager-conf")
+    conf = os.path.join(manager_home, "etc", "wazuh-manager.yml")
+    if not (os.path.isfile(cli) and os.path.isfile(conf)):
+        return ""
     try:
-        with open(conf_path, "r") as handle:
-            text = handle.read()
-    except OSError:
+        result = subprocess.run([cli, "-H", manager_home, "-f", conf, "--skip-file-checks", "get",
+                                 "remote.https.global_prefix"],
+                                capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
         return ""
-    block = re.search(r"<https>(.*?)</https>", text, re.S)
-    if not block:
-        return ""
-    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
-    return tag.group(1).strip() if tag else ""
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+def resolve_global_prefix(cli_value, manager_home: str = DEFAULT_MANAGER_HOME) -> str:
     """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
     if cli_value is not None:
         return normalize_global_prefix(cli_value)
-    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+    return normalize_global_prefix(global_prefix_from_conf(manager_home))
 
 
 def prefixed(path: str) -> str:
@@ -481,9 +480,9 @@ def main():
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
     parser.add_argument("--global-prefix", default=None,
                         help="URL path prefix the manager serves every endpoint under "
-                             "(<remote><https><global_prefix>). Used only when "
+                             "(remote.https.global_prefix of etc/wazuh-manager.yml). Used only when "
                              "building the URL (authentication does not cover the target). Read from "
-                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "<manager-home>/etc/wazuh-manager.yml (effective value) when not given; pass '/' to force the "
                              "unprefixed paths.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
@@ -507,9 +506,9 @@ def main():
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
     global GLOBAL_PREFIX
-    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix, args.manager_home)
     if args.global_prefix is None and GLOBAL_PREFIX:
-        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {args.manager_home}/etc/wazuh-manager.yml")
 
     paths = ManagerPaths(args.manager_home)
 

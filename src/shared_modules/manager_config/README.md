@@ -99,7 +99,7 @@ end-to-end test can run from the `UNIT_TEST` tree.
 
 | Path (relative to `$WAZUH_HOME`) | Mode | Origin |
 |---|---|---|
-| `etc/wazuh-manager.yml` | 660 root:wazuh-manager | generated at installation by `WriteManagerYaml()` (`src/init/inst-functions.sh`), the YAML twin of `wazuh-manager.conf` with the same cluster key; `gen_wazuh.sh conf … [yaml_output]` writes it for the packages |
+| `etc/wazuh-manager.yml` | 660 root:wazuh-manager | generated at installation by `WriteManager()` (`src/init/inst-functions.sh`) from the fragments in `etc/templates/config/generic/manager/`; `gen_wazuh.sh conf manager <dist> <ver>` prints the same document; `etc/wazuh-manager.yml` of the repository is the fallback when the generator is unavailable |
 | `etc/wazuh-manager.schema.json` | 640 root:wazuh-manager | copy of `schema/wazuh-manager.schema.json`, refreshed on every install (product, not configuration); the Python framework validates against it |
 | `bin/wazuh-manager-conf` | 750 root:wazuh-manager | this module's CLI |
 
