@@ -372,7 +372,7 @@ An attempt count is the **total** number of tries, not retries after the first: 
 once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;
 authentication failures, permanent errors and version rejections stop immediately. A step's worst
 case is therefore about `attempts × timeout` plus the jittered backoff between tries — check that
-figure against `<global><agents_disconnection_time>` before raising either.
+figure against `global.agents_disconnection_time` before raising either.
 
 ```ini
 # Per-request budget for /control, /stateless, /stats and /config, in

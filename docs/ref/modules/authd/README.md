@@ -44,7 +44,7 @@ options see [Authd Configuration](configuration.md).
 
 | Thread | Role |
 |--------|------|
-| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
+| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `true`) |
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
 | Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and hands the indexer purge of every removed agent to the relay. It never waits on the network |
 | Purge relay | Sends the queued indexer purges to the [Inventory Sync Server](../inventory-sync-server/README.md), after the configured delay, and owns every retry |
@@ -56,7 +56,7 @@ The writer and the purge relay run on the **master only**. See [Cluster](#cluste
 
 A worker node does not own a keystore. An enrollment that arrives at a worker is forwarded to the
 master, which validates it, assigns the id and generates the key; the worker relays the answer to the
-agent and keeps nothing locally. The `<force>` settings are ignored on a worker — the master decides —
+agent and keeps nothing locally. The `auth.force` settings are ignored on a worker — the master decides —
 and a worker that cannot reach the master answers `9016`.
 
 The key reaches the worker's own `client.keys` through the cluster's integrity sync, the same
@@ -138,7 +138,7 @@ resynchronise themselves.
 
 ## Force re-enrollment
 
-The `<force>` sub-block controls when an agent may overwrite an existing registration:
+The `auth.force` sub-block controls when an agent may overwrite an existing registration:
 
 - `enabled` — allow forced overwrite at all
 - `key_mismatch` — overwrite if the agent's key does not match
@@ -224,11 +224,11 @@ failure responds with `{"error": <code>, "message": "<description>"}` (for examp
 "Duplicate IP" or `9013` "Maximum number of agents reached").
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely
-replaces the daemon's configured [`<force>`](configuration.md#force) block for that single
+replaces the daemon's configured [`auth.force`](configuration.md#force) block for that single
 request — including `disconnected_time` and `after_registration_time` — regardless of what is
-configured in `wazuh-manager.conf`. This lets a local caller force an overwrite the running
+configured in `wazuh-manager.yml`. This lets a local caller force an overwrite the running
 configuration would otherwise reject, without changing authd's own configuration. If `force` is
-omitted, the configured `<force>` settings apply as usual. Shape:
+omitted, the configured `auth.force` settings apply as usual. Shape:
 
 ```json
 {
@@ -240,11 +240,11 @@ omitted, the configured `<force>` settings apply as usual. Shape:
 ```
 
 `disconnected_time.value` and `after_registration_time` each accept either a number of seconds or
-a string with a time suffix (`s`, `m`, `h`, `d`), the same as their XML configuration equivalents.
+a string with a time suffix (`s`, `m`, `h`, `d`), the same as their configuration-file equivalents.
 
 The socket also accepts a small set of plain-text (non-JSON) administrative commands, handled
 separately from the JSON API above: `getconfig auth` returns the daemon's current effective
-`<auth>` configuration as JSON (`ok {"auth": {...}}`); any other section name or unrecognized
+`auth` configuration as JSON (`ok {"auth": {...}}`); any other section name or unrecognized
 command returns an `err <message>` response.
 
 ## Certificate generation CLI
@@ -279,10 +279,10 @@ manager's own hostname and the `CN` parsed out of `-S` (when present and not alr
 | `src/auth.c` | Protocol parsing, agent validation, key generation |
 | `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get` API) |
 | `src/authcom.c` | Local socket admin commands (e.g. `getconfig`) |
-| `src/config.c` | Configuration bootstrap: calls the `<auth>` XML parser and exports the live config as JSON |
+| `src/config.c` | Configuration bootstrap: loads the `auth` section of `etc/wazuh-manager.yml` (`Read_Authd_JSON`) and exports the live config as JSON |
 | `include/auth.h` | Shared struct/function declarations (`struct client`, `struct keynode`, protocol and config prototypes) |
 
-The actual `<auth>` XML element parsing, validation, and default values live in the shared config
+The actual `auth` section parsing (`Read_Authd_JSON`), validation, and default values live in the shared config
 subsystem at `src/config/src/authd-config.c`, not in `os_auth` itself.
 
 ## Development

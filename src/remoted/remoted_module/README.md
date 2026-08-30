@@ -76,7 +76,7 @@ src/http_server/
 
 - **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
   **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
-  (`<remote><https><global_prefix>`; `""` == `/` == no prefix). With a prefix in effect the
+  (`remote.https.global_prefix`; `""` == `/` == no prefix). With a prefix in effect the
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
   router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
@@ -158,7 +158,7 @@ src/http_server/
        `<=0` value resolves via `cpp_get_nproc()` (`shared_modules/utils/proc.hpp`, cgroup-aware
        on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
        example* below for the exact multiplier per pool.
-    2. `<remote><https>` settings, wired from the parsed config in `secure.c`'s
+    2. `remote.https` settings, wired from the parsed config in `secure.c`'s
        `w_remoted_build_module_config()`: `port`, `bind_address`, `global_prefix`,
        `http_max_body_size`, `ca_path`, `ciphers`, `verification_mode`, `dual_stack`.
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
@@ -547,7 +547,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `Config` field | Default | Internal option (`wazuh-manager-internal-options.conf`) |
 |---|---|---|
 | `managerVersion` | `__wazuh_version` | — (manager's own version, for comparison) |
-| `allowHigherVersions` | from XML | `<remote><agents><allow_higher_versions>` |
+| `allowHigherVersions` | from the manager configuration | `remote.agents.allow_higher_versions` |
 | `isWorkerNode` | from cluster config | — |
 | `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
 | `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
@@ -1082,7 +1082,7 @@ fixing authd once.
 
 ### Enrollment scoping — independent of legacy 1515
 
-Three flags in the existing `<auth>` config block, in order of precedence:
+Three flags in the existing `auth` section, in order of precedence:
 
 | `disabled` | `remote_enrollment` | `legacy_enrollment` (new) | Port 1515 | `/enroll` |
 |---|---|---|---|---|
@@ -1105,9 +1105,9 @@ no bearing on it whatsoever, and neither flag ever unregisters the route (see ab
 `authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
 sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
 that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
-It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
+It behaves as a plain boolean, defaulting to enabled (`0`) unless `disabled: true` is
 explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
-normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
+normal way, call `Read_Authd_JSON(w_mconf_section("auth"), &authd_cfg)`, and read `flags.disabled` directly.
 
 ### Manager certificate unification
 
@@ -1117,11 +1117,11 @@ manager identity from the one this module's HTTPS server presents (`etc/certs/re
 listener requires one) treats "this certificate validated" as an enrollment credential, both
 listeners now present the *same* identity: the install-time generation step
 (`GenerateAuthCert()` in `init/inst-functions.sh`, plus its RPM/DEB packaging equivalents) that used
-to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
-(`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
+to create `authd.pem`/`authd-key.pem` has been removed, and the generated `auth` section
+(`auth.yml.template`, and the `disabled: true` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
 same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
-`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+`auth` certificate overrides (`ssl_manager_cert`/`ssl_manager_key`) keep working unchanged — only the generated
 defaults change. Port 1515 keeps running with the unified certificate.
 
 Two compiled-in defaults exist alongside the generated config, both now updated to match:
@@ -1140,9 +1140,9 @@ is never reached on a fresh manager install anyway: `auth.template` always write
 ### Configuration
 
 Unlike every other subsystem's tunables in this module, enrollment's *behavioral* flags do not come
-from a new `<https>` block or a new internal option: remoted's C side calls
-`ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)` — the `config` library is already linked into
-`remoted_lib` — and copies fields straight out of authd's own `<auth>` config (`use_password`,
+from a new `remote.https` option or a new internal option: remoted's C side calls
+`Read_Authd_JSON()` on the `auth` section of `etc/wazuh-manager.yml` (`w_mconf_section("auth")`; the `config`
+library is already linked into `remoted_lib`) and copies fields straight out of authd's own `auth` config (`use_password`,
 `use_source_ip`, `allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and
 1515 must agree on whether password auth is required and which versions are acceptable, and reading
 the *same* config block is what guarantees that rather than two settings that can drift apart. Only
@@ -1779,7 +1779,7 @@ expects (shared `tools/wire_jwt.py`, pure standard library; agent key read strai
 `pip install -r tools/requirements.txt`.
 
 Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
-flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
+flag is absent it reads `remote.https.global_prefix` from the local manager's configuration, so
 a default installation needs no flag. The prefix is a routing matter only (the bearer does not bind
 the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 

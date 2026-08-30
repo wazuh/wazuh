@@ -10,7 +10,7 @@ exclusively; it has no legacy code path at all.
 The manager keeps serving 4.x agents on the old channel, but only when it is explicitly enabled.
 
 This guide covers the **channel**: which listeners exist, what moved where on the wire, and what an
-operator has to change around the manager. For the `wazuh-manager.conf` edits themselves, see
+operator has to change around the manager. For the `wazuh-manager.yml` edits themselves, see
 [Manager configuration migration](manager-configuration-migration.md#remote-section). For the agent's
 side of the configuration, see [Agent configuration](../../ref/modules/client/configuration.md).
 
@@ -30,14 +30,14 @@ to**. Anything that relied on that mapping is gone or reworked.
 | Port | Listener | 5.0 status |
 | --- | --- | --- |
 | `1517` | Remoted HTTPS agent API | **Default.** Always enabled. Serves 5.x agents, enrollment included. |
-| `1514` | Remoted legacy AES TCP/UDP | Opt-in. Only bound when `<remote><legacy>` is present and enabled. Serves 4.x agents. |
-| `1515` | `authd` TLS enrollment | Opt-in. Gated by `<auth><legacy_enrollment>`. Only needed by 4.x agents. |
+| `1514` | Remoted legacy AES TCP/UDP | Opt-in. Only bound when `remote.legacy.enabled` is `true`. Serves 4.x agents. |
+| `1515` | `authd` TLS enrollment | Opt-in. Gated by `auth.legacy_enrollment`. Only needed by 4.x agents. |
 
 Open `1517/tcp` on the manager before migrating any agent. If your fleet is fully on 5.x, `1514` and
 `1515` can both be closed — see [Retiring the legacy channel](#retiring-the-legacy-channel).
 
-> The default `<remote><https><bind_addr>` is `127.0.0.1`. On a manager that must accept agents from
-> other hosts, set it to `0.0.0.0` (or a specific address). This mirrors the `<legacy><local_ip>`
+> The default `remote.https.bind_addr` is `127.0.0.1`. On a manager that must accept agents from
+> other hosts, set it to `0.0.0.0` (or a specific address). This mirrors the `remote.legacy.local_ip`
 > default change described in
 > [Manager configuration migration](manager-configuration-migration.md#remote-section).
 
@@ -101,7 +101,7 @@ Two differences worth knowing before reading logs:
 
 ## What the legacy channel still carries
 
-With `<remote><legacy>` enabled, a 4.x agent keeps working for events, keep-alives, centralized
+With `remote.legacy.enabled: true`, a 4.x agent keeps working for events, keep-alives, centralized
 configuration and remote upgrade. It does **not** get:
 
 - **Active response.** There is no delivery path for agents below 5.0.0; a task targeting one is
@@ -117,18 +117,18 @@ parity. See [Remote agent upgrade](remote-agent-upgrade.md) for the upgrade path
 
 Three distinct categories, which are easy to conflate:
 
-**Moved** — same meaning, new location. Leaving them directly under `<remote>` is a startup error;
-there is no automatic migration.
+**Moved** — same meaning, new location. Leaving them directly under `remote` is a startup error
+(`(1244): Invalid configuration at '/remote/port': unknown option`); there is no automatic migration.
 
-| 4.x | 5.0 |
+| 4.x (`ossec.conf`) | 5.0 (`wazuh-manager.yml`) |
 | --- | --- |
-| `<remote><port>` | `<remote><legacy><port>` |
-| `<remote><protocol>` | `<remote><legacy><protocol>` |
-| `<remote><ipv6>` | `<remote><legacy><ipv6>` |
-| `<remote><local_ip>` | `<remote><legacy><local_ip>` — **default changed to `127.0.0.1`** |
-| `<remote><queue_size>` | `<remote><legacy><queue_size>` — legacy channel only; the HTTPS channel uses back-pressure instead |
-| `<remote><rids_closing_time>` | `<remote><legacy><rids_closing_time>` |
-| `<remote><connection_overtake_time>` | `<remote><legacy><connection_overtake_time>` |
+| `<remote><port>` | `remote.legacy.port` |
+| `<remote><protocol>` | `remote.legacy.protocol` (a list: `[tcp, udp]`) |
+| `<remote><ipv6>` | `remote.legacy.ipv6` |
+| `<remote><local_ip>` | `remote.legacy.local_ip` — **default changed to `127.0.0.1`** |
+| `<remote><queue_size>` | `remote.legacy.queue_size` — legacy channel only; the HTTPS channel uses back-pressure instead |
+| `<remote><rids_closing_time>` | `remote.legacy.rids_closing_time` |
+| `<remote><connection_overtake_time>` | `remote.legacy.connection_overtake_time` |
 
 **Removed** — rejected outright; the manager will not start.
 
@@ -138,9 +138,9 @@ there is no automatic migration.
 | `<remote><allowed-ips>` | Use the `ip` column in `client.keys` |
 | `<remote><denied-ips>` | Same |
 
-**New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `global_prefix`,
+**New** — the HTTPS listener's own section, `remote.https`: `port`, `bind_addr`, `global_prefix`,
 `certificate`, `key`, `ca`, `verification_mode`, `ciphers`, `max_body_size`, `dual_stack`.
-`<remote><agents>` is unchanged. See
+`remote.agents` keeps its single option (`allow_higher_versions`). See
 [Remoted configuration](../../ref/modules/remoted/configuration.md#https-configuration).
 
 On the agent side, a 4.x `ossec.conf` is **accepted and ignored** rather than rejected, so an
@@ -162,7 +162,7 @@ so the defaults apply. See
 [Manager configuration migration](manager-configuration-migration.md#auth-section).
 
 Client-certificate validation is optional and configured with
-`<remote><https><verification_mode>`: `none` (default), `certificate`, or `full` (which additionally
+`remote.https.verification_mode`: `none` (default), `certificate`, or `full` (which additionally
 requires the peer's address to appear in the certificate's SAN).
 
 ## Behind a load balancer
@@ -181,13 +181,13 @@ split or retry it partially.
 
 Once no 4.x agents remain:
 
-1. Remove the `<remote><legacy>` block (or set `<enabled>no</enabled>`). The legacy listener, keystore,
+1. Remove the `remote.legacy` section (or set `remote.legacy.enabled: false`). The legacy listener, keystore,
    metadata cache, event queue and dispatcher threads are then never created.
-2. Set `<auth><legacy_enrollment>no</legacy_enrollment>` to stop listening on `1515`.
+2. Set `auth.legacy_enrollment: false` to stop listening on `1515`.
 3. Close `1514` and `1515` on the firewall.
 
 Verify with the manager log at startup: it reports either
-`Legacy listener disabled ('<remote><legacy>' absent or disabled).` or
+`Legacy listener disabled (remote.legacy.enabled is false).` or
 `Listening on port <port>/<protocol> (secure).`
 
 ## Verification
@@ -219,7 +219,7 @@ for reading them.
 
 - [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) — the protocol and all nine endpoints
 - [Remoted architecture](../../ref/modules/remoted/architecture.md) — how the two channels sit side by side
-- [Remoted configuration](../../ref/modules/remoted/configuration.md) — every `<remote>` option and internal option
-- [Manager configuration migration](manager-configuration-migration.md) — the `wazuh-manager.conf` edits
+- [Remoted configuration](../../ref/modules/remoted/configuration.md) — every `remote` option and internal option
+- [Manager configuration migration](manager-configuration-migration.md) — the `wazuh-manager.yml` edits
 - [Remote agent upgrade](remote-agent-upgrade.md) — upgrading 4.x agents to 5.x
 - [Authd](../../ref/modules/authd/README.md) — enrollment logic and the `remote_enrollment` / `legacy_enrollment` matrix

@@ -84,7 +84,7 @@ authoritative and replaces whatever the agent sent:
 | JSON pointer | Endpoint | Source |
 |---|---|---|
 | `/wazuh/agent/id` | both | The authenticated `X-Wazuh-Agent-Id` header |
-| `/wazuh/cluster/name` | both | `<cluster><name>` in the manager configuration |
+| `/wazuh/cluster/name` | both | `cluster.name` in the manager configuration |
 | `/state/modified_at` | `/stats` | The manager's clock, ISO 8601 with milliseconds, UTC |
 | `/state/document_version` | `/stats` | Constant. Versions the stored layout, not the report |
 | `/wazuh/schema/version` | `/stats` | Constant, and a **string**: `wazuh-metrics-agents` declares it `keyword`, so this index follows |

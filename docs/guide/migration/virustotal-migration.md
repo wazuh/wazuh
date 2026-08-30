@@ -11,7 +11,7 @@ In 4.x, VirusTotal and Maltiverse worked as a bi-directional callback loop: inte
 
 ### 1.1. Remove the integration block from `ossec.conf`
 
-Remove all `<integration>` blocks with `<name>virustotal</name>` from your 4.x `ossec.conf` (renamed to `wazuh-manager.conf` in 5.0 — see the [manager configuration migration guide](manager-configuration-migration.md)). The entire block must be deleted regardless of which optional parameters (`<level>`, `<group>`, `<rule_id>`, `<alert_level>`) it contains:
+Remove all `<integration>` blocks with `<name>virustotal</name>` from your 4.x `ossec.conf` (the 5.0 manager configuration, `wazuh-manager.yml`, has no `<integration>` block — see the [manager configuration migration guide](manager-configuration-migration.md)). The entire block must be deleted regardless of which optional parameters (`<level>`, `<group>`, `<rule_id>`, `<alert_level>`) it contains:
 
 ```xml
 <integration>

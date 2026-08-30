@@ -69,7 +69,7 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `wazuh_socket.py` | IPC with Wazuh daemons via Unix sockets |
 | `wdb.py` | Async interface to Wazuh DB (length-prefixed Unix socket protocol) |
 | `wdb_http.py` | HTTP-based alternative WDB client (via `aiohttp`) |
-| `configuration.py` | Parse `wazuh-manager.conf` and related files |
+| `configuration.py` | Load `etc/wazuh-manager.yml` (PyYAML) and the internal options; XML helpers only for the agents' `agent.conf` |
 | `exception.py` | Custom exception hierarchy and error code catalog |
 | `wlogging.py` | Custom log rotation with gzip compression |
 | `pyDaemonModule.py` | UNIX daemonization (double-fork pattern) |

@@ -13,9 +13,9 @@ For module overview and architecture, see [Agent Upgrade Module](README.md).
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<agent-upgrade>`
+**YAML section:** `agent-upgrade` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#agent-upgrade)
 
 **Internal Options:** None
 
@@ -23,8 +23,8 @@ For module overview and architecture, see [Agent Upgrade Module](README.md).
 
 Enable or disable the agent upgrade module on the manager.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 - **Note:** When disabled, the module exits at startup and the manager will not accept upgrade requests.
 
 ### wpk_repository
@@ -42,29 +42,26 @@ Base URL from which WPK upgrade packages are fetched. Only applies to the manage
 
 Standard configuration for most deployments:
 
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-</agent-upgrade>
+```yaml
+agent-upgrade:
+  enabled: true
 ```
 
 ### Custom WPK Repository
 
 Use an internal or mirrored WPK repository instead of the official Wazuh one:
 
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-  <wpk_repository>https://packages.internal.company.com/wazuh/wpk/</wpk_repository>
-</agent-upgrade>
+```yaml
+agent-upgrade:
+  enabled: true
+  wpk_repository: https://packages.internal.company.com/wazuh/wpk/
 ```
 
 ### Disable Remote Upgrades on the Manager
 
-```xml
-<agent-upgrade>
-  <enabled>no</enabled>
-</agent-upgrade>
+```yaml
+agent-upgrade:
+  enabled: false
 ```
 
 ---
@@ -73,7 +70,7 @@ Use an internal or mirrored WPK repository instead of the official Wazuh one:
 
 **Configuration file:** `/var/ossec/etc/ossec.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\ossec.conf` (Windows)
 
-**XML Section:** `<agent-upgrade>`
+**YAML section:** `agent-upgrade` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#agent-upgrade)
 
 **Internal Options:** None
 
@@ -205,7 +202,7 @@ Get-Content 'C:\Program Files (x86)\ossec-agent\ossec.log' -Wait | Select-String
 Verify the module is enabled:
 
 ```bash
-grep -A 3 "<agent-upgrade>" /var/wazuh-manager/etc/wazuh-manager.conf
+/var/wazuh-manager/bin/wazuh-manager-conf get agent-upgrade
 ```
 
 Verify the target version is compatible (see [Version constraints](README.md#version-constraints)).

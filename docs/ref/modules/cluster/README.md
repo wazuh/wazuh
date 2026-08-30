@@ -2,11 +2,10 @@
 
 For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Cluster Configuration](configuration.md).
 
-> **Note:** The `<cluster>` XML section is not parsed or validated by the
-> shared C configuration library — it is recognized but otherwise ignored at
-> that layer. All parsing and validation happen later, in Python (lenient
-> parsing via `utils.read_cluster_config`, used generally; strict validation
-> via `cluster.check_cluster_config`, used only at daemon startup / CLI). See
+> **Note:** The `cluster` section of `etc/wazuh-manager.yml` is validated against the manager
+> schema before any daemon starts (`key` is required; unknown options are rejected). Python then
+> reads it: lenient defaults for the optional options via `utils.read_cluster_config`, strict
+> value checks via `cluster.check_cluster_config` at daemon startup / CLI. See
 > [Cluster Configuration](configuration.md) for details.
 
 ## Introduction
@@ -25,7 +24,7 @@ A Wazuh server cluster can have only one master node. During synchronization, da
 
 > **Note**
 > Configuration changes applied to the file
-> `/var/wazuh-manager/etc/wazuh-manager.conf`
+> `/var/wazuh-manager/etc/wazuh-manager.yml`
 > on the master node are **not automatically synchronized** to worker nodes.
 > You must manually replicate these changes and restart the nodes for them to take effect.
 

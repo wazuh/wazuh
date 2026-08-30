@@ -10,13 +10,13 @@ For module overview and architecture, see [Monitord Module](index.html).
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<global>`
+**YAML section:** `global` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#global)
 
 **Internal Options:** `monitord.*`
 
-The monitoring daemon consumes agent connection settings from the `<global>` section and provides log rotation and disconnection monitoring services.
+The monitoring daemon consumes agent connection settings from the `global` section and provides log rotation and disconnection monitoring services.
 
 
 ### agents_disconnection_time
@@ -90,11 +90,10 @@ monitord.delete_old_agents=0
 
 Standard settings. Note that `agents_disconnection_alert_time` of `0` means the disconnection alert fires immediately once an agent is marked disconnected, not that alerts are disabled:
 
-```xml
-<global>
-  <agents_disconnection_time>15m</agents_disconnection_time>
-  <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
-</global>
+```yaml
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 0
 ```
 
 To disable disconnection alerting entirely, set the internal option `monitord.monitor_agents=0` instead (see [Internal Options](#internal-options)).
@@ -103,33 +102,30 @@ To disable disconnection alerting entirely, set the internal option `monitord.mo
 
 Alert after 30 minutes of disconnection:
 
-```xml
-<global>
-  <agents_disconnection_time>15m</agents_disconnection_time>
-  <agents_disconnection_alert_time>30m</agents_disconnection_alert_time>
-</global>
+```yaml
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 30m
 ```
 
 ### Aggressive Disconnection Detection
 
 Detect disconnections faster (for critical environments):
 
-```xml
-<global>
-  <agents_disconnection_time>5m</agents_disconnection_time>
-  <agents_disconnection_alert_time>10m</agents_disconnection_alert_time>
-</global>
+```yaml
+global:
+  agents_disconnection_time: 5m
+  agents_disconnection_alert_time: 10m
 ```
 
 ### Relaxed Disconnection Detection
 
 For unreliable networks or agents that report infrequently:
 
-```xml
-<global>
-  <agents_disconnection_time>1h</agents_disconnection_time>
-  <agents_disconnection_alert_time>2h</agents_disconnection_alert_time>
-</global>
+```yaml
+global:
+  agents_disconnection_time: 1h
+  agents_disconnection_alert_time: 2h
 ```
 
 ---
@@ -204,21 +200,24 @@ tail -100 /var/wazuh-manager/logs/alerts/alerts.log | grep 5715
 ### Recommended Settings
 
 **For critical infrastructure:**
-```xml
-<agents_disconnection_time>5m</agents_disconnection_time>
-<agents_disconnection_alert_time>10m</agents_disconnection_alert_time>
+```yaml
+global:
+  agents_disconnection_time: 5m
+  agents_disconnection_alert_time: 10m
 ```
 
 **For standard deployments:**
-```xml
-<agents_disconnection_time>15m</agents_disconnection_time>
-<agents_disconnection_alert_time>30m</agents_disconnection_alert_time>
+```yaml
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 30m
 ```
 
 **For unreliable networks:**
-```xml
-<agents_disconnection_time>30m</agents_disconnection_time>
-<agents_disconnection_alert_time>1h</agents_disconnection_alert_time>
+```yaml
+global:
+  agents_disconnection_time: 30m
+  agents_disconnection_alert_time: 1h
 ```
 
 ---

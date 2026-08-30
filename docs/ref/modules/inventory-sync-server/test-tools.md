@@ -175,7 +175,7 @@ Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
-answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
+answers `403` on a cluster mismatch) and the `indexer` section with the hosts the module and the
 scanner should reach.
 
 ## The integration QA (`qa/`)

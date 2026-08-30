@@ -15,7 +15,7 @@ The main loop runs every second and checks four timers:
 | Deletion check | Configurable | Delete agents that remain disconnected beyond the retention threshold |
 | Log rotation | Daily or size threshold | Rotate and compress `/var/wazuh-manager/logs/wazuh-manager.log` |
 
-`agents_disconnection_time` and `agents_disconnection_alert_time` are set in the `<global>` section of `wazuh-manager.conf` — see [Global Configuration](configuration.md).
+`agents_disconnection_time` and `agents_disconnection_alert_time` are set in the `global` section of `wazuh-manager.yml` — see [Global Configuration](configuration.md).
 
 ## Log rotation
 

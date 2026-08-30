@@ -37,7 +37,7 @@ IndexerDownloader  →  UpdateIndexerCursor
 
 ## Configuration
 
-The module is configured programmatically by its caller (the Vulnerability Scanner engine), not via `wazuh-manager.conf` directly. Relevant parameters:
+The module is configured programmatically by its caller (the Vulnerability Scanner engine), not via `wazuh-manager.yml` directly. Relevant parameters:
 
 | Parameter | Description |
 |-----------|-------------|
@@ -51,7 +51,7 @@ The module is configured programmatically by its caller (the Vulnerability Scann
 | `configData.indexer.pageSize` | Documents per PIT page (default 100) |
 | `configData.indexer.numSlices` | Parallel PIT slices for initial load (default 2) |
 
-The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Configuration](configuration.md)).
+The Indexer connection parameters come from the manager's `indexer` section of `etc/wazuh-manager.yml` (see [Indexer Configuration](configuration.md)).
 
 ## On-demand updates (`POST /ondemand`)
 
