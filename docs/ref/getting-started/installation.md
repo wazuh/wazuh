@@ -28,7 +28,7 @@ sudo rpm -ivh wazuh-manager-*.rpm
 
 ### Installation variables
 
-The `<remote>` block of the generated `/var/wazuh-manager/etc/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
+The `remote` section of the generated `/var/wazuh-manager/etc/wazuh-manager.yml` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
 
 ```bash
 sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' dpkg -i wazuh-manager_*.deb
@@ -41,7 +41,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 > [!NOTE]
 > When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with an error, before any configuration is written.
 >
-> The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
+> The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.yml`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.yml.new`; see [Upgrade](../upgrade.md).
 
 | Variable | Configuration option | Default |
 |----------|----------------------|---------|
@@ -119,21 +119,17 @@ sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v waz
 sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 ```
 
-Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
+Update the `indexer` section of `/var/wazuh-manager/etc/wazuh-manager.yml` to specify the indexer IP address:
 
-```xml
-<indexer>
-  <hosts>
-    <host>https://127.0.0.1:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+    - https://127.0.0.1:9200
+  ssl:
+    certificate_authorities:
+      - etc/certs/root-ca.pem
+    certificate: etc/certs/indexer-connector.pem
+    key: etc/certs/indexer-connector-key.pem
 ```
 
 Replace `127.0.0.1` with your indexer IP address if it's running on a different host.
@@ -156,61 +152,55 @@ sudo systemctl status wazuh-manager
 
 ### Cluster configuration
 
-The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
+The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following `cluster` section in `/var/wazuh-manager/etc/wazuh-manager.yml` (the installer generates a random `key`):
 
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>node01</node_name>
-  <node_type>master</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
-  <port>1516</port>
-  <bind_addr>127.0.0.1</bind_addr>
-  <nodes>
-      <node>127.0.0.1</node>
-  </nodes>
-  <hidden>no</hidden>
-</cluster>
+```yaml
+cluster:
+  name: wazuh
+  node_name: node01
+  node_type: master
+  key: fd3350b86d239654e34866ab3c4988a8
+  port: 1516
+  bind_addr: 127.0.0.1
+  nodes:
+    - 127.0.0.1
+  hidden: false
 ```
 
 #### Multi-node deployment
 
 For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:
 
-1. **On the master node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+1. **On the master node**, edit the `cluster` section of `/var/wazuh-manager/etc/wazuh-manager.yml`:
 
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>master-node</node_name>
-  <node_type>master</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
-  <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
-  <nodes>
-      <node>MASTER_NODE_IP</node>
-  </nodes>
-  <hidden>no</hidden>
-</cluster>
+```yaml
+cluster:
+  name: wazuh
+  node_name: master-node
+  node_type: master
+  key: fd3350b86d239654e34866ab3c4988a8
+  port: 1516
+  bind_addr: 0.0.0.0
+  nodes:
+    - MASTER_NODE_IP
+  hidden: false
 ```
 
 Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 
-2. **On each worker node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+2. **On each worker node**, edit the `cluster` section of `/var/wazuh-manager/etc/wazuh-manager.yml`:
 
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>worker-node-01</node_name>
-  <node_type>worker</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
-  <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
-  <nodes>
-      <node>MASTER_NODE_IP</node>
-  </nodes>
-  <hidden>no</hidden>
-</cluster>
+```yaml
+cluster:
+  name: wazuh
+  node_name: worker-node-01
+  node_type: worker
+  key: fd3350b86d239654e34866ab3c4988a8
+  port: 1516
+  bind_addr: 0.0.0.0
+  nodes:
+    - MASTER_NODE_IP
+  hidden: false
 ```
 
 Replace `MASTER_NODE_IP` with the actual IP address of the master node, and use a unique `node_name` for each worker.

@@ -4,7 +4,7 @@ Wazuh 5.0 introduces breaking changes to the manager configuration that require 
 
 This guide covers the four configuration files that changed between versions:
 
-- [`ossec.conf`](#osseconf--wazuh-managerconf) → `wazuh-manager.conf`
+- [`ossec.conf`](#osseconf-xml--wazuh-manageryml-yaml) → `wazuh-manager.yml` (YAML)
 - [`internal_options.conf`](#internal_optionsconf--wazuh-manager-internal-optionsconf) → `wazuh-manager-internal-options.conf`
 - [`api.yaml`](#apiyaml)
 - [`cluster.json`](#clusterjson)
@@ -14,8 +14,8 @@ This guide covers the four configuration files that changed between versions:
 | Area | 4.x | 5.0 |
 |------|-----|-----|
 | Installation path | `/var/ossec/` | `/var/wazuh-manager/` |
-| Main configuration file | `etc/ossec.conf` | `etc/wazuh-manager.conf` |
-| Root XML element | `<ossec_config>` | `<wazuh_config>` |
+| Main configuration file | `etc/ossec.conf` (XML) | `etc/wazuh-manager.yml` (YAML, validated against `etc/wazuh-manager.schema.json`) |
+| Root XML element | `<ossec_config>` | none: a YAML mapping with one key per section |
 | Internal options file | `etc/internal_options.conf` + `etc/local_internal_options.conf` | `etc/wazuh-manager-internal-options.conf` |
 | System user / group | `wazuh` | `wazuh-manager` |
 | Manager log file | `logs/ossec.log` | `logs/wazuh-manager.log` |
@@ -52,7 +52,7 @@ Follow the official Wazuh documentation to uninstall the 4.x manager package for
 
 ### 3. Install the 5.0 manager
 
-Follow the official Wazuh 5.0 installation documentation for your distribution. The manager installs to `/var/wazuh-manager/` and generates a fresh `wazuh-manager.conf` with default settings.
+Follow the official Wazuh 5.0 installation documentation for your distribution. The manager installs to `/var/wazuh-manager/` and generates a fresh `wazuh-manager.yml` with default settings.
 
 ### 4. Apply configuration changes
 
@@ -60,103 +60,84 @@ Do not copy the 4.x configuration files directly into the 5.0 installation. Inst
 
 ---
 
-## `ossec.conf` → `wazuh-manager.conf`
+## `ossec.conf` (XML) → `wazuh-manager.yml` (YAML)
 
-The main configuration file is renamed and its XML root element changed. Several sections that were manager-side in 4.x have been removed; their functionality either moved to the agent, was replaced by a new subsystem, or was deprecated.
+The manager configuration is a YAML file in 5.0: `/var/wazuh-manager/etc/wazuh-manager.yml`, a
+mapping with one key per section and no root element. It is validated against a JSON schema
+(`/var/wazuh-manager/etc/wazuh-manager.schema.json`) before any daemon starts, so unknown options and
+out-of-range values are refused up front instead of being ignored or reported by one daemon. The agent
+keeps its XML `ossec.conf` (and `agent.conf` is still XML on the manager).
 
-### Root element
-
-Replace `<ossec_config>` with `<wazuh_config>` throughout the file.
+There is no automatic conversion: install 5.0, let the installer generate `wazuh-manager.yml` with
+its defaults, and carry over the 4.x values you had customized using the tables below. Booleans are
+`true`/`false` (not `yes`/`no`), repeated elements become lists, and 4.x sections that no longer exist
+must simply not be added. Every option, with its type, default and constraints, is listed in the
+[Manager Configuration Reference](../../ref/configuration/manager/reference.md).
 
 **4.x:**
 ```xml
 <ossec_config>
-  ...
+  <global>...</global>
+  <remote>...</remote>
 </ossec_config>
 ```
 
 **5.0:**
-```xml
-<wazuh_config>
-  ...
-</wazuh_config>
+```yaml
+global:
+  agents_disconnection_time: 15m
+remote:
+  legacy:
+    port: 1514
 ```
 
-### `<global>` section
+### `<global>` → `global`
 
-In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<agents_disconnection_alert_time>`. **Every other element causes a startup error.** Remove all email, logging, and alert options before starting the manager.
+Only two options survive; **every other 4.x element of `<global>` has no YAML counterpart**.
 
-**4.x options that must be removed (cause startup error in 5.0):**
+| 4.x element | 5.0 option | Type, default |
+|---|---|---|
+| `<agents_disconnection_time>` | `global.agents_disconnection_time` | duration, `15m` |
+| `<agents_disconnection_alert_time>` | `global.agents_disconnection_alert_time` | duration, `0` |
+| `<jsonout_output>`, `<alerts_log>`, `<logall>`, `<logall_json>` | — | Removed (alert output belongs to the engine) |
+| `<email_notification>`, `<smtp_server>`, `<email_from>`, `<email_to>`, `<email_maxperhour>`, `<email_log_source>` | — | Email functionality removed — see [Mail forwarding and reporting migration](mail-forwarding-reporting.md) |
+| `<update_check>` | — | Removed |
+| second `<global>` with `<white_list>` | — | Removed (active response is agent-side) |
 
-| Option | Notes |
-|--------|-------|
-| `<jsonout_output>` | Removed |
-| `<alerts_log>` | Removed |
-| `<logall>` | Removed |
-| `<logall_json>` | Removed |
-| `<email_notification>` | Email functionality removed — see [Mail forwarding and reporting migration](mail-forwarding-reporting.md) |
-| `<smtp_server>` | Email functionality removed |
-| `<email_from>` | Email functionality removed |
-| `<email_to>` | Email functionality removed |
-| `<email_maxperhour>` | Email functionality removed |
-| `<email_log_source>` | Email functionality removed |
-| `<update_check>` | Removed |
-
-**4.x:**
-```xml
-<global>
-  <jsonout_output>yes</jsonout_output>
-  <alerts_log>yes</alerts_log>
-  <logall>no</logall>
-  <logall_json>no</logall_json>
-  <email_notification>no</email_notification>
-  <smtp_server>smtp.example.wazuh.com</smtp_server>
-  <email_from>wazuh@example.wazuh.com</email_from>
-  <email_to>recipient@example.wazuh.com</email_to>
-  <email_maxperhour>12</email_maxperhour>
-  <email_log_source>alerts.log</email_log_source>
-  <agents_disconnection_time>15m</agents_disconnection_time>
-  <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
-</global>
-
-<alerts>
-  <log_alert_level>3</log_alert_level>
-  <email_alert_level>12</email_alert_level>
-</alerts>
+```yaml
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 0
 ```
 
-**5.0:**
-```xml
-<global>
-  <agents_disconnection_time>15m</agents_disconnection_time>
-  <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
-</global>
-```
+### `<remote>` → `remote`
 
-> [!NOTE]
-> The second `<global>` block used for active-response whitelisting (`<white_list>`) is silently ignored in 5.0. It can be removed.
+The classic TCP/UDP listener options move under `remote.legacy`; the HTTPS agent server has its own
+`remote.https` mapping (see [Remoted Configuration](../../ref/modules/remoted/configuration.md)); the
+version policy is `remote.agents`. `<connection>`, `<allowed-ips>` and `<denied-ips>` have no
+counterpart, and an unknown option under `remote` is refused with `(1244): Invalid configuration at
+'/remote/<name>'`.
 
-### `<remote>` section
+| 4.x element | 5.0 option | Type, default |
+|---|---|---|
+| `<connection>` | — | Removed: all agent-manager communication uses the secure protocol |
+| `<port>` | `remote.legacy.port` | integer 1-65535, `1514` |
+| `<protocol>` (`tcp,udp`) | `remote.legacy.protocol` | list of `tcp`/`udp`, `[tcp]` — an unknown protocol is refused, it no longer falls back to TCP |
+| `<ipv6>` | `remote.legacy.ipv6` | boolean, `false` |
+| `<local_ip>` | `remote.legacy.local_ip` | IP, `127.0.0.1` (see the breaking change below) |
+| `<queue_size>` | `remote.legacy.queue_size` | integer >= 1, `131072` |
+| `<rids_closing_time>` | `remote.legacy.rids_closing_time` | duration, `5m` |
+| `<connection_overtake_time>` | `remote.legacy.connection_overtake_time` | integer 0-3600, `60` |
+| `<allowed-ips>`, `<denied-ips>` | — | Removed |
+| — | `remote.legacy.enabled` | boolean, `true` — set to `false` to run the HTTPS listener only |
+| — | `remote.https.*` | new in 5.0: `port` (`1517`), `bind_addr`, `global_prefix`, `certificate`, `key`, `ca`, `verification_mode`, `ciphers`, `max_body_size`, `dual_stack` |
+| `<agents><allow_higher_versions>` | `remote.agents.allow_higher_versions` | boolean, `false` |
 
-The `<connection>`, `<allowed-ips>`, and `<denied-ips>` elements have been removed. Leaving any of
-them in the configuration **causes a startup error** in 5.0. All agent-manager communication uses
-the secure protocol by default.
-
-In addition, `<remote>`'s options are now grouped under nested blocks: the classic TCP/UDP listener
-options (`port`, `protocol`, `queue_size`, `ipv6`, `local_ip`, `rids_closing_time`,
-`connection_overtake_time`) move under a new `<legacy>` block, and a new `<https>` block configures
-the RESTinio-based HTTPS listener (see
-[Remoted Configuration Reference](../../ref/modules/remoted/configuration.md#https-configuration)).
-`<agents>` is unchanged. Options placed directly under `<remote>` (the pre-5.0 flat layout) are
-rejected and the manager will not start; there is no automatic migration.
-
-> **Breaking change:** `local_ip`'s default also changed, not just its location. In 4.x, leaving
-> `local_ip` unset meant "accept agent connections from any interface." In 5.0, an absent
-> `<local_ip>` defaults to `127.0.0.1` (loopback-only) -- the manager will not accept connections
-> from agents on other hosts. **If your 4.x configuration did not set `<local_ip>`, add
-> `<local_ip>0.0.0.0</local_ip>` under `<legacy>` to keep accepting agents from other hosts**; if
-> it already set `<local_ip>`, just move that value under `<legacy>` as shown below. See
-> [`legacy.local_ip`](../../ref/modules/remoted/configuration.md#legacylocal_ip) for details.
+> **Breaking change:** `local_ip`'s default also changed. In 4.x, leaving `local_ip` unset meant
+> "accept agent connections from any interface." In 5.0 an absent `remote.legacy.local_ip` defaults to
+> `127.0.0.1` (loopback-only) and `remote.https.bind_addr` also defaults to `127.0.0.1`. **If your 4.x
+> configuration did not set `<local_ip>`, set `remote.legacy.local_ip: 0.0.0.0` (and
+> `remote.https.bind_addr: 0.0.0.0` for the HTTPS listener) to keep accepting agents from other hosts.**
 
 **4.x:**
 ```xml
@@ -168,104 +149,107 @@ rejected and the manager will not start; there is no automatic migration.
 ```
 
 **5.0:**
-```xml
-<remote>
-  <legacy>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <local_ip>127.0.0.1</local_ip>
-  </legacy>
-</remote>
+```yaml
+remote:
+  legacy:
+    port: 1514
+    protocol: [tcp]
+    local_ip: 0.0.0.0
+  https:
+    port: 1517
+    bind_addr: 0.0.0.0
 ```
 
-### `<auth>` section
+### `<auth>` → `auth`
 
-The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
+The options keep their names. `wazuh-manager-authd` enforces TLS 1.3 as the minimum protocol version,
+`ciphers` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`,
+`TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`,
+`TLS_AES_128_CCM_8_SHA256`), and `ssl_manager_cert`/`ssl_manager_key` point at the same certificate the
+HTTPS agent server presents (authd no longer owns a certificate of its own).
 
-- `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-authd` does not start.
-- `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an invalid element (`ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.`) and also blocks `wazuh-authd` from starting.
+| 4.x element | 5.0 option | Type, default |
+|---|---|---|
+| `<disabled>` | `auth.disabled` | boolean, `false` |
+| `<port>` | `auth.port` | integer 1-65535, `1515` |
+| `<use_source_ip>` | `auth.use_source_ip` | boolean, `false` |
+| `<force><enabled>` | `auth.force.enabled` | boolean, `true` |
+| `<force><key_mismatch>` | `auth.force.key_mismatch` | boolean, `true` |
+| `<force><disconnected_time enabled="yes">1h</disconnected_time>` | `auth.force.disconnected_time.enabled` / `.value` | boolean `true` / duration `1h` (the XML attribute becomes a key) |
+| `<force><after_registration_time>` | `auth.force.after_registration_time` | duration, `1h` |
+| `<purge>` | `auth.purge` | boolean, `false` |
+| `<use_password>` | `auth.use_password` | boolean, `false` (the installer generates the file with `true`) |
+| `<ciphers>` | `auth.ciphers` | TLS 1.3 suites, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| `<ssl_agent_ca>` | `auth.ssl_agent_ca` | path, unset |
+| `<ssl_verify_host>` | `auth.ssl_verify_host` | boolean, `false` |
+| `<ssl_manager_cert>` | `auth.ssl_manager_cert` | path, `etc/certs/remoted.pem` |
+| `<ssl_manager_key>` | `auth.ssl_manager_key` | path, `etc/certs/remoted-key.pem` |
+| `<ssl_auto_negotiate>` | — | Removed: an unknown option is refused (`/auth/ssl_auto_negotiate`) |
+| `<remote_enrollment>` | `auth.remote_enrollment` | boolean, `true` |
+| — | `auth.legacy_enrollment` | boolean, `true` — port 1515 enrollment; `false` leaves only the HTTPS `/enroll` endpoint |
+| `<agents><allow_higher_versions>` | `auth.agents.allow_higher_versions` | boolean, `false` |
 
-**4.x:**
-```xml
-<auth>
-  ...
-  <ssl_manager_cert>/var/ossec/etc/sslmanager.cert</ssl_manager_cert>
-  <ssl_manager_key>/var/ossec/etc/sslmanager.key</ssl_manager_key>
-  <ssl_auto_negotiate>no</ssl_auto_negotiate>
-  <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
-  ...
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_password: true
+  ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+  ssl_manager_cert: etc/certs/remoted.pem
+  ssl_manager_key: etc/certs/remoted-key.pem
+  force:
+    enabled: true
+    disconnected_time:
+      enabled: true
+      value: 1h
 ```
 
-**5.0:**
-```xml
-<auth>
-  ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
-  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
-  ...
-</auth>
-```
+### Sections with no YAML counterpart
 
-`ssl_manager_cert`/`ssl_manager_key` now point at the same certificate the HTTPS agent server
-(`remoted_module`) presents, not a separate `authd.pem`/`authd-key.pem` pair -- authd no longer
-generates or owns a certificate of its own (see `ssl_manager_cert` in
-[authd/configuration.md](../../ref/modules/authd/configuration.md#ssl_manager_cert)).
+The manager configuration only has the sections of the reference (`global`, `logging`, `remote`,
+`auth`, `wdb`, `vulnerability-detection`, `indexer`, `agent-upgrade`, `task-manager`, `cluster`). Any
+other key at the top level is refused at start-up (`(1244): Invalid configuration at '/<name>': unknown
+option`), so the 4.x sections below must not be carried over:
 
-### Sections to remove from `wazuh-manager.conf`
-
-The following sections from 4.x must be removed. The table indicates the consequence of leaving each one in place.
-
-| Section | Consequence if left in 5.0 | Notes |
-|---------|---------------------------|-------|
-| `<alerts>` | **Startup error** | Removed; no replacement |
-| `<command>` blocks | **Startup error** | Removed from manager config; active-response commands are defined differently in 5.0 |
-| `<ruleset>` | **Startup error** | Ruleset management moved to the engine; `etc/rules/`, `etc/decoders/`, `etc/lists/` do not exist in 5.0 |
-| `<rootcheck>` | Silently accepted by parser | Functionality is fully agent-side in 5.0; remove to avoid confusion |
-| `<syscheck>` | Silently accepted by parser | File integrity monitoring is fully agent-side in 5.0; remove to avoid confusion |
-| `<wodle name="syscollector">` | Silently accepted by parser | Moved to agent configuration |
-| `<localfile>` blocks | Silently accepted by parser | Log collection is an agent-side function; remove all entries |
-| `<wodle name="open-scap">` | Silently accepted by parser | Replaced by SCA — see [CIS-CAT/OpenSCAP to SCA migration](ciscat-openscap-to-sca.md) |
+| 4.x section | Notes |
+|---------|-------|
+| `<alerts>` | Removed; no replacement |
+| `<command>` blocks | Active-response commands are not defined in the manager configuration in 5.0 |
+| `<ruleset>` | Ruleset management moved to the engine; `etc/rules/`, `etc/decoders/`, `etc/lists/` do not exist in 5.0 |
+| `<rootcheck>`, `<syscheck>`, `<wodle name="syscollector">`, `<localfile>` | Agent-side functionality: configure it in the agents (`ossec.conf`) or centrally in `etc/shared/<group>/agent.conf`, which stays XML |
+| `<wodle name="open-scap">` | Replaced by SCA — see [CIS-CAT/OpenSCAP to SCA migration](ciscat-openscap-to-sca.md) |
+| `<active-response>`, `<labels>`, `<client_buffer>`, `<integration>`, `<syslog_output>`, `<database_output>`, `<email_alerts>`, `<reports>`, `<agentless>`, `<fluent-forward>`, `<agent-key-polling>` | Removed in 5.0 (agent-side, or the daemon was removed) |
 
 > [!IMPORTANT]
-> Custom rules and decoders from 4.x **cannot** be migrated by copying XML files to the manager. Content is managed through the engine's content management system. Refer to the Wazuh 5.0 engine documentation for the procedure to create and publish custom rules and decoders.
+> Custom rules and decoders from 4.x **cannot** be migrated by copying XML files to the manager. Content is managed through the engine's content management system. Refer to the Wazuh 5.0 engine documentation for details.
 
+### `<vulnerability-detection>` → `vulnerability-detection`
 
-### `<vulnerability-detection>` section
+| 4.x element | 5.0 option | Type, default |
+|---|---|---|
+| `<enabled>` | `vulnerability-detection.enabled` | boolean, `true` |
+| `<index-status>` | — | Removed |
+| `<feed-update-interval>` | `vulnerability-detection.feed-update-interval` | duration, `60m` |
 
-The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-status>` option has been removed.
-
-**4.x:**
-```xml
-<vulnerability-detection>
-  <enabled>yes</enabled>
-  <index-status>yes</index-status>
-  <feed-update-interval>60m</feed-update-interval>
-</vulnerability-detection>
+```yaml
+vulnerability-detection:
+  enabled: true
+  feed-update-interval: 60m
 ```
 
-**5.0:**
-```xml
-<vulnerability-detection>
-  <enabled>yes</enabled>
-  <feed-update-interval>60m</feed-update-interval>
-</vulnerability-detection>
-```
+### `<indexer>` → `indexer`
 
-Remove the `<index-status>` element from your configuration. All other options carry over unchanged.
+The connection is always active (the 4.x `<enabled>` flag is gone) and the certificate paths point at
+the manager's own certificates instead of Filebeat's. The installer generates this section with the
+right paths; when writing it by hand, keep the lists as YAML sequences.
 
-### `<indexer>` section
-
-The `<indexer>` section exists in both 4.x and 5.0 but has two changes.
-
-**`<enabled>` removed**
-
-In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed.
-
-**Certificate paths changed**
-
-In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Filebeat is no longer used, the manager connects to the indexer directly, so the paths must point to the manager's own certificates.
+| 4.x element | 5.0 option | Type, default |
+|---|---|---|
+| `<enabled>` | — | Removed |
+| `<hosts><host>` | `indexer.hosts` | list of URLs (`https://host:9200`), `[]` — an empty list means "no indexer" |
+| `<ssl><certificate_authorities><ca>` | `indexer.ssl.certificate_authorities` | list of paths |
+| `<ssl><certificate>` | `indexer.ssl.certificate` | path |
+| `<ssl><key>` | `indexer.ssl.key` | path |
 
 **4.x:**
 ```xml
@@ -285,23 +269,43 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
 ```
 
 **5.0:**
-```xml
-<indexer>
-  <hosts>
-    <host>https://127.0.0.1:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+    - https://127.0.0.1:9200
+  ssl:
+    certificate_authorities:
+      - etc/certs/root-ca.pem
+    certificate: etc/certs/indexer-connector.pem
+    key: etc/certs/indexer-connector-key.pem
 ```
 
-> [!NOTE]
-> The 5.0 installer generates the `<indexer>` section with the correct certificate paths for your environment. If you are applying the configuration manually, update the paths to match your actual certificate locations under `/var/wazuh-manager/etc/certs/`.
+### Validation
+
+Check the file before starting the manager:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-conf validate          # silent when the file is valid
+sudo /var/wazuh-manager/bin/wazuh-manager-conf get remote.legacy.port
+sudo /var/wazuh-manager/bin/wazuh-manager-conf dump               # the effective document, defaults applied
+```
+
+An invalid file is refused by `wazuh-manager-control start` before any daemon runs, with the JSON
+pointer of the offending option, for example
+`(1244): Invalid configuration at '/remote/legacy/protocol/0': does not satisfy 'enum'`. This is
+stricter than 4.x: values a daemon used to warn about and replace with a default (an unknown
+protocol, a port above 65535, a malformed duration such as `4S`, a negative `after_registration_time`,
+an empty `max_files`) now stop the manager until the file is fixed. The daemons report the same
+error in `logs/wazuh-manager.log` as `ERROR: (1244): Invalid configuration at '<file>': <pointer>: ...`
+followed by `CRITICAL: (1202): Configuration error at '<file>'.`.
+
+### API
+
+`GET /cluster/{node_id}/configuration` returns the effective sections as JSON (native booleans and
+integers; durations as written), `raw=true` returns the YAML text, and `PUT /cluster/{node_id}/configuration`
+replaces the file with a YAML document (`Content-Type: application/yaml` or
+`application/octet-stream`); an XML body is rejected with 415 and an invalid document with error 1130
+and its JSON pointer. Tooling that uploaded XML through the API must send YAML.
 
 ---
 
@@ -501,7 +505,7 @@ The list of paths synchronized from master to worker nodes has changed.
 
 | 4.x | 5.0 |
 |-----|-----|
-| `ar.conf`, `ossec.conf` | `wazuh-manager.conf` |
+| `ar.conf`, `ossec.conf` | `wazuh-manager.yml` |
 
 ### New master intervals
 

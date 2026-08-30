@@ -89,9 +89,9 @@ gone).
 across 5.0 indices and event payloads, e.g. `source.ip`, `user.name`,
 `wazuh.rule.level`.
 
-**`wazuh-manager.conf`** — Main manager configuration file
-(`/var/wazuh-manager/etc/wazuh-manager.conf`, root tag `<wazuh_config>`); the
-5.0 rename of the manager-side `ossec.conf`.
+**`wazuh-manager.yml`** — Main manager configuration file
+(`/var/wazuh-manager/etc/wazuh-manager.yml`, a YAML mapping validated against
+`wazuh-manager.schema.json`); replaces the manager-side XML `ossec.conf` of 4.x.
 
 **Wodle** — Pluggable module configured as `<wodle name="...">` and executed by
 `wazuh-manager-modulesd` (manager) or `wazuh-modulesd` (agent), e.g. `command`,

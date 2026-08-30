@@ -82,6 +82,7 @@
       }
     },
     "logging": {
+      "description": "Where and how the manager daemons write their own log: plain (logs/wazuh-manager.log) and/or json (logs/wazuh-manager.json).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -262,6 +263,7 @@
           }
         },
         "agents": {
+          "description": "Agent version policy of the connection handlers.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -324,10 +326,12 @@
               "description": "Force when the existing agent has been disconnected longer than 'value'.",
               "properties": {
                 "enabled": {
+                  "description": "Whether the disconnection time is checked before forcing the re-enrollment.",
                   "type": "boolean",
                   "default": true
                 },
                 "value": {
+                  "description": "Minimum time the existing agent must have been disconnected.",
                   "allOf": [
                     {
                       "$ref": "#/definitions/duration_no_weeks"
@@ -410,6 +414,7 @@
           "description": "Accept enrollment through the legacy TLS port."
         },
         "agents": {
+          "description": "Agent version policy of the enrollment service.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -428,6 +433,7 @@
       "description": "wazuh-manager-db.",
       "properties": {
         "backup": {
+          "description": "Periodic backups of the wazuh-db databases (backup/db/).",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -437,6 +443,7 @@
               "description": "Periodic backup of the global database.",
               "properties": {
                 "enabled": {
+                  "description": "Whether the global database is backed up periodically.",
                   "type": "boolean",
                   "default": true
                 },
@@ -467,6 +474,7 @@
       "description": "Vulnerability scanner module (modulesd).",
       "properties": {
         "enabled": {
+          "description": "Whether the vulnerability scanner module runs.",
           "type": "boolean",
           "default": true
         },
@@ -515,6 +523,7 @@
           "description": "Indexer URLs (scheme://host:port)."
         },
         "ssl": {
+          "description": "TLS material of the indexer connection (paths relative to the manager home unless absolute).",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -557,6 +566,7 @@
       "description": "Agent upgrade module (manager side).",
       "properties": {
         "enabled": {
+          "description": "Whether the agent-upgrade module runs (WPK upgrades requested through the API).",
           "type": "boolean",
           "default": true
         },
@@ -617,6 +627,7 @@
           "description": "This node's name."
         },
         "node_type": {
+          "description": "Role of this node in the cluster.",
           "enum": [
             "master",
             "worker"

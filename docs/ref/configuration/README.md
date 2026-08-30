@@ -10,7 +10,8 @@ This section documents all Wazuh configuration files and settings.
 
 | File | Description |
 |------|-------------|
-| `wazuh-manager.conf` | Main XML configuration file for the manager |
+| `wazuh-manager.yml` | Main configuration file for the manager (YAML, validated against `wazuh-manager.schema.json`) |
+| `wazuh-manager.schema.json` | JSON Schema of `wazuh-manager.yml` (installed copy; product, not configuration) |
 | `wazuh-manager-internal-options.conf` | Internal tuning parameters for manager components |
 | `api.yaml` | REST API configuration (located in `api/configuration/`) |
 | `agent.conf` | Centralized agent configuration distributed to agents (in `shared/<group>/`) |
