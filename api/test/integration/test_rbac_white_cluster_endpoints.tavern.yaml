@@ -23,6 +23,7 @@ stages:
               port: !anyint
               bind_addr: !anystr
               nodes: !anything
+              hidden: !anybool
               hidden: !anystr
           failed_items: []
           total_affected_items: 1
@@ -339,7 +340,8 @@ stages:
         data:
           affected_items:
             - global:
-                agents_disconnection_alert_time: !anystr
+                agents_disconnection_time: !anystr
+                agents_disconnection_alert_time: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
