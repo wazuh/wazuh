@@ -2409,7 +2409,11 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackLocalTransportFai
 // A notifyDataClean() call that reaches past checkStatus() must reset the local-transport
 // streak, same as synchronizeModule()/synchronizeMetadataOrGroups() do -- otherwise a later
 // transport failure would report an inflated streak carried over from before the local socket
-// recovered. (#38579)
+// recovered. Deliberately exercises the reset with an UNTRACKED (trackConsecutiveFailures=false,
+// the default) success call: unlike the increment, the reset is never gated by that flag, because
+// checkStatus() succeeding is an objective fact about the instance -- true regardless of which
+// caller happened to observe it -- not something that should depend on whether that particular
+// caller opted into the periodic-cycle streak. (#38579)
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnceReachable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -2429,6 +2433,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnc
 
     std::thread syncThread([this, &indices]()
     {
+        // Untracked on purpose -- see the test-level comment above.
         SyncModuleResult successResult = protocol->notifyDataClean(indices);
         EXPECT_TRUE(successResult.success);
     });

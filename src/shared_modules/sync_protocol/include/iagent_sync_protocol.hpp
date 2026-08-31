@@ -73,12 +73,17 @@ class IAgentSyncProtocol
         /// tolerance used elsewhere -- doesn't have to guess from a bare bool.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
-        /// @param trackConsecutiveFailures Whether this call's outcome should feed the same
+        /// @param trackConsecutiveFailures Whether a *failure* of this call should grow the same
         /// consecutive-failure streaks synchronizeModule() tracks on this instance -- both the
         /// manager-conversation one and the local-transport one. Pass true only from a periodic-sync
         /// path where a DataClean failure genuinely represents "this cycle failed"; leave false (the
         /// default) for ad hoc DataClean calls (e.g. policy-removal cleanup) that aren't part of that
-        /// cycle and would otherwise skew either streak's tolerance window.
+        /// cycle and would otherwise skew either streak's tolerance window. Does not gate a
+        /// *success*: reaching past checkStatus() always resets the local-transport streak
+        /// regardless of this flag, since that streak's own contract (see
+        /// AgentSyncProtocol::m_consecutiveLocalTransportFailures) is "reset the moment it succeeds
+        /// again" -- checkStatus() succeeding is an objective fact about the instance, true no
+        /// matter which caller happened to observe it.
         /// @return SyncModuleResult with success flag and failure detail if unsuccessful
         virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
                                                  Option option = Option::SYNC,
