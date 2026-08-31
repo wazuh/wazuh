@@ -1,10 +1,10 @@
 # Recurring manager tasks
 
-The Task Manager runs three recurring jobs that used to be `wazuh-modulesd`'s neighbour daemon,
-`wazuh-monitord`: the agent disconnection sweep, the retention deletion of long-disconnected agents,
-and the daily log rotation. Each is a **schedule** — a row in `MANAGER_TASK_SCHEDULES` inside
-`tasks.db` that records when it next runs and whether it runs at all — and each fires by creating an
-ordinary manager task, which a dispatcher lane then claims, executes and retires with an outcome.
+The Task Manager runs three recurring jobs on the manager: the agent disconnection sweep, the
+retention deletion of long-disconnected agents, and the daily log rotation. Each is a **schedule** —
+a row in `MANAGER_TASK_SCHEDULES` inside `tasks.db` that records when it next runs and whether it
+runs at all — and each fires by creating an ordinary manager task, which a dispatcher lane then
+claims, executes and retires with an outcome.
 
 Size-based log rotation is the exception. It is not a task; see
 [Size-based rotation](#size-based-rotation-is-not-a-task) below.
@@ -16,23 +16,18 @@ Size-based log rotation is the exception. It is not a task; see
 | Schedule | Task type | Interval source | Default | Node scope |
 | --- | --- | --- | --- | --- |
 | `agent_disconnect_sweep` | `agent_disconnect_sweep` | `<global><agents_disconnection_time>` | 900 s | master |
-| `agent_delete_old` | `agent_delete_old` | `monitord.delete_old_agents` × 60 | 0 — **disabled** | master |
-| `log_rotate_daily` | `log_rotate_daily` | daily, at `00:00` + `monitord.day_wait` | 00:00:10 local | any node |
+| `agent_delete_old` | `agent_delete_old` | `wazuh_modules.manager_task_delete_old_agents` × 60 | 0 — **disabled** | master |
+| `log_rotate_daily` | `log_rotate_daily` | daily, at `00:00` + `wazuh_modules.manager_task_log_day_wait` | 00:00:10 local | any node |
 
-**The intervals are not new configuration.** Each already had an operator-facing source before this
-module owned the work, and moving them would break deployments that set them. Note in particular
-that the sweep's interval **is** `agents_disconnection_time`, which merely *defaults* to 900 — it is
-not a hardcoded fifteen minutes, and `remoted` reads the same `<global>` value for its own purposes.
+Note that the sweep's interval **is** `agents_disconnection_time`, which merely *defaults* to 900 —
+it is not a hardcoded fifteen minutes, and `remoted` reads the same `<global>` value for its own
+purposes, so it is shared configuration rather than something this module owns.
 
-The `monitord.` prefix survives the daemon's removal. `getDefine_Int` does not read a flat
-namespace: it splits each key at its first `.` and compares both halves, so the prefix is a real key
-component rather than a label. Renaming these keys would silently ignore whatever an operator has
-already written into `internal_options.conf`. Read the names as historical, not as an indication of
-where the code lives.
-
-Two of them — `monitord.delete_old_agents` and `monitord.monitor_agents` — are **not shipped in
-`internal_options.conf` at all**. They exist only as reads with defaults, which is why the defaults
-above are the whole of their contract.
+The internal options are not shipped in any file: the manager reads only an empty overrides file, so
+the defaults above are the whole of their contract. Every option, including the ones that bound the
+retention sweep, is listed in the
+[Task Manager Configuration Reference](configuration.md#recurring-manager-tasks) — which also covers
+how to read back what a running manager actually resolved.
 
 ---
 
@@ -44,8 +39,8 @@ The scheduler thread asks `tasks.db` for the schedules whose next run has come d
 ### Node scope
 
 `master`-scoped schedules do not spawn on a cluster worker. A configuration whose cluster stanza
-**cannot be parsed** is treated as "not the master" rather than falling through to master — which is
-what `wazuh-monitord` did, so a broken `ossec.conf` on a worker silently ran the sweep on both nodes.
+**cannot be parsed** is treated as "not the master" rather than falling through to master: a node
+whose own configuration cannot be read is not a node to hand cluster-wide work to.
 
 Scope is evaluated at spawn time, so a demoted master leaves already-pending master-scope rows
 behind and its own dispatcher still executes them. That is deliberate: the work was already decided
@@ -106,18 +101,16 @@ Transitions every agent whose last keepalive is older than `agents_disconnection
 `disconnected`, and logs each transition at DEBUG as
 `wazuh: Agent disconnected: [NNN] (name).`
 
-The database transition and the log line are one job here, where `wazuh-monitord` had two: it marked
-agents in one pass and then walked an in-memory hash every second to log them, which lost pending
-entries on every restart and cost one Wazuh DB round trip per queued agent per tick. The transition
-already returns the ids it just changed, so the set is in hand and the hash is unnecessary; the only
-remaining lookup is one name per *newly disconnected* agent, once per sweep.
+The database transition and the log line are one job, not two: the transition already returns the ids
+it just changed, so the set is in hand and no second pass — nor the in-memory queue one would need —
+is required. The only remaining lookup is one name per *newly disconnected* agent, once per sweep.
 
-`monitord.monitor_agents = 0` silences the log line and nothing else — the transition still happens,
-exactly as it did before.
+`wazuh_modules.manager_task_monitor_agents = 0` silences the log line and nothing else: the
+transition still happens, because an agent that stopped answering has to reach the `disconnected`
+state whatever else is configured.
 
-**This fixes a live bug.** `wazuh-monitord` ran this sweep on worker nodes despite explicitly
-zeroing the flag that was meant to prevent it, because its disconnection trigger, unlike its two
-siblings, never consulted that flag. The schedule is master-scoped and the scope is enforced.
+**The sweep runs on the master only**, and the scope is enforced rather than assumed — running it on
+two nodes at once would have both writing the same transitions.
 
 ### `agent_delete_old`
 
@@ -136,29 +129,26 @@ and retries on the queue's backoff ladder rather than reporting success — the 
 An agent that is already gone, or one whose deletion `wazuh-authd` has already journaled, counts as
 done.
 
-**Deletion is by agent id.** `wazuh-monitord` built a `"name-ip"` string, split it at the *last*
-dash with no NULL check, and then resolved the id back by *name* — so a name containing a dash
-mis-split, a name containing none dereferenced NULL, and duplicate names resolved ambiguously. The
-id is in hand from the candidate query and nothing round-trips through a name.
+**Deletion is by agent id**, which is in hand from the candidate query. Nothing round-trips through
+an agent name, which would be ambiguous for duplicate names.
 
 ### `log_rotate_daily`
 
 Rotates `logs/wazuh-manager.log` and `logs/wazuh-manager.json` into the day's archive directory,
-honouring `monitord.compress`, `monitord.keep_log_days` and `monitord.daily_rotations`.
+honouring `wazuh_modules.manager_task_log_compress`, `wazuh_modules.manager_task_log_keep_days` and
+`wazuh_modules.manager_task_log_daily_rotations`.
 
-**There is no `sleep(day_wait)`.** `wazuh-monitord` slept for it inside the handler, up to 600
-seconds; here the offset is the schedule's slot, so the delay is expressed as a time to run at rather
-than as a blocking call. That matters because the handler shares its lane with size-based rotation,
-which the sleep would have suspended for its whole duration.
+**The offset is a slot, not a sleep.** `day_wait` is the schedule's next-run time rather than a delay
+the handler blocks on. That matters because the handler shares its lane with size-based rotation,
+which a blocking sleep of up to 600 seconds would suspend for its whole duration.
 
-**Daily rotation now survives a same-day restart.** `wazuh-monitord` re-seeded its day-change
-baseline from *now* on every start, so a manager restarted daily never daily-rotated. The baseline is
-the persisted next run, which is crash-safe by construction.
+**Daily rotation survives a same-day restart**, because its baseline is the persisted next run rather
+than a day-change comparison re-seeded from *now* at every start.
 
 ### Size-based rotation is not a task
 
-Rotating either log that has grown past `monitord.size_rotate` is two `stat` calls, checked once a
-minute. Routing that through insert, poll, claim, commit, execute and retention would cost about 1440
+Rotating either log that has grown past `wazuh_modules.manager_task_log_size_rotate` is two `stat`
+calls, checked once a minute. Routing that through insert, poll, claim, commit, execute and retention would cost about 1440
 rows a day for work that is idempotent, instantaneous and harmless to miss — a skipped tick just
 rotates a minute later. It runs as a **direct action** on the local lane instead: it gets no schedule
 row, no task type, no retry and no history.
@@ -193,7 +183,7 @@ budget past which the watchdog logs a warning naming the lane and the task id:
 | --- | --- | --- |
 | `agent_delete_old` | `manager_task_delete_old_budget` + 60 s | derived, because the budget is configurable |
 | `agent_disconnect_sweep` | 300 s | a judgement: one sweep plus one name lookup per transitioned agent |
-| `log_rotate_daily` | 900 s | two files gzipped inline at up to `monitord.size_rotate` each |
+| `log_rotate_daily` | 900 s | two files gzipped inline at up to the rotation threshold each |
 
 The warning is a post-hoc record rather than a live signal: it is emitted at most once per
 `task-manager` `cleanup_interval` (300 s by default). A run that overruns still finishes, and still

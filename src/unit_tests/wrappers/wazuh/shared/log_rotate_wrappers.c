@@ -7,7 +7,7 @@
  * Foundation
  */
 
-#include "monitord_wrappers.h"
+#include "log_rotate_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>

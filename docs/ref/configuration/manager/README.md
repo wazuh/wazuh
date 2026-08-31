@@ -12,7 +12,7 @@ Configuration reference for Wazuh manager components.
 
 ## Configuration Sections
 
-**Note:** The `<global>` XML section (`src/config/src/global-config.c`) only implements `agents_disconnection_time` and `agents_disconnection_alert_time`, which control general agent disconnection detection and are not Monitord-specific. Monitord's own rotation/compression tunables (e.g. `monitord.day_wait`, `monitord.compress`) are internal options unrelated to `<global>`.
+**Note:** The `<global>` XML section (`src/config/src/global-config.c`) implements exactly one element, `agents_disconnection_time`; anything else in that section is a startup error. It is read by both Remoted and the Task Manager's disconnection sweep, so it is shared configuration rather than one module's. The manager's log-rotation and agent-retention tunables (`wazuh_modules.manager_task_log_*`, `wazuh_modules.manager_task_delete_old_agents`) are internal options unrelated to `<global>` — see [Recurring manager tasks](../../modules/task_manager/schedules.md).
 
 | Module | XML Section | YAML Section | Internal Options |
 |--------|-------------|--------------|------------------|
@@ -25,9 +25,8 @@ Configuration reference for Wazuh manager components.
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `<indexer>` | - | - |
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | - | - | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `<logging>` | - | - |
-| [Monitord](../../modules/monitord/configuration.md) | `<global>` (disconnection settings only) | - | `monitord.*` |
 | [Remoted](../../modules/remoted/configuration.md) | `<remote>` | - | `remoted.*` |
-| [Task Manager](../../modules/task_manager/configuration.md) | `<task-manager>` | - | - |
+| [Task Manager](../../modules/task_manager/configuration.md) | `<task-manager>`, `<global>` (disconnection settings only) | - | `wazuh_modules.manager_task_*` |
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `<vulnerability-detection>` | - | `vulnerability-detection.*` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `<wdb>` | - | `wazuh_db.*` |
 

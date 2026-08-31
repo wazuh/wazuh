@@ -32,7 +32,7 @@
 #define WM_MANAGER_TASK_DEFAULT_DELETE_OLD_BATCH 200
 #define WM_MANAGER_TASK_DEFAULT_DELETE_OLD_BUDGET 30
 
-/* monitord's own defaults, restated so a manager with no internal options behaves as it did. */
+/* Rotation defaults. The manager ships no defaults file, so these are the whole contract. */
 #define WM_MANAGER_TASK_DEFAULT_ROTATE_LOG 1
 #define WM_MANAGER_TASK_DEFAULT_COMPRESS 1
 #define WM_MANAGER_TASK_DEFAULT_KEEP_LOG_DAYS 31
@@ -112,20 +112,27 @@ void wm_manager_task_local_init(void) {
 
     os_free(schedules);
 
-    manager_task_local_config.delete_old_agents = getDefine_Int_default("monitord", "delete_old_agents", 0, 9600, 0);
-    manager_task_local_config.monitor_agents = getDefine_Int_default("monitord", "monitor_agents", 0, 1, 1);
-    manager_task_local_config.rotate_log = getDefine_Int_default("monitord", "rotate_log", 0, 1,
-                                                                 WM_MANAGER_TASK_DEFAULT_ROTATE_LOG);
-    manager_task_local_config.compress = getDefine_Int_default("monitord", "compress", 0, 1,
-                                                               WM_MANAGER_TASK_DEFAULT_COMPRESS);
-    manager_task_local_config.keep_log_days = getDefine_Int_default("monitord", "keep_log_days", 0, 500,
-                                                                    WM_MANAGER_TASK_DEFAULT_KEEP_LOG_DAYS);
-    // Megabytes on the way in, bytes from here on, exactly as MonitordConfig() converted it.
+    manager_task_local_config.delete_old_agents =
+        getDefine_Int_default("wazuh_modules", "manager_task_delete_old_agents", 0, 9600, 0);
+    manager_task_local_config.monitor_agents =
+        getDefine_Int_default("wazuh_modules", "manager_task_monitor_agents", 0, 1, 1);
+    manager_task_local_config.rotate_log =
+        getDefine_Int_default("wazuh_modules", "manager_task_log_rotate", 0, 1,
+                              WM_MANAGER_TASK_DEFAULT_ROTATE_LOG);
+    manager_task_local_config.compress =
+        getDefine_Int_default("wazuh_modules", "manager_task_log_compress", 0, 1,
+                              WM_MANAGER_TASK_DEFAULT_COMPRESS);
+    manager_task_local_config.keep_log_days =
+        getDefine_Int_default("wazuh_modules", "manager_task_log_keep_days", 0, 500,
+                              WM_MANAGER_TASK_DEFAULT_KEEP_LOG_DAYS);
+    // Megabytes on the way in, bytes from here on: the option names a file size an operator thinks
+    // about in megabytes, and every comparison below is against st_size.
     manager_task_local_config.size_rotate =
-        (long)getDefine_Int_default("monitord", "size_rotate", 0, 4096, WM_MANAGER_TASK_DEFAULT_SIZE_ROTATE) * 1024 *
-        1024;
-    manager_task_local_config.daily_rotations = getDefine_Int_default("monitord", "daily_rotations", 1, 256,
-                                                                      WM_MANAGER_TASK_DEFAULT_DAILY_ROTATIONS);
+        (long)getDefine_Int_default("wazuh_modules", "manager_task_log_size_rotate", 0, 4096,
+                                    WM_MANAGER_TASK_DEFAULT_SIZE_ROTATE) * 1024 * 1024;
+    manager_task_local_config.daily_rotations =
+        getDefine_Int_default("wazuh_modules", "manager_task_log_daily_rotations", 1, 256,
+                              WM_MANAGER_TASK_DEFAULT_DAILY_ROTATIONS);
 
     manager_task_local_config.delete_old_batch =
         getDefine_Int_default("wazuh_modules", "manager_task_delete_old_batch", 1, 100000,
@@ -284,8 +291,8 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
     }
 
     /* "synced" is the sync_status written onto the transitioned rows, not a filter on which agents
-     * are considered -- copied from monitord, where the master marks and alerts on its own database
-     * and no cluster synchronisation is involved. */
+     * are considered: the master marks agents in its own database and no cluster synchronisation is
+     * involved, so the rows are already in their final state. */
     disconnected = wdb_disconnect_agents((int)(time(NULL) - manager_task_local_config.disconnection_time), "synced",
                                          &manager_task_local_wdb_sock);
 
@@ -304,16 +311,15 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
 
         count++;
 
-        // monitor_agents = 0 silenced this line and nothing else: the DB transition above ran
-        // regardless, in monitord as here. With logging off there is no reason to pay a round trip
-        // per agent, which is the whole cost of this loop.
+        // The flag silences this line and nothing else: the DB transition above runs regardless.
+        // With logging off there is no reason to pay a round trip per agent, which is the whole
+        // cost of this loop.
         if (!manager_task_local_config.monitor_agents) {
             continue;
         }
 
-        /* One lookup per NEWLY DISCONNECTED agent, once per sweep. monitord paid one per QUEUED
-         * agent every second, from a hash it rebuilt on every restart. The name is the only reason
-         * for the lookup -- the id is already in hand -- and OS_AG_DISCON carries both. */
+        /* One lookup per NEWLY DISCONNECTED agent, once per sweep. The name is the only reason for
+         * the lookup -- the id is already in hand -- and OS_AG_DISCON carries both. */
         if (info = wdb_get_agent_info(disconnected[i], &manager_task_local_wdb_sock), !info) {
             mtdebug2(WM_TASK_MANAGER_LOGTAG, "Cannot read agent '%d' data; its disconnection is not logged by name.",
                      disconnected[i]);
@@ -321,8 +327,9 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
         }
 
         if (name = cJSON_GetObjectItem(info->child, "name"), name && cJSON_IsString(name)) {
-            // Same level and same message as monitord's, so an operator's existing log filters keep
-            // matching. The prefix and the trailing period are part of OS_AG_DISCON.
+            // Level and message are unchanged from the previous implementation, so an operator's
+            // existing log filters keep matching. The prefix and the trailing period are part of
+            // OS_AG_DISCON.
             mtdebug1(WM_TASK_MANAGER_LOGTAG, OS_AG_DISCON, disconnected[i], name->valuestring);
         }
 
@@ -475,7 +482,6 @@ wm_manager_task_result wm_manager_task_handler_agent_delete_old(__attribute__((u
 
         if (info = wdb_get_agent_info(candidates[i], &manager_task_local_wdb_sock), !info) {
             // Not fatal to the sweep and not retried for this agent: the next run reads it again.
-            // monitord deleted the agent from its alert hash here, which no longer exists.
             mtdebug2(WM_TASK_MANAGER_LOGTAG, "Cannot read agent '%d' data; skipping it this run.", candidates[i]);
             manager_task_delete_old_cursor = candidates[i];
             continue;
@@ -488,11 +494,9 @@ wm_manager_task_result wm_manager_task_handler_agent_delete_old(__attribute__((u
             wm_manager_task_delete_old_expired((long long)last_keepalive->valuedouble, (long long)time(NULL),
                                                manager_task_local_config.disconnection_time,
                                                manager_task_local_config.delete_old_agents)) {
-            /* BY ID. monitord built a "name-ip" string, split it at the LAST '-' with no NULL
-             * check and then resolved the id back by NAME -- so a name containing a dash
-             * mis-split, a name containing none dereferenced NULL, and duplicate names resolved
-             * ambiguously. The id has been in hand since the candidate query; nothing needs
-             * round-tripping through a name. */
+            /* BY ID. The id has been in hand since the candidate query, so nothing round-trips
+             * through a name -- which would be ambiguous for duplicate names and would have to be
+             * split back out of a composite string. */
             result = wm_manager_task_remove_agent(candidates[i], error, error_len);
 
             if (result == WM_MANAGER_TASK_OK) {
@@ -554,11 +558,10 @@ wm_manager_task_result wm_manager_task_handler_log_rotate_daily(__attribute__((u
     /* One call for both files: with new_day set, w_rotate_log() rotates the log and its JSON twin
      * in the same pass, which is also what keeps their slot counters independent.
      *
-     * THERE IS NO sleep(day_wait) HERE. monitord slept for it inside the handler, up to 600
-     * seconds, which under this design would hold the local lane -- and therefore suspend
-     * size-based rotation -- for the whole duration. The offset is the schedule's slot instead, so
-     * the delay is expressed as a time to run at rather than as a blocking call, and there is
-     * nothing left to make interruptible.
+     * THERE IS NO sleep(day_wait) HERE. The offset is the schedule's slot, so the delay is expressed
+     * as a time to run at rather than as a blocking call -- which matters because this handler
+     * shares its lane with size-based rotation, and a sleep would suspend that for its whole
+     * duration.
      *
      * IDEMPOTENCY, since the dispatcher may re-run this after a lost outcome write: a second
      * rotation of an already-rotated log moves a nearly empty file into the next free daily slot.

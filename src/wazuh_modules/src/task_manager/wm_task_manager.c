@@ -13,6 +13,7 @@
 #include "wm_task_manager_tasks.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_manager_task_dispatcher.h"
+#include "wm_manager_task_local.h"
 #include "os_net.h"
 #include "notify_op.h"
 
@@ -379,6 +380,40 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
             task_config->max_payload_bytes > 0 ? task_config->max_payload_bytes : WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES);
         cJSON_AddNumberToObject(wm_info, "max_tasks_per_poll",
             task_config->max_tasks_per_poll > 0 ? task_config->max_tasks_per_poll : WM_TASK_DEFAULT_MAX_TASKS_PER_POLL);
+
+        /* The recurring tasks' settings, reported alongside the four XML options.
+         *
+         * They have no <task-manager> element of their own -- they are internal options, resolved
+         * once at startup -- so without this there is no way to ask a running manager what values it
+         * actually resolved. That matters more here than for a knob with an XML element, because the
+         * only other place these appear is a file the manager ships empty: an operator reading
+         * configuration off disk sees nothing at all, whether or not an override is in effect.
+         *
+         * Read from the resolved struct, not re-read from the options, so what is reported is what
+         * the handlers are using. Absent while the dispatcher is down, since there is nothing
+         * resolved to report and inventing defaults would be a guess the caller cannot distinguish
+         * from a reading. */
+        const wm_manager_task_local_config *recurring = wm_task_manager_dispatcher()
+            ? wm_manager_task_local_config_get() : NULL;
+
+        if (recurring) {
+            cJSON *tasks = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(tasks, "agents_disconnection_time", recurring->disconnection_time);
+            cJSON_AddNumberToObject(tasks, "delete_old_agents", recurring->delete_old_agents);
+            cJSON_AddNumberToObject(tasks, "monitor_agents", recurring->monitor_agents);
+            cJSON_AddNumberToObject(tasks, "log_rotate", recurring->rotate_log);
+            cJSON_AddNumberToObject(tasks, "log_compress", recurring->compress);
+            cJSON_AddNumberToObject(tasks, "log_keep_days", recurring->keep_log_days);
+            cJSON_AddNumberToObject(tasks, "log_daily_rotations", recurring->daily_rotations);
+            // Reported in megabytes, the unit the option is written in, rather than in the bytes it
+            // is held as -- so an operator can compare the answer with what they configured.
+            cJSON_AddNumberToObject(tasks, "log_size_rotate", recurring->size_rotate / (1024 * 1024));
+            cJSON_AddNumberToObject(tasks, "delete_old_batch", recurring->delete_old_batch);
+            cJSON_AddNumberToObject(tasks, "delete_old_budget", recurring->delete_old_budget);
+
+            cJSON_AddItemToObject(wm_info, "recurring_tasks", tasks);
+        }
     } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }

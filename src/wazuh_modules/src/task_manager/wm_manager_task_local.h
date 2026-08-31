@@ -7,9 +7,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * The three periodic responsibilities monitord used to own, as manager task handlers: the agent
- * disconnection sweep, the retention deletion of long-disconnected agents, and the daily log
- * rotation. Plus size-based rotation, which is NOT a task -- see below.
+ * The manager's three periodic housekeeping jobs, as manager task handlers: the agent disconnection
+ * sweep, the retention deletion of long-disconnected agents, and the daily log rotation. Plus
+ * size-based rotation, which is NOT a task -- see below.
  *
  * WHAT A LOCAL HANDLER OWES THE DISPATCHER, and what makes these three different from the routed
  * types:
@@ -39,13 +39,13 @@
  */
 typedef struct _wm_manager_task_local_config {
     int disconnection_time; ///< <global><agents_disconnection_time>, seconds.
-    int delete_old_agents;  ///< monitord.delete_old_agents, minutes. 0 disables the sweep.
-    int monitor_agents;     ///< monitord.monitor_agents. 0 silences the disconnection log line.
-    int rotate_log;         ///< monitord.rotate_log.
-    int compress;           ///< monitord.compress.
-    int keep_log_days;      ///< monitord.keep_log_days.
-    long size_rotate;       ///< monitord.size_rotate, in bytes. 0 disables size rotation.
-    int daily_rotations;    ///< monitord.daily_rotations.
+    int delete_old_agents;  ///< Retention window in minutes. 0 disables the retention sweep.
+    int monitor_agents;     ///< 0 disables the retention sweep and silences the disconnection log.
+    int rotate_log;         ///< Whether either kind of log rotation happens at all.
+    int compress;           ///< Whether rotated logs are gzipped.
+    int keep_log_days;      ///< How long rotated logs are kept.
+    long size_rotate;       ///< Size-rotation threshold in bytes. 0 disables size rotation.
+    int daily_rotations;    ///< Rotated slots per day, per file.
     int delete_old_batch;   ///< Agents examined per attempt before returning incomplete.
     int delete_old_budget;  ///< Seconds of lane occupancy per attempt.
     int wdb_timeout;        ///< Send and receive deadline on this module's own wazuh-db socket.
@@ -87,10 +87,9 @@ void wm_manager_task_local_teardown(void);
 /**
  * @brief Transition every agent past its keepalive deadline to `disconnected`, and log each one.
  *
- * The DB transition and the log line are one job here, where monitord had two: it marked agents in
- * one pass and then walked an in-memory hash every second to log them, which lost pending entries
- * on restart and cost a round trip per queued agent per tick. wdb_disconnect_agents() already
- * returns the ids it just transitioned, so the set is in hand and the hash is unnecessary.
+ * The DB transition and the log line are one job, not two: wdb_disconnect_agents() already returns
+ * the ids it just transitioned, so the set is in hand and no separate pass -- or the in-memory
+ * queue one would need -- is required.
  *
  * @see wm_manager_task_handler for the parameter contract.
  */
@@ -142,8 +141,8 @@ void wm_manager_task_log_rotate_size(void);
 /**
  * @brief Whether an agent's last keepalive is old enough for the retention sweep to delete it.
  *
- * The window is the disconnection time PLUS the retention interval, as monitord had it: an agent is
- * not eligible the moment it is marked disconnected, but one whole retention period afterwards.
+ * The window is the disconnection time PLUS the retention interval: an agent is not eligible the
+ * moment it is marked disconnected, but one whole retention period afterwards.
  *
  * @param[in] last_keepalive Agent's last keepalive.
  * @param[in] now Current time.

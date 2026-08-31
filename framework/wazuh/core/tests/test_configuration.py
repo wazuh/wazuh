@@ -404,7 +404,6 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
     ('mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('monitor', 'monitor.sock', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
     ('request', 'remote.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('wazuh-manager-db', 'wdb.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),

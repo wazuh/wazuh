@@ -105,7 +105,7 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-manager-analysisd', 'wazuh-manager-authd', 'wazuh-manager-monitord',
+    processes = ['wazuh-manager-analysisd', 'wazuh-manager-authd',
                  'wazuh-manager-remoted', 'wazuh-manager-clusterd',
                  'wazuh-manager-modulesd', 'wazuh-manager-db']
 

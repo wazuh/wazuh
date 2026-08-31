@@ -36,7 +36,7 @@ int __wrap_ReadConfig(__attribute__((unused)) int modules,
     long value = mock_type(long);
 
     // A negative queued value stands for "the file could not be parsed", which is the case the
-    // loader has to survive without exiting: monitord called merror_exit here.
+    // loader has to survive without exiting.
     if (value < 0) {
         return -1;
     }
@@ -87,7 +87,7 @@ void test_schedule_ids_are_unique(void **state) {
     }
 }
 
-void test_the_three_ported_schedules_are_present(void **state) {
+void test_the_three_recurring_schedules_are_present(void **state) {
     const wm_manager_task_schedule_def *sweep = wm_manager_task_schedules_get("agent_disconnect_sweep");
     const wm_manager_task_schedule_def *retention = wm_manager_task_schedules_get("agent_delete_old");
     const wm_manager_task_schedule_def *rotation = wm_manager_task_schedules_get("log_rotate_daily");
@@ -96,8 +96,8 @@ void test_the_three_ported_schedules_are_present(void **state) {
     assert_non_null(retention);
     assert_non_null(rotation);
 
-    // Both agent-facing schedules are master-scoped. The sweep in particular: monitord ran it on
-    // workers too, because its trigger never consulted the flag that was supposed to stop it.
+    // Both agent-facing schedules are master-scoped: they read and write rows for the whole
+    // cluster's agents, so two nodes running them would collide.
     assert_int_equal(sweep->scope, WM_MANAGER_TASK_SCOPE_MASTER);
     assert_int_equal(retention->scope, WM_MANAGER_TASK_SCOPE_MASTER);
 
@@ -114,10 +114,10 @@ void test_load_reads_each_schedules_own_source(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
     will_return(__wrap_ReadConfig, 1800);      // <global><agents_disconnection_time>
-    will_return(__wrap_getDefine_Int_default, 120); // monitord.delete_old_agents, minutes
-    will_return(__wrap_getDefine_Int_default, 1);   // monitord.monitor_agents
-    will_return(__wrap_getDefine_Int_default, 1);   // monitord.rotate_log
-    will_return(__wrap_getDefine_Int_default, 30);  // monitord.day_wait
+    will_return(__wrap_getDefine_Int_default, 120); // manager_task_delete_old_agents, minutes
+    will_return(__wrap_getDefine_Int_default, 1);   // manager_task_monitor_agents
+    will_return(__wrap_getDefine_Int_default, 1);   // manager_task_log_rotate
+    will_return(__wrap_getDefine_Int_default, 30);  // manager_task_log_day_wait
 
     assert_int_equal(wm_manager_task_schedules_load(schedules), wm_manager_task_schedules_count());
 
@@ -174,12 +174,12 @@ void test_monitor_agents_zero_disables_retention_only(void **state) {
         const char *id = schedules[i].def->schedule_id;
 
         if (strcmp(id, "agent_delete_old") == 0) {
-            // Both gates, as check_deletion_trigger had them.
+            // Both gates apply: a retention window AND the agent-monitoring flag.
             assert_false(schedules[i].enabled);
         } else if (strcmp(id, "agent_disconnect_sweep") == 0) {
-            // NOT disabled. monitord marked agents disconnected regardless of this flag, which only
-            // ever gated the log line and the retention deletion; carrying the flag onto the sweep
-            // would stop agents ever being marked disconnected on a manager that set it.
+            // NOT disabled. The flag gates the log line and the retention deletion; carrying it
+            // onto the sweep would stop agents ever being marked disconnected on a manager that
+            // set it.
             assert_true(schedules[i].enabled);
         }
     }
@@ -214,8 +214,8 @@ void test_load_survives_an_unreadable_global_section(void **state) {
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 10);
 
-    // Warns and carries on with the documented default. monitord called merror_exit here, which
-    // would now take every other module down with it over a <global> typo.
+    // Warns and carries on with the documented default: exiting here would take every other module
+    // down over a <global> typo.
     assert_int_equal(wm_manager_task_schedules_load(schedules), wm_manager_task_schedules_count());
 
     for (size_t i = 0; i < wm_manager_task_schedules_count(); i++) {
@@ -342,9 +342,8 @@ void test_a_master_scoped_schedule_runs_only_on_the_master(void **state) {
 }
 
 void test_an_unreadable_cluster_stanza_is_not_the_master(void **state) {
-    // THE FIX. w_is_worker() returns OS_INVALID when ossec.conf will not parse, and monitord's
-    // switch over the same call has no default branch -- so a broken cluster stanza silently
-    // behaves as a master there, which on a real worker means two nodes running one sweep.
+    // w_is_worker() returns OS_INVALID when ossec.conf will not parse. Letting that fall through to
+    // "master" would run one sweep on two nodes whenever a worker's cluster stanza is broken.
     assert_false(wm_manager_task_schedule_node_allows(WM_MANAGER_TASK_SCOPE_MASTER, OS_INVALID));
     assert_false(wm_manager_task_schedule_node_allows(WM_MANAGER_TASK_SCOPE_MASTER, 42));
 }
@@ -432,7 +431,7 @@ int main(void) {
         // The built-in table
         cmocka_unit_test(test_every_schedule_is_addressable),
         cmocka_unit_test(test_schedule_ids_are_unique),
-        cmocka_unit_test(test_the_three_ported_schedules_are_present),
+        cmocka_unit_test(test_the_three_recurring_schedules_are_present),
         // Loading the configuration
         cmocka_unit_test(test_load_reads_each_schedules_own_source),
         cmocka_unit_test(test_retention_is_disabled_when_its_interval_is_zero),

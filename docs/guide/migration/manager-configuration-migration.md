@@ -84,7 +84,7 @@ Replace `<ossec_config>` with `<wazuh_config>` throughout the file.
 
 ### `<global>` section
 
-In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<agents_disconnection_alert_time>`. **Every other element causes a startup error.** Remove all email, logging, and alert options before starting the manager.
+In 5.0 the `<global>` parser accepts exactly one element: `<agents_disconnection_time>`. **Every other element causes a startup error.** Remove all email, logging, and alert options before starting the manager.
 
 **4.x options that must be removed (cause startup error in 5.0):**
 
@@ -101,6 +101,7 @@ In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<ag
 | `<email_maxperhour>` | Email functionality removed |
 | `<email_log_source>` | Email functionality removed |
 | `<update_check>` | Removed |
+| `<agents_disconnection_alert_time>` | Removed. It delayed the agent-disconnection *alert* while the agent had a chance to come back; alert emission to `analysisd` was already removed in 5.0, leaving it controlling only the timing of a debug log line, and its last consumer went with `wazuh-manager-monitord`. Agents are still marked `disconnected` after `<agents_disconnection_time>`, with no delay — which is what it never gated. |
 
 **4.x:**
 ```xml
@@ -129,7 +130,6 @@ In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<ag
 ```xml
 <global>
   <agents_disconnection_time>15m</agents_disconnection_time>
-  <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
 </global>
 ```
 
@@ -392,6 +392,37 @@ dbd.reconnect_attempts
 integrator.debug
 wazuh_clusterd.debug
 ```
+
+**Renamed options:**
+
+`wazuh-manager-monitord` was removed in 5.0 and its work — agent disconnection detection, deletion of
+long-disconnected agents, and log rotation — moved into the Task Manager inside
+`wazuh-manager-modulesd`. The options survive with the same meanings, ranges and defaults under the
+`wazuh_modules` namespace:
+
+| 4.x key | 5.0 key |
+|---|---|
+| `monitord.delete_old_agents` | `wazuh_modules.manager_task_delete_old_agents` |
+| `monitord.monitor_agents` | `wazuh_modules.manager_task_monitor_agents` |
+| `monitord.rotate_log` | `wazuh_modules.manager_task_log_rotate` |
+| `monitord.compress` | `wazuh_modules.manager_task_log_compress` |
+| `monitord.keep_log_days` | `wazuh_modules.manager_task_log_keep_days` |
+| `monitord.day_wait` | `wazuh_modules.manager_task_log_day_wait` |
+| `monitord.size_rotate` | `wazuh_modules.manager_task_log_size_rotate` |
+| `monitord.daily_rotations` | `wazuh_modules.manager_task_log_daily_rotations` |
+
+> [!IMPORTANT]
+> An override left under the old name is **silently ignored** rather than rejected: the lookup
+> compares the part before the first `.` as well as the part after it, so `monitord.rotate_log` on a
+> 5.0 manager matches nothing and the compiled default applies. Rename any of these you had set.
+
+> [!NOTE]
+> This applies to the **manager** only. Agents keep `monitord.*` for their own log rotation, and
+> their `local_internal_options.conf` needs no change — see
+> [Upgrade 4.x to 5.x](upgrade-4x-to-5x.md).
+
+`<global><agents_disconnection_time>` is unchanged and stays in `wazuh-manager.conf`: it is read by
+both `remoted` and the disconnection sweep.
 
 ---
 

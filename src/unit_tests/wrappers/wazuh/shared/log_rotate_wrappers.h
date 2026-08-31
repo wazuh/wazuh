@@ -8,8 +8,8 @@
  */
 
 
-#ifndef MONITORD_WRAPPERS_H
-#define MONITORD_WRAPPERS_H
+#ifndef LOG_ROTATE_WRAPPERS_H
+#define LOG_ROTATE_WRAPPERS_H
 
 void __wrap_w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 

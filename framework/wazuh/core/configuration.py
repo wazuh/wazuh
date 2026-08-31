@@ -968,12 +968,12 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
     component_socket_mapping = {'agent': 'engine-api-http.sock', 'analysis': 'engine-api-http.sock', 'auth': 'auth.sock',
                                 'com': 'com', 'integrator': 'integrator',
-                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
+                                'logcollector': 'logcollector', 'mail': 'mail',
                                 'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',
                                 'wmodules': 'wmodules.sock'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
                                     'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
-                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
+                                    'logcollector': 'sockets', 'mail': 'sockets',
                                     'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'sockets',
                                     'wmodules': 'sockets'}
 

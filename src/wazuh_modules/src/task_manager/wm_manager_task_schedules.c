@@ -27,17 +27,12 @@
 #define WM_MANAGER_TASK_SCHEDULE_DELETE_OLD  "agent_delete_old"
 #define WM_MANAGER_TASK_SCHEDULE_LOG_ROTATE  "log_rotate_daily"
 
-/* Defaults matching the sources these intervals come from, so a manager with no <global> stanza and
- * no internal options behaves exactly as monitord did with the same configuration.
- *
- * The disconnection default is monitord's own: it lives in MonitordConfig(), not in Read_Global,
- * because <global> is optional and the struct has to carry a value when the stanza is absent. */
+/* The disconnection default lives here rather than in Read_Global because <global> is optional:
+ * the struct has to carry a value when the stanza is absent. */
 #define WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME 900
 #define WM_MANAGER_TASK_DEFAULT_DAY_WAIT 10
 
-/* Upper bound of monitord.day_wait, restated rather than included: MAX_DAY_WAIT lives in
- * monitord.h, which the retirement deletes, and the bound is part of the option's contract with
- * whoever has already set it. Changing it would silently reinterpret a configured value. */
+/// Furthest the daily rotation slot may sit after local midnight.
 #define WM_MANAGER_TASK_MAX_DAY_WAIT 600
 
 /// Seconds in a day, the modulus of the daily cadence.
@@ -45,10 +40,9 @@
 
 STATIC const wm_manager_task_schedule_def manager_task_schedules[] = {
     {
-        /* The disconnection sweep. Master-scoped, which is a FIX rather than a port: monitord's
-         * check_disconnection_trigger does not consult mond.monitor_agents -- unlike the alert and
-         * deletion triggers -- and its counter increments unconditionally, so workers run this
-         * sweep today despite main.c zeroing the flag on a worker to prevent exactly that. */
+        /* The disconnection sweep. Master-scoped, and enforced: the whole cluster's agents live in
+         * one database, so a worker running this too would have two nodes writing the same
+         * transitions. */
         .schedule_id = WM_MANAGER_TASK_SCHEDULE_DISCONNECT,
         .task_type = "agent_disconnect_sweep",
         .scope = WM_MANAGER_TASK_SCOPE_MASTER,
@@ -100,12 +94,10 @@ const wm_manager_task_schedule_def* wm_manager_task_schedules_get(const char *sc
  * @brief Read `<global><agents_disconnection_time>` from ossec.conf.
  *
  * Its own read rather than a shared one: modulesd does not parse CGLOBAL anywhere else, and remoted
- * reads the same value into its own struct. The section must therefore survive monitord's removal,
- * which is why the retirement checklist keeps Read_Global.
+ * reads the same value into its own struct.
  *
- * A parse failure keeps the default instead of exiting. monitord called merror_exit here, which was
- * proportionate for a daemon whose whole job depended on the value; in modulesd it would take down
- * every other module for a `<global>` typo.
+ * A parse failure keeps the default instead of exiting: inside modulesd, merror_exit() here would
+ * take down every other module for a `<global>` typo.
  *
  * @return Disconnection time in seconds, always positive.
  */
@@ -140,14 +132,16 @@ size_t wm_manager_task_schedules_load(wm_manager_task_schedule *schedules) {
 
     disconnection_time = wm_manager_task_disconnection_time();
 
-    /* Bounds copied from MonitordConfig() rather than chosen here: an operator who has already set
-     * one of these keys must get the same value out of it, and getDefine_Int_default clamps to the
-     * range it is given. `delete_old_agents` and `monitor_agents` are not in internal_options.conf
-     * at all -- only these calls define them -- so the defaults here are the whole contract. */
-    delete_old_agents = getDefine_Int_default("monitord", "delete_old_agents", 0, 9600, 0);
-    monitor_agents = getDefine_Int_default("monitord", "monitor_agents", 0, 1, 1);
-    rotate_log = getDefine_Int_default("monitord", "rotate_log", 0, 1, 1);
-    day_wait = getDefine_Int_default("monitord", "day_wait", 0, WM_MANAGER_TASK_MAX_DAY_WAIT, WM_MANAGER_TASK_DEFAULT_DAY_WAIT);
+    /* getDefine_Int_default, never bare getDefine_Int: the latter calls merror_exit on a key that is
+     * not present, and the manager ships no defaults file -- only an empty overrides one -- so every
+     * key here is absent unless an operator wrote it. The defaults below are therefore the whole
+     * contract, and the ranges are what an out-of-range override is clamped to. */
+    delete_old_agents =
+        getDefine_Int_default("wazuh_modules", "manager_task_delete_old_agents", 0, 9600, 0);
+    monitor_agents = getDefine_Int_default("wazuh_modules", "manager_task_monitor_agents", 0, 1, 1);
+    rotate_log = getDefine_Int_default("wazuh_modules", "manager_task_log_rotate", 0, 1, 1);
+    day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 0,
+                                     WM_MANAGER_TASK_MAX_DAY_WAIT, WM_MANAGER_TASK_DEFAULT_DAY_WAIT);
 
     for (size_t i = 0; i < SCHEDULE_COUNT; i++) {
         const wm_manager_task_schedule_def *def = &manager_task_schedules[i];
@@ -159,14 +153,14 @@ size_t wm_manager_task_schedules_load(wm_manager_task_schedule *schedules) {
 
         if (strcmp(def->schedule_id, WM_MANAGER_TASK_SCHEDULE_DISCONNECT) == 0) {
             schedules[i].interval = disconnection_time;
-            // Always on. There is no option that turns agent disconnection detection off: today
-            // monitord marks agents disconnected regardless of monitor_agents, which only ever
-            // gated the log line and the retention deletion.
+            // Always on. There is no option that turns agent disconnection detection off: an agent
+            // that stopped answering has to reach the `disconnected` state whatever else is
+            // configured, or every consumer of that state silently goes stale.
             schedules[i].enabled = true;
         } else if (strcmp(def->schedule_id, WM_MANAGER_TASK_SCHEDULE_DELETE_OLD) == 0) {
             schedules[i].interval = delete_old_agents * 60;
-            // Both gates, as check_deletion_trigger had them: monitor_agents = 0 disables the
-            // retention deletion as well as the disconnection logging.
+            // Two gates: the retention window itself, and the agent-monitoring flag that also
+            // silences the disconnection log line.
             schedules[i].enabled = delete_old_agents > 0 && monitor_agents != 0;
         } else if (strcmp(def->schedule_id, WM_MANAGER_TASK_SCHEDULE_LOG_ROTATE) == 0) {
             schedules[i].day_wait = day_wait;

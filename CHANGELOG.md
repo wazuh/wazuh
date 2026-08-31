@@ -22,6 +22,7 @@
 | [#38007](https://github.com/wazuh/wazuh/issues/38007) | Added legacy `remote_upgrade` task delivery in `remoted`: a polling thread pushes pending Task Manager tasks to connected agents older than v5.0.0 over their existing session using the legacy six-step WPK push, gated on `remoted`'s HTTPS `verification_mode`. |
 | [#38157](https://github.com/wazuh/wazuh/issues/38157) | Added installation-time variables to customize the default `<remote>` configuration on source, DEB, and RPM manager installations. |
 | [#38553](https://github.com/wazuh/wazuh/issues/38553) | Added the `PUT /agents/scan/vulnerability` endpoint to trigger an on-demand vulnerability scan for one agent, a list of agents, or all agents. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Added recurring manager tasks to the Task Manager: the agent disconnection sweep, the deletion of long-disconnected agents, and manager log rotation now run as durable, retried tasks inside `wazuh-manager-modulesd`. Their resolved settings are reported by `GET /manager/configuration/wmodules/wmodules`. |
 
 #### Changed
 
@@ -44,6 +45,7 @@
 | [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-manager-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Renamed the manager's log rotation and agent monitoring internal options from `monitord.*` to `wazuh_modules.manager_task_*`. An override left under an old name is silently ignored. Agents keep `monitord.*` for their own log rotation. |
 | [#38436](https://github.com/wazuh/wazuh/issues/38436) | Standardized the manager's Unix socket names and layout: every socket ends in `.sock`, carries an `-http` marker when it speaks HTTP, and lives in `queue/sockets/`. The sockets that were under `queue/db/`, `queue/tasks/` and `queue/cluster/` moved there, leaving those directories holding only their data. An upgraded installation keeps the old socket files as dead entries until a clean install. |
 
 #### Removed
@@ -58,6 +60,8 @@
 | [#28425](https://github.com/wazuh/wazuh/issues/28425) | Removed legacy API security configuration endpoints. |
 | [#35908](https://github.com/wazuh/wazuh/issues/35908) | Removed SELinux integration from the manager. |
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Removed the `wazuh-manager-monitord` daemon, along with the `monitor` component of the active configuration endpoints, which its socket served. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Removed the `<global><agents_disconnection_alert_time>` option. A configuration that still includes it fails to start. |
 
 #### Fixed
 
@@ -71,6 +75,7 @@
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
 | [#35909](https://github.com/wazuh/wazuh/issues/35909) | Fixed `make deps` branch detection in GitHub Actions.
 | [#38511](https://github.com/wazuh/wazuh/issues/38511) | Fixed world-writable permissions on bundled Python files after DEB installation, caused by the permission restoration script following symlinks. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Fixed the agent disconnection sweep running on cluster workers, and fixed manager log files never rotating daily on a manager that was restarted every day. |
 | [#38547](https://github.com/wazuh/wazuh/issues/38547) | Fixed the API serving its OpenAPI specification and exact version at `/openapi.json` and `/openapi.yaml` without authentication. |
 | [#38565](https://github.com/wazuh/wazuh/issues/38565) | Bounded the `search` query parameter to 1024 characters across every endpoint that accepts it, fixed the API's `wazuh-db` socket client raising an unhandled error instead of a clean `500` when `wazuh-db` closes the connection on an oversized request, and stopped the API from returning `wazuh-db`'s raw backend error text (including SQL fragments) to the caller. |
 | [#38592](https://github.com/wazuh/wazuh/issues/38592) | Fixed the legacy `remote_upgrade` task delivery in `remoted` silently losing an agent's upgrade task when the push failed after the Task Manager had already marked it delivered, and fixed the agent's own reported upgrade failures being logged at `INFO`, where severity-filtered monitoring never saw them, instead of `WARNING`. `remoted` now owns a task's delivery retries end to end once it has read it: a rejection (the agent answered, just not with success) is retried up to 5 times in-memory within the same poll cycle (logging each failed attempt at `debug` except the last, which logs a `warning`), while a true no-response is deferred to a small in-memory retry list a later poll cycle picks back up, instead of blocking that cycle's sweep of every other agent. A task that exhausts every retry avenue is simply logged and dropped, never reported back to the Task Manager. |

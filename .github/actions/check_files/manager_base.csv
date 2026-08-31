@@ -24,7 +24,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/bin/wazuh-manager-db,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-keystore,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-modulesd,root,root,750,file,-rwxr-x---,,
-/var/wazuh-manager/bin/wazuh-manager-monitord,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-remoted,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/etc,root,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/etc/client.keys,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,

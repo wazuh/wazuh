@@ -155,33 +155,54 @@ wazuh_modules.debug=2
 
 ## Recurring manager tasks
 
-The three recurring jobs the Task Manager took over from `wazuh-monitord` — the agent disconnection
-sweep, the retention deletion of long-disconnected agents and log rotation — have **no `<task-manager>`
-options of their own**. Their intervals come from the sources they already had, and their behaviour
-is described in [Recurring manager tasks](schedules.md).
+The Task Manager's three recurring jobs — the agent disconnection sweep, the retention deletion of
+long-disconnected agents and log rotation — have **no `<task-manager>` options of their own**. They
+are configured through the internal options below, and their behaviour is described in
+[Recurring manager tasks](schedules.md).
 
 ### Where their intervals come from
 
 | Setting | Where it lives | Default | Governs |
 | --- | --- | --- | --- |
-| `agents_disconnection_time` | `<global>` in `ossec.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
-| `monitord.delete_old_agents` | `internal_options.conf` | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
-| `monitord.monitor_agents` | `internal_options.conf` | 1 | whether the retention sweep runs and whether disconnections are logged |
-| `monitord.rotate_log` | `internal_options.conf` | 1 | whether either kind of log rotation happens |
-| `monitord.day_wait` | `internal_options.conf` | 10 s | offset from local midnight for the daily rotation |
-| `monitord.compress` | `internal_options.conf` | 1 | whether rotated logs are gzipped |
-| `monitord.keep_log_days` | `internal_options.conf` | 31 | how long rotated logs are kept |
-| `monitord.size_rotate` | `internal_options.conf` | 512 MB | threshold for size-based rotation |
-| `monitord.daily_rotations` | `internal_options.conf` | 12 | rotated slots per day per file |
+| `agents_disconnection_time` | `<global>` in `wazuh-manager.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
+| `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
+| `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | whether the retention sweep runs and whether disconnections are logged |
+| `wazuh_modules.manager_task_log_rotate` | internal option | 1 | whether either kind of log rotation happens |
+| `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | offset from local midnight for the daily rotation |
+| `wazuh_modules.manager_task_log_compress` | internal option | 1 | whether rotated logs are gzipped |
+| `wazuh_modules.manager_task_log_keep_days` | internal option | 31 | how long rotated logs are kept |
+| `wazuh_modules.manager_task_log_size_rotate` | internal option | 512 MB | threshold for size-based rotation |
+| `wazuh_modules.manager_task_log_daily_rotations` | internal option | 12 | rotated slots per day per file |
 
-The `monitord.` prefix is **not cosmetic and must not be renamed**: `getDefine_Int` splits each key
-at its first `.` and compares both halves, so the prefix is part of the key. Renaming these would
-silently ignore whatever an operator has already configured. `delete_old_agents` and
-`monitor_agents` are not shipped in `internal_options.conf` at all — they exist only as reads with
-the defaults above.
+**None of these ships in a file.** The manager reads only
+`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`, which is an empty overrides file —
+there is no manager defaults file to consult. Every default above lives in code, so an option you
+have not written is at the value in this table, and writing one is the only way to change it.
+
+> **Renamed in 5.0.** These were `monitord.*` while log rotation and agent monitoring belonged to
+> `wazuh-manager-monitord`. If you set any of them in `wazuh-manager-internal-options.conf` on an
+> earlier build, rename the key — an override under the old name is silently ignored, because
+> `getDefine_Int` compares the part before the first `.` as well as the part after it.
+>
+> **The agent is unaffected.** It keeps `monitord.*` for its own log rotation; see the
+> [Agent configuration reference](../client/configuration.md). Only the manager's keys moved.
 
 `agents_disconnection_time` is also read by `remoted`, so `<global>` is shared configuration rather
 than something the Task Manager owns.
+
+### Reading back what a running manager resolved
+
+Because these are internal options with no XML element, configuration on disk does not tell you what
+is in effect. The resolved values are reported through the active-configuration endpoint, under the
+`task-manager` module's `recurring_tasks` object:
+
+```bash
+curl -k -X GET "https://localhost:55000/manager/configuration/wmodules/wmodules" \
+     -H "Authorization: Bearer $TOKEN"
+```
+
+`recurring_tasks` is absent while the dispatcher is not running — the values are resolved once at
+startup, and reporting compiled defaults instead would be indistinguishable from a live reading.
 
 ### Options the retention sweep adds
 

@@ -96,6 +96,32 @@ void test_wm_task_manager_dump_enabled(void **state)
     assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
 }
 
+void test_wm_task_manager_dump_reports_the_recurring_tasks(void **state)
+{
+    wm_task_manager *config = *state;
+
+    config->enabled = 1;
+
+    cJSON *ret = wm_task_manager_dump(config);
+
+    state[1] = ret;
+
+    cJSON *conf = cJSON_GetObjectItem(ret, "task-manager");
+    assert_non_null(conf);
+
+    /* Absent while the dispatcher is down, which is the case in this suite: nothing has resolved the
+     * recurring tasks' configuration, so there is nothing to report. Reporting the compiled defaults
+     * instead would be a guess the caller could not tell apart from a live reading. */
+    assert_null(cJSON_GetObjectItem(conf, "recurring_tasks"));
+
+    /* The four XML options are reported either way -- they come from the parsed <task-manager>
+     * block rather than from the dispatcher, so their presence must not depend on it. */
+    assert_non_null(cJSON_GetObjectItem(conf, "task_ttl"));
+    assert_non_null(cJSON_GetObjectItem(conf, "cleanup_interval"));
+    assert_non_null(cJSON_GetObjectItem(conf, "max_payload_bytes"));
+    assert_non_null(cJSON_GetObjectItem(conf, "max_tasks_per_poll"));
+}
+
 void test_wm_task_manager_dump_disabled(void **state)
 {
     wm_task_manager *config = *state;
@@ -256,6 +282,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_dump
         cmocka_unit_test_teardown(test_wm_task_manager_dump_enabled, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_dump_reports_the_recurring_tasks, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_dump_disabled, teardown_json),
         // wm_task_manager_destroy
         cmocka_unit_test(test_wm_task_manager_destroy),

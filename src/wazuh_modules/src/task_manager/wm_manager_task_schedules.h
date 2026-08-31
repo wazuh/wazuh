@@ -16,12 +16,10 @@
  * next slot falls, whether this node may run it, what id the instance gets -- is one of the pure
  * functions here, and none of them names a schedule.
  *
- * WHY THE INTERVALS ARE NOT NEW CONFIGURATION. Each one already has an operator-facing source that
- * predates this module, and moving them would break deployments that set them. `agents_disconnection_time`
- * is a `<global>` XML option read by remoted as well; the rest are `monitord.*` internal options.
- * The `monitord.` prefix survives the daemon: getDefine_Int splits a key at its first '.' and
- * strcmps both halves, so the prefix is a real key component rather than a label, and renaming the
- * keys would silently ignore whatever an operator has already written.
+ * WHERE THE INTERVALS COME FROM. `agents_disconnection_time` is a `<global>` XML option, shared with
+ * remoted rather than owned here, so it stays where it is. Everything else is a
+ * `wazuh_modules.manager_task_*` internal option, read with getDefine_Int_default so the defaults
+ * live in code -- the manager ships no defaults file, only an empty overrides one.
  */
 #ifndef WM_MANAGER_TASK_SCHEDULES_H
 #define WM_MANAGER_TASK_SCHEDULES_H
@@ -95,8 +93,9 @@ const wm_manager_task_schedule_def* wm_manager_task_schedules_get(const char *sc
 /**
  * @brief Resolve every built-in schedule's interval and enablement from configuration.
  *
- * Reads `<global><agents_disconnection_time>` and the `monitord.*` internal options. A schedule
- * whose interval source says zero comes back disabled, which is how `delete_old_agents` ships off.
+ * Reads `<global><agents_disconnection_time>` and the `wazuh_modules.manager_task_*` internal
+ * options. A schedule whose interval source says zero comes back disabled, which is how the
+ * retention sweep ships off.
  *
  * @param[out] schedules Array of at least wm_manager_task_schedules_count() entries.
  * @return Number of entries filled.
@@ -125,10 +124,9 @@ long long wm_manager_task_schedule_next_interval(long long previous, long long n
 /**
  * @brief The next daily slot strictly after a given time.
  *
- * The slot is local midnight plus `day_wait` seconds, in the manager's own timezone, because that
- * is what the option meant when monitord slept for it. Local time is deliberate rather than
- * incidental: an operator who set a rotation offset meant their own night, and a DST shift moving
- * one slot by an hour is the correct reading of "just after midnight".
+ * The slot is local midnight plus `day_wait` seconds, in the manager's own timezone. Local time is
+ * deliberate rather than incidental: an operator who set a rotation offset meant their own night,
+ * and a DST shift moving one slot by an hour is the correct reading of "just after midnight".
  *
  * @param[in] now Current time.
  * @param[in] day_wait Seconds after local midnight. Clamped to a day.
@@ -150,11 +148,9 @@ long long wm_manager_task_schedule_next(const wm_manager_task_schedule *schedule
  * @brief Whether a schedule of a given scope may spawn on this node.
  *
  * TREATS "UNKNOWN" AS "NOT THE MASTER", explicitly. w_is_worker() returns OS_INVALID when
- * ossec.conf fails to parse, and monitord's switch over the same call has no default branch -- so a
- * broken cluster stanza silently behaves as a master there today, which on a real worker means two
- * nodes running the same sweep. Refusing to spawn is the safe reading: the master's own schedule
- * still fires, and a node whose configuration cannot be read is not a node to hand cluster-wide
- * work to.
+ * ossec.conf fails to parse, and a caller that let that fall through to "master" would run
+ * cluster-wide work on a worker whose configuration it could not read. Refusing to spawn is the
+ * safe reading: the real master's own schedule still fires.
  *
  * @param[in] scope Schedule's node scope.
  * @param[in] worker_state Return of w_is_worker(): 0 master, 1 worker, anything else unknown.

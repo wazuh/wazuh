@@ -27,8 +27,8 @@
 
 /* How often the size-rotation direct action is signalled. Not an operator knob: it is the interval
  * at which two w_stat() calls decide whether a log has crossed its threshold, and the threshold is
- * the option that governs rotation. monitord checked every second, which is 86400 pairs of stat
- * calls a day to catch a boundary that a minute of extra log growth cannot meaningfully overshoot. */
+ * the option that governs rotation. A minute of extra log growth cannot meaningfully overshoot that
+ * boundary, so checking more often only spends stat calls. */
 #define WM_MANAGER_TASK_SIZE_ROTATE_INTERVAL 60
 
 /* Where an unknown schedule's slot is pushed to. Not a real cadence -- nothing in this build can

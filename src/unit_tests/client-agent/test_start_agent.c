@@ -18,7 +18,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
-#include "../wrappers/wazuh/monitord/monitord_wrappers.h"
+#include "../wrappers/wazuh/shared/log_rotate_wrappers.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"

@@ -45,8 +45,8 @@ Each task carries a free-form JSON `payload` whose contents are defined by the p
 The module also runs **manager tasks**, which are work the manager owes itself rather than work an
 agent picks up. They live in a separate table, are claimed and executed by dispatcher lanes inside
 `wazuh-modulesd`, and are retired with an outcome instead of a delivery. Three of them are recurring
-and replace `wazuh-monitord`'s periodic responsibilities — see
-[Recurring manager tasks](schedules.md).
+— the agent disconnection sweep, the retention deletion of long-disconnected agents, and log
+rotation. See [Recurring manager tasks](schedules.md).
 
 ---
 

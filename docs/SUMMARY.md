@@ -178,8 +178,6 @@
     - [Configuration](ref/modules/database-sync/configuration.md)
   - [Agent Upgrade](ref/modules/agent_upgrade/README.md)
     - [Configuration](ref/modules/agent_upgrade/configuration.md)
-  - [Monitord](ref/modules/monitord/README.md)
-    - [Configuration](ref/modules/monitord/configuration.md)
   - [Client](ref/modules/client/README.md)
     - [Configuration](ref/modules/client/configuration.md)
   - [Task Manager](ref/modules/task_manager/README.md)

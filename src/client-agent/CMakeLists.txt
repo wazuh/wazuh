@@ -31,7 +31,6 @@ include_directories(
   ${SRC_FOLDER}/data_provider/include/
   ${SRC_FOLDER}/os_execd/include/
   ${SRC_FOLDER}/logcollector/include/
-  ${SRC_FOLDER}/monitord/
   ${SRC_FOLDER}/rootcheck/include/
   ${SRC_FOLDER}/syscheckd/include/
   ${SRC_FOLDER}/wazuh_modules/include/

@@ -32,7 +32,7 @@ void test_a_recently_seen_agent_is_not_expired(void **state) {
 
 void test_the_window_is_the_disconnection_time_plus_the_retention(void **state) {
     // Not the retention alone. An agent becomes eligible one whole retention period AFTER it was
-    // marked disconnected, which is how monitord read the same two options.
+    // marked disconnected.
     assert_false(wm_manager_task_delete_old_expired(10000 - 4500, 10000, 900, 60));
     assert_true(wm_manager_task_delete_old_expired(10000 - 4501, 10000, 900, 60));
 }
