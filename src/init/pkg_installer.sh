@@ -259,16 +259,20 @@ probe_server() {
     fi
 
     if command -v curl > /dev/null 2>&1; then
-        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
-        return $?
-    fi
-
-    if command -v wget > /dev/null 2>&1; then
+        curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        RC=$?
+        [ ${RC} -eq 0 ] && return 0
+        # Only curl exit 2/4 (option unknown / not built in = this client can't do the TLS 1.3 the
+        # manager requires, #38607, e.g. EL7/AL2 system crypto) falls through to the TCP check;
+        # any other failure is a real "not reachable".
+        [ ${RC} -ne 2 ] && [ ${RC} -ne 4 ] && return ${RC}
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, falling back to a TCP connectivity check (manager endpoint not verified)." >> ./logs/upgrade.log
+    elif command -v wget > /dev/null 2>&1; then
         wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         return $?
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
     fi
-
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
     ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
     PROBE_PID=$!
     WAITED=0
@@ -335,10 +339,20 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:
 
 if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager connectivity check skipped (test mode)." >> ./logs/upgrade.log
-elif ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}, interrupting upgrade." >> ./logs/upgrade.log
-    abort_upgrade "2"
 else
+    # Retry a couple times in case the manager is briefly unreachable.
+    PROBE_OK=1
+    for PROBE_ATTEMPT in 1 2 3; do
+        if probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
+            PROBE_OK=0
+            break
+        fi
+        sleep 1
+    done
+    if [ ${PROBE_OK} -ne 0 ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}, interrupting upgrade." >> ./logs/upgrade.log
+        abort_upgrade "2"
+    fi
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 fi
 

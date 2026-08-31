@@ -331,9 +331,24 @@ public static class WazuhProbeTrust {
 "@
 }
 
+function probe_tcp($server, $port) {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $result = $client.BeginConnect($server, $port, $null, $null)
+        return $result.AsyncWaitHandle.WaitOne(5000) -and $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
 # Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
-# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s.
-# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
+# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s. A TLS
+# handshake failure falls back to a TCP-only check: SChannel negotiates TLS 1.3 only on Win11 /
+# Server 2022, so older hosts can't complete the HTTPS probe (#38607) and there is no cheap,
+# reliable way to tell that apart from a broken manager here -- a genuinely down manager is still
+# caught by the post-install connection wait. Any non-TLS error is a real "not reachable".
 function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
@@ -351,6 +366,10 @@ function probe_server($server, $port, $endpoint) {
         $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
+        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+            write-output "$(Get-Date -format u) - HTTPS handshake failed (host may lack TLS 1.3), falling back to a TCP connectivity check (manager endpoint not verified)." >> .\upgrade\upgrade.log
+            return probe_tcp $server $port
+        }
         return $false
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
@@ -502,11 +521,21 @@ write-output "$(Get-Date -format u) - Checking connectivity to $($server_address
 
 if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
     write-output "$(Get-Date -format u) - Manager connectivity check skipped (test mode)." >> .\upgrade\upgrade.log
-} elseif (-Not (probe_server $server_address $server_port $server_endpoint)) {
-    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
-    abort_upgrade "2"
 } else {
-    write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
+    $probe_ok = $false
+    for ($i = 0; $i -lt 3; $i++) {
+        if (probe_server $server_address $server_port $server_endpoint) {
+            $probe_ok = $true
+            break
+        }
+        Start-Sleep -Seconds 1
+    }
+    if (-Not $probe_ok) {
+        write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } else {
+        write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
+    }
 }
 
 # Ensure no other instance of msiexec is running by stopping them
