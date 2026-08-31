@@ -27,6 +27,33 @@ namespace remoted::control
 {
     using AgentId = std::uint32_t;
 
+    /**
+     * @brief Render a group list as the raw CSV selector wazuh-db uses.
+     *
+     * No URL-encoding and no reordering: the value must match what wdb returned, because the
+     * multigroup directory is named after the SHA-256 of this exact string (`"a,b"` and `"b,a"`
+     * are different directories).
+     *
+     * Shared rather than duplicated on purpose. `/control` builds the selector it reports to the
+     * agent -- and computes `config_hash` over the merged file that selector names -- while
+     * `/download` builds the selector it authorizes an agent's `resource_id` against. Those two
+     * MUST be the same string for the same groups: if they ever diverge, every multi-group agent
+     * is silently refused its own configuration.
+     */
+    inline std::string toGroupsCsv(const std::vector<std::string>& groups)
+    {
+        std::string out;
+        for (size_t i = 0; i < groups.size(); ++i)
+        {
+            if (i > 0)
+            {
+                out.push_back(',');
+            }
+            out.append(groups[i]);
+        }
+        return out;
+    }
+
     inline constexpr size_t kMaxHostnameLength = 255;
     inline constexpr size_t kMaxIpLength = 45; // IPv6 max
     inline constexpr size_t kMaxOsFieldLength = 128;

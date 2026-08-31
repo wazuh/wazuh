@@ -391,18 +391,31 @@ private:
             "/stateless",
             remoted::endpoints::stateless::makeHandler(*m_forwarder, eventsSocketPath, &m_statelessHttpMetrics));
 
+        // The agent -> groups map. Created HERE, ahead of both routes that need it, because
+        // /download is registered before /control but authorizes against the same registry;
+        // constructing it early is safe since it has no dependencies of its own. Held in a local
+        // (not passed inline) so /download and the registry-size pull metric can both reach it;
+        // the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets the
+        // handler, while /download's shared_ptr keeps it alive for any transfer still in flight.
+        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
+
         // /download: streams merged.mg and WPK packages with chunked transfer encoding. Registered
         // ResponseMode::Streamable because the transport fixes a response's output mode when the
         // request is dispatched -- a Buffered registration would make every download answer 500.
         //
-        // resource_id is the group (or WPK filename) the agent requests and the manager serves
-        // exactly that; there is no group lookup and no membership check (protocol decision on
-        // #38022). Containment therefore rests on the resource-id grammars plus O_NOFOLLOW.
-        m_authGateway->addAuthenticatedRoute(*m_httpServer,
-                                             remoted::http::Method::Post,
-                                             "/download",
-                                             remoted::endpoints::download::makeHandler({}, m_downloadMetrics),
-                                             remoted::http::ResponseMode::Streamable);
+        // A config request is served only when resource_id is the requesting agent's OWN group
+        // selector, resolved from agentRegistry (which /control populates and refreshes) and never
+        // from the request -- anything else is a 403. A wpk request carries no such check: the
+        // manager has nothing here to authorize it against, and the exposure is bounded by package
+        // signing. See download::makeHandler()'s doc comment for both decisions in full.
+        //
+        // Containment for what IS served then rests on the resource-id grammars plus O_NOFOLLOW.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/download",
+            remoted::endpoints::download::makeHandler(agentRegistry, {}, m_downloadMetrics),
+            remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
@@ -470,10 +483,6 @@ private:
         // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
-        // Held in a local (not passed inline) so the registry-size pull metric can weak-point at
-        // it; the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets
-        // the handler.
-        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,

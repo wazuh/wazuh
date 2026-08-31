@@ -12,6 +12,8 @@
 #ifndef _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 #define _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 
+#include "control/agentRegistry.hpp"   // AgentRegistry (the agent -> groups source of truth)
+#include "control/controlTypes.hpp"    // AgentId
 #include "downloadMetrics.hpp"         // DownloadMetrics
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
@@ -23,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace remoted::endpoints::download
 {
@@ -62,6 +65,21 @@ namespace remoted::endpoints::download
         None = 0,
         NotFound, ///< -> 404. Absent, or present but not a regular file.
         Internal  ///< -> 500. An unexpected errno while opening or stat-ing.
+    };
+
+    /**
+     * @brief Why an authenticated agent is not entitled to the configuration it asked for.
+     *
+     * Both values answer 403 with the SAME body, and that is deliberate: telling the two apart
+     * would hand a caller a probe for which agent ids the manager currently knows about. They are
+     * distinct here only so the manager's own logs can say which happened.
+     */
+    enum class AuthzError
+    {
+        None = 0,
+        UnknownAgent, ///< No groups on record for this agent: it has not completed a /control
+                      ///< startup or notify against this manager process yet.
+        NotItsOwn     ///< The selector is well-formed, but it is not this agent's group selector.
     };
 
     /**
@@ -134,8 +152,33 @@ namespace remoted::endpoints::download
      */
     bool isValidWpkFilename(std::string_view filename);
 
+    /**
+     * @brief Whether @p selector is the configuration @p agentGroups is entitled to.
+     *
+     * Pure: no registry, no filesystem, no logging. The rule is exact equality against the agent's
+     * own selector, `toGroupsCsv(agentGroups)` -- not "every entry is one of the agent's groups".
+     *
+     * Exact equality rather than a subset test, for two reasons. `/control` reports `config_hash`
+     * over the merged file named by the agent's FULL selector, so an agent that fetched a subset
+     * would compare a hash it can never match and re-download on every notify. And the multigroup
+     * directory is the digest of the selector verbatim, so order is part of the identity: a subset
+     * rule would have to define which permutations are acceptable, and every answer to that is a
+     * larger attack surface than "the one string /control handed you".
+     *
+     * An agent with no groups on record is entitled to nothing, which is why the empty-selector
+     * case cannot be reached: isValidGroupSelector() has already rejected an empty `resource_id`.
+     *
+     * @param selector The `resource_id` from the request, already grammar-checked.
+     * @param agentGroups The requesting agent's groups, in the order wazuh-db reported them.
+     */
+    AuthzError authorizeConfigSelector(std::string_view selector, const std::vector<std::string>& agentGroups);
+
     /// @brief Client-visible `{"error","code"}` response for a rejected request body.
     remoted::http::HttpResponse errorResponseFor(RequestError error);
+
+    /// @brief Client-visible `{"error","code"}` response for a refused configuration request. One
+    /// body for every AuthzError, so the status cannot be read as an oracle.
+    remoted::http::HttpResponse errorResponseFor(AuthzError error);
 
     /// @brief Client-visible `{"error","code"}` response for a resource that could not be located.
     remoted::http::HttpResponse errorResponseFor(LocateError error);
@@ -193,11 +236,17 @@ namespace remoted::endpoints::download
      * so it is called out as a limit of the mechanism rather than treated as a hole. Adding a
      * realpath() containment check is what would close it if that assumption ever weakens.
      *
-     * @note The manager does NOT check that the requesting agent belongs to what it asks for: per
-     * the protocol decision on #38022, `resource_id` is what the agent requests and the group
-     * lookup was removed. Any authenticated agent can therefore fetch any group's (or multigroup's)
-     * merged configuration. `/control` must report `config_hash` over the file this resolves to for
-     * the selector it hands the agent, or that agent re-downloads on every notify.
+     * @note Resolution only. A `config` request has ALREADY been authorized against the requesting
+     * agent's own groups by the time it gets here (authorizeConfigSelector(), called from the
+     * handler), so `resource_id` at this point is a selector the agent is entitled to. Keeping the
+     * check out of this function is what keeps it pure and independently testable; the ordering is
+     * the handler's contract, not this function's.
+     *
+     * `/control` must report `config_hash` over the file this resolves to for the selector it hands
+     * the agent, or that agent re-downloads on every notify. Both sides build that selector with
+     * the same `toGroupsCsv()`, which is what keeps them from drifting apart.
+     *
+     * @note A `wpk` request is NOT authorized against the requesting agent -- see makeHandler().
      */
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths);
 
@@ -313,18 +362,49 @@ namespace remoted::endpoints::download
     /**
      * @brief Build the complete `POST /download` handler.
      *
-     * Parses, releases the payload (a transfer outlives the request by a long way; no reason to
-     * hold the body's in-flight reservation for it), resolves, opens, then streams.
+     * Parses, authorizes, releases the payload (a transfer outlives the request by a long way; no
+     * reason to hold the body's in-flight reservation for it), resolves, opens, then streams.
+     *
+     * ### Authorization
+     *
+     * A `config` request is served only when `resource_id` is the requesting agent's OWN group
+     * selector; anything else is a 403. The agent's groups come from @p registry, which `/control`
+     * populates at startup and refreshes on notify, so the check costs a sharded-map read and never
+     * touches wazuh-db on the download path.
+     *
+     * Reading the groups from the registry rather than from the request is the whole point: an
+     * agent that names a group is naming something it must already be a member of, and the manager
+     * verifies that rather than trusting it. A null @p registry therefore DENIES every config
+     * request instead of allowing them -- a missing dependency must not silently become a missing
+     * check.
+     *
+     * An agent with no registry entry is refused (403). That does not strand it: an agent learns it
+     * needs to download from the `config_hash` `/control` reports, so a legitimate config download
+     * is always preceded by a notify against this same process, which is what creates the entry.
+     *
+     * A `wpk` request is NOT authorized against the requesting agent. The manager has nothing to
+     * check it against here: which package an agent may fetch is decided by its pending upgrade
+     * task in the task manager, not by anything `/control` exchanges or the registry holds. The
+     * residual exposure is accepted and bounded -- WPKs are signed, publicly distributed packages,
+     * so an unauthorized fetch discloses which package is staged on the manager, not secret
+     * material, and a tampered one fails signature verification on the agent. Closing it properly
+     * means task-based authorization, tracked separately.
      *
      * @warning The route MUST be registered with remoted::http::ResponseMode::Streamable. A
      * Buffered registration reaches IHttpResponder::stream()'s fail-loud default and every download
      * answers 500.
      *
+     * @param registry The agent -> groups map owned by ControlHandler. Held by shared_ptr, not by
+     * reference, so an in-flight handler cannot outlive it during shutdown. Null denies all config
+     * requests.
      * @param metrics The remoted.download.* set (copied into the handler, cold path): admission
      * outcomes plus started-transfer count/bytes, all recorded before the streaming pump runs.
      * The default null object counts nothing.
      */
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths = {}, DownloadMetrics metrics = {});
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(std::shared_ptr<const remoted::control::AgentRegistry> registry = nullptr,
+                ResourcePaths paths = {},
+                DownloadMetrics metrics = {});
 
 } // namespace remoted::endpoints::download
 

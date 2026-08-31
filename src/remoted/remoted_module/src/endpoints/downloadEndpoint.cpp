@@ -11,6 +11,7 @@
 
 #include "downloadEndpoint.hpp"
 
+#include "common/logThrottle.hpp"
 #include "loggerHelper.h"
 
 #include <rapidjson/document.h>
@@ -22,11 +23,13 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <charconv>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -36,6 +39,74 @@ namespace
     {
         static const LogFn instance {LogFn {DOWNLOAD_LOGTAG}.compose("download")};
         return instance;
+    }
+
+    /**
+     * @brief Rate limiter for the "agent asked for a configuration that is not its own" WARN.
+     *
+     * Throttled rather than debug-only: a cross-group config request is either a misconfigured
+     * agent or someone probing, and an operator needs to see it. It is also fully
+     * attacker-controlled in volume, which is exactly what LogThrottle exists for -- one line per
+     * window, carrying the count it stands for, so the finding survives without the flood.
+     */
+    remoted::common::LogThrottle& forbiddenThrottle()
+    {
+        static remoted::common::LogThrottle instance;
+        return instance;
+    }
+
+    /// Same rule as controlEndpoint's: decimal only (from_chars already rejects a sign or 0x) and
+    /// no trailing garbage, so "001" and "1" are the same agent but "1x" is not an agent at all.
+    bool parseAgentId(std::string_view text, remoted::control::AgentId& out)
+    {
+        remoted::control::AgentId value = 0;
+        const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+        if (ec != std::errc {} || ptr != text.data() + text.size())
+        {
+            return false;
+        }
+        out = value;
+        return true;
+    }
+
+    /**
+     * @brief Resolve the requesting agent's groups and authorize a config selector against them.
+     *
+     * Every failure mode is a refusal, never a pass-through: an absent registry, an agent id that
+     * is not a number, and an agent with no entry all deny. This is the function where a "fail
+     * open" would silently reinstate the missing check, so there is no path out of it that reaches
+     * the filesystem without a positive match.
+     *
+     * @param agentId Agent id from the verified Authorization header.
+     * @param selector The grammar-checked `resource_id`.
+     * @param registry Groups source, owned by ControlHandler. Null denies.
+     */
+    remoted::endpoints::download::AuthzError authorizeConfigRequest(const std::string& agentId,
+                                                                    const std::string& selector,
+                                                                    const remoted::control::AgentRegistry* registry)
+    {
+        using remoted::endpoints::download::AuthzError;
+
+        if (registry == nullptr)
+        {
+            return AuthzError::UnknownAgent;
+        }
+
+        remoted::control::AgentId id = 0;
+        if (!parseAgentId(agentId, id))
+        {
+            // The gateway authenticated this id against client.keys, so it is numeric by the time
+            // it reaches here. Refusing anyway keeps that an assumption this code does not depend on.
+            return AuthzError::UnknownAgent;
+        }
+
+        const auto entry = registry->get(id);
+        if (!entry)
+        {
+            return AuthzError::UnknownAgent;
+        }
+
+        return remoted::endpoints::download::authorizeConfigSelector(selector, entry->groups);
     }
 
     /// Longest accepted resource id. MAX_GROUP_NAME for a group; also a sane bound for a filename.
@@ -268,8 +339,32 @@ namespace remoted::endpoints::download
     }
 
     // -----------------------------------------------------------------------
+    // Authorization
+    // -----------------------------------------------------------------------
+
+    AuthzError authorizeConfigSelector(std::string_view selector, const std::vector<std::string>& agentGroups)
+    {
+        if (agentGroups.empty())
+        {
+            return AuthzError::UnknownAgent;
+        }
+
+        // The same toGroupsCsv() /control used to build the selector it reported to this agent, so
+        // the two strings are produced by one function and cannot drift.
+        return selector == remoted::control::toGroupsCsv(agentGroups) ? AuthzError::None : AuthzError::NotItsOwn;
+    }
+
+    // -----------------------------------------------------------------------
     // Error mapping
     // -----------------------------------------------------------------------
+
+    // Unnamed on purpose: the cause deliberately does not reach the response. One body and one
+    // status for every AuthzError, so "does this group exist", "is this agent known" and "am I in
+    // that group" all look identical from outside. The cause survives in the manager's log.
+    remoted::http::HttpResponse errorResponseFor(AuthzError)
+    {
+        return remoted::http::HttpResponse::json(403, R"({"error":"Forbidden","code":403})");
+    }
 
     remoted::http::HttpResponse errorResponseFor(RequestError error)
     {
@@ -511,11 +606,12 @@ namespace remoted::endpoints::download
     // Handler
     // -----------------------------------------------------------------------
 
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths, DownloadMetrics metrics)
+    remoted::endpoints::AuthenticatedHandler makeHandler(
+        std::shared_ptr<const remoted::control::AgentRegistry> registry, ResourcePaths paths, DownloadMetrics metrics)
     {
-        return [paths = std::move(paths),
-                metrics = std::move(metrics)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                                              std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [registry = std::move(registry), paths = std::move(paths), metrics = std::move(metrics)](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             const auto parsed = parseRequest(request->payload.bytes());
 
@@ -530,6 +626,32 @@ namespace remoted::endpoints::download
 
             const auto& downloadRequest = std::get<DownloadRequest>(parsed);
             const std::string agentId = request->agentId;
+
+            // Config is entitlement-checked; WPK is not (see makeHandler()'s doc comment for why,
+            // and for what bounds the exposure that leaves).
+            if (downloadRequest.type == ResourceType::Config)
+            {
+                const auto authz = authorizeConfigRequest(agentId, downloadRequest.resourceId, registry.get());
+
+                if (authz != AuthzError::None)
+                {
+                    if (const auto throttle = forbiddenThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Agent '%s' requested configuration '%s' it is not entitled to (%s): refused "
+                                   "%llu request(s) in the last %d s.",
+                                   agentId.c_str(),
+                                   downloadRequest.resourceId.c_str(),
+                                   authz == AuthzError::UnknownAgent ? "no groups on record" : "not its own groups",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+
+                    incForbidden(metrics);
+                    responder->send(errorResponseFor(authz));
+                    return;
+                }
+            }
 
             const auto located = locateResource(downloadRequest, paths);
 

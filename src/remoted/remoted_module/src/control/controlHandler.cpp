@@ -67,19 +67,6 @@ namespace remoted::control
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                 .count();
         }
-
-        // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
-        std::string toGroupsCsv(const std::vector<std::string>& groups)
-        {
-            std::string out;
-            for (size_t i = 0; i < groups.size(); ++i)
-            {
-                if (i > 0)
-                    out.push_back(',');
-                out.append(groups[i]);
-            }
-            return out;
-        }
     } // namespace
 
     class ControlHandler::Impl

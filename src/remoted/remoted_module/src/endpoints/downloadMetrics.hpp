@@ -36,6 +36,7 @@ namespace remoted::endpoints::download
 {
     // The remoted.download.* name catalog.
     constexpr auto METRIC_DOWNLOAD_REJECTED {"remoted.download.rejected"};
+    constexpr auto METRIC_DOWNLOAD_FORBIDDEN {"remoted.download.forbidden"};
     constexpr auto METRIC_DOWNLOAD_NOT_FOUND {"remoted.download.not_found"};
     constexpr auto METRIC_DOWNLOAD_OPEN_ERROR {"remoted.download.open_error"};
     constexpr auto METRIC_DOWNLOAD_STARTED {"remoted.download.started"};
@@ -49,6 +50,10 @@ namespace remoted::endpoints::download
     struct DownloadMetrics
     {
         std::shared_ptr<wazuh::metrics::ICounter> rejected;   ///< 400s: the request line didn't parse.
+        std::shared_ptr<wazuh::metrics::ICounter> forbidden;  ///< 403s: the agent asked for a config that is
+                                                              ///< not its own, or has no groups on record here
+                                                              ///< yet. A sustained rate is either a
+                                                              ///< misbehaving agent or a probe.
         std::shared_ptr<wazuh::metrics::ICounter> notFound;   ///< 404s: the group/WPK doesn't exist
                                                               ///< (config drift -> agent retry storms).
         std::shared_ptr<wazuh::metrics::ICounter> openError;  ///< 500s: the file exists but won't open.
@@ -67,6 +72,9 @@ namespace remoted::endpoints::download
         return DownloadMetrics {
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_REJECTED, "400 rejections: the /download request did not parse", "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_FORBIDDEN,
+                                       "403s: the agent is not entitled to the configuration it asked for",
+                                       "count"),
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group/WPK does not exist", "count"),
             manager.getOrCreateCounter(
@@ -83,6 +91,13 @@ namespace remoted::endpoints::download
         if (m.rejected)
         {
             m.rejected->add();
+        }
+    }
+    inline void incForbidden(const DownloadMetrics& m)
+    {
+        if (m.forbidden)
+        {
+            m.forbidden->add();
         }
     }
     inline void incNotFound(const DownloadMetrics& m)
