@@ -993,8 +993,8 @@ components:
     AgentID:
       type: string
       minLength: 3
-      description: "Agent ID"
-      format: numbers
+      description: "Agent ID. Must be a positive integer no greater than 2147483647 (2^31-1), and other than 0, which is reserved for the manager"
+      format: agent_id
 
     AgentIDListAll:
       type: string

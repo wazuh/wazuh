@@ -39,10 +39,11 @@ it would erase why.
 | RF-7 | Remove an agent from the keystore, `client.keys`, wazuh-db, its rids counter and its timestamp | kept ([agent removal](#agent-removal)) |
 | RF-8 | Delete a removed agent's documents from the indexer, retriably | kept — **relayed, not inline** (D3); the endpoint is inventory-sync's `POST /agents/delete` |
 | RF-9 | Forward enrollment to the master on a worker node; the master decides | kept (`local_add_clustered`, `w_request_agent_add_clustered`) |
-| RF-10 | Accept an insertion that names an explicit id (`manage_agents`, `POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`) or owes a purge (`9018`) — D6 |
+| RF-10 | Accept an insertion that names an explicit id (`manage_agents`, `POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside the storable range (`9020`) — D6, D9 |
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — the `200` means *queued*; waiting for the flush wedged the writer |
 | RF-12 | Survive a restart without losing work the system has no other record of | kept ([the state file](#the-state-file)) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
+| RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_COUNTER_EXHAUSTED`) — D9 |
 
 ### Non-functional (RNF)
 
@@ -81,6 +82,7 @@ The deletion route is a contract between two modules; both sides depend on these
 | D6 | **An id whose purge is pending is refused, not reassigned** (`9018`) | The purge matches by agent id and nothing in a state document distinguishes one owner from the next; cancelling a queued purge is never the answer |
 | D7 | **A replacement is a deletion, and never reuses the id** | It goes through the same `add_remove()` + `OS_DeleteKey()` path, so it inherits every guarantee above instead of needing its own |
 | D8 | **The `<force>` guards are all-or-nothing and each logs its own refusal** | An operator debugging a rejected enrollment needs to know *which* guard refused; a single generic "rejected" is unactionable |
+| D9 | **An id, caller-supplied or auto-assigned, is range-checked before it can reach either store** — never after | Both `client.keys` and the database keep the id in a signed 32-bit int; an unchecked value above `INT32_MAX` wraps silently at write time, and the two stores wrapped independently, leaving one agent with two disjoint identities and no supported way to query or delete the result |
 
 ## Layout
 
@@ -281,6 +283,15 @@ walk backwards over exactly the ids whose purges are still pending. On startup i
 to `max(last_id, highest id in client.keys)`, and the change is logged at info level because it is
 what explains a jump in the ids handed out.
 
+The counter is a signed 32-bit int, the same width `client.keys` and the database store the id in,
+so a manager that is long-lived or churns through enough agents can drive it to `INT_MAX` on its own
+— no out-of-range input anywhere. `OS_AddNewAgent()` refuses to increment past that point rather than
+wrapping to a negative id: the enrollment fails with `9021 Agent ID counter exhausted` (the local
+socket) or the plain-text `ERROR: Agent ID counter exhausted` (anonymous enrollment on 1515), and
+nothing is written to either store. This is unreachable from remoted's `/enroll` route today only in
+the sense that a fleet has to be large or long-lived enough to exhaust ~2.1 billion ids first; there is
+no format check that could rule it out the way an out-of-range explicit id can be rejected up front.
+
 `queue/` survives an upgrade and a plain package removal. A full purge of the package, or an install
 into a clean tree, takes the file with it: the counter starts over while the indexer still holds the
 previous fleet's documents. **Deleting a manager should include deleting its indexer data.**
@@ -288,10 +299,11 @@ previous fleet's documents. **Deleting a manager should include deleting its ind
 ### Insertion with a chosen id
 
 `POST /agents/insert` is the one path where the caller names the id, and it is refused rather than
-served when the id is not free to reuse:
+served when the id is not valid, or not free to reuse:
 
 | Situation | Error |
 |---|---|
+| the id is outside `[1, 2147483647]`, or `0` (reserved for the manager) | `9020 Invalid agent ID` — checked first, before any keystore lookup |
 | the id still owes a purge | `9018 Agent ID has a pending deletion` (`1763` through the server API) |
 | the id belongs to an existing agent | `9012 Duplicate ID` |
 
@@ -352,6 +364,7 @@ The ones that shape the behaviour described here:
 | `The pending deletion queue is full` | the cap was hit; that deletion has to be repeated |
 | `Shutting down with N pending agent deletion(s)` | they stay in the file and are retried on the next start |
 | `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9018` path |
+| `Unable to add agent: NAME. Agent ID counter exhausted.` | `id_counter` reached `INT_MAX`; the enrollment is refused instead of wrapping to a negative id |
 
 ## Tests
 
@@ -363,6 +376,8 @@ The ones that shape the behaviour described here:
 | `unit_tests/os_auth/test_auth.c` | password handling |
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
+| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding |
+| `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |
 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the
 code under test emits has to be declared — and an undeclared one aborts cmocka from inside whatever

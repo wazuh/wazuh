@@ -73,6 +73,9 @@ int OS_AddNewAgent(keystore *keys,
     }
 
     if (!id) {
+        if (keys->id_counter >= INT_MAX) {
+            return OS_ADDAGENT_COUNTER_EXHAUSTED;
+        }
         snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);
         id = _id;
     }
@@ -127,6 +130,25 @@ int OS_IsValidID(const char *id)
     }
 
     return (1);
+}
+
+int OS_IsValidAgentInsertID(const char *id)
+{
+    char *endptr;
+    long value;
+
+    if (!id || !*id) {
+        return (0);
+    }
+    for (const char *p = id; *p; p++) {
+        if (!isdigit((int)(unsigned char)*p)) {
+            return (0);
+        }
+    }
+
+    errno = 0;
+    value = strtol(id, &endptr, 10);
+    return errno == 0 && '\0' == *endptr && value > 0 && value <= INT32_MAX;
 }
 
 /* Get agent name of ID */

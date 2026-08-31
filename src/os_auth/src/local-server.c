@@ -42,7 +42,9 @@ typedef enum auth_local_err {
     ENOMASTERCOMM,
     EINVALIDNAME,
     EPENDINGPURGE,
-    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDKEY,
+    EINVALIDID,
+    EIDEXHAUSTED // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -72,7 +74,13 @@ static const struct {
     { 9018, "Agent ID has a pending deletion" },
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
-    { 9019, "Invalid agent key" }
+    { 9019, "Invalid agent key" },
+    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
+    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    { 9020, "Invalid agent ID" },
+    // The auto-assignment counter (keystore.id_counter) is already at INT_MAX: incrementing it
+    // would wrap to a negative id instead of failing loudly.
+    { 9021, "Agent ID counter exhausted" }
 };
 
 // Dispatch local request
@@ -624,6 +632,14 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
+    /* A caller-supplied id must be within the range the manager can actually store it in --
+     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
+     * not the id space /agents/insert accepts. */
+    if (id && !OS_IsValidAgentInsertID(id)) {
+        ierror = EINVALIDID;
+        goto fail;
+    }
+
     /* An explicitly chosen id is the one case where the caller can land on an id whose previous
      * owner is still being cleaned up. Both branches below refuse instead of reassigning it,
      * because the pending purge matches by agent id and would delete the NEW agent's documents --
@@ -709,6 +725,11 @@ cJSON* local_add(const char *id,
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
         ierror = EAGLIM;
+        goto fail;
+    }
+    if (index == OS_ADDAGENT_COUNTER_EXHAUSTED) {
+        merror("Unable to add agent: %s. Agent ID counter exhausted.", name);
+        ierror = EIDEXHAUSTED;
         goto fail;
     }
     if (index < 0) {

@@ -509,6 +509,12 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
         return OS_INVALID;
     }
 
+    if (index == OS_ADDAGENT_COUNTER_EXHAUSTED) {
+        merror("Unable to add agent: %s. Agent ID counter exhausted.", agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Agent ID counter exhausted");
+        return OS_INVALID;
+    }
+
     if (index < 0) {
         merror("Unable to add agent: %s (internal error)", agentname);
         snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error adding agent: %s", agentname);
