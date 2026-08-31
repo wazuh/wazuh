@@ -132,7 +132,7 @@ TEST_F(SCAIdentityTest, MarkerAbsentIsAdoptedWithoutResyncing)
     expectMetadata(/* syncedAgentId */ 0, /* firstSyncCompleted */ 123456);
 
     // A resync would have to clear the manager's index first.
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
     .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
@@ -150,7 +150,7 @@ TEST_F(SCAIdentityTest, UnchangedIdIsANoOp)
     publishAgentId("007");
     expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
 
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
     .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
@@ -166,7 +166,7 @@ TEST_F(SCAIdentityTest, UnknownIdIsANoOp)
     // No publishAgentId() here -- the provider was reset in SetUp().
     expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
 
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
     .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
@@ -182,8 +182,8 @@ TEST_F(SCAIdentityTest, ChangedIdClearsTheIndexAndResends)
     publishAgentId("002");
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
 
@@ -200,8 +200,8 @@ TEST_F(SCAIdentityTest, FailedDataCleanRecordsNothing)
     publishAgentId("002");
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
 
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));

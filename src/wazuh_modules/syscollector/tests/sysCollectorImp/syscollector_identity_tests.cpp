@@ -59,7 +59,7 @@ namespace
             MOCK_METHOD(bool, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
             MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups,
                         (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
-            MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>& indices, Option option), (override));
+            MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
             MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t* data, size_t length), (override));
             MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
             MOCK_METHOD(void, clearAllDataContext, (), (override));
@@ -227,8 +227,8 @@ TEST_F(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync)
     publishAgentId("7");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(0);
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
 
     Syscollector::instance().checkAgentIdentity();
 
@@ -244,8 +244,8 @@ TEST_F(SyscollectorIdentityTest, UnchangedIdIsANoOp)
     publishAgentId("5");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(0);
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
 
     Syscollector::instance().checkAgentIdentity();
 
@@ -260,8 +260,8 @@ TEST_F(SyscollectorIdentityTest, UnknownIdIsANoOp)
     metadata_provider_reset();
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(0);
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
 
     Syscollector::instance().checkAgentIdentity();
 
@@ -277,8 +277,8 @@ TEST_F(SyscollectorIdentityTest, FailedMarkerReadAdoptsNothing)
     publishAgentId("9");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(0);
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
 
     // A read that fails rather than one that answers "nothing recorded": getMetadataValue()
     // reports false when it has no database, which is the same "not an answer" a busy or
@@ -302,13 +302,13 @@ TEST_F(SyscollectorIdentityTest, ChangedIdResendsEachTableOnItsOwnLane)
     INJECT_MOCK_PROTOCOLS();
 
     EXPECT_CALL(*vdProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _))
+                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
     .Times(1)
-    .WillOnce(Return(true));
+    .WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_USERS}, _))
+                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_USERS}, _, _))
     .Times(1)
-    .WillOnce(Return(true));
+    .WillOnce(Return(okResult()));
 
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
@@ -325,8 +325,8 @@ TEST_F(SyscollectorIdentityTest, ChangedIdSkipsDisabledCollectors)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -353,8 +353,8 @@ TEST_F(SyscollectorIdentityTest, ChangedIdSendsTheVDInventoryAsAFirstSync)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
 
     // The whole point: exactly one session carries the VD inventory, and it asks for the
     // first-scan chain. The plain lane's own sessions also reach this protocol -- syncModule()
@@ -382,8 +382,8 @@ TEST_F(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(1).WillOnce(Return(false));
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(SyncModuleResult {}));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -404,9 +404,9 @@ TEST_F(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle)
 
     // The VD lane lands once across both cycles: one call per VD table -- packages and os --
     // in the first cycle, and none in the second.
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(okResult()));
     // The plain lane never does, and is retried on the second cycle.
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(2).WillRepeatedly(Return(false));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(SyncModuleResult {}));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -427,8 +427,8 @@ TEST_F(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -459,8 +459,8 @@ TEST_F(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker)
     // packages is resent on both cycles: no marker exists to skip it, and the plain lane keeps
     // failing so the combined marker never advances either. Its data still rides the VD
     // protocol -- that routing is by index and is not what the lane decides.
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(2).WillRepeatedly(Return(true));
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(2).WillRepeatedly(Return(false));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(SyncModuleResult {}));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
