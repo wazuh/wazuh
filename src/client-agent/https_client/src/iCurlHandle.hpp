@@ -116,6 +116,10 @@ class ICurlHandle
         virtual TransportStatus perform() = 0;
         virtual long responseCode() = 0;
         virtual std::string localIp() = 0; ///< CURLINFO_LOCAL_IP after perform().
+        /// libcurl's own reason for the last perform(), empty when it succeeded.
+        /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
+        /// behind it -- the part TransportStatus cannot carry.
+        virtual std::string curlError() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

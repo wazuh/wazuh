@@ -10,6 +10,7 @@
  */
 
 #include "fakeSysSeams.hpp"
+#include "jwtSigner.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockFileCompressor.hpp"
 #include "mockHttpPerformer.hpp"
@@ -62,13 +63,22 @@ namespace
                 : m_signer("001", m_keyProvider)
                 , m_config(makeConfig())
                 , m_authGate(m_sink, [] {})
-            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink,
-                       m_authGate, m_compressionGate, m_fileCompressor)
+            , m_stream(m_config,
+                       m_performer,
+                       m_signer,
+                       m_clock,
+                       m_random,
+                       m_spoolFactory,
+                       m_sink,
+                       m_authGate,
+                       m_compressionGate,
+                       m_fileCompressor)
             {
                 // By default the spool factory writes the bytes to a unique temp
                 // file (submit spools now, so every submit needs a real file).
                 ON_CALL(m_spoolFactory, spool(_, _))
-                .WillByDefault(Invoke([this](const uint8_t* buffer, size_t length)
+                .WillByDefault(Invoke(
+                                   [this](const uint8_t* buffer, size_t length)
                 {
                     const std::string path =
                         ::testing::TempDir() + "hc_sf_" + std::to_string(m_spoolCounter++) + ".tmp";
@@ -90,8 +100,8 @@ namespace
                 return m_stream.submit(id, reinterpret_cast<const uint8_t*>(body.data()), body.size());
             }
 
-            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-            CmacSigner m_signer;
+            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};
+            JwtSigner m_signer;
             ModuleConfig m_config;
             FakeClock m_clock;
             ScriptedRandom m_random {{0.0}};
@@ -135,8 +145,7 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAtSubmitAndStreamedWithSessionHeader)
 {
     const std::string path = ::testing::TempDir() + "hc_stateful_1.tmp";
     // Spooling now happens during submit(), not during the send.
-    EXPECT_CALL(m_spoolFactory, spool(_, 8u))
-    .WillOnce(Return(ByMove(makeSpoolAt(path, "12345678"))));
+    EXPECT_CALL(m_spoolFactory, spool(_, 8u)).WillOnce(Return(ByMove(makeSpoolAt(path, "12345678"))));
 
     std::vector<std::string> headers;
     EXPECT_CALL(m_performer, perform(_))
@@ -165,7 +174,7 @@ TEST_F(StatefulStreamTest, SubmitFileAdoptsAnAlreadySpooledSessionAndDeletesIt)
     // stream adopts it (no re-spool) and deletes it after sending.
     const std::string path = ::testing::TempDir() + "hc_intake_session.bin";
     {
-        std::ofstream file {path, std::ios::binary};    // 200 KB > 64 KB
+        std::ofstream file {path, std::ios::binary}; // 200 KB > 64 KB
         file << std::string(200000, 'Z');
     }
     ASSERT_TRUE(fileExists(path));
@@ -189,8 +198,7 @@ TEST_F(StatefulStreamTest, SubmitFileAdoptsAnAlreadySpooledSessionAndDeletesIt)
 TEST_F(StatefulStreamTest, SameSessionIdAcrossRetries)
 {
     const std::string path = ::testing::TempDir() + "hc_stateful_retry.tmp";
-    EXPECT_CALL(m_spoolFactory, spool(_, _))
-    .WillOnce(Return(ByMove(makeSpoolAt(path, "body"))));
+    EXPECT_CALL(m_spoolFactory, spool(_, _)).WillOnce(Return(ByMove(makeSpoolAt(path, "body"))));
 
     std::vector<std::string> firstHeaders;
     std::vector<std::string> secondHeaders;
@@ -340,14 +348,19 @@ TEST_F(StatefulStreamTest, CompressionEnabledCompressesOnceAndCleansUpTheTempFil
     // constructs a separate RetrySender per compression test rather than
     // mutating the fixture's config after the fact.
     ModuleConfig compressingConfig = makeCompressingConfig();
-    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
-                                m_clock,            m_random,           m_spoolFactory,
-                                m_sink,             m_authGate,         m_compressionGate,
+    StatefulStream compressing {compressingConfig,
+                                m_performer,
+                                m_signer,
+                                m_clock,
+                                m_random,
+                                m_spoolFactory,
+                                m_sink,
+                                m_authGate,
+                                m_compressionGate,
                                 m_fileCompressor};
 
     const std::string originalPath = ::testing::TempDir() + "hc_stateful_compress_src.tmp";
-    EXPECT_CALL(m_spoolFactory, spool(_, 4u))
-    .WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
+    EXPECT_CALL(m_spoolFactory, spool(_, 4u)).WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
 
     const std::string compressedPath = ::testing::TempDir() + "hc_stateful_compress_out.tmp";
     {
@@ -355,8 +368,8 @@ TEST_F(StatefulStreamTest, CompressionEnabledCompressesOnceAndCleansUpTheTempFil
         out << "Z"; // Placeholder compressed bytes; only the path/size matter to this test.
     }
     EXPECT_CALL(m_fileCompressor, compress(originalPath, 4u, _, _))
-    .WillOnce(Return(ByMove(std::make_optional(
-                                std::make_pair(std::make_unique<SpoolFile>(compressedPath), uint64_t {1})))));
+    .WillOnce(Return(
+                  ByMove(std::make_optional(std::make_pair(std::make_unique<SpoolFile>(compressedPath), uint64_t {1})))));
 
     std::string seenBodyFilePath;
     std::vector<std::string> seenHeaders;
@@ -381,14 +394,19 @@ TEST_F(StatefulStreamTest, CompressionEnabledCompressesOnceAndCleansUpTheTempFil
 TEST_F(StatefulStreamTest, CompressionFailureFallsBackToTheOriginalFileUncompressed)
 {
     ModuleConfig compressingConfig = makeCompressingConfig();
-    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
-                                m_clock,            m_random,           m_spoolFactory,
-                                m_sink,             m_authGate,         m_compressionGate,
+    StatefulStream compressing {compressingConfig,
+                                m_performer,
+                                m_signer,
+                                m_clock,
+                                m_random,
+                                m_spoolFactory,
+                                m_sink,
+                                m_authGate,
+                                m_compressionGate,
                                 m_fileCompressor};
 
     const std::string originalPath = ::testing::TempDir() + "hc_stateful_compress_fail.tmp";
-    EXPECT_CALL(m_spoolFactory, spool(_, 4u))
-    .WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
+    EXPECT_CALL(m_spoolFactory, spool(_, 4u)).WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
     EXPECT_CALL(m_fileCompressor, compress(_, _, _, _)).WillOnce(Return(ByMove(std::nullopt)));
 
     std::string seenBodyFilePath;
@@ -414,9 +432,15 @@ TEST_F(StatefulStreamTest, GateAlreadyDisabledSkipsCompressionEntirely)
     m_compressionGate.reportRejected(); // E.g. another stream already saw a 415.
 
     ModuleConfig compressingConfig = makeCompressingConfig();
-    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
-                                m_clock,            m_random,           m_spoolFactory,
-                                m_sink,             m_authGate,         m_compressionGate,
+    StatefulStream compressing {compressingConfig,
+                                m_performer,
+                                m_signer,
+                                m_clock,
+                                m_random,
+                                m_spoolFactory,
+                                m_sink,
+                                m_authGate,
+                                m_compressionGate,
                                 m_fileCompressor};
 
     EXPECT_CALL(m_fileCompressor, compress(_, _, _, _)).Times(0);

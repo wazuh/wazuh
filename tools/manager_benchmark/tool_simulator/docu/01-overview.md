@@ -20,7 +20,7 @@ measurement — it isolates the cost of the relay:
 
 ### `--mode uds` — the server alone
 
-Connects straight to the module's Unix socket (`queue/sockets/inventory-sync.sock`) and speaks the
+Connects straight to the module's Unix socket (`queue/sockets/inventory-sync-http.sock`) and speaks the
 bytes remoted would forward: `POST /stateful` with `X-Wazuh-Agent-Id`. No enrollment, no TLS, no
 signing. This is the mode that measures the ingestion pipeline itself (validation, sharded workers,
 group commit, the scan lane) with nothing else in the path.
@@ -30,7 +30,7 @@ group commit, the scan lane) with nothing else in the path.
 Behaves like a fleet of real agents:
 
 1. enrolls against authd (TCP/1515) to obtain an id and a key;
-2. `POST /control` `startup` over HTTPS/1517, signed with AES-CMAC;
+2. `POST /control` `startup` over HTTPS/1517, authenticated with a `wazuh-agent+jwt` bearer token;
 3. `POST /control` `notify` every 10 s per agent — the manager's real hot path;
 4. `POST /stateful` sessions, relayed by remoted to the server;
 5. optionally `POST /stateless` log-event batches, relayed by remoted to the engine (an *engine

@@ -39,6 +39,8 @@ extern w_queue_t * audit_queue;
 
 #define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
 #define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
+#define PLUGINS_OLD_DIR_AUDISP      "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT           "/etc/audit/plugins.d"
 
 int hc_success = 0;
 
@@ -336,17 +338,538 @@ void test_init_auditd_socket_failure(void **state) {
 }
 
 
-void test_set_auditd_config_audit3_plugin_created(void **state) {
-    // Audit 3
+/* Copies of the audisp plugin configuration templates defined in syscheck_audit.c, so the tests can
+   pass a concrete one to set_auditd_config_template(). */
+#define AUDISP_CONFIGURATION_0_TPL "active = yes\ndirection = out\npath = builtin_af_unix\n" \
+                                   "type = builtin\nargs = 0640 %s\nformat = string\n"
+#define AUDISP_CONFIGURATION_1_TPL "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n" \
+                                   "type = always\nargs = 0640 %s\nformat = string\n"
+#define AUDISP_CONFIGURATION_2_TPL "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n" \
+                                   "type = always\nargs = 0640 %s string\nformat = binary\n"
+
+
+static void expect_audit_version(const char *version_output, const char *debug_msg) {
+    FILE *fp = tmpfile_with_content(version_output);
+
+    expect_popen("auditctl -v 2>/dev/null", "r", fp);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+}
+
+static void expect_audit_plugins_dir(void) {
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
+}
 
-    // get_audit_version_code
-    const char *payload = "auditctl version 3.1.0\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.0");
+void test_audisp_get_candidates_audit_3_1_5_prefers_format_propagation(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
 
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 3.1.5\n", "Audit version detected: 3.1.5");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 2);
+    assert_string_equal(plugin_dir, "/etc/audit/plugins.d");
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_2_TPL);
+    // Vendor rebuilds of 3.1.5 without the format propagation need the two argument form
+    assert_string_equal(templates[1], AUDISP_CONFIGURATION_1_TPL);
+}
+
+void test_audisp_get_candidates_audit_3_1_2_prefers_two_arguments(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 3.1.2\n", "Audit version detected: 3.1.2");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 2);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_1_TPL);
+    assert_string_equal(templates[1], AUDISP_CONFIGURATION_2_TPL);
+}
+
+void test_audisp_get_candidates_audit_3_0_6_prefers_builtin(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 3.0.6\n", "Audit version detected: 3.0.6");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    // /sbin/audisp-af_unix does not exist before 3.1.1, so there is no fallback worth probing
+    assert_int_equal(count, 1);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_0_TPL);
+    assert_null(templates[1]);
+}
+
+void test_audisp_get_candidates_audit_4_0_0_prefers_two_arguments(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 4.0.0\n", "Audit version detected: 4.0.0");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 2);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_1_TPL);
+    assert_string_equal(templates[1], AUDISP_CONFIGURATION_2_TPL);
+}
+
+void test_audisp_get_candidates_audit_4_0_3_prefers_format_propagation(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 4.0.3\n", "Audit version detected: 4.0.3");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 2);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_2_TPL);
+    assert_string_equal(templates[1], AUDISP_CONFIGURATION_1_TPL);
+}
+
+void test_audisp_get_candidates_unknown_version(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_popen("auditctl -v 2>/dev/null", "r", NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Could not get audit version code. Using default configuration.");
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 2);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_2_TPL);
+    assert_string_equal(templates[1], AUDISP_CONFIGURATION_1_TPL);
+}
+
+void test_audisp_get_candidates_audit2_dir(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    // Not Audit 3
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 1);
+    // Audit 2
+    expect_string(__wrap_IsDir, file, "/etc/audisp/plugins.d");
+    will_return(__wrap_IsDir, 0);
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 1);
+    assert_string_equal(plugin_dir, "/etc/audisp/plugins.d");
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_0_TPL);
+}
+
+void test_audisp_get_candidates_no_plugins_dir(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    // Not Audit 3
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 1);
+    // Not Audit 2
+    expect_string(__wrap_IsDir, file, "/etc/audisp/plugins.d");
+    will_return(__wrap_IsDir, 1);
+
+    count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
+
+    assert_int_equal(count, 0);
+    assert_null(plugin_dir);
+}
+
+void test_audisp_get_candidates_honours_max(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char *plugin_dir = NULL;
+    int count;
+
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 3.1.5\n", "Audit version detected: 3.1.5");
+
+    // The version would yield two candidates, but only one fits
+    count = audisp_get_candidates(&plugin_dir, templates, 1);
+
+    assert_int_equal(count, 1);
+    assert_string_equal(templates[0], AUDISP_CONFIGURATION_2_TPL);
+    assert_null(templates[1]);
+}
+
+/* Helpers for the probe tests: the mock queues below mirror what configure_and_connect_audit_socket()
+   walks through for each candidate it tries. */
+
+static void expect_audit_socket_connect(int ret) {
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
+    will_return(__wrap_OS_ConnectUnixDomain, ret);
+}
+
+/* Derived from the real constants in syscheck_audit.h: a timeout is a full sweep of the polling
+   window. The usleep() calls in between are ignored, since how often it polls is an
+   implementation detail. */
+#define AUDIT_SOCKET_POLL_ATTEMPTS (AUDIT_SOCKET_WAIT_MS / AUDIT_SOCKET_POLL_MS)
+
+static void expect_wait_for_audit_socket(int found) {
+    int i;
+
+    if (found) {
+        expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+        will_return(__wrap_IsSocket, 0);
+        return;
+    }
+
+    for (i = 0; i < AUDIT_SOCKET_POLL_ATTEMPTS; i++) {
+        expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+        will_return(__wrap_IsSocket, 1);
+    }
+
+}
+
+/* A candidate that is not on disk yet: it gets written and Auditd restarted. */
+static void expect_candidate_written(int restart_ret) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+
+    expect_abspath(AUDIT_SOCKET, 1);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+
+    expect_string(__wrap_OS_SHA1_File, fname, audisp_path);
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "0000000000000000000000000000000000000000");
+    will_return(__wrap_OS_SHA1_File, -1);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
+
+    expect_string(__wrap_unlink, file, audisp_path);
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    expect_abspath(AUDIT_CONF_FILE, 1);
+
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
+
+    will_return(__wrap_fwrite, 256);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audisp_path);
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. "
+                  "Restarting Auditd service.");
+
+    will_return(__wrap_audit_restart, restart_ret);
+}
+
+void test_audisp_configuration_is_known_matches_a_template(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {AUDISP_CONFIGURATION_2_TPL, AUDISP_CONFIGURATION_1_TPL};
+    int ret;
+
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "1111111111111111111111111111111111111111");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    expect_abspath(AUDIT_SOCKET, 1);
+
+    // The first template does not match what is on disk, the second one does
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "2222222222222222222222222222222222222222");
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "1111111111111111111111111111111111111111");
+
+    ret = audisp_configuration_is_known(PLUGINS_DIR_AUDIT, templates, 2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_audisp_configuration_is_known_rejects_unknown_file(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {AUDISP_CONFIGURATION_2_TPL, AUDISP_CONFIGURATION_1_TPL};
+    int ret;
+
+    // A tampered or outdated file matches no known template and must be rewritten
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "9999999999999999999999999999999999999999");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    expect_abspath(AUDIT_SOCKET, 1);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "2222222222222222222222222222222222222222");
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "1111111111111111111111111111111111111111");
+
+    ret = audisp_configuration_is_known(PLUGINS_DIR_AUDIT, templates, 2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_audisp_configuration_is_known_no_file(void **state) {
+    const char *templates[MAX_AUDISP_CANDIDATES] = {AUDISP_CONFIGURATION_2_TPL, AUDISP_CONFIGURATION_1_TPL};
+    int ret;
+
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "0000000000000000000000000000000000000000");
+    will_return(__wrap_OS_SHA1_File, -1);
+
+    ret = audisp_configuration_is_known(PLUGINS_DIR_AUDIT, templates, 2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_configure_and_connect_audit_socket_no_plugins_dir(void **state) {
+    int ret;
+
+    // Neither plugins directory exists: nothing to configure, just try the socket
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 1);
+    expect_string(__wrap_IsDir, file, "/etc/audisp/plugins.d");
+    will_return(__wrap_IsDir, 1);
+
+    expect_audit_socket_connect(124);
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, 124);
+}
+
+void test_configure_and_connect_audit_socket_removes_stale_socket(void **state) {
+    int ret;
+
+    syscheck.restart_audit = 1;
+
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.1.2\n", "Audit version detected: 3.1.2");
+
+    // The socket is there but nobody is listening: it must be removed, otherwise the probe would
+    // believe the candidate took effect without ever applying it
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    // A single refusal is not enough: the connection is retried before deeming the socket stale
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_function_calls(__wrap_usleep, AUDIT_SOCKET_CONNECT_RETRIES - 1);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(1);
+    expect_audit_socket_connect(77);
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, 77);
+}
+
+void test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled(void **state) {
+    int ret;
+
+    // Auditd cannot be restarted, so a socket removed here could never be recreated. Any call to
+    // __wrap_unlink in this test is unexpected and makes cmocka fail, which is the point.
+    syscheck.restart_audit = 0;
+
+    // A version with a single candidate keeps the probe short
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.0.6\n", "Audit version detected: 3.0.6");
+
+    // The socket is there but refuses every attempt
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+
+    // The configuration on disk already matches, so nothing is written
+    expect_abspath(AUDIT_SOCKET, 1);
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    will_return(__wrap_OS_SHA1_File, 0);
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    // wait_for_audit_socket() sees the socket that was never removed
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+    expect_audit_socket_connect(-1);
+
+    ignore_function_calls(__wrap_usleep);
+
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/sockets/audit'.");
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, -1);
+
+    syscheck.restart_audit = 1;
+}
+
+void test_configure_and_connect_audit_socket_probes_fallback(void **state) {
+    int ret;
+
+    syscheck.restart_audit = 1;
+    ignore_function_calls(__wrap_usleep);
+
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.1.5\n", "Audit version detected: 3.1.5");
+
+    // No socket in place
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 1);
+
+    // The configuration expected for this version does not bring the socket up
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(0);
+
+    // The fallback does
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Could not establish the who-data socket 'queue/sockets/audit' with the current "
+                  "audisp plugin configuration. Trying an alternative one.");
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(1);
+    expect_audit_socket_connect(88);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(6054): The audisp plugin configuration expected for the installed audit version "
+                  "did not create the socket 'queue/sockets/audit'. Who-data started with an "
+                  "alternative plugin configuration.");
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, 88);
+}
+
+void test_configure_and_connect_audit_socket_all_candidates_fail(void **state) {
+    int ret;
+
+    syscheck.restart_audit = 1;
+    ignore_function_calls(__wrap_usleep);
+
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.1.5\n", "Audit version detected: 3.1.5");
+
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 1);
+
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(0);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Could not establish the who-data socket 'queue/sockets/audit' with the current "
+                  "audisp plugin configuration. Trying an alternative one.");
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(6636): Cannot connect to socket 'queue/sockets/audit'.");
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_configure_and_connect_audit_socket_keeps_probing_after_write_error(void **state) {
+    int ret;
+
+    syscheck.restart_audit = 1;
+
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+    expect_audit_version("auditctl version 3.1.5\n", "Audit version detected: 3.1.5");
+
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 1);
+
+    // Auditd fails to restart with the first candidate: the next one must still be tried
+    expect_candidate_written(-1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6273): Cannot apply Audit config.");
+
+    // The candidate was never applied, so the message must not claim it produced no socket
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "The current audisp plugin configuration could not be applied. Trying an "
+                  "alternative one.");
+    expect_candidate_written(0);
+    expect_wait_for_audit_socket(1);
+    expect_audit_socket_connect(99);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(6054): The audisp plugin configuration expected for the installed audit version "
+                  "did not create the socket 'queue/sockets/audit'. Who-data started with an "
+                  "alternative plugin configuration.");
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, 99);
+}
+
+void test_set_auditd_config_template_writes_the_given_configuration(void **state) {
+    const char *audisp_config = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+                                "type = always\nargs = 0640 %s\nformat = string\n";
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    expect_abspath(AUDIT_SOCKET, 0);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+
+    expect_string(__wrap_OS_SHA1_File, fname, audisp_path);
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    // Configuration already in place and socket present: nothing to do
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+
+    ret = set_auditd_config_template("/etc/audit/plugins.d", audisp_config);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_audit3_plugin_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 0);
 
     // Plugin already created
@@ -365,37 +888,13 @@ void test_set_auditd_config_audit3_plugin_created(void **state) {
     will_return(__wrap_IsSocket, 0);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_0_TPL);
 
     assert_int_equal(ret, 0);
 }
 
 
-void test_set_auditd_config_wrong_audit_version(void **state) {
-    (void) state;
-
-    // Not Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 1);
-    // Not Audit 2
-    expect_string(__wrap_IsDir, file, "/etc/audisp/plugins.d");
-    will_return(__wrap_IsDir, 1);
-
-    int ret;
-    ret = set_auditd_config();
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_set_auditd_config_audit2_plugin_created(void **state) {
-    // Not Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 1);
-    // Audit 2
-    expect_string(__wrap_IsDir, file, "/etc/audisp/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
+void test_set_auditd_config_template_audit2_plugin_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 0);
 
     // Plugin already created
@@ -414,25 +913,15 @@ void test_set_auditd_config_audit2_plugin_created(void **state) {
     will_return(__wrap_IsSocket, 0);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_OLD_DIR_AUDISP, AUDISP_CONFIGURATION_0_TPL);
 
     assert_int_equal(ret, 0);
 }
 
 
-void test_set_auditd_config_audit_socket_not_created(void **state) {
+void test_set_auditd_config_template_audit_socket_not_created(void **state) {
     char buffer[OS_SIZE_128] = {0};
     syscheck.restart_audit = 0;
-
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 3.1.2\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.2");
 
     expect_abspath(AUDIT_SOCKET, 0);
 
@@ -456,25 +945,15 @@ void test_set_auditd_config_audit_socket_not_created(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, buffer);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     assert_int_equal(ret, 1);
 }
 
 
-void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
+void test_set_auditd_config_template_audit_socket_not_created_restart(void **state) {
     char buffer[OS_SIZE_128] = {0};
     syscheck.restart_audit = 1;
-
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 3.1.3\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.3");
 
     expect_abspath(AUDIT_SOCKET, 0);
 
@@ -498,23 +977,13 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
     will_return(__wrap_audit_restart, 99);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     assert_int_equal(ret, 99);
 }
 
 
-void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 3.1.2\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.2");
-
+void test_set_auditd_config_template_audit_plugin_tampered_configuration(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -559,26 +1028,15 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     will_return(__wrap_audit_restart, 99);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     errno = 0;
     assert_int_equal(ret, 99);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 3.1.5\n";
+void test_set_auditd_config_template_audit_plugin_not_created(void **state) {
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
-    FILE * fp = tmpfile_with_content(payload);
-
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.5");
-
     expect_any(__wrap_OS_SHA1_Str, str);
     expect_any(__wrap_OS_SHA1_Str, length);
     will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
@@ -621,23 +1079,13 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_audit_restart, 99);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
 
     assert_int_equal(ret, 99);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.0\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.0");
-
+void test_set_auditd_config_template_audit_plugin_not_created_fopen_error(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -670,13 +1118,13 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     errno = 0;
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     assert_int_equal(ret, -1);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) {
+void test_set_auditd_config_template_audit_plugin_not_created_fclose_error(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -687,16 +1135,6 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
 
     expect_string(__wrap_unlink, file, AUDIT_SOCKET);
     will_return(__wrap_unlink, 0);
-
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.1\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.1");
 
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
@@ -724,13 +1162,13 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     errno = 0;
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     assert_int_equal(ret, -1);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **state) {
+void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -741,16 +1179,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **st
 
     expect_string(__wrap_unlink, file, AUDIT_SOCKET);
     will_return(__wrap_unlink, 0);
-
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.2\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.2");
 
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
@@ -784,23 +1212,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **st
     expect_string(__wrap__mwarn, formatted_msg, "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
 
     assert_int_equal(ret, 1);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.3\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.3");
-
+void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_restart(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -845,23 +1263,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(v
     will_return(__wrap_audit_restart, 99);
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
 
     assert_int_equal(ret, 99);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.4\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.4");
-
+void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_error(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -902,23 +1310,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(voi
     expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
 
     assert_int_equal(ret, -1);
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_error(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // get_audit_version_code
-    const char *payload = "auditctl version 4.0.5\n";
-    FILE * fp = tmpfile_with_content(payload);
-    expect_popen("auditctl -v 2>/dev/null", "r", fp);
-    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.5");
-
+void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_unlink_error(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
@@ -959,7 +1357,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_er
     expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
 
     int ret;
-    ret = set_auditd_config();
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
 
     assert_int_equal(ret, -1);
 }
@@ -1676,19 +2074,37 @@ int main(void) {
         cmocka_unit_test(test_check_auditd_enabled_readproc_error),
         cmocka_unit_test(test_init_auditd_socket_success),
         cmocka_unit_test(test_init_auditd_socket_failure),
-        cmocka_unit_test(test_set_auditd_config_wrong_audit_version),
-        cmocka_unit_test(test_set_auditd_config_audit2_plugin_created),
-        cmocka_unit_test(test_set_auditd_config_audit3_plugin_created),
-        cmocka_unit_test(test_set_auditd_config_audit_socket_not_created),
-        cmocka_unit_test(test_set_auditd_config_audit_socket_not_created_restart),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_tampered_configuration),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fopen_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fclose_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_error),
+        cmocka_unit_test(test_audisp_get_candidates_audit_3_1_5_prefers_format_propagation),
+        cmocka_unit_test(test_audisp_get_candidates_audit_3_1_2_prefers_two_arguments),
+        cmocka_unit_test(test_audisp_get_candidates_audit_3_0_6_prefers_builtin),
+        cmocka_unit_test(test_audisp_get_candidates_audit_4_0_0_prefers_two_arguments),
+        cmocka_unit_test(test_audisp_get_candidates_audit_4_0_3_prefers_format_propagation),
+        cmocka_unit_test(test_audisp_get_candidates_unknown_version),
+        cmocka_unit_test(test_audisp_get_candidates_audit2_dir),
+        cmocka_unit_test(test_audisp_get_candidates_no_plugins_dir),
+        cmocka_unit_test(test_audisp_get_candidates_honours_max),
+        cmocka_unit_test(test_set_auditd_config_template_writes_the_given_configuration),
+        cmocka_unit_test(test_audisp_configuration_is_known_matches_a_template),
+        cmocka_unit_test(test_audisp_configuration_is_known_rejects_unknown_file),
+        cmocka_unit_test(test_audisp_configuration_is_known_no_file),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_no_plugins_dir),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_removes_stale_socket),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_probes_fallback),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_all_candidates_fail),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_keeps_probing_after_write_error),
+        cmocka_unit_test(test_set_auditd_config_template_audit2_plugin_created),
+        cmocka_unit_test(test_set_auditd_config_template_audit3_plugin_created),
+        cmocka_unit_test(test_set_auditd_config_template_audit_socket_not_created),
+        cmocka_unit_test(test_set_auditd_config_template_audit_socket_not_created_restart),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_tampered_configuration),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_fopen_error),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_fclose_error),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_restart),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_error),
+        cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_unlink_error),
         cmocka_unit_test_teardown(test_audit_get_id, free_string),
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),

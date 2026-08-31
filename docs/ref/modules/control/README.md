@@ -20,7 +20,7 @@ On **Windows agents**, the equivalent logic is implemented in `control_dispatch(
 
 The control module serves as the control plane for operational commands. It:
 
-1. **Manager**: Listens on `$WAZUH_HOME/queue/sockets/control` (default: `/var/wazuh-manager/queue/sockets/control`)
+1. **Manager**: Listens on `$WAZUH_HOME/queue/sockets/control.sock` (default: `/var/wazuh-manager/queue/sockets/control.sock`)
 2. **Agent (Unix)**: Listens on `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`)
 3. **Receives control commands** from the API, framework, or remoted
 4. **Executes system operations** (restart/reload) via systemctl or wazuh-control
@@ -36,7 +36,7 @@ Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Win
 
 | Component | Socket Path |
 |-----------|-------------|
-| Manager | `$WAZUH_HOME/queue/sockets/control` (default: `/var/wazuh-manager/queue/sockets/control`) |
+| Manager | `$WAZUH_HOME/queue/sockets/control.sock` (default: `/var/wazuh-manager/queue/sockets/control.sock`) |
 | Agent (Unix) | `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`) |
 
 ### Manager-Side Commands
@@ -72,7 +72,7 @@ Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Win
 **For agents running version 5.0.0 or higher**, restart and reload operations use the **Task Manager** instead of direct control messages:
 
 1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or `PUT /agents/{agent_id}/reload`
-2. **Framework**: Creates a task via Task Manager socket (`/queue/tasks/task`)
+2. **Framework**: Creates a task via Task Manager socket (`/queue/sockets/task.sock`)
    - Task type: `agent_restart` or `agent_reload`
    - Payload: `{}`
    - Task stored in Task Manager database with status `pending`
@@ -131,7 +131,7 @@ import socket
 
 def send_control_command(command):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect('/var/wazuh-manager/queue/sockets/control')
+    sock.connect('/var/wazuh-manager/queue/sockets/control.sock')
     sock.send(command.encode())
     response = sock.recv(1024).decode().strip()
     sock.close()
@@ -168,7 +168,7 @@ result = core_restart_agents(agents_chunk=agent_ids, request_time=request_time)
 - Agent restart/reload triggered via Active Response scripts (`restart.sh`, `restart-wazuh.exe`)
 
 **Current Architecture (v5.0)**:
-- Manager control in `wm_control` (within modulesd); socket: `$WAZUH_HOME/queue/sockets/control`
+- Manager control in `wm_control` (within modulesd); socket: `$WAZUH_HOME/queue/sockets/control.sock`
 - Agent control (Unix): same `wm_control.c` compiled with `CLIENT`, running as a thread in `wazuh-modulesd`; socket: `$WAZUH_HOME/queue/sockets/control`
 - Agent control (Windows): `control_dispatch()` in `client-agent`, called in-process by `request.c`
 - Agent restart/reload via direct control channel — no Active Response scripts required

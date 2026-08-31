@@ -243,12 +243,18 @@ void CallbackDispatcher::onBufferLevel(hc_buffer_level_t level)
     enqueue([this, level] { m_callbacks.on_buffer_level(level, m_callbacks.user_data); });
 }
 
-void CallbackDispatcher::onProducerPause(bool paused)
+void CallbackDispatcher::onProducerPause(bool paused, const std::string& reason)
 {
     if (m_callbacks.on_producer_pause == nullptr)
     {
         return;
     }
 
-    enqueue([this, paused] { m_callbacks.on_producer_pause(paused, m_callbacks.user_data); });
+    // Captured by value, and c_str() deferred to the body: the worker thread runs
+    // this after the caller's string may already be destroyed, so the pointer the
+    // C callback gets has to be into storage the task itself owns.
+    enqueue([this, paused, reason]
+    {
+        m_callbacks.on_producer_pause(paused, reason.c_str(), m_callbacks.user_data);
+    });
 }

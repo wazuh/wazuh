@@ -14,6 +14,77 @@
 #include "os_xml.h"
 #include "config.h"
 
+#ifdef CLIENT
+#define IS_AGENT_BUILD 1
+#else
+#define IS_AGENT_BUILD 0
+#endif
+
+/* Where an element stopped being valid */
+#define OBS_ALWAYS      0   /* Everywhere it can appear */
+#define OBS_SERVER_CONF 1   /* Only in the manager's own configuration file */
+
+typedef struct obsolete_element_t {
+    const char *element;
+    int scope;
+    const char *hint;
+} obsolete_element_t;
+
+/* Top-level elements that 4.x accepted and 5.0.0 no longer has a parser for.
+ *
+ * An element with no parser reaches the end of read_main_elements() and is fatal,
+ * so a configuration file carried over from 4.x stops the daemon from starting at
+ * all. An agent upgrade is supported and never rewrites ossec.conf, and a manager
+ * still distributes agent.conf files written for 4.x, so these are accepted and
+ * ignored with a warning instead of rejected. Anything not listed here is still
+ * fatal: the point is to be lenient with settings that were removed on purpose,
+ * not with typos.
+ *
+ * <active-response> is the one element whose validity depends on who is reading
+ * it. It is live configuration on an agent -- execd reads it straight from the
+ * file, see os_execd/src/config.c -- and the manager parses agent.conf on the
+ * agent's behalf, so it is obsolete only when the manager reads its own file. */
+static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
+    {"active-response", OBS_SERVER_CONF, "Active Response is not configured on the manager. This block only applies to agents."},
+    {"agent-key-polling", OBS_ALWAYS,    "The agent key polling module was removed in 5.0.0."},
+    {"agentless",       OBS_ALWAYS,      "The wazuh-agentlessd daemon was removed in 5.0.0."},
+    {"alerts",          OBS_ALWAYS,      "Alert output is not configured in the configuration file."},
+    {"command",         OBS_ALWAYS,      "Active Response commands are not defined in the configuration file."},
+    {"database_output", OBS_ALWAYS,      "The wazuh-dbd daemon was removed in 5.0.0."},
+    {"email_alerts",    OBS_ALWAYS,      "The wazuh-maild daemon was removed in 5.0.0."},
+    {"fluent-forward",  OBS_ALWAYS,      "The fluent forwarder module was removed in 5.0.0."},
+    {"integration",     OBS_ALWAYS,      "The wazuh-integratord daemon was removed in 5.0.0."},
+    {"labels",          OBS_ALWAYS,      "Agent labels were removed in 5.0.0."},
+    {"reports",         OBS_ALWAYS,      "The wazuh-reportd daemon was removed in 5.0.0."},
+    {"rule_test",       OBS_ALWAYS,      "Rule testing is provided by the engine."},
+    {"ruleset",         OBS_ALWAYS,      "Rules and decoders are managed by the engine."},
+    {"syslog_output",   OBS_ALWAYS,      "The wazuh-csyslogd daemon was removed in 5.0.0."},
+    {NULL,              0,               NULL}
+};
+
+/* Return the explanation for an element that is obsolete in this context, or NULL
+ * if the element is either still valid here or not one we know about. */
+static const char *get_obsolete_hint(const char *element, int modules)
+{
+    /* True only while reading the manager's own configuration: an agent build
+     * never qualifies, and neither does a manager reading a remote agent.conf. */
+    const int server_conf = !IS_AGENT_BUILD && !(modules & CAGENT_CONFIG);
+    int i;
+
+    for (i = 0; OBSOLETE_ELEMENTS[i].element != NULL; i++) {
+        if (strcmp(element, OBSOLETE_ELEMENTS[i].element) != 0) {
+            continue;
+        }
+
+        if (OBSOLETE_ELEMENTS[i].scope == OBS_SERVER_CONF && !server_conf) {
+            return NULL;
+        }
+
+        return OBSOLETE_ELEMENTS[i].hint;
+    }
+
+    return NULL;
+}
 
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
@@ -57,10 +128,21 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
+        const char *obsolete_hint = NULL;
 
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             goto fail;
+        }
+
+        /* Checked before anything else so a removed element is never mistaken for
+         * an unknown one, which is fatal further down. */
+        obsolete_hint = get_obsolete_hint(node[i]->element, modules);
+
+        if (obsolete_hint != NULL) {
+            mwarn(XML_OBSOLETE, node[i]->element, obsolete_hint);
+            i++;
+            continue;
         }
 
         chld_node = OS_GetElementsbyNode(xml, node[i]);
@@ -101,7 +183,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
             /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
              * ossec.conf, so the block is still accepted, but only <server><address>
-             * is read from it - as the fallback for <agent><server><address>. */
+             * is read from it - as the fallback for <agent><manager><address>. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
                     if (Read_Agent_Shared(xml, chld_node, d1) < 0){
@@ -121,13 +203,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #endif
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
-            /* Accepted and ignored rather than rejected (an unknown element is
-             * fatal here), so an ossec.conf or a pushed agent.conf still
-             * carrying it does not stop the agent from starting. */
             minfo("'%s' is no longer used and will be ignored. Event batching is configured "
-                  "under <client><batch>.", node[i]->element);
-        }
-        else if (strcmp(node[i]->element, oswmodule) == 0) {
+                  "under <agent><batch>.", node[i]->element);
+        } else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
@@ -238,7 +316,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #endif
         else if (strcmp(node[i]->element, osactiveresponse) == 0) {
-            /* Active response config is only for agents, parsed by execd */
+            /* Agent Active Response settings. Only reached when the block is
+             * valid here (see OBSOLETE_ELEMENTS): execd reads it from the file
+             * itself, so there is nothing to parse at this point. */
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;

@@ -11,6 +11,8 @@
 
 #include "sysSeams.hpp"
 
+#include "os_cert_bundle.h"
+
 #include <cstdio>
 
 std::time_t SystemClock::wallSeconds() const
@@ -45,4 +47,17 @@ bool FsProbe::isReadableFile(const std::string& path) const
 
     std::fclose(file);
     return true;
+}
+
+std::string FsProbe::findSystemCaBundle() const
+{
+#if !defined(WIN32) && !defined(__APPLE__)
+    const char* found = os_find_ca_bundle(nullptr);
+    return found != nullptr ? std::string {found} :
+           std::string {};
+#else
+    // Windows/macOS ask their native certificate store instead (CurlPerformer's
+    // CURLSSLOPT_NATIVE_CA branch); there is no file to probe for here.
+    return {};
+#endif
 }

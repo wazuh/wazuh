@@ -82,8 +82,10 @@
       input: '{"arguments":{"name":"user_2","ip":"192.0.0.0","force":{"enabled":true, "key_mismatch":false, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"005","name":"user_2","ip":"192.0.0.0","key":'
     -
+      # <force> does not extend to an explicitly named ID: replacing agent 003 in place would queue a
+      # purge for 003 while a new agent already holds it, and the purge matches by ID alone.
       input: '{"arguments":{"id":"003","name":"user_3","ip":"any","force":{"enabled":true, "key_mismatch":false, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
-      output: '{"error":0,"data":{"id":"003","name":"user_3","ip":"any","key":'
+      output: '{"error":9012,"message":"Duplicate ID"}'
     pre_existent_agents:
     -
       id: '001'
@@ -154,6 +156,33 @@
       key: 'SecretKey'
     -
       id: '003'
+      name: 'user1'
+      ip: 'any'
+      key: 'SecretKey'
+    groups:
+      -
+
+
+- name: 'Insert with the ID of an agent whose deletion is still pending'
+  description: 'An ID stops being reusable the moment the agent is deleted, not when the purge is done'
+  configuration_parameters:
+  metadata:
+    cases:
+    -
+      input: '{"arguments":{"id":"001", "purge":true},"function":"remove"}'
+      output: '{"error":0,"data":"Agent deleted successfully."}'
+    -
+      # Refused even though 001 is gone from client.keys: its documents are still queued for deletion
+      # in the indexer, and that purge would delete the new agent's documents instead.
+      input: '{"arguments":{"id":"001","name":"reused","ip":"any"},"function":"add"}'
+      output: '{"error":9018,"message":"Agent ID has a pending deletion"}'
+    -
+      # An ID that never belonged to a deleted agent is unaffected.
+      input: '{"arguments":{"id":"050","name":"unrelated","ip":"any"},"function":"add"}'
+      output: '{"error":0,"data":{"id":"050","name":"unrelated","ip":"any","key":'
+    pre_existent_agents:
+    -
+      id: '001'
       name: 'user1'
       ip: 'any'
       key: 'SecretKey'

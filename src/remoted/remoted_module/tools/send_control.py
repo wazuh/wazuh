@@ -3,42 +3,39 @@
 Sends signed POST /control requests to remoted's HTTPS auth endpoint, exactly
 the way AuthMiddleware (remoted_module/src/authMiddleware.cpp) expects them:
 
-  Authorization: Wazuh <agent-id>:<timestamp>:<mac>
   protocol-version: 1
+  Authorization: Bearer <wazuh-agent+jwt token>
 
-MAC = AES-CMAC(agent_key, canonical_bytes), where:
-
-  canonical_bytes = b"WAZUH-REQUEST\n"
-                   + protocol_version + b"\n"
-                   + method.upper()   + b"\n"
-                   + request_target   + b"\n"   (raw path+query, exactly as sent)
-                   + agent_id         + b"\n"
-                   + str(timestamp)   + b"\n"
-                   + body                        (exact request body bytes, no trailing \n)
+The token is a JWT (HS256) the agent self-signs with its client.keys secret -- exactly the closed
+profile wire_jwt.py mints (header {alg,kid,typ}, six claims, 60 s lifetime, fresh jti per request).
+It binds the agent's identity only: method, target, body and compression are NOT part of
+authentication; the manager answers every credential failure with a uniform 401 +
+WWW-Authenticate: Bearer. See wire_jwt.py (and `python3 wire_jwt.py --self-test`).
 
 The agent key is read straight out of client.keys (same file
 Keystore reads), so this always matches whatever agent is
 currently enrolled -- no need to copy/paste keys by hand.
 
-Requires: pip install requests cryptography
+Requires: pip install requests
 
 Examples:
   python3 send_control.py --type startup                              # valid startup request
   python3 send_control.py --type notify --agent-id 1001               # valid notify request
   python3 send_control.py --type notify --with-host                   # notify with host info
   python3 send_control.py --type shutdown                             # valid shutdown request
-  python3 send_control.py --type startup --tamper                     # modified body -> 401 InvalidMac
+  python3 send_control.py --type startup --tamper                     # corrupted token -> 401
   python3 send_control.py --all                                       # run all test scenarios
 """
 import argparse
 import json
+import re
 import sys
 import time
 
 import requests
 import urllib3
-from cryptography.hazmat.primitives import cmac
-from cryptography.hazmat.primitives.ciphers import algorithms
+from wire_jwt import (EXPIRED_IAT_OFFSET, FUTURE_IAT_OFFSET, auth_headers, make_jwt, read_agent_key,
+                      tamper_token)  # the shared wazuh-agent+jwt signer (same directory)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -48,8 +45,6 @@ DEFAULT_AGENT_VERSION = "5.0.0"
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
 # side of each window.
-MAX_REQUEST_AGE_SECONDS = 300
-MAX_FUTURE_SKEW_SECONDS = 30
 MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (16 MiB) sits above it on purpose.
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
@@ -70,66 +65,76 @@ MAX_CONTROL_BODY_SIZE = 64 * 1024
 CONN_CLOSED = "CONN_CLOSED"
 
 
-def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
-    """Parses client.keys the same way Keystore does: 'id name ip key'
-    lines, '#'/' '-prefixed lines are comments, a name starting with '#'/'!' means
-    removed. Returns the raw key bytes (hex-decoded)."""
-    with open(client_keys_path, "r") as f:
-        for line in f:
-            if not line or line[0] in ("#", " "):
-                continue
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            line_id, name, _ip, key_hex = parts[0], parts[1], parts[2], parts[3]
-            if name.startswith("#") or name.startswith("!"):
-                continue
-            if line_id == agent_id:
-                return bytes.fromhex(key_hex)
-    raise SystemExit(f"agent id {agent_id!r} not found (or removed) in {client_keys_path}")
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
 
 
-def sign_request(agent_key: bytes, protocol_version: str, method: str,
-                  request_target: str, agent_id: str, timestamp: int, body: bytes) -> str:
-    """Builds the canonical byte sequence and returns its lowercase-hex AES-CMAC."""
-    if len(agent_key) not in (16, 24, 32):
-        raise SystemExit(f"agent key must be 16, 24 or 32 bytes (got {len(agent_key)})")
-
-    c = cmac.CMAC(algorithms.AES(agent_key))
-    c.update(b"WAZUH-REQUEST\n")
-    c.update(protocol_version.encode() + b"\n")
-    c.update(method.upper().encode() + b"\n")
-    c.update(request_target.encode() + b"\n")
-    c.update(agent_id.encode() + b"\n")
-    c.update(str(timestamp).encode() + b"\n")
-    c.update(body)
-
-    return c.finalize().hex()
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
 
 
-def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method: str,
-                  target: str, timestamp: int, body: bytes) -> dict:
-    mac = sign_request(agent_key, protocol_version, method, target, agent_id, timestamp, body)
-    return {"protocol-version": protocol_version, "Authorization": f"Wazuh {agent_id}:{timestamp}:{mac}"}
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
 
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
 
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct error that
 # controlEndpoint.cpp and authMiddleware.cpp can return is covered here.
 
 def scenario_valid_startup(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_valid_notify(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -137,12 +142,12 @@ def scenario_valid_notify(agent_id, agent_key):
         }
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_valid_notify_with_host(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -161,68 +166,68 @@ def scenario_valid_notify_with_host(agent_id, agent_key):
         }
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_valid_shutdown(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "shutdown"
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_invalid_json(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body = b'{not valid json}'
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_empty_body(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body = b''
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_unknown_message_type(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "unknown_type"
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_invalid_version_startup(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": "999.0.0"  # version higher than manager's
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_malformed_version(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": "not-a-version"
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_oversized_hostname(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "notify",
         "agent": {
@@ -235,40 +240,56 @@ def scenario_oversized_hostname(agent_id, agent_key):
         }
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
-def scenario_invalid_mac(agent_id, agent_key):
-    target = "/control"
-    signed_body_dict = {
-        "type": "startup",
-        "version": DEFAULT_AGENT_VERSION
-    }
-    signed_body = json.dumps(signed_body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
+def _valid_with(agent_id, agent_key, **jwt_kwargs):
+    """The valid scenario with its Authorization replaced by a deliberately deviant token:
+    every keyword goes to wire_jwt.make_jwt (see there). The manager must answer 401."""
+    result = list(scenario_valid_startup(agent_id, agent_key))
+    result[0] = auth_headers(agent_id, agent_key, **jwt_kwargs)
+    return tuple(result)
 
-    tampered_body_dict = {
-        "type": "startup",
-        "version": "4.9.0"  # different from what was signed
-    }
-    return headers, json.dumps(tampered_body_dict).encode(), target
+
+def scenario_invalid_signature(agent_id, agent_key):
+    result = list(scenario_valid_startup(agent_id, agent_key))
+    token = result[0]["Authorization"].split(" ", 1)[1]
+    result[0] = dict(result[0], Authorization="Bearer " + tamper_token(token))
+    return tuple(result)
+
+
+def scenario_alg_none(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, alg="none")
+
+
+def scenario_aud_present(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, extra_claims={"aud": "wazuh-manager"})
+
+
+def scenario_non_canonical_kid(agent_id, agent_key):
+    return _valid_with(agent_id, agent_key, kid="0" + f"{int(agent_id):03d}")
+
+
+def scenario_ascii_key(agent_id, agent_key):
+    # The classic interoperability mistake: HMAC with the 64 hex chars instead of the 32 bytes.
+    return _valid_with(agent_id, agent_key, sign_with=agent_key.encode())
 
 
 def scenario_missing_protocol_version(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     del headers["protocol-version"]
     return headers, body, target
 
 
 def scenario_missing_authorization(_agent_id, _agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
@@ -278,63 +299,63 @@ def scenario_missing_authorization(_agent_id, _agent_key):
 
 
 def scenario_expired_request(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + EXPIRED_IAT_OFFSET  # older than jwt_max_age + jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
 def scenario_future_request(agent_id, agent_key):
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + FUTURE_IAT_OFFSET  # issued further ahead than jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
 def scenario_body_too_large(agent_id, agent_key):
     # Between control endpoint's body cap (64 KiB) and AuthConfig's cap (10 MiB)
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION,
         "padding": "A" * (MAX_CONTROL_BODY_SIZE + 1024)
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_url_too_large(agent_id, agent_key):
     # max_url_size is 2048 -- this target (path+query) is comfortably over it
-    target = "/control?pad=" + ("a" * (MAX_URL_SIZE + 100))
+    target = prefixed("/control?pad=" + ("a" * (MAX_URL_SIZE + 100)))
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_header_value_too_large(agent_id, agent_key):
     # max_field_value_size is 8192
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {
         "type": "startup",
         "version": DEFAULT_AGENT_VERSION
     }
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["X-Test"] = "v" * (MAX_FIELD_VALUE_SIZE + 500)
     return headers, body, target
 
@@ -347,14 +368,19 @@ SCENARIOS = [
     ("invalid_json", 400, scenario_invalid_json),
     ("empty_body", 400, scenario_empty_body),
     ("unknown_message_type", 400, scenario_unknown_message_type),
-    ("invalid_version_startup", 400, scenario_invalid_version_startup),
+    # A well-formed but too-high version is a conflict (409); a malformed one is a bad request (400).
+    ("invalid_version_startup", 409, scenario_invalid_version_startup),
     ("malformed_version", 400, scenario_malformed_version),
     ("oversized_hostname", 400, scenario_oversized_hostname),
-    ("invalid_mac_tampered_body", 401, scenario_invalid_mac),
+    ("invalid_signature_tampered_token", 401, scenario_invalid_signature),
+    ("alg_none", 401, scenario_alg_none),
+    ("aud_present", 401, scenario_aud_present),
+    ("non_canonical_kid", 401, scenario_non_canonical_kid),
+    ("ascii_key", 401, scenario_ascii_key),
     ("missing_protocol_version", 400, scenario_missing_protocol_version),
     ("missing_authorization", 401, scenario_missing_authorization),
-    ("expired_request", 401, scenario_expired_request),
-    ("future_request", 401, scenario_future_request),
+    ("expired_token", 401, scenario_expired_request),
+    ("future_token", 401, scenario_future_request),
     ("body_too_large", 400, scenario_body_too_large),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
     ("header_value_too_large", CONN_CLOSED, scenario_header_value_too_large),
@@ -398,6 +424,12 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--type", choices=["startup", "notify", "shutdown"],
@@ -406,12 +438,16 @@ def main():
     parser.add_argument("--with-host", action="store_true",
                         help="Include host info in notify messages.")
     parser.add_argument("--tamper", action="store_true",
-                        help="Transmit a different body than the one signed, to prove the server "
-                             "rejects a modified body with 401 InvalidMac.")
+                        help="Corrupt the token's signature before sending, to prove the server "
+                             "rejects it with 401 (invalid_signature).")
     parser.add_argument("--all", action="store_true",
                         help="Ignore other options and run every success/failure scenario "
                              "(one per distinct error reachable through this endpoint).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
@@ -421,7 +457,7 @@ def main():
     if not args.type:
         parser.error("--type is required (or use --all to run all scenarios)")
 
-    method, target, protocol_version = "POST", "/control", "1"
+    method, target, protocol_version = "POST", prefixed("/control"), "1"
 
     # Build the appropriate body based on the type
     body_dict = {"type": args.type}
@@ -445,13 +481,12 @@ def main():
 
     signed_body = json.dumps(body_dict).encode()
     timestamp = int(time.time())
-    headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)
+    headers = auth_headers(args.agent_id, agent_key, now=timestamp, protocol_version=protocol_version)
 
+    sent_body = signed_body
     if args.tamper:
-        body_dict["version"] = "tampered.0.0"
-        sent_body = json.dumps(body_dict).encode()
-    else:
-        sent_body = signed_body
+        # Corrupt the token's signature: the manager must answer 401 (invalid_signature).
+        headers["Authorization"] = "Bearer " + tamper_token(headers["Authorization"].split(" ", 1)[1])
 
     url = args.url.rstrip("/") + target
     print(f"--> {method} {url}")

@@ -142,7 +142,7 @@ keep in mind when reading a run:
   `remoted.scanvd.*` admission counters over `GET /metrics`, and modulesd's log is the evidence the
   scans ran: `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
 - **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
-  Check with `curl --unix-socket queue/sockets/vd.sock http://localhost/vulnerability-detector/offset`
+  Check with `curl --unix-socket queue/sockets/vd-http.sock http://localhost/vulnerability-detector/offset`
   and wait for `CVE feed fully loaded — per-agent scans unblocked` in the log.
 
 - **The VD scan lane, not `/scan/vd`, is what 100 simultaneous first connections hit first.** The

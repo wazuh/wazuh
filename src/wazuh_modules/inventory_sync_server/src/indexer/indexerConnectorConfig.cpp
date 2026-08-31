@@ -52,6 +52,7 @@ namespace invsync::indexer
         setIfPositive(result, "max_bulk_size", config.indexer_sync_max_bulk_size);
         setIfPositive(result, "flush_interval_seconds", config.indexer_sync_flush_interval_seconds);
         setIfPositive(result, "max_retry_delay_seconds", config.indexer_sync_max_retry_delay_seconds);
+        setIfPositive(result, "request_timeout_seconds", config.indexer_sync_request_timeout_seconds);
 
         return result;
     }
@@ -67,6 +68,16 @@ namespace invsync::indexer
         setIfPositive(result, "max_queue_bytes", config.indexer_async_max_queue_bytes);
         setIfPositive(result, "logger_queue_size", config.indexer_async_logger_queue_size);
         setIfPositive(result, "logger_threads", config.indexer_async_logger_threads);
+        setIfPositive(result, "request_timeout_seconds", config.indexer_async_request_timeout_seconds);
+
+        return result;
+    }
+
+    nlohmann::json buildSessionConfig(const nlohmann::json& indexerConfig, const inventory_sync_server_config_t& config)
+    {
+        nlohmann::json result = indexerConfig;
+
+        setIfPositive(result, "monitoring_interval_seconds", config.indexer_monitoring_interval_seconds);
 
         return result;
     }

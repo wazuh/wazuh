@@ -51,14 +51,16 @@ import socket
 import subprocess
 import sys
 
-DEFAULT_SOCKET = "queue/sockets/inventory-sync.sock"
+DEFAULT_SOCKET = "queue/sockets/inventory-sync-http.sock"
 # Mirror invsync::endpoints::delete_agent::path()/altPath(). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/endpoints/deleteAgentEndpoint.hpp
 DELETE_PATH = "/agents"
 ALIAS_PATH = "/agents/delete"
 AGENT_ID_HEADER = "X-Wazuh-Agent-Id"
 
-# Mirror invsync::sync::AGENT_DELETION_SCOPE. Source of truth:
+# Mirror the union of invsync::sync::AGENT_DELETION_SCOPE_BY_QUERY (the states pattern, deleted by
+# query on the sync connector) and AGENT_DELETION_SCOPE_BY_ID (the two wazuh-agent-* documents,
+# deleted by document id on the async connector that writes them). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/sync/stateIndexAllowlist.hpp
 DELETION_SCOPE = ("wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats")
 

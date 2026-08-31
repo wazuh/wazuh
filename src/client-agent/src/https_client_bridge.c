@@ -17,7 +17,7 @@
  * see w_https_client_start()'s comment) and no alternative transport is
  * offered.
  *
- * The config surface (<server>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
+ * The config surface (<manager>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
@@ -1261,12 +1261,16 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
-static void bridge_on_producer_pause(bool paused, void *user_data)
+static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
 {
     (void)user_data;
 
     if (paused) {
-        mwarn(SERVER_UNAV);
+        if (reason && *reason) {
+            mwarn(SERVER_UNAV " Reason: %s", reason);
+        } else {
+            mwarn(SERVER_UNAV);
+        }
         os_setwait();
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
     } else {
@@ -1514,18 +1518,20 @@ static int bridge_map_verify_mode(int agent_verify_mode)
         return HC_VERIFY_CERT;
     case AGENT_VERIFY_NONE:
         return HC_VERIFY_NONE;
+    case AGENT_VERIFY_SYSTEM:
+        return HC_VERIFY_SYSTEM;
     case AGENT_VERIFY_FULL:
     default:
         return HC_VERIFY_FULL;
     }
 }
 
-/* The AES-CMAC recipe (settled by the manager's own resolver): decode
- * client.keys' raw_key verbatim as hex, cipher chosen by byte length
- * (16/24/32 bytes = 32/48/64 hex chars). The module's key provider re-derives
- * the same check lazily at signing time (so a bad key never crashes
- * anything), but that means a misconfigured key otherwise fails every
- * request silently forever with no startup error. Validate it here so a
+/* The `wazuh-agent+jwt` key rule (settled by the manager's own keystore and
+ * the shared JwtKeyDecoder): client.keys' raw_key is exactly 64 lowercase hex
+ * characters, decoded verbatim into the 32-byte HS256 key. The module's key
+ * provider re-derives the same check lazily at signing time (so a bad key
+ * never crashes anything), but that means a misconfigured key otherwise fails
+ * every request silently forever with no startup error. Validate it here so a
  * broken client.keys is caught once, loudly, at start. */
 static bool bridge_key_is_valid(const char *raw_key)
 {
@@ -1533,13 +1539,13 @@ static bool bridge_key_is_valid(const char *raw_key)
         return false;
     }
 
-    size_t len = strlen(raw_key);
-    if (len != 32 && len != 48 && len != 64) {
+    if (strlen(raw_key) != 64) {
         return false;
     }
 
-    for (size_t i = 0; i < len; i++) {
-        if (!isxdigit((unsigned char)raw_key[i])) {
+    for (size_t i = 0; i < 64; i++) {
+        const char c = raw_key[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
             return false;
         }
     }
@@ -1548,7 +1554,7 @@ static bool bridge_key_is_valid(const char *raw_key)
 }
 
 /* Fills the transport-only fields of a hc_config_t from the parsed
- * <server>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
+ * <manager>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
  * needs (#38465) and nothing more: no identity (agent_id/agent_key, which an
  * enrolling agent has neither yet) and none of the full-client-only fields
  * (batch/stats/buffer ladder/sync_socket_path/config_checksum) bridge_build_
@@ -1562,6 +1568,16 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->server && agt->server[0].rip) {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
+        /* #38624: the IPv6 zone id, already resolved to a numeric scope by the config
+         * parser, so a link-local manager address is dialed on the right interface. */
+        config->server_scope_id = agt->server[0].scope_id;
+
+        /* #38492: shared with w_https_client_enroll() via this same function,
+         * so the /enroll request target gets the configured <endpoint> path
+         * segment exactly like every other request. */
+        if (agt->server[0].endpoint) {
+            strncpy(config->server_endpoint, agt->server[0].endpoint, sizeof(config->server_endpoint) - 1);
+        }
     }
 
     config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
@@ -1609,8 +1625,8 @@ static bool bridge_build_config(hc_config_t *config)
         if (keys.keysize == 0) {
             mdebug1("https_client: not enrolled yet (no client.keys); deferring start.");
         } else {
-            merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
-                   "(expected 32, 48 or 64 hex characters); refusing to start.");
+            merror("https_client: agent key is missing or is not a valid HS256 key "
+                   "(expected exactly 64 lowercase hex characters); refusing to start.");
         }
         return false;
     }

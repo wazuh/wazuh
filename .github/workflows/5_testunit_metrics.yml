@@ -1,0 +1,114 @@
+name: 5.X - Wazuh Metrics library - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_metrics.yml"
+      - "src/shared_modules/metrics/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  metrics-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Mandatory even though the library itself is STL-only: the test target links gtest/gmock
+      # from src/external/googletest/lib (produced by `make build-external TARGET=manager TEST=1`)
+      # and jsonDump.cpp needs ext_rapidjson, which only exists after `make deps`.
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # No -DTARGET is passed, so IS_AGENT stays FALSE and the server-only branch that owns
+      # add_subdirectory(shared_modules/metrics) is the one configured. The library is pinned to
+      # C++17 because a consumer is strict-C++17; this job is what keeps a C++20-ism from
+      # reaching it.
+      - name: Wazuh Metrics - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "wazuh_metrics_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is deliberately off. Three reasons: (1) test_cpp runs `valgrind ctest` without
+      # --trace-children=yes, so the test binary is not instrumented anyway; (2)
+      # slidingWindowRate_test.cpp asserts over wall-clock windows and valgrind's serialization
+      # shifts the increments out of the window under test; (3) realisticScenarios_test.cpp is
+      # 16 threads x 100k atomic adds, which valgrind turns from seconds into minutes. The leak
+      # surface valgrind would cover is covered by the ASAN job below, which compiles with
+      # -fsanitize=leak.
+      - name: Wazuh Metrics - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "wazuh_metrics_utest"
+          valgrind: "false"
+
+      # Function coverage is not gated: include/ is ~1.4k lines of headers of which iMetric.hpp
+      # and iManager.hpp are pure interfaces, so FNF is dominated by implicit virtual destructors
+      # and per-TU inline instantiations that no test can drive. Line coverage over src/ +
+      # include/ is the meaningful gate here.
+      - name: Wazuh Metrics - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/metrics
+          test_directory: src/shared_modules/metrics
+          id: wazuh_metrics
+          validate_function_coverage: "false"
+
+  metrics-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Wazuh Metrics - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "wazuh_metrics_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is not a redundant second run of the same tests: build_target_cpp's asan mode
+      # compiles with -fsanitize=address,undefined,leak, and UBSAN is the one that matters for
+      # this library. atomicHistogram.hpp computes shift counts from an octave, casts a double
+      # percentile rank to uint64, and indexes a 128-entry std::array by a computed bucket. An
+      # off-by-one there produces a plausible number and a green test without a sanitizer.
+      - name: Wazuh Metrics - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "wazuh_metrics_utest"
+          valgrind: "false"
