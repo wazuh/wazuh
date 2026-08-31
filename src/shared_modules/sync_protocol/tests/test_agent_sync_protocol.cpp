@@ -2356,8 +2356,11 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault
 
 // Companion to SynchronizeModuleTransportFailureReportsLocalTransportUnavailable: notifyDataClean()
 // hits the same checkStatus() gate, so an unreachable local sync intake must be classified the same way
-// -- localTransportUnavailable, not managerNotReady -- and grow its own dedicated streak, regardless of
-// the trackConsecutiveFailures opt-in (that flag only gates m_consecutiveSyncFailures). (#38579)
+// -- localTransportUnavailable, not managerNotReady. Unlike synchronizeModule()/
+// synchronizeMetadataOrGroups() (always a periodic-cycle call), notifyDataClean() also has ad hoc
+// callers, so growing this streak requires the same trackConsecutiveFailures opt-in the manager-facing
+// streak already needed -- an ad hoc caller's transport failures must not pump up the same shared
+// counter a periodic cycle relies on for its own tolerance decision. (#38579)
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalTransportUnavailable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -2367,15 +2370,40 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalT
 
     std::vector<std::string> indices = {"test_index_1"};
 
-    SyncModuleResult first = protocol->notifyDataClean(indices);
+    SyncModuleResult first = protocol->notifyDataClean(indices, Option::SYNC, true);
     EXPECT_FALSE(first.success);
     EXPECT_FALSE(first.managerNotReady);
     EXPECT_TRUE(first.localTransportUnavailable);
     EXPECT_EQ(first.consecutiveFailures, 1u);
 
-    SyncModuleResult second = protocol->notifyDataClean(indices);
+    SyncModuleResult second = protocol->notifyDataClean(indices, Option::SYNC, true);
     EXPECT_TRUE(second.localTransportUnavailable);
     EXPECT_EQ(second.consecutiveFailures, 2u);
+}
+
+// Without opting in, a transport-failure streak must NOT grow either -- same requirement as
+// NotifyDataCleanResultDoesNotTrackFailuresByDefault, but for the local-transport streak instead of
+// the manager-facing one. (#38579, review follow-up: trackLocalTransportFailure() was still called
+// unconditionally here, so an untracked call could inflate the shared streak a periodic cycle relies
+// on for its own tolerance decision.)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackLocalTransportFailuresByDefault)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    SyncModuleResult untracked = protocol->notifyDataClean(indices);
+    EXPECT_FALSE(untracked.success);
+    EXPECT_TRUE(untracked.localTransportUnavailable);
+    EXPECT_EQ(untracked.consecutiveFailures, 0u);
+
+    // A later opted-in call must start its own streak at 1, unaffected by the untracked call above.
+    SyncModuleResult tracked = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_TRUE(tracked.localTransportUnavailable);
+    EXPECT_EQ(tracked.consecutiveFailures, 1u);
 }
 
 // A notifyDataClean() call that reaches past checkStatus() must reset the local-transport
@@ -2391,7 +2419,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnc
     std::vector<std::string> indices = {"test_index_1"};
 
     mockSyncTransport->setAvailable(false);
-    SyncModuleResult first = protocol->notifyDataClean(indices);
+    SyncModuleResult first = protocol->notifyDataClean(indices, Option::SYNC, true);
     EXPECT_TRUE(first.localTransportUnavailable);
     EXPECT_EQ(first.consecutiveFailures, 1u);
 
@@ -2411,7 +2439,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnc
     syncThread.join();
 
     mockSyncTransport->setAvailable(false);
-    SyncModuleResult afterReset = protocol->notifyDataClean(indices);
+    SyncModuleResult afterReset = protocol->notifyDataClean(indices, Option::SYNC, true);
     EXPECT_TRUE(afterReset.localTransportUnavailable);
     EXPECT_EQ(afterReset.consecutiveFailures, 1u);
 }

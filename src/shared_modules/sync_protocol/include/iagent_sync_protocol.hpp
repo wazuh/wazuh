@@ -74,10 +74,11 @@ class IAgentSyncProtocol
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
         /// @param trackConsecutiveFailures Whether this call's outcome should feed the same
-        /// consecutive-failure streak synchronizeModule() tracks on this instance. Pass true only
-        /// from a periodic-sync path where a DataClean failure genuinely represents "this cycle
-        /// failed"; leave false (the default) for ad hoc DataClean calls (e.g. policy-removal
-        /// cleanup) that aren't part of that cycle and would otherwise skew its tolerance window.
+        /// consecutive-failure streaks synchronizeModule() tracks on this instance -- both the
+        /// manager-conversation one and the local-transport one. Pass true only from a periodic-sync
+        /// path where a DataClean failure genuinely represents "this cycle failed"; leave false (the
+        /// default) for ad hoc DataClean calls (e.g. policy-removal cleanup) that aren't part of that
+        /// cycle and would otherwise skew either streak's tolerance window.
         /// @return SyncModuleResult with success flag and failure detail if unsuccessful
         virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
                                                  Option option = Option::SYNC,

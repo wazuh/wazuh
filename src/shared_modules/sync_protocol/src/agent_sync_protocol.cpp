@@ -623,8 +623,16 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
         //
         // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
         // says nothing about the manager. Same shape as synchronizeModule()'s equivalent branch.
+        //
+        // Gated by trackConsecutiveFailures for the same reason trackSyncOutcome() is below: unlike
+        // synchronizeModule()/synchronizeMetadataOrGroups() (always a periodic-cycle call, so their
+        // own trackLocalTransportFailure() calls stay unconditional), notifyDataClean() also has ad
+        // hoc callers whose retries are not part of that cycle and would otherwise pump up the same
+        // shared streak faster than the cycle itself fails, causing it to falsely read as past
+        // tolerance on its very next attempt.
+        const unsigned int localTransportFailures = trackConsecutiveFailures ? trackLocalTransportFailure(stopped) : 0;
         return {false, "Failed to reach the sync intake socket.", stopped, false,
-                trackLocalTransportFailure(stopped), false, true};
+                localTransportFailures, false, true};
     }
 
     // Reaching past the check above means the local transport is currently available; whatever
