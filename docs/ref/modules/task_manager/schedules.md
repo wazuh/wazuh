@@ -23,6 +23,11 @@ Note that the sweep's interval **is** `agents_disconnection_time`, which merely 
 it is not a hardcoded fifteen minutes, and `remoted` reads the same `<global>` value for its own
 purposes, so it is shared configuration rather than something this module owns.
 
+Interval and staleness threshold being one value has a consequence for the detection SLA: an agent
+that goes silent right after a sweep is not seen until the next one, so detection lands anywhere
+between one and two times `agents_disconnection_time`. Plan for `2 x agents_disconnection_time`, up
+to 30 minutes at the default.
+
 The internal options are not shipped in any file: the manager reads only an empty overrides file, so
 the defaults above are the whole of their contract. Every option, including the ones that bound the
 retention sweep, is listed in the
