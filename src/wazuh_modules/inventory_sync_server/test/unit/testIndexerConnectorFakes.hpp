@@ -97,6 +97,9 @@ namespace invsync::test
         /// What the VD scanner fake reports from scannerRunning(). Defaults to true: the offset
         /// gate applies, as it does on a node with vulnerability detection enabled.
         std::atomic<bool> m_vdScannerRunning {true};
+        /// What the scanner fake's scanAgent() reports -- the ON-DEMAND scan, which reports its
+        /// failures by value rather than by exception. Defaults to Ok.
+        std::atomic<invsync::vd::AgentScanOutcome> m_vdAgentScanOutcome {invsync::vd::AgentScanOutcome::Ok};
         /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
@@ -453,6 +456,16 @@ namespace invsync::test
             m_events->throwIfInjected("scan");
             m_events->recordSyncOp("scan", session.agentId, {}, {}, {});
             return m_events->m_vdScanSkip.load() ? invsync::vd::ScanVerdict::Skipped : invsync::vd::ScanVerdict::Ok;
+        }
+
+        invsync::vd::AgentScanOutcome scanAgent(const std::string& agentId) override
+        {
+            // Through the SAME gate and the same op log as scan(): a test that parks a session
+            // mid-scan has to be able to park an on-demand scan the same way, and the ordering
+            // tests read both from one timeline.
+            m_events->waitAtScanGate();
+            m_events->recordSyncOp("scanAgent", agentId, {}, {}, {});
+            return m_events->m_vdAgentScanOutcome.load();
         }
 
     private:

@@ -95,6 +95,48 @@ namespace invsync::vd
             return executed ? ScanVerdict::Ok : ScanVerdict::Skipped;
         }
 
+        AgentScanOutcome scanAgent(const std::string& agentId) override
+        {
+            auto& scanner = VulnerabilityScannerFacade::instance();
+
+            if (!scanner.isInitialized())
+            {
+                // Skipped, not NotReady: on a node with vulnerability detection disabled there is
+                // nothing to come back for, and reporting it as transient would make the caller
+                // retry a scan that can never run on this manager.
+                return AgentScanOutcome::Skipped;
+            }
+
+            // LCOV_EXCL_START - integration-only, same as scan() above: everything below drives
+            // the REAL facade. The gate above stays measured.
+            //
+            // triggerAgentScan() re-runs its own readiness guards, so this translation is the only
+            // thing here: the scanner's vocabulary is richer than the seam's, and each of its
+            // values has exactly one right answer for a caller deciding whether to retry.
+            switch (scanner.triggerAgentScan(agentId))
+            {
+                case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
+
+                // Vulnerability detection is not running here. Same reasoning as the gate above.
+                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized: return AgentScanOutcome::Skipped;
+
+                // All transient, and all for reasons outside this request: the feed is still
+                // loading, the scanner is still starting, or no indexer host is healthy.
+                case VulnerabilityScannerFacade::ScanTriggerResult::FeedNotReady:
+                case VulnerabilityScannerFacade::ScanTriggerResult::ScannerNotReady:
+                case VulnerabilityScannerFacade::ScanTriggerResult::IndexerUnavailable:
+                    return AgentScanOutcome::NotReady;
+
+                // The agent has no record to scan. Permanent -- most likely it was deleted between
+                // the request being made and being executed, which is a race nobody should retry.
+                case VulnerabilityScannerFacade::ScanTriggerResult::AgentNotFound: return AgentScanOutcome::NotFound;
+
+                case VulnerabilityScannerFacade::ScanTriggerResult::ScanFailed:
+                default: return AgentScanOutcome::Failed;
+            }
+            // LCOV_EXCL_STOP
+        }
+
     private:
         static std::vector<vd_sync::SyncItemView> buildItems(const sync::ValidatedSession& session)
         {

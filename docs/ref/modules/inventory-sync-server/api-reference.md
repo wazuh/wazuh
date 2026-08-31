@@ -17,6 +17,7 @@ chunked transfer encoding is rejected.
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
 | `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"ok"}` means the by-query half has run **and flushed**; the by-id half is queued. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable or the module is stopping. |
+| `POST` | `/_internal/vd/scan` | `200` | On-demand vulnerability rescan of the agent named in the body (`{"agent_id":"7"}`), executed on the VD scan lane. `200` `{"status":"ok"}` means the scan RAN; `{"status":"ok","skipped":true}` means this node runs no vulnerability scanner, which is a completion rather than a failure. Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `409` `scan_in_progress` when that agent already has a scan in flight, `404` `agent_not_found`, `500` the scan failed, `503` scan capacity exhausted, the feed is still loading, or the module is stopping. See [On-demand vulnerability scans](#on-demand-vulnerability-scans). |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
 
@@ -178,6 +179,37 @@ Repeating the deletion clears it:
   follow-up. In practice authd's `authd.purge_delay` (default 120 s) means the refresh has long since
   happened by the time the query runs. The by-id half is not exposed to this window.
 
+## On-demand vulnerability scans
+
+`POST /_internal/vd/scan` rescans one agent. It carries no session and no inventory: the scanner
+reads the agent's already-stored packages and writes its findings with its own connector, so the
+response is the scan's outcome and nothing more.
+
+Its caller is the Task Manager's dispatcher, executing a durable `vd_scan` task that
+`POST /vulnerability-detector/scan` created on the scanner's own socket when an agent noticed the
+feed offset had moved. **That admission route is unchanged** — same validation, same readiness
+preflight, same `503 scan_queue_full`; what changed is only what it does after admitting.
+
+**Answered at completion.** The task row reads `completed` on the `200`, so a `200` meaning "queued"
+would record a scan that has not happened.
+
+**It runs on the same lane as vulnerability-detection sessions**, which is the point. That lane holds
+the per-agent exclusion this module shares with its ingestion pipeline, so a scan can never run while
+a session of the same agent is mid-apply. A scan started outside this module would be invisible to
+that exclusion.
+
+Two statuses are worth calling out:
+
+| Status | Meaning | What the caller does |
+|---|---|---|
+| `409` `scan_in_progress` | That agent already has a scan in flight | Defers without consuming a retry attempt |
+| `404` `agent_not_found` | The agent has no record to scan, most likely deleted between the request and its execution | Stops; retrying cannot produce one |
+
+The `409` exists because a client-side timeout does not cancel server-side work. The dispatcher gives
+up at `manager_task_vd_scan_timeout` and re-posts while the first scan is very likely still running;
+without the interlock that request would either wait out the transport's backstop or start a second
+concurrent scan of the same agent.
+
 ## The `/stateful` session semantics
 
 The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md)):
@@ -267,7 +299,7 @@ These can be returned on any route, by the transport rather than by a handler:
 | `431` | A header name or value over its cap, or more than 32 header lines |
 | `500` | A route handler threw. The server keeps serving |
 | `503` | No healthy indexer host (`/stats`, `/config`), the in-flight byte budget is exhausted, the connection cap is reached, or the module is shutting down |
-| `504` | A handler was dispatched but never answered within its response backstop — `response_timeout` server-wide, or the route's own override. `/_internal/agents/delete` raises its own to 900 s, because its peer waits 600 s and the backstop is only meaningful while the peer's deadline is the shorter one |
+| `504` | A handler was dispatched but never answered within its response backstop — `response_timeout` server-wide, or the route's own override. The two `_internal` routes raise their own (900 s for the deletion, 450 s for the scan), because their peers wait 600 s and 300 s respectively and the backstop is only meaningful while the peer's deadline is the shorter one |
 
 A `503` is retryable and a `400` is not: validation runs BEFORE the indexer availability check on
 purpose, so a malformed document is never masked as a transient failure the agent would retry forever.

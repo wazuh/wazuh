@@ -30,6 +30,7 @@
 #include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
+#include "endpoints/vdScanEndpoint.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
@@ -468,6 +469,26 @@ namespace invsync
                                                    invsync::endpoints::delete_agent::responseTimeoutSeconds()});
             }
 
+            // On-demand vulnerability rescan of one agent (design doc 04's sibling): UDS-local,
+            // manager-internal, executed on the VD scan lane and ANSWERED AT COMPLETION, so the
+            // Task Manager row behind it means scanned rather than accepted. Its caller is the
+            // dispatcher; the scanner's own admission route is untouched.
+            //
+            // CONTROL class for the same reason as the deletion route: the agent id is a few bytes
+            // of body, so a saturated ingest budget must never fail a scan that costs it no payload
+            // memory. Its capacity control is the lane's bounded queue, which is what the class
+            // contract asks of a route doing real work.
+            //
+            // And its own response backstop: its peer waits 300 s, which is exactly the
+            // server-wide value -- see responseTimeoutSeconds() for what that tie costs.
+            m_httpServer->addRoute(
+                invsync::endpoints::vd_scan::method(),
+                invsync::endpoints::vd_scan::path(),
+                invsync::endpoints::vd_scan::makeHandler(invsync::endpoints::vd_scan::Dependencies {
+                    m_vdScanLane, invsync::metrics::RequestCounters::make(*m_metricsManager)}),
+                wazuh::uds_http::RouteOptions {
+                    wazuh::uds_http::RouteClass::Control, 0, 0, invsync::endpoints::vd_scan::responseTimeoutSeconds()});
+
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
             // most valuable exactly when the byte budget is under pressure.
             m_httpServer->addRoute(invsync::endpoints::metrics::method(),
@@ -479,7 +500,7 @@ namespace invsync
             registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and %s; "
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s, %s and %s; "
                        "%zu sync worker(s)).",
                        config.socketPath.c_str(),
                        invsync::endpoints::metrics::path(),
@@ -487,6 +508,7 @@ namespace invsync
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
+                       invsync::endpoints::vd_scan::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 

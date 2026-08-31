@@ -37,6 +37,17 @@ namespace
     constexpr auto SCAN_FAILED_BODY {R"({"error":"vulnerability scan failed","code":500})"};
     constexpr auto FEED_NOT_READY_BODY {R"({"error":"vulnerability feed not ready","code":503})"};
 
+    /* On-demand scan outcomes. The caller is the Task Manager's dispatcher, which classifies by
+     * STATUS first and reads `error` only for the log line, so the statuses carry the meaning:
+     * 5xx is retryable, 4xx is terminal for this task type, 200 is done. */
+    constexpr auto SCAN_OK_BODY {R"({"status":"ok"})"};
+    /// 200, not a failure: there is no scanner on this node, and asking again will not change that.
+    constexpr auto SCAN_SKIPPED_BODY {R"({"status":"ok","skipped":true})"};
+    constexpr auto SCAN_NOT_READY_BODY {R"({"error":"vulnerability scanner not ready","code":503})"};
+    /// 404 so the dispatcher stops: the agent has no record to scan, and no amount of retrying
+    /// will produce one. Most often it was deleted between the request and its execution.
+    constexpr auto SCAN_AGENT_NOT_FOUND_BODY {R"({"error":"agent_not_found","code":404})"};
+
     /// Same shape as the /scan/vd REST endpoint's 409 body, so agents handle both the same way.
     std::string versionMismatchBody(std::uint64_t currentOffset)
     {
@@ -133,6 +144,18 @@ namespace invsync::vd
                 m_capacity503->add(); // the endpoint answers the 503 for this refusal
                 return Admission::Full;
             }
+
+            // The in-flight interlock, and only for an on-demand scan -- see tryEnqueue()'s header
+            // for why a session parks here instead. Under m_mutex, so two admissions cannot both
+            // pass for one agent; a worker acquiring right after is the benign race documented
+            // there. `couldAcquire` with the same arguments the worker uses, so the two agree on
+            // what "busy" means -- including an agent the scanner has paused.
+            if (item.kind == Item::Kind::VdScanRequest &&
+                !m_registry->couldAcquire(item.session.agentId, AgentInFlightRegistry::Lane::Scan, /*reentrant=*/false))
+            {
+                return Admission::AgentBusy;
+            }
+
             m_queue.push_back(std::move(item));
             m_laneDepth->add(1);
         }
@@ -317,6 +340,67 @@ namespace invsync::vd
                     item.responder.reset();
                 }
                 finish(0, "");
+                continue;
+            }
+
+            // The on-demand rescan. It parts company with a session here: there is no inventory
+            // to index afterwards -- VD reads the agent's stored packages and writes its findings
+            // with its own connector -- so the scan's outcome IS the answer. Everything above this
+            // point applies to it unchanged (shutdown, indexer health, feed readiness); everything
+            // below is session-shaped and does not.
+            if (item.kind == Item::Kind::VdScanRequest)
+            {
+                const auto scanStart = std::chrono::steady_clock::now();
+                const auto outcome = m_scanner->scanAgent(item.session.agentId);
+
+                m_scanDuration->observe(static_cast<uint64_t>(
+                    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - scanStart)
+                        .count()));
+
+                switch (outcome)
+                {
+                    case AgentScanOutcome::Ok:
+                        m_scansOk->add();
+                        finish(200, SCAN_OK_BODY);
+                        break;
+
+                    case AgentScanOutcome::Skipped:
+                        m_scansSkipped->add();
+                        LOGFN_DEBUG1(logFn(),
+                                     "On-demand vulnerability scan for agent %s skipped: this node runs no "
+                                     "vulnerability scanner.",
+                                     item.session.agentId.c_str());
+                        finish(200, SCAN_SKIPPED_BODY);
+                        break;
+
+                    case AgentScanOutcome::NotReady:
+                        // Not counted as a failed scan: nothing was attempted. Counting it would
+                        // make vd.scans.failed read as a scanner problem during an ordinary feed
+                        // download.
+                        LOGFN_DEBUG1(logFn(),
+                                     "On-demand vulnerability scan for agent %s deferred: the scanner is not ready.",
+                                     item.session.agentId.c_str());
+                        finish(503, SCAN_NOT_READY_BODY);
+                        break;
+
+                    case AgentScanOutcome::NotFound:
+                        LOGFN_DEBUG1(logFn(),
+                                     "On-demand vulnerability scan for agent %s refused: the agent is not known to "
+                                     "this manager.",
+                                     item.session.agentId.c_str());
+                        finish(404, SCAN_AGENT_NOT_FOUND_BODY);
+                        break;
+
+                    case AgentScanOutcome::Failed:
+                    default:
+                        m_scansFailed->add();
+                        LOGFN_WARN(logFn(),
+                                   "The on-demand vulnerability scan for agent %s failed. The caller will retry.",
+                                   item.session.agentId.c_str());
+                        finish(500, SCAN_FAILED_BODY);
+                        break;
+                }
+
                 continue;
             }
 

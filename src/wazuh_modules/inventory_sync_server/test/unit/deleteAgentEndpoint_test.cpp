@@ -160,14 +160,18 @@ TEST(DeleteAgentEndpoint, TheAdmissionConnectorGoneIs503)
     EndpointUnderTest fixture;
     std::shared_ptr<invsync::indexer::IIndexerConnectorSync> admission {
         std::make_shared<FakeIndexerConnectorSync>(fixture.events, "admission")};
-    auto handler = delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, admission});
+    // The async connector stays live on purpose: with it left expired too, the handler would refuse
+    // on THAT gate and this case would pass without the admission weak_ptr ever being consulted.
+    auto handler =
+        delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, admission, fixture.asyncConnector});
     admission.reset(); // stop() clearing the connector
 
     auto responder = std::make_shared<FutureResponder>();
-    handler(deleteRequest("7"), responder);
+    handler(executionRequest(R"({"agent_id":"7"})"), responder);
 
     EXPECT_EQ(503, responder->get().status);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a terminal 503 queues nothing";
+    EXPECT_TRUE(fixture.events->asyncOps().empty()) << "including the by-id half";
 }
 
 TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)

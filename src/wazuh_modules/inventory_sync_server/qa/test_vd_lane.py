@@ -69,3 +69,54 @@ def test_metrics_reflect_the_lane_traffic(client, cluster, indexer, agent_id):
              for metric in json.loads(client.metrics().body)["metrics"]}
     assert after["vd.scans.skipped"] == before.get("vd.scans.skipped", 0) + 1
     assert after["sync.requests.total.200"] > before.get("sync.requests.total.200", 0)
+
+
+# --- POST /_internal/vd/scan: the on-demand rescan the dispatcher drives -------------------------
+#
+# Under --no-vd the scanner seam reports "no scanner on this node", which the lane answers 200 with
+# `skipped` -- 200 and not a failure, because retrying could never change that answer and a task
+# that kept retrying would never terminate. The Ok path needs a real scanner and belongs to the
+# vulnerability-detection integration workflow, which runs this same server with one.
+
+
+def test_an_on_demand_scan_is_answered_at_completion(client, agent_id):
+    response = client.scan_agent({"agent_id": agent_id})
+    assert response.status == 200, response.body
+
+    body = json.loads(response.body)
+    assert body["status"] == "ok"
+    # `skipped` is what --no-vd looks like from the wire. Its absence here would mean the harness
+    # grew a scanner and this assertion is testing something else.
+    assert body.get("skipped") is True
+
+
+def test_an_on_demand_scan_indexes_nothing(client, cluster, indexer, agent_id):
+    """It carries no session and no inventory: VD reads the agent's stored packages itself. A
+    document appearing here would mean the request fell through into the session path."""
+    assert client.scan_agent({"agent_id": agent_id}).status == 200
+    assert indexer.agent_docs(agent_id) == []
+
+
+def test_the_scan_agent_id_comes_from_the_body(client, agent_id):
+    """No X-Wazuh-Agent-Id anywhere in the request -- the dispatcher sends none, so the body is the
+    only channel. The header is ignored even when present, which is why a body without an id is a
+    400 regardless."""
+    assert client.scan_agent({"agent_id": int(agent_id)}).status == 200
+
+
+def test_a_scan_body_that_names_no_agent_is_400(client):
+    for body in (b"", b"not json", b"[]", {}, {"agent_id": None}, {"agent_id": "not-numeric"}):
+        assert client.scan_agent(body).status == 400, f"body={body!r}"
+
+
+def test_the_scan_metrics_move(client, agent_id):
+    """The skip counter is what proves the request really rode the scan lane rather than being
+    answered somewhere short of it."""
+    before = {metric["name"]: metric["value"]
+              for metric in json.loads(client.metrics().body)["metrics"]}
+
+    assert client.scan_agent({"agent_id": agent_id}).status == 200
+
+    after = {metric["name"]: metric["value"]
+             for metric in json.loads(client.metrics().body)["metrics"]}
+    assert after["vd.scans.skipped"] == before.get("vd.scans.skipped", 0) + 1

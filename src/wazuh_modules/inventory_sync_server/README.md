@@ -149,7 +149,8 @@ inventory_sync_server/
 │   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck, metricNames (D18)
 │   ├── http_server/                   # HTTP/1.1-over-UDS transport (asio + llhttp, own interface)
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
-│   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete), stats, config
+│   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
+│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
 │   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
 │   ├── sync/                          # the ingestion pipeline:
 │   │   ├── fullSessionValidator.*     #   request-level validation (verifier, identity, shape)
@@ -501,6 +502,45 @@ drain what is running. There is no fleet-wide coordination here — each feed-up
 only the one agent it is about to scan, the same way a lane session does. On `stop()` it
 unregisters FIRST, before the lane dies under the scanner's feet.
 
+## On-demand scans (`endpoints/vdScanEndpoint.*`)
+
+`POST /_internal/vd/scan` rescans ONE agent — no session, no inventory. VD reads the agent's stored
+packages and writes its findings with its own connector, so the lane's answer is the scan's outcome
+and nothing more. Its caller is the Task Manager's dispatcher, executing a durable `vd_scan` task
+that the scanner's own admission route created; that route is untouched, including its
+`503 scan_queue_full` vocabulary, which remoted distinguishes from the content manager's
+`ondemand_queue_full` for metric attribution.
+
+**Why it lives here and not in the vulnerability scanner**, which owns the scan itself:
+
+- `AgentInFlightRegistry` is private to this module's `src/vd/`, and the seam the scanner exports
+  offers pause/quiesce, not membership. A scan started outside this module would be invisible to the
+  pipeline, so it could run while a session of that same agent is mid-apply — the delete-then-reindex
+  ordering D22 exists to protect.
+- `VdScanLane` already IS what an execution route would have to build: a bounded admission queue,
+  per-agent exclusion, a responder held to completion, 503 on capacity, and a feed-readiness re-check
+  at dispatch. A second copy would not be duplicated effort, it would be a race.
+
+**It is pipeline surgery, not just a route.** `VdScanLane::Item` *is* `SyncPipeline::Item`, whose
+worker path was scan → index the session's inventory → 200. An on-demand scan has neither, so it
+needed a third `Kind`, a branch in `workerLoop`, an agentId-only `ValidatedSession` and a session-less
+`scanAgent()` on `IVdScanner`. `DeleteAgent` precedents all four, which is what made it tractable.
+
+**The in-flight interlock.** A client-side timeout does not cancel server-side work: the dispatcher
+gives up at `manager_task_vd_scan_timeout` and re-posts while the first scan is very likely still
+running. `tryEnqueue` therefore REFUSES a scan request for an agent already in flight —
+`409 scan_in_progress`, which the dispatcher defers on without consuming an attempt — instead of
+parking it as it parks a session. The two callers want opposite things: an agent re-POSTing is happy
+to queue behind its own earlier session, while the dispatcher would hold a connection until the
+transport's backstop fired. The check is a probe under the lane mutex, not a reservation; a worker
+acquiring immediately after is benign, because it degrades to exactly the parked behaviour.
+
+`scanAgent()` reports failure **by return value**, unlike `scan()`, which throws. There is no session
+to poison, and every failure is something the caller has to tell apart to decide whether to come
+back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500, `Skipped` → 200. That last one
+is the interesting choice — no scanner on this node is a completion, not a failure, because retrying
+could never change the answer and the task would never terminate.
+
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
 `POST /_internal/agents/delete`. UDS-local and manager-internal: the only caller is the Task
@@ -639,6 +679,7 @@ A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module'
 |---|---|---|
 | `POST /stateful` | `syncEndpoint` | The ingestion route. Strand-side: header + body checks, `validateFullSession`, VD routing (feed gate → lane), indexer admission gate, pipeline enqueue. Everything else is the workers'. |
 | `POST /_internal/agents/delete` | `deleteAgentEndpoint` | Whole-agent deletion for the Task Manager's dispatcher, answered at COMPLETION: agent id in the body, its own 900 s response backstop. See above. |
+| `POST /_internal/vd/scan` | `vdScanEndpoint` | On-demand rescan of one agent on the VD scan lane, for the same dispatcher and with the same contract: agent id in the body, answered at COMPLETION, its own 450 s response backstop. See [On-demand scans](#on-demand-scans-endpointsvdscanendpoint). |
 | `POST /stats`, `POST /config` | `statsEndpoint` / `configEndpoint` | Validate the agent's `modules`-keyed report, overlay the authoritative identity (agent id from the header, cluster identity, timestamp — never from the body) and index ONE document per agent (`wazuh-agent-stats` / `wazuh-agent-config`, agent id as document id, replace-on-push). Full contract in [the API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md). |
 | `GET /` | inline in the facade | Liveness probe, exempt from the byte budget so it answers under memory pressure. |
 | `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh_metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |

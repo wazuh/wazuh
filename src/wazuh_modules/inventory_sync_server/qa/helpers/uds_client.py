@@ -98,6 +98,18 @@ class ServerClient:
         return self._request("POST", "/stats", body=json.dumps(report).encode(),
                              agent_id=agent_id, content_type="application/json")
 
+    def scan_agent(self, body):
+        """On-demand vulnerability rescan of one agent, answered at COMPLETION: the response
+        arrives only once the scan has run.
+
+        Same shape as delete_agent() and for the same reason -- both routes are driven by the Task
+        Manager's dispatcher, which POSTs a task row's payload verbatim and sets no headers."""
+        if isinstance(body, dict):
+            body = json.dumps(body)
+        if isinstance(body, str):
+            body = body.encode()
+        return self._request("POST", "/_internal/vd/scan", body=body, content_type="application/json")
+
     def delete_agent(self, body):
         """Whole-agent deletion, answered at COMPLETION: the response arrives only once the purge
         has run and flushed, which is what lets a manager task be recorded as `completed`.
