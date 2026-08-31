@@ -888,6 +888,74 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
                     " times in a row: Failed to communicate with the manager."));
 }
 
+// While the local sync intake itself isn't reachable yet (streak within tolerance), the periodic
+// sync is reported at INFO as deferred, not as a WARNING (issue #38621).
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// Right at the tolerance boundary, still deferred at INFO.
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
+                                                SYNC_MANAGER_NOT_READY_TOLERANCE, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// Past the tolerance the periodic sync escalates to a WARNING that names the streak -- the bug this
+// issue guards against: an unreachable local sync intake must not stay silent forever, but it also
+// must not have been reported this way on the very first failure (see the two tests above).
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization failed " + std::to_string(streak) +
+                    " times in a row: Local sync intake is unreachable."));
+}
+
 // When the manager hasn't synchronized this agent's groups yet (most commonly right after
 // enrollment/restart), the periodic sync is reported at INFO as deferred, never as a WARNING --
 // regardless of how many cycles it takes to clear (no escalation, same treatment as `stopped`).

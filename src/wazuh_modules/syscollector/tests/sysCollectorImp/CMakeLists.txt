@@ -14,6 +14,7 @@ include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/tests/mocks/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC "*.cpp")
 
