@@ -148,9 +148,37 @@ void test_read_empty_archive_reference(void **state) {
         "</references>\n";
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    expect_any(__wrap__mterror, tag);
-    expect_string(__wrap__mterror, formatted_msg, "Empty 'archive' reference at module 'container_images'.");
-    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), OS_INVALID);
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "Empty 'archive' reference at module 'container_images', ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->references_count, 0);
+}
+
+void test_read_empty_reference_keeps_the_others(void **state) {
+    const char *string =
+        "<references>\n"
+        "  <archive>/var/tmp/images/myapp.tar</archive>\n"
+        "  <archive></archive>\n"
+        "  <ref></ref>\n"
+        "  <local>alpine:latest</local>\n"
+        "</references>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "Empty 'archive' reference at module 'container_images', ignoring it.");
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "Empty 'ref' reference at module 'container_images', ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    // The entries after an empty one are still read, and the empty ones are not stored.
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->references_count, 2);
+    assert_string_equal(data->references[0].type, "archive");
+    assert_string_equal(data->references[0].value, "/var/tmp/images/myapp.tar");
+    assert_string_equal(data->references[1].type, "local");
+    assert_string_equal(data->references[1].value, "alpine:latest");
 }
 
 void test_read_disabled(void **state) {
@@ -226,6 +254,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_every_reference_type_is_accepted, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_unknown_reference_type, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_empty_archive_reference, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_empty_reference_keeps_the_others, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_disabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_hours, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_invalid_interval, setup_test_read, teardown_test_read),
