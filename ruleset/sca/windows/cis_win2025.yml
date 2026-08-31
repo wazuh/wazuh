@@ -14323,7 +14323,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller ->EnableAppInstaller -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller -> 0'
 
   # 18.10.18.2 (L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'. (Automated)
   - id: 36801
@@ -14479,7 +14479,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableMSAppInstallerProtocol'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller ->EnableMSAppInstallerProtocol -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableMSAppInstallerProtocol -> 0'
 
   # 18.10.18.6 (L1) Ensure 'Enable App Installer Microsoft Store Source Certificate Validation Bypass' is set to 'Disabled'. (Automated)
   - id: 36805
