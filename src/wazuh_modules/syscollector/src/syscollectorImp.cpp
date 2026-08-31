@@ -5075,7 +5075,15 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
-            const bool vdTable = isVDIndex(index);
+            // Only while the VD lane exists. With m_vdSyncEnabled false -- packages, os or,
+            // on Windows, hotfixes switched off -- synchronizeVDTables() sends Option::SYNC,
+            // so these tables gain nothing from the deferred single-session treatment and are
+            // routed through the plain lane instead. That also leaves vdTablesResent empty,
+            // which is the point: a run with no VD lane must not record vd_synced_agent_id and
+            // claim a lane that never ran. A later run that does enable the lane would honour
+            // that marker, skip the whole VD inventory, and leave it to go out as VDSYNC --
+            // an alert for every finding the manager has never seen for this identity.
+            const bool vdTable = isVDIndex(index) && m_vdSyncEnabled;
 
             // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
             if (vdTable != (pass == 1))
