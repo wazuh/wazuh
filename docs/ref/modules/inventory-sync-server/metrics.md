@@ -3,7 +3,7 @@
 The inventory sync server keeps its runtime statistics (D18) in a `wazuh_metrics` registry
 (the shared library at `src/shared_modules/metrics/` — the same one remoted's HTTPS agent
 server uses) and serves a JSON dump of the whole registry on **`GET /metrics` over its local
-socket**, `queue/sockets/inventory-sync.sock`. The route is UDS-local (agents can never reach
+socket**, `queue/sockets/inventory-sync-http.sock`. The route is UDS-local (agents can never reach
 it — remoted exposes nothing that forwards to it) and **budget-exempt**: reading metrics never
 consumes the `server.budget.*` it reports, so it keeps answering exactly when the byte budget
 is under pressure. Do not confuse it with `POST /stats`, which is the *ingest* of agent
@@ -18,7 +18,7 @@ the vulnerability-detection module, agent-driven volume, or nothing at all).
 ## Querying
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
 ```
 
 The dump is one JSON document: an envelope with the daemon name and a UTC timestamp, plus one
@@ -132,7 +132,7 @@ are diagnostic **from this module's side**.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `vd.lane.depth` | gauge_int | items | VD sessions queued in the lane | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers) (drain), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) (cap) |
-| `vd.capacity.503.total` | counter | count | VD sessions refused because the scan queue was full (the endpoint answers the 503) | [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) |
+| `vd.capacity.503.total` | counter | count | VD sessions refused because the scan queue was full (the endpoint answers the 503). **Not** `remoted.scanvd.queue_full`, which remoted raises for the agent-initiated `POST /scan/vd` path on a different socket ([remoted metrics](../remoted/metrics.md#vd-scan-admission--remotedscanvd)) | [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) |
 | `vd.lane.time` | histogram | microseconds | Enqueue-to-response time of VD data sessions, **all outcomes** (including the feed-not-ready 503 and offset-mismatch 409) | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) |
 | `vd.retry_after.total` | counter | count | 503s carrying a `Retry-After` header: the CVE feed was not ready (counted at both gates — strand-side admission and the dispatch-time re-check) | [`…vd_feed_retry_after_seconds`](configuration.md#wazuh_modulesinventory_sync_server_vd_feed_retry_after_seconds) sets the header **value** only — the *rate* is driven by the CVE-feed download state, which this module does not configure |
 | `vd.offset_mismatch.total` | counter | count | VD data sessions rejected (409) for a stale or ahead-of-node feed offset | diagnostic — offsets realign as feeds settle |

@@ -1246,14 +1246,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // yet, most commonly right after enrollment/restart. Expected to clear on its own.
                 minfo("FIM synchronization requested by agent-info deferred: %s",
                       sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready
+            } else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable)
                        && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
-                // The manager is not ready for this agent yet, mostly right after a restart, and the
-                // sync has not failed enough times in a row to suspect it will not clear.
+                // Either the manager is not ready for this agent yet, or the local sync intake
+                // itself isn't reachable yet -- both mostly right after a restart -- and the sync
+                // has not failed enough times in a row to suspect it will not clear.
                 minfo("FIM synchronization requested by agent-info deferred: %s Will retry next cycle.",
                       sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready) {
-                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            } else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable) {
+                // Neither condition has cleared for several cycles in a row.
                 mwarn("FIM synchronization requested by agent-info failed %u times in a row: %s",
                       sync_result.consecutive_failures, sync_result.failure_reason);
             } else {
@@ -1305,13 +1306,14 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Not a real failure either: the manager hasn't synchronized this agent's groups
                 // yet, most commonly right after enrollment/restart. Expected to clear on its own.
                 minfo("FIM synchronization deferred: %s", sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready
+            } else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable)
                        && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
-                // The manager is not ready for this agent yet, mostly right after a restart, and the
-                // sync has not failed enough times in a row to suspect it will not clear.
+                // Either the manager is not ready for this agent yet, or the local sync intake
+                // itself isn't reachable yet -- both mostly right after a restart -- and the sync
+                // has not failed enough times in a row to suspect it will not clear.
                 minfo("FIM synchronization deferred: %s Will retry next cycle.", sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready) {
-                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            } else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable) {
+                // Neither condition has cleared for several cycles in a row.
                 mwarn("FIM synchronization failed %u times in a row: %s",
                       sync_result.consecutive_failures, sync_result.failure_reason);
             } else {

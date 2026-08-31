@@ -13,8 +13,8 @@
 #define _HC_WPK_FETCHER_HPP
 
 #include "backoff.hpp"
-#include "cmacSigner.hpp"
 #include "iHttpPerformer.hpp"
+#include "iSigner.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -43,16 +43,19 @@
 class WpkFetcher final
 {
     public:
-        WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
-                   const ISigner& signer, IClock& clock, IRandom& random,
-                   ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+        WpkFetcher(const ModuleConfig& config,
+                   IHttpPerformer& performer,
+                   const ISigner& signer,
+                   IClock& clock,
+                   IRandom& random,
+                   ISpoolFileFactory& spoolFactory,
+                   AuthGate& authGate,
                    CompressionGate& compressionGate);
 
         /// Downloads the WPK named `wpkFile`, expecting the given SHA-1.
         /// Returns the verified spool file (deleted on drop) or nullptr on
         /// any failure (download error or hash mismatch), already logged.
-        std::shared_ptr<SpoolFile> fetch(const std::string& wpkFile,
-                                         const std::string& expectedSha1, Waiter& waiter);
+        std::shared_ptr<SpoolFile> fetch(const std::string& wpkFile, const std::string& expectedSha1, Waiter& waiter);
 
     private:
         const ModuleConfig& m_config;

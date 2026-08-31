@@ -39,13 +39,14 @@ ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& perform
                              CompressionGate& compressionGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+               config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
 {
 }
 
 std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
-                                                const std::string& group, Waiter& waiter)
+                                                const std::string& resourceId, Waiter& waiter)
 {
     std::shared_ptr<SpoolFile> spool = m_spoolFactory.spool(nullptr, 0); // Empty target file.
 
@@ -56,7 +57,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     }
 
     const std::string body =
-        R"({"resource_type":"config","resource_id":")" + group + R"("})";
+        R"({"resource_type":"config","resource_id":")" + resourceId + R"("})";
     HttpRequestSpec spec;
     spec.target = "/download";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -71,7 +72,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     // "never attempted" from "attempted and failed" without source-level
     // reasoning.
     LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').",
-                 group.c_str());
+                 resourceId.c_str());
 
     const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
 
@@ -82,14 +83,15 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
         // resolve to real content -- e.g. its "0" sentinel for "nothing resolved yet for this
         // group set" right after a group membership change (confirmed with the manager team)
         // -- and the next notify simply re-triggers it either way.
-        LOGFN_DEBUG1(m_logFn, "Config download for group '%s' failed (%s); "
-                     "the next notify re-triggers it.", group.c_str(),
-                     outcomeName(result.outcome));
+        LOGFN_DEBUG1(m_logFn, "Config download for resource '%s' failed (%s)%s; "
+                     "the next notify re-triggers it.", resourceId.c_str(),
+                     outcomeName(result.outcome),
+                     transportReason(result.response.curlError).c_str());
         return nullptr;
     }
 
     LOGFN_DEBUG2(m_logFn, "Config download (resource_id='%s') delivered by the manager.",
-                 group.c_str());
+                 resourceId.c_str());
 
     const auto actualHash = sha256FileHex(spool->path());
 

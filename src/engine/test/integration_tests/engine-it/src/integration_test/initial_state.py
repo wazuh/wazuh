@@ -26,7 +26,8 @@ POLICY_NS = "testing"
 DECODER_TEST_NAME = "decoder/test-message/0"
 DECODER_OTHER_NAME = "decoder/other-test-message/0"
 
-# Valid v4 UUIDs (must match those used in steps.py)
+# Fixed resource identifiers (must match those used in the router/tester steps). Identifiers are
+# opaque to the Engine; UUIDs are used here only for readability.
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
 DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
 
@@ -363,7 +364,7 @@ def init(env_path: Path, test_path: Path):
         print("Engine started.")
 
         # Create API client pointing to the engine socket in this env
-        socket_path = env_path / "queue" / "sockets" / "engine-api.socket"
+        socket_path = env_path / "queue" / "sockets" / "engine-api-http.sock"
         api_client = APIClient(str(socket_path))
 
         print("Initializing CM resources for tester (namespace 'testing')...")

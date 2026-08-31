@@ -458,7 +458,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
     auto policy = dataType::Policy("test-policy",                            // title
                                    true,                                     // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",   // root decoder
-                                   {"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
+                                   {"550e8400-e29b-41d4-a716-446655440001"}, // integrations
                                    {},                                       // filters
                                    {},                                       // enrichments
                                    {},                                       // outputs

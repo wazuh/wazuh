@@ -45,6 +45,11 @@ namespace invsync::vd
             return !scanner.isInitialized() || scanner.isFeedReady();
         }
 
+        bool scannerRunning() const override
+        {
+            return VulnerabilityScannerFacade::instance().isInitialized();
+        }
+
         std::uint64_t currentFeedOffset() const override
         {
             return VulnerabilityScannerFacade::instance().currentFeedOffset();

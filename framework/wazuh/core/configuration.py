@@ -965,15 +965,16 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     dict
         The active configuration the manager is currently using.
     """
-    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
+    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    component_socket_mapping = {'agent': 'engine-api-http.sock', 'analysis': 'engine-api-http.sock', 'auth': 'auth.sock',
                                 'com': 'com', 'integrator': 'integrator',
-                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
-                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb', 'wmodules': 'wmodules'}
+                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
+                                'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',
+                                'wmodules': 'wmodules.sock'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
                                     'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
-                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'db',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'sockets',
                                     'wmodules': 'sockets'}
 
     if not component or not configuration:

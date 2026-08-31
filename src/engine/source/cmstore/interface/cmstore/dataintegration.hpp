@@ -87,12 +87,10 @@ public:
                 throw std::runtime_error("Integration UUID cannot be empty");
             }
         }
-        else
+        else if (!base::utils::generators::isValidResourceId(m_uuid))
         {
-            if (!base::utils::generators::isValidUUIDv4(m_uuid))
-            {
-                throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + m_uuid);
-            }
+            throw std::runtime_error(fmt::format("Integration UUID is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
         }
         if (m_name.empty())
         {
@@ -107,12 +105,10 @@ public:
             throw std::runtime_error("Integration category is not valid: " + m_category);
         }
 
-        if (m_defaultParent.has_value())
+        if (m_defaultParent.has_value() && !base::utils::generators::isValidResourceId(*m_defaultParent))
         {
-            if (!base::utils::generators::isValidUUIDv4(*m_defaultParent))
-            {
-                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + *m_defaultParent);
-            }
+            throw std::runtime_error(fmt::format("Integration default parent is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
         }
 
         cm::store::detail::findDuplicateOrInvalidUUID(m_decodersByUUID, "Decoder");
@@ -132,11 +128,6 @@ public:
                 throw std::runtime_error("Integration JSON must have a valid id");
             }
             // requireUUID == false => uuid does not exist, will be generated later
-        }
-
-        if (requireUUID && !base::utils::generators::isValidUUIDv4(uuid))
-        {
-            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + uuid);
         }
 
         std::string name;
@@ -195,10 +186,6 @@ public:
             if (defaultParentStr.empty())
             {
                 throw std::runtime_error("Integration default parent cannot be empty");
-            }
-            if (!base::utils::generators::isValidUUIDv4(defaultParentStr))
-            {
-                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + defaultParentStr);
             }
             defaultParent = defaultParentStr;
         }

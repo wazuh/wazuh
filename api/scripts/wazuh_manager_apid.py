@@ -139,7 +139,9 @@ def start(params: dict):
     app = AsyncApp(
         __name__,
         specification_dir=os.path.join(api_path[0], 'spec'),
-        swagger_ui_options=SwaggerUIOptions(swagger_ui=False),
+        # serve_spec=False avoids exposing the API specification and version at
+        # /openapi.json and /openapi.yaml, which connexion serves unauthenticated by default
+        swagger_ui_options=SwaggerUIOptions(swagger_ui=False, serve_spec=False),
         pythonic_params=True,
         lifespan=lifespan_handler,
         uri_parser_class=APIUriParser

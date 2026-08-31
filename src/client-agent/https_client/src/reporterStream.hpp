@@ -36,9 +36,15 @@
 class ReporterStream final
 {
     public:
-        ReporterStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                       IClock& clock, IRandom& random, AuthGate& authGate, CompressionGate& compressionGate,
-                       ClusterIdentity& cluster, ICollectorSource& collectors);
+        ReporterStream(const ModuleConfig& config,
+                       IHttpPerformer& performer,
+                       const ISigner& signer,
+                       IClock& clock,
+                       IRandom& random,
+                       AuthGate& authGate,
+                       CompressionGate& compressionGate,
+                       ClusterIdentity& cluster,
+                       ICollectorSource& collectors);
 
         /// True when at least one reporter is enabled (the facade only starts
         /// the worker then).
@@ -57,12 +63,12 @@ class ReporterStream final
             std::chrono::steady_clock::time_point nextDue; // epoch => due immediately.
         };
 
-        void runPath(Path& path, Backoff& backoff, Waiter& waiter,
-                     std::optional<std::string> collected);
+        void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
         std::optional<std::string> stampedDocument(std::optional<std::string> collected) const;
         std::chrono::milliseconds sleepHint() const;
 
         const ModuleConfig& m_config;
+        const ISigner& m_signer; ///< Live agent id for the stamp (ISigner::agentId()).
         Backoff m_sendBackoff;
         RetrySender m_sender;
         IClock& m_clock;

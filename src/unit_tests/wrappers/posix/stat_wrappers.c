@@ -23,6 +23,12 @@ int __wrap_chmod(const char *path) {
     return mock();
 }
 
+int __wrap_fchmod(int fd, mode_t mode) {
+    check_expected(fd);
+    check_expected(mode);
+    return mock();
+}
+
 int __wrap_chown(const char *__file, int __owner, int __group) {
     check_expected(__file);
     check_expected(__owner);

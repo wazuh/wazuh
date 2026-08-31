@@ -127,7 +127,11 @@ jobs:
             exit 1
           fi
 
-          sudo WAZUH_MANAGER="127.0.0.1" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          # Trailing '/' on purpose (#38624): it opts the installed agent out of the
+          # default /wazuh-manager/ endpoint prefix, which RemotedSimulator does not
+          # serve — without it every request 404s and the agentd startup gate keeps
+          # the modules from starting in any suite that relies on this config.
+          sudo WAZUH_MANAGER_ENDPOINT="127.0.0.1/" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
 
           sudo awk '
             /<rootcheck>/ { in_block=1; print; next }
@@ -226,6 +230,7 @@ jobs:
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            GITHUB_RUN_ID="${GITHUB_RUN_ID}" \
             AWS_VPC_ID="${AWS_VPC_ID}" \
             AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
             AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" \

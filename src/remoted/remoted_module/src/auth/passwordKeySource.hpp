@@ -20,12 +20,13 @@
 #include <vector>
 
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
+#include "jwt/secureBytes.hpp"
 
 namespace remoted::auth
 {
 
     /**
-     * @brief Turns authd's enrollment password (etc/authd.pass) into a CMAC-usable AES key,
+     * @brief Turns authd's enrollment password (etc/authd.pass) into the `wazuh-enroll+jwt` HS256 key,
      *        hot-reloaded on change. Backs Password-mode enrollment auth (see EnrollmentAuthenticator).
      *
      * Strictly read-only, on every node -- master or worker alike. authd itself is asymmetric:
@@ -43,9 +44,9 @@ namespace remoted::auth
      * versa) -- either way, a fail-closed contract that's supposed to be consistent stops being
      * one.
      *
-     * The signing key is not the password itself: currentKey() returns a 32-byte AES-256 key
-     * derived via HKDF-SHA256 (empty salt, info = "WAZUH-ENROLL-CMAC-KEY" + 0x01), since Cmac
-     * needs an exact 16/24/32-byte key and a password is arbitrary length. Derivation runs once
+     * The signing key is not the password itself: currentKey() returns the 32-byte HS256 key
+     * derived via HKDF-SHA256 (salt 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" + 0x01) by the
+     * shared jwt/enrollKeyDerivation.hpp -- the agent derives the same key. Derivation runs once
      * per file change and is cached -- never per request. See the Agent enrollment chapter of
      * remoted_module/README.md for a verified worked example (known-answer vector).
      *
@@ -97,7 +98,7 @@ namespace remoted::auth
          * @return The cached derived key (32 bytes), or nullopt if the password file is missing,
          *         unreadable, or its content fails authd's own password-validity rules.
          */
-        std::optional<std::vector<std::uint8_t>> currentKey() const;
+        std::optional<jwt_profile::v1::SecureBytes> currentKey() const;
 
     private:
         void watcherLoop();
@@ -108,7 +109,7 @@ namespace remoted::auth
 
         std::string m_path;
         mutable std::mutex m_mutex;
-        std::optional<std::vector<std::uint8_t>> m_derivedKey;
+        std::optional<jwt_profile::v1::SecureBytes> m_derivedKey;
 
         int m_refreshIntervalSeconds;
         int m_inotifyFd {-1};

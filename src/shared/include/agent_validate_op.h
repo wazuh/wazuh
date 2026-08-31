@@ -23,8 +23,15 @@ typedef struct _keystore keystore;
 #define VALID_AGENT_NAME_CHARS    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
 
 // Validation and agent management functions
+// Adds an agent to the in-memory keystore. A NULL key is generated: exactly 32 CSPRNG bytes (OpenSSL
+// RAND_bytes) stored as 64 lowercase hex chars -- the agent's HS256 secret for remoted's
+// wazuh-agent+jwt bearer profile. Returns the new entry's index, OS_ADDAGENT_LIMIT_REACHED when
+// max_agents is hit, or OS_INVALID (< 0) if the CSPRNG fails (nothing is added).
 int OS_AddNewAgent(
     keystore* keys, const char* id, const char* name, const char* ip, const char* key, unsigned int max_agents);
+// True iff `key` has the exact shape OS_AddNewAgent() generates and remoted accepts: 64 lowercase
+// hex chars (32 bytes). Callers that accept a caller-supplied key must check this first.
+int OS_IsValidAgentKey(const char* key);
 int OS_IsValidID(const char* id);
 char* getNameById(const char* id);
 int OS_IsValidName(const char* u_name);

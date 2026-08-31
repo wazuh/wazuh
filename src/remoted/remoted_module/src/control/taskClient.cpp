@@ -48,6 +48,12 @@ namespace remoted::control
             return instance;
         }
 
+        remoted::common::LogThrottle& stoppingThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
         remoted::common::LogThrottle& connectFailThrottle()
         {
             static remoted::common::LogThrottle instance;
@@ -121,10 +127,12 @@ namespace remoted::control
         void getPendingTasks(AgentId id, std::function<void(SocketError, std::vector<Task>)> callback)
         {
             std::function<void(SocketError, std::vector<Task>)> reject;
+            bool stopping = false;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_stopping)
                 {
+                    stopping = true;
                     reject = std::move(callback);
                 }
                 else if (m_queue.size() >= m_maxQueueSize)
@@ -140,6 +148,22 @@ namespace remoted::control
             if (reject)
             {
                 incTaskFetchError(m_metrics);
+
+                if (stopping)
+                {
+                    // A drain is not saturation: as a full queue it would point the operator at
+                    // control_tm_max_queue_size. Io is what stop()'s own drain answers.
+                    if (const auto throttle = stoppingThrottle().record())
+                    {
+                        LOGFN_DEBUG1(logFn(),
+                                     "Task client is stopping: rejected %llu request(s) in the last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    reject(SocketError::Io, {});
+                    return;
+                }
+
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),

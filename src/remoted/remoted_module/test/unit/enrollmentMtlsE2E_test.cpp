@@ -35,18 +35,19 @@
 
 #include <gtest/gtest.h>
 
-#include "auth/cmac.hpp"
+#include <chrono>
+
+#include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "jwt/jwtEnrollTokenSigner.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
 using namespace remoted::enrollment;
-using remoted::auth::Cmac;
 using remoted::auth::PasswordKeySource;
-using remoted::auth::toLowerHex;
 using remoted::decoding::ContentEncoding;
 using remoted::decoding::IBodyDecoder;
 using remoted::http::ClientVerificationMode;
@@ -147,7 +148,7 @@ namespace
         ::rmdir(pki.dir.c_str());
     }
 
-    // Sends one POST /enroll, optionally signed with a WazuhEnroll header when requirePassword is
+    // Sends one POST /enroll, optionally carrying the wazuh-enroll+jwt bearer when requirePassword is
     // set (authorizationHeader empty otherwise), and reads the response until the server closes.
     // clientCert/clientKey null means "present no client certificate at all", to exercise the
     // listener's own rejection.
@@ -178,6 +179,9 @@ namespace
             std::string request = "POST /enroll HTTP/1.1\r\n";
             request += "Host: 127.0.0.1\r\n";
             request += "Content-Type: application/json\r\n";
+            // Required on /enroll like on every other authenticated route; without it the endpoint
+            // answers 400 before reaching the mTLS behavior these tests are about.
+            request += "protocol-version: " + std::string {remoted::auth::kSupportedProtocolVersion} + "\r\n";
             if (!authorizationHeader.empty())
             {
                 request += "Authorization: " + authorizationHeader + "\r\n";
@@ -228,24 +232,14 @@ namespace
         return path;
     }
 
-    // Same WazuhEnroll canonicalization EnrollmentAuthenticator verifies -- see
-    // enrollmentAuthenticator_test.cpp's own copy of this helper for the byte-exact construction.
-    std::string signWazuhEnroll(const std::vector<std::uint8_t>& key,
-                                const std::string& target,
-                                const std::string& body,
-                                std::int64_t ts)
+    // The `wazuh-enroll+jwt` bearer EnrollmentAuthenticator verifies (jwt/jwtEnrollTokenSigner.hpp),
+    // minted with the manager's own HKDF key at `ts`.
+    std::string bearerFor(const jwt_profile::v1::SecureBytes& key, std::int64_t ts)
     {
-        Cmac cmac(key);
-        cmac.update("WAZUH-ENROLL\n");
-        cmac.update("1\n");
-        cmac.update("POST\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return "WazuhEnroll " + std::to_string(ts) + ":" + toLowerHex(mac.data(), mac.size());
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::sign(
+            key, std::chrono::system_clock::time_point {std::chrono::seconds {ts}});
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
     }
 } // namespace
 
@@ -386,8 +380,8 @@ TEST(EnrollmentMtlsE2ETest, ValidCertificateWithCorrectPasswordEnrollsSuccessful
     // timestamp against std::time(nullptr), not a fixed value (see enrollmentE2E_test.cpp's nowTs()
     // comment for why a hardcoded constant here would start failing as soon as real time moved on).
     const std::int64_t ts = static_cast<std::int64_t>(std::time(nullptr));
-    const std::string raw = sendEnrollRequest(
-        serverConfig.port, body, &pki->clientCert, &pki->clientKey, signWazuhEnroll(*key, "/enroll", body, ts));
+    const std::string raw =
+        sendEnrollRequest(serverConfig.port, body, &pki->clientCert, &pki->clientKey, bearerFor(*key, ts));
 
     EXPECT_NE(raw.find("200"), std::string::npos) << "response was: " << raw;
     EXPECT_NE(raw.find(R"("id":"006")"), std::string::npos) << "response was: " << raw;

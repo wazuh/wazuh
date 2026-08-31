@@ -85,11 +85,24 @@ const cJSON* get_alert_from_json(const cJSON *input);
 const char* get_srcip_from_json(const cJSON *input);
 
 /**
- * Get username from input (WCS-compliant: user.name at root level)
+ * Get username from input (WCS-compliant: user.name at root level) and validate its format
  * @param input Input
- * @return char * with the username or NULL on fail
+ * @return char * with the username or NULL on fail or invalid username
  * */
 const char* get_username_from_json(const cJSON *input);
+
+/**
+ * Validate username format
+ * Follows Debian adduser constraints:
+ * - Must not start with dash, plus, or tilde
+ * - Must not contain colon, comma, or whitespace
+ * - Should not contain slash (may break home directory paths)
+ * Rejects: reserved names (root), empty strings, null
+ * @param username Username to validate
+ * @retval 1 If username is valid
+ * @retval 0 If username is invalid
+ * */
+int is_valid_username(const char *username);
 
 /**
  * Get extra_args from input

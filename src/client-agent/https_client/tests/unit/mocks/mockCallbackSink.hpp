@@ -40,7 +40,7 @@ class MockCallbackSink : public ICallbackSink
                     (const std::string& sessionId, int result, const std::string& body), (override));
         MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
         MOCK_METHOD(void, onBufferLevel, (hc_buffer_level_t level), (override));
-        MOCK_METHOD(void, onProducerPause, (bool paused), (override));
+        MOCK_METHOD(void, onProducerPause, (bool paused, const std::string& reason), (override));
 };
 
 #endif // _HC_MOCK_CALLBACK_SINK_HPP

@@ -37,7 +37,7 @@ import socket
 import sys
 import time
 
-DEFAULT_SOCKET = "queue/sockets/inventory-sync.sock"
+DEFAULT_SOCKET = "queue/sockets/inventory-sync-http.sock"
 DEFAULT_PATH = "/stateful"
 # Mirrors invsync::endpoints::sync::path(). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/endpoints/syncEndpoint.hpp

@@ -11,78 +11,17 @@
 
 #include "enrollmentAuthenticator.hpp"
 
-#include "auth/cmac.hpp"
+#include "jwt/jwtEnrollTokenVerifier.hpp"
 
-#include <algorithm>
-#include <array>
-#include <cctype>
-#include <charconv>
-#include <memory>
-#include <string>
+#include <chrono>
+#include <utility>
 
 namespace remoted::enrollment
 {
     namespace
     {
-        bool isAllDigits(std::string_view s)
-        {
-            return !s.empty() && std::all_of(s.begin(), s.end(), [](char c) { return c >= '0' && c <= '9'; });
-        }
-
-        bool isLowerHex32(std::string_view s)
-        {
-            if (s.size() != 32)
-            {
-                return false;
-            }
-            return std::all_of(
-                s.begin(), s.end(), [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
-        }
-
-        struct ParsedWazuhEnroll
-        {
-            std::string_view timestamp;
-            std::string_view mac;
-        };
-
-        // Parses "WazuhEnroll <timestamp>:<mac>" -- no agent-id field, unlike the "Wazuh
-        // <agent-id>:<timestamp>:<mac>" scheme AuthMiddleware parses (see class comment).
-        std::optional<ParsedWazuhEnroll> parseAuthorization(std::string_view header)
-        {
-            constexpr std::string_view kScheme = "WazuhEnroll ";
-            if (header.size() <= kScheme.size() || header.substr(0, kScheme.size()) != kScheme)
-            {
-                return std::nullopt;
-            }
-
-            const std::string_view rest = header.substr(kScheme.size());
-            const auto colon = rest.find(':');
-            if (colon == std::string_view::npos)
-            {
-                return std::nullopt;
-            }
-            const std::string_view timestamp = rest.substr(0, colon);
-            const std::string_view mac = rest.substr(colon + 1);
-
-            if (!isAllDigits(timestamp))
-            {
-                return std::nullopt;
-            }
-            if (!isLowerHex32(mac))
-            {
-                return std::nullopt;
-            }
-
-            return ParsedWazuhEnroll {timestamp, mac};
-        }
-
-        std::string toUpper(std::string_view s)
-        {
-            std::string out(s);
-            std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::toupper(c); });
-            return out;
-        }
-    } // namespace
+        constexpr std::string_view kBearerScheme {"Bearer "};
+    }
 
     EnrollmentAuthenticator::EnrollmentAuthenticator(EnrollmentAuthConfig config,
                                                      std::shared_ptr<remoted::auth::PasswordKeySource> keySource)
@@ -92,19 +31,36 @@ namespace remoted::enrollment
     }
 
     std::optional<remoted::auth::AuthError>
-    EnrollmentAuthenticator::authenticate(std::string_view authorizationHeader,
-                                          std::string_view method,
-                                          std::string_view requestTarget,
-                                          std::string_view body,
+    EnrollmentAuthenticator::authenticate(std::string_view protocolVersionHeader,
+                                          std::string_view authorizationHeader,
+                                          std::size_t bodySize,
                                           std::int64_t currentUnixTimeSeconds) const
     {
-        // Checked first, in EVERY mode (including Open): otherwise an unauthenticated peer could
+        // Step 1, exactly as AuthMiddleware::authenticate() does for every other authenticated
+        // route: a request naming a protocol version this manager does not implement is not one it
+        // can process at all, so nothing else is worth looking at. Enforced in EVERY mode,
+        // including Open -- the version is a property of the protocol, not of the credential, so
+        // whether a password is configured has no bearing on it.
+        //
+        // An empty value means absent (or present but empty) -- the caller reads the header through
+        // the same case-insensitive headerValue() the AuthGateway uses, so /enroll sees exactly what
+        // every other route sees, including how the transport's header map treats a repeated field.
+        if (protocolVersionHeader.empty())
+        {
+            return remoted::auth::AuthError::MissingProtocolVersion;
+        }
+        if (protocolVersionHeader != m_config.supportedProtocolVersion)
+        {
+            return remoted::auth::AuthError::UnsupportedProtocolVersion;
+        }
+
+        // Checked next, in EVERY mode (including Open): otherwise an unauthenticated peer could
         // make this endpoint hold an arbitrarily large body -- up to the transport's own cap, not
         // this class's -- in the in-flight budget shared with every other route, for however long
         // parseAndValidateBody() takes to notice and reject it. Checking here also means an
         // oversized body gets the same 413 every other endpoint returns, instead of falling
         // through to parseAndValidateBody()'s own (much smaller) cap and a 400.
-        if (body.size() > m_config.maxBodySize)
+        if (bodySize > m_config.maxBodySize)
         {
             return remoted::auth::AuthError::BodyTooLarge;
         }
@@ -113,14 +69,11 @@ namespace remoted::enrollment
         {
             return std::nullopt;
         }
-        return authenticatePassword(authorizationHeader, method, requestTarget, body, currentUnixTimeSeconds);
+        return authenticatePassword(authorizationHeader, currentUnixTimeSeconds);
     }
 
     std::optional<remoted::auth::AuthError>
     EnrollmentAuthenticator::authenticatePassword(std::string_view authorizationHeader,
-                                                  std::string_view method,
-                                                  std::string_view requestTarget,
-                                                  std::string_view body,
                                                   std::int64_t currentUnixTimeSeconds) const
     {
         if (authorizationHeader.empty())
@@ -128,78 +81,35 @@ namespace remoted::enrollment
             return remoted::auth::AuthError::MissingAuthorization;
         }
 
-        const auto parsed = parseAuthorization(authorizationHeader);
-        if (!parsed)
+        // Exactly `Bearer <token>` (same scheme parsing as AuthMiddleware). Anything about the token
+        // itself is the verifier's call below.
+        if (authorizationHeader.size() <= kBearerScheme.size() ||
+            authorizationHeader.substr(0, kBearerScheme.size()) != kBearerScheme)
         {
             return remoted::auth::AuthError::MalformedAuthorization;
         }
-
-        std::int64_t timestamp = 0;
-        const auto [ptr, ec] =
-            std::from_chars(parsed->timestamp.data(), parsed->timestamp.data() + parsed->timestamp.size(), timestamp);
-        if (ec != std::errc {} || ptr != parsed->timestamp.data() + parsed->timestamp.size())
-        {
-            return remoted::auth::AuthError::MalformedAuthorization;
-        }
-
-        if (timestamp < currentUnixTimeSeconds - m_config.maxRequestAgeSeconds)
-        {
-            return remoted::auth::AuthError::ExpiredRequest;
-        }
-        if (timestamp > currentUnixTimeSeconds + m_config.maxFutureSkewSeconds)
-        {
-            return remoted::auth::AuthError::FutureRequest;
-        }
+        const std::string_view token = authorizationHeader.substr(kBearerScheme.size());
 
         // Fail-closed: Password mode active but the key is unavailable (file missing/unreadable/
-        // invalid, or not yet synced from the master to a worker) -- never fall back to Open mode.
-        // See PasswordKeySource's class comment for why conflating the two would be a security bug.
-        // EnrollmentKeyUnavailable, deliberately NOT MissingKey: MissingKey means an already-
-        // enrolled agent's client.keys entry doesn't decode, and logRejection() tells the operator
-        // to "re-enroll" for that -- nonsensical advice here, where there is no agent and no
-        // client.keys entry yet at all.
+        // invalid, not yet synced from the master to a worker, or HKDF unavailable) -- never fall
+        // back to Open mode. See PasswordKeySource's class comment for why conflating the two would
+        // be a security bug. EnrollmentKeyUnavailable, deliberately NOT MissingKey: MissingKey means
+        // an already-enrolled agent's client.keys entry doesn't decode, and logRejection() tells the
+        // operator to "re-enroll" for that -- nonsensical advice here, where there is no agent and
+        // no client.keys entry yet at all.
         const auto key = m_keySource ? m_keySource->currentKey() : std::nullopt;
         if (!key)
         {
             return remoted::auth::AuthError::EnrollmentKeyUnavailable;
         }
 
-        std::array<std::uint8_t, remoted::auth::Cmac::kMacSize> expectedMac {};
-        if (!remoted::auth::fromLowerHex(parsed->mac, expectedMac.data(), expectedMac.size()))
+        const auto now = std::chrono::system_clock::time_point {std::chrono::seconds {currentUnixTimeSeconds}};
+        const auto verdict =
+            jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(token, *key, m_config.timePolicy, now);
+        if (verdict != jwt_profile::v1::VerifyError::None)
         {
-            return remoted::auth::AuthError::MalformedAuthorization;
+            return remoted::auth::toAuthError(verdict);
         }
-
-        std::unique_ptr<remoted::auth::Cmac> cmac;
-        try
-        {
-            // The key is always exactly 32 bytes (HKDF's fixed output length -- see
-            // PasswordKeySource), so CmacKeyError cannot fire here; a CmacProviderError means
-            // AES-CMAC itself is unavailable manager-wide -- same EnrollmentKeyUnavailable as
-            // above, since either way there is no usable key to check the MAC against.
-            cmac = std::make_unique<remoted::auth::Cmac>(*key);
-        }
-        catch (const std::exception&)
-        {
-            return remoted::auth::AuthError::EnrollmentKeyUnavailable;
-        }
-
-        cmac->update("WAZUH-ENROLL\n");
-        cmac->update("1\n");
-        cmac->update(toUpper(method));
-        cmac->update("\n");
-        cmac->update(requestTarget);
-        cmac->update("\n");
-        cmac->update(parsed->timestamp);
-        cmac->update("\n");
-        cmac->update(body);
-
-        const auto mac = cmac->finalize();
-        if (!remoted::auth::constantTimeEquals(mac.data(), expectedMac.data(), mac.size()))
-        {
-            return remoted::auth::AuthError::InvalidMac;
-        }
-
         return std::nullopt;
     }
 

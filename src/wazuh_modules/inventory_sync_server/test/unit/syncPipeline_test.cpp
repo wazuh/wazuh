@@ -400,7 +400,7 @@ namespace
     }
 } // namespace
 
-TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
+TEST(SyncPipelineTest, ADeleteAgentItemWipesTheByQueryScopeAndFlushes)
 {
     PipelineUnderTest fixture;
     auto responder = std::make_shared<FutureResponder>();
@@ -411,23 +411,25 @@ TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
-    // One delete-by-query per index of the scope, and nothing else: the deletion does NOT refresh
-    // first (that needs a privilege the manager's indexer role lacks), which is why a document
-    // written inside the index refresh interval can survive it.
+    /*
+     * AGENT_DELETION_SCOPE_BY_QUERY, and NOTHING else. Exactly one op is the assertion that matters
+     * here: `wazuh-agent-config` and `wazuh-agent-stats` are deliberately NOT deleted from this
+     * connector -- they are written by the async one, and a delete-by-query issued here could
+     * neither drain its queue nor see an unrefreshed document, which is how a report in flight used
+     * to outlive the agent. The endpoint queues their deletes by id on that connector instead
+     * (deleteAgentEndpoint_test.cpp pins it).
+     *
+     * The deletion also does NOT refresh first (that needs a privilege the manager's indexer role
+     * lacks), which is why a STATE document written inside the index refresh interval can survive.
+     */
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(3U, ops.size());
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
+    EXPECT_EQ("005", std::get<1>(ops[0]));
+    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0]));
+    EXPECT_EQ(CLUSTER, std::get<3>(ops[0])) << "scoped to this cluster";
 
-    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
-    for (std::size_t i = 0; i < scope.size(); ++i)
-    {
-        const auto& deletion = ops[i];
-        EXPECT_EQ("deleteByQuery", std::get<0>(deletion));
-        EXPECT_EQ("005", std::get<1>(deletion));
-        EXPECT_EQ(scope[i], std::get<2>(deletion)) << "the config and stats indices live outside wazuh-states-*";
-        EXPECT_EQ(CLUSTER, std::get<3>(deletion)) << "scoped to this cluster";
-    }
-
-    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means every delete was FLUSHED, in one go";
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means the delete was FLUSHED";
 }
 
 TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
@@ -444,14 +446,13 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
     EXPECT_EQ(200, delta->get().status);
     EXPECT_EQ(200, deletion->get().status);
 
-    // Exact, not just non-empty: the assertions below index ops[1], so a regression that collapsed
-    // the deletion to a single op would read out of bounds instead of failing. One bulkIndex for the
-    // delta, then one delete-by-query per index of the deletion scope.
+    // Exact, not just non-empty: the assertions below index ops[1], so a regression that dropped
+    // the deletion entirely would read out of bounds instead of failing. One bulkIndex for the
+    // delta, then the by-query pass over AGENT_DELETION_SCOPE_BY_QUERY.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(4U, ops.size());
+    ASSERT_EQ(2U, ops.size());
     EXPECT_EQ("bulkIndex", std::get<0>(ops[0])) << "the delta's write reaches the indexer first";
     EXPECT_EQ("deleteByQuery", std::get<0>(ops[1])) << "and the deletion follows it, never the other way round";
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops.back()));
 }
 
 TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)

@@ -431,6 +431,14 @@ class AgentInfoImpl
             return m_stopped || (m_isShuttingDown && m_isShuttingDown());
         }
 
+        /// @brief Logs a "DBSync not available" style message, demoted to DEBUG during shutdown.
+        /// Centralizes the isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING demotion used at
+        /// every !m_dBSync guard so the rule only needs to change in one place.
+        void logDbSyncUnavailable(const std::string& message)
+        {
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, message);
+        }
+
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.
         int m_flushPollDelayMs = 10000;

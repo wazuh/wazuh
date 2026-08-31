@@ -111,6 +111,8 @@ extern "C" {
 
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
+            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
             return cResult;
         }
         catch (const std::exception& ex)
@@ -209,6 +211,8 @@ extern "C" {
             cResult.consecutive_failures = cppResult.consecutiveFailures;
 
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
+
+            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
 
             return cResult;
         }

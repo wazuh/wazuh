@@ -1,18 +1,30 @@
 # Reproduces issue #36134: removing a realtime FIM rule from the agent
 # configuration must not produce
 #   ERROR: Failed to get configuration for path: <orphaned-file>
-# on the next restart, and the orphaned row must be cleaned up by the
-# regular handle_orphaned_delete path.
+# on the next restart. Also covers #38522: a file first seen via the
+# realtime inotify path must get sync=1 queued right away, not left at
+# sync=0, and its stateful DELETE must actually persist once its directory
+# is dropped from the configuration and the scheduled scan cleans it up as
+# an orphan.
+#
+# NOTE on #36134 coverage: with #38522 fixed, a realtime insert under the
+# default (unlimited) file_limit gets sync=1 immediately, so it's never a
+# docs_to_promote candidate and never reaches #36134's orphan-drop-on-
+# promote branch (drop_orphaned_promoted_documents) — that branch only
+# fires for rows dbsync still has as sync=0. Reproducing that specific case
+# needs a file_limit increase between the two agent starts (the promote
+# loop's own outer gate is "synced_docs < limit", which a constant limit
+# with a still-throttled row never satisfies) — deliberately left out of
+# this case to keep the scenario simple; see the module docstring.
 - name: Orphan promote - Real-time directory dropped from config
-  description: A realtime directory is monitored, a file is created under it
-               via the inotify path (so the row lands in fim.db with sync=0),
-               the agent is stopped, the realtime <directories> entry is
-               removed from ossec.conf, and the agent is restarted.
-               fim_initialize must drop the orphan from docs_to_promote
-               instead of feeding it to build_stateful_event_file, and the
-               scheduled scan that follows must emit the orphan delete event
-               for both the realtime-added file and the seed file that
-               lived under the same directory.
+  description: A realtime directory is monitored. A file (test_file) is
+               created under it via the inotify path and must get sync=1
+               queued right away (#38522). The agent is stopped, the
+               realtime <directories> entry is removed from ossec.conf, and
+               the agent is restarted with no ERROR logged for the orphaned
+               paths (#36134). test_file's orphan delete must be generated
+               and actually persisted by the scheduled scan that follows
+               the restart (#38522).
   configuration_parameters:
     TEST_DIR_REALTIME: !!python/object/apply:os.path.join [/test_dir_36134_realtime]
     TEST_DIR_KEEP: !!python/object/apply:os.path.join [/test_keep_36134]

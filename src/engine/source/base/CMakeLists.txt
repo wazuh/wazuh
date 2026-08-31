@@ -68,6 +68,8 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/expression_test.cpp
     ${UNIT_SRC_DIR}/process_test.cpp
     ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
+    ${UNIT_SRC_DIR}/utils/generator_test.cpp
+    ${UNIT_SRC_DIR}/utils/vectorHelpers_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE

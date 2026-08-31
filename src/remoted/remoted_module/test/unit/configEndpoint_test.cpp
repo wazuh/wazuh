@@ -44,7 +44,7 @@ namespace config_endpoint = remoted::endpoints::config;
 
 namespace
 {
-    constexpr auto kSocketPath {"queue/sockets/inventory-sync.sock"};
+    constexpr auto kSocketPath {"queue/sockets/inventory-sync-http.sock"};
 
     struct AuthReqFixture
     {

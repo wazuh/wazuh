@@ -58,7 +58,7 @@ Generate events during the initial inventory scan.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When `no`, suppresses events during first scan and only reports changes after baseline establishment
+- **Note:** When `no`, suppresses events during first scan and only reports changes after baseline establishment. Applies only to the agent's very first scan ever, since installation — it does not reoccur on later restarts.
 
 ### Inventory Categories
 

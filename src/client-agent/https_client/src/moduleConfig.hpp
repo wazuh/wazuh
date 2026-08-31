@@ -31,6 +31,18 @@ struct ModuleConfig
 {
         std::string serverHost;
         uint16_t serverPort {443};
+        /// IPv6 zone id resolved from <endpoint> by the C-side parser (#38624).
+        /// baseUrl() appends it to the bracketed host as "%25<id>" so libcurl
+        /// scopes the connection to that interface. 0 -> no zone.
+        uint32_t serverScopeId {0};
+        /// Optional reverse-proxy path segment, <endpoint> (#38492), already
+        /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
+        /// today's unprefixed behavior. baseUrl() does NOT insert it: callers
+        /// fold it into HttpRequestSpec::target (via prefixedTarget(),
+        /// retrySender.cpp/enrollClient.cpp) and baseUrl() only ever sees that
+        /// already-prefixed target appended to it afterward. Routing only: the
+        /// bearer token does not bind the target.
+        std::string serverEndpoint;
         std::string agentId;
         std::string agentKeyHex;
         hc_verify_mode_t verifyMode {HC_VERIFY_FULL};

@@ -69,6 +69,11 @@ namespace invsync::indexer
             m_inner.indexDataStream(index, data);
         }
 
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            m_inner.deleteById(id, index);
+        }
+
     private:
         IndexerConnectorAsync m_inner;
     };

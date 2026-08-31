@@ -49,9 +49,15 @@ class StatelessStream final
         ///        hostname, architecture, os.*, cluster name, groups -- see
         ///        bridge_on_collect_stateless_host()). Optional: unset (the default) means the H
         ///        line carries only wazuh.agent.id, as before this field existed.
-        StatelessStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                        IClock& clock, IRandom& random, ICallbackSink& sink, AuthGate& authGate,
-                        CompressionGate& compressionGate, std::function<std::string()> collectHost = {});
+        StatelessStream(const ModuleConfig& config,
+                        IHttpPerformer& performer,
+                        const ISigner& signer,
+                        IClock& clock,
+                        IRandom& random,
+                        ICallbackSink& sink,
+                        AuthGate& authGate,
+                        CompressionGate& compressionGate,
+                        std::function<std::string()> collectHost = {});
 
         /// Intake entry point (from agentd's EventForward seam). Emits a buffer
         /// level change if the append crosses a ladder threshold and tells the
@@ -73,15 +79,19 @@ class StatelessStream final
     private:
         bool flushDue(bool force) const;
         bool flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
-        void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot);
+        /// identityChanged: the signer's agent id moved (hc_set_agent_identity) between building
+        /// the batch and the last attempt -- a 400 then means the H line, not the events.
+        void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot, bool identityChanged);
         void publishLevelLocked(bool eventDropped);
         uint64_t eventBytesBudgetLocked() const;
-        /// Recomputes m_headerLine from the freshest available host metadata. Caller must hold
+        /// Recomputes m_headerLine from the signer's live agent id (a re-enroll may have swapped
+        /// it) and the freshest available host metadata. Caller must hold
         /// m_stateMutex: the line is read from other threads (submit()'s budget check) and this
         /// keeps that read race-free without making every read take the collectHost round trip.
         void refreshHeaderLineLocked();
 
         const ModuleConfig& m_config;
+        const ISigner& m_signer; ///< Live agent id for the H line (ISigner::agentId()).
         IClock& m_clock;
         AuthGate& m_authGate;
         EventAccumulator m_accumulator;
@@ -98,6 +108,9 @@ class StatelessStream final
         /// value is used for the budget check in between flushes; harmless, since the accumulator
         /// self-corrects at the very next flush either way.
         std::string m_headerLine;
+        /// The agent id m_headerLine was built for (same lock); compared with the signer's live id
+        /// after a failed flush to tell an identity swap apart from a genuinely bad batch.
+        std::string m_headerAgentId;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::chrono::steady_clock::time_point m_lastFlush;
         mutable std::mutex m_stateMutex;

@@ -65,6 +65,11 @@ class IFsProbe
     public:
         virtual ~IFsProbe() = default;
         virtual bool isReadableFile(const std::string& path) const = 0;
+
+        /// verify_mode=system's trust anchor: the first well-known OS CA bundle
+        /// path that exists on this host (Linux only -- Windows/macOS ask their
+        /// native store instead and never call this). Empty when none is found.
+        virtual std::string findSystemCaBundle() const = 0;
 };
 
 class SystemClock final : public IClock
@@ -138,6 +143,7 @@ class FsProbe final : public IFsProbe
 {
     public:
         bool isReadableFile(const std::string& path) const override;
+        std::string findSystemCaBundle() const override;
 };
 
 #endif // _HC_SYS_SEAMS_HPP

@@ -44,6 +44,10 @@ static void* run_remote_server(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
+/* Thread that relays agent deletions to the inventory sync server */
+static void* run_purge_relay(void *arg);
+
+
 /* Thread that watches for authd.pass to appear on a worker node */
 static void* run_authpass_watcher(void *arg);
 
@@ -56,6 +60,11 @@ static void cleanup();
 /* Shared variables */
 static char *authpass = NULL;
 static time_t authpass_mtime = 0;  /* shared between process_message and run_authpass_watcher */
+/* Log-once latch for the "password not available yet" rejection below: without it, every
+ * enrollment attempt during the (expected, transient) worker sync window logs its own line.
+ * Guarded by mutex_authpass like authpass/authpass_mtime; reset wherever authpass is
+ * (re)loaded successfully, so a later unavailability (e.g. the file is removed) is reported again. */
+static bool authpass_unavailable_reported = false;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 static int g_epfd = -1;
@@ -145,6 +154,7 @@ static void* run_authpass_watcher(void *arg) {
             int first_load = (authpass == NULL);
             os_free(authpass);
             authpass = pass;
+            authpass_unavailable_reported = false;
             if (first_load) {
                 minfo("Enrollment password synchronized from the master node and now available at '%s'.", AUTHD_PASS);
             } else {
@@ -174,6 +184,7 @@ int main(int argc, char **argv)
     pthread_t thread_local_server = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
+    pthread_t thread_purge_relay = 0;
     pthread_t thread_authpass_watcher = 0;
     bool authpass_watcher_started = false;
 
@@ -690,7 +701,19 @@ int main(int argc, char **argv)
     }
 
     if (!config.worker_node) {
+        /* Before any thread exists: give the queue its clock and take back whatever the previous
+         * run still owed the indexer. */
+        purge_queue_init();
+        purge_file_load();
+
         if (status = pthread_create(&thread_writer, NULL, (void *)&run_writer, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+
+        /* Paired with the writer: it is the only producer of the deletion queue, so a worker node
+         * (which has no writer) has nothing to relay either. */
+        if (status = pthread_create(&thread_purge_relay, NULL, (void *)&run_purge_relay, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
             return EXIT_FAILURE;
         }
@@ -715,6 +738,11 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+
+        /* The relay is joined AFTER the writer, its only producer, so nothing it pushed on its way
+         * out is lost before the relay gets to report what it could not send. */
+        purge_queue_stop();
+        pthread_join(thread_purge_relay, NULL);
     }
 
     /* Join the watcher so it cannot touch authpass/mutex_authpass during shutdown. */
@@ -785,6 +813,7 @@ static void process_message(struct client *client) {
             if (fresh) {
                 os_free(authpass);
                 authpass = fresh;
+                authpass_unavailable_reported = false;
                 minfo("Enrollment password reloaded from '%s'.", AUTHD_PASS);
             }
             /* Record the mtime regardless of success: avoids re-logging a corrupt file
@@ -796,10 +825,18 @@ static void process_message(struct client *client) {
     /* Fail closed: required password missing (worker not synced yet) -> reject, never
      * validate against NULL (which skips the check). */
     if (config.flags.use_password && authpass == NULL) {
+        const bool should_log = !authpass_unavailable_reported;
+        authpass_unavailable_reported = true;
+
         if (serialize_authpass) {
             w_mutex_unlock(&mutex_authpass);
         }
-        merror("Enrollment password required but not available yet. Rejecting request from %s.", client->ip);
+        if (should_log) {
+            mwarn("Enrollment password required but not available yet. Rejecting request from %s. "
+                  "This is expected while a worker is syncing the password from the master; this "
+                  "warning will not repeat until the password becomes available.",
+                  client->ip);
+        }
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "ERROR: Enrollment password not available. Unable to add agent");
         client->write_len = strlen(client->write_buffer);
         return;
@@ -1171,19 +1208,24 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
  * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
  * flushed to the indexer.
  *
- * Failure is never silent. Every attempt that does not end in 200 is logged, and giving up is an
- * ERROR naming the agent, because at that point documents of a deleted agent are left in the
- * indexer with nothing to ever overwrite them -- the operator has to repeat the deletion, which is
- * safe (the server treats a missing index as success). The transport result and the HTTP status
- * are reported separately: a curl-level failure carries no status, and printing "status 0" for it
- * is what made a modulesd that was not listening look like a server that refused.
+ * Failure is never silent, but it is also never final: the caller (run_purge_relay) requeues
+ * anything that does not return 0 and retries it again on the next pass, so no deletion is ever
+ * lost or needs to be repeated by hand. That is why a server/network give-up after
+ * INV_SYNC_DELETE_ATTEMPTS is only logged at debug level -- the retry queue is the actual signal,
+ * not this function's return value. The one exception is a failure to even build the request
+ * (add/reset a header): that is a manager-side bug, not the server or the network, so it stays an
+ * ERROR naming the agent even though it too gets requeued. The transport result and the HTTP
+ * status are reported separately: a curl-level failure carries no status, and printing "status 0"
+ * for it is what made a modulesd that was not listening look like a server that refused.
  *
- * Called only from the writer thread; the client handle is per-thread by uhttp's contract, and
- * the lazy static is what keeps the connection alive (keepalive) across a batch of deletions.
+ * Called only from the relay thread (never the writer: that is the entire point of the queue in
+ * front of it). The client handle is per-thread by uhttp's contract, and the lazy static is what
+ * keeps the connection alive (keepalive) across a batch of deletions.
  *
  * @param agent_id The ID of the agent to delete
+ * @return 0 when the server accepted the deletion, -1 otherwise (the caller keeps it queued).
  */
-static void send_agent_delete_to_inventory_sync(const char *agent_id) {
+static int send_agent_delete_to_inventory_sync(const char *agent_id) {
     static uhttp_client_t *client = NULL;
 
     if (!client) {
@@ -1196,8 +1238,8 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         };
         client = uhttp_client_new(&opts);
         if (!client) {
-            mwarn("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
-            return;
+            mwarn("Could not create the HTTP client for agent deletions; the deletion of agent '%s' stays queued.", agent_id);
+            return -1;
         }
     }
 
@@ -1207,12 +1249,12 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
     char header[64];
     snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
     if (uhttp_client_reset_headers(client) != 0) {
-        mwarn("Could not prepare the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
-        return;
+        mwarn("Could not prepare the deletion request for agent '%s'; the deletion stays queued.", agent_id);
+        return -1;
     }
     if (uhttp_client_add_header(client, header) != 0) {
-        merror("Could not build the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
-        return;
+        merror("Could not build the deletion request for agent '%s'; the deletion stays queued.", agent_id);
+        return -1;
     }
 
     // Retries with a widening pause (0 s, 1 s, 3 s). A 503 is the server telling us to come back:
@@ -1229,20 +1271,18 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         // the daemon can exit. Giving up on shutdown is safe -- the deletion is idempotent and the
         // warning below tells the operator to repeat it.
         if (!running) {
-            mdebug1("Shutting down; abandoning the deletion of agent '%s' after %d attempt(s). "
-                    "Its documents remain in the indexer; repeat the deletion after the restart.",
+            mdebug1("Shutting down; the deletion of agent '%s' stays queued after %d attempt(s) and "
+                    "will be retried on the next start.",
                     agent_id, attempt);
-            return;
+            return -1;
         }
 
         if (backoff_seconds[attempt] > 0) {
-            // Announced rather than silent: this is the WRITER thread, and it is the only one that
-            // persists client.keys. While it waits here nothing else it owns moves -- no key write,
-            // no other queued agent's deletion, no shutdown -- so a fleet-wide removal against an
-            // unhealthy indexer makes authd look stalled with nothing in the log to explain it.
-            minfo("Retrying the deletion of agent '%s' in %u s (attempt %d/%d); the writer thread stays "
-                  "blocked meanwhile, delaying client.keys writes and any other pending deletion.",
-                  agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
+            // Debug, not info: this runs on the relay thread now, where waiting costs nothing --
+            // no key write and no other agent's deletion is behind it. It used to run on the writer
+            // thread, which is what turned a fleet-wide removal into an enrollment outage.
+            mdebug1("Retrying the deletion of agent '%s' in %u s (attempt %d/%d).",
+                    agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
         }
 
         for (unsigned int slept = 0; slept < backoff_seconds[attempt] && running; slept++) {
@@ -1253,8 +1293,10 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         const int posted = uhttp_post(client, NULL, 0, &result);
 
         if (posted == 0 && result.http_status == 200) {
-            minfo("Deleted the documents of agent '%s' from the indexer.", agent_id);
-            return;
+            // 200 means QUEUED on the server side now, not purged: it records the deletion and
+            // answers at admission, so this is where authd's ownership of it ends.
+            minfo("The deletion of agent '%s' was accepted by the inventory sync server.", agent_id);
+            return 0;
         }
 
         const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
@@ -1272,32 +1314,72 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
                     attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
 
             if (last_attempt) {
-                mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) "
-                      "(HTTP status %ld). Its documents remain in the indexer; repeat the deletion once the indexer "
-                      "is healthy.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
+                mdebug1("The inventory sync server did not accept the deletion of agent '%s' after %d "
+                        "attempt(s) (HTTP status %ld).",
+                        agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
             }
         } else if (result.curl_code != 0) {
             mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
                     attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
 
             if (last_attempt) {
-                mwarn("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
-                      "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
+                mdebug1("Could not reach the inventory sync server to delete agent '%s' after %d "
+                        "attempt(s) (curl code %d).",
+                        agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
             }
         } else {
             mdebug1("Attempt %d/%d to delete the documents of agent '%s' was not sent (client-side error).",
                     attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id);
 
             if (last_attempt) {
-                mwarn("Could not build the deletion request for agent '%s' after %d attempt(s): it was never sent, "
-                      "so this is a manager-side fault, not an unreachable server. Its documents remain in the "
-                      "indexer; report this and repeat the deletion once fixed.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS);
+                merror("Could not build the deletion request for agent '%s' after %d attempt(s): it was "
+                       "never sent, so this is a manager-side fault, not an unreachable server. Report it.",
+                       agent_id, INV_SYNC_DELETE_ATTEMPTS);
             }
         }
     }
+
+    return -1;
+}
+
+/**
+ * @brief Thread that relays queued agent deletions to the inventory sync server.
+ *
+ * Exists so the writer thread never blocks on the network. Everything expensive about a deletion --
+ * the request, its timeout, its retries and their backoff sleeps -- happens here, where waiting
+ * costs nothing: no key write, no other agent's deletion and no shutdown is behind it.
+ *
+ * A deletion is only dropped from the queue once the server has accepted it; anything else leaves it
+ * queued and persisted, so nothing has to be repeated by hand.
+ *
+ * On shutdown it stops sending rather than draining, because draining would make the daemon wait
+ * out the full retry budget of every queued deletion before it could exit. What is left stays in the
+ * file and is reported by purge_queue_discard().
+ */
+void* run_purge_relay(__attribute__((unused)) void *arg) {
+    authd_sigblock();
+
+    mdebug1("Deletion relay thread ready.");
+
+    while (running) {
+        char *agent_id = purge_queue_peek_due();
+
+        if (!agent_id) {
+            continue; // shutting down, or a spurious wake-up
+        }
+
+        if (send_agent_delete_to_inventory_sync(agent_id) == 0) {
+            purge_queue_drop_head();
+        } else {
+            purge_queue_defer_head(agent_id);
+        }
+
+        os_free(agent_id);
+    }
+
+    purge_queue_discard();
+    mdebug1("Deletion relay thread finished");
+    return NULL;
 }
 
 /* Thread for writing keystore onto disk */
@@ -1360,6 +1442,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
         gettime(&t1);
         mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
+        /* Persist the high-water mark of handed-out ids from the same snapshot that was just
+         * written, so the file can never claim an id client.keys does not account for. */
+        purge_last_id_update(copy_keys->id_counter);
+
         OS_FreeKeys(copy_keys);
         os_free(copy_keys);
 
@@ -1420,8 +1506,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            // Notify inventory-sync to delete agent data from indexer
-            send_agent_delete_to_inventory_sync(cur->id);
+            // Hand the indexer purge to the relay thread and move on. Doing it here is what used
+            // to stall this loop for up to 94 s per agent, and with it every client.keys write --
+            // so a fleet-wide removal locked out enrollment until the whole batch drained.
+            purge_queue_push(cur->id);
 
             os_free(cur->id);
             os_free(cur->name);
