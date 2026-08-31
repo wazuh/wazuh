@@ -72,6 +72,20 @@ namespace
     };
 } // namespace
 
+/**
+ * The facade checks this budget against remoted.http_request_timeout at startup, so it has to cover
+ * every deadline the request can actually pay. getOffset() runs synchronously before the scan POST
+ * and, on a stale cache, is a round trip with its own two deadlines -- leaving them out under-stated
+ * the budget by two seconds.
+ */
+TEST(ScanVdHandlerTest, TheStartupBudgetCoversTheOffsetQueryToo)
+{
+    EXPECT_GT(ScanVdHandlerImpl::VD_SCAN_BUDGET_MS,
+              (ScanVdHandlerImpl::VD_SCAN_READ_TIMEOUT_SECONDS + ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS) *
+                  1000)
+        << "the offset query's deadlines are part of the request path, not free";
+}
+
 TEST(ScanVdHandlerTest, VersionMismatchRejectsWithoutEverTriggeringAScan)
 {
     Rig rig {"mismatch"};

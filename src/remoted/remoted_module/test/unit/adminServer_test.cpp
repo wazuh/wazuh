@@ -246,6 +246,8 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
     EXPECT_NE(response->body.find("remoted.control.startup"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("remoted.scanvd.requests.total"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("remoted.admin.server.sessions.live"), std::string::npos) << response->body;
+    // The shed counters ride along with the levels.
+    EXPECT_NE(response->body.find("remoted.admin.server.rejected.budget"), std::string::npos) << response->body;
 
     // One representative name per new family (their full member<->name pairings are pinned by
     // metrics_test.cpp and the per-component tests; this asserts they all reach ONE dump).

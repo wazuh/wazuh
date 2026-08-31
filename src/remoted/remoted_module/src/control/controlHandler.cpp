@@ -73,6 +73,17 @@ namespace remoted::control
             static remoted::common::LogThrottle instance;
             return instance;
         }
+
+        // One window per condition, so a total is attributable. A notify that cannot resolve groups
+        // and has nothing cached is a third condition, distinct from the startup failure above and
+        // from a notify that still serves its cached membership: it is the only one of the three
+        // that answers the agent 500, and sharing a window with startup made the two totals
+        // indistinguishable.
+        remoted::common::LogThrottle& notifyUncachedWdbErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
         // Wall-clock seconds for timestamps that must be comparable across nodes.
         uint64_t getWallSec()
         {
@@ -328,7 +339,7 @@ namespace remoted::control
                     // authoritative, not a stale one. Fail like /startup does.
                     if (err != SocketError::None && !entry)
                     {
-                        if (const auto throttle = wdbErrorThrottle().record())
+                        if (const auto throttle = notifyUncachedWdbErrorThrottle().record())
                         {
                             LOGFN_ERROR(logFn(),
                                         "Failed to get agent groups from wdb for notify: %llu failure(s) in the "

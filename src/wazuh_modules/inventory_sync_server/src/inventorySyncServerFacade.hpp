@@ -590,6 +590,26 @@ namespace invsync
                 },
                 "Sessions classified on liveness-class routes",
                 "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_BUDGET,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedBudgetExhausted); },
+                "Requests answered 503 because the in-flight payload budget was exhausted",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_SESSION_CAP,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedSessionCap); },
+                "Requests answered 503 because their class session cap was reached",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_SHUTDOWN,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedShutdown); },
+                "Requests answered 503 because the server was already stopping",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_NO_RESPONSE,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedNoResponse); },
+                "Requests answered 503 because their handler produced no response",
+                "requests");
         }
 
         /**

@@ -351,9 +351,10 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
 diagnostic**: its thread count, connection cap and socket path are fixed by design. Both admin
-routes are liveness-class, so the budget and the data/control session lanes are structurally
-zero — only `sessions.live` and `sessions.liveness` ever move; the full set is published so
-every `uds_http_server` consumer reports the same vocabulary.
+routes are liveness-class, so the budget lanes, the data/control session lanes and
+`rejected.budget` with them are structurally zero. What moves is `sessions.live`,
+`sessions.liveness` and the rest of the `rejected.*` family; the full set is published so every
+`uds_http_server` consumer reports the same vocabulary.
 
 | Metric | Type | Unit | Meaning |
 |---|---|---|---|
@@ -364,6 +365,20 @@ every `uds_http_server` consumer reports the same vocabulary.
 | `remoted.admin.server.sessions.data` | gauge (pull) | connections | Sessions on data-class routes |
 | `remoted.admin.server.sessions.control` | gauge (pull) | connections | Sessions on control-class routes |
 | `remoted.admin.server.sessions.liveness` | gauge (pull) | connections | Sessions on liveness-class routes |
+| `remoted.admin.server.rejected.budget` | counter (pull) | requests | Answered `503`: the in-flight byte budget could not admit the request |
+| `remoted.admin.server.rejected.session_cap` | counter (pull) | requests | Answered `503`: the request's class session cap was reached |
+| `remoted.admin.server.rejected.shutdown` | counter (pull) | requests | Answered `503`: the server was already stopping |
+| `remoted.admin.server.rejected.no_response` | counter (pull) | requests | Answered `503`: the handler returned without answering. A handler bug |
+
+The `rejected.*` family is cumulative since start and is the only attributable record of a shed on
+this transport: the answer comes from the transport rather than from a handler, so it reaches no
+`responses.*` cell, and the throttled WARN in the log reports only the occurrences of its own
+window. A throttled line is a floor, not a census: it reports only what is pending when it is
+emitted, so a burst that starts and ends inside one window is reported as `1` and the rest is
+never printed. Where a cumulative counter exists it is the figure to trust; where it does not, as
+with the wazuh-db error throttles in the control plane, the line's own total is all there is and it
+under-reports. Three of the four are decided before any route runs; `rejected.no_response` is the
+exception, counted after a handler returned without answering.
 
 ## Accounting boundaries
 
