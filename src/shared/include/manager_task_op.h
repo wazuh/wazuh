@@ -12,7 +12,6 @@
 #define MANAGER_TASK_OP_H
 
 #include <stdbool.h>
-#include <stddef.h>
 
 /**
  * The producer side of the manager task queue: creating rows, counting them, and asking what an
@@ -136,30 +135,5 @@ int manager_task_count(const char *task_type, const char *status, int timeout, i
  * @return A manager_task_status.
  */
 int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout, int *sock);
-
-/**
- * @brief Every agent id with a row of this type in this status, paged.
- *
- * Paged on the task id rather than an offset: rows are being written while this walks them, and an
- * offset would skip or repeat. The response buffer is fixed and truncates silently, which is what
- * the paging exists to stay under.
- *
- * Returns a status rather than the array, because an EMPTY result and a FAILED one are both an
- * empty array and confusing them is a correctness bug: a startup seed that read "no ids owe a
- * deletion" from a failed query would go on to hand one of those ids to a new agent.
- *
- * @param[out] ids Caller-owned array, freed with manager_task_free_agent_ids().
- * @param[out] count Ids returned.
- * @return 0 when the whole walk completed, -1 otherwise (in which case @p ids is empty).
- */
-int manager_task_agent_ids(const char *task_type,
-                           const char *status,
-                           int timeout,
-                           int *sock,
-                           char ***ids,
-                           size_t *count);
-
-/// Free what manager_task_agent_ids() returned.
-void manager_task_free_agent_ids(char **ids, size_t count);
 
 #endif /* MANAGER_TASK_OP_H */

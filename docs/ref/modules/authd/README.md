@@ -174,7 +174,9 @@ is never replaced.
 deleted through the API: it goes through the same removal queue, the same writer thread and the same
 indexer purge. This matters for scale — a fleet that re-enrolls with names that already exist
 generates one deletion per agent, without anyone calling the API — and it is why the delay and the
-persistence above apply to enrollment just as much as to a deletion through the API.
+persistence above apply to enrollment just as much as to a deletion through the API. The admission
+bound applies as well: when too many deletions are already in progress the *enrollment* is refused,
+rather than the replacement going ahead with a purge that cannot be recorded.
 
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
@@ -185,8 +187,9 @@ answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
 
-`9018` also covers a startup in which authd could not read the outstanding deletions from wazuh-db:
-until it can, no explicit id can be judged free. Auto-assigned ids are unaffected.
+`9018` also covers a wazuh-db that cannot answer whether the id still owes a deletion: the guard fails
+closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
+Auto-assigned ids are unaffected — the id counter comes from authd's own journal.
 
 ## Local socket enrollment protocol
 

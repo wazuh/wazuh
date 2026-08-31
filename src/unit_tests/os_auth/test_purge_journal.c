@@ -57,9 +57,13 @@ extern long long purge_last_seq;
 
 /* --- The wazuh-db seam ---------------------------------------------------------------------------
  *
- * Wrapped rather than reached: these are the only two calls this file makes outside the process, and
- * what the tests are about is how their ANSWERS are interpreted -- an outstanding row, a terminal
- * one, an absent one, and a query that failed. */
+ * Wrapped rather than reached: this is the only call this file makes outside the process, and what
+ * the tests are about is how its ANSWERS are interpreted -- an outstanding row, a terminal one, an
+ * absent one, and a query that failed.
+ *
+ * Every expectation declared here must be consumed, which is what lets a case prove the OPPOSITE
+ * too: a case that queues no answer and still passes has shown that the question was settled from
+ * memory, without a round trip. */
 
 int __wrap_manager_task_agent_status(const char *agent_id, const char *task_type, int timeout, int *sock) {
     check_expected(agent_id);
@@ -69,21 +73,10 @@ int __wrap_manager_task_agent_status(const char *agent_id, const char *task_type
     return mock_type(int);
 }
 
-int __wrap_manager_task_agent_ids(const char *task_type,
-                                  const char *status,
-                                  int timeout,
-                                  int *sock,
-                                  char ***ids,
-                                  size_t *count) {
-    (void)task_type;
-    (void)status;
-    (void)timeout;
-    (void)sock;
-
-    *ids = NULL;
-    *count = 0;
-
-    return mock_type(int);
+/// Queue one answer from the row for @p agent_id.
+static void expect_row_status(const char *agent_id, int status) {
+    expect_string(__wrap_manager_task_agent_status, agent_id, agent_id);
+    will_return(__wrap_manager_task_agent_status, status);
 }
 
 /* Real files: these functions exist in order to persist, so stubbing the file away would leave
@@ -200,19 +193,13 @@ static void enroll_id(const char *agent_id) {
     keys.keysize++;
 }
 
-/// A successful seed of an empty backlog, so a later miss can mean "owes nothing".
-static void seed_empty(void) {
-    will_return(__wrap_manager_task_agent_ids, OS_SUCCESS); // pending
-    will_return(__wrap_manager_task_agent_ids, OS_SUCCESS); // claimed
-    assert_true(purge_pending_seed());
-}
-
 /* ------------------------------------------------------------------------------- phase 1 and 4 */
 
 static void test_journaling_records_the_id_and_persists_it(void **state) {
     (void)state;
 
-    seed_empty();
+    /* Nothing journaled yet, so the only authority is the row, and there is none. */
+    expect_row_status("004", MANAGER_TASK_STATUS_NONE);
     assert_false(purge_is_pending("004"));
 
     purge_journal_entry_t *entry = journal_one("004");
@@ -227,13 +214,12 @@ static void test_journaling_records_the_id_and_persists_it(void **state) {
     assert_non_null(strstr(read_journal_file(), "purge 004 "));
     assert_non_null(strstr(read_journal_file(), "last_seq 1"));
 
-    /* Phase 4 clears the line. The id stays in the PENDING SET, though -- the row exists now, and
-     * only its status can free the id. */
+    /* Phase 4 clears the line, and with it authd's own record of the deletion. The id is not free,
+     * though: the row exists now, and from here only its status can say so. */
     purge_journal_drop(entry, 1);
     assert_null(strstr(read_journal_file(), "purge 004"));
 
-    expect_string(__wrap_manager_task_agent_status, agent_id, "004");
-    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_OUTSTANDING);
+    expect_row_status("004", MANAGER_TASK_STATUS_OUTSTANDING);
     assert_true(purge_is_pending("004"));
 
     os_free(entry);
@@ -252,14 +238,17 @@ static void test_an_id_is_covered_from_the_moment_the_agent_leaves_the_keystore(
     os_ip entry_ip = { .ip = "any" };
     keyentry entry = { .id = "007", .name = "removed-agent", .ip = &entry_ip };
 
-    seed_empty();
     remove_tail = &queue_remove;
+    expect_row_status("007", MANAGER_TASK_STATUS_NONE);
     assert_false(purge_is_pending("007"));
 
+    /* From here on the answer comes from memory: no case below queues a wazuh-db answer, and an
+     * unexpected call would fail. */
     add_remove(&entry);
     assert_true(purge_is_pending("007"));
 
-    /* The writer takes over: still pending, now durably, and still without a query. */
+    /* The writer takes over: still pending, now durably, and still without a query. The handoff
+     * from the reservation to the journal happens under one lock, so no instant is uncovered. */
     purge_journal_entry_t *journaled = journal_one("007");
     assert_true(purge_is_pending("007"));
     assert_non_null(strstr(read_journal_file(), "purge 007 "));
@@ -337,8 +326,8 @@ static void test_the_backlog_bound_counts_reservations_too(void **state) {
 
     add_remove(&entry);
 
-    /* Reserved but not journaled: the id is in flight, and it counts. */
-    seed_empty();
+    /* Reserved but not journaled: the id is in flight, and it counts -- from memory, which is what
+     * queuing no wazuh-db answer here proves. */
     assert_true(purge_is_pending("021"));
 
     while ((node = queue_remove) != NULL) {
@@ -384,42 +373,48 @@ static void test_a_failed_measurement_keeps_the_previous_backlog_depth(void **st
 
 /* ------------------------------------------------------------------ the reusable-id guard */
 
-static void test_a_terminal_row_frees_the_id_and_shrinks_the_set(void **state) {
+static void test_a_terminal_row_frees_the_id(void **state) {
     (void)state;
 
-    /* The set cannot simply never shrink. The old queue WAS the live set, so an id became reusable
-     * the moment its purge succeeded; under this design authd never observes completion, so a set
-     * that only grew would refuse an explicit-id re-insert for the whole process lifetime. */
+    /* Once phase 4 has dropped the line, authd holds no record of the deletion at all, and the row
+     * is the only thing that can say whether the id is free. */
     purge_journal_entry_t *entry = journal_one("031");
     purge_journal_drop(entry, 1);
     os_free(entry);
 
-    seed_empty();
-
-    expect_string(__wrap_manager_task_agent_status, agent_id, "031");
-    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_TERMINAL);
-    expect_any(__wrap__mdebug1, formatted_msg); // no longer owes a deletion
+    expect_row_status("031", MANAGER_TASK_STATUS_TERMINAL);
     assert_false(purge_is_pending("031"));
+}
 
-    /* And it is out of the set, so the next answer costs nothing: this case queues no second
-     * wazuh-db answer, and an unconsumed one would fail at teardown. */
-    assert_false(purge_is_pending("031"));
+static void test_the_row_is_asked_again_every_time(void **state) {
+    (void)state;
+
+    /* No local mirror of the outstanding rows sits in front of this query, and that is a decision
+     * rather than an omission. A set authd adds to at phase 1 can only shrink when someone happens
+     * to look up that exact id, so it grows without bound on a manager that churns agents -- and
+     * every phase 1 would then scan it under mutex_purge. One round trip on the explicit-id
+     * insertion path is the cheaper side of that trade.
+     *
+     * Both answers below have to be consumed, which is what pins "asked again": with a cache the
+     * second call would answer from memory and leave the second expectation unconsumed. */
+    expect_row_status("034", MANAGER_TASK_STATUS_OUTSTANDING);
+    assert_true(purge_is_pending("034"));
+
+    expect_row_status("034", MANAGER_TASK_STATUS_TERMINAL);
+    assert_false(purge_is_pending("034"));
 }
 
 static void test_an_absent_row_also_frees_the_id(void **state) {
     (void)state;
 
-    /* Reachable rather than hypothetical: an id enters the set at phase 1, OS_WriteKeys then fails,
-     * phase 3 is correctly skipped, and reconciliation drops the line without creating a row. */
+    /* Reachable rather than hypothetical: a line is journaled at phase 1, OS_WriteKeys then fails,
+     * phase 3 is correctly skipped, and reconciliation drops the line without creating a row. The
+     * id is then owed nothing by anyone, and NONE has to be read as free rather than as a failure. */
     purge_journal_entry_t *entry = journal_one("032");
     purge_journal_drop(entry, 1);
     os_free(entry);
 
-    seed_empty();
-
-    expect_string(__wrap_manager_task_agent_status, agent_id, "032");
-    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
-    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_row_status("032", MANAGER_TASK_STATUS_NONE);
     assert_false(purge_is_pending("032"));
 }
 
@@ -432,38 +427,35 @@ static void test_a_failed_status_query_refuses_the_id(void **state) {
     purge_journal_drop(entry, 1);
     os_free(entry);
 
-    seed_empty();
-
-    expect_string(__wrap_manager_task_agent_status, agent_id, "033");
-    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_FAILED);
+    expect_row_status("033", MANAGER_TASK_STATUS_FAILED);
     expect_any(__wrap__mwarn, formatted_msg);
     assert_true(purge_is_pending("033"));
 
-    /* Still in the set: a failure must not be mistaken for a terminal answer. */
-    expect_string(__wrap_manager_task_agent_status, agent_id, "033");
-    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_FAILED);
+    /* And a failure is never cached as an answer either: the next attempt asks again. */
+    expect_row_status("033", MANAGER_TASK_STATUS_FAILED);
     expect_any(__wrap__mwarn, formatted_msg);
     assert_true(purge_is_pending("033"));
 }
 
-static void test_an_unseeded_set_refuses_every_explicit_id(void **state) {
+static void test_the_memory_only_answer_never_queries(void **state) {
     (void)state;
 
-    /* Until the seed succeeds a MISS means nothing, so the only safe answer is "pending". The
-     * retry is lazy and happens right here, because an explicit-id insertion is the only thing the
-     * seed gates -- a timer would be the sole thing keeping it alive on an idle manager. */
-    assert_false(purge_seed_complete());
+    /* The variant local_add() calls under mutex_keys, where a wazuh-db round trip would stall the
+     * writer thread and every enrollment behind it. It answers from authd's own records only, so it
+     * can say "in flight here" but never "the row says it is free" -- and this case queues no
+     * wazuh-db answer at all, which is the property that matters. */
+    purge_journal_entry_t *entry = journal_one("035");
 
-    will_return(__wrap_manager_task_agent_ids, OS_INVALID);
-    expect_any(__wrap__mwarn, formatted_msg);
-    assert_true(purge_is_pending("041"));
-    assert_false(purge_seed_complete());
+    assert_true(purge_is_pending_locally("035"));
+    assert_false(purge_is_pending_locally("036"));
 
-    /* The next attempt succeeds, and the same id is now judged free. */
-    will_return(__wrap_manager_task_agent_ids, OS_SUCCESS);
-    will_return(__wrap_manager_task_agent_ids, OS_SUCCESS);
-    assert_false(purge_is_pending("041"));
-    assert_true(purge_seed_complete());
+    purge_journal_drop(entry, 1);
+
+    /* Dropped: authd no longer holds it, so the memory-only answer is "not mine" whatever the row
+     * may still say. That is exactly why it is only ever a RE-CHECK, never the whole guard. */
+    assert_false(purge_is_pending_locally("035"));
+
+    os_free(entry);
 }
 
 /* ---------------------------------------------------------------------- startup reconciliation */
@@ -512,8 +504,8 @@ static void test_reconciliation_keeps_lines_whose_agent_is_gone(void **state) {
     assert_int_equal(7, owed[0].journal_seq);
     assert_non_null(strstr(read_journal_file(), "purge 052 "));
 
-    /* And it is pending without a query: reconciliation put it in the set itself. */
-    seed_empty();
+    /* And it is pending without a query: the line is still journaled, which is authd's own record
+     * and needs no confirmation. This case queues no wazuh-db answer. */
     assert_true(purge_is_pending("052"));
 
     os_free(owed);
@@ -548,7 +540,6 @@ static void test_loading_raises_the_id_counter_past_every_stored_id(void **state
      * and that purge deletes by agent id. */
     assert_int_equal(250, keys.id_counter);
 
-    seed_empty();
     assert_true(purge_is_pending("249"));
 }
 
@@ -591,13 +582,12 @@ static void test_loading_ignores_unknown_labels_and_malformed_entries(void **sta
     expect_any(__wrap__mwarn, formatted_msg);   // the malformed entry
     purge_file_load();
 
-    seed_empty();
     assert_true(purge_is_pending("007"));
 
-    /* And the malformed line left nothing behind: not journaled, and not in the pending set
-     * either, so the answer comes from memory. This case queues no wazuh-db answer, which is what
-     * proves the id was dropped at load rather than carried as an unresolved one. */
-    assert_false(purge_is_pending("notanid"));
+    /* And the malformed line left nothing behind. Asked of authd's own records rather than through
+     * the full guard, because that is the question this case has: whether the id was dropped at
+     * load or carried as an unresolved one. */
+    assert_false(purge_is_pending_locally("notanid"));
 }
 
 static void test_a_clock_that_went_backwards_restamps_every_entry(void **state) {
@@ -627,8 +617,7 @@ static void test_a_missing_file_is_not_an_error(void **state) {
     /* First start ever, or a manager that never deleted an agent: nothing to say about it. */
     purge_file_load();
 
-    seed_empty();
-    assert_false(purge_is_pending("001"));
+    assert_false(purge_is_pending_locally("001"));
 }
 
 int main(void) {
@@ -650,11 +639,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_a_failed_measurement_keeps_the_previous_backlog_depth,
                                         setup_journal, teardown_journal),
         // The reusable-id guard
-        cmocka_unit_test_setup_teardown(test_a_terminal_row_frees_the_id_and_shrinks_the_set,
-                                        setup_journal, teardown_journal),
+        cmocka_unit_test_setup_teardown(test_a_terminal_row_frees_the_id, setup_journal, teardown_journal),
+        cmocka_unit_test_setup_teardown(test_the_row_is_asked_again_every_time, setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_an_absent_row_also_frees_the_id, setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_a_failed_status_query_refuses_the_id, setup_journal, teardown_journal),
-        cmocka_unit_test_setup_teardown(test_an_unseeded_set_refuses_every_explicit_id,
+        cmocka_unit_test_setup_teardown(test_the_memory_only_answer_never_queries,
                                         setup_journal, teardown_journal),
         // Startup reconciliation
         cmocka_unit_test_setup_teardown(test_reconciliation_drops_lines_whose_agent_is_still_enrolled,

@@ -617,7 +617,37 @@ cJSON* local_add(const char *id,
     bool warn = false;
 
     mdebug2("add(%s)", name);
+
+    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
+     * owner is still being cleaned up. Both this check and the duplicate-ID one below refuse
+     * instead of reassigning it, because the pending purge matches by agent id and would delete the
+     * NEW agent's documents -- and nothing in a state document lets the purge tell the two owners
+     * apart.
+     *
+     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
+     * caller is told to come back, which for a migration script is a retry, not a data loss.
+     *
+     * BEFORE mutex_keys, and that placement is the point: once authd has handed a deletion off, the
+     * only authority on it is the manager-task row, so this can block for up to authd.wdb_timeout.
+     * mutex_keys is the lock the writer thread and every enrollment take, so holding it across that
+     * query would let a slow wazuh-db stall enrollment -- the exact wedge the deletion redesign
+     * exists to remove. Nothing here reads the keystore, so there is nothing to serialise. */
+    if (id && purge_is_pending(id)) {
+        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
+        return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
+    }
+
     w_mutex_lock(&mutex_keys);
+
+    /* The same question again, from memory only, now that the keystore is locked: a deletion of
+     * this very id could have been admitted between the check above and this lock, and add_remove()
+     * reserves the id under mutex_keys. The expensive half is not repeated -- a row that reached a
+     * terminal status a moment ago cannot have become outstanding again. */
+    if (id && purge_is_pending_locally(id)) {
+        mwarn("Agent ID '%s' was deleted while the insertion was being validated, rejecting it.", id);
+        ierror = EPENDINGPURGE;
+        goto fail;
+    }
 
     /* Check if groups are valid to be aggregated */
     if (groups) {
@@ -643,18 +673,6 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
-    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
-     * owner is still being cleaned up. Both branches below refuse instead of reassigning it,
-     * because the pending purge matches by agent id and would delete the NEW agent's documents --
-     * and nothing in a state document lets the purge tell the two owners apart.
-     *
-     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
-     * caller is told to come back, which for a migration script is a retry, not a data loss. */
-    if (id && purge_is_pending(id)) {
-        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
-        ierror = EPENDINGPURGE;
-        goto fail;
-    }
 
     // Check for duplicate ID
     //

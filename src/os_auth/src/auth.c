@@ -74,24 +74,6 @@ static int purge_last_id = 0;
 /// reset: a repeat would make two genuinely different deletions of one agent derive one task id.
 static long long purge_last_seq = 0;
 
-/// Ids with a manager-task row that has not reached a terminal status, as far as authd knows.
-///
-/// Seeded at startup from wazuh-db and added to at phase 1. It cannot simply never shrink: the old
-/// queue WAS the live set, so an id became reusable the moment its purge succeeded, and under this
-/// design authd never observes completion. A set that only grew would refuse an explicit-id
-/// re-insert for the whole process lifetime -- months.
-typedef struct purge_pending_id {
-    char *id;
-    struct purge_pending_id *next;
-} purge_pending_id_t;
-
-/// Guarded by mutex_purge.
-static purge_pending_id_t *purge_pending_ids = NULL;
-
-/// Whether the startup seed has completed. Until it has, an explicit-id insertion cannot be judged
-/// safe, so it is refused.
-static bool purge_seed_done = false;
-
 /// Manager-task rows outstanding, as last measured by the writer. Guarded by mutex_purge rather
 /// than made atomic: phase 0 already takes that lock for the journal and reservation counts, so one
 /// lock covers all three terms and the check is consistent instead of three independent reads.
@@ -170,43 +152,18 @@ static unsigned int purge_reserved_count_locked(void) {
     return count;
 }
 
-/// Add an id to the pending set, with mutex_purge held. Idempotent.
-static void purge_pending_add_locked(const char *agent_id) {
-    purge_pending_id_t *node;
-
-    for (node = purge_pending_ids; node; node = node->next) {
+/// Whether an id is in one of authd's OWN records of a deletion in flight -- journaled, or reserved
+/// and not yet journaled. mutex_purge must be held. Both lists are bounded by the deletions between
+/// phase 0 and phase 4, so this stays a short scan however long the process has been running.
+static bool purge_in_flight_locked(const char *agent_id) {
+    for (purge_node_t *node = purge_journal; node; node = node->next) {
         if (!strcmp(node->id, agent_id)) {
-            return;
+            return true;
         }
     }
 
-    os_calloc(1, sizeof(purge_pending_id_t), node);
-    os_strdup(agent_id, node->id);
-    node->next = purge_pending_ids;
-    purge_pending_ids = node;
-}
-
-/// Remove an id from the pending set, with mutex_purge held.
-static void purge_pending_drop_locked(const char *agent_id) {
-    purge_pending_id_t **prev;
-    purge_pending_id_t *node;
-
-    for (prev = &purge_pending_ids; (node = *prev) != NULL; prev = &node->next) {
-        if (!strcmp(node->id, agent_id)) {
-            *prev = node->next;
-            os_free(node->id);
-            os_free(node);
-            return;
-        }
-    }
-}
-
-/// Whether an id is in the pending set, with mutex_purge held.
-static bool purge_pending_has_locked(const char *agent_id) {
-    purge_pending_id_t *node;
-
-    for (node = purge_pending_ids; node; node = node->next) {
-        if (!strcmp(node->id, agent_id)) {
+    for (purge_reserved_t *reserved = purge_reserved; reserved; reserved = reserved->next) {
+        if (!strcmp(reserved->id, agent_id)) {
             return true;
         }
     }
@@ -504,6 +461,23 @@ w_err_t w_auth_replace_agent(keyentry *key,
 
     /* Replace the agent */
     if (replace_agent) {
+        /* PHASE 0, on this path too. A replacement IS a deletion -- add_remove() and OS_DeleteKey()
+         * are one line below -- and it is the higher-volume one: a mass re-enrollment produces one
+         * per agent, where the local socket produces one per API call. Without this the journal and
+         * the row backlog would grow past the bound that the delete path is refused against, and
+         * past the point where anything can still be refused: one line down the agent is out of the
+         * keystore and the enrollment has been answered.
+         *
+         * Refusing the ENROLLMENT is the whole point. The agent keeps its registration, the
+         * enrolling one is told to come back, and nothing has been deleted that cannot be
+         * recorded. */
+        if (purge_backlog_full()) {
+            snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced: too many deletions are in progress.",
+                     key->id);
+            os_strdup(message, *str_result);
+            return OS_INVALID;
+        }
+
         snprintf(message, OS_SIZE_128, "Removing old agent '%s' (id '%s').", key->name, key->id);
         os_strdup(message, *str_result);
         add_remove(key);
@@ -1018,9 +992,8 @@ purge_journal_entry_t* purge_journal_append(char **ids, size_t count) {
         entries[i].requested_at = node->requested_at;
         entries[i].journal_seq = node->journal_seq;
 
-        // The journal is the durable owner of this id now, and the pending set is what answers
-        // purge_is_pending() from memory until the row reaches a terminal status.
-        purge_pending_add_locked(node->id);
+        // The journal is the durable owner of this id from here on, and it is what answers
+        // purge_is_pending() from memory until phase 4 drops the line.
         purge_unreserve_id_locked(node->id);
     }
 
@@ -1095,8 +1068,8 @@ void purge_journal_drop(const purge_journal_entry_t *entries, size_t count) {
  * gate on OS_WriteKeys needs no separate record: an agent still in client.keys was never deleted,
  * whichever of the two happened.
  *
- * The kept entries also enter the pending set: their rows exist (or are about to), so an
- * explicit-id insert naming one of them must be refused until it reaches a terminal status.
+ * The kept lines stay journaled until phase 3 records them, so an explicit-id insert naming one of
+ * them is refused from memory in the meantime.
  */
 purge_journal_entry_t* purge_journal_reconcile(size_t *count) {
     purge_journal_entry_t *owed = NULL;
@@ -1128,7 +1101,6 @@ purge_journal_entry_t* purge_journal_reconcile(size_t *count) {
             continue;
         }
 
-        purge_pending_add_locked(node->id);
         kept++;
         prev = &node->next;
     }
@@ -1168,149 +1140,57 @@ purge_journal_entry_t* purge_journal_reconcile(size_t *count) {
     return owed;
 }
 
-/**
- * @brief Seed the pending-id set from the deletion tasks wazuh-db still holds as outstanding.
- *
- * Both non-terminal statuses are walked. BOTH walks must succeed before the set is declared
- * trustworthy: a partial seed is indistinguishable from a complete one afterwards, and its whole
- * job is to make a MISS mean "this id owes nothing".
- *
- * A seed of zero ids is a success, not a failure -- an empty backlog is the normal state, and
- * treating it as a failure would refuse every explicit-id insertion on a healthy manager.
- */
-bool purge_pending_seed(void) {
-    static const char *STATUSES[] = {MANAGER_TASK_STATUS_PENDING, MANAGER_TASK_STATUS_CLAIMED};
-    char **collected[2] = {NULL, NULL};
-    size_t counts[2] = {0, 0};
-    size_t total = 0;
-    size_t i;
-    int sock = -1;
-    bool ok = true;
-
-    for (i = 0; i < 2; i++) {
-        if (manager_task_agent_ids(MANAGER_TASK_TYPE_AGENT_DELETE, STATUSES[i], config.wdb_timeout, &sock,
-                                   &collected[i], &counts[i]) != OS_SUCCESS) {
-            ok = false;
-            break;
-        }
-    }
-
-    wdbc_close(&sock);
-
-    if (ok) {
-        w_mutex_lock(&mutex_purge);
-
-        for (i = 0; i < 2; i++) {
-            for (size_t j = 0; j < counts[i]; j++) {
-                purge_pending_add_locked(collected[i][j]);
-            }
-            total += counts[i];
-        }
-
-        purge_seed_done = true;
-
-        w_mutex_unlock(&mutex_purge);
-
-        if (total > 0) {
-            minfo("%zu agent id(s) still owe an indexer deletion; they will not be handed out again "
-                  "until it finishes.", total);
-        }
-    }
-
-    for (i = 0; i < 2; i++) {
-        manager_task_free_agent_ids(collected[i], counts[i]);
-    }
-
-    return ok;
-}
-
-bool purge_seed_complete(void) {
-    bool done;
-
-    w_mutex_lock(&mutex_purge);
-    done = purge_seed_done;
-    w_mutex_unlock(&mutex_purge);
-
-    return done;
-}
-
-/**
- * @brief Whether this id still owes a purge, answered from memory wherever possible.
- *
- * Handing such an id to a new agent would let the pending purge delete the NEW agent's documents:
- * the purge matches by agent id, and nothing in a state document distinguishes one owner from the
- * next (there is no timestamp, and two of the three indices in the scope carry no agent name).
- *
- * This sits on the explicit-id enrollment path, so it must not become an unconditional wazuh-db
- * query. Four rules:
- *
- *   - MISS -> not pending, answered from memory. The common case never opens a socket.
- *   - HIT  -> check that one row's status, once.
- *   - Terminal or ABSENT -> not pending, and drop the id from the set. Absent is reachable rather
- *     than hypothetical: an id enters the set at phase 1, OS_WriteKeys then fails, phase 3 is
- *     skipped, and reconciliation drops the line without ever creating a row. Shrinking on both is
- *     also what keeps the expensive path rare.
- *   - Query FAILED -> pending. Refusing reuse is an error an operator can work around; allowing it
- *     risks an outstanding purge deleting a new agent's documents.
- */
-bool purge_is_pending(const char *agent_id) {
-    bool in_memory = false;
-    int status;
+bool purge_is_pending_locally(const char *agent_id) {
+    bool in_flight;
 
     if (!agent_id) {
         return false;
     }
 
     w_mutex_lock(&mutex_purge);
+    in_flight = purge_in_flight_locked(agent_id);
+    w_mutex_unlock(&mutex_purge);
 
-    // The journal and the reservations are authd's own records and need no confirmation: the row
-    // for them either does not exist yet or was created moments ago.
-    for (purge_node_t *node = purge_journal; node; node = node->next) {
-        if (!strcmp(node->id, agent_id)) {
-            in_memory = true;
-            break;
-        }
-    }
+    return in_flight;
+}
 
-    if (!in_memory) {
-        for (purge_reserved_t *reserved = purge_reserved; reserved; reserved = reserved->next) {
-            if (!strcmp(reserved->id, agent_id)) {
-                in_memory = true;
-                break;
-            }
-        }
-    }
+/**
+ * @brief Whether this id still owes a purge.
+ *
+ * Handing such an id to a new agent would let the pending purge delete the NEW agent's documents:
+ * the purge matches by agent id, and nothing in a state document distinguishes one owner from the
+ * next (there is no timestamp, and two of the three indices in the scope carry no agent name).
+ *
+ * Three rules:
+ *
+ *   - IN FLIGHT here -> pending, from memory. The journal and the reservations are authd's own
+ *     records and need no confirmation: the row for them either does not exist yet or was created
+ *     moments ago.
+ *   - Otherwise -> ASK THE ROW, which is the only authority on a deletion authd has already handed
+ *     off. There is deliberately no local mirror of the outstanding rows in front of this query: a
+ *     set that authd adds to at phase 1 and can only shrink when someone happens to look up that
+ *     exact id grows without bound on a manager that churns agents, and every phase 1 then scans it
+ *     under mutex_purge. The query costs one wazuh-db round trip on a path that is only reached by
+ *     an insertion naming an explicit id.
+ *   - Query FAILED -> pending. Refusing reuse is an error an operator can work around; allowing it
+ *     risks an outstanding purge deleting a new agent's documents.
+ *
+ * It may block for up to authd.wdb_timeout, so it must NOT be called with mutex_keys held; see
+ * local_add(), which is why purge_is_pending_locally() exists.
+ */
+bool purge_is_pending(const char *agent_id) {
+    int status;
 
-    if (in_memory) {
-        w_mutex_unlock(&mutex_purge);
-        return true;
-    }
-
-    if (!purge_seed_done) {
-        w_mutex_unlock(&mutex_purge);
-
-        // The lazy retry. Until the seed succeeds a MISS below means nothing, so the only safe
-        // answer is "pending" -- and this is the moment a retry is worth making, because an
-        // explicit-id insertion is the only thing the seed gates.
-        if (!purge_pending_seed()) {
-            mwarn("The list of agent IDs still owing a deletion could not be read from the database, "
-                  "so agent ID '%s' cannot be judged free; rejecting the insertion.", agent_id);
-            return true;
-        }
-
-        w_mutex_lock(&mutex_purge);
-    }
-
-    if (!purge_pending_has_locked(agent_id)) {
-        w_mutex_unlock(&mutex_purge);
+    if (!agent_id) {
         return false;
     }
 
-    w_mutex_unlock(&mutex_purge);
+    if (purge_is_pending_locally(agent_id)) {
+        return true;
+    }
 
-    // Outside the lock: this opens a socket and waits on wazuh-db, and holding mutex_purge across
-    // it would stall the writer's own phases behind an enrollment request. A private socket rather
-    // than a shared one because this runs on whichever request thread is serving the insertion.
+    // A private socket rather than a shared one: this runs on whichever request thread is serving
+    // the insertion.
     status = manager_task_agent_status(agent_id, MANAGER_TASK_TYPE_AGENT_DELETE, config.wdb_timeout, NULL);
 
     if (status == MANAGER_TASK_STATUS_FAILED) {
@@ -1319,17 +1199,9 @@ bool purge_is_pending(const char *agent_id) {
         return true;
     }
 
-    if (status == MANAGER_TASK_STATUS_OUTSTANDING) {
-        return true;
-    }
-
-    w_mutex_lock(&mutex_purge);
-    purge_pending_drop_locked(agent_id);
-    w_mutex_unlock(&mutex_purge);
-
-    mdebug1("Agent ID '%s' no longer owes a deletion; it can be reused.", agent_id);
-
-    return false;
+    // NONE as well as TERMINAL is free. Absent is reachable rather than hypothetical: OS_WriteKeys
+    // fails, phase 3 is correctly skipped, and reconciliation drops the line without creating a row.
+    return status == MANAGER_TASK_STATUS_OUTSTANDING;
 }
 
 /**
@@ -1519,15 +1391,6 @@ void purge_journal_discard(void) {
         os_free(stale->id);
         os_free(stale);
     }
-
-    while (purge_pending_ids) {
-        purge_pending_id_t *stale = purge_pending_ids;
-        purge_pending_ids = stale->next;
-        os_free(stale->id);
-        os_free(stale);
-    }
-
-    purge_seed_done = false;
 
     w_mutex_unlock(&mutex_purge);
 

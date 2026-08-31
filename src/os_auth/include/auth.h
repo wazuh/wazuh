@@ -240,7 +240,9 @@ extern volatile int write_pending;
  *   0. ADMIT OR REFUSE, on the REQUEST thread, before OS_DeleteKey -- purge_backlog_full(). It has
  *      to be here: by phase 1 the agent is already out of the in-memory keystore and the caller has
  *      already been told the deletion succeeded, so there is nothing left to refuse and nobody to
- *      tell. This is the one phase that can say no.
+ *      tell. This is the one phase that can say no. BOTH paths that delete an agent take it -- the
+ *      local socket's remove, and a force replacement, which is a deletion in every other respect
+ *      and the higher-volume one.
  *   1. INTENT, before OS_WriteKeys -- purge_journal_append(). A local file write, no external
  *      dependency, so an outage anywhere else cannot block a client.keys write.
  *   2. OS_WriteKeys. The point of no return, and its RETURN VALUE IS CAPTURED.
@@ -274,8 +276,8 @@ void purge_file_load(void);
 bool purge_backlog_full(void);
 
 /// Phase 1. Append @p count ids to the journal, assigning each the next sequence, and persist it.
-/// Releases each id's removal-time reservation and records it in the pending set, so an id is
-/// covered continuously from admission to phase 4.
+/// Releases each id's removal-time reservation as the journal takes over as the durable record, so
+/// an id is covered continuously from admission onwards.
 ///
 /// @return A caller-owned array of @p count entries as journaled, or NULL when @p count is 0.
 purge_journal_entry_t* purge_journal_append(char **ids, size_t count);
@@ -291,24 +293,17 @@ void purge_journal_drop(const purge_journal_entry_t *entries, size_t count);
 /// @return A caller-owned array of them, or NULL when nothing is owed.
 purge_journal_entry_t* purge_journal_reconcile(size_t *count);
 
-/// Whether an id still owes a purge, so it must not be handed to a new agent.
+/// Whether an id still owes a purge, so it must not be handed to a new agent. Answers from memory
+/// when authd is still holding the deletion itself, and otherwise ASKS THE ROW, which is the only
+/// authority once the deletion has been handed off. Fails closed.
+///
+/// BLOCKS for up to authd.wdb_timeout, so it must not be called with mutex_keys held.
 bool purge_is_pending(const char *agent_id);
 
-/// Seed the pending-id set from the deletion tasks wazuh-db still holds as outstanding. Until this
-/// succeeds once, every explicit-id insertion is refused -- an incomplete seed would accept an id
-/// that still owes a purge, and the purge matches by agent id alone. Auto-assigned ids are
-/// unaffected: keys.id_counter comes from the journal and needs no database.
-///
-/// Idempotent, and RETRIED LAZILY by purge_is_pending() rather than on a timer: an explicit-id
-/// insertion is the only thing the seed gates, so the moment one arrives is exactly when a retry is
-/// worth making. A timer would also be the only thing keeping the retry alive on an idle manager,
-/// since every other authd thread is driven by requests.
-///
-/// @return true when the pending set is now trustworthy.
-bool purge_pending_seed(void);
-
-/// Whether the startup seed has succeeded. Explicit-id insertions are refused until it has.
-bool purge_seed_complete(void);
+/// The memory-only half of purge_is_pending(): whether the id is journaled or reserved here, which
+/// is what authd knows without asking anyone. Never blocks, so it is the one that may be called
+/// under mutex_keys -- as a re-check, after purge_is_pending() has already answered outside it.
+bool purge_is_pending_locally(const char *agent_id);
 
 /// Publish the manager-task backlog depth the writer measured, for phase 0's second term. Failing
 /// to measure it must NOT be reported as zero: keep the last value instead, or a wazuh-db outage

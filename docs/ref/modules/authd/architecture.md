@@ -353,12 +353,18 @@ The four phases, and what each failure costs:
 | 1 | journal the intent | writer, before `client.keys` | a warning; the phases continue |
 | 2 | rewrite `client.keys` | writer | logged, and **phase 3 is skipped** |
 | 3 | create the deletion task | writer, over Wazuh DB | the journal line stays; the next cycle retries |
-| 4 | drop the journal line | writer, on Wazuh DB's acknowledgement | the line stays; the next start re-creates the task and the id collides, which is success |
+| 4 | drop the journal lines | writer, on Wazuh DB's acknowledgement | the lines stay; the next start re-creates the tasks and the ids collide, which is success |
+
+Phase 0 is taken by **both** paths that delete an agent: the API's `remove`, and a force replacement,
+which is the higher-volume one — a mass re-enrollment produces one deletion per agent. A replacement
+refused there is an enrollment refused, and the existing agent keeps its registration.
 
 Phase 3 is gated on phase 2 because the writer *logs* a failed key write and carries on, so without
 the gate authd would record purges for agents that are still listed on disk. Phase 4 can only drop a
 line because the task's creation commits inside its own Wazuh DB command — its `ok` is a durability
-acknowledgement rather than a buffered write.
+acknowledgement rather than a buffered write. It drops the batch's lines in one write, and only the
+ones whose tasks are durable: the journal file is rewritten whole on every drop, so dropping per entry
+would make a bulk deletion quadratic in file writes.
 
 Every surviving journal line is resolved on the next start against the `client.keys` just read: an
 agent still listed there means the deletion never became final, so the line is dropped; an absent one
@@ -404,8 +410,7 @@ held their ids before, in the indices they do not resynchronise themselves.
 | `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; the entries were numbered by position |
 | `Raising the agent id counter from X to Y` | the counter would have gone backwards; ids are not reused |
 | `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next writer cycle retries |
-| `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated |
-| `N agent id(s) still owe an indexer deletion` | the startup seed; those ids will not be handed out again until their deletions finish |
+| `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
 | `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
 
 The purge's own outcome — the `deleteByQuery` and its flush — is reported by

@@ -1195,12 +1195,18 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
  * @return How many rows are now recorded.
  */
 static size_t purge_create_rows(const purge_journal_entry_t *entries, size_t count, int *wdb_sock) {
+    purge_journal_entry_t *durable = NULL;
     size_t recorded = 0;
     size_t i;
 
     if (!entries || count == 0) {
         return 0;
     }
+
+    /* The entries whose rows are durable, collected rather than dropped one by one: every drop
+     * rewrites the whole journal file, so a per-entry drop makes a bulk deletion quadratic in file
+     * writes -- 20 000 rewrites of a 20 000-line file. */
+    os_calloc(count, sizeof(purge_journal_entry_t), durable);
 
     for (i = 0; i < count; i++) {
         manager_task_request_t request = {0};
@@ -1236,42 +1242,48 @@ static size_t purge_create_rows(const purge_journal_entry_t *entries, size_t cou
 
         switch (result) {
         case MANAGER_TASK_CREATED:
-            recorded++;
+            durable[recorded++] = entries[i];
             break;
 
         case MANAGER_TASK_COLLIDED:
             mdebug1("The deletion of agent '%s' was already recorded.", entries[i].id);
-            recorded++;
+            durable[recorded++] = entries[i];
             break;
 
         case MANAGER_TASK_QUEUE_FULL:
             mwarn("The deletion of agent '%s' could not be recorded: %d deletions are already "
                   "waiting to be applied to the indexer. It stays journaled and will be retried.",
                   entries[i].id, config.max_pending_deletes);
-            return recorded;
+            goto finish;
 
         default:
             mwarn("The deletion of agent '%s' could not be recorded; it stays journaled and will be "
                   "retried.", entries[i].id);
-            return recorded;
+            goto finish;
         }
-
-        // Phase 4, per entry rather than per batch: an entry whose row is durable must not be left
-        // owed because a LATER one in the same batch failed.
-        purge_journal_drop(&entries[i], 1);
     }
+
+finish:
+    /* PHASE 4, once per pass. Only the entries above are dropped, so one that failed cannot take a
+     * durable one down with it -- which is the property the per-entry drop was there for.
+     *
+     * Batching the PERSIST costs nothing in correctness: a crash between a row becoming durable and
+     * this write leaves the line journaled, and reconciliation then derives the same task id and
+     * collides, which this function already treats as recorded. */
+    purge_journal_drop(durable, recorded);
+    os_free(durable);
 
     return recorded;
 }
 
 /**
- * @brief Startup recovery: finish the deletions a previous run left mid-sequence, then seed.
+ * @brief Startup recovery: finish the deletions a previous run left mid-sequence.
  *
  * Called from main() after OS_ReadKeys() and purge_file_load(), before any thread starts.
  *
- * The seed is attempted even when nothing is owed, and a failure here is not fatal: it only means
- * explicit-id insertions are refused until purge_is_pending() retries it, which it does on the
- * first one that arrives.
+ * Nothing here is fatal, and nothing here is required for correctness: an owed row that is not
+ * created now is created by the writer's next cycle, and phase 0's row bound simply keeps the value
+ * it had until the writer measures it.
  */
 static void purge_startup_recover(void) {
     purge_journal_entry_t *owed = NULL;
@@ -1281,17 +1293,17 @@ static void purge_startup_recover(void) {
     /* wazuh-db is started AFTER this daemon (wazuh-server.sh starts the reversed daemon list, and
      * authd comes before wazuh-manager-db in it), so on a normal start its socket does not exist
      * yet and neither call below can succeed. Both are self-healing -- owed rows are retried by the
-     * writer's next cycle, and the seed by the first insertion that names an explicit id -- so
-     * attempting them here would buy nothing and cost a failed connect plus an ERROR line from the
-     * wazuh-db client on every single manager start.
+     * writer's next cycle, and the row count is re-measured on every one of them -- so attempting
+     * them here would buy nothing and cost a failed connect plus an ERROR line from the wazuh-db
+     * client on every single manager start.
      *
      * Existence only, and access() rather than w_is_file(): the latter opens the path, which fails
      * on a socket whether or not anything is listening. A socket that exists but has no listener
      * yet still fails below, and is handled the same way. */
     const bool wdb_listening = access(WDB_LOCAL_SOCK, F_OK) == 0;
 
-    // Local work regardless: this reads the journal against client.keys and populates the pending
-    // set. Only the row creation and the seed need the database.
+    // Local work regardless: this reads the journal against client.keys. Only the row creation and
+    // the count below need the database.
     owed = purge_journal_reconcile(&count);
 
     if (owed) {
@@ -1305,12 +1317,16 @@ static void purge_startup_recover(void) {
         os_free(owed);
     }
 
-    if (!wdb_listening) {
-        mdebug1("The database is not up yet; the list of agent IDs still owing a deletion will be "
-                "read on the first insertion that names an explicit agent ID.");
-    } else if (!purge_pending_seed()) {
-        mwarn("Could not read which agent IDs still owe a deletion; insertions naming an explicit "
-              "agent ID are refused until the database answers.");
+    /* Prime phase 0's row bound, which is otherwise zero until the writer's first cycle -- and the
+     * writer waits on cond_pending, so on an idle manager that cycle can be a long way off. This is
+     * the restart-with-a-deep-backlog case: authd alone restarting while wazuh-db is up and holding
+     * thousands of pending deletions, where a bound reading zero would admit deletions the queue has
+     * no room for. A failure is passed through as -1, which keeps the previous value rather than
+     * reporting an outage as an empty queue. */
+    if (wdb_listening) {
+        purge_pending_rows_update(
+            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
+                               &wdb_sock));
     }
 
     wdbc_close(&wdb_sock);
