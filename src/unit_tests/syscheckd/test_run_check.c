@@ -343,6 +343,16 @@ static int teardown_max_fps(void **state) {
     return 0;
 }
 
+// Unconditional counterpart to __wrap_asp_sync_module_use_full_result(true): a cmocka
+// expectation failure inside call_real_fim_run_integrity() longjmps out of the test body via
+// fail(), skipping any manual reset placed after that call. Without this teardown the toggle
+// would stay true, and the next test using the plain will_return(__wrap_asp_sync_module, <bool>)
+// API would have that bool reinterpreted as a SyncModuleResult_t* and dereferenced.
+static int teardown_asp_sync_module_full_result(void **state) {
+    __wrap_asp_sync_module_use_full_result(false);
+    return 0;
+}
+
 #ifdef TEST_WINAGENT
 
 static int setup_hash(void **state) {
@@ -1408,7 +1418,6 @@ void test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_re
 
     call_real_fim_run_integrity();
 
-    __wrap_asp_sync_module_use_full_result(false);
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.sync_interval = original_sync_interval;
@@ -1442,7 +1451,6 @@ void test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_d
 
     call_real_fim_run_integrity();
 
-    __wrap_asp_sync_module_use_full_result(false);
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.sync_interval = original_sync_interval;
@@ -1476,7 +1484,6 @@ void test_fim_run_integrity_local_transport_unavailable_past_tolerance_escalates
 
     call_real_fim_run_integrity();
 
-    __wrap_asp_sync_module_use_full_result(false);
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.sync_interval = original_sync_interval;
@@ -1664,9 +1671,12 @@ int main(void) {
         cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
         cmocka_unit_test(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed),
         cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
-        cmocka_unit_test(test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure),
-        cmocka_unit_test(test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_deferred),
-        cmocka_unit_test(test_fim_run_integrity_local_transport_unavailable_past_tolerance_escalates_to_warning),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure,
+                                        NULL, teardown_asp_sync_module_full_result),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_deferred,
+                                        NULL, teardown_asp_sync_module_full_result),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_past_tolerance_escalates_to_warning,
+                                        NULL, teardown_asp_sync_module_full_result),
         /* DataClean tests */
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
