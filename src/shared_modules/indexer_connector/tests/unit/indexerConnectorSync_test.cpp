@@ -1,8 +1,10 @@
 #include "indexerConnectorSyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -10,6 +12,8 @@
 #include <gtest/gtest.h>
 #include <json.hpp>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <sstream>
 #include <thread>
 
@@ -4949,4 +4953,444 @@ TEST_F(IndexerConnectorSyncTest, MixedBulkIndexAndDeleteRespectEmptyBufferGuard)
 
     EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
     EXPECT_EQ(callCount, 1) << "bulkIndex must flush the previously buffered bulkDelete";
+}
+
+// ============================================================================
+// Concurrency: many threads staging and flushing against ONE connector. The
+// oracle is conservation, not survival: every staged document must arrive in a
+// well-formed _bulk frame exactly once -- no loss, no duplicate, no torn frame.
+// ============================================================================
+
+namespace
+{
+    /// Thread-safe capture of every _bulk body a mocked post() saw.
+    class BulkBodyRecorder final
+    {
+    public:
+        void record(const RequestParamsVariant& requestParams)
+        {
+            std::string body;
+            if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+            {
+                body = std::get<TRequestParameters<std::string>>(requestParams).data;
+            }
+            else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+            {
+                body = std::string {std::get<TRequestParameters<std::string_view>>(requestParams).data};
+            }
+            else
+            {
+                body = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+            }
+            std::lock_guard lock {m_mutex};
+            m_bodies.push_back(std::move(body));
+        }
+
+        size_t bodyCount() const
+        {
+            std::lock_guard lock {m_mutex};
+            return m_bodies.size();
+        }
+
+        /// Every "_id" across all recorded bodies, with multiplicity. Fails the running test on
+        /// any torn frame: an unparsable line, an action line without its document line, an
+        /// orphan document line, or a body without its final newline.
+        std::multiset<std::string> deliveredIds() const
+        {
+            std::multiset<std::string> ids;
+            std::lock_guard lock {m_mutex};
+            for (const auto& body : m_bodies)
+            {
+                EXPECT_FALSE(body.empty()) << "an empty _bulk body was posted";
+                if (!body.empty())
+                {
+                    EXPECT_EQ(body.back(), '\n') << "torn frame: body not newline-terminated";
+                }
+                bool expectDocLine = false;
+                std::istringstream stream {body};
+                std::string line;
+                while (std::getline(stream, line))
+                {
+                    const auto parsed = nlohmann::json::parse(line, nullptr, false);
+                    EXPECT_FALSE(parsed.is_discarded()) << "torn frame, unparsable line: " << line;
+                    if (parsed.is_discarded())
+                    {
+                        continue;
+                    }
+                    if (expectDocLine)
+                    {
+                        expectDocLine = false;
+                    }
+                    else if (parsed.contains("index"))
+                    {
+                        ids.insert(parsed.at("index").at("_id").get<std::string>());
+                        expectDocLine = true;
+                    }
+                    else if (parsed.contains("delete"))
+                    {
+                        ids.insert(parsed.at("delete").at("_id").get<std::string>());
+                    }
+                    else
+                    {
+                        ADD_FAILURE() << "torn frame, orphan document line: " << line;
+                    }
+                }
+                EXPECT_FALSE(expectDocLine) << "torn frame: action line without its document line";
+            }
+            return ids;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::vector<std::string> m_bodies;
+    };
+
+    void respondBulkSuccess(const PostRequestParametersVariant& postParams)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+    }
+
+    void respondBulkError(const PostRequestParametersVariant& postParams, const std::string& error, long statusCode)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, statusCode, "");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, statusCode, "");
+        }
+    }
+
+    /// Asserts `delivered` holds exactly the ids in `expected`, once each.
+    void expectExactlyOnce(const std::multiset<std::string>& delivered, const std::vector<std::string>& expected)
+    {
+        EXPECT_EQ(delivered.size(), expected.size());
+        std::string missing;
+        std::string duplicated;
+        size_t missingCount = 0;
+        size_t duplicatedCount = 0;
+        constexpr size_t REPORT_CAP = 10;
+        for (const auto& id : expected)
+        {
+            const auto seen = delivered.count(id);
+            if (seen == 0 && ++missingCount <= REPORT_CAP)
+            {
+                missing += " " + id;
+            }
+            else if (seen > 1 && ++duplicatedCount <= REPORT_CAP)
+            {
+                duplicated += " " + id + " x" + std::to_string(seen);
+            }
+        }
+        EXPECT_EQ(missingCount, 0u) << "lost documents (first " << REPORT_CAP << "):" << missing;
+        EXPECT_EQ(duplicatedCount, 0u) << "documents delivered more than once (first " << REPORT_CAP
+                                       << "):" << duplicated;
+    }
+} // namespace
+
+/// Stagers (scopeLock + bulkIndex, the documented contract) race dedicated flushers and the
+/// inline size-triggered flushes of the 1KB connector. Every POST succeeds, so conservation
+/// must be exact.
+TEST_F(IndexerConnectorSyncTest, ConcurrentStagersAndFlushersDeliverEveryDocumentExactlyOnce)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 4;
+    constexpr size_t DOCS_PER_STAGER = 250;
+    constexpr size_t FLUSHERS = 2;
+    std::atomic<bool> stagingDone {false};
+
+    std::vector<std::string> expected;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+        {
+            expected.push_back("s" + std::to_string(stager) + "-" + std::to_string(doc));
+        }
+    }
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, stager]()
+            {
+                for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+                {
+                    const auto id = "s" + std::to_string(stager) + "-" + std::to_string(doc);
+                    auto lock = connector.scopeLock();
+                    connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                }
+            });
+    }
+    std::vector<std::thread> flushers;
+    for (size_t flusher = 0; flusher < FLUSHERS; ++flusher)
+    {
+        flushers.emplace_back(
+            [&connector, &stagingDone]()
+            {
+                while (!stagingDone.load())
+                {
+                    connector.flush();
+                    std::this_thread::yield();
+                }
+            });
+    }
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    for (auto& thread : flushers)
+    {
+        thread.join();
+    }
+    connector.flush();
+
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// Adds the third flush owner: the background timer at its smallest configurable scale (1s).
+/// Stagers and flushers run across ~3 timer periods so timer-driven flushes interleave with
+/// explicit ones mid-staging.
+TEST_F(IndexerConnectorSyncTest, TimerFlushersAndStagersRacingDeliverEveryDocumentExactlyOnce)
+{
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 4;
+    constexpr size_t FLUSHERS = 2;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    std::atomic<bool> stagingDone {false};
+    std::vector<std::vector<std::string>> staged(STAGERS);
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, &staged, stager, deadline]()
+            {
+                size_t doc = 0;
+                while (std::chrono::steady_clock::now() < deadline)
+                {
+                    const auto id = "t" + std::to_string(stager) + "-" + std::to_string(doc++);
+                    {
+                        auto lock = connector.scopeLock();
+                        connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                    }
+                    staged[stager].push_back(id);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+    }
+    std::vector<std::thread> flushers;
+    for (size_t flusher = 0; flusher < FLUSHERS; ++flusher)
+    {
+        flushers.emplace_back(
+            [&connector, &stagingDone]()
+            {
+                while (!stagingDone.load())
+                {
+                    connector.flush();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                }
+            });
+    }
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    for (auto& thread : flushers)
+    {
+        thread.join();
+    }
+    connector.flush();
+
+    std::vector<std::string> expected;
+    for (const auto& perStager : staged)
+    {
+        expected.insert(expected.end(), perStager.begin(), perStager.end());
+    }
+    ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the race never happened";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// Transport failures (-1) hit mid-race: the retry loop must resend the SAME buffer while
+/// other threads keep staging behind scopeLock. Conservation of what was eventually delivered
+/// stays exact -- the retried frame arrives once, nothing staged around it is lost.
+TEST_F(IndexerConnectorSyncTest, TransportRetriesUnderConcurrentStagingLoseNothing)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    std::atomic<int> transportFailuresLeft {2};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder, &transportFailuresLeft](auto requestParams, auto postParams, auto)
+            {
+                if (transportFailuresLeft.fetch_sub(1) > 0)
+                {
+                    respondBulkError(postParams, "Couldn't connect to server", -1);
+                    return;
+                }
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 2;
+    constexpr size_t DOCS_PER_STAGER = 150;
+    std::atomic<bool> stagingDone {false};
+
+    std::vector<std::string> expected;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+        {
+            expected.push_back("r" + std::to_string(stager) + "-" + std::to_string(doc));
+        }
+    }
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, stager]()
+            {
+                for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+                {
+                    const auto id = "r" + std::to_string(stager) + "-" + std::to_string(doc);
+                    auto lock = connector.scopeLock();
+                    connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                }
+            });
+    }
+    std::thread flusher(
+        [&connector, &stagingDone]()
+        {
+            while (!stagingDone.load())
+            {
+                connector.flush();
+                std::this_thread::yield();
+            }
+        });
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    flusher.join();
+    connector.flush();
+
+    EXPECT_LE(transportFailuresLeft.load(), 0) << "the transport failures never fired; the retry path went untested";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// The timer at its smallest configurable scale (1s) over an extended period -- default 10s,
+/// INDEXER_CONNECTOR_SOAK_SECONDS extends it -- with stagers running the whole time. The timer
+/// is the ONLY flusher (the 10MB default threshold keeps inline flushes out), so the POST
+/// floor attributes the flushes to it. Conservation stays exact and no thread accumulates.
+TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExactlyOnce)
+{
+    config["flush_interval_seconds"] = 1;
+    const char* soakEnv = std::getenv("INDEXER_CONNECTOR_SOAK_SECONDS");
+    const int soakSeconds = std::max(soakEnv ? std::atoi(soakEnv) : 10, 3);
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    const auto baseline = liveThreadCount();
+    std::vector<std::string> expected;
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "exactly one timer thread must exist";
+
+        constexpr size_t STAGERS = 2;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(soakSeconds);
+        std::vector<std::vector<std::string>> staged(STAGERS);
+
+        std::vector<std::thread> stagers;
+        for (size_t stager = 0; stager < STAGERS; ++stager)
+        {
+            stagers.emplace_back(
+                [&connector, &staged, stager, deadline]()
+                {
+                    size_t doc = 0;
+                    while (std::chrono::steady_clock::now() < deadline)
+                    {
+                        const auto id = "k" + std::to_string(stager) + "-" + std::to_string(doc++);
+                        {
+                            auto lock = connector.scopeLock();
+                            connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                        }
+                        staged[stager].push_back(id);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                    }
+                });
+        }
+        for (auto& thread : stagers)
+        {
+            thread.join();
+        }
+
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "the soak must not grow threads";
+        EXPECT_GE(recorder.bodyCount(), static_cast<size_t>(soakSeconds) / 2)
+            << "the 1s timer was expected to flush the continuously refilled buffer on most ticks";
+
+        connector.flush();
+        for (const auto& perStager : staged)
+        {
+            expected.insert(expected.end(), perStager.begin(), perStager.end());
+        }
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must join the timer thread";
+    ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
 }
