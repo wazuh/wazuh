@@ -11,6 +11,34 @@
 #include "persistent_queue_storage.hpp"
 #include "filesystem_wrapper.hpp"
 
+#include <chrono>
+#include <thread>
+
+namespace
+{
+    // Mirrors PersistentQueueStorage's own byte-budget constants exactly, so the two
+    // backends behave identically from AgentSyncProtocol's point of view.
+    constexpr size_t SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES = 8U * 1024U;
+    constexpr size_t SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES = 512U;
+    constexpr unsigned int MAX_OVERSIZED_ATTEMPTS = 5U;
+
+    /// @brief Maximum number of distinct (never-seen-before) ids this queue will hold at
+    ///        once. Bounds RSS growth if the sync peer is unreachable for an extended
+    ///        period: once full, a brand-new id is rejected (logged, not silently dropped)
+    ///        rather than evicting already-queued state. This value is a starting point,
+    ///        not an authoritative figure -- there is no official sizing guidance for this
+    ///        queue, so it should be revisited against real operational data.
+    constexpr size_t MAX_QUEUE_ROWS = 10000U;
+
+    size_t estimateSerializedItemBytes(const PersistedData& data)
+    {
+        return data.id.size()
+               + data.index.size()
+               + data.data.size()
+               + SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES;
+    }
+} // namespace
+
 InMemoryQueueStorage::InMemoryQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_dbPath(dbPath),
       m_logger(std::move(logger)),
@@ -78,15 +106,58 @@ void InMemoryQueueStorage::saveToDisk()
         return;
     }
 
-    PersistentQueueStorage snapshot(m_dbPath, m_logger, m_fileSystemWrapper);
-    snapshot.saveAll(std::vector<QueueRow>(m_rows.begin(), m_rows.end()));
+    // This is the ONLY point where the entire in-memory backlog gets persisted -- a single
+    // failed write here loses everything accumulated since the last graceful shutdown. A
+    // short bounded retry covers transient failures (e.g. a momentary I/O hiccup) without
+    // reintroducing continuous disk writes; a persistent failure (disk full, read-only
+    // mount) still surfaces to the caller after the last attempt, as before.
+    constexpr int MAX_SAVE_ATTEMPTS = 3;
+    constexpr std::chrono::milliseconds RETRY_DELAY{100};
+
+    for (int attempt = 1; attempt <= MAX_SAVE_ATTEMPTS; ++attempt)
+    {
+        try
+        {
+            PersistentQueueStorage snapshot(m_dbPath, m_logger, m_fileSystemWrapper);
+            snapshot.saveAll(std::vector<QueueRow>(m_rows.begin(), m_rows.end()));
+            return;
+        }
+        catch (const std::exception& ex)
+        {
+            if (attempt == MAX_SAVE_ATTEMPTS)
+            {
+                throw;
+            }
+
+            m_logger(LOG_WARNING,
+                     "InMemoryQueueStorage: Attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(MAX_SAVE_ATTEMPTS) +
+                     " to save the shutdown snapshot failed, retrying: " + ex.what());
+            std::this_thread::sleep_for(RETRY_DELAY);
+        }
+    }
 }
 
 void InMemoryQueueStorage::addRow(QueueRow row)
 {
     row.rowId = m_nextRowId++;
+
+    // Capture the id before the move below invalidates row's own copy.
+    const std::string id = row.data.id;
     m_rows.push_back(std::move(row));
-    m_index[m_rows.back().data.id] = std::prev(m_rows.end());
+
+    try
+    {
+        m_index[id] = std::prev(m_rows.end());
+    }
+    catch (...)
+    {
+        // The index insert failed (e.g. bad_alloc growing the hash table) after the row
+        // was already appended -- roll back the append so m_rows and m_index cannot
+        // desync into a state where the same id could be inserted twice.
+        m_rows.pop_back();
+        throw;
+    }
 }
 
 void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
@@ -95,6 +166,15 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
 
     if (it == m_index.end())
     {
+        if (m_rows.size() >= MAX_QUEUE_ROWS)
+        {
+            m_logger(LOG_ERROR,
+                     "InMemoryQueueStorage: Queue is at capacity (" + std::to_string(MAX_QUEUE_ROWS) +
+                     " rows); rejecting new item id=" + newData.id +
+                     ". The sync peer may be unreachable for an extended period.");
+            return;
+        }
+
         QueueRow row;
         row.data = newData;
         row.syncStatus = SyncStatus::PENDING;
@@ -119,39 +199,32 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
 
     const SyncStatus newSyncStatus = (oldSyncStatus == SyncStatus::PENDING) ? SyncStatus::PENDING : SyncStatus::SYNCING_UPDATED;
 
+    if (newData.operation == Operation::DELETE_ && oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
+    {
+        m_rows.erase(it->second);
+        m_index.erase(it);
+        return;
+    }
+
+    CreateStatus newCreateStatus = oldCreateStatus;
+
     if (newData.operation == Operation::DELETE_)
     {
-        if (oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
-        {
-            m_rows.erase(it->second);
-            m_index.erase(it);
-            return;
-        }
-
-        const CreateStatus newCreateStatus = (oldCreateStatus == CreateStatus::NEW) ? CreateStatus::NEW_DELETED : oldCreateStatus;
-
-        oldRow.data.index = newData.index;
-        oldRow.data.data = newData.data;
-        oldRow.data.operation = Operation::DELETE_;
-        oldRow.data.version = newData.version;
-        oldRow.data.is_data_context = newData.is_data_context;
-        oldRow.syncStatus = newSyncStatus;
-        oldRow.createStatus = newCreateStatus;
-        oldRow.operationSyncing = newOperationSyncing;
+        newCreateStatus = (oldCreateStatus == CreateStatus::NEW) ? CreateStatus::NEW_DELETED : oldCreateStatus;
     }
-    else
+    else if (oldCreateStatus == CreateStatus::NEW_DELETED)
     {
-        const CreateStatus newCreateStatus = (oldCreateStatus == CreateStatus::NEW_DELETED) ? CreateStatus::NEW : oldCreateStatus;
-
-        oldRow.data.index = newData.index;
-        oldRow.data.data = newData.data;
-        oldRow.data.operation = newData.operation;
-        oldRow.data.version = newData.version;
-        oldRow.data.is_data_context = newData.is_data_context;
-        oldRow.syncStatus = newSyncStatus;
-        oldRow.createStatus = newCreateStatus;
-        oldRow.operationSyncing = newOperationSyncing;
+        newCreateStatus = CreateStatus::NEW;
     }
+
+    oldRow.data.index = newData.index;
+    oldRow.data.data = newData.data;
+    oldRow.data.operation = newData.operation;
+    oldRow.data.version = newData.version;
+    oldRow.data.is_data_context = newData.is_data_context;
+    oldRow.syncStatus = newSyncStatus;
+    oldRow.createStatus = newCreateStatus;
+    oldRow.operationSyncing = newOperationSyncing;
 }
 
 void InMemoryQueueStorage::submitOrCoalesce(const PersistedData& data)
@@ -167,17 +240,80 @@ void InMemoryQueueStorage::submitBatch(const std::vector<PersistedData>& batch)
     }
 }
 
-std::vector<PersistedData> InMemoryQueueStorage::fetchAndMarkForSync()
+std::vector<PersistedData> InMemoryQueueStorage::fetchAndMarkForSync(size_t maxBytes)
 {
     std::vector<PersistedData> result;
+    size_t estimatedBytes = SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES;
 
-    for (auto& row : m_rows)
+    for (auto it = m_rows.begin(); it != m_rows.end();)
     {
-        if (row.syncStatus == SyncStatus::PENDING)
+        if (it->syncStatus != SyncStatus::PENDING)
         {
-            result.push_back(row.data);
-            row.syncStatus = SyncStatus::SYNCING;
+            ++it;
+            continue;
         }
+
+        const size_t estimatedItemBytes = estimateSerializedItemBytes(it->data);
+
+        if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
+        {
+            if (!result.empty())
+            {
+                // Normal budget exhaustion: stop before adding this item.
+                break;
+            }
+
+            if (it->data.id == m_oversizedItemId)
+            {
+                ++m_oversizedItemAttempts;
+            }
+            else
+            {
+                m_oversizedItemId = it->data.id;
+                m_oversizedItemAttempts = 1;
+            }
+
+            if (m_oversizedItemAttempts > MAX_OVERSIZED_ATTEMPTS)
+            {
+                // This item alone has exceeded the cap for MAX_OVERSIZED_ATTEMPTS
+                // consecutive cycles: drop it instead of resending it forever, so it
+                // cannot starve every item behind it.
+                m_logger(LOG_ERROR,
+                         "InMemoryQueueStorage: Dropping pending item (~" +
+                         std::to_string(estimatedItemBytes) +
+                         " B) after " + std::to_string(m_oversizedItemAttempts) +
+                         " consecutive cycles alone over the byte cap (" +
+                         std::to_string(maxBytes) + " B); it was blocking every item behind it.");
+                m_index.erase(it->data.id);
+                it = m_rows.erase(it);
+                m_oversizedItemId.clear();
+                m_oversizedItemAttempts = 0;
+                continue;
+            }
+
+            // First item already exceeds the cap. Enforcing the limit here would leave
+            // it stuck in PENDING forever, so accept it once but warn.
+            m_logger(LOG_WARNING,
+                     "InMemoryQueueStorage: A single pending item (~" +
+                     std::to_string(estimatedItemBytes) +
+                     " B) exceeds the byte cap (" +
+                     std::to_string(maxBytes) +
+                     " B); sending it alone (attempt " +
+                     std::to_string(m_oversizedItemAttempts) + "/" +
+                     std::to_string(MAX_OVERSIZED_ATTEMPTS) +
+                     "). Consider reducing individual item size.");
+        }
+        else if (it->data.id == m_oversizedItemId)
+        {
+            // No longer alone over the cap (e.g. coalesced smaller): clear its streak.
+            m_oversizedItemId.clear();
+            m_oversizedItemAttempts = 0;
+        }
+
+        estimatedBytes += estimatedItemBytes;
+        result.push_back(it->data);
+        it->syncStatus = SyncStatus::SYNCING;
+        ++it;
     }
 
     return result;

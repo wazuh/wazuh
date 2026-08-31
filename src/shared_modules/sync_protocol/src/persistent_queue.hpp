@@ -33,7 +33,7 @@ class PersistentQueue : public IPersistentQueue
         /// @param dbPath Path to the SQLite database file for this protocol instance.
         /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
-        ///                If null, a default PersistentQueueStorage is used.
+        ///                If null, a default InMemoryQueueStorage is used.
         explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
 
         /// @brief Destructor.
@@ -89,4 +89,10 @@ class PersistentQueue : public IPersistentQueue
 
         /// @brief Logger function
         LoggerFunc m_logger;
+
+        /// @brief Items that failed to persist on a previous submit() call. Retried
+        ///        opportunistically at the start of the next submit() before the new
+        ///        item is processed, so a transient storage failure does not silently
+        ///        and permanently lose the event.
+        std::vector<PersistedData> m_pendingRetry;
 };

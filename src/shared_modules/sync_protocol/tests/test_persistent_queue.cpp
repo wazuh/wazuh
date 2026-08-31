@@ -130,6 +130,45 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     EXPECT_TRUE(capturedLogMessage.find("Simulated persistence error") != std::string::npos);
 }
 
+TEST(PersistentQueueTest, SubmitRetriesPreviouslyFailedItemOnNextCall)
+{
+    // Replaces the old buffer/flush-thread-based retry test (removed along with the
+    // background flush thread submitBatch() used to run on): submit() now writes
+    // synchronously, so a failed item is retried at the start of the NEXT submit() call
+    // instead of on a scheduled flush cycle. This is the guarantee finding #2 of the
+    // #37844 review asked for: a transient storage failure must not silently and
+    // permanently lose the event.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    std::vector<std::string> submittedIds;
+
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillOnce(::testing::DoAll(
+                  ::testing::Invoke([&submittedIds](const PersistedData & d) { submittedIds.push_back(d.id); }),
+                  ::testing::Throw(std::runtime_error("Simulated transient storage error"))))
+    .WillOnce(::testing::DoAll(
+                  ::testing::Invoke([&submittedIds](const PersistedData & d) { submittedIds.push_back(d.id); }),
+                  ::testing::Return()))
+    .WillOnce(::testing::DoAll(
+                  ::testing::Invoke([&submittedIds](const PersistedData & d) { submittedIds.push_back(d.id); }),
+                  ::testing::Return()));
+
+    PersistentQueue queue(":memory:", logger, mockStorage);
+
+    // "id1" fails on this first attempt and is retained for retry.
+    queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+
+    // The next submit() call drains the retry first ("id1" succeeds this time), then
+    // submits the new item ("id2").
+    queue.submit("id2", "idx", "{}", Operation::CREATE, 2);
+
+    ASSERT_EQ(submittedIds.size(), 3u);
+    EXPECT_EQ(submittedIds[0], "id1");
+    EXPECT_EQ(submittedIds[1], "id1");
+    EXPECT_EQ(submittedIds[2], "id2");
+}
+
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();

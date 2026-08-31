@@ -39,14 +39,44 @@ void PersistentQueue::submit(const std::string& id,
                              uint64_t version,
                              bool isDataContext)
 {
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
+
+    // Opportunistically retry anything that failed on a previous submit() before handling
+    // the new item, so a transient storage failure does not silently and permanently lose
+    // an event. This replaces the old buffer/flush-thread-based retry that existed when
+    // submitBatch() on a background thread was the only write path -- with submit() now
+    // writing synchronously, retrying on the next call is the equivalent, simpler guarantee.
+    if (!m_pendingRetry.empty())
+    {
+        std::vector<PersistedData> stillPending;
+        stillPending.reserve(m_pendingRetry.size());
+
+        for (auto& pending : m_pendingRetry)
+        {
+            try
+            {
+                m_storage->submitOrCoalesce(pending);
+            }
+            catch (const std::exception& ex)
+            {
+                m_logger(LOG_WARNING, std::string("PersistentQueue: Retry of a previously failed item is still failing: ") + ex.what());
+                stillPending.push_back(std::move(pending));
+            }
+        }
+
+        m_pendingRetry = std::move(stillPending);
+    }
+
+    PersistedData newItem{0, id, index, data, operation, version, isDataContext};
+
     try
     {
-        std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        m_storage->submitOrCoalesce(PersistedData{0, id, index, data, operation, version, isDataContext});
+        m_storage->submitOrCoalesce(newItem);
     }
     catch (const std::exception& ex)
     {
-        m_logger(LOG_ERROR, std::string("PersistentQueue: Error submitting item to storage: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error submitting item to storage: ") + ex.what() + " (will retry on next submit())");
+        m_pendingRetry.push_back(std::move(newItem));
     }
 }
 

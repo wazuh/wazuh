@@ -41,7 +41,7 @@ class InMemoryQueueStorage : public IPersistentQueueStorage
 
         void submitOrCoalesce(const PersistedData& data) override;
         void submitBatch(const std::vector<PersistedData>& batch) override;
-        std::vector<PersistedData> fetchAndMarkForSync() override;
+        std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) override;
         std::vector<PersistedData> fetchPending(bool onlyDataValues = true) override;
         void removeAllSynced() override;
         void resetAllSyncing() override;
@@ -60,6 +60,14 @@ class InMemoryQueueStorage : public IPersistentQueueStorage
 
         /// @brief Monotonically increasing counter assigned to each row on insertion.
         uint64_t m_nextRowId{1};
+
+        /// @brief Id of the pending item currently stuck as a lone oversized block, if any.
+        /// Mirrors PersistentQueueStorage's own oversized-item tracking.
+        std::string m_oversizedItemId;
+
+        /// @brief Consecutive fetchAndMarkForSync() calls in which m_oversizedItemId was
+        ///        resent alone because it exceeds the byte cap on its own.
+        unsigned int m_oversizedItemAttempts = 0;
 
         /// @brief Path to the on-disk snapshot file.
         std::string m_dbPath;
