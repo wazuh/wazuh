@@ -22,10 +22,10 @@
  * socket or a database. The threads themselves are covered by the integration cases. */
 
 static int group_setup(void **state) {
-    // vd_scan timeout, delete timeout, connect timeout, in the order the registry reads them.
+    // vd_scan timeout, delete timeout, then the two admission bounds, in the order init reads them.
+    // The connect timeout is not among them: it is a constant, not an operator knob.
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 600);
-    will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 20000);
     will_return(__wrap_getDefine_Int_default, 64);
 
@@ -51,7 +51,6 @@ void test_a_single_type_lane_always_returns_its_type(void **state) {
 void test_a_pass_covers_every_type_on_the_lane(void **state) {
     size_t rotation = 0;
     size_t count = 0;
-    bool seen[8] = {false};
 
     wm_manager_task_registry_lane(WM_MANAGER_TASK_LANE_LOCAL, &count);
     assert_int_equal(count, 3);
@@ -70,8 +69,6 @@ void test_a_pass_covers_every_type_on_the_lane(void **state) {
                 assert_ptr_not_equal(desc, other);
             }
         }
-
-        seen[offset] = true;
     }
 
     assert_null(wm_manager_task_rotate(WM_MANAGER_TASK_LANE_LOCAL, &rotation, count));
@@ -192,6 +189,84 @@ void test_inflight_lookup_rejects_an_unknown_owner(void **state) {
     assert_false(wm_manager_task_worker_inflight(&dispatcher, "10:20:scan-0", NULL, 0));
 }
 
+/* The spawn decision */
+
+void test_a_due_schedule_with_a_free_slot_spawns(void **state) {
+    assert_int_equal(wm_manager_task_spawn_decide(true, true, true, false), WM_MANAGER_TASK_SPAWN);
+}
+
+void test_an_unknown_schedule_is_skipped_not_held(void **state) {
+    // Holding would re-read a row this build cannot act on at every poll, forever. Skipping
+    // advances the slot, so a stranded schedule costs one query a day instead of one every five
+    // seconds -- and the node scope and overlap answers are irrelevant once nothing can run it.
+    assert_int_equal(wm_manager_task_spawn_decide(false, true, true, false), WM_MANAGER_TASK_SPAWN_SKIP);
+    assert_int_equal(wm_manager_task_spawn_decide(false, false, false, true), WM_MANAGER_TASK_SPAWN_SKIP);
+}
+
+void test_a_node_that_may_not_run_it_skips_the_slot(void **state) {
+    // Skipping rather than holding is what keeps w_is_worker() off the poll path: it re-parses
+    // ossec.conf from disk on every call, so a worker that held its master-scoped schedules would
+    // re-read the file every five seconds for the life of the process.
+    assert_int_equal(wm_manager_task_spawn_decide(true, false, true, false), WM_MANAGER_TASK_SPAWN_SKIP);
+}
+
+void test_an_unanswered_overlap_check_holds(void **state) {
+    // Asymmetric on purpose. Advancing on an unanswered question would skip a legitimate run
+    // outright; holding costs one query on the next poll and self-heals when wazuh-db answers.
+    assert_int_equal(wm_manager_task_spawn_decide(true, true, false, false), WM_MANAGER_TASK_SPAWN_HOLD);
+    assert_int_equal(wm_manager_task_spawn_decide(true, true, false, true), WM_MANAGER_TASK_SPAWN_HOLD);
+}
+
+void test_an_instance_still_in_flight_suppresses_the_next_run(void **state) {
+    // Overlap-skip, and the interaction with `incomplete` that comes with it: a multi-batch
+    // agent_delete_old holds a non-terminal instance for the whole sweep, which suppresses its own
+    // next scheduled run until it finishes. Correct -- a retention sweep should not start again
+    // while the previous one is still walking -- and it means the effective interval under a large
+    // backlog is however long the sweep takes, not the configured one.
+    assert_int_equal(wm_manager_task_spawn_decide(true, true, true, true), WM_MANAGER_TASK_SPAWN_SKIP);
+}
+
+/* Direct actions */
+
+void test_every_direct_action_is_addressable(void **state) {
+    size_t count = wm_manager_task_direct_count();
+
+    assert_true(count > 0);
+
+    for (size_t i = 0; i < count; i++) {
+        const wm_manager_task_direct_def *action = wm_manager_task_direct_at(i);
+
+        assert_non_null(action);
+        assert_non_null(action->name);
+        // No entry may be a null function pointer or a zero interval: the first would be called,
+        // and the second would signal its lane every single pass of the scheduler loop.
+        assert_non_null(action->run);
+        assert_true(action->interval > 0);
+        assert_true(action->lane < WM_MANAGER_TASK_LANE_COUNT);
+    }
+
+    assert_null(wm_manager_task_direct_at(count));
+}
+
+void test_size_rotation_is_a_direct_action_and_not_a_task(void **state) {
+    bool found = false;
+
+    for (size_t i = 0; i < wm_manager_task_direct_count(); i++) {
+        if (strcmp(wm_manager_task_direct_at(i)->name, "log_rotate_size") == 0) {
+            found = true;
+            // On the local lane, which is where the daily rotation runs too, so the two can never
+            // rotate the same file concurrently.
+            assert_int_equal(wm_manager_task_direct_at(i)->lane, WM_MANAGER_TASK_LANE_LOCAL);
+        }
+    }
+
+    assert_true(found);
+
+    // And deliberately NOT a task type: routing two w_stat() calls through the queue would cost
+    // about 1440 rows a day to do work that is harmless to miss.
+    assert_null(wm_manager_task_registry_get("log_rotate_size"));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Lane rotation
@@ -208,6 +283,15 @@ int main(void) {
         cmocka_unit_test(test_inflight_lookup_finds_a_busy_worker),
         cmocka_unit_test(test_inflight_lookup_reports_an_idle_worker_as_empty),
         cmocka_unit_test(test_inflight_lookup_rejects_an_unknown_owner),
+        // The spawn decision
+        cmocka_unit_test(test_a_due_schedule_with_a_free_slot_spawns),
+        cmocka_unit_test(test_an_unknown_schedule_is_skipped_not_held),
+        cmocka_unit_test(test_a_node_that_may_not_run_it_skips_the_slot),
+        cmocka_unit_test(test_an_unanswered_overlap_check_holds),
+        cmocka_unit_test(test_an_instance_still_in_flight_suppresses_the_next_run),
+        // Direct actions
+        cmocka_unit_test(test_every_direct_action_is_addressable),
+        cmocka_unit_test(test_size_rotation_is_a_direct_action_and_not_a_task),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);

@@ -141,4 +141,75 @@ int wm_manager_task_client_create(wm_manager_task_client *client,
                                   char **outcome,
                                   char **surviving_task_id);
 
+/**
+ * @brief Create one instance of a schedule, stamped with the slot it belongs to.
+ *
+ * Separate from wm_manager_task_client_create() rather than two more parameters on it, because the
+ * two creators are different shapes: a producer knows an agent and a body, a schedule knows a slot.
+ * SCHEDULE_ID and SCHEDULED_RUN_AT are what make a run's history queryable per schedule and what
+ * the per-schedule retention cap counts on.
+ *
+ * @param[in,out] client Client.
+ * @param[in] desc Task type this schedule spawns.
+ * @param[in] task_id Identity, derived from the schedule and its slot.
+ * @param[in] schedule_id Schedule that spawned this row.
+ * @param[in] scheduled_run_at Slot the row belongs to.
+ * @param[out] outcome Which of created, coalesced, collided or queue_full happened. May be NULL.
+ * @return 0 on success, -1 on error.
+ */
+int wm_manager_task_client_spawn(wm_manager_task_client *client,
+                                 const wm_manager_task_descriptor *desc,
+                                 const char *task_id,
+                                 const char *schedule_id,
+                                 long long scheduled_run_at,
+                                 char **outcome);
+
+/**
+ * @brief Write one schedule's persisted state, reporting what was there before.
+ *
+ * @param[in,out] client Client.
+ * @param[in] schedule_id Schedule to write.
+ * @param[in] next_run_at Next run to store.
+ * @param[in] enabled Whether the schedule spawns instances.
+ * @param[out] previous The row as it was, or NULL when the schedule is new. Caller frees.
+ * @return 0 on success, -1 on error.
+ */
+int wm_manager_task_client_schedule_upsert(wm_manager_task_client *client,
+                                           const char *schedule_id,
+                                           long long next_run_at,
+                                           bool enabled,
+                                           cJSON **previous);
+
+/**
+ * @brief Advance one schedule's next run.
+ *
+ * @param[in,out] client Client.
+ * @param[in] schedule_id Schedule to advance.
+ * @param[in] next_run_at New slot.
+ * @return 0 on success, -1 on error.
+ */
+int wm_manager_task_client_schedule_advance(wm_manager_task_client *client,
+                                            const char *schedule_id,
+                                            long long next_run_at);
+
+/**
+ * @brief List the enabled schedules whose next run has come due.
+ *
+ * @param[in,out] client Client.
+ * @param[in] now Current time.
+ * @param[out] schedules Array of {schedule_id, next_run_at}. Caller frees.
+ * @return 0 on success, -1 on error.
+ */
+int wm_manager_task_client_schedule_due(wm_manager_task_client *client, long long now, cJSON **schedules);
+
+/**
+ * @brief Whether a schedule still has a pending or claimed instance.
+ *
+ * @param[in,out] client Client.
+ * @param[in] schedule_id Schedule to check.
+ * @param[out] active Set to true when a non-terminal instance exists.
+ * @return 0 on success, -1 on error.
+ */
+int wm_manager_task_client_schedule_active(wm_manager_task_client *client, const char *schedule_id, bool *active);
+
 #endif

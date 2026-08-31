@@ -1,8 +1,14 @@
 # Monitord Configuration Reference
 
+> **The options on this page are still read, but by `wazuh-modulesd`'s Task Manager rather than by
+> this daemon.** Names, locations, ranges and defaults are unchanged — including the `monitord.`
+> prefix, which is part of each internal-option key and must not be renamed. What changed is where
+> the work happens and, in three cases, how it behaves; see
+> [Recurring manager tasks](../task_manager/schedules.md).
+
 Complete configuration reference for the Wazuh monitoring daemon (monitord).
 
-The monitord daemon handles agent disconnection detection, alerting, and log rotation on the Wazuh manager. It monitors agent keep-alive messages and maintains connection status.
+The monitord daemon handled agent disconnection detection, alerting, and log rotation on the Wazuh manager. It monitored agent keep-alive messages and maintained connection status.
 
 For module overview and architecture, see [Monitord Module](index.html).
 
@@ -283,11 +289,10 @@ monitord.compress=1
 
 ### Manual Log Rotation
 
-Force log rotation:
-
-```bash
-kill -HUP $(cat /var/wazuh-manager/var/run/wazuh-monitord-*.pid)
-```
+There is no way to force a rotation on demand. `SIGHUP` does **not** do it and never did: the shared
+signal setup installs `SIG_IGN` for it, so the signal is discarded before anything can act on it.
+Rotation happens at the daily slot (`00:00` + `monitord.day_wait`) or when a log crosses
+`monitord.size_rotate`, whichever comes first.
 
 ---
 

@@ -42,6 +42,12 @@ Key properties of the current implementation:
 
 Each task carries a free-form JSON `payload` whose contents are defined by the producer of the task and interpreted by the agent.
 
+The module also runs **manager tasks**, which are work the manager owes itself rather than work an
+agent picks up. They live in a separate table, are claimed and executed by dispatcher lanes inside
+`wazuh-modulesd`, and are retired with an outcome instead of a delivery. Three of them are recurring
+and replace `wazuh-monitord`'s periodic responsibilities — see
+[Recurring manager tasks](schedules.md).
+
 ---
 
 ## IPC interface
@@ -213,5 +219,6 @@ This design allows multiple concurrent connections from remoted's `/control` end
 ## See Also
 
 - [Task Manager Configuration Reference](configuration.md)
+- [Recurring manager tasks](schedules.md) — the disconnection sweep, agent retention and log rotation
 - [Agent Upgrade Module](../agent_upgrade/README.md) — main producer of `remote_upgrade` tasks
 - [Wazuh DB Module](../wazuh_db/README.md) — persistence backend

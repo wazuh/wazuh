@@ -16,12 +16,25 @@
 
 #include "wmodules.h"
 #include "http_op.h"
+#include "manager_task_op.h"
 #include "wm_task_manager.h"
 #include "wm_manager_task_dispatcher.h"
+#include "wm_manager_task_local.h"
 
 #define WM_MANAGER_TASK_DEFAULT_POLL_INTERVAL 5
 #define WM_MANAGER_TASK_DEFAULT_SWEEP_INTERVAL 60
 #define WM_MANAGER_TASK_DEFAULT_CLAIM_GRACE 30
+
+/* How often the size-rotation direct action is signalled. Not an operator knob: it is the interval
+ * at which two w_stat() calls decide whether a log has crossed its threshold, and the threshold is
+ * the option that governs rotation. monitord checked every second, which is 86400 pairs of stat
+ * calls a day to catch a boundary that a minute of extra log growth cannot meaningfully overshoot. */
+#define WM_MANAGER_TASK_SIZE_ROTATE_INTERVAL 60
+
+/* Where an unknown schedule's slot is pushed to. Not a real cadence -- nothing in this build can
+ * run the row -- only far enough out that a stranded schedule is polled once a day instead of
+ * every five seconds, while still being visible in the log. */
+#define WM_MANAGER_TASK_UNKNOWN_SCHEDULE_BACKOFF 86400
 
 /// Slack over a call's own deadline before the watchdog calls it a stall rather than a slow call.
 #define WM_MANAGER_TASK_WATCHDOG_MARGIN 30
@@ -41,6 +54,56 @@
 
 /// Longest error text carried into LAST_ERROR.
 #define WM_MANAGER_TASK_ERROR_LEN 256
+
+/* The direct actions. One entry today; the table is what keeps a second one from becoming a second
+ * ad-hoc flag threaded through the lane loop. */
+STATIC const wm_manager_task_direct_def manager_task_direct_actions[] = {
+    {
+        .name = "log_rotate_size",
+        .lane = WM_MANAGER_TASK_LANE_LOCAL,
+        .interval = WM_MANAGER_TASK_SIZE_ROTATE_INTERVAL,
+        .run = wm_manager_task_log_rotate_size,
+    },
+};
+
+#define DIRECT_COUNT (sizeof(manager_task_direct_actions) / sizeof(*manager_task_direct_actions))
+
+size_t wm_manager_task_direct_count(void) {
+    return DIRECT_COUNT;
+}
+
+const wm_manager_task_direct_def* wm_manager_task_direct_at(size_t index) {
+    return index < DIRECT_COUNT ? &manager_task_direct_actions[index] : NULL;
+}
+
+wm_manager_task_spawn_decision wm_manager_task_spawn_decide(bool known,
+                                                            bool node_allows,
+                                                            bool overlap_known,
+                                                            bool has_active) {
+    if (!known) {
+        // Nothing here can run it, so holding would poll a row this build cannot act on forever.
+        return WM_MANAGER_TASK_SPAWN_SKIP;
+    }
+
+    if (!node_allows) {
+        return WM_MANAGER_TASK_SPAWN_SKIP;
+    }
+
+    if (!overlap_known) {
+        // An unanswered overlap check is not the same as "no instance". Advancing on it would skip
+        // this run outright; holding costs one query on the next poll.
+        return WM_MANAGER_TASK_SPAWN_HOLD;
+    }
+
+    if (has_active) {
+        // The previous instance is still pending or claimed. Advancing rather than holding is what
+        // makes the schedule's own long run suppress its next slot instead of queueing one behind
+        // it, so a sweep that outlives its interval never accumulates a backlog of itself.
+        return WM_MANAGER_TASK_SPAWN_SKIP;
+    }
+
+    return WM_MANAGER_TASK_SPAWN;
+}
 
 const wm_manager_task_descriptor* wm_manager_task_rotate(wm_manager_task_lane lane, size_t *rotation, size_t offset) {
     size_t count = 0;
@@ -312,6 +375,50 @@ STATIC void wm_manager_task_lane_wake_all(wm_manager_task_dispatcher *dispatcher
 }
 
 /**
+ * @brief Mark a direct action as due and wake the lane that performs it.
+ */
+STATIC void wm_manager_task_direct_signal(wm_manager_task_dispatcher *dispatcher, size_t index) {
+    const wm_manager_task_direct_def *action = wm_manager_task_direct_at(index);
+
+    if (!action || !dispatcher->direct_pending) {
+        return;
+    }
+
+    w_mutex_lock(&dispatcher->lane_mutex[action->lane]);
+    dispatcher->direct_pending[index] = true;
+    dispatcher->lane_signalled[action->lane] = true;
+    pthread_cond_signal(&dispatcher->lane_cond[action->lane]);
+    w_mutex_unlock(&dispatcher->lane_mutex[action->lane]);
+}
+
+/**
+ * @brief Perform any direct action this lane owes, before it looks for a task.
+ *
+ * BETWEEN TASKS, never mid-handler. The flag is read and cleared under the lane's mutex and the
+ * action runs outside it, so a signal arriving during the action sets the flag again and the next
+ * pass performs it -- rather than being lost, or extending this one.
+ */
+STATIC void wm_manager_task_direct_run(wm_manager_task_dispatcher *dispatcher, wm_manager_task_lane lane) {
+    for (size_t i = 0; i < wm_manager_task_direct_count(); i++) {
+        const wm_manager_task_direct_def *action = wm_manager_task_direct_at(i);
+        bool pending = false;
+
+        if (!action || action->lane != lane || !action->run) {
+            continue;
+        }
+
+        w_mutex_lock(&dispatcher->lane_mutex[lane]);
+        pending = dispatcher->direct_pending[i];
+        dispatcher->direct_pending[i] = false;
+        w_mutex_unlock(&dispatcher->lane_mutex[lane]);
+
+        if (pending) {
+            action->run();
+        }
+    }
+}
+
+/**
  * @brief A lane worker: wait to be woken, then take one task.
  */
 STATIC void* wm_manager_task_lane_thread(void *arg) {
@@ -325,6 +432,16 @@ STATIC void* wm_manager_task_lane_thread(void *arg) {
         bool claimed = false;
 
         wm_manager_task_lane_wait(dispatcher, worker->lane);
+
+        if (wm_shutdown_requested) {
+            break;
+        }
+
+        /* Before the claim, so a lane that always has a task queued still performs it. After the
+         * wait, so the action is never taken while a handler is running. With agent_delete_old
+         * bounded at its own budget, the worst case latency here is one bounded local task -- which
+         * is stated rather than implied, because "every 60 s" would otherwise read as a guarantee. */
+        wm_manager_task_direct_run(dispatcher, worker->lane);
 
         if (wm_shutdown_requested) {
             break;
@@ -498,18 +615,248 @@ STATIC void wm_manager_task_reap_orphans(wm_manager_task_dispatcher *dispatcher)
 }
 
 /**
+ * @brief Find a loaded schedule by id.
+ */
+STATIC const wm_manager_task_schedule* wm_manager_task_schedule_find(const wm_manager_task_dispatcher *dispatcher,
+                                                                     const char *schedule_id) {
+    for (size_t i = 0; i < dispatcher->schedule_count; i++) {
+        if (dispatcher->schedules[i].def && strcmp(dispatcher->schedules[i].def->schedule_id, schedule_id) == 0) {
+            return &dispatcher->schedules[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Write the built-in schedules into MANAGER_TASK_SCHEDULES, deciding each one's next run.
+ *
+ * Runs once, before the lanes start. Two writes rather than a read followed by a write, because the
+ * upsert reports the row it replaced: the decision needs the PREVIOUS enabled flag, and that is the
+ * only thing that makes a disabled-to-enabled transition observable across a restart.
+ */
+STATIC void wm_manager_task_schedules_upsert(wm_manager_task_dispatcher *dispatcher) {
+    long long now = (long long)time(NULL);
+
+    for (size_t i = 0; i < dispatcher->schedule_count; i++) {
+        const wm_manager_task_schedule *schedule = &dispatcher->schedules[i];
+        cJSON *previous = NULL;
+        const cJSON *stored_next = NULL;
+        const cJSON *stored_enabled = NULL;
+        long long provisional = 0;
+        long long decided = 0;
+
+        if (!schedule->def) {
+            continue;
+        }
+
+        provisional = wm_manager_task_schedule_next(schedule, 0, now);
+
+        if (wm_manager_task_client_schedule_upsert(&dispatcher->scheduler_client, schedule->def->schedule_id,
+                                                   provisional, schedule->enabled, &previous) != 0) {
+            mtwarn(WM_TASK_MANAGER_LOGTAG, "Cannot register the '%s' schedule; it will not run until the next restart.",
+                   schedule->def->schedule_id);
+            continue;
+        }
+
+        stored_next = previous ? cJSON_GetObjectItem(previous, "next_run_at") : NULL;
+        stored_enabled = previous ? cJSON_GetObjectItem(previous, "enabled") : NULL;
+
+        decided = wm_manager_task_schedule_startup_next_run(
+            schedule, previous != NULL,
+            stored_next && cJSON_IsNumber(stored_next) ? (long long)stored_next->valuedouble : 0,
+            stored_enabled && cJSON_IsNumber(stored_enabled) ? stored_enabled->valueint : 0, now);
+
+        cJSON_Delete(previous);
+
+        // Correct the provisional value only when the decision differs from it, which is the case
+        // for every schedule that already had a row and kept its cadence.
+        if (decided != provisional &&
+            wm_manager_task_client_schedule_advance(&dispatcher->scheduler_client, schedule->def->schedule_id,
+                                                    decided) != 0) {
+            mtwarn(WM_TASK_MANAGER_LOGTAG, "Cannot restore the '%s' schedule's next run; it may run early once.",
+                   schedule->def->schedule_id);
+            continue;
+        }
+
+        mtdebug1(WM_TASK_MANAGER_LOGTAG, "Schedule '%s' is %s; next run at %lld.", schedule->def->schedule_id,
+                 schedule->enabled ? "enabled" : "disabled", decided);
+    }
+}
+
+/**
+ * @brief Spawn an instance of every schedule whose slot has come due, and advance the slot.
+ *
+ * NO TRANSACTION ACROSS THE TWO WRITES, and none is needed: the instance's id is derived from the
+ * schedule and its slot, so a crash between the insert and the advance leaves the slot still due,
+ * and the retry re-derives the same id and collides on the primary key. The double spawn is a
+ * no-op rather than a duplicate run.
+ */
+STATIC void wm_manager_task_spawn_due(wm_manager_task_dispatcher *dispatcher) {
+    cJSON *due = NULL;
+    cJSON *entry = NULL;
+    long long now = (long long)time(NULL);
+    /* This node's role, resolved at most once per pass and only if a due schedule needs it.
+     * w_is_worker() re-parses ossec.conf from disk, and after downtime spanning a slot of each
+     * schedule the loop would otherwise read the file once per schedule for one answer. */
+    int worker_state = 0;
+    bool worker_state_known = false;
+
+    if (wm_manager_task_client_schedule_due(&dispatcher->scheduler_client, now, &due) != 0) {
+        return;
+    }
+
+    cJSON_ArrayForEach(entry, due) {
+        const cJSON *id = cJSON_GetObjectItem(entry, "schedule_id");
+        const cJSON *slot_item = cJSON_GetObjectItem(entry, "next_run_at");
+        const wm_manager_task_schedule *schedule = NULL;
+        const wm_manager_task_descriptor *desc = NULL;
+        long long slot = 0;
+        long long advance = 0;
+        bool node_allows = false;
+        bool overlap_known = false;
+        bool has_active = false;
+        char *task_id = NULL;
+        char *outcome = NULL;
+
+        if (wm_shutdown_requested) {
+            // Nothing spawned here would be claimed before the lanes are joined, and the slot stays
+            // due for the next start.
+            break;
+        }
+
+        if (!id || !cJSON_IsString(id) || !slot_item || !cJSON_IsNumber(slot_item)) {
+            continue;
+        }
+
+        slot = (long long)slot_item->valuedouble;
+
+        schedule = wm_manager_task_schedule_find(dispatcher, id->valuestring);
+        desc = schedule && schedule->def ? wm_manager_task_registry_get(schedule->def->task_type) : NULL;
+
+        if (desc) {
+            /* Read at spawn time rather than at startup, because a node can be promoted or demoted
+             * while the manager runs -- and only when a schedule is actually due, which keeps the
+             * file read at schedule cadence instead of the five second poll's. */
+            if (!worker_state_known) {
+                worker_state = w_is_worker();
+                worker_state_known = true;
+            }
+
+            node_allows = wm_manager_task_schedule_node_allows(schedule->def->scope, worker_state);
+
+            if (node_allows) {
+                overlap_known = wm_manager_task_client_schedule_active(&dispatcher->scheduler_client,
+                                                                       id->valuestring, &has_active) == 0;
+            }
+        }
+
+        switch (wm_manager_task_spawn_decide(desc != NULL, node_allows, overlap_known, has_active)) {
+        case WM_MANAGER_TASK_SPAWN_HOLD:
+            continue;
+
+        case WM_MANAGER_TASK_SPAWN_SKIP:
+            if (!desc) {
+                // A schedule id this build does not know, or one whose task type was removed. It
+                // cannot be run and it cannot be advanced by its own cadence, so it is pushed a day
+                // out: visible in the log, and not re-read every five seconds until then.
+                mtwarn(WM_TASK_MANAGER_LOGTAG, "Schedule '%s' is not known to this manager; ignoring its due run.",
+                       id->valuestring);
+                advance = now + WM_MANAGER_TASK_UNKNOWN_SCHEDULE_BACKOFF;
+            } else {
+                if (has_active) {
+                    mtdebug1(WM_TASK_MANAGER_LOGTAG,
+                             "Schedule '%s' still has an instance in flight; skipping the run due at %lld.",
+                             id->valuestring, slot);
+                }
+
+                advance = wm_manager_task_schedule_next(schedule, slot, now);
+            }
+            break;
+
+        case WM_MANAGER_TASK_SPAWN:
+        default:
+            task_id = manager_task_id_schedule(id->valuestring, slot);
+
+            if (!task_id) {
+                continue;
+            }
+
+            if (wm_manager_task_client_spawn(&dispatcher->scheduler_client, desc, task_id, id->valuestring, slot,
+                                             &outcome) != 0) {
+                // Not advanced. The slot stays due and the next poll tries again, which is the
+                // whole reason the id is derived rather than random.
+                os_free(task_id);
+                continue;
+            }
+
+            mtdebug1(WM_TASK_MANAGER_LOGTAG, "Schedule '%s' spawned '%s' for the run due at %lld (%s).",
+                     id->valuestring, task_id, slot, outcome ? outcome : "created");
+
+            os_free(task_id);
+            os_free(outcome);
+
+            // Straight to the lane, so a scheduled run does not wait out a poll interval it has
+            // already earned.
+            wm_manager_task_lane_signal(dispatcher, desc->lane);
+
+            advance = wm_manager_task_schedule_next(schedule, slot, now);
+            break;
+        }
+
+        if (advance <= slot) {
+            // A next slot that did not move would leave the schedule permanently due and spin the
+            // spawn loop. Only reachable through a misconfigured interval, but the consequence is
+            // bad enough to guard rather than reason about.
+            advance = now + WM_MANAGER_TASK_UNKNOWN_SCHEDULE_BACKOFF;
+        }
+
+        wm_manager_task_client_schedule_advance(&dispatcher->scheduler_client, id->valuestring, advance);
+    }
+
+    cJSON_Delete(due);
+}
+
+/**
  * @brief The scheduler: find work, wake the lanes that can do it, and sweep.
  */
 STATIC void* wm_manager_task_scheduler_thread(void *arg) {
     wm_manager_task_dispatcher *dispatcher = (wm_manager_task_dispatcher *)arg;
     time_t next_poll = 0;
     time_t next_sweep = time(NULL) + dispatcher->sweep_interval;
+    time_t *next_direct = NULL;
+
+    // Each direct action keeps its own next-due stamp, so adding one with a different cadence needs
+    // nothing here. Seeded to fire on the first pass: a manager that has been down may well have a
+    // log that grew past its threshold while nothing was watching.
+    if (wm_manager_task_direct_count() > 0) {
+        os_calloc(wm_manager_task_direct_count(), sizeof(time_t), next_direct);
+    }
 
     while (!wm_shutdown_requested) {
         time_t now = time(NULL);
 
+        for (size_t i = 0; next_direct && i < wm_manager_task_direct_count(); i++) {
+            const wm_manager_task_direct_def *action = wm_manager_task_direct_at(i);
+
+            if (action && now >= next_direct[i]) {
+                wm_manager_task_direct_signal(dispatcher, i);
+                next_direct[i] = now + (action->interval > 0 ? action->interval : 1);
+            }
+        }
+
         if (now >= next_poll) {
             cJSON *types = NULL;
+
+            /* On the poll's own tick, not the loop's: the spawn loop doubles as the poller because
+             * both are timer work on one thread, and running it every second instead would put a
+             * wazuh-db query per second on an idle manager to watch three rows that move at most
+             * once every fifteen minutes.
+             *
+             * Before the poll, so a row it creates is discovered by the same pass rather than five
+             * seconds later -- though the spawn signals the lane directly too, so the poll is only
+             * the fallback. */
+            wm_manager_task_spawn_due(dispatcher);
 
             // One grouped command per interval, not one claim per lane on a timer.
             if (wm_manager_task_client_poll(&dispatcher->scheduler_client, &types) == 0) {
@@ -556,6 +903,8 @@ STATIC void* wm_manager_task_scheduler_thread(void *arg) {
         wm_sleep_interruptible(1);
     }
 
+    os_free(next_direct);
+
     wm_manager_task_client_close(&dispatcher->scheduler_client);
 
     return NULL;
@@ -570,6 +919,14 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
 
     memset(dispatcher, 0, sizeof(*dispatcher));
 
+    /* STRICTLY BEFORE THE REGISTRY. The registry derives each local type's watchdog budget from the
+     * bounds resolved here, so a registry built first would stamp every local descriptor with the
+     * budget of a zeroed configuration.
+     *
+     * It is also where the local handlers pick up their disconnection window -- from the schedule
+     * that fires them, rather than reading the option a second time, so the two cannot disagree. */
+    wm_manager_task_local_init();
+
     if (wm_manager_task_registry_init(consumer_socket) != 0) {
         return -1;
     }
@@ -579,6 +936,15 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
     }
 
     wm_manager_task_policy_load(&dispatcher->policy);
+
+    if (wm_manager_task_schedules_count() > 0) {
+        os_calloc(wm_manager_task_schedules_count(), sizeof(wm_manager_task_schedule), dispatcher->schedules);
+        dispatcher->schedule_count = wm_manager_task_schedules_load(dispatcher->schedules);
+    }
+
+    if (wm_manager_task_direct_count() > 0) {
+        os_calloc(wm_manager_task_direct_count(), sizeof(bool), dispatcher->direct_pending);
+    }
 
     dispatcher->poll_interval = getDefine_Int_default("wazuh_modules", "manager_task_poll_interval", 1, 3600,
                                                       WM_MANAGER_TASK_DEFAULT_POLL_INTERVAL);
@@ -671,6 +1037,11 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
     // reclaimed it, so a reaper that ran first would miss it on this boot and every one after.
     wm_manager_task_reap_orphans(dispatcher);
 
+    /* And strictly after the reaper, for the same reason in reverse: a schedule that upserted
+     * before the reaper ran could spawn an instance of a type the reaper is about to retire rows
+     * of, and the fresh row would be caught in the same pass it was created for. */
+    wm_manager_task_schedules_upsert(dispatcher);
+
     for (size_t i = 0; i < dispatcher->worker_count; i++) {
         // Joinable, deliberately. w_create_thread wraps CreateThread, which calls pthread_detach
         // unconditionally, and a detached thread cannot be joined at shutdown.
@@ -722,10 +1093,18 @@ void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
         }
     }
 
+    // After the joins, so nothing is holding the socket the local handlers share.
+    wm_manager_task_local_teardown();
+
     // Rows still claimed here stay claimed. The next boot's startup sweep reclaims them, which is
     // why that pass covers every owner rather than only this process's.
     os_free(dispatcher->workers);
     dispatcher->worker_count = 0;
+
+    os_free(dispatcher->schedules);
+    dispatcher->schedule_count = 0;
+
+    os_free(dispatcher->direct_pending);
 }
 
 void wm_manager_task_dispatcher_watchdog(wm_manager_task_dispatcher *dispatcher, time_t now) {

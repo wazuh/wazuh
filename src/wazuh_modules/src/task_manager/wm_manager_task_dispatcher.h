@@ -23,6 +23,45 @@
 #include "wm_manager_task_registry.h"
 #include "wm_manager_task_client.h"
 #include "wm_manager_task_owner.h"
+#include "wm_manager_task_schedules.h"
+
+/**
+ * @brief Work a lane performs between tasks, with no row behind it.
+ *
+ * THE ESCAPE HATCH FOR WORK THAT IS NOT WORTH A ROW. Size-based log rotation is two w_stat() calls
+ * every minute: idempotent, instantaneous, and harmless to miss, since a skipped tick just rotates
+ * a minute later. Giving it a task type would cost about 1440 rows a day, each one inserted,
+ * polled, claimed, committed, executed and eventually retained, to buy durability nothing needs.
+ *
+ * A direct action still runs on a LANE thread rather than on the scheduler that signals it, because
+ * the scheduler is also the work poller and the ownership sweeper, and w_rotate_log() with
+ * compression on gzips a file of up to the configured threshold inline.
+ *
+ * The cost of putting one here rather than in a task type: no retry, no record, no visibility
+ * beyond its own log lines. Anything that needs any of those is a task.
+ */
+typedef void (*wm_manager_task_direct_action)(void);
+
+/**
+ * @brief One registered direct action.
+ */
+typedef struct _wm_manager_task_direct_def {
+    const char *name;                 ///< For the log line when it is signalled.
+    wm_manager_task_lane lane;        ///< Lane whose thread performs it.
+    int interval;                     ///< Seconds between signals.
+    wm_manager_task_direct_action run;
+} wm_manager_task_direct_def;
+
+/// Number of registered direct actions.
+size_t wm_manager_task_direct_count(void);
+
+/**
+ * @brief Iterate the registered direct actions.
+ *
+ * @param[in] index Position, from zero.
+ * @return The definition, or NULL once the end is reached.
+ */
+const wm_manager_task_direct_def* wm_manager_task_direct_at(size_t index);
 
 /// Per-lane response buffer. Bodies are small status objects; the payload travels the other way.
 #define WM_MANAGER_TASK_RESPONSE_LEN 4096
@@ -76,9 +115,20 @@ typedef struct _wm_manager_task_dispatcher {
     pthread_cond_t lane_cond[WM_MANAGER_TASK_LANE_COUNT];
     bool lane_signalled[WM_MANAGER_TASK_LANE_COUNT];
 
+    /* One pending flag per direct action, guarded by its own lane's mutex. A flag rather than a
+     * counter: repeated signals coalesce into one run, which is what makes a lane that spent two
+     * minutes on a bounded task perform one size-rotation check rather than two. */
+    bool *direct_pending;
+
     pthread_t scheduler;
     bool scheduler_started;
     wm_manager_task_client scheduler_client;
+
+    /* The recurring schedules, with their configuration resolved once at startup. Held here rather
+     * than read per spawn so that an operator editing ossec.conf cannot change the interval of a
+     * schedule halfway through a poll, and so the whole set is one restart away from consistent. */
+    wm_manager_task_schedule *schedules;
+    size_t schedule_count;
 
     int poll_interval;
     int sweep_interval;
@@ -133,6 +183,47 @@ void wm_manager_task_dispatcher_watchdog(wm_manager_task_dispatcher *dispatcher,
  * @return The type to try, or NULL once the pass has covered every type on the lane.
  */
 const wm_manager_task_descriptor* wm_manager_task_rotate(wm_manager_task_lane lane, size_t *rotation, size_t offset);
+
+/**
+ * @brief What the spawn loop should do with one due schedule.
+ *
+ * Separated from the loop so the interaction between the three rules -- node scope, overlap-skip
+ * and missed-run coalescing -- is testable without a database or a cluster.
+ */
+typedef enum _wm_manager_task_spawn_decision {
+    WM_MANAGER_TASK_SPAWN = 0, ///< Create an instance, then advance the slot.
+    WM_MANAGER_TASK_SPAWN_SKIP,///< Advance the slot without creating anything.
+    WM_MANAGER_TASK_SPAWN_HOLD ///< Leave the slot where it is and reconsider on the next poll.
+} wm_manager_task_spawn_decision;
+
+/**
+ * @brief Decide whether a due schedule spawns an instance now.
+ *
+ * SKIP AND HOLD ARE DIFFERENT, and the difference is what keeps `w_is_worker()` off the poll path:
+ * it re-parses ossec.conf from disk on every call, so a worker that merely held its master-scoped
+ * schedules would re-read the file every five seconds forever. Skipping advances the slot instead,
+ * which re-asks once per interval -- the cadence the check belongs at.
+ *
+ * Overlap skips too, rather than holding, which is the rule that makes a multi-batch
+ * `agent_delete_old` suppress its OWN next scheduled run until it finishes. That is correct -- a
+ * retention sweep should not start again while the previous one is still walking -- but it means
+ * the effective interval under a large backlog is however long the sweep takes, not the configured
+ * one.
+ *
+ * A slot whose overlap could not be determined HOLDS, and that asymmetry is deliberate: advancing
+ * on an unanswered question would skip a legitimate run outright, while holding costs one extra
+ * query on the next poll and self-heals as soon as wazuh-db answers.
+ *
+ * @param[in] known Whether this build knows the schedule id and its task type.
+ * @param[in] node_allows Whether this node's role permits the schedule to spawn.
+ * @param[in] overlap_known Whether the overlap check produced an answer.
+ * @param[in] has_active Whether a non-terminal instance of this schedule already exists.
+ * @return What to do with the slot.
+ */
+wm_manager_task_spawn_decision wm_manager_task_spawn_decide(bool known,
+                                                            bool node_allows,
+                                                            bool overlap_known,
+                                                            bool has_active);
 
 /**
  * @brief Whether a lane has been in one call long enough to be worth reporting.

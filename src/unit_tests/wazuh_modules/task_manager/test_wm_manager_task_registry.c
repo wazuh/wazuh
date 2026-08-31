@@ -487,6 +487,26 @@ void test_registry_init_rejects_unordered_timeouts(void **state) {
     assert_int_equal(wm_manager_task_registry_init("queue/sockets/inventory-sync-http.sock"), -1);
 }
 
+void test_every_local_type_has_a_watchdog_budget(void **state) {
+    size_t count = 0;
+    const wm_manager_task_descriptor **local = wm_manager_task_registry_lane(WM_MANAGER_TASK_LANE_LOCAL, &count);
+
+    assert_true(count > 0);
+
+    for (size_t i = 0; i < count; i++) {
+        // Zero here is not "no deadline", it is "the watchdog measures against its bare 30 second
+        // margin" -- which every one of these three types would trip as a matter of routine, since
+        // the retention sweep is allowed 30 seconds of its own before it stops taking new agents and
+        // rotation gzips a file of up to 512 MB inline. A warning that fires on healthy work teaches
+        // operators to ignore the warning.
+        assert_true(local[i]->request_timeout_ms > 0);
+
+        // And no connect timeout, because there is nothing to connect to: a local type runs in this
+        // process. A nonzero value here would mean the descriptor was copied from a routed one.
+        assert_int_equal(local[i]->connect_timeout_ms, 0);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // The registry as data
@@ -529,6 +549,7 @@ int main(void) {
         cmocka_unit_test(test_408_and_429_are_retryable_not_terminal),
         cmocka_unit_test(test_5xx_is_retryable),
         cmocka_unit_test(test_body_can_override_a_terminal_status),
+        cmocka_unit_test(test_every_local_type_has_a_watchdog_budget),
         // Last, because it is the only test that calls init again.
         cmocka_unit_test(test_registry_init_rejects_unordered_timeouts),
     };

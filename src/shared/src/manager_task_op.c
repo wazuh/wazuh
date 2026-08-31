@@ -62,6 +62,18 @@ char* manager_task_id_agent_delete(const char *agent_id, long long journal_seq) 
     return manager_task_hash(input);
 }
 
+char* manager_task_id_schedule(const char *schedule_id, long long scheduled_run_at) {
+    char input[OS_SIZE_128];
+
+    if (!schedule_id || !*schedule_id) {
+        return NULL;
+    }
+
+    snprintf(input, sizeof(input), "mt:sched:%s:%lld", schedule_id, scheduled_run_at);
+
+    return manager_task_hash(input);
+}
+
 char* manager_task_id_random(const char *tag) {
     unsigned char random[MANAGER_TASK_RANDOM_BYTES];
     char input[OS_SIZE_128];

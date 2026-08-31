@@ -85,8 +85,17 @@ typedef struct _wm_manager_task_descriptor {
      * type is executed in-process by handler below. */
     const char *method;
     const char *path;
-    long connect_timeout_ms;       ///< Never 0: libcurl reads that as its own 300 s default.
-    long request_timeout_ms;       ///< Never 0: libcurl reads that as "no timeout at all".
+    long connect_timeout_ms;       ///< Routed types only. Never 0: libcurl reads that as its own 300 s default.
+
+    /* Two meanings, one field, because both are "how long one attempt may take" and the watchdog
+     * reads it for every type:
+     *
+     *  - For a ROUTED type it is enforced, by libcurl, and must never be 0 -- libcurl reads a zero
+     *    request timeout as "wait forever".
+     *  - For a LOCAL type nothing can enforce it: there is no cancellation primitive in the tree. It
+     *    is the point past which the watchdog reports the handler as stalled, and must never be 0
+     *    either, or the watchdog measures against its bare margin and warns on healthy work. */
+    long request_timeout_ms;
 
     wm_manager_task_handler handler;   ///< Set for in-process types, NULL for routed ones.
 

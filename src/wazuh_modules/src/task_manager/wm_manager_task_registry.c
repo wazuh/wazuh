@@ -17,6 +17,7 @@
 #include "wmodules.h"
 #include "wm_task_manager.h"
 #include "wm_manager_task_registry.h"
+#include "wm_manager_task_local.h"
 
 /* Task type names. Kept as constants rather than an enum so that the only place a type name
  * appears is the table below and the producer that creates the row. */
@@ -72,20 +73,6 @@ STATIC const char *WM_MANAGER_TASK_LANE_NAMES[WM_MANAGER_TASK_LANE_COUNT] = {
     [WM_MANAGER_TASK_LANE_LOCAL] = "local",
 };
 
-/* Stands in for the three periodic handlers until the monitord port replaces each of them with
- * the ported implementation. Nothing creates a row of these types before then -- their schedules
- * arrive in the same change -- so this is unreachable rather than dormant; it exists so that
- * every type in the table below has an executor and the startup check stays meaningful. A row
- * that somehow reaches it dead-letters with a legible reason instead of being claimed and
- * dropped. */
-STATIC wm_manager_task_result wm_manager_task_handler_unimplemented(__attribute__((unused)) const char *agent_id,
-                                                                   __attribute__((unused)) const char *payload,
-                                                                   char *error,
-                                                                   size_t error_len) {
-    snprintf(error, error_len, "Task type is registered but its handler is not implemented yet.");
-    return WM_MANAGER_TASK_TERMINAL;
-}
-
 /* The registry itself. Built once at startup from the constants above plus the resolved consumer
  * socket, then read-only. */
 STATIC wm_manager_task_descriptor manager_task_registry[] = {
@@ -121,19 +108,32 @@ STATIC wm_manager_task_descriptor manager_task_registry[] = {
         .max_pending = WM_MANAGER_TASK_DEFAULT_MAX_PENDING_SCANS,
     },
     {
+        /* Marks silent agents disconnected and logs each transition. Spawned by a schedule, so a
+         * row that fails is not lost work: the next slot brings another one, which recomputes the
+         * whole set from the current keepalive times rather than resuming anything. */
         .name = WM_MANAGER_TASK_AGENT_DISCONNECT,
         .lane = WM_MANAGER_TASK_LANE_LOCAL,
-        .handler = wm_manager_task_handler_unimplemented,
+        .handler = wm_manager_task_handler_agent_disconnect_sweep,
         .max_attempts = WM_MANAGER_TASK_USE_DEFAULT,
         .max_defer = WM_MANAGER_TASK_USE_DEFAULT,
         .allow_terminal_failure = true,
+        /* Never coalesced, and the reason is the same for all three schedule-spawned types: their
+         * identity already collapses duplicates. Two spawns of one slot derive one id and collide
+         * on the primary key, while two different slots are two runs that must both happen. */
         .coalesce = false,
+        /* Unbounded, but bounded in practice by overlap-skip: a schedule does not spawn while a
+         * non-terminal instance of its own is outstanding, so the pending set of these types
+         * cannot exceed one row per schedule. An admission bound would be a second mechanism
+         * enforcing what the first one already guarantees. */
         .max_pending = WM_MANAGER_TASK_UNBOUNDED,
     },
     {
+        /* Retention deletion of long-disconnected agents. Bounds itself per attempt and returns
+         * incomplete when it has more to do, so a large backlog spans several claims rather than
+         * holding the shared local lane for the whole sweep. */
         .name = WM_MANAGER_TASK_AGENT_DELETE_OLD,
         .lane = WM_MANAGER_TASK_LANE_LOCAL,
-        .handler = wm_manager_task_handler_unimplemented,
+        .handler = wm_manager_task_handler_agent_delete_old,
         .max_attempts = WM_MANAGER_TASK_USE_DEFAULT,
         .max_defer = WM_MANAGER_TASK_USE_DEFAULT,
         .allow_terminal_failure = true,
@@ -141,9 +141,12 @@ STATIC wm_manager_task_descriptor manager_task_registry[] = {
         .max_pending = WM_MANAGER_TASK_UNBOUNDED,
     },
     {
+        /* Daily log rotation. Size-based rotation is deliberately NOT here: it is a direct action
+         * the local lane takes between tasks, because routing two w_stat() calls through the queue
+         * would cost about 1440 rows a day to do work that is harmless to miss. */
         .name = WM_MANAGER_TASK_LOG_ROTATE_DAILY,
         .lane = WM_MANAGER_TASK_LANE_LOCAL,
-        .handler = wm_manager_task_handler_unimplemented,
+        .handler = wm_manager_task_handler_log_rotate_daily,
         .max_attempts = WM_MANAGER_TASK_USE_DEFAULT,
         .max_defer = WM_MANAGER_TASK_USE_DEFAULT,
         .allow_terminal_failure = true,
@@ -263,6 +266,20 @@ int wm_manager_task_registry_init(const char *inventory_sync_socket) {
             // A type with neither a route nor a handler would be claimed and then dropped.
             mterror(WM_TASK_MANAGER_LOGTAG, "Task type '%s' has neither a route nor a handler.", desc->name);
             return -1;
+        } else {
+            /* A local type's request_timeout_ms is the WATCHDOG's budget, not a deadline anyone can
+             * enforce: there is no cancellation primitive in the tree, so nothing can interrupt a
+             * handler that overruns. Left at zero the watchdog measures against its 30 second margin
+             * alone, and every one of these three types would then trip it as a matter of routine --
+             * agent_delete_old is allowed 30 seconds of its own before it stops taking new agents,
+             * and rotation gzips a file of up to 512 MB inline. A warning that fires on healthy work
+             * teaches operators to ignore the warning. */
+            desc->request_timeout_ms = wm_manager_task_local_watchdog_budget(desc->name) * 1000;
+
+            if (desc->request_timeout_ms <= 0) {
+                mterror(WM_TASK_MANAGER_LOGTAG, "Task type '%s' has no watchdog budget.", desc->name);
+                return -1;
+            }
         }
 
         manager_task_lane_types[desc->lane][manager_task_lane_type_count[desc->lane]++] = desc;

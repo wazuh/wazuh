@@ -1,12 +1,25 @@
 # Monitord
 
-`wazuh-manager-monitord` is the housekeeping daemon. It monitors agent connection health, generates disconnection alerts, and rotates manager log files.
+> **This daemon no longer does any of the work described below, and is scheduled for removal.**
+> The agent disconnection sweep, the disconnection log line, the retention deletion of
+> long-disconnected agents and both kinds of log rotation now run as recurring tasks inside
+> `wazuh-modulesd`'s Task Manager — see [Recurring manager tasks](../task_manager/schedules.md) for
+> what each one does now and for the three behaviours that changed. `wazuh-manager-monitord` still
+> starts and still answers `getconfig` on `queue/sockets/monitor`, so the `component='monitor'`
+> configuration endpoint keeps working until the daemon is removed; its main loop is otherwise idle.
+>
+> Every option keeps its current name, location and meaning. The `monitord.` prefix on the internal
+> options is part of the key rather than a label, so those keys stay where they are.
+>
+> The rest of this page describes the historical implementation.
+
+`wazuh-manager-monitord` was the housekeeping daemon. It monitored agent connection health, generated disconnection alerts, and rotated manager log files.
 
 Source: `src/monitord/`
 
-## What it does
+## What it did
 
-The main loop runs every second and checks four timers:
+The main loop ran every second and checked four timers:
 
 | Check | Trigger | Action |
 |-------|---------|--------|

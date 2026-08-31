@@ -354,3 +354,162 @@ int wm_manager_task_client_create(wm_manager_task_client *client,
 
     return 0;
 }
+
+int wm_manager_task_client_spawn(wm_manager_task_client *client,
+                                 const wm_manager_task_descriptor *desc,
+                                 const char *task_id,
+                                 const char *schedule_id,
+                                 long long scheduled_run_at,
+                                 char **outcome) {
+    cJSON *parameters = NULL;
+    cJSON *response = NULL;
+    cJSON *item = NULL;
+    char payload[OS_SIZE_256];
+
+    if (outcome) {
+        *outcome = NULL;
+    }
+
+    if (!desc || !task_id || !schedule_id) {
+        return -1;
+    }
+
+    /* The payload a schedule-spawned row carries. Small and fixed, because the consumer of these
+     * types is a local handler in this same process rather than an HTTP route: there is no request
+     * body to author, only the two facts a handler might want about why it is running.
+     *
+     * The slot is what agent_delete_old keys its resume cursor on, so it is not decoration. */
+    snprintf(payload, sizeof(payload), "{\"schedule_id\":\"%s\",\"scheduled_run_at\":%lld}", schedule_id,
+             scheduled_run_at);
+
+    parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "task_id", task_id);
+    cJSON_AddStringToObject(parameters, "task_type", desc->name);
+    cJSON_AddStringToObject(parameters, "payload", payload);
+    cJSON_AddNumberToObject(parameters, "create_time", (double)time(NULL));
+    cJSON_AddStringToObject(parameters, "schedule_id", schedule_id);
+    cJSON_AddNumberToObject(parameters, "scheduled_run_at", (double)scheduled_run_at);
+
+    /* Eligible from its slot, not from now. They are the same thing on a punctual spawn and differ
+     * after downtime, where the slot is in the past -- and the slot is the honest answer: the run
+     * was due then, and dating it from the catch-up would make a late instance look like a
+     * punctual one in the history the SCHEDULED_RUN_AT index exists to serve. */
+    cJSON_AddNumberToObject(parameters, "next_attempt_at", (double)scheduled_run_at);
+
+    if (wm_manager_task_client_call(client, "create_manager_task", parameters, &response) != 0) {
+        return -1;
+    }
+
+    if (item = cJSON_GetObjectItem(response, "result"), item && cJSON_IsString(item)) {
+        if (outcome) {
+            os_strdup(item->valuestring, *outcome);
+        }
+    }
+
+    cJSON_Delete(response);
+
+    return 0;
+}
+
+int wm_manager_task_client_schedule_upsert(wm_manager_task_client *client,
+                                           const char *schedule_id,
+                                           long long next_run_at,
+                                           bool enabled,
+                                           cJSON **previous) {
+    cJSON *parameters = NULL;
+    cJSON *response = NULL;
+
+    if (previous) {
+        *previous = NULL;
+    }
+
+    if (!schedule_id) {
+        return -1;
+    }
+
+    parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "schedule_id", schedule_id);
+    cJSON_AddNumberToObject(parameters, "next_run_at", (double)next_run_at);
+    cJSON_AddBoolToObject(parameters, "enabled", enabled);
+
+    if (wm_manager_task_client_call(client, "upsert_manager_task_schedule", parameters, &response) != 0) {
+        return -1;
+    }
+
+    // Absent when the schedule is new, which is the distinction the caller needs: only a schedule
+    // that was already there and disabled can be undergoing a disabled-to-enabled transition.
+    if (previous) {
+        *previous = cJSON_DetachItemFromObject(response, "previous");
+    }
+
+    cJSON_Delete(response);
+
+    return 0;
+}
+
+int wm_manager_task_client_schedule_advance(wm_manager_task_client *client,
+                                            const char *schedule_id,
+                                            long long next_run_at) {
+    cJSON *parameters = NULL;
+
+    if (!schedule_id) {
+        return -1;
+    }
+
+    parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "schedule_id", schedule_id);
+    cJSON_AddNumberToObject(parameters, "next_run_at", (double)next_run_at);
+
+    return wm_manager_task_client_call(client, "set_manager_task_schedule_next_run", parameters, NULL);
+}
+
+int wm_manager_task_client_schedule_due(wm_manager_task_client *client, long long now, cJSON **schedules) {
+    cJSON *parameters = NULL;
+    cJSON *response = NULL;
+
+    if (!schedules) {
+        return -1;
+    }
+
+    *schedules = NULL;
+
+    parameters = cJSON_CreateObject();
+    cJSON_AddNumberToObject(parameters, "now", (double)now);
+
+    if (wm_manager_task_client_call(client, "get_due_manager_task_schedules", parameters, &response) != 0) {
+        return -1;
+    }
+
+    *schedules = cJSON_DetachItemFromObject(response, "schedules");
+
+    cJSON_Delete(response);
+
+    return *schedules ? 0 : -1;
+}
+
+int wm_manager_task_client_schedule_active(wm_manager_task_client *client, const char *schedule_id, bool *active) {
+    cJSON *parameters = NULL;
+    cJSON *response = NULL;
+    const cJSON *item = NULL;
+
+    if (!schedule_id || !active) {
+        return -1;
+    }
+
+    *active = false;
+
+    parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "schedule_id", schedule_id);
+
+    if (wm_manager_task_client_call(client, "manager_task_schedule_has_active", parameters, &response) != 0) {
+        return -1;
+    }
+
+    if (item = cJSON_GetObjectItem(response, "active"), item && cJSON_IsBool(item)) {
+        *active = cJSON_IsTrue(item);
+    }
+
+    cJSON_Delete(response);
+
+    return 0;
+}

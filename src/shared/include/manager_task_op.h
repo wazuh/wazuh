@@ -97,6 +97,22 @@ typedef struct manager_task_request_t {
 char* manager_task_id_agent_delete(const char *agent_id, long long journal_seq);
 
 /**
+ * @brief The task id of one scheduled run: SHA-256("mt:sched:" schedule_id ":" scheduled_run_at).
+ *
+ * DETERMINISTIC, and that is the whole of the spawn loop's crash safety. Spawning an instance and
+ * advancing NEXT_RUN_AT are two commands with no transaction across them, so a crash between them
+ * leaves the slot still due; the retry re-derives this id and the primary-key collision makes the
+ * second insert a no-op instead of a duplicate run. No cross-table transaction needed.
+ *
+ * Keyed on the SLOT rather than on the spawn time, for the same reason the deletion id is keyed on
+ * a sequence: two runs of one schedule are two different slots and must never share an id, while
+ * two attempts at one slot are one run and must.
+ *
+ * @return 64 lowercase hex characters, caller-owned, or NULL on a bad argument.
+ */
+char* manager_task_id_schedule(const char *schedule_id, long long scheduled_run_at);
+
+/**
  * @brief A random task id: SHA-256("mt:" tag ":" <128 random bits>).
  *
  * RANDOM because its creator can be called twice meaning two different things, and deduplication is

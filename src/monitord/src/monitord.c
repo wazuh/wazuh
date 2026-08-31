@@ -25,20 +25,27 @@ OSHash* agents_to_alert_hash;
 monitor_time_control mond_time_control;
 bool worker_node;
 
+/* How long the idle loop parks between wake-ups. Nothing depends on the cadence any more; it exists
+ * only so the process stays alive for the getconfig socket and the daemon healthchecks. */
+#define MONITORD_IDLE_INTERVAL 60
+
 void Monitord()
 {
-    char path[PATH_MAX];
-    char path_json[PATH_MAX];
-
+    /* EVERY PERIODIC RESPONSIBILITY OF THIS DAEMON NOW RUNS IN THE TASK MANAGER, inside
+     * wazuh-modulesd: the agent disconnection sweep, the disconnection log line, the retention
+     * deletion of long-disconnected agents, and both kinds of log rotation. See
+     * docs/ref/modules/task_manager/schedules.md.
+     *
+     * The loop is gutted here rather than in the change that deletes this daemon, because the two
+     * cannot overlap even for one release: two rotators racing on the same rename would lose a log
+     * file, and two nodes' worth of disconnection sweeps would fight over the same rows.
+     *
+     * What is left is a process that starts, answers getconfig and idles. The socket stays because
+     * removing it is a breaking API change (`component='monitor'`) that belongs with the daemon's
+     * removal, not here. The functions below this one are now unreachable and go with the file.
+     */
     /* Wait a few seconds to settle */
     sleep(10);
-
-    /* Set internal log path to rotate them */
-
-    /* /var/wazuh-manager/logs/wazuh-manager.log */
-    snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* /var/wazuh-manager/logs/wazuh-manager.json */
-    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 
     /* Log monitord startup message to ossec.log */
     minfo(OS_MG_STARTED);
@@ -46,38 +53,8 @@ void Monitord()
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
-    /* Creating agents disconnected alert table */
-    agents_to_alert_hash = OSHash_Create();
-    if(!agents_to_alert_hash) {
-        merror(MEM_ERROR, errno, strerror(errno));
-    }
-
-    /* Get current time and initiate counters */
-    monitor_init_time_control();
-
-    /* Main monitor loop */
     while (1) {
-        monitor_step_time();
-
-        if(check_disconnection_trigger()){
-            monitor_agents_disconnection();
-        }
-        if(check_alert_trigger()){
-            monitor_agents_alert();
-        }
-        if(check_deletion_trigger()){
-            monitor_agents_deletion();
-        }
-
-        if(check_logs_time_trigger()){
-            monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
-            monitor_update_date();
-
-        } else{
-            monitor_logs(CHECK_LOGS_SIZE, path, path_json);
-        }
-
-        sleep(1);
+        sleep(MONITORD_IDLE_INTERVAL);
     }
 }
 

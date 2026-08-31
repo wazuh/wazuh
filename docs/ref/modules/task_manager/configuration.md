@@ -153,8 +153,60 @@ wazuh_modules.debug=2
 
 ---
 
+## Recurring manager tasks
+
+The three recurring jobs the Task Manager took over from `wazuh-monitord` — the agent disconnection
+sweep, the retention deletion of long-disconnected agents and log rotation — have **no `<task-manager>`
+options of their own**. Their intervals come from the sources they already had, and their behaviour
+is described in [Recurring manager tasks](schedules.md).
+
+### Where their intervals come from
+
+| Setting | Where it lives | Default | Governs |
+| --- | --- | --- | --- |
+| `agents_disconnection_time` | `<global>` in `ossec.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
+| `monitord.delete_old_agents` | `internal_options.conf` | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
+| `monitord.monitor_agents` | `internal_options.conf` | 1 | whether the retention sweep runs and whether disconnections are logged |
+| `monitord.rotate_log` | `internal_options.conf` | 1 | whether either kind of log rotation happens |
+| `monitord.day_wait` | `internal_options.conf` | 10 s | offset from local midnight for the daily rotation |
+| `monitord.compress` | `internal_options.conf` | 1 | whether rotated logs are gzipped |
+| `monitord.keep_log_days` | `internal_options.conf` | 31 | how long rotated logs are kept |
+| `monitord.size_rotate` | `internal_options.conf` | 512 MB | threshold for size-based rotation |
+| `monitord.daily_rotations` | `internal_options.conf` | 12 | rotated slots per day per file |
+
+The `monitord.` prefix is **not cosmetic and must not be renamed**: `getDefine_Int` splits each key
+at its first `.` and compares both halves, so the prefix is part of the key. Renaming these would
+silently ignore whatever an operator has already configured. `delete_old_agents` and
+`monitor_agents` are not shipped in `internal_options.conf` at all — they exist only as reads with
+the defaults above.
+
+`agents_disconnection_time` is also read by `remoted`, so `<global>` is shared configuration rather
+than something the Task Manager owns.
+
+### Options the retention sweep adds
+
+Both are internal options in the `wazuh_modules` namespace, and both bound one attempt of
+`agent_delete_old` so that a large backlog spans several claims instead of holding the shared local
+lane for the whole sweep.
+
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.manager_task_delete_old_batch` | 200 | 1–100000 | agents examined per attempt |
+| `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds of lane occupancy per attempt |
+
+The time bound is the one that binds in practice: the send timeout on the connection to
+`wazuh-authd` is a fixed five seconds, so 200 agents against a wedged `wazuh-authd` would otherwise
+be a worst case measured in minutes on a single-threaded lane. Counting agents bounds the work;
+counting seconds bounds the occupancy.
+
+Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the
+lane re-claims the row and resumes where it stopped.
+
+---
+
 ## See Also
 
+- [Recurring manager tasks](schedules.md) — the three schedules and how they fire
 - [Task Manager Module](README.md) — Module overview and architecture
 - [Agent Upgrade Configuration](../agent_upgrade/configuration.md) — main producer of `remote_upgrade` tasks
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) — persistence backend for `tasks.db`
