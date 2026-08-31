@@ -246,12 +246,40 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 ### The connector flush-interval override
 
 The pipeline's and the lane's sync connectors are created with `flush_interval_seconds` forced to
-3600, regardless of configuration (`PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS`). This is
-correctness, not tuning: the shared connector's TIMER flush silently discards the buffer on
-failure, and if a timer flush could race the worker's own flush, a worker could answer `200` for
-data that was silently dropped. The workers own every flush — that is the entire durability
-contract behind "200 means flushed". The `..._indexer_sync_flush_interval_seconds` internal
-option is therefore accepted-but-ignored for these connectors (documented as such).
+`0`, regardless of configuration (`PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS`), and `0` means the
+connector never starts its background flush thread. This is correctness, not tuning: a TIMER flush
+that fails discards the buffer and has **no responder to report to**, so the worker's own `flush()`
+would then find an empty buffer, return cleanly, and answer `200` for data that never reached the
+indexer. The workers own every flush — that is the entire durability contract behind "200 means
+flushed", and with no timer thread there is no second owner of the staging buffer for it to race.
+The `..._indexer_sync_flush_interval_seconds` internal option is therefore accepted-but-ignored for
+these connectors (documented as such).
+
+What the override prevents, with the timer thread drawn as the second owner it used to be:
+
+```mermaid
+sequenceDiagram
+    participant W as pipeline worker
+    participant BUF as connector buffer<br/>(m_bulkData + its mutex)
+    participant T as connector TIMER thread<br/>(only if flush_interval_seconds > 0)
+    participant IDX as indexer
+    W->>BUF: stage session S1
+    W->>BUF: stage session S2
+    Note over W,BUF: S1 and S2 are staged and UNANSWERED
+    T->>BUF: timer expires, takes the mutex, sends the buffer
+    BUF->>IDX: POST /_bulk
+    IDX-->>BUF: 500
+    BUF->>BUF: buffer cleared, exception thrown
+    T->>T: caught and logged ("Error processing bulk")
+    Note over T: there is no responder on this thread:<br/>the failure ends here
+    W->>BUF: flush()
+    BUF-->>W: buffer empty, returns CLEANLY
+    W-->>W: answers 200 to S1 and S2
+    Note over W: "200 means flushed" violated — both agents<br/>drop their outbox for data that never landed
+```
+
+With `flush_interval_seconds = 0` the `T` lane does not exist, so the interleaving above is not
+merely unlikely — it is unrepresentable.
 
 Two config families feed the connectors and must not be crossed: the `<indexer>` block (hosts,
 TLS, credentials — owned by the shared connector) and the module's `indexer_sync_*` /
@@ -342,6 +370,51 @@ lock: two requests of the same agent traverse the same FIFO. Sessions classify i
 - **Immediate** (cleans, checksum, metadata/groups, deletions): executes its own I/O and responds
   alone. The worker **cuts the open batch first** — an immediate's effects (deletes, a checksum
   read) must not overtake bulk writes of an earlier session of the same agent.
+
+A batch is cut by an EVENT, never by a clock — there is no linger timer anywhere in this path
+(`shard.cv.wait` has no timeout). Five things close an open batch, and only the first four flush:
+
+| Trigger | Why it cuts here |
+|---|---|
+| staged bytes reach `bulkFlushBytes` | bounds the request size and the memory held by unanswered sessions |
+| the shard queue drains | nothing is coming, so waiting only delays sessions already staged: the low-load path, one session in, one flush out |
+| the next item is an `Immediate` session | it runs its own I/O now, which must not overtake staged writes of an EARLIER session of the same agent |
+| the next item is a `DeleteAgent` | same ordering rule; a delete that overtook the agent's staged writes would leave documents behind forever |
+| shutdown | **not a flush**: the batch is abandoned and every session answered `503` |
+
+```mermaid
+sequenceDiagram
+    participant A as agent A (SyncData)
+    participant B as agent B (SyncData)
+    participant C as agent A (Cleans)
+    participant EP as syncEndpoint
+    participant SH as shard[i] FIFO
+    participant W as worker i
+    participant IDX as connector i (private buffer)
+    A->>EP: POST /stateful FullSession{SyncData}
+    EP->>SH: enqueue on hash(agentId) % workers
+    B->>EP: POST /stateful FullSession{SyncData}
+    EP->>SH: enqueue
+    W->>SH: popDispatchable
+    W->>IDX: stageBulk -> bulkIndex xN
+    Note over W,IDX: batch=[A], below bulkFlushBytes
+    W->>SH: popDispatchable
+    W->>IDX: stageBulk -> bulkIndex xN
+    Note over W,IDX: batch=[A,B], still below the threshold
+    W->>SH: popDispatchable -> empty
+    Note over W,SH: CUT: queue drained
+    W->>IDX: flush()
+    IDX-->>W: ok
+    W-->>A: 200
+    W-->>B: 200
+    C->>EP: POST /stateful FullSession{Cleans}
+    EP->>SH: enqueue
+    W->>SH: popDispatchable
+    Note over W,IDX: CUT: Immediate — close the open batch BEFORE its own I/O
+    W->>IDX: deleteByQuery(index, agentId) + flush()
+    IDX-->>W: ok
+    W-->>C: 200
+```
 
 Failure mapping is centralized in the worker: a connector failure answers `503` when
 `isAvailable()` says the indexer is the problem (agent retries, like any not-ready) and `500`

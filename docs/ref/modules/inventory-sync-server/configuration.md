@@ -384,8 +384,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
 **No effect.** The value is accepted for compatibility but the module overrides the connector's
-periodic flush to one hour regardless: the ingestion workers own every flush (a timer-driven flush
-that fails discards the buffer silently, which would let a worker answer `200` for lost data).
+periodic flush to `0` regardless, which means the connector never starts its background flush
+thread: the ingestion workers own every flush (a timer-driven flush that fails discards the buffer
+silently and has no responder to report to, which would let a worker answer `200` for lost data).
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
