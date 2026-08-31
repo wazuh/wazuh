@@ -536,9 +536,9 @@ void *audit_main(audit_data_t *audit_data) {
         audit_data->socket = init_auditd_socket();
     }
     if (audit_data->socket < 0) {
-        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
         atomic_int_set(&audit_thread_active, 0);
-        return NULL;
+        goto whodata_teardown;
     }
 
     if (audit_data->mode == AUDIT_ENABLED) {
@@ -555,6 +555,7 @@ void *audit_main(audit_data_t *audit_data) {
     mdebug1(FIM_AUDIT_THREAD_STOPED);
     close(audit_data->socket);
 
+whodata_teardown:
     // Clean regexes used for parsing events
     clean_regex();
 
