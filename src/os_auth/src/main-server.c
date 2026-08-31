@@ -650,7 +650,7 @@ int main(int argc, char **argv)
         if (config.flags.use_password) {
             minfo("Accepting connections on port %hu. Shared-password enrollment is required.", config.port);
         } else {
-            mdebug1("Accepting connections on port %hu. No password required.", config.port);
+            minfo("Accepting connections on port %hu. No password required.", config.port);
         }
     }
 
