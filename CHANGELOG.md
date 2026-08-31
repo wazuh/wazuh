@@ -146,3 +146,4 @@
 | [#38212](https://github.com/wazuh/wazuh/issues/38212) | Fixed the Windows agent leaving the FIM synchronization database open when the service stopped, which left the `queue\` directory behind after an uninstall without purge. |
 | [#38646](https://github.com/wazuh/wazuh/pull/38646) | Fixed SCA HIPAA compliance mappings across policy checks. |
 | [#38736](https://github.com/wazuh/wazuh/pull/38736) | Fixed two CIS Amazon Linux 2023 SCA checks (`gpgcheck`, `vsftpd`) reporting false-positives on compliant systems. |
+| [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
