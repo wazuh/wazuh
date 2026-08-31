@@ -168,11 +168,14 @@ The Container Images module validates configuration at startup:
 1. `enabled` must be `yes` or `no`.
 2. `scan_on_start` must be `yes` or `no`.
 3. `interval` must be a positive time value.
-4. Reference values must not be empty.
 
 ### Error Handling
 
-Invalid required values cause a configuration error and reject the module block. Unknown elements inside `<container_images>`, and entry names inside `<references>` that are not one of the three types, are logged with a warning and ignored.
+An invalid module setting, meaning `enabled`, `scan_on_start` or `interval`, causes a configuration error and rejects the module block.
+
+Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<container_images>` are also logged with a warning and ignored.
+
+A reference entry is skipped rather than rejected because rejecting it invalidates the whole module configuration, which stops `wazuh-modulesd` from starting; since the control script tests every daemon's configuration before starting any of them, a single empty entry would otherwise leave the agent with no daemon running.
 
 ---
 
