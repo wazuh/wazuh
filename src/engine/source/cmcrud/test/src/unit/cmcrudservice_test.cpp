@@ -1130,9 +1130,9 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_MissingEnabled_Thr
 // validateResource - Integration validation failures
 // ---------------------------------------------------------------------
 
-TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidDecoderUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_EmptyDecoderUUID_Throws)
 {
-    static constexpr const char* kIntegrationBadDecoderUUIDStr = R"(
+    static constexpr const char* kIntegrationEmptyDecoderUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "metadata": {
@@ -1141,11 +1141,11 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidDeco
       "enabled": true,
       "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
-      "decoders": [ "NOT-A-UUID" ],
+      "decoders": [ "" ],
       "kvdbs": []
     })";
 
-    json::Json payload {kIntegrationBadDecoderUUIDStr};
+    json::Json payload {kIntegrationEmptyDecoderUUIDStr};
 
     try
     {
@@ -1159,9 +1159,9 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidDeco
     }
 }
 
-TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidKVDBUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_EmptyKVDBUUID_Throws)
 {
-    static constexpr const char* kIntegrationBadKVDBUUIDStr = R"(
+    static constexpr const char* kIntegrationEmptyKVDBUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "metadata": {
@@ -1173,10 +1173,10 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidKVDB
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"
       ],
-      "kvdbs": [ "NOT-A-UUID" ]
+      "kvdbs": [ "" ]
     })";
 
-    json::Json payload {kIntegrationBadKVDBUUIDStr};
+    json::Json payload {kIntegrationEmptyKVDBUUIDStr};
 
     try
     {
@@ -1319,6 +1319,26 @@ TEST_F(CrudServiceImportNsFromVectorTest, AlreadyExists_Throws)
 TEST_F(CrudServiceImportNsFromVectorTest, ImportsKVDB)
 {
     std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Import a KVDB whose identifier is not a UUIDv4: identifiers are opaque to the engine
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsKVDBWithNonV4UUID)
+{
+    constexpr const char* kKVDBV5Json = R"({
+  "id": "6093809a-6285-5cf8-9284-63bd68f796e9",
+  "metadata": {"title": "windows_kerberos_status_code_to_code_name"},
+  "content": {"0x0": "KDC_ERR_NONE"},
+  "enabled": true
+})";
+
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBV5Json)};
 
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
@@ -2529,34 +2549,7 @@ TEST_F(CrudServiceHelperFailureTest, ImportVector_KVDB_EmptyId_Throws)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_THAT(std::string {e.what()}, HasSubstr("id"));
-    }
-}
-
-//  importNamespace (vector) rejects a resource with an invalid UUID
-
-TEST_F(CrudServiceHelperFailureTest, ImportVector_KVDB_InvalidUUID_Throws)
-{
-    constexpr const char* kKVDBBadUUID = R"({
-      "id": "not-a-uuid",
-      "metadata": {"title": "test_kvdb"},
-      "content": {"0x0": "value"},
-      "enabled": true
-    })";
-
-    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBBadUUID)};
-
-    ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
-    ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
-
-    try
-    {
-        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
-        FAIL() << "Expected std::runtime_error";
-    }
-    catch (const std::runtime_error& e)
-    {
-        EXPECT_THAT(std::string {e.what()}, HasSubstr("UUID"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("UUID cannot be empty"));
     }
 }
 

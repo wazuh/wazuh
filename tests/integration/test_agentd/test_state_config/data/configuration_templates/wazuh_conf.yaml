@@ -1,9 +1,7 @@
     - sections:
       - section: agent
         elements:
-            - server:
+            - manager:
                 elements:
-                - address:
-                    value: '127.0.0.1'
-                - port:
-                    value: '1517'
+                - endpoint:
+                    value: '127.0.0.1:1517/'

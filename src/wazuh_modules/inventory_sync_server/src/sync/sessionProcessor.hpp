@@ -61,18 +61,31 @@ namespace invsync::sync
      */
     class SessionProcessor final
     {
+        /// Indexer search page size while draining a session.
+        static constexpr std::size_t DEFAULT_QUERY_BATCH_SIZE {1000};
+
     public:
         /// @param metrics OPTIONAL registry for the document counters (D18); null counts nothing.
+        /// queryBatchSize follows the module's <=0 -> default convention, so modulesd can pass the
+        /// internal option through unconditionally.
         explicit SessionProcessor(std::string managerClusterName,
-                                  const std::shared_ptr<wazuh::metrics::IManager>& metrics = nullptr)
+                                  const std::shared_ptr<wazuh::metrics::IManager>& metrics = nullptr,
+                                  int queryBatchSize = 0)
             : m_managerClusterName {std::move(managerClusterName)}
+            , m_queryBatchSize {queryBatchSize > 0 ? static_cast<std::size_t>(queryBatchSize)
+                                                   : DEFAULT_QUERY_BATCH_SIZE}
         {
             if (metrics)
             {
                 m_docsIndexed =
-                    metrics->getOrCreateCounter(invsync::metrics::DOCS_INDEXED, "Documents staged/indexed", "count");
+                    metrics->getOrCreateCounter(invsync::metrics::DOCS_INDEXED,
+                                                "Documents staged into bulk operations (upserts and deletes; by-query "
+                                                "deletes/updates are not counted)",
+                                                "count");
                 m_docsSkipped = metrics->getOrCreateCounter(
-                    invsync::metrics::DOCS_SKIPPED, "Documents skipped by per-document policy", "count");
+                    invsync::metrics::DOCS_SKIPPED,
+                    "Documents skipped by the per-document allowlist policy (bulk path only)",
+                    "count");
                 m_bytesIngested = metrics->getOrCreateCounter(
                     invsync::metrics::BYTES_INGESTED, "Serialized document bytes staged for indexing", "bytes");
             }
@@ -86,12 +99,15 @@ namespace invsync::sync
         ProcessOutcome executeImmediate(const ValidatedSession& session,
                                         indexer::IIndexerConnectorSync& connector) const;
 
-        /// @brief Deletes every document of @p agentId across AGENT_DELETION_SCOPE (wazuh-states-*,
-        ///        wazuh-agent-config, wazuh-agent-stats; this cluster's scope) and flushes -- the
-        ///        whole-agent deletion behind DELETE /agents (design doc 04). Immediate-style: the
+        /// @brief Deletes @p agentId's documents across AGENT_DELETION_SCOPE_BY_QUERY (this
+        ///        cluster's `wazuh-states-*`) and flushes -- the SYNC half of the whole-agent
+        ///        deletion behind DELETE /agents (design doc 04). The other half, the two
+        ///        AGENT_DELETION_SCOPE_BY_ID documents, is queued by the endpoint on the async
+        ///        connector that writes them; it does not pass through here. Immediate-style: the
         ///        caller must have cut the batch first. An index that does not exist counts as
-        ///        success (404-as-success), same as the legacy delete. Documents written inside the
-        ///        index refresh interval can survive it: see the note on the implementation.
+        ///        success (404-as-success), same as the legacy delete. State documents written
+        ///        inside the index refresh interval can survive it: see the note on the
+        ///        implementation.
         ProcessOutcome executeDeleteAgent(const std::string& agentId, indexer::IIndexerConnectorSync& connector) const;
 
     private:
@@ -102,6 +118,8 @@ namespace invsync::sync
                                                indexer::IIndexerConnectorSync& connector) const;
 
         std::string m_managerClusterName;
+
+        std::size_t m_queryBatchSize {DEFAULT_QUERY_BATCH_SIZE};
         // D18 counters, resolved once at construction (null when metrics are off, e.g. most tests).
         std::shared_ptr<wazuh::metrics::ICounter> m_docsIndexed;
         std::shared_ptr<wazuh::metrics::ICounter> m_docsSkipped;

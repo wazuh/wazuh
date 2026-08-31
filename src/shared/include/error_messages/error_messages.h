@@ -83,6 +83,7 @@
 #define RULES_ERROR     "(1220): Error loading the rules: '%s'."
 #define LISTS_ERROR     "(1221): Error loading the list: '%s'."
 #define IMSG_ERROR      "(1222): Invalid msg: %s"
+#define XML_OBSOLETE    "(1223): '%s' is no longer supported and will be ignored. %s"
 #define QUEUE_SEND      "(1224): Error sending message to queue."
 #define SIGNAL_RECV     "(1225): SIGNAL [(%d)-(%s)] Received. Exit Cleaning..."
 #define XML_ERROR       "(1226): Error reading XML file '%s': %s (line %d)."
@@ -296,6 +297,8 @@
 #define AG_API_ERROR_CODE  "(4116): Unexpected status code in Wazuh agent package uninstallation request: %ld\n"
 #define AG_REQUEST_FAIL    "(4117): Failed validation request to uninstall Wazuh agent package."
 #define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
+#define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
+#define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

@@ -13,8 +13,8 @@
 #define _HC_RESCAN_REQUESTER_HPP
 
 #include "backoff.hpp"
-#include "cmacSigner.hpp"
 #include "iHttpPerformer.hpp"
+#include "iSigner.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -46,9 +46,14 @@
 class RescanRequester final
 {
     public:
-        RescanRequester(const ModuleConfig& config, IHttpPerformer& performer,
-                        const ISigner& signer, IClock& clock, IRandom& random,
-                        AuthGate& authGate, IVdOffsetStore& store);
+        RescanRequester(const ModuleConfig& config,
+                        IHttpPerformer& performer,
+                        const ISigner& signer,
+                        IClock& clock,
+                        IRandom& random,
+                        AuthGate& authGate,
+                        CompressionGate& compressionGate,
+                        IVdOffsetStore& store);
 
         /// Attempts to satisfy the pending re-scan for `offset` (as reported by
         /// IVdOffsetStore::observe()). Returns true if the request succeeded

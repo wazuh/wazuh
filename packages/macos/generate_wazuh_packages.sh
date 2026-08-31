@@ -14,9 +14,6 @@ CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
 ARCH="intel64"
 WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
 SERVICE_PATH="/Library/LaunchDaemons/com.wazuh.agent.plist"
-STARTUP_PATH="/Library/StartupItems/WAZUH/StartupParameters.plist"
-LAUNCHER_SCRIPT_PATH="/Library/StartupItems/WAZUH/Wazuh-launcher"
-STARTUP_SCRIPT_PATH="/Library/StartupItems/WAZUH/WAZUH"
 INSTALLATION_PATH="/Library/Ossec"    # Installation path.
 VERSION=""                            # Default VERSION (branch/tag).
 REVISION="1"                          # Package revision.
@@ -88,7 +85,7 @@ function sign_binaries() {
     if [ ! -z "${KEYCHAIN}" ] && [ ! -z "${CERT_APPLICATION_ID}" ] ; then
         security -v unlock-keychain -p "${KC_PASS}" "${KEYCHAIN}" > /dev/null
         # Sign every single binary in Wazuh's installation. This also includes library files.
-        for bin in $(find ${SERVICE_PATH} ${STARTUP_PATH} ${LAUNCHER_SCRIPT_PATH} ${STARTUP_SCRIPT_PATH} ${INSTALLATION_PATH} -exec file {} \; | grep -E 'executable|bit' | cut -d: -f1); do
+        for bin in $(find ${SERVICE_PATH} ${INSTALLATION_PATH} -exec file {} \; | grep -E 'executable|bit' | cut -d: -f1); do
             codesign -f --sign "${CERT_APPLICATION_ID}" --entitlements ${ENTITLEMENTS_PATH} --timestamp  --options=runtime --verbose=4 "${bin}"
         done
         security -v lock-keychain "${KEYCHAIN}" > /dev/null
@@ -139,15 +136,6 @@ function prepare_building_folder() {
 
     mkdir -p ${packaged_directory}$(dirname ${SERVICE_PATH})
     cp -p $SERVICE_PATH ${packaged_directory}$(dirname ${SERVICE_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${STARTUP_PATH})
-    cp -p $STARTUP_PATH ${packaged_directory}$(dirname ${STARTUP_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${LAUNCHER_SCRIPT_PATH})
-    cp -p $LAUNCHER_SCRIPT_PATH ${packaged_directory}$(dirname ${LAUNCHER_SCRIPT_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${STARTUP_SCRIPT_PATH})
-    cp -p $STARTUP_SCRIPT_PATH ${packaged_directory}$(dirname ${STARTUP_SCRIPT_PATH})
 
     mkdir -p ${packaged_directory}${INSTALLATION_PATH}
     cp -Rp $INSTALLATION_PATH/* ${packaged_directory}${INSTALLATION_PATH}

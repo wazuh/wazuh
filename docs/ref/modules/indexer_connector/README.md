@@ -39,6 +39,13 @@ The library provides two classes depending on the use case:
 ### Async flush behavior
 
 - Events are queued in memory immediately and flushed by a background thread.
+- The queue is **FIFO**, and a batch that fails is retried from its front, so operations are applied
+  in the order they were queued. That is what makes `deleteById()` usable to remove a document whose
+  own `index()` may still be pending: the delete is applied after it, never before. A caller that
+  needs that ordering cannot get it from another connector, and a `_delete_by_query` would not even
+  see a document that has not been refreshed yet.
+- A `deleteById()` of a document that is not there is a per-item `404 not_found`, which is not an
+  error and is not reported: deletes are idempotent.
 - Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
 - Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
 - If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.

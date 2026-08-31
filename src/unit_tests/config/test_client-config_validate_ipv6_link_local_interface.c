@@ -81,7 +81,7 @@ void test_Validate_IPv6_Link_Local_Interface_ipv6_one_link_local_with_interface(
 
     os_calloc(2, sizeof(agent_server), servers);
     os_strdup("FE80:0000:0000:0000::ABCD", servers[0].rip);
-    servers[0].network_interface = 1;
+    servers[0].scope_id = 1;
 
     expect_string(__wrap_OS_GetHost, host, servers[0].rip);
     will_return(__wrap_OS_GetHost, strdup(servers[0].rip));
@@ -200,7 +200,7 @@ void test_Validate_IPv6_Link_Local_Interface_multi_ipv6_ipv6_interface(void ** s
     os_strdup("FE80:0000:0000:0000::ABCD", servers[0].rip);
     os_strdup("FE80:0000:0000:0000::ABCD", servers[1].rip);
     servers[2].rip = NULL;
-    servers[1].network_interface = 1;
+    servers[1].scope_id = 1;
 
     expect_string(__wrap_OS_GetHost, host, servers[0].rip);
     will_return(__wrap_OS_GetHost, strdup(servers[0].rip));
@@ -224,9 +224,9 @@ void test_Validate_IPv6_Link_Local_Interface_multi_ipv6_ipv6_all_interface(void 
 
     os_calloc(3, sizeof(agent_server), servers);
     os_strdup("FE80:0000:0000:0000::ABCD", servers[0].rip);
-    servers[0].network_interface = 2;
+    servers[0].scope_id = 2;
     os_strdup("FE80:0000:0000:0000::ABCD", servers[1].rip);
-    servers[1].network_interface = 1;
+    servers[1].scope_id = 1;
     servers[2].rip = NULL;
 
     expect_string(__wrap_OS_GetHost, host, servers[0].rip);

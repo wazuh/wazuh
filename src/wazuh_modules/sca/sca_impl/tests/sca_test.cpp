@@ -555,6 +555,160 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
 }
 
+// issue 38428: a first scan that silently never ran used to have no
+// persisted trace, so a skipped scan_on_start scan waited a full
+// m_scanInterval before the next attempt. first_scan_completed (in-memory
+// mirror: m_firstScanCompleted) closes that: false until a scan genuinely
+// finishes, true from then on -- checked by Run() to force an immediate
+// retry instead of waiting out the interval.
+TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    ASSERT_FALSE(scaMock->getFirstScanCompletedForTest());
+
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    std::thread runThread([&scaMock]()
+    {
+        scaMock->Run();
+    });
+
+    // Give the scan_on_start scan time to actually complete.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    scaMock->Stop();
+    runThread.join();
+
+    EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
+    EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
+}
+
+// issue 38428: first_scan_completed is write-once for the installation's whole
+// lifetime, so on an agent already past its first-ever scan it must NOT be
+// the thing that decides whether a scan_on_start retry is still owed --
+// otherwise a scan interrupted by a pause on such an agent would silently
+// wait out the full m_scanInterval instead of retrying once resumed. This
+// simulates that agent by driving Run() to completion once first (so
+// first_scan_completed is already true, as on a long-lived agent), then
+// calling Run() again -- as a fresh restart would -- and pausing before that
+// second scan_on_start attempt can complete.
+TEST_F(ScaTest, Run_RetriesScanOnStartAfterPauseEvenPastFirstScan)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    // Long interval: if the retry-after-pause guard is broken, the second scan
+    // would only happen after this interval elapses, which this test's window
+    // will not reach -- turning the bug into a reliable failure, not a flake.
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    // First Run(): let scan_on_start complete normally so first_scan_completed
+    // becomes true, matching an agent well past its first-ever scan.
+    {
+        std::thread runThread([&scaMock]()
+        {
+            scaMock->Run();
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        scaMock->Stop();
+        runThread.join();
+    }
+    ASSERT_TRUE(scaMock->getFirstScanCompletedForTest());
+
+    // Second Run(): simulates a fresh restart (Run() resets m_keepRunning and
+    // its local firstScan). Pause *before* starting this Run() call at all --
+    // pause() blocks until any in-progress scan/sync clears, which is
+    // immediately true here since the first Run() already fully stopped -- so
+    // the very first loop iteration is guaranteed to see m_paused already set,
+    // deterministically landing the pause before this scan_on_start attempt
+    // can do any work (racing it via a sleep_for() after starting the thread
+    // is not reliable: the mocked scan below can complete in far under a
+    // millisecond, so a real interruption-before-completion is not
+    // guaranteed to be observed).
+    m_logOutput.clear();
+    scaMock->pause();
+    std::thread runThread2([&scaMock]()
+    {
+        scaMock->Run();
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    scaMock->resume();
+
+    // Give the retried scan_on_start scan time to actually complete.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    scaMock->Stop();
+    runThread2.join();
+
+    EXPECT_NE(m_logOutput.find("Scan started."), std::string::npos);
+    EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
+}
+
 TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
 {
     const auto dbPath = makeTempPath();

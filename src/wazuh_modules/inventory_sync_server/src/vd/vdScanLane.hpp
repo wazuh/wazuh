@@ -33,8 +33,11 @@ namespace invsync::vd
 
     struct VdScanLaneConfig
     {
-        /// Scan workers. 1 until VD gains real scan parallelism (its global mutex serializes scans
-        /// anyway -- REQ-VDQ-7); each worker owns one IndexerConnectorSync.
+        /// Scan workers; each worker owns one IndexerConnectorSync. Raising this above 1 is safe
+        /// -- VD's own ScanOrchestrator has a matching per-slot pool (REQ-VDQ-7, its
+        /// "scanWorkers" setting). Placeholder default; the facade overwrites it with
+        /// resolveVdWorkers()'s resolved value (vd_workers, or half the host's cores) before the
+        /// lane starts.
         std::size_t workers {1};
         /// Short admission queue; full => the strand answers 503 "scan capacity exhausted" (D22).
         /// 0 resolves to 2x workers.
@@ -104,6 +107,10 @@ namespace invsync::vd
         void workerLoop(std::size_t index);
         void respond(Item& item, int status, const std::string& body);
         void respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector);
+        /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
+        /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which
+        /// carries a Retry-After header -- still lands in the histogram like every other outcome.
+        void observeLaneTime(const Item& item);
 
         VdScanLaneConfig m_config;
         std::shared_ptr<IVdScanner> m_scanner;

@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Wazuh Engine (analysisd) module.
 
-The Wazuh Engine is the core event processing and detection module that handles log analysis, rule matching, decoder execution, and alert generation. It is configured exclusively through internal options, with no XML or YAML configuration sections.
+The Wazuh Engine is the core event processing and detection module that handles log analysis, rule matching, decoder execution, and alert generation. It is configured primarily through internal options, with no dedicated XML or YAML configuration section of its own — though a subset of keys, such as indexer connection settings, are populated from the manager's central configuration rather than set directly as internal options.
 
 - **Daemon:** `wazuh-manager-analysisd`
 - **Module:** Manager-only
@@ -22,7 +22,7 @@ For module overview, architecture, and implementation details, see [Engine Modul
 
 **Internal Options:** `analysisd.*`
 
-The Engine is configured exclusively through internal options. There is no dedicated XML block or YAML configuration file for this module. All settings are tuned via the internal options file.
+The Engine is configured primarily through internal options; there is no dedicated XML block or YAML configuration file for this module. However, a subset of keys — such as the indexer host, credentials, and SSL settings — are populated from the manager's central configuration rather than set directly as internal options (see [Architecture - Configuration](architecture.md#configuration)). All other settings are tuned via the internal options file.
 
 ---
 
@@ -104,9 +104,11 @@ Control event queue sizing and processing rate limiting:
 
 Configure bulk indexing and flush behavior:
 
-- **`analysisd.indexer_bulk_size_events`** - Maximum documents per bulk request (event count, not bytes)
+- **`analysisd.indexer_bulk_max_bytes`** - Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched (bytes, not event count; allowed range 64KB-100MB)
 - **`analysisd.indexer_flush_interval`** - Periodic flush interval (seconds)
 - **`analysisd.indexer_max_retry_delay`** - Maximum exponential-backoff retry delay in seconds (default: 15, range: 1-3600). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales between retries.
+- **`analysisd.indexer_request_timeout`** - Upper bound in seconds for one data request against the indexer (default: 60, range: 0-3600; 0 disables the bound). Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded.
+- **`analysisd.indexer_monitoring_interval`** - Polling period in seconds of the indexer health monitor that marks each host as available or unavailable (default: 10, range: 1-3600)
 
 #### Synchronization Intervals
 
@@ -134,20 +136,20 @@ Standard engine configuration for most deployments:
 
 ```ini
 # Event queue
-analysisd.event_queue_size=16384
-analysisd.event_queue_eps=200
+analysisd.event_queue_size=131072
+analysisd.event_queue_eps=0
 
 # Indexer connector
-analysisd.indexer_bulk_size_events=50000
-analysisd.indexer_flush_interval=10
+analysisd.indexer_bulk_max_bytes=8388608
+analysisd.indexer_flush_interval=20
 
 # Synchronization
-analysisd.remote_conf_sync_interval=300
-analysisd.cm_sync_interval=3600
+analysisd.remote_conf_sync_interval=120
+analysisd.cm_sync_interval=120
 
 # Database updates
-analysisd.ioc_sync_interval=86400
-analysisd.geo_sync_interval=86400
+analysisd.ioc_sync_interval=360
+analysisd.geo_sync_interval=360
 ```
 
 ### High-Throughput Configuration
@@ -155,17 +157,17 @@ analysisd.geo_sync_interval=86400
 Optimized for large deployments with high event rates:
 
 ```ini
-# Larger event queue
-analysisd.event_queue_size=32768
-analysisd.event_queue_eps=1000
+# Larger event queue than the default
+analysisd.event_queue_size=262144
+analysisd.event_queue_eps=0
 
-# Larger bulk size for better indexer performance
-analysisd.indexer_bulk_size_events=100000
+# Larger bulk payload for better indexer throughput, flushed more often
+analysisd.indexer_bulk_max_bytes=33554432
 analysisd.indexer_flush_interval=5
 
-# More frequent synchronization
-analysisd.remote_conf_sync_interval=120
-analysisd.cm_sync_interval=1800
+# More frequent synchronization than the default
+analysisd.remote_conf_sync_interval=60
+analysisd.cm_sync_interval=60
 ```
 
 ### Low-Resource Configuration
@@ -173,15 +175,15 @@ analysisd.cm_sync_interval=1800
 Optimized for resource-constrained environments:
 
 ```ini
-# Smaller event queue
+# Smaller event queue, explicit rate cap to protect a constrained host
 analysisd.event_queue_size=8192
 analysisd.event_queue_eps=100
 
-# Smaller bulk size
-analysisd.indexer_bulk_size_events=10000
-analysisd.indexer_flush_interval=20
+# Smaller bulk payload, flushed less often
+analysisd.indexer_bulk_max_bytes=1048576
+analysisd.indexer_flush_interval=60
 
-# Less frequent synchronization
+# Less frequent synchronization than the default
 analysisd.remote_conf_sync_interval=600
 analysisd.cm_sync_interval=7200
 ```
@@ -191,54 +193,63 @@ analysisd.cm_sync_interval=7200
 Settings for testing and development:
 
 ```ini
-# Moderate queue size
+# Moderate queue size, smaller than the default
 analysisd.event_queue_size=16384
 analysisd.event_queue_eps=500
 
-# Fast indexing for quick feedback
-analysisd.indexer_bulk_size_events=5000
+# Minimum allowed bulk size for immediate, per-event feedback
+analysisd.indexer_bulk_max_bytes=65536
 analysisd.indexer_flush_interval=1
 
-# Frequent sync for testing
+# Frequent sync for testing (shorter than the default)
 analysisd.remote_conf_sync_interval=60
-analysisd.cm_sync_interval=300
+analysisd.cm_sync_interval=60
 
-# Frequent database updates
-analysisd.ioc_sync_interval=3600
-analysisd.geo_sync_interval=3600
+# Frequent database updates (shorter than the default)
+analysisd.ioc_sync_interval=60
+analysisd.geo_sync_interval=60
 ```
 
 ---
 
 ## API Configuration
 
-The engine exposes API endpoints for policy and asset management under the `/engine` endpoint.
+The engine exposes an internal HTTP API over a **Unix domain socket** (default: `/var/wazuh-manager/queue/sockets/engine-api-http.sock`, internal option `analysisd.server_api_socket`) — not a TCP port. Requests and responses are plain JSON, validated against protobuf schemas on both ends. It is used for content/policy management, testing, routing, and metrics.
 
 **Complete API documentation:** See [API Reference](api-reference.md)
 
 ### Key API Endpoints
 
-- **Policy Management** - Create, update, and manage detection policies
-- **Asset Management** - Manage decoders, rules, filters, and outputs
-- **Schema Validation** - Validate configurations before deployment
-- **Metrics** - Query engine performance metrics and statistics
+- **Content Management** - Create, update, and validate namespaces, policies, and resources (decoders, rules, filters, outputs, integrations) under `/content/*` and `/_internal/content/*`
+- **Schema Validation** - Validate a policy or resource before deployment (`/content/validate/policy`, `/content/validate/resource`)
+- **Metrics** - Query engine performance metrics and statistics (`/metrics/get`, `/metrics/list`, `/metrics/dump`)
+- **Router/Tester** - Manage routes and run test sessions against policies (`/_internal/router/*`, `/_internal/tester/*`)
 
 ### API Usage Example
 
-Query engine metrics:
+Because the API is served over a Unix domain socket rather than a TCP port, it cannot be reached with a bare `curl -X GET https://...` call. Use `curl`'s `--unix-socket` option, or the `engine-suite` CLI tools (`engine-public`, `engine-private`, `engine-router`, `engine-test`, `engine-event-dumper`) that wrap these calls — see [Internal Tools](internal-tools.md).
+
+Dump all current metrics:
 
 ```bash
-curl -k -X GET "https://localhost:55000/engine/metrics" \
-  -H "Authorization: Bearer $TOKEN"
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/metrics/dump \
+  -H "Content-Type: application/json" -d '{}'
 ```
 
-Validate policy configuration:
+Validate a policy configuration:
 
 ```bash
-curl -k -X POST "https://localhost:55000/engine/validate" \
-  -H "Authorization: Bearer $TOKEN" \
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/content/validate/policy \
   -H "Content-Type: application/json" \
   -d @policy.json
+```
+
+or, using the `engine-suite` CLI wrapper instead of a raw socket call:
+
+```bash
+engine-public cm policy-validate < policy.json
 ```
 
 ---
@@ -255,14 +266,14 @@ analysisd.event_queue_eps=100
 
 **Medium deployments (100-1000 agents):**
 ```ini
-analysisd.event_queue_size=16384
-analysisd.event_queue_eps=200
+analysisd.event_queue_size=32768
+analysisd.event_queue_eps=500
 ```
 
-**Large deployments (1000+ agents):**
+**Large deployments (1000+ agents):** the built-in default already targets this profile
 ```ini
-analysisd.event_queue_size=32768
-analysisd.event_queue_eps=1000
+analysisd.event_queue_size=131072
+analysisd.event_queue_eps=0
 ```
 
 ### Indexer Bulk Sizing
@@ -271,7 +282,7 @@ Balance between indexing latency and throughput:
 
 - **Low latency (fast alerts):** Smaller bulk size, shorter flush interval
 - **High throughput:** Larger bulk size, longer flush interval
-- **Balanced:** Default settings (10 MB bulk size, 10s flush interval)
+- **Balanced:** Default settings (8 MB bulk size, 20s flush interval)
 
 ### Synchronization Frequency
 
@@ -293,9 +304,11 @@ Verify engine is running and processing events:
 # Check analysisd process
 ps aux | grep wazuh-manager-analysisd
 
-# Check engine status via API
-curl -k -X GET "https://localhost:55000/manager/status" \
-  -H "Authorization: Bearer $TOKEN"
+# Check engine status via the CLI wrapper (calls GET /status)
+engine-public status get
+
+# Equivalent raw call over the Unix domain socket
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock http://localhost/status
 ```
 
 ### View Engine Logs
@@ -312,16 +325,23 @@ tail -f /var/wazuh-manager/logs/alerts/alerts.log
 
 ### Performance Metrics
 
-Query engine performance via API:
+Query engine performance via the API (Unix domain socket, `--unix-socket`):
 
 ```bash
-# Get engine metrics
-curl -k -X GET "https://localhost:55000/engine/metrics" \
-  -H "Authorization: Bearer $TOKEN"
+# List all registered metric names
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/metrics/list \
+  -H "Content-Type: application/json" -d '{}'
 
-# Get event processing rate
-curl -k -X GET "https://localhost:55000/engine/stats/events" \
-  -H "Authorization: Bearer $TOKEN"
+# Get a single metric's value, e.g. the global event-processing counter
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/metrics/get \
+  -H "Content-Type: application/json" -d '{"instrumentName": "router.events.processed"}'
+
+# Dump every metric (global + per-space) in one call
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/metrics/dump \
+  -H "Content-Type: application/json" -d '{}'
 ```
 
 ### Queue Monitoring
@@ -362,13 +382,13 @@ ps aux | grep analysisd
 **Cause:** Event queue full or EPS limit exceeded
 
 **Solution:**
-1. Increase queue size:
+1. Increase queue size (default is `131072`):
    ```ini
-   analysisd.event_queue_size=32768
+   analysisd.event_queue_size=262144
    ```
-2. Increase EPS limit:
+2. Raise or remove the EPS limit (`0` means unlimited, which is the default):
    ```ini
-   analysisd.event_queue_eps=1000
+   analysisd.event_queue_eps=0
    ```
 3. Restart manager to apply changes:
    ```bash
@@ -380,11 +400,11 @@ ps aux | grep analysisd
 **Cause:** Indexer bulk buffer not flushing efficiently
 
 **Solution:**
-1. Reduce bulk size for faster flushing:
+1. Reduce bulk size for faster flushing (default is `8388608`, i.e. 8MB):
    ```ini
-   analysisd.indexer_bulk_size_events=10000
+   analysisd.indexer_bulk_max_bytes=1048576
    ```
-2. Reduce flush interval:
+2. Reduce flush interval (default is `20`):
    ```ini
    analysisd.indexer_flush_interval=5
    ```

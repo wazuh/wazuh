@@ -11,11 +11,14 @@
 
 #include "RestinioHttpServer.hpp"
 #include "common/logThrottle.hpp"
+#include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
 
 #include "loggerHelper.h"
 
+#include <algorithm>
+#include <cctype>
 #include <restinio/core.hpp>
 #include <restinio/http_server_run.hpp>
 #include <restinio/router/express.hpp>
@@ -34,12 +37,12 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-#include <unordered_set>
-#include <variant>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace
@@ -92,7 +95,7 @@ namespace
      * HTTP parse, a header/URL over its configured limit -- overwhelmingly driven by client behavior
      * (a portscanner, a buggy client, or deliberately-malformed negative-test traffic, e.g.
      * tools/send_stateless.py --all). None of that is "the manager is broken" in the sense this
-     * module reserves ERROR for (AES-CMAC unavailable, the worker thread failing to launch); it is
+     * module reserves ERROR for (the auth pipeline itself failing, the worker thread failing to launch); it is
      * the same "client fault" bucket as an auth rejection, just one layer lower in the stack. The one
      * event here that IS a genuine, rare, operator-facing problem -- the acceptor failing to bind
      * (port in use, TLS context rejected) -- is already surfaced distinctly and more clearly by our
@@ -304,7 +307,7 @@ namespace
 
             // Owning handle: SSL_get1_peer_certificate() bumps the reference count.
             std::unique_ptr<X509, decltype(&X509_free)> peerCertificate {SSL_get1_peer_certificate(tls.native_handle()),
-                                                                        &X509_free};
+                                                                         &X509_free};
 
             if (remoted::http::certificateMatchesPeerIp(peerCertificate.get(), peerIp))
             {
@@ -419,20 +422,84 @@ namespace
         return !ec && parsed.is_v6();
     }
 
+    // Case-insensitive name match for the two headers the auth layer keys on.
+    bool isAuthHeader(std::string_view name)
+    {
+        constexpr std::string_view kGuarded[] = {"authorization", "protocol-version"};
+        for (const auto guarded : kGuarded)
+        {
+            if (name.size() != guarded.size())
+            {
+                continue;
+            }
+            bool equal = true;
+            for (std::size_t i = 0; i < name.size() && equal; ++i)
+            {
+                equal = static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) == guarded[i];
+            }
+            if (equal)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Build the neutral request view from a RESTinio request handle.
     remoted::http::HttpRequest makeHttpRequest(remoted::http::Method method, const restinio::request_handle_t& req)
     {
         remoted::http::HttpRequest request;
         request.method = method;
-        // Raw request target (path + query, exactly as received): the auth layer
-        // signs it verbatim, so it must not be path-only or normalized.
+        // Raw request target (path + query, exactly as received): it is what the router matches
+        // (global endpoint prefix included) and what AuthenticatedRequest carries, so it must not
+        // be path-only or normalized.
         request.target = req->header().request_target();
         request.body = req->body();
         request.remoteIp = normalizeRemoteAddress(req->remote_endpoint().address());
 
+        // HttpRequest::headers is a map, so a header sent twice would silently collapse to whichever
+        // occurrence was seen first -- and for the two headers the auth layer keys on, "first wins"
+        // is exactly the ambiguity a request-smuggling client aims for (RFC 9110 §5.3: a recipient
+        // MUST NOT rely on the order of duplicated fields). Those two are therefore collected
+        // case-insensitively and, when duplicated (identical or case-variant names), stored as an
+        // EMPTY value under the first spelling seen: the auth layer already treats empty as "absent
+        // or duplicated" and rejects. Every other header keeps today's first-wins behaviour.
+        struct Guarded
+        {
+            std::string name;
+            std::string value;
+            int count {0};
+        };
+        std::vector<Guarded> guarded;
         req->header().for_each_field(
-            [&request](const restinio::http_header_field_t& field)
-            { request.headers.emplace(std::string {field.name()}, std::string {field.value()}); });
+            [&request, &guarded](const restinio::http_header_field_t& field)
+            {
+                if (!isAuthHeader(field.name()))
+                {
+                    request.headers.emplace(std::string {field.name()}, std::string {field.value()});
+                    return;
+                }
+                for (auto& g : guarded)
+                {
+                    if (g.name.size() == field.name().size() &&
+                        std::equal(g.name.begin(),
+                                   g.name.end(),
+                                   field.name().begin(),
+                                   [](char a, char b) {
+                                       return std::tolower(static_cast<unsigned char>(a)) ==
+                                              std::tolower(static_cast<unsigned char>(b));
+                                   }))
+                    {
+                        ++g.count;
+                        return;
+                    }
+                }
+                guarded.push_back(Guarded {std::string {field.name()}, std::string {field.value()}, 1});
+            });
+        for (auto& g : guarded)
+        {
+            request.headers.emplace(std::move(g.name), g.count == 1 ? std::move(g.value) : std::string {});
+        }
 
         return request;
     }
@@ -448,6 +515,45 @@ namespace
         {
             throw std::runtime_error("The configured TLS " + std::string {what} + " '" + path +
                                      "' is missing or unreadable");
+        }
+    }
+
+    // Warn (not fatal) when the served certificate is expired or near expiry: OpenSSL serves it
+    // silently, so only verifying agents would otherwise notice.
+    void warnIfCertificateExpiring(asio::ssl::context& context, const std::string& path)
+    {
+        X509* certificate = SSL_CTX_get0_certificate(context.native_handle());
+        if (certificate == nullptr)
+        {
+            return;
+        }
+
+        const ASN1_TIME* notAfter = X509_get0_notAfter(certificate);
+        if (notAfter == nullptr)
+        {
+            return;
+        }
+
+        // X509_cmp_current_time returns < 0 when the time is in the past.
+        if (X509_cmp_current_time(notAfter) < 0)
+        {
+            LOGFN_ERROR(logFn(),
+                        "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
+                        "reject the connection until it is renewed.",
+                        path.c_str());
+            return;
+        }
+
+        static constexpr int EXPIRY_WARNING_DAYS {30};
+        int days = 0;
+        int seconds = 0;
+        if (ASN1_TIME_diff(&days, &seconds, nullptr, notAfter) == 1 && days < EXPIRY_WARNING_DAYS)
+        {
+            LOGFN_WARN(logFn(),
+                       "The TLS certificate '%s' expires in %d day(s); renew it to avoid an outage for agents "
+                       "that verify the manager certificate.",
+                       path.c_str(),
+                       days);
         }
     }
 
@@ -474,6 +580,8 @@ namespace
 
         context.use_certificate_chain_file(config.certificatePath);
         context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+
+        warnIfCertificateExpiring(context, config.certificatePath);
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {
@@ -756,9 +864,9 @@ namespace
                 return;
             }
 
-            auto builder = m_request->create_response(
-                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
-                                              reasonPhrase(response.status)});
+            auto builder = m_request->create_response(restinio::http_status_line_t {
+                restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                reasonPhrase(response.status)});
             m_request.reset();
 
             builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
@@ -790,9 +898,9 @@ namespace
                 return;
             }
 
-            auto builder = m_request->create_response<restinio::chunked_output_t>(
-                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
-                                              reasonPhrase(response.status)});
+            auto builder = m_request->create_response<restinio::chunked_output_t>(restinio::http_status_line_t {
+                restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                reasonPhrase(response.status)});
             m_request.reset();
 
             builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
@@ -809,8 +917,7 @@ namespace
             // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
             const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
 
-            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)
-                ->start();
+            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)->start();
         }
 
     private:
@@ -873,6 +980,10 @@ namespace remoted::http
         {
             auto requestRouter = std::make_unique<Router>();
 
+            // Already normalized by start() (empty == no prefix, else "/seg[/seg]" with no
+            // trailing '/'), so plain concatenation below can never produce "//".
+            const std::string& prefix = m_config.globalPrefix;
+
             for (const auto& route : m_routes)
             {
                 auto* pool = m_workerPool.get();
@@ -885,9 +996,21 @@ namespace remoted::http
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
 
+                // The pattern actually handed to the router is the route's logical path served
+                // under the global prefix. The "/" route (the health probe) is registered as the
+                // BARE prefix on purpose: path2regex's trailing-slash tolerance is
+                // one-directional -- a pattern ending in '/' does NOT match the bare spelling,
+                // while a bare pattern matches both -- so "/wazuh-manager" answers
+                // GET /wazuh-manager and GET /wazuh-manager/ alike (LB health checks use
+                // either), where "/wazuh-manager/" would 404 the former. Pinned by
+                // routerSemanticsSpike_test.cpp (S2/S9).
+                const std::string routePath = prefix.empty()      ? route.path
+                                              : route.path == "/" ? prefix
+                                                                  : prefix + route.path;
+
                 requestRouter->add_handler(
                     toRestinioMethod(method),
-                    route.path,
+                    routePath,
                     [pool,
                      budget,
                      budgetThrottle,
@@ -917,7 +1040,8 @@ namespace remoted::http
                             {
                                 return request->create_response(restinio::status_forbidden())
                                     .append_header(restinio::http_field::content_type, "application/json")
-                                    .set_body(R"({"error":"Client certificate does not match the peer address","code":403})")
+                                    .set_body(
+                                        R"({"error":"Client certificate does not match the peer address","code":403})")
                                     .connection_close()
                                     .done();
                             }
@@ -971,7 +1095,8 @@ namespace remoted::http
                                 // and creates the builder when it answers, which means RESTinio's
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
-                                responder = std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+                                responder =
+                                    std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
                             }
                             else
                             {
@@ -1063,12 +1188,8 @@ namespace remoted::http
         stop();
     }
 
-    void
-    RestinioHttpServer::addRoute(Method method,
-                                 const std::string& path,
-                                 RouteHandler handler,
-                                 bool countAgainstBudget,
-                                 ResponseMode mode)
+    void RestinioHttpServer::addRoute(
+        Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget, ResponseMode mode)
     {
         std::lock_guard<std::mutex> lock {m_impl->m_mutex};
 
@@ -1091,7 +1212,28 @@ namespace remoted::http
         {
             return std::nullopt;
         }
-        return budget->tryReserve(bytes);
+        // Uncounted: this reserves auxiliary memory for an already-admitted request, so it must
+        // not inflate the in-flight request count nor register its failures as admission sheds.
+        return budget->tryReserveUncounted(bytes);
+    }
+
+    TransportDiagnostics RestinioHttpServer::diagnostics() const
+    {
+        // Dump-cadence only, so the lock is fine: it serializes against start() assigning
+        // m_budget (a dump can race a facade restart retry). The budget itself survives a normal
+        // stop() -- it is only reset by a failed start -- so post-stop dumps still see the totals.
+        std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+        const auto* budget = m_impl->m_budget.get();
+        if (budget == nullptr)
+        {
+            return {};
+        }
+        TransportDiagnostics d;
+        d.budgetAvailableBytes = budget->availableBytes();
+        d.budgetInFlightBytes = budget->maxBytes() - budget->availableBytes();
+        d.budgetInFlightCount = budget->inFlightCount();
+        d.budgetRejectedTotal = budget->rejectedTotal();
+        return d;
     }
 
     void RestinioHttpServer::start(const HttpServerConfig& config)
@@ -1106,6 +1248,12 @@ namespace remoted::http
 
         m_impl->m_config = config;
 
+        // Canonicalize the global endpoint prefix ("" == "/" == no prefix; else leading '/',
+        // no trailing '/'). May throw std::invalid_argument -- like the TLS throws below, this
+        // fires before any worker thread or budget is allocated, so no cleanup is needed. The
+        // stored (normalized) value is what buildRouter() and the log line below consume.
+        m_impl->m_config.globalPrefix = normalizeGlobalPrefix(config.globalPrefix);
+
         // Build the TLS context first: it validates cert/key and may throw before we
         // allocate any worker threads.
         auto tlsContext = createTlsContext(config);
@@ -1114,9 +1262,8 @@ namespace remoted::http
 
         // Only Full needs somewhere to record rejected connections. Left null otherwise, which is
         // what makes the connection-state listener a no-op in the other two modes.
-        m_impl->m_rejectedConnections = config.verificationMode == ClientVerificationMode::Full
-                                            ? std::make_shared<RejectedConnections>()
-                                            : nullptr;
+        m_impl->m_rejectedConnections =
+            config.verificationMode == ClientVerificationMode::Full ? std::make_shared<RejectedConnections>() : nullptr;
 
         // In-flight byte budget. Clamp it to at least one max-size request (+overhead) so a
         // misconfigured tiny value can't reject every request; 0 leaves the limit disabled.
@@ -1227,6 +1374,21 @@ namespace remoted::http
                    maxInFlight,
                    maxInFlight == 0 ? " (disabled)" : "",
                    config.maxParallelConnections);
+
+        // Only when a prefix is in effect, so the identity configuration keeps today's log
+        // output byte for byte. Reads the NORMALIZED value (m_impl->m_config), not the caller's.
+        const std::string& effectivePrefix = m_impl->m_config.globalPrefix;
+        if (!effectivePrefix.empty())
+        {
+            LOGFN_INFO(logFn(),
+                       "All HTTP endpoints are served under the global prefix '%s' (e.g. "
+                       "https://%s:%u%s/stateless); unprefixed paths answer 404; agents must send and sign the "
+                       "full prefixed target.",
+                       effectivePrefix.c_str(),
+                       displayAddress.c_str(),
+                       static_cast<unsigned int>(config.port),
+                       effectivePrefix.c_str());
+        }
     }
 
     void RestinioHttpServer::stopAccepting() noexcept

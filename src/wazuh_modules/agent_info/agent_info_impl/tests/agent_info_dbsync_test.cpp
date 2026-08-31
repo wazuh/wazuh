@@ -27,6 +27,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
             m_logOutput.clear();
             m_reportedEvents.clear();
             m_persistedEvents.clear();
+            m_logMessages.clear();
 
             m_mockDBSync = std::make_shared<MockDBSync>();
 
@@ -54,8 +55,9 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
                 m_persistedEvents.push_back(persistedEvent);
             };
 
-            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
+                m_logMessages.push_back({level, msg});
                 m_logOutput += msg + "\n";
             };
 
@@ -87,6 +89,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
         std::vector<std::string> m_reportedEvents;
         std::vector<nlohmann::json> m_persistedEvents;
         std::string m_logOutput;
+        std::vector<std::pair<modules_log_level_t, std::string>> m_logMessages;
 };
 
 TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
@@ -267,12 +270,33 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskDuplicateReturnsFalseWi
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("already recorded"));
 }
 
+// A checkAndRecordTask() call landing after DBSync is dropped logs at WARNING when
+// unexpected, and at DEBUG once a shutdown is in progress (verified in the next test).
 TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
-    m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, no shutdown signaled.
 
+    m_logMessages.clear();
     EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_WARNING, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot check/record task task-abc: DBSync not available"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskWithoutDBSyncLogsDebugDuringShutdown)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->stop(); // Signals a real shutdown is in progress (isShutdownInProgress() == true).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, same as the real shutdown path.
+
+    m_logMessages.clear();
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_DEBUG, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot check/record task task-abc: DBSync not available"));
 }
 
 TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIssuesTtlThenCapDeletes)
@@ -299,7 +323,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIssuesTtlThenCapDelete
 TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIsNoOpWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     EXPECT_NO_THROW(m_agentInfo->cleanupExpiredTasks(86400, 4096));
 }

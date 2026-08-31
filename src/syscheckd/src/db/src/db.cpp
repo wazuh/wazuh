@@ -10,10 +10,12 @@
  */
 
 #include "db.h"
+#include "cJSON.h"
 #include "cjsonSmartDeleter.hpp"
 #include "commonDefs.h"
 #include "db.hpp"
 #include "dbFileItem.hpp"
+#include "dbItem.hpp"
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
 #include "dbsync.h"
@@ -21,16 +23,29 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
-#include "stringHelper.h"
+#include "json.hpp"
+#include "logging_helper.h"
+#include "syscheck-config.h"
 #include "timeHelper.h"
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <functional>
 #include <hashHelper.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
               const int valueLimit)
 {
-    auto path {storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH};
+    const auto* path {storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH};
     auto dbsyncHandler {std::make_shared<DBSync>(HostType::AGENT,
                                                  DbEngineType::SQLITE3,
                                                  path,
@@ -277,21 +292,22 @@ std::vector<nlohmann::json> DB::getDocumentsToDemote(const std::string& tableNam
 {
     std::vector<nlohmann::json> documents;
 
-    // Note: we include the version in the query since we'll pass it to the sync flag update so that it doesn't get increased with the update. We want the version value to stay the same after a sync flag update.
+    // Note: we include the version in the query since we'll pass it to the sync flag update so that it doesn't get
+    // increased with the update. We want the version value to stay the same after a sync flag update.
     std::string primaryKeys;
     std::string orderBy;
 
-    if (tableName == FIMDB_FILE_TABLE_NAME )
+    if (tableName == FIMDB_FILE_TABLE_NAME)
     {
         primaryKeys = "path, version";
         orderBy = "path, version";
     }
-    else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME )
+    else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME)
     {
         primaryKeys = "architecture, path, version";
         orderBy = "path, architecture, version";
     }
-    else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME )
+    else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME)
     {
         primaryKeys = "path, architecture, value, version";
         orderBy = "path, architecture, value, version";
@@ -345,7 +361,7 @@ FIMDBErrorCode fim_db_init(
             dbsync_initialize(dbsync_log_function);
         }
 
-        DB::instance().init(storage, callbackLogWrapper, file_limit, value_limit);
+        DB::init(storage, callbackLogWrapper, file_limit, value_limit);
         retVal = FIMDBErrorCode::FIMDB_OK;
     }
     // LCOV_EXCL_START
@@ -364,7 +380,7 @@ void fim_db_update_last_sync_time(const char* table_name)
 {
     try
     {
-        DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
+        DB::updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
     }
     catch (const std::exception& ex)
     {
@@ -382,8 +398,7 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
 
         callback_data_t cb_data = {.callback = row_callback, .user_data = user_data};
 
-        TXN_HANDLE dbsyncTxnHandle =
-            dbsync_create_txn(DB::instance().DBSyncHandle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
+        TXN_HANDLE dbsyncTxnHandle = dbsync_create_txn(DB::DBSyncHandle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
 
         return dbsyncTxnHandle;
     }
@@ -458,11 +473,30 @@ fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t res_ca
     return retval;
 }
 
+FIMDBErrorCode fim_db_transaction_close(TXN_HANDLE txn_handler)
+{
+    return dbsync_close_txn(txn_handler) == 0 ? FIMDB_OK : FIMDB_ERR;
+}
+
+static std::atomic<bool (*)()> g_teardown_hook {nullptr};
+
+void fim_db_set_teardown_hook(bool (*hook)())
+{
+    g_teardown_hook.store(hook);
+}
+
 void fim_db_teardown()
 {
+    // The hook owns the decision: it knows whether a scan transaction is in flight, and
+    // DB::teardown() would release the context that transaction is running against.
+    if (const auto hook {g_teardown_hook.load()}; hook != nullptr && !hook())
+    {
+        return;
+    }
+
     try
     {
-        DB::instance().teardown();
+        DB::teardown();
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -477,7 +511,7 @@ void fim_db_close_and_delete_database()
 {
     try
     {
-        DB::instance().closeAndDeleteDatabase();
+        DB::closeAndDeleteDatabase();
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -605,7 +639,7 @@ char* fim_db_calculate_table_checksum(const char* table_name)
 
     try
     {
-        DBSync dbSync(DB::instance().DBSyncHandle());
+        DBSync dbSync(DB::DBSyncHandle());
         std::string checksum = dbSync.calculateTableChecksum(table_name, "WHERE sync = 1");
         result = strdup(checksum.c_str());
     }
@@ -629,7 +663,7 @@ int64_t fim_db_get_last_sync_time(const char* table_name)
 
     try
     {
-        result = DB::instance().getLastSyncTime(table_name);
+        result = DB::getLastSyncTime(table_name);
     }
     catch (const std::exception& err)
     {
@@ -649,7 +683,7 @@ void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestam
 
     try
     {
-        DB::instance().updateLastSyncTime(table_name, timestamp);
+        DB::updateLastSyncTime(table_name, timestamp);
     }
     catch (const std::exception& err)
     {
@@ -667,7 +701,7 @@ int fim_db_count_synced_docs(const char* table_name)
 
     try
     {
-        return DB::instance().countSyncedDocs(table_name);
+        return DB::countSyncedDocs(table_name);
     }
     catch (const std::exception& err)
     {
@@ -682,7 +716,7 @@ cJSON* fim_db_get_documents_to_promote(char* table_name, int documents)
 
     try
     {
-        std::vector<nlohmann::json> items = DB::instance().getDocumentsToPromote(table_name, documents);
+        std::vector<nlohmann::json> items = DB::getDocumentsToPromote(table_name, documents);
 
         result_array = cJSON_CreateArray();
 
@@ -732,7 +766,7 @@ cJSON* fim_db_get_documents_to_demote(char* table_name, int documents)
 
     try
     {
-        std::vector<nlohmann::json> items = DB::instance().getDocumentsToDemote(table_name, documents);
+        std::vector<nlohmann::json> items = DB::getDocumentsToDemote(table_name, documents);
 
         result_array = cJSON_CreateArray();
 

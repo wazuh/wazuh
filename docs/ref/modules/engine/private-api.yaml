@@ -993,7 +993,7 @@ paths:
       tags:
       - Content
       summary: Get a resource
-      description: Retrieves a resource JSON document by UUID from a namespace.
+      description: Retrieves a resource JSON document by identifier from a namespace. Identifiers are opaque strings (any UUID version or other format) and are matched byte by byte.
       requestBody:
         required: true
         content:
@@ -1035,7 +1035,7 @@ paths:
       tags:
       - Content
       summary: Delete a resource
-      description: Deletes a resource by UUID from a namespace.
+      description: Deletes a resource by identifier from a namespace. Identifiers are opaque strings (any UUID version or other format) and are matched byte by byte.
       requestBody:
         required: true
         content:
@@ -1232,7 +1232,7 @@ components:
       properties:
         uuid:
           type: string
-          description: Resource UUID (unique within namespace)
+          description: Resource identifier (unique within namespace, opaque string)
         name:
           type: string
           description: Logical resource name
@@ -1524,7 +1524,7 @@ components:
           description: Namespace name
         uuid:
           type: string
-          description: UUID of the resource to delete
+          description: Identifier of the resource to delete (non-empty, at most 256 characters, no control characters)
     resourceGet_Request:
       type: object
       required:
@@ -1536,7 +1536,7 @@ components:
           description: Namespace name
         uuid:
           type: string
-          description: UUID of the resource
+          description: Identifier of the resource (non-empty, at most 256 characters, no control characters)
     resourceGet_Response:
       allOf:
       - $ref: '#/components/schemas/Response'

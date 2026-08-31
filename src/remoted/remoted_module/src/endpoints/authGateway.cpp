@@ -11,9 +11,10 @@
 
 #include "authGateway.hpp"
 
+#include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
-#include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -22,6 +23,8 @@
 #include <string_view>
 #include <utility>
 #include <variant>
+
+using remoted::http::headerValue;
 
 namespace
 {
@@ -56,7 +59,7 @@ namespace
         }
     }
 
-    // Canonical uppercase HTTP verb for the MAC's canonical request.
+    // Canonical uppercase HTTP verb, as AuthenticatedRequest::method carries it.
     const char* methodToCanonical(remoted::http::Method method)
     {
         switch (method)
@@ -68,32 +71,6 @@ namespace
             case remoted::http::Method::Patch: return "PATCH";
         }
         return "GET";
-    }
-
-    // Case-insensitive header lookup (HTTP header names are case-insensitive).
-    std::string headerValue(const std::unordered_map<std::string, std::string>& headers, const std::string& lowerName)
-    {
-        for (const auto& [name, value] : headers)
-        {
-            if (name.size() != lowerName.size())
-            {
-                continue;
-            }
-            bool equal = true;
-            for (std::size_t i = 0; i < name.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) != lowerName[i])
-                {
-                    equal = false;
-                    break;
-                }
-            }
-            if (equal)
-            {
-                return value;
-            }
-        }
-        return {};
     }
 
 } // namespace
@@ -127,55 +104,45 @@ namespace remoted::endpoints
             [middleware = m_middleware, methodStr, bodyDecoder = m_bodyDecoder, handler = std::move(handler)](
                 std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
             {
-                // Everything below -- the AES-CMAC auth pipeline (steps 1-7) AND the endpoint
-                // handler -- runs inside one try/catch. beginSession()/Session::update()/finish()
-                // call into OpenSSL's EVP_MAC (via Cmac::update()/finalize()), which can throw on
-                // an underlying failure; a handler can throw too. Either escaping onto this
-                // worker-pool thread would std::terminate the whole process (asio::thread_pool's
-                // handler wrapper does exactly that on any uncaught exception). Catch it, log a
-                // warning and answer 500. If a response was already sent before the throw, the
-                // responder's send-once guarantee makes this 500 a no-op.
+                // Everything below -- authentication AND the endpoint handler -- runs inside one
+                // try/catch. authenticate() calls into the keystore and OpenSSL (HMAC), either of
+                // which can throw on an underlying failure; a handler can throw too. Either escaping
+                // onto this worker-pool thread would std::terminate the whole process
+                // (asio::thread_pool's handler wrapper does exactly that on any uncaught exception).
+                // Catch it, log a warning and answer 500. If a response was already sent before the
+                // throw, the responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
+                    // Stamped ONCE, before authentication: this is the origin of the
+                    // remoted.http.<endpoint>.latency measurement (gateway receipt -> response
+                    // delivery). One clock read per authenticated request, no atomics.
+                    const auto receivedAt = std::chrono::steady_clock::now();
+
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
-                    // Parsed once here, acted on only AFTER authentication succeeds (see below): the
-                    // MAC always covers the wire bytes exactly as sent, compressed or not.
+                    // Parsed once here, acted on only AFTER authentication succeeds (see below): an
+                    // unauthenticated peer never reaches a decoder.
                     const auto contentEncoding =
                         remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
-                    // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
-                    auto begin = middleware->beginSession(protocolVersion,
-                                                          authorization,
-                                                          methodStr,
-                                                          request->target,
-                                                          static_cast<std::int64_t>(std::time(nullptr)));
-
-                    if (std::holds_alternative<remoted::auth::AuthError>(begin))
+                    // Authentication is header-only: protocol-version, the bearer token, the key
+                    // lookup + address rule, and the token's signature/claims/time policy. The body
+                    // plays no part in it (the wazuh-agent+jwt profile authenticates identity; TLS
+                    // protects the channel).
+                    auto verified = middleware->authenticate(protocolVersion,
+                                                             authorization,
+                                                             request->remoteIp,
+                                                             static_cast<std::int64_t>(std::time(nullptr)));
+                    if (std::holds_alternative<remoted::auth::AuthError>(verified))
                     {
-                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(begin)));
+                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(verified)));
                         return;
                     }
 
-                    auto session = std::get<remoted::auth::AuthMiddleware::Session>(std::move(begin));
-
-                    // Step 6: feed the exact body bytes (enforces the max-body cap).
-                    if (!request->body.empty())
+                    // The authenticated-body cap, enforced before the body is decoded or handed on.
+                    if (request->body.size() > middleware->config().maxBodySize)
                     {
-                        const auto bodyError = session.update(
-                            reinterpret_cast<const std::uint8_t*>(request->body.data()), request->body.size());
-                        if (bodyError != remoted::auth::AuthError::None)
-                        {
-                            responder->send(errorResponseFor(bodyError));
-                            return;
-                        }
-                    }
-
-                    // Step 7: finalize + constant-time MAC comparison.
-                    auto finished = session.finish();
-                    if (std::holds_alternative<remoted::auth::AuthError>(finished))
-                    {
-                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(finished)));
+                        responder->send(errorResponseFor(remoted::auth::AuthError::BodyTooLarge));
                         return;
                     }
 
@@ -183,19 +150,23 @@ namespace remoted::endpoints
                     // endpoint handler, which now owns delivering the response (inline or
                     // asynchronously). The gateway no longer sends on the success path.
                     //
-                    // Attach the verified body as a zero-copy Payload: a view into the
-                    // transport's single request buffer plus a keep-alive that pins that
-                    // buffer (and its in-flight byte reservation). MOVE our request
-                    // shared_ptr into the keep-alive so the handler becomes the sole owner
-                    // -- dropping it (or calling payload.release()) then frees the buffer
-                    // and restores the budget while the responder lives on to reply.
-                    auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
+                    // Attach the body as a zero-copy Payload: a view into the transport's single
+                    // request buffer plus a keep-alive that pins that buffer (and its in-flight byte
+                    // reservation). MOVE our request shared_ptr into the keep-alive so the handler
+                    // becomes the sole owner -- dropping it (or calling payload.release()) then
+                    // frees the buffer and restores the budget while the responder lives on to reply.
+                    remoted::auth::AuthenticatedRequest authRequest;
+                    authRequest.agentId = std::move(std::get<remoted::auth::VerifiedAgent>(verified).agentId);
+                    authRequest.protocolVersion = protocolVersion;
+                    authRequest.method = methodStr;
+                    authRequest.requestTarget = request->target;
+                    authRequest.receivedAt = receivedAt;
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
 
-                    // Body decoding runs here, AFTER authentication: the MAC already covered the
-                    // exact wire bytes above, so an unauthenticated peer never reaches a decoder --
-                    // it cannot spend our CPU or memory on one. What the step actually does (which
+                    // Body decoding runs here, AFTER authentication, so an unauthenticated peer never
+                    // reaches a decoder -- it cannot spend our CPU or memory on one. What the step
+                    // actually does (which
                     // encodings are implemented, how a body is decoded, how the memory that costs is
                     // accounted for) is deliberately unknown here; see remoted::decoding::IBodyDecoder.
                     const auto decodeError = bodyDecoder->decode(contentEncoding, authRequest.payload);
@@ -212,8 +183,8 @@ namespace remoted::endpoints
                 }
                 catch (const std::exception& e)
                 {
-                    // ERROR, not WARN: reaching here means the AES-CMAC pipeline itself failed
-                    // (an EVP_MAC error, or bad_alloc), which is not routine.
+                    // ERROR, not WARN: reaching here means the auth pipeline itself failed (a
+                    // keystore or OpenSSL error, or bad_alloc), which is not routine.
                     LOGFN_ERROR(logFn(), "Auth pipeline threw an exception: %s", e.what());
                     sendInternalErrorNoThrow(responder);
                 }

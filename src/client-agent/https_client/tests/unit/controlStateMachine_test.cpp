@@ -95,7 +95,7 @@ TEST(ControlStateMachineTest, AuthFailedGoesAuthErrorAndRecoversOnCredentialRene
     machine.onEvent(Event::NotifyOk);
     EXPECT_EQ(State::AuthError, machine.state());
 
-    // hc_set_agent_key -> CredentialRenewed leaves AuthError to re-register.
+    // hc_set_agent_identity -> CredentialRenewed leaves AuthError to re-register.
     const auto effects = machine.onEvent(Event::CredentialRenewed);
     EXPECT_EQ(State::Starting, machine.state());
     EXPECT_TRUE(effects.stateChanged);

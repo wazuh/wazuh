@@ -193,6 +193,22 @@ cJSON* local_add(const char *id,
                         authd_force_options_t *force_options);
 
 /**
+ * @brief Forwards an "add" request to the master node over the cluster (worker nodes only).
+ *        Any caller-supplied id/key/force are ignored -- the master always assigns the ID,
+ *        generates the key, and decides force-replace using its own configuration, matching
+ *        the network (port 1515) enrollment path's worker behavior.
+ * @param name Name of the agent to be registered
+ * @param ip IP of the agent to be registered
+ * @param groups Groups to which the agent belongs
+ * @param key_hash Hash of the agent key, used for the force/key-mismatch decision
+ * @return JSON object with the response
+ * */
+cJSON* local_add_clustered(const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key_hash);
+
+/**
  * @brief Returns a MD5 hash of some random data collected from different sources.
  *        The result must be freed by the caller.
  *
@@ -211,6 +227,46 @@ char *w_authd_read_password(const char *path);
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
+/* --- Pending indexer purges -------------------------------------------------------------------
+ *
+ * The queue between the writer thread and the relay that tells the inventory sync server to purge
+ * a deleted agent's documents. Persisted in PENDING_PURGES_FILE, so a restart owes the same work
+ * it owed before, and delayed on purpose (authd.purge_delay) so a purge cannot run before the
+ * indexer refreshed and the cluster workers reloaded client.keys.
+ */
+
+/// Give the queue's condition variable a monotonic clock. Call once, before any thread starts.
+void purge_queue_init(void);
+
+/// Recover what the previous run left pending, and raise the id counter past every id it mentions.
+/// Call after OS_ReadKeys() and before any thread starts.
+void purge_file_load(void);
+
+/// Queue (and persist) the indexer purge of a deleted agent. Called from the writer thread.
+void purge_queue_push(const char *agent_id);
+
+/// Whether an id still owes a purge, so it must not be handed to a new agent.
+bool purge_is_pending(const char *agent_id);
+
+/// Record the highest id handed out so far, so it is never reused after a restart.
+void purge_last_id_update(int id_counter);
+
+/// Wait until the head of the queue is due and return a copy of its id (NULL when shutting down).
+/// The entry stays queued until the relay confirms or defers it.
+char* purge_queue_peek_due(void);
+
+/// Drop the head after the server accepted the deletion.
+void purge_queue_drop_head(void);
+
+/// Keep the head and push its next attempt into the future, after a failed relay.
+void purge_queue_defer_head(const char *agent_id);
+
+/// Release the relay thread from any wait, so a shutdown can complete.
+void purge_queue_stop(void);
+
+/// Free the in-memory queue at shutdown and report what is still owed. The file is kept.
+void purge_queue_discard(void);
+
 extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;

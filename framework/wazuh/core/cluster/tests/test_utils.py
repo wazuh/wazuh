@@ -68,8 +68,13 @@ def test_read_cluster_config():
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
 
+    # The cached entry aliases default_cluster_config, mutated above. Evict it so the rest of the
+    # session does not read a config with node_type 'client'.
+    utils.read_config.cache_clear()
 
-def test_get_manager_status():
+
+@patch('wazuh.core.cluster.utils.read_config', return_value={'node_type': 'master'})
+def test_get_manager_status(mock_read_config):
     """Check that get_manager_status function returns the manager status.
 
     For this test, the status can be stopped or failed.
@@ -118,6 +123,25 @@ def test_get_manager_status():
             status = utils.get_manager_status()
             for value in status.values():
                 assert value == 'running'
+
+
+@pytest.mark.parametrize('node_type, apid_reported', [
+    ('master', True),
+    ('worker', False)
+])
+def test_get_manager_status_apid(node_type, apid_reported):
+    """Check that the API daemon is only reported on master nodes.
+
+    Parameters
+    ----------
+    node_type : str
+        Cluster node type of the reporting node.
+    apid_reported : bool
+        Whether the API daemon is expected in the returned status.
+    """
+    with patch('wazuh.core.cluster.utils.read_config', return_value={'node_type': node_type}):
+        assert ('wazuh-manager-apid' in utils.get_manager_status()) == apid_reported
+
 
 @pytest.mark.parametrize('exc', [
     PermissionError,

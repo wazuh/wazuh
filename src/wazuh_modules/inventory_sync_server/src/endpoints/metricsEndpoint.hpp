@@ -12,7 +12,7 @@
 #ifndef _INVSYNC_ENDPOINTS_METRICS_ENDPOINT_HPP
 #define _INVSYNC_ENDPOINTS_METRICS_ENDPOINT_HPP
 
-#include "http_server/IUdsHttpServer.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <wazuh_metrics/iManager.hpp>
 
@@ -32,9 +32,9 @@ namespace invsync::endpoints::metrics
      */
 
     /// @brief The verb this endpoint answers.
-    constexpr http::Method method()
+    constexpr wazuh::uds_http::Method method()
     {
-        return http::Method::Get;
+        return wazuh::uds_http::Method::Get;
     }
 
     /// @brief The path this endpoint answers. metricsEndpoint_test.cpp pins it.
@@ -50,7 +50,7 @@ namespace invsync::endpoints::metrics
      * even though the facade never resets its metrics manager -- the counters survive restart
      * retries on purpose.
      */
-    http::RouteHandler makeHandler(std::weak_ptr<wazuh::metrics::IManager> manager);
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<wazuh::metrics::IManager> manager);
 
 } // namespace invsync::endpoints::metrics
 

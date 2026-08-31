@@ -10,6 +10,8 @@
  */
 
 #include "remoted_module.h"
+#include "testLogRecorder.hpp"
+#include "testTlsServer.hpp"
 #include <atomic>
 #include <chrono>
 #include <cstdarg>
@@ -17,112 +19,29 @@
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 #include <mutex>
+#include <netinet/in.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <string>
+#include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
 
 namespace
 {
-    std::atomic<int> g_logCalls {0};
-
-    /**
-     * @brief Process-wide recorder for the module's log output.
-     *
-     * This is the ONLY way a test can observe what the module logs: Log::GLOBAL_LOG_FUNCTION is
-     * declared with hidden visibility and defined inside libremoted_module.so, so a definition in
-     * the test binary would be a different object entirely. Going through remoted_module_start()
-     * installs this callback into the library's own sink.
-     *
-     * Must be process-wide rather than per-test: Log::assignLogFunction() only assigns when the sink
-     * is still empty, and deassignLogFunction() is not reachable from here -- so the FIRST test to
-     * start the module wins for the lifetime of the process.
-     */
-    struct LogRecorder
-    {
-        struct Line
-        {
-            int level;
-            std::string tag;
-            std::string message;
-        };
-
-        static std::mutex& mutex()
-        {
-            static std::mutex instance;
-            return instance;
-        }
-
-        static std::vector<Line>& lines()
-        {
-            static std::vector<Line> instance;
-            return instance;
-        }
-
-        static void clear()
-        {
-            std::lock_guard<std::mutex> lock {mutex()};
-            lines().clear();
-        }
-
-        /// Whether any recorded message contains @p needle. Polls, because the module logs from its
-        /// own worker thread.
-        static bool waitForMessageContaining(const std::string& needle,
-                                             std::chrono::milliseconds timeout = std::chrono::seconds {5})
-        {
-            const auto deadline = std::chrono::steady_clock::now() + timeout;
-            while (std::chrono::steady_clock::now() < deadline)
-            {
-                {
-                    std::lock_guard<std::mutex> lock {mutex()};
-                    for (const auto& line : lines())
-                    {
-                        if (line.message.find(needle) != std::string::npos)
-                        {
-                            return true;
-                        }
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds {20});
-            }
-            return false;
-        }
-    };
-
-    void testLogCallback(int level,
-                         const char* tag,
-                         const char* /*file*/,
-                         int /*line*/,
-                         const char* /*func*/,
-                         const char* msg,
-                         va_list args)
-    {
-        g_logCalls.fetch_add(1, std::memory_order_relaxed);
-
-        // Render the message exactly as _log() would. A va_list may only be traversed once, so this
-        // consumes it -- that is fine, nothing downstream of us needs it.
-        char buffer[2048];
-        if (msg != nullptr)
-        {
-            std::vsnprintf(buffer, sizeof(buffer), msg, args);
-        }
-        else
-        {
-            buffer[0] = '\0';
-        }
-
-        std::lock_guard<std::mutex> lock {LogRecorder::mutex()};
-        LogRecorder::lines().push_back({level, tag != nullptr ? tag : "", buffer});
-    }
+    // The process-wide log recorder lives in testLogRecorder.hpp, SHARED with every other test
+    // file that starts the module through the C-ABI (adminServer_test.cpp): the module's log
+    // sink is first-come for the lifetime of the process, so all such files must install the
+    // same callback for anyone's log assertions to hold regardless of suite order.
+    using remoted::test::g_logCalls;
+    using remoted::test::LogRecorder;
+    using remoted::test::testLogCallback;
 
     // A port the OS says is free, asked for right before the module binds it.
     //
@@ -345,6 +264,28 @@ TEST_F(RemotedModuleTest, StartAndStop)
     remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
+}
+
+// With global_prefix set through the C ABI, every public route moves under it: the health
+// probe answers at /<prefix>/ and the bare / is gone (404). The transport/E2E suites pin the
+// full behavior table; this is the black-box proof that the C-ABI field actually reaches it.
+TEST_F(RemotedModuleTest, GlobalPrefixMovesEveryRoute)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.global_prefix, sizeof(cfg.global_prefix), "/wazuh-manager/");
+    remoted_module_start(testLogCallback, &cfg);
+
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+
+    const auto prefixed = remoted::test::sendGetRequest(port, "/wazuh-manager/");
+    EXPECT_NE(prefixed.find(" 200 "), std::string::npos) << prefixed;
+    EXPECT_NE(prefixed.find("\"status\":\"ok\""), std::string::npos) << prefixed;
+
+    const auto bare = remoted::test::sendGetRequest(port, "/");
+    EXPECT_NE(bare.find(" 404 "), std::string::npos) << bare;
+
+    remoted_module_stop();
 }
 
 // stop() on a module that was never started must be a safe no-op.

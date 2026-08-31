@@ -22,13 +22,16 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 echo "== staging build context =="
-mkdir -p "$STAGE/https_client/demo" "$STAGE/deps/external/nlohmann"
+mkdir -p "$STAGE/https_client/demo" "$STAGE/deps/external/nlohmann" \
+         "$STAGE/deps/shared_modules/sync_protocol/include"
 cp -R "$MODULE/include" "$MODULE/src" "$STAGE/https_client/"
 cp demo_driver.c mock_manager.py docker-entrypoint.sh "$STAGE/https_client/demo/"
 cp "$SRC_ROOT/shared_modules/common/commonDefs.h"  "$STAGE/deps/"
 cp "$SRC_ROOT/shared_modules/utils/loggerHelper.h" "$STAGE/deps/"
 cp "$SRC_ROOT/external/cJSON/cJSON.h"              "$STAGE/deps/"
 cp "$SRC_ROOT/external/nlohmann/json.hpp"          "$STAGE/deps/external/nlohmann/"
+cp "$SRC_ROOT/shared_modules/sync_protocol/include/sync_session_wire.hpp" \
+   "$STAGE/deps/shared_modules/sync_protocol/include/"
 cp Dockerfile "$STAGE/"
 
 echo "== building image ${IMAGE} =="

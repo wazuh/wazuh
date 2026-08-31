@@ -1,0 +1,99 @@
+{
+  "name": "vd_rescan_storm_isolated",
+  "description": "Isolated VD re-scan storm: only the VD delta + scan_vd lanes, so the scan dispatch lane is measured without the inventory ingest storm competing for modulesd.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": {
+      "enabled": true,
+      "keepalive_interval": "10s",
+      "send_host_info": true,
+      "startup_version": "5.0.0"
+    },
+    "retry": {
+      "enabled": true,
+      "interval": "500ms",
+      "max_attempts": 120
+    }
+  },
+  "lanes": {
+    "vd_windows": [
+      {
+        "kind": "delta",
+        "dump": "../sample_payloads/dumps/vd_first_windows.json"
+      },
+      {
+        "kind": "scan_vd",
+        "initial_delay": "90s"
+      }
+    ],
+    "vd_linux": [
+      {
+        "kind": "delta",
+        "dump": "../sample_payloads/dumps/vd_first_debian.json"
+      },
+      {
+        "kind": "scan_vd",
+        "initial_delay": "90s"
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "windows",
+      "agents": 50,
+      "first_id": 49000,
+      "lanes": [
+        "vd_windows"
+      ],
+      "start": {
+        "osname": "Microsoft Windows 11 Enterprise Evaluation",
+        "osplatform": "windows",
+        "ostype": "windows",
+        "osversion": "10.0.26200",
+        "architecture": "x86_64",
+        "agentversion": "5.0.0"
+      }
+    },
+    {
+      "name": "linux",
+      "agents": 50,
+      "first_id": 49100,
+      "lanes": [
+        "vd_linux"
+      ],
+      "start": {
+        "osname": "Ubuntu",
+        "osplatform": "ubuntu",
+        "ostype": "linux",
+        "osversion": "22.04",
+        "architecture": "x86_64",
+        "agentversion": "5.0.0"
+      }
+    }
+  ],
+  "pacing": {
+    "concurrent_agents": 0,
+    "requests_per_second": 0,
+    "repeat_until": "0",
+    "drain_timeout": "300s"
+  },
+  "expected": {
+    "scan": {
+      "sent": {
+        "eq": 100
+      },
+      "other": {
+        "eq": 0
+      }
+    },
+    "control": {
+      "startup_err": {
+        "eq": 0
+      }
+    },
+    "transport_errors": {
+      "eq": 0
+    }
+  }
+}

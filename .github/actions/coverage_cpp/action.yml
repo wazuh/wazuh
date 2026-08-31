@@ -71,8 +71,10 @@ runs:
           arguments+="--rc branch_coverage=0 "
 
           # Ignore lcov 2.x strict errors for unused include patterns, version mismatches,
-          # and gcov/lcov line range mismatches (gcov 13 + lcov 2.0 incompatibility)
-          arguments+="--ignore-errors unused,deprecated,mismatch "
+          # and gcov/lcov line range mismatches (gcov 13 + lcov 2.0 incompatibility).
+          # "negative" covers the counter races of multithreaded test binaries built
+          # without -fprofile-update=atomic, which geninfo otherwise turns into a hard error.
+          arguments+="--ignore-errors unused,deprecated,mismatch,negative "
 
           # Include source files using glob patterns (compatible with lcov 2.x)
           if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
@@ -90,9 +92,9 @@ runs:
           lcov_version=$(lcov --version | awk '{print $NF}')
           lcov_major=${lcov_version%%.*}
           if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
-            ignore_errors="mismatch,unused"
+            ignore_errors="mismatch,unused,negative"
           else
-            ignore_errors="mismatch"
+            ignore_errors="mismatch,negative"
           fi
           echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
           lcov $arguments --ignore-errors "$ignore_errors"

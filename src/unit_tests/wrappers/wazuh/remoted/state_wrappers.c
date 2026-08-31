@@ -28,6 +28,10 @@ void __wrap_rem_inc_recv_events() {
     function_called();
 }
 
+void __wrap_rem_inc_recv_upgrade_ack() {
+    function_called();
+}
+
 void __wrap_rem_add_recv(unsigned long bytes) {
     check_expected(bytes);
 }

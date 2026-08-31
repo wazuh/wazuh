@@ -28,7 +28,6 @@ typedef struct _recv_msgs_t
 {
     uint64_t events_count;
     uint64_t ctrl_count;
-    uint64_t states_count;
     uint32_t upgrade_ack_count;
     uint32_t ping_count;
     uint32_t unknown_count;
@@ -49,8 +48,6 @@ typedef struct _sent_msgs_t
 {
     uint64_t ack_count;
     uint64_t shared_count;
-    uint32_t ar_count;
-    uint32_t request_count;
     uint32_t discarded_count;
 } sent_msgs_t;
 
@@ -98,6 +95,15 @@ void rem_inc_recv_events();
  * @brief Increment received control messages counter
  */
 void rem_inc_recv_ctrl();
+
+/**
+ * @brief Increment received upgrade-ack messages counter
+ *
+ * Only a well-formed upgrade_update_status counts. The same message is also
+ * counted as a received event, because the ack falls through to the ordinary
+ * event path once it has been processed.
+ */
+void rem_inc_recv_upgrade_ack();
 
 /**
  * @brief Increment failed-event messages counter
@@ -164,16 +170,6 @@ void rem_inc_send_ack();
  * @brief Increment sent shared file messages counter
  */
 void rem_inc_send_shared();
-
-/**
- * @brief Increment sent AR messages counter
- */
-void rem_inc_send_ar();
-
-/**
- * @brief Increment sent request messages counter
- */
-void rem_inc_send_request();
 
 /**
  * @brief Increment sent discarded messages counter

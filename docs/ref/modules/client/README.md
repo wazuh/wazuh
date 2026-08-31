@@ -32,7 +32,7 @@ The client module is responsible for:
 - **Auto-connection:** Automatically connects to configured manager
 - **Keep-alive:** Maintains persistent connection with heartbeat
 - **Auto-reconnection:** Automatically reconnects after network issues
-- **Single manager:** Only one `<server>` block is honored; a second one replaces the first instead of adding failover
+- **Single manager:** Only one `<manager>` block is honored; a second one replaces the first instead of adding failover
 
 ### Data Transmission
 - **Event forwarding:** Sends alerts, logs, and events to manager
@@ -60,11 +60,11 @@ Quick configuration example:
 
 ```xml
 <agent>
-  <server>
+  <manager>
     <address>manager.example.com</address>
     <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
 </agent>

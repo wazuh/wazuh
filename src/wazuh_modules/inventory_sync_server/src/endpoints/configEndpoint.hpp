@@ -13,8 +13,8 @@
 #define _INVSYNC_ENDPOINTS_CONFIG_ENDPOINT_HPP
 
 #include "common/clusterIdentity.hpp"
-#include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <memory>
 
@@ -61,7 +61,7 @@ namespace invsync::endpoints::config
      * ## Where the agent id comes from
      *
      * From the `X-Wazuh-Agent-Id` request header, which remoted sets from the identity it already
-     * authenticated via AES-CMAC. It is NOT taken from the document: the whole point is that this
+     * authenticated (the agent's bearer token). It is NOT taken from the document: the whole point is that this
      * endpoint stamps the *authenticated* id onto whatever the agent sent, so a document claiming a
      * different id cannot override it. A request without that header is a remoted/modulesd contract
      * violation rather than agent input, and is answered 400.
@@ -75,9 +75,9 @@ namespace invsync::endpoints::config
      */
 
     /// @brief The verb this endpoint answers.
-    constexpr http::Method method()
+    constexpr wazuh::uds_http::Method method()
     {
-        return http::Method::Post;
+        return wazuh::uds_http::Method::Post;
     }
 
     /// @brief The path this endpoint answers. Must match remoted's downstream target for `/config`;
@@ -119,8 +119,8 @@ namespace invsync::endpoints::config
      *                background object with a teardown ordering to protect -- just a string whose
      *                lifetime the closure can own outright.
      */
-    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
-                                   invsync::common::ClusterIdentity cluster);
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+                                              invsync::common::ClusterIdentity cluster);
 
 } // namespace invsync::endpoints::config
 

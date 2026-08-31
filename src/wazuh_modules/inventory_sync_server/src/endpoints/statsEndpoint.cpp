@@ -11,9 +11,9 @@
 
 #include "statsEndpoint.hpp"
 
-#include "common/logThrottle.hpp"
 #include "loggerHelper.h"
 #include "timeHelper.h"
+#include <uds_http_server/logThrottle.hpp>
 
 #include <exception>
 #include <json.hpp>
@@ -45,17 +45,17 @@ namespace
         return instance;
     }
 
-    invsync::http::HttpResponse badRequest(const char* reason)
+    wazuh::uds_http::HttpResponse badRequest(const char* reason)
     {
-        return invsync::http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
+        return wazuh::uds_http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
     }
 
     /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is
     /// unreachable" are the same thing to the caller (retry later), and telling them apart would leak
     /// internal state. The two are distinguished in the logs instead.
-    invsync::http::HttpResponse serviceUnavailable()
+    wazuh::uds_http::HttpResponse serviceUnavailable()
     {
-        return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        return wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
     }
 
     /**
@@ -92,18 +92,19 @@ namespace
 namespace invsync::endpoints::stats
 {
 
-    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
-                                   invsync::common::ClusterIdentity cluster)
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+                                              invsync::common::ClusterIdentity cluster)
     {
-        return [connector = std::move(connector), cluster = std::move(cluster)](
-                   std::shared_ptr<const http::HttpRequest> request, std::shared_ptr<http::IHttpResponder> responder)
+        return [connector = std::move(connector),
+                cluster = std::move(cluster)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                              std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
             // One slot per condition, so a persistent one cannot mask a newly-appearing different one.
-            static invsync::common::LogThrottle indexedThrottle;
-            static invsync::common::LogThrottle goneThrottle;
-            static invsync::common::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle indexedThrottle;
+            static wazuh::uds_http::LogThrottle goneThrottle;
+            static wazuh::uds_http::LogThrottle unavailableThrottle;
 
             if (!request)
             {
@@ -156,7 +157,7 @@ namespace invsync::endpoints::stats
                                  "Rejected %llu stats document(s) with 503 in the last %d s: the module is shutting "
                                  "down and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -172,12 +173,13 @@ namespace invsync::endpoints::stats
                                "Rejected %llu stats document(s) with 503 in the last %d s: no configured indexer host "
                                "is currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               invsync::common::LogThrottle::kDefaultWindowSeconds);
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 responder->send(serviceUnavailable());
                 return;
             }
 
+            std::string serializedDocument;
             try
             {
                 // JSON pointers so `wazuh.agent.id` reads the way it is spelled everywhere else in
@@ -192,27 +194,44 @@ namespace invsync::endpoints::stats
                 // be one allocation per node of every module's subtree, per agent report.
                 document["/wazuh/agent/statistics"_json_pointer] = std::move(*modules);
 
-                indexer->index(agentIdIt->second, indexName(), document.dump());
-
-                if (const auto decision = indexedThrottle.record())
-                {
-                    LOGFN_DEBUG1(logFn(),
-                                 "Queued %llu agent stats document(s) for indexing in the last %d s.",
-                                 static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
-                }
-
-                // The protocol's acknowledgment: an empty object. The agent has nothing to read back.
-                responder->send(http::HttpResponse::json(200, "{}"));
+                serializedDocument = document.dump();
             }
             catch (const std::exception& e)
             {
                 // Serializing can still fail on input we accepted -- invalid UTF-8 in the agent id
                 // header or anywhere inside the report, which nlohmann rejects at dump() time rather
-                // than at parse time.
+                // than at parse time. Still the caller's fault.
                 LOGFN_DEBUG1(logFn(), "Could not serialize an agent stats document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
+                return;
             }
+
+            try
+            {
+                indexer->index(agentIdIt->second, indexName(), serializedDocument);
+            }
+            catch (const std::exception& e)
+            {
+                // The body was fine; the write to storage was not. A 400 here would tell the agent
+                // to fix a payload that was never wrong; 503 correctly tells it to retry.
+                LOGFN_DEBUG1(logFn(),
+                             "Could not index agent stats document for agent '%s': %s.",
+                             agentIdIt->second.c_str(),
+                             e.what());
+                responder->send(serviceUnavailable());
+                return;
+            }
+
+            if (const auto decision = indexedThrottle.record())
+            {
+                LOGFN_DEBUG1(logFn(),
+                             "Queued %llu agent stats document(s) for indexing in the last %d s.",
+                             static_cast<unsigned long long>(decision.total),
+                             wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+            }
+
+            // The protocol's acknowledgment: an empty object. The agent has nothing to read back.
+            responder->send(wazuh::uds_http::HttpResponse::json(200, "{}"));
         };
     }
 

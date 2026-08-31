@@ -72,7 +72,7 @@ class WazuhDBHTTPClient:
         timeout : float
             Maximum number of seconds to wait
         """
-        self.socket_path = f'{common.WDB_HTTP_SOCKET}.sock'
+        self.socket_path = str(common.WDB_HTTP_SOCKET)
 
         try:
             transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries, verify=False)
@@ -85,13 +85,15 @@ class WazuhDBHTTPClient:
         """Close the wazuh-manager-db HTTP client."""
         await self._client.aclose()
 
-    async def _get(self, endpoint: str) -> Any:
+    async def _get(self, endpoint: str, headers: dict = None) -> Any:
         """Send a GET request to the specified endpoint.
 
         Parameters
         ----------
         endpoint : str
             Endpoint name.
+        headers : dict
+            Additional request headers.
 
         Returns
         -------
@@ -99,7 +101,10 @@ class WazuhDBHTTPClient:
             JSON response.
         """
         try:
-            response = await self._client.get(url=f'{self.API_URL}{endpoint}', headers={'Accept': APPLICATION_JSON})
+            response = await self._client.get(
+                url=f'{self.API_URL}{endpoint}',
+                headers={'Accept': APPLICATION_JSON, **(headers or {})},
+            )
             if response.is_error:
                 raise WazuhError(2012, extra_message=response.text)
 
@@ -159,7 +164,9 @@ class WazuhDBHTTPClient:
         list[str]
             Group names.
         """
-        return await self._get(f'/agents/{agent_id}/groups')
+        # The manager's HTTP-over-UDS transport (shared_modules/uds_http_server) routes on exact
+        # path match only, so the agent id travels in a header instead of a path segment.
+        return await self._get('/agents/groups', headers={'X-Wazuh-Agent-Id': str(agent_id)})
 
     async def get_all_agents(self) -> list[dict]:
         """Get all agents with all fields.

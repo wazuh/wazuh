@@ -15,7 +15,6 @@
 #include "http_server/httpServerFactory.hpp"
 #include "proc.hpp"
 
-
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
@@ -32,15 +31,15 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <istream>
-#include <cstring>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <istream>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -150,7 +149,7 @@ namespace
             m_keyPath = m_dir + "/key.pem";
 
             const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
-                                     m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+                                    m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
             if (std::system(cmd.c_str()) != 0)
             {
                 ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
@@ -164,8 +163,14 @@ namespace
             rmdir(m_dir.c_str());
         }
 
-        const std::string& certPath() const { return m_certPath; }
-        const std::string& keyPath() const { return m_keyPath; }
+        const std::string& certPath() const
+        {
+            return m_certPath;
+        }
+        const std::string& keyPath() const
+        {
+            return m_keyPath;
+        }
 
     private:
         std::string m_dir;
@@ -183,6 +188,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     const auto config = buildHttpServerConfig(zeroedConfig());
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
+    // Empty C-ABI buffer -> "" == no prefix, today's behavior (D3: an absent tag changes nothing).
+    EXPECT_EQ(config.globalPrefix, "");
     EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
@@ -259,6 +266,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
     std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
     std::snprintf(raw.bind_address, sizeof(raw.bind_address), "0.0.0.0");
+    std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager/");
     std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
     std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
 
@@ -282,6 +290,9 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
     EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
     EXPECT_EQ(config.bindAddress, "0.0.0.0");
+    // VERBATIM copy (trailing slash kept): canonicalization is RestinioHttpServer::start()'s
+    // single job -- see NormalizeGlobalPrefixTest for that contract.
+    EXPECT_EQ(config.globalPrefix, "/wazuh-manager/");
     EXPECT_EQ(config.caPath, "/custom/ca.pem");
     EXPECT_EQ(config.ciphers, "HIGH:!ADH");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
@@ -556,8 +567,8 @@ namespace
             char dirTemplate[] = "/tmp/httpServerFullModeXXXXXX";
             m_dir = mkdtemp(dirTemplate);
 
-            run("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test-ca -keyout " + key("ca") +
-                " -out " + cert("ca"));
+            run("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test-ca -keyout " + key("ca") + " -out " +
+                cert("ca"));
 
             issue("server", "test-server", "IP:127.0.0.1,DNS:localhost");
             issue("matching", "agent-matching", "IP:127.0.0.1");
@@ -575,8 +586,14 @@ namespace
             rmdir(m_dir.c_str());
         }
 
-        std::string cert(const std::string& name) const { return m_dir + "/" + name + ".crt"; }
-        std::string key(const std::string& name) const { return m_dir + "/" + name + ".key"; }
+        std::string cert(const std::string& name) const
+        {
+            return m_dir + "/" + name + ".crt";
+        }
+        std::string key(const std::string& name) const
+        {
+            return m_dir + "/" + name + ".key";
+        }
 
     private:
         void issue(const std::string& name, const std::string& commonName, const std::string& san)
@@ -792,11 +809,12 @@ TEST(FullModeTest, CertificateListingThePeerAddressIsServed)
     auto server = makeHttpServer();
     const auto port = static_cast<std::uint16_t>(34517);
 
-    server->addRoute(Method::Get,
-                     "/",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                     /*countAgainstBudget=*/false);
+    server->addRoute(
+        Method::Get,
+        "/",
+        [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+        /*countAgainstBudget=*/false);
 
     ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
 
@@ -820,11 +838,12 @@ TEST(FullModeTest, CertificateListingAnotherAddressIsRefusedOnEveryRoute)
     const auto port = static_cast<std::uint16_t>(34518);
 
     // The unauthenticated liveness probe: the route most likely to leak a rejected connection.
-    server->addRoute(Method::Get,
-                     "/",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                     /*countAgainstBudget=*/false);
+    server->addRoute(
+        Method::Get,
+        "/",
+        [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+        /*countAgainstBudget=*/false);
 
     ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
 
@@ -860,11 +879,12 @@ namespace
         FullModePki pki;
         auto server = makeHttpServer();
 
-        server->addRoute(Method::Get,
-                         "/",
-                         [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                         { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                         /*countAgainstBudget=*/false);
+        server->addRoute(
+            Method::Get,
+            "/",
+            [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+            { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+            /*countAgainstBudget=*/false);
 
         auto config = fullModeConfig(pki, port);
         config.verificationMode = mode;
@@ -956,6 +976,108 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
     EXPECT_TRUE(server->tryReserveInFlightBytes(50U * 1024U * 1024U).has_value());
 
     server->stop();
+}
+
+// diagnostics() is the source of the remoted.server.budget.* pull metrics: all zeros before
+// start() (the documented quiescent value), live budget state while running. Auxiliary
+// reservations (tryReserveInFlightBytes()) belong to already-admitted requests, so they must show
+// up ONLY as bytes -- never as in-flight requests, and their refusal is never a shed.
+TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    auto d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+
+    HttpServerConfig config;
+    config.port = 0; // ephemeral
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    // Same clamp-avoidance as the reservation test above: keep the configured capacity in charge.
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
+    EXPECT_EQ(d.budgetInFlightBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+
+    {
+        auto reservation = server->tryReserveInFlightBytes(10U * MiB);
+        ASSERT_TRUE(reservation.has_value());
+        EXPECT_FALSE(server->tryReserveInFlightBytes(50U * MiB).has_value()); // refused, not shed
+
+        d = server->diagnostics();
+        EXPECT_EQ(d.budgetAvailableBytes, 40U * MiB);
+        EXPECT_EQ(d.budgetInFlightBytes, 10U * MiB);
+        EXPECT_EQ(d.budgetInFlightCount, 0U); // auxiliary bytes are not requests
+        EXPECT_EQ(d.budgetRejectedTotal, 0U); // and refusing them turned no request away
+    }
+
+    server->stop();
+
+    d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB); // reservation released
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+}
+
+// The shed total moves only when the transport refuses to ADMIT a request, so driving it takes a
+// real one: hold the whole budget through an auxiliary reservation, watch an actual request
+// bounce off admission with a 503 without its handler ever running, and -- because the budget
+// survives a normal stop() -- see the cumulative total still reported afterwards, which is what
+// lets the facade's final stop() dump report it.
+TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    std::atomic_bool handlerRan {false}; // declared before the server: its route holds a reference
+    auto server = makeHttpServer();
+
+    server->addRoute(
+        Method::Post,
+        "/events",
+        [&handlerRan](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerRan = true;
+            responder->send(HttpResponse::json(200, "{}"));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Buffered);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    auto whole = server->tryReserveInFlightBytes(50U * MiB);
+    ASSERT_TRUE(whole.has_value()); // the budget is now fully held
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/events", "{}");
+    whole.reset();
+    server->stop();
+
+    ASSERT_FALSE(raw.empty()) << "no response from the server";
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_NE(head.find("503"), std::string::npos) << head;
+    EXPECT_FALSE(handlerRan.load()) << "a shed request must never reach its route handler";
+
+    const auto d = server->diagnostics();
+    EXPECT_EQ(d.budgetRejectedTotal, 1U); // exactly the one refused admission
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
 }
 
 // ---------------------------------------------------------------------------
@@ -1442,4 +1564,230 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
         << "the trickle was not slow enough to outlast the configured timers";
     EXPECT_TRUE(complete) << "a trickling reader was cut off; the per-write timer did not rearm";
     EXPECT_EQ(decoded, payload);
+}
+
+// ---------------------------------------------------------------------------
+// Global endpoint prefix (issue #38491)
+// ---------------------------------------------------------------------------
+
+// The canonicalization contract of HttpServerConfig::globalPrefix, exercised without sockets.
+// The single runtime call site is RestinioHttpServer::start().
+TEST(NormalizeGlobalPrefixTest, IdentityForms)
+{
+    EXPECT_EQ(normalizeGlobalPrefix(""), "");
+    EXPECT_EQ(normalizeGlobalPrefix("/"), "");
+    EXPECT_EQ(normalizeGlobalPrefix("///"), "");
+}
+
+TEST(NormalizeGlobalPrefixTest, CanonicalForms)
+{
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager"), "/wazuh-manager");
+    EXPECT_EQ(normalizeGlobalPrefix("/wazuh-manager/"), "/wazuh-manager");
+    EXPECT_EQ(normalizeGlobalPrefix("/p///"), "/p");
+    EXPECT_EQ(normalizeGlobalPrefix("/edge/wazuh-5"), "/edge/wazuh-5");
+    EXPECT_EQ(normalizeGlobalPrefix("/v5.0_beta~1"), "/v5.0_beta~1");
+    // Defensive: the C-side validator requires the leading '/', but a directly-constructed
+    // config gets the same canonical form instead of a corrupted concatenation.
+    EXPECT_EQ(normalizeGlobalPrefix("wazuh-manager"), "/wazuh-manager");
+}
+
+TEST(NormalizeGlobalPrefixTest, EmptyInteriorSegmentThrows)
+{
+    EXPECT_THROW(normalizeGlobalPrefix("/a//b"), std::invalid_argument);
+}
+
+TEST(NormalizeGlobalPrefixTest, InvalidCharactersThrow)
+{
+    for (const auto* bad : {"/p x", "/p?x", "/p#f", "/p:id", "/p(x)", "/p*", "/p%2F", "/p+q", "/p\\q"})
+    {
+        EXPECT_THROW(normalizeGlobalPrefix(bad), std::invalid_argument) << "accepted: " << bad;
+    }
+}
+
+namespace
+{
+    // Real TLS server with a RAW ("/wazuh-manager/", trailing slash on purpose: start() must
+    // normalize) global prefix and UNPREFIXED route registrations -- the transport applies the
+    // prefix. No auth: routing is what this suite measures; the signed path is
+    // globalPrefixE2E_test.cpp's job.
+    class GlobalPrefixTransportTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            if (std::system("openssl version >/dev/null 2>&1") != 0)
+            {
+                GTEST_SKIP() << "openssl not available to generate the test certificate";
+            }
+            m_cert = remoted::test::generateTestCertificate("global_prefix_transport");
+            if (!m_cert)
+            {
+                GTEST_SKIP() << "could not generate a throwaway TLS certificate";
+            }
+            m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(
+                std::vector<std::string> {m_cert->certPath, m_cert->keyPath});
+        }
+
+        // Starts a fresh server with the given raw prefix and the two canonical routes.
+        void startServer(const std::string& rawPrefix)
+        {
+            m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + m_portOffset++);
+            m_server = makeHttpServer();
+            m_server->addRoute(
+                Method::Get,
+                "/",
+                [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
+                { r->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+                /*countAgainstBudget=*/false);
+            // Echoes the target the handler observed: with the prefix in effect it must be the
+            // RAW prefixed target (the transport never rewrites it -- the auth layer signs it).
+            m_server->addRoute(Method::Post,
+                               "/echo",
+                               [](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> r)
+                               { r->send(HttpResponse::json(200, request->target)); });
+
+            HttpServerConfig config;
+            config.port = m_port;
+            config.certificatePath = m_cert->certPath;
+            config.privateKeyPath = m_cert->keyPath;
+            config.globalPrefix = rawPrefix;
+            ASSERT_NO_THROW(m_server->start(config));
+        }
+
+        void TearDown() override
+        {
+            if (m_server)
+            {
+                m_server->stop();
+            }
+        }
+
+        static int statusOf(const std::string& rawResponse)
+        {
+            const auto space = rawResponse.find(' ');
+            if (space == std::string::npos || space + 4 > rawResponse.size())
+            {
+                return 0;
+            }
+            return std::atoi(rawResponse.c_str() + space + 1);
+        }
+
+        std::string post(const std::string& target)
+        {
+            return remoted::test::sendRawOverTls(m_port,
+                                                 "POST " + target +
+                                                     " HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: "
+                                                     "0\r\nConnection: close\r\n\r\n");
+        }
+
+        std::uint16_t m_port {0};
+        int m_portOffset {0};
+        std::shared_ptr<IHttpServer> m_server;
+        std::optional<remoted::test::TestCertificate> m_cert;
+        std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+    };
+} // namespace
+
+TEST_F(GlobalPrefixTransportTest, PrefixedRoutesAnswerAndTargetStaysRaw)
+{
+    startServer("/wazuh-manager/"); // raw form: start() must normalize the trailing slash
+
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
+
+    const auto echoed = post("/wazuh-manager/echo?a=1&b=2");
+    EXPECT_EQ(statusOf(echoed), 200);
+    // The query survives and the target is the raw PREFIXED one -- never rewritten (D1).
+    EXPECT_NE(echoed.find("/wazuh-manager/echo?a=1&b=2"), std::string::npos) << echoed;
+}
+
+TEST_F(GlobalPrefixTransportTest, UnprefixedPathsAnswer404)
+{
+    startServer("/wazuh-manager/");
+
+    const auto health = remoted::test::sendGetRequest(m_port, "/");
+    EXPECT_EQ(statusOf(health), 404);
+    EXPECT_NE(health.find(R"({"error":"not_found"})"), std::string::npos) << health;
+
+    EXPECT_EQ(statusOf(post("/echo")), 404);
+}
+
+TEST_F(GlobalPrefixTransportTest, HealthAnswersBothSpellingsUnderPrefix)
+{
+    startServer("/wazuh-manager/");
+
+    // Pinned RESTinio behavior (routerSemanticsSpike_test.cpp S2/S9): the "/" route is
+    // registered as the BARE prefix, so both spellings -- and a query -- answer.
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager?probe=1")), 200);
+}
+
+TEST_F(GlobalPrefixTransportTest, CaseVariantMatches)
+{
+    startServer("/wazuh-manager/");
+
+    // Pinned RESTinio behavior (spike S3): express matching is case-insensitive. Same surface
+    // as today -- on authenticated routes the MAC covers the real bytes either way.
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/")), 200);
+}
+
+TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysRaw)
+{
+    startServer("/wazuh-manager/");
+
+    // Pinned RESTinio behavior: the express router percent-DECODES ordinary bytes before
+    // matching ("%2D" == '-', so this spelling routes), while an encoded slash ("%2F") never
+    // becomes a path separator (spike S5, and the second assertion below). Predates the prefix
+    // -- it applies to every route equally -- and is harmless under the verbatim-MAC contract:
+    // the handler-observed target stays the RAW encoded bytes, so the MAC covers exactly what
+    // was sent either way.
+    const auto encoded = post("/wazuh%2Dmanager/echo");
+    EXPECT_EQ(statusOf(encoded), 200);
+    EXPECT_NE(encoded.find("/wazuh%2Dmanager/echo"), std::string::npos)
+        << "the transport must never hand the decoded spelling to handlers/auth: " << encoded;
+
+    EXPECT_EQ(statusOf(post("/wazuh-manager%2Fecho")), 404);
+}
+
+TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
+{
+    for (const auto* identity : {"", "/"})
+    {
+        startServer(identity);
+
+        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/")), 200) << "prefix: '" << identity << "'";
+        EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 404)
+            << "prefix: '" << identity << "'";
+
+        const auto echoed = post("/echo?x=1");
+        EXPECT_EQ(statusOf(echoed), 200) << "prefix: '" << identity << "'";
+        EXPECT_NE(echoed.find("/echo?x=1"), std::string::npos) << echoed;
+
+        m_server->stop();
+    }
+}
+
+TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
+{
+    m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + 500);
+    m_server = makeHttpServer();
+    m_server->addRoute(Method::Get,
+                       "/",
+                       [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
+                       { r->send(HttpResponse::json(200, "{}")); });
+
+    HttpServerConfig config;
+    config.port = m_port;
+    config.certificatePath = m_cert->certPath;
+    config.privateKeyPath = m_cert->keyPath;
+    config.globalPrefix = "/bad prefix";
+
+    EXPECT_THROW(m_server->start(config), std::invalid_argument);
+
+    // Same discipline as StartWithMissingCertificateThrowsAndStaysStopped: a failed start leaves
+    // a stoppable, restartable server.
+    EXPECT_NO_THROW(m_server->stop());
+    config.globalPrefix = "/wazuh-manager";
+    ASSERT_NO_THROW(m_server->start(config));
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
 }

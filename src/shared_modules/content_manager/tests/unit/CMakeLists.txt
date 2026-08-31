@@ -10,7 +10,7 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
 endif()
 
 # Include directories
-include_directories(${SRC_FOLDER}/shared_modules/http-request/include)
+include_directories(${SRC_FOLDER}/shared_modules/uds_http_server/include)
 
 file(GLOB PROJECT_SOURCES *.cpp)
 
@@ -33,7 +33,6 @@ target_link_libraries(
   gtest
   optimized
   gmock
-  urlrequest
   wazuhext
   rocksdb
   pthread)

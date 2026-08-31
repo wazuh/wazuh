@@ -23,8 +23,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
-#include "cmac.hpp"
 #include "hashHelper.h"
+#include "jwt/jwtKeyDecoder.hpp"
 #include "loggerHelper.h"
 
 namespace remoted::auth
@@ -62,18 +62,18 @@ namespace remoted::auth
             return !field.empty() && (field[0] == '#' || field[0] == '!');
         }
 
+        // Exactly the key shape of the wazuh-agent+jwt profile: 64 lowercase hex chars -> 32 bytes.
+        // Anything else (uppercase, odd lengths, non-hex) decodes to an EMPTY key, so the agent is answered MissingKey
+        // -- "re-enroll"
+        // -- instead of failing signature checks forever.
         std::vector<std::uint8_t> decodeKey(const std::string& hex)
         {
-            if (hex.empty() || hex.size() % 2 != 0)
+            const auto key = jwt_profile::v1::JwtKeyDecoder::decode(hex);
+            if (!key)
             {
                 return {};
             }
-            std::vector<std::uint8_t> bytes(hex.size() / 2);
-            if (!fromLowerHex(hex, bytes.data(), bytes.size()))
-            {
-                return {};
-            }
-            return bytes;
+            return std::vector<std::uint8_t>(key->data(), key->data() + key->size());
         }
 
         // Non-negative integer, fully consuming the field. An agent id is always numeric by
@@ -126,11 +126,11 @@ namespace remoted::auth
         const int loaded = reload();
         if (loaded < 0)
         {
-            LOGFN_WARN(logFn(),
-                       "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
-                       "until the file becomes readable.",
-                       m_path.c_str(),
-                       errno);
+            LOGFN_ERROR(logFn(),
+                        "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
+                        "until the file becomes readable.",
+                        m_path.c_str(),
+                        errno);
         }
         else
         {
@@ -206,6 +206,12 @@ namespace remoted::auth
         // join() below can throw std::system_error, and the logging call allocates.
         try
         {
+            // Set unconditionally, BEFORE the eventfd write: the only reliable stop signal when
+            // eventfd() failed at construction (m_stopEventFd stays -1, so there's no fd to wake
+            // poll() early). In that case the loop still notices this within one more poll()
+            // timeout (at most m_refreshIntervalSeconds) instead of never -- see watcherLoopBody().
+            m_stopping.store(true);
+
             if (m_stopEventFd >= 0)
             {
                 const std::uint64_t one {1};
@@ -290,11 +296,34 @@ namespace remoted::auth
             {
                 if (errno == EINTR)
                 {
+                    // Checked here too, not just after a real poll() failure below: under a
+                    // persistent signal storm, every poll() call could keep returning EINTR
+                    // forever, and this `continue` would otherwise loop back to poll() again
+                    // without ever reaching the m_stopping checks further down -- the only way
+                    // this thread would then ever notice a pending stop is if the signal storm
+                    // happens to end at the exact moment a poll() call completes normally.
+                    if (m_stopping.load())
+                    {
+                        break;
+                    }
                     continue;
+                }
+                if (m_stopping.load())
+                {
+                    break;
                 }
                 LOGFN_WARN(logFn(), "poll() on the client.keys watcher failed (errno=%d).", errno);
                 std::this_thread::sleep_for(std::chrono::seconds(m_refreshIntervalSeconds));
                 continue;
+            }
+
+            // Checked on EVERY wakeup, not just the eventfd-signaled one: this is the fallback
+            // path when eventfd() failed at construction (m_stopEventFd stays -1, stopIdx stays -1
+            // below) -- poll() then has no fd to wake it early and just times out every
+            // m_refreshIntervalSeconds, which is enough to notice this flag within one more cycle.
+            if (m_stopping.load())
+            {
+                break;
             }
 
             if (stopIdx >= 0 && (fds[stopIdx].revents & POLLIN))
@@ -420,18 +449,23 @@ namespace remoted::auth
                 // Missing/unreadable, not a torn read -- nothing to retry. Deliberately NOT logged
                 // here: reload() is called both once at startup and repeatedly by the watcher, which
                 // need different messages and different throttling. Both call sites report it.
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
             std::ifstream file(m_path);
             if (!file.is_open())
             {
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
-            std::unordered_map<AgentId, std::vector<std::uint8_t>> loaded;
+            std::unordered_map<AgentId, AgentEntry> loaded;
             std::string line;
             int count = 0;
+            // Lines the load could not use. Comments, blanks and deliberately removed entries
+            // are NOT counted here: those are normal states, not defects an operator must fix.
+            int skipped = 0;
             int lineNumber = 0;
 
             while (std::getline(file, line))
@@ -448,6 +482,7 @@ namespace remoted::auth
                 if (!(tokens >> id >> name >> ip >> key))
                 {
                     LOGFN_DEBUG1(logFn(), "client.keys line %d has fewer than 4 fields; skipping.", lineNumber);
+                    ++skipped;
                     continue; // malformed line: fewer than 4 fields
                 }
 
@@ -463,26 +498,44 @@ namespace remoted::auth
                                  "client.keys line %d: agent id '%s' is not a non-negative integer; skipping.",
                                  lineNumber,
                                  id.c_str());
+                    ++skipped;
                     continue; // id column isn't numeric -- can never match a real lookup
+                }
+
+                // Skip the line rather than load it unrestricted: an ip column that does not parse
+                // would otherwise turn a fixed-address registration into one that accepts any peer.
+                auto addressRule = AddressRule::parse(ip);
+                if (!addressRule)
+                {
+                    LOGFN_WARN(logFn(),
+                               "client.keys line %d: the address '%s' registered for agent %u is not a valid address "
+                               "or range; that agent's requests will be rejected until it is fixed.",
+                               lineNumber,
+                               ip.c_str(),
+                               *agentId);
+                    ++skipped;
+                    continue;
                 }
 
                 auto decoded = decodeKey(key);
                 if (decoded.empty())
                 {
-                    // Store the empty key anyway: keyFor() returning an empty vector (rather than
+                    // Store the empty key anyway: lookup() returning an empty key (rather than
                     // nullopt) is what lets the auth middleware answer the more precise MissingKey
                     // instead of UnknownAgent. But do NOT count it as loaded -- it cannot
                     // authenticate anything, and counting it made a broken entry look healthy.
                     LOGFN_WARN(logFn(),
-                               "client.keys line %d: the key for agent %u does not decode to a valid AES key; that "
+                               "client.keys line %d: the key for agent %u does not decode to a valid 32-byte key (64 "
+                               "lowercase hex chars); that "
                                "agent's requests will be rejected. Re-enroll it.",
                                lineNumber,
                                *agentId);
-                    loaded[*agentId] = std::move(decoded);
+                    loaded.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
+                    ++skipped;
                     continue;
                 }
 
-                loaded[*agentId] = std::move(decoded);
+                loaded.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
                 ++count;
             }
             file.close();
@@ -500,6 +553,12 @@ namespace remoted::auth
                 }
                 m_hasBaseline = true;
                 m_lastHash = *preHash;
+                // Health counters (the remoted.auth.keystore.* pulls): the LEVEL tracks what the
+                // table now holds, the total answers "did the hot-reload actually pick my
+                // re-enrolls up".
+                m_agentsLoaded.store(static_cast<std::size_t>(count), std::memory_order_relaxed);
+                m_entriesSkipped.store(static_cast<std::size_t>(skipped), std::memory_order_relaxed);
+                m_reloadsTotal.fetch_add(1, std::memory_order_relaxed);
                 return count;
             }
 
@@ -515,10 +574,11 @@ namespace remoted::auth
 
         LOGFN_WARN(
             logFn(), "client.keys kept changing across %d attempts; keeping the previous table.", kMaxReadAttempts);
+        m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
         return kReloadUnstable;
     }
 
-    std::optional<std::vector<std::uint8_t>> Keystore::keyFor(AgentId agentId) const
+    std::optional<AgentLookup> Keystore::lookup(AgentId agentId, std::string_view peerIp) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_keys.find(agentId);
@@ -526,7 +586,9 @@ namespace remoted::auth
         {
             return std::nullopt;
         }
-        return it->second;
+        // Key copied and rule evaluated under the same lock, so the two answers always describe the
+        // same entry and no reference into the table escapes.
+        return AgentLookup {it->second.key, it->second.address.matches(peerIp)};
     }
 
 } // namespace remoted::auth

@@ -22,7 +22,7 @@
  * ever throws into C. agentd links the module directly (see
  * src/client-agent/CMakeLists.txt).
  *
- * The transport contract implemented behind this ABI covers AES-CMAC request signing, the
+ * The transport contract implemented behind this ABI covers the `wazuh-agent+jwt` bearer, the
  * H/E stateless format, status codes, task delivery via /control Notify, and single-request
  * /stateful sessions.
  */
@@ -50,9 +50,10 @@ extern "C"
  * fails closed instead of silently disabling verification. */
 typedef enum hc_verify_mode_t
 {
-    HC_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
-    HC_VERIFY_CERT = 1, ///< Verify peer against the CA only.
-    HC_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_FULL = 0,  ///< Verify peer against the CA and check the hostname.
+    HC_VERIFY_CERT = 1,  ///< Verify peer against the CA only.
+    HC_VERIFY_NONE = 2,  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_SYSTEM = 3 ///< Verify peer + hostname against the OS trust store, not ca_path.
 } hc_verify_mode_t;
 
 /* Connection state, surfaced to the C core (feeds the .state metrics). */
@@ -63,7 +64,7 @@ typedef enum hc_conn_state_t
     HC_STATE_REGISTERED,   ///< Startup accepted; streams running.
     HC_STATE_REJECTED,     ///< Startup rejected (e.g. version); slow retry.
     HC_STATE_AUTH_ERROR    ///< Credential rejected (401): all traffic paused
-    ///< until hc_set_agent_key() supplies a new key.
+    ///< until hc_set_agent_identity() supplies a new identity.
 } hc_conn_state_t;
 
 /* Occupancy level of the stateless accumulator. Replaces the legacy client
@@ -99,6 +100,7 @@ typedef enum hc_result_t
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
 #define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
+#define HC_MAX_ENDPOINT 256 /* #38492: reverse-proxy path segment, normalized (no leading/trailing '/'). */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -110,12 +112,21 @@ typedef enum hc_result_t
  */
 typedef struct hc_config_t
 {
-    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
+    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
+    ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
     uint16_t server_port;          ///< Manager HTTPS port.
+    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
+    ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
+    ///< 0 -> no zone, which is every IPv4 and non-link-local address.
+    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
+    ///< prepended to every request target (e.g. "/endpoint/stateless");
+    ///< empty -> unprefixed, today's behavior. A routing matter only: the
+    ///< manager routes on the literal wire request-target, prefix included,
+    ///< and the bearer token does not bind the target (a mismatch is a 404).
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
-    ///< AES-128/192/256-CMAC by byte length
-    ///< (16/24/32; a real key is 64 hex = 32).
+    char agent_key[HC_MAX_KEY];    ///< The client.keys secret as hex: exactly 64 lowercase hex
+    ///< chars, decoded verbatim into the 32-byte HS256 key every
+    ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
@@ -152,10 +163,25 @@ typedef struct hc_config_t
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
-    ///< 0 -> 120000.
+    ///< 0 -> 90000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
+
+    /* Per-stream retry budgets. An attempt count is the TOTAL number of tries,
+     * not the number of retries after the first: 1 means "send once, never
+     * retry". Only Retryable and BackPressure outcomes consume an attempt.
+     * These bound how long one step can take against the manager's own
+     * deadlines, so they are part of the agent/manager timing contract rather
+     * than free-form tuning. */
+    uint32_t control_max_attempts;    ///< /control; 0 -> 4.
+    uint32_t stateless_max_attempts;  ///< /stateless; 0 -> 5.
+    uint32_t stateful_max_attempts;   ///< /stateful; 0 -> 5.
+    uint32_t download_max_attempts;   ///< POST /download, config and WPK alike; 0 -> 2.
+
+    /// Consecutive undeliverable /control steps before event producers are
+    /// paused; a single deliverable step resets the streak. 0 -> 2.
+    uint32_t producer_pause_threshold;
 
     char spool_dir[HC_MAX_PATH];  ///< Spool dir for temp files; empty -> system tmp.
 
@@ -174,7 +200,7 @@ typedef struct hc_config_t
 
     /// zstd-compress in-memory request bodies before signing/sending.
     /// internal_options.conf (agent.https_compression_enabled), not a <client>
-    /// XML setting -- OFF by default.
+    /// XML setting -- ON by default.
     bool https_compression_enabled;
 } hc_config_t;
 
@@ -235,8 +261,8 @@ typedef struct hc_callbacks_t
     /// The signing credential was rejected (401 on any endpoint), so the
     /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
     /// Fired once per incident from the dispatcher thread. Re-enroll out of
-    /// band (the authd flow, caller-owned retries) and call hc_set_agent_key()
-    /// with the new key to resume.
+    /// band (the /enroll flow, caller-owned retries) and call
+    /// hc_set_agent_identity() with the new id/key to resume.
     void (*on_reenroll_required)(void* user_data);
     void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
                     void* user_data);
@@ -289,8 +315,10 @@ typedef struct hc_callbacks_t
     /// accepted Notify (comma-joined, manager's own order) -- fired only when it
     /// differs from what was last reported (Startup included), so a consumer
     /// doesn't republish identity data on every Notify for nothing. Empty is a
-    /// valid, meaningful value (no groups), not a placeholder for "default": do
-    /// not substitute a fallback here the way /download's group selector does.
+    /// valid, meaningful value (no groups), not a placeholder for "default": no
+    /// fallback is substituted here. This is the agent's group IDENTITY, and it is
+    /// unrelated to the configuration download, which the manager addresses on its
+    /// own with the opaque agent.config_token.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with
@@ -350,7 +378,10 @@ typedef struct hc_callbacks_t
     /// number of consecutive attempts (paused=true), or has succeeded again
     /// (paused=false). The consumer arms/disarms its producer lock so modules
     /// stop generating events they cannot deliver.
-    void (*on_producer_pause)(bool paused, void* user_data);
+    /// reason: why the transport failed, in libcurl's own words. Empty when
+    /// there is none to give -- always on paused=false, and whenever the manager
+    /// answered and refused rather than going silent.
+    void (*on_producer_pause)(bool paused, const char* reason, void* user_data);
     void* user_data;
 } hc_callbacks_t;
 
@@ -440,16 +471,79 @@ HC_EXPORTED void hc_notify_now(hc_handle* handle);
 HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
 /**
- * @brief Swap the AES-CMAC credential at runtime (hex; 16/24/32 bytes decoded)
- *        after a re-enrollment. Like hc_set_config_hash this is callback-safe
- *        (it only touches an internal guarded key). It clears the auth pause
- *        and forces a fresh Startup (re-registration). Returns false on a NULL
- *        handle or invalid key material, leaving the previous key in place.
+ * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
+ *        32 bytes) after a re-enrollment (#38465's POST /enroll
+ *        response can hand back a different numeric id along with the new
+ *        key -- the two are set together so no request is ever signed with
+ *        one half stale). Like hc_set_config_hash this is callback-safe (it
+ *        only touches internal guarded state). It clears the auth pause and
+ *        forces a fresh Startup (re-registration). Returns false on a NULL
+ *        handle, NULL id, or invalid key material, leaving the previous
+ *        identity in place.
  */
-HC_EXPORTED bool hc_set_agent_key(hc_handle* handle, const char* key_hex);
+HC_EXPORTED bool hc_set_agent_identity(hc_handle* handle, const char* agent_id, const char* key_hex);
 
 /** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
 HC_EXPORTED int hc_get_state(const hc_handle* handle);
+
+/* ---- enrollment (#38465) ---- */
+
+#define HC_MAX_ENROLL_BODY 4096
+#define HC_MAX_ENROLL_PASSWORD 256
+/// Sized so a transport reason never needs truncating: libcurl's longest error
+/// string is around 60 bytes and the detail it appends is capped by
+/// CURL_ERROR_SIZE (256), leaving room to spare.
+#define HC_MAX_TRANSPORT_ERROR 512
+
+/**
+ * @brief One /enroll request (#38438's contract), built entirely by the C
+ *        caller (client-agent/src/enrollment.c): the module treats body_json
+ *        as opaque bytes and never inspects its fields.
+ */
+typedef struct hc_enroll_request_t
+{
+    char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
+    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no `wazuh-enroll+jwt` bearer
+    ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
+    ///< a password may both be set; there is no precedence between them,
+    ///< each authenticates independently (confirmed with the server team).
+    full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
+    ///< hc_create() ever does (first-boot enrollment has no handle yet), so
+    ///< it cannot rely on a sink already being assigned.
+} hc_enroll_request_t;
+
+/** @brief Result of one /enroll attempt. */
+typedef struct hc_enroll_result_t
+{
+    long http_code;           ///< 0 = no HTTP response at all (transport/config
+    ///< failure -- see hc_enroll()'s return value).
+    long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
+    char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
+    /// Why the request failed below HTTP, in libcurl's own words (same contract as
+    /// on_producer_pause's reason). Usually paired with http_code == 0, but a
+    /// failure after the status line (a dropped body, a response-size cap) leaves
+    /// both this and a real http_code set. Empty when the attempt never got as far
+    /// as libcurl -- notably a transport config the fail-closed TLS policy rejected.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
+} hc_enroll_result_t;
+
+/**
+ * @brief Perform exactly one /enroll HTTP request. Handle-less and
+ *        synchronous, like hc_send_sync_session: usable before hc_create()
+ *        (first-boot enrollment) or standalone (re-enrollment after a 401).
+ *        No retry loop and no shared CompressionGate/AuthGate -- the C
+ *        caller already owns backoff/retry one layer up.
+ * @param config Only the transport half is read (host, port, TLS material,
+ *        timeout, compression toggle); agent_id/agent_key are ignored, since
+ *        an enrolling agent has neither yet.
+ * @return true once a request was actually sent and answered, whatever the
+ *         HTTP status (including 4xx/5xx: result->http_code carries it, for
+ *         the caller to interpret). false when nothing was ever sent -- an
+ *         invalid transport config (fail-closed TLS policy) or a NULL
+ *         argument; result->http_code stays 0 in that case.
+ */
+HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
+                           hc_enroll_result_t* result);
 
 #ifdef __cplusplus
 }

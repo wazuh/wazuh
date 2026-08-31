@@ -528,7 +528,7 @@ void test_remcom_main_bind_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to bind to socket 'queue/sockets/remote': (0) 'Success'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to bind to socket 'queue/sockets/remote.sock': (0) 'Success'");
 
     remcom_main(NULL);
 }

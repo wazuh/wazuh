@@ -174,6 +174,19 @@ class EXPORTED Syscollector final
         /// already hold it shared do not acquire it a second time on the same thread.
         void deleteDatabaseUnlocked();
         void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
+
+        /**
+         * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
+         *        VDFirst marker when the session succeeds.
+         * @details Picks the sync option that fits the current state: SYNC when the agent's own
+         *          collectors rule VD scanning out, VDFIRST/VDSYNC otherwise. The session is
+         *          sent regardless of the VD feed offset the agent has heard about; what to do
+         *          with one built against an offset the node does not have is the manager's
+         *          decision.
+         * @param mode Synchronization mode to use for the session.
+         * @return The result of the session.
+         */
+        SyncModuleResult synchronizeVDTables(const Mode mode);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,
@@ -294,6 +307,14 @@ class EXPORTED Syscollector final
          * @return true if interval has elapsed, false otherwise.
          */
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
+
+        /**
+         * @brief Get the configured document limit for a given index, thread-safely.
+         *
+         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
+         * @return The configured limit, or 0 if unlimited/not configured.
+         */
+        size_t getDocumentLimit(const std::string& index);
 
         /**
          * @brief Validates a JSON message against schema and logs validation errors
@@ -431,7 +452,7 @@ class EXPORTED Syscollector final
 
         AgentdQueryFunc                                                          m_agentdQuery;
         unsigned int                                                             m_intervalValue;
-        uint32_t                                                                 m_integrityIntervalValue;
+        std::atomic<uint32_t>                                                    m_integrityIntervalValue;
         bool                                                                     m_scanOnStart;
         bool                                                                     m_hardware;
         bool                                                                     m_os;
@@ -451,8 +472,8 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
-        unsigned int                                                             m_dataCleanRetries;
-        bool                                                                     m_allCollectorsDisabled;
+        std::atomic<unsigned int>                                                m_dataCleanRetries;
+        std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;

@@ -19,11 +19,6 @@
 
 namespace
 {
-    constexpr uint32_t CONTROL_MAX_ATTEMPTS = 4;
-
-    // Consecutive undeliverable `/control` outcomes before producers are paused.
-    constexpr uint32_t CONTROL_UNDELIVERABLE_THRESHOLD = 2;
-
     HttpRequestSpec controlSpec(const std::string& body, uint32_t timeoutMs)
     {
         HttpRequestSpec spec;
@@ -82,15 +77,19 @@ namespace
         return csv;
     }
 
-    /// The group selector /download's config resource_id expects. The manager's own
-    /// config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg resolution
-    /// (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
-    /// groups, comma-joined, in the exact order it reports them -- never just the
-    /// first. Preserving that same order (as reported here, not re-sorted) is what
-    /// reproduces the manager's own CSV byte-for-byte; the download endpoint natively
-    /// accepts this selector (downloadEndpoint.cpp's isValidGroupSelector). Unlike
-    /// rawGroupsCsv(), "no groups reported" falls back to "default" here: /download
-    /// needs some group to ask for, and every agent is implicitly in it.
+    /// FALLBACK ONLY -- the /download config resource_id now comes from the manager, in
+    /// agent.config_token (see handleNotifyBody()). This reconstructs the selector the way
+    /// the agent had to before that field existed, and is used only when a manager does not
+    /// report one, so such a manager keeps working byte-for-byte as it did.
+    ///
+    /// The manager's own config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg
+    /// resolution (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
+    /// groups, comma-joined, in the exact order it reports them -- never just the first.
+    /// Preserving that same order (as reported here, not re-sorted) is what reproduces the
+    /// manager's own CSV byte-for-byte; the download endpoint natively accepts this selector
+    /// (downloadEndpoint.cpp's isValidGroupSelector). Unlike rawGroupsCsv(), "no groups
+    /// reported" falls back to "default" here: /download needs some group to ask for, and
+    /// every agent is implicitly in it.
     std::string groupsCsv(const nlohmann::json& agent)
     {
         const std::string csv = rawGroupsCsv(agent);
@@ -160,7 +159,8 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
                              std::function<std::string()> collectHost)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+               config.serverEndpoint)
     , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
@@ -170,7 +170,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_authGate(authGate)
     , m_taskStore(taskStore)
     , m_vdOffsetStore(vdOffsetStore)
-    , m_rescanRequester(config, performer, signer, clock, random, authGate, vdOffsetStore)
+    , m_rescanRequester(config, performer, signer, clock, random, authGate, compressionGate, vdOffsetStore)
     , m_collectHost(std::move(collectHost))
 {
 }
@@ -246,8 +246,9 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s).",
-                   outcomeName(result.outcome));
+        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s)%s.",
+                   outcomeName(result.outcome),
+                   transportReason(result.response.curlError).c_str());
     }
     else
     {
@@ -277,8 +278,8 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
     LOGFN_DEBUG2(m_logFn, "Sending /control startup.");
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
-                                      CONTROL_MAX_ATTEMPTS);
-    updateLocalIp(result.response);
+                                      m_config.controlMaxAttempts);
+    updateConnectionInfo(result.response);
 
     if (result.outcome == OutcomeClass::Ok)
     {
@@ -339,8 +340,8 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
     LOGFN_DEBUG2(m_logFn, "Sending /control notify.");
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
-                                      CONTROL_MAX_ATTEMPTS);
-    updateLocalIp(result.response);
+                                      m_config.controlMaxAttempts);
+    updateConnectionInfo(result.response);
     const auto effects = m_machine.onEvent(eventFor(result.outcome));
     applyEffects(effects, {});
 
@@ -456,7 +457,18 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // gate waits on the manager-validated configuration and, when the
         // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
-        maybeDownloadConfig(managerHash, groupsCsv(*agent), waiter);
+
+        // The manager names the configuration resource; the agent never derives it. The token
+        // is OPAQUE here -- passed to /download verbatim, never parsed, never re-joined, never
+        // "default"-substituted -- so the manager can change what it addresses (and how) with
+        // no agent change at all. groupsCsv() is the pre-config_token path, kept only so a
+        // manager that reports no token behaves exactly as it did before the field existed.
+        const std::string configToken = jsonField(*agent, "config_token");
+        maybeDownloadConfig(
+            managerHash, configToken.empty() ? groupsCsv(*agent) : configToken, waiter);
+
+        // Deliberately NOT the token: this is the agent's group identity (agcom's gethandshake,
+        // /stats and /config tagging), which stays the manager-reported group list itself.
         maybeReportAgentGroups(rawGroupsCsv(*agent));
     }
 
@@ -487,8 +499,8 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     }
 }
 
-void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& group,
-                                        Waiter& waiter)
+void ControlStream::maybeDownloadConfig(const std::string& managerHash,
+                                        const std::string& resourceId, Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
 
@@ -502,9 +514,9 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     }
 
     LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "
-                 "the new configuration (group '%s').", managerHash.c_str(), localHash.c_str(),
-                 group.c_str());
-    auto file = m_fetcher.fetch(managerHash, group, waiter);
+                 "the new configuration (resource '%s').", managerHash.c_str(), localHash.c_str(),
+                 resourceId.c_str());
+    auto file = m_fetcher.fetch(managerHash, resourceId, waiter);
 
     if (!file)
     {
@@ -602,7 +614,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
             // Debug: the consumer emits the operator-facing line, so logging
             // louder here would double every transition.
             LOGFN_DEBUG1(m_logFn, "/control deliverable again; releasing the producer pause.");
-            m_sink.onProducerPause(false);
+            m_sink.onProducerPause(false, {}); // Nothing failed: no 'reason' to carry.
         }
 
         return;
@@ -633,19 +645,29 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
-    if (++m_undeliverableStreak < CONTROL_UNDELIVERABLE_THRESHOLD)
+    // Only Unreachable has a transport reason behind it: the other two mean the
+    // manager answered, so a stored curl error there is from an earlier and
+    // unrelated incident -- and the auth-gate path reaches here having sent
+    // nothing at all.
+    const std::string reason = (outcome == OutcomeClass::Unreachable)
+                               ? m_lastCurlError
+                               : std::string();
+
+    if (++m_undeliverableStreak < m_config.producerPauseThreshold)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u).",
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u)%s.",
                      outcomeName(outcome), m_undeliverableStreak,
-                     CONTROL_UNDELIVERABLE_THRESHOLD);
+                     m_config.producerPauseThreshold, transportReason(reason).c_str());
         return;
     }
 
     m_producersPaused = true;
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production.",
+    // Debug: the consumer emits the operator-facing line, and the reason rides
+    // along so that line can name the cause instead of just "unreachable".
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production%s.",
                  outcomeName(outcome), m_undeliverableStreak,
-                 CONTROL_UNDELIVERABLE_THRESHOLD);
-    m_sink.onProducerPause(true);
+                 m_config.producerPauseThreshold, transportReason(reason).c_str());
+    m_sink.onProducerPause(true, reason);
 }
 
 void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter)
@@ -740,7 +762,10 @@ void ControlStream::joinUpgradeWork()
     }
 }
 
-void ControlStream::updateLocalIp(const HttpResponse& response)
+/* What the last attempt of one send told us about the connection itself, kept for
+ * the next Notify and for the pause decision -- neither of which still has the
+ * response. */
+void ControlStream::updateConnectionInfo(const HttpResponse& response)
 {
     // curl reports the local address only after a connection was established;
     // keep the last known value so a transient failure does not blank host.ip.
@@ -748,6 +773,11 @@ void ControlStream::updateLocalIp(const HttpResponse& response)
     {
         m_localIp = response.localIp;
     }
+
+    // Overwritten on every step, success included, and always before that step's
+    // outcome reaches updateProducerPause() -- so the pause never quotes a reason
+    // from an earlier incident.
+    m_lastCurlError = response.curlError;
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

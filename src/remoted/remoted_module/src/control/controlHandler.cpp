@@ -14,12 +14,10 @@
 #include "common/vdClient.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
-#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -63,59 +61,23 @@ namespace remoted::control
             static remoted::common::LogThrottle instance;
             return instance;
         }
+
+        remoted::common::LogThrottle& taskFetchErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& notifyWdbErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
         // Wall-clock seconds for timestamps that must be comparable across nodes.
         uint64_t getWallSec()
         {
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                 .count();
-        }
-
-        // Numeric-only version comparison of MAJOR.MINOR.PATCH[.EXTRA]. Everything
-        // after '-'/'+' is discarded, matching the legacy behavior of
-        // compare_wazuh_versions(..., ignore_stage=false).
-        int compareVersions(const std::string& v1, const std::string& v2)
-        {
-            auto parseParts = [](const std::string& v) -> std::array<int, 4>
-            {
-                std::array<int, 4> parts {0, 0, 0, 0};
-                // Strip leading 'v' or 'V' if present
-                std::string version = v;
-                if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
-                {
-                    version = version.substr(1);
-                }
-
-                size_t pos = version.find_first_of("+-");
-                std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
-
-                std::istringstream iss(numericPart);
-                std::string token;
-                int i = 0;
-                while (std::getline(iss, token, '.') && i < static_cast<int>(parts.size()))
-                {
-                    try
-                    {
-                        parts[i++] = std::stoi(token);
-                    }
-                    catch (...)
-                    {
-                        break;
-                    }
-                }
-                return parts;
-            };
-
-            auto p1 = parseParts(v1);
-            auto p2 = parseParts(v2);
-
-            for (size_t i = 0; i < p1.size(); ++i)
-            {
-                if (p1[i] < p2[i])
-                    return -1;
-                if (p1[i] > p2[i])
-                    return 1;
-            }
-            return 0;
         }
 
         // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
@@ -129,6 +91,21 @@ namespace remoted::control
                 out.append(groups[i]);
             }
             return out;
+        }
+
+        /// The /download resource_id the agent must use for its shared configuration.
+        ///
+        /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
+        /// which is exactly what lets this value change without shipping a new agent. Today it IS
+        /// the group selector -- the same CSV config_hash was computed over, so the two provably
+        /// name the same merged.mg -- and /download resolves it with no lookup.
+        ///
+        /// Never empty: /download needs some resource to name, and an agent with no groups is
+        /// implicitly in "default". The substitution is defensive only, since every site that
+        /// writes AgentEntry::groups already falls back to {"default"}.
+        std::string makeConfigToken(const std::string& groupsCsv)
+        {
+            return groupsCsv.empty() ? std::string {"default"} : groupsCsv;
         }
     } // namespace
 
@@ -181,9 +158,8 @@ namespace remoted::control
             incStartup(m_metrics);
 
             const bool versionMalformed = !isValidVersion(data.version);
-            const bool versionTooHigh =
-                !versionMalformed && !m_config.allowHigherVersions &&
-                compareVersions(m_config.managerVersion, data.version) < 0;
+            const bool versionTooHigh = !versionMalformed && !m_config.allowHigherVersions &&
+                                        compareVersions(m_config.managerVersion, data.version) < 0;
 
             if (versionMalformed || versionTooHigh)
             {
@@ -208,81 +184,101 @@ namespace remoted::control
                 // this manager's policy is safe to persist as-is and worth keeping visible.
                 const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, versionToStore, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
                 HttpResponse response;
-                response.status = 400;
+                // The two rejection causes are not the same kind of failure, so they don't share a
+                // status. A malformed version is a bad request: resending the same bytes can never
+                // succeed, and the agent's client must treat it as terminal (Permanent). A
+                // well-formed version that is merely higher than this manager's policy allows is a
+                // CONFLICT, not a malformed request -- it can start succeeding with no change on the
+                // agent's side at all (an operator flips <allow_higher_versions>, or this manager is
+                // upgraded). That is why the agent's client maps 409 to VersionRejected, which drives
+                // its REJECTED state and re-tries Startup on the slow cadence instead of giving up.
+                // Answering 400 here left that state unreachable.
+                response.status = versionTooHigh ? 409 : 400;
                 response.body = R"({"error":"invalid_version"})";
                 callback(response);
                 return;
             }
 
-            m_wdbClient->getAgentGroups(id,
-                                        [this, id, version = data.version, callback = std::move(callback)](
-                                            SocketError err, std::vector<std::string> groups) mutable
-                                        {
-                                            if (err != SocketError::None)
-                                            {
-                                                // Throttle wdb errors during startup to avoid flooding on outages
-                                                if (const auto throttle = wdbErrorThrottle().record())
-                                                {
-                                                    LOGFN_ERROR(logFn(),
-                                                                "Failed to get agent groups from wdb for startup: %llu "
-                                                                "failure(s) in the last %d s.",
-                                                                throttle.total,
-                                                                remoted::common::LogThrottle::kDefaultWindowSeconds);
-                                                }
+            m_wdbClient->getAgentGroups(
+                id,
+                [this, id, version = data.version, callback = std::move(callback)](
+                    SocketError err, std::vector<std::string> groups) mutable
+                {
+                    if (err != SocketError::None)
+                    {
+                        // Throttle wdb errors during startup to avoid flooding on outages
+                        if (const auto throttle = wdbErrorThrottle().record())
+                        {
+                            LOGFN_ERROR(logFn(),
+                                        "Failed to get agent groups from wdb for startup: %llu "
+                                        "failure(s) in the last %d s.",
+                                        throttle.total,
+                                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
 
-                                                HttpResponse response;
-                                                response.status = 500;
-                                                response.body = R"({"error":"database_error"})";
-                                                callback(response);
-                                                return;
-                                            }
+                        HttpResponse response;
+                        response.status = 500;
+                        response.body = R"({"error":"database_error"})";
+                        callback(response);
+                        return;
+                    }
 
-                                            if (groups.empty())
-                                            {
-                                                groups = {"default"};
-                                            }
+                    if (groups.empty())
+                    {
+                        groups = {"default"};
+                    }
 
-                                            LOGFN_DEBUG1(logFn(),
-                                                         "Agent %u startup: version=%s, groups=%s.",
-                                                         id,
-                                                         version.c_str(),
-                                                         toGroupsCsv(groups).c_str());
+                    LOGFN_DEBUG1(logFn(),
+                                 "Agent %u startup: version=%s, groups=%s.",
+                                 id,
+                                 version.c_str(),
+                                 toGroupsCsv(groups).c_str());
 
-                                            const uint64_t now = getWallSec();
+                    const uint64_t now = getWallSec();
 
-                                            m_registry->update(id,
-                                                               [&](std::shared_ptr<const AgentEntry> old)
-                                                               {
-                                                                   auto updated =
-                                                                       old ? std::make_shared<AgentEntry>(*old)
-                                                                           : std::make_shared<AgentEntry>();
-                                                                   updated->groups = groups;
-                                                                   updated->groupsRefreshedAtSec = now;
-                                                                   updated->lastActivitySec = now;
-                                                                   if (updated->createdAtSec == 0)
-                                                                   {
-                                                                       updated->createdAtSec = now;
-                                                                   }
-                                                                   return updated;
-                                                               });
+                    m_registry->update(id,
+                                       [&](std::shared_ptr<const AgentEntry> old)
+                                       {
+                                           auto updated = old ? std::make_shared<AgentEntry>(*old)
+                                                              : std::make_shared<AgentEntry>();
+                                           updated->groups = groups;
+                                           updated->groupsRefreshedAtSec = now;
+                                           updated->lastActivitySec = now;
+                                           // /startup leaves the agent
+                                           // "pending" in wdb; only a write
+                                           // lifts it, so the next notify
+                                           // must not be throttled.
+                                           updated->lastKeepaliveUpdateSec = 0;
+                                           if (updated->createdAtSec == 0)
+                                           {
+                                               updated->createdAtSec = now;
+                                           }
+                                           return updated;
+                                       });
 
-                                            const std::string syncStatus =
-                                                m_config.isWorkerNode ? "syncreq_status" : "synced";
-                                            m_wdbClient->updateKeepalive(id, "pending", syncStatus, [](SocketError) {});
+                    // A single write persists the accepted version together with the
+                    // pending keepalive. The version is not left to the notify path:
+                    // notify only writes it alongside host metadata, which the agent
+                    // omits until agent_info populates it, so the agent would otherwise
+                    // be visible through the API without a version for the first
+                    // keepalives.
+                    const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
+                    m_wdbClient->updateStatusCode(
+                        id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
 
-                                            nlohmann::json response;
-                                            response["limits"] = m_config.limits;
-                                            response["cluster"]["name"] = m_config.clusterName;
-                                            response["agent"]["groups"] = groups;
+                    nlohmann::json response;
+                    response["limits"] = m_config.limits;
+                    response["cluster"]["name"] = m_config.clusterName;
+                    response["agent"]["groups"] = groups;
 
-                                            HttpResponse httpResp;
-                                            httpResp.status = 200;
-                                            httpResp.body = response.dump();
-                                            callback(httpResp);
-                                        });
+                    HttpResponse httpResp;
+                    httpResp.status = 200;
+                    httpResp.body = response.dump();
+                    callback(httpResp);
+                });
         }
 
         void handleNotify(AgentId id, const NotifyData& data, ResponseCallback callback)
@@ -328,32 +324,64 @@ namespace remoted::control
                 [this, id, entry, data, callback = std::move(callback), now](SocketError err,
                                                                              std::vector<std::string> groups) mutable
                 {
-                    std::vector<std::string> finalGroups;
-                    uint64_t refreshTime = 0;
+                    // Nothing cached and no answer: "default" would be a wrong answer served as
+                    // authoritative, not a stale one. Fail like /startup does.
+                    if (err != SocketError::None && !entry)
+                    {
+                        if (const auto throttle = wdbErrorThrottle().record())
+                        {
+                            LOGFN_ERROR(logFn(),
+                                        "Failed to get agent groups from wdb for notify: %llu failure(s) in the "
+                                        "last %d s.",
+                                        throttle.total,
+                                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
 
-                    if (err == SocketError::None)
+                        HttpResponse response;
+                        response.status = 500;
+                        response.body = R"({"error":"database_error"})";
+                        callback(response);
+                        return;
+                    }
+
+                    // On failure the cached membership is served but not written back: `entry` is a
+                    // pre-query snapshot, so it may already be staler than the registry.
+                    const bool refreshed = err == SocketError::None;
+                    std::vector<std::string> finalGroups;
+
+                    if (refreshed)
                     {
                         finalGroups = groups.empty() ? std::vector<std::string> {"default"} : std::move(groups);
-                        refreshTime = now;
-                    }
-                    else if (entry)
-                    {
-                        finalGroups = entry->groups;
-                        refreshTime = entry->groupsRefreshedAtSec;
                     }
                     else
                     {
-                        finalGroups = {"default"};
-                        refreshTime = 0;
+                        // Throttle wdb errors during notify to avoid flooding on outages. Unlike
+                        // startup, this is not fatal to the request: it just keeps serving the
+                        // agent's last-known (or default) groups until the refresh succeeds.
+                        if (const auto throttle = notifyWdbErrorThrottle().record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Failed to get agent groups from wdb for notify: %llu failure(s) in the "
+                                       "last %d s.",
+                                       throttle.total,
+                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
                     }
 
                     auto updated = m_registry->update(id,
                                                       [&](std::shared_ptr<const AgentEntry> old)
                                                       {
-                                                          auto e = old ? std::make_shared<AgentEntry>(*old)
-                                                                       : std::make_shared<AgentEntry>();
-                                                          e->groups = finalGroups;
-                                                          e->groupsRefreshedAtSec = refreshTime;
+                                                          // Fall back to `entry`: the eviction
+                                                          // thread may have dropped the agent
+                                                          // while the query was in flight.
+                                                          auto e = old     ? std::make_shared<AgentEntry>(*old)
+                                                                   : entry ? std::make_shared<AgentEntry>(*entry)
+                                                                           : std::make_shared<AgentEntry>();
+                                                          if (refreshed)
+                                                          {
+                                                              e->groups = std::move(finalGroups);
+                                                              e->groupsRefreshedAtSec = now;
+                                                          }
                                                           e->lastActivitySec = now;
                                                           if (e->createdAtSec == 0)
                                                           {
@@ -431,10 +459,15 @@ namespace remoted::control
 
                     if (data.host)
                     {
-                        // Always write host info if throttle has expired
-                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        // The first host-carrying notify bypasses the throttle: the agent may
+                        // send its first notifies without host metadata (agent_info populates
+                        // it asynchronously), and those lightweight writes must not delay the
+                        // first full update, or the agent stays without os data in the API for
+                        // a whole throttle window.
+                        if (!e->hostPersisted || now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
                         {
                             e->lastKeepaliveUpdateSec = now;
+                            e->hostPersisted = true;
                             doWrite = true;
                             doFullUpdate = true;
                         }
@@ -472,8 +505,24 @@ namespace remoted::control
 
             m_taskClient->getPendingTasks(
                 id,
-                [this, refreshedEntry, callback = std::move(callback)](SocketError, std::vector<Task> tasks) mutable
+                [this, id, refreshedEntry, callback = std::move(callback)](SocketError err,
+                                                                           std::vector<Task> tasks) mutable
                 {
+                    // DEBUG1: the task client already reports every cause, and its drain answers
+                    // Io for every in-flight request on shutdown.
+                    if (err != SocketError::None)
+                    {
+                        if (const auto throttle = taskFetchErrorThrottle().record())
+                        {
+                            LOGFN_DEBUG1(logFn(),
+                                         "Agent %u: pending-task fetch failed, answering with no tasks: %llu "
+                                         "failure(s) in the last %d s.",
+                                         id,
+                                         throttle.total,
+                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
+                    }
+
                     const std::string groupsCsv = toGroupsCsv(refreshedEntry->groups);
                     const std::string mergedPath = m_hashCache->getMergedMgPath(groupsCsv);
                     std::string configHash =
@@ -486,6 +535,10 @@ namespace remoted::control
                     nlohmann::json response;
                     response["agent"]["groups"] = refreshedEntry->groups;
                     response["agent"]["config_hash"] = configHash;
+                    // Derived from the very same CSV mergedPath (and therefore configHash) came
+                    // from, so the resource the agent asks for can never drift from the hash it
+                    // was told to expect.
+                    response["agent"]["config_token"] = makeConfigToken(groupsCsv);
                     response["settings_hash"] = m_hashCache->getSettingsHash();
 
                     nlohmann::json tasksJson = nlohmann::json::array();

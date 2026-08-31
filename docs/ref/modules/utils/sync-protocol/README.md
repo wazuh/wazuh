@@ -1,5 +1,9 @@
 # Agent Sync Protocol
 
+> **Scope note:** This is agent-side infrastructure — despite being documented alongside other
+> shared/manager modules, `sync_protocol` has no manager-side usage; it is linked only by agent
+> build targets (FIM, SCA, Syscollector, agent_info, the HTTPS client).
+
 ## Introduction
 
 The **Agent Sync Protocol** is a shared module that provides a standardized interface for internal Wazuh modules (FIM, SCA, Inventory) to synchronize data with the Wazuh Manager. It implements a reliable, session-based synchronization mechanism that ensures data consistency and handles errors gracefully.

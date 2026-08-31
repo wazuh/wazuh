@@ -108,9 +108,9 @@ On Windows, there is no separate socket listener. `wazuh-agentd`'s `request.c` c
 
 The socket listener is the main entry point for control commands on Unix (both manager and agent builds).
 
-**Socket Path** (both manager and agent): `CONTROL_SOCK = "queue/sockets/control"`, resolved relative to `WAZUH_HOME`.
+**Socket Path**: `CONTROL_SOCK`, resolved relative to `WAZUH_HOME`. Its value is target-specific: `queue/sockets/control.sock` on the manager, `queue/sockets/control` on the agent, which keeps the legacy name until the agent sockets are renamed as a whole.
 
-- Default manager path: `/var/wazuh-manager/queue/sockets/control`
+- Default manager path: `/var/wazuh-manager/queue/sockets/control.sock`
 - Default agent path: `/var/ossec/queue/sockets/control`
 
 **Functionality**:
@@ -124,7 +124,7 @@ The socket listener is the main entry point for control commands on Unix (both m
 ```c
 // Socket creation with specific permissions (same for manager and agent)
 int sock = OS_BindUnixDomainWithPerms(
-    CONTROL_SOCK,        // "queue/sockets/control" (resolved relative to WAZUH_HOME)
+    CONTROL_SOCK,        // manager "queue/sockets/control.sock", agent "queue/sockets/control"
     SOCK_STREAM,         // Stream socket
     OS_MAXSTR,           // Max connections
     getuid(),            // Owner UID
@@ -300,7 +300,7 @@ static bool wm_control_wait_for_service_active(const char *service) {
 
 ```
 1. API/Framework
-   └─► socket.connect("$WAZUH_HOME/queue/sockets/control")
+   └─► socket.connect("$WAZUH_HOME/queue/sockets/control.sock")
 
 2. API/Framework
    └─► socket.send("restart")
@@ -471,7 +471,7 @@ No dedicated thread. `control_dispatch()` is called synchronously from the reque
 ### Current Architecture (v5.0)
 
 **Manager**: `wm_control` (within modulesd, manager build)
-- **Socket**: `$WAZUH_HOME/queue/sockets/control`
+- **Socket**: `$WAZUH_HOME/queue/sockets/control.sock`
 - **Commands**: restart, reload
 - **Service name**: `wazuh-manager`
 

@@ -1067,6 +1067,7 @@ void test_wdb_parse_global_update_status_code_query_error(void **state)
     expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
     expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
     expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");
+    expect_value(__wrap_wdb_global_update_agent_status_code, connection_status, NULL);
     expect_string(__wrap_wdb_global_update_agent_status_code, sync_status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_status_code, OS_INVALID);
 
@@ -1109,10 +1110,50 @@ void test_wdb_parse_global_update_status_code_success(void **state)
     expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
     expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
     expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");
+    expect_value(__wrap_wdb_global_update_agent_status_code, connection_status, NULL);
     expect_string(__wrap_wdb_global_update_agent_status_code, sync_status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_status_code, OS_SUCCESS);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_update_status_code_connection_status_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v5.0.0\",\"connection_status\":\"pending\",\"sync_status\":\"syncreq\"}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
+    expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
+    expect_string(__wrap_wdb_global_update_agent_status_code, version, "v5.0.0");
+    expect_string(__wrap_wdb_global_update_agent_status_code, connection_status, "pending");
+    expect_string(__wrap_wdb_global_update_agent_status_code, sync_status, "syncreq");
+    will_return(__wrap_wdb_global_update_agent_status_code, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v5.0.0\",\"connection_status\":\"pending\",\"sync_status\":\"syncreq\"}");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -4668,6 +4709,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_connection_status_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_delete_agent */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_query_error, test_setup, test_teardown),

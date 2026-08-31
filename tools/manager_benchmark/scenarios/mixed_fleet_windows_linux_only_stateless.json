@@ -1,6 +1,6 @@
 {
   "name": "mixed_fleet_windows_linux_only_stateless",
-  "description": "The stateless-only twin of mixed_fleet_windows_linux: agent mode with /control keepalives, each agent shipping only a mixed-content engine (log-event) lane, no FIM/SCA/syscollector/VD inventory lanes.",
+  "description": "The stateless-only twin of mixed_fleet_windows_linux: agent mode with /control keepalives, each agent shipping only the syslog engine (log-event) lane, no FIM/SCA/syscollector/VD inventory lanes.",
   "mode": "agent",
   "defaults": {
     "module": "syscollector",
@@ -10,7 +10,7 @@
   },
   "lanes": {
     "engine": [
-      { "kind": "engine", "engine": "../sample_payloads/engine/test_logs_merged.txt", "location": "mixed",
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
         "events_per_second": 250, "events_per_batch": 100 }
     ]
   },

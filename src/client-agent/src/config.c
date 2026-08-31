@@ -72,18 +72,24 @@ int ClientConf(const char *cfgfile)
     agt->stats_report.interval = 60;
     agt->config_report.interval = 3600;
 
+    agt->batch.interval = 10;
+
 #ifndef WIN32
     atc->package_uninstallation = false;
 #endif
 
     modules |= CCLIENT;
 
-    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
-    w_enrollment_target *target_cfg = w_enrollment_target_init();
-
-    // Initialize enrollment_cfg
-    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
-    agt->enrollment_cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
+    /* <agent><enrollment> defaults (#38465): a by-value struct now, like
+     * <ssl>/<batch> above -- set by hand before parsing, the same convention
+     * this function already uses for those. */
+    agt->enrollment.enabled = true;
+    agt->enrollment.agent_name = NULL;
+    agt->enrollment.groups = NULL;
+    agt->enrollment.agent_address = NULL;
+    agt->enrollment.use_source_ip = false;
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    agt->enrollment.delay_after_enrollment = 20;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);
@@ -110,27 +116,65 @@ int ClientConf(const char *cfgfile)
 bool w_agent_validate_ssl_ca(const agent *cfg)
 {
     const char *ca = cfg->ssl.certificate_authorities;
-    const bool readable = ca && w_is_file(ca);
 
     /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
      * enables verification -- and then the agent refuses to start. Warn while it is
      * still harmless rather than accepting it in silence. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        if (ca && !readable) {
+        if (ca && !w_is_file(ca)) {
             mwarn(AG_UNUSED_SSL_CA, ca);
         }
 
         return true;
     }
 
+    /* 'system' trusts the OS store instead of an operator-supplied file: a configured CA
+     * would be silently unused, which is worth failing closed on rather than guessing which
+     * one the operator actually meant. On Windows/macOS the OS store is asked for natively
+     * (no file to probe for); on Linux the https_client module itself fails closed if no
+     * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
+     * one layer up so a bad config is caught before the module ever spins up threads. */
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
+        if (ca) {
+            merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
+            return false;
+        }
+
+#if !defined(WIN32) && !defined(__APPLE__)
+        if (os_find_ca_bundle(NULL) == NULL) {
+            merror(AG_SSL_SYSTEM_NO_BUNDLE);
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
     /* A verifying mode without a readable CA can never connect: the https_client module
      * fails closed on this, per its own validation. */
-    if (!readable) {
+    if (!ca || !w_is_file(ca)) {
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
 
     return true;
+}
+
+// Helper for translating the verification_mode enum to a string for JSON output.
+static const char *w_agent_verify_mode_str(int verification_mode)
+{
+    switch (verification_mode) {
+    case AGENT_VERIFY_FULL:
+        return "full";
+    case AGENT_VERIFY_CERT:
+        return "certificate";
+    case AGENT_VERIFY_NONE:
+        return "none";
+    case AGENT_VERIFY_SYSTEM:
+        return "system";
+    default:
+        return "unknown";
+    }
 }
 
 cJSON *getAgentConfig(void) {
@@ -156,8 +200,11 @@ cJSON *getAgentConfig(void) {
             cJSON_AddStringToObject(server, "address", agt->server[i].rip);
             cJSON_AddNumberToObject(server, "port", agt->server[i].port);
 
-            if (agt->server[i].network_interface)
-                cJSON_AddNumberToObject(server, "interface_index", agt->server[i].network_interface);
+            if (agt->server[i].endpoint)
+                cJSON_AddStringToObject(server, "endpoint", agt->server[i].endpoint);
+
+            if (agt->server[i].scope_id)
+                cJSON_AddNumberToObject(server, "scope_id", agt->server[i].scope_id);
 
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);
@@ -167,37 +214,43 @@ cJSON *getAgentConfig(void) {
         cJSON_AddItemToObject(agent_config,"manager",servers);
     }
 
-    if (agt->enrollment_cfg) {
+    {
         cJSON *enrollment_cfg = cJSON_CreateObject();
-        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment_cfg->enabled ? "yes" : "no");
-        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment_cfg->delay_after_enrollment);
+        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment.enabled ? "yes" : "no");
+        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment.delay_after_enrollment);
 
-        if (agt->enrollment_cfg->target_cfg->manager_name)
-            cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
-
-        if (agt->enrollment_cfg->target_cfg->network_interface)
-            cJSON_AddNumberToObject(enrollment_cfg, "interface_index", agt->enrollment_cfg->target_cfg->network_interface);
-
-        cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
-
-        if (agt->enrollment_cfg->target_cfg->agent_name)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg->target_cfg->agent_name);
-        if (agt->enrollment_cfg->target_cfg->centralized_group)
-            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg->target_cfg->centralized_group);
-
-        cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg->cert_cfg->ciphers);
-
-        if (agt->enrollment_cfg->cert_cfg->ca_cert)
-            cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg->cert_cfg->ca_cert);
-        if (agt->enrollment_cfg->cert_cfg->agent_cert)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg->cert_cfg->agent_cert);
-        if (agt->enrollment_cfg->cert_cfg->agent_key)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg->cert_cfg->agent_key);
-        if(agt->enrollment_cfg->cert_cfg->authpass)
-            cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
+        if (agt->enrollment.agent_name)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment.agent_name);
+        if (agt->enrollment.groups)
+            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment.groups);
+        if (agt->enrollment.agent_address)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_address", agt->enrollment.agent_address);
+        cJSON_AddStringToObject(enrollment_cfg, "use_source_ip", agt->enrollment.use_source_ip ? "yes" : "no");
+        if (agt->enrollment.authorization_pass_path)
+            cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment.authorization_pass_path);
 
         cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
     }
+    // <ssl>
+    cJSON *ssl = cJSON_CreateObject();
+    cJSON_AddStringToObject(ssl, "verification_mode", w_agent_verify_mode_str(agt->ssl.verification_mode));
+    if (agt->ssl.certificate) cJSON_AddStringToObject(ssl, "certificate", agt->ssl.certificate);
+    if (agt->ssl.key) cJSON_AddStringToObject(ssl, "key", agt->ssl.key);
+    if (agt->ssl.certificate_authorities) cJSON_AddStringToObject(ssl, "certificate_authorities", agt->ssl.certificate_authorities);
+    if (agt->ssl.ciphers) cJSON_AddStringToObject(ssl, "ciphers", agt->ssl.ciphers);
+    cJSON_AddItemToObject(agent_config, "ssl", ssl);
+
+    // <batch>
+    cJSON *batch = cJSON_CreateObject();
+    /* Zero means <size> was never configured, and every reader of that zero applies
+     * DEFAULT_BATCH_SIZE_BYTES, so the report states the cap actually in force rather
+     * than the sentinel. Not seeded into agt: that value is passed on to
+     * asp_set_session_max_bytes(), where a seed would read as an explicit setting. */
+    cJSON_AddNumberToObject(batch, "size",
+                            agt->batch.size > 0 ? agt->batch.size : DEFAULT_BATCH_SIZE_BYTES);
+    cJSON_AddNumberToObject(batch, "interval", agt->batch.interval);
+    cJSON_AddItemToObject(agent_config, "batch", batch);
+
     /* The two periodic report pushes (#37843). Reported so the /config document
      * says whether the agent is reporting, and on what cadence. */
     cJSON *stats_report = cJSON_CreateObject();
@@ -251,7 +304,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"warn_level",warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",getDefine_Int("agent", "normal_level", 0, warn_level - 1));
     cJSON_AddNumberToObject(agent,"tolerance",getDefine_Int("agent", "tolerance", 0, 600));
-    cJSON_AddNumberToObject(agent,"recv_timeout",getDefine_Int("agent", "recv_timeout", 1, 600));
     cJSON_AddNumberToObject(agent,"state_interval",interval);
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
 

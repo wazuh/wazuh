@@ -11,17 +11,17 @@
 
 #include "http_server/udsHttpServerConfig.hpp"
 
-#include "http_server/requestParser.hpp"
 #include "proc.hpp"
+#include "requestParser.hpp" // white-box: the lib test dir exposes src/
 
 #include <gtest/gtest.h>
 
 #include <cstdio>
 #include <limits>
 
-using invsync::http::buildServerConfig;
-using invsync::http::RequestParser;
-using invsync::http::UdsHttpServerConfig;
+using invsync::buildServerConfig;
+using wazuh::uds_http::RequestParser;
+using wazuh::uds_http::UdsHttpServerConfig;
 
 namespace
 {
@@ -53,7 +53,7 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 {
     const auto config = buildServerConfig(zeroedConfig());
 
-    EXPECT_EQ("queue/sockets/inventory-sync.sock", config.socketPath);
+    EXPECT_EQ("queue/sockets/inventory-sync-http.sock", config.socketPath);
     EXPECT_EQ(0660U, config.socketMode);
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
@@ -62,7 +62,7 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 
     // No own body cap by default (a whole sync session is ONE request); the effective session
     // limit is the in-flight byte budget, which start() feeds to the parser as a 413 boundary.
-    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
+    EXPECT_EQ(wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(2048U, config.maxUrlSize);
     EXPECT_EQ(256U, config.maxHeaderNameSize);
     EXPECT_EQ(8192U, config.maxHeaderValueSize);
@@ -76,6 +76,15 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 
     EXPECT_EQ(1024U, config.maxConnections);
     EXPECT_EQ(256U * 1024U * 1024U, config.maxInFlightBytes);
+
+    // Route-class admission (QoS): the reserve and the control caps are tunables; liveness is
+    // fixed in the library (a term of the memory ceiling, same criterion as max_header_count).
+    EXPECT_EQ(64U, config.reservedControlConnections);
+    EXPECT_FALSE(config.controlPolicy.chargeByteBudget);
+    EXPECT_EQ(64U * 1024U, config.controlPolicy.maxBodyBytes);
+    EXPECT_EQ(256U, config.controlPolicy.maxSessions);
+    EXPECT_TRUE(config.dataPolicy.chargeByteBudget);
+    EXPECT_EQ(0U, config.dataPolicy.maxSessions) << "0: resolved to maxConnections - reserved at start()";
 }
 
 // The socket path being relative is the whole basis of the chroot/chdir agreement with the peer:
@@ -108,6 +117,9 @@ TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)
     input.drain_timeout = 8;
     input.max_parallel_connections = 77;
     input.max_inflight_bytes = 12345;
+    input.reserved_control_connections = 19;
+    input.control_max_body_bytes = 2048;
+    input.control_max_sessions = 33;
 
     const auto config = buildServerConfig(input);
 
@@ -128,6 +140,9 @@ TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)
     EXPECT_EQ(8U, config.drainTimeoutSec);
     EXPECT_EQ(77U, config.maxConnections);
     EXPECT_EQ(12345U, config.maxInFlightBytes);
+    EXPECT_EQ(19U, config.reservedControlConnections);
+    EXPECT_EQ(2048U, config.controlPolicy.maxBodyBytes);
+    EXPECT_EQ(33U, config.controlPolicy.maxSessions);
 }
 
 // Negative is treated exactly like zero: "the caller has no opinion". Anything else would let a
@@ -147,7 +162,7 @@ TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
     const auto config = buildServerConfig(input);
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
-    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
+    EXPECT_EQ(wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(10U, config.headerTimeoutSec);
     EXPECT_EQ(1024U, config.maxConnections);
     EXPECT_EQ(0660U, config.socketMode);
@@ -177,7 +192,7 @@ TEST(UdsHttpServerConfigTest, EmptySocketPathFallsBackToTheDefault)
     auto input = zeroedConfig();
     input.socket_path[0] = '\0';
 
-    EXPECT_EQ("queue/sockets/inventory-sync.sock", buildServerConfig(input).socketPath);
+    EXPECT_EQ("queue/sockets/inventory-sync-http.sock", buildServerConfig(input).socketPath);
 }
 
 // Thread counts track the host/cgroup's CPUs rather than a fixed constant, so a container with a

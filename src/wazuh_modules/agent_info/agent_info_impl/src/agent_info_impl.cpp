@@ -187,6 +187,9 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
 AgentInfoImpl::~AgentInfoImpl()
 {
     stop();
+    // Covers the case where start() never ran, so its run loop never reached the
+    // teardown. Idempotent, so it is a no-op when the run loop already did it.
+    releaseResources();
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
@@ -196,16 +199,31 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
                   "AgentInfo module started with interval: " + std::to_string(interval) +
                   " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
-    {
-        std::lock_guard<std::mutex> lock(m_shutdownMutex);
-        m_runLoopActive = true;
-    }
-
     // Load sync flags from database at startup
     loadSyncFlags();
 
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_stopped = false;
+
+    // Do NOT clear a stop that arrived while the module was still starting up. The
+    // shutdown loop signals every module before joining any of them, so a stop can
+    // land before this point; clearing it here would leave the run loop below with no
+    // exit condition at all -- callers pass no shouldContinue -- and the module thread
+    // would never become joinable.
+    //
+    // m_stopped is therefore sticky for the life of the instance. That is fine today --
+    // one start() per process -- but a future hot-restart path must distinguish "stopped"
+    // from "shutting down" (an explicit reset here would bring back the lost stop above).
+    //
+    // The check is isShutdownInProgress() rather than m_stopped alone because
+    // agent_info_stop() null-checks the instance: a stop arriving before this object
+    // exists never reaches stop() at all. The module wrapper does set the global flag
+    // in that case, and the injected predicate is the only way to observe it.
+    if (isShutdownInProgress())
+    {
+        lock.unlock();
+        m_logFunction(LOG_INFO, "AgentInfo start aborted: shutdown already in progress.");
+        return;
+    }
 
     // Reset sync protocol stop flag to allow restarting operations
     if (m_spSyncProtocol)
@@ -217,6 +235,8 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
 
     // Run at least once
+    m_runLoopActive.store(true);
+
     do
     {
         lock.unlock();
@@ -287,24 +307,57 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         // If no shouldContinue function provided, use default behavior (continue until stopped)
         bool shouldLoop = shouldContinue ? shouldContinue() : !m_stopped;
 
-        if (shouldLoop && !m_stopped)
+        if (shouldLoop && !isShutdownInProgress())
         {
             // Wait for the interval or until stop is signaled
             m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped.load(); });
         }
 
     }
-    while (!m_stopped && (shouldContinue ? shouldContinue() : true));
+
+    // Same reason as the guard above: without the global predicate a stop lost to that
+    // null check, or arriving between it and here, would leave this loop with no exit.
+    while (!isShutdownInProgress() && (shouldContinue ? shouldContinue() : true));
+
+    m_runLoopActive.store(false);
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
+}
 
-    // Publish that the run loop has fully exited so stop() can tear down the sync
-    // protocol without racing synchronizeMetadataOrGroups().
+void AgentInfoImpl::releaseResources()
+{
+    // Never free while the run loop may still be using these members. The join that is
+    // supposed to guarantee the loop finished is not authoritative: stop_wmodules() and
+    // wm_handler() only log when the shutdown budget expires and then carry on to
+    // process exit, so the destructor can reach here with the loop still running.
+    // Freeing then is a use-after-free, so skip it and let process teardown reclaim the
+    // handles -- the same trade-off the removed run-loop wait used to make, minus the
+    // blocking wait.
+    if (m_runLoopActive.load())
     {
-        std::lock_guard<std::mutex> shutdownLock(m_shutdownMutex);
-        m_runLoopActive = false;
+        m_logFunction(LOG_WARNING, "AgentInfo run loop still active; skipping database teardown.");
+        return;
     }
-    m_shutdownCv.notify_all();
+
+    // Idempotent: runs from the module thread when the run loop ends, and again from
+    // the destructor for the case where the run loop never started.
+    {
+        std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+        if (m_dBSync)
+        {
+            m_logFunction(LOG_DEBUG, "Closing DBSync connection...");
+            m_dBSync.reset();
+            m_logFunction(LOG_DEBUG, "DBSync connection closed");
+        }
+    }
+
+    // Destroy the sync protocol so its SQLite connection to the persistent-queue db
+    // is closed. Guarded against parseResponseBuffer(), which runs on another thread.
+    {
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+        m_spSyncProtocol.reset();
+    }
 }
 
 void AgentInfoImpl::stop()
@@ -332,46 +385,12 @@ void AgentInfoImpl::stop()
         }
     }
 
-    // Wait for the run loop to exit before freeing shared resources, so we don't
-    // free m_dBSync / the sync protocol while synchronizeMetadataOrGroups() is
-    // still using them. Time-bounded so a stuck loop can't hang shutdown.
-    constexpr auto SHUTDOWN_WAIT_SECONDS = std::chrono::seconds(10);  // max wait for the run loop to finish teardown
-    bool runLoopExited = false;
-    {
-        std::unique_lock<std::mutex> lock(m_shutdownMutex);
-        runLoopExited = m_shutdownCv.wait_for(lock, SHUTDOWN_WAIT_SECONDS, [this] { return !m_runLoopActive; });
-    }
-
-    if (!runLoopExited)
-    {
-        // The run loop is still active. Freeing m_dBSync / the sync protocol now
-        // would be a use-after-free (the loop can still call synchronizeMetadataOrGroups()),
-        // so skip the teardown and let process exit reclaim the handles instead.
-        m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit; skipping database teardown.");
-        m_logFunction(LOG_INFO, "AgentInfo module stopped.");
-        return;
-    }
-
-    // Close the main DB connection.
-    {
-        std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
-
-        if (m_dBSync)
-        {
-            m_logFunction(LOG_DEBUG, "Closing DBSync connection...");
-            m_dBSync.reset();
-            m_logFunction(LOG_DEBUG, "DBSync connection closed");
-        }
-    }
-
-    // Destroy the sync protocol so its SQLite connection to the persistent-queue
-    // db is closed BEFORE stop() returns. Guarded against parseResponseBuffer(),
-    // which runs on another thread.
-    {
-        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
-        m_spSyncProtocol.reset();
-    }
-
+    // Signal only. The teardown of m_dBSync and the sync protocol happens in
+    // releaseResources(), on the module thread, once the run loop has returned --
+    // so joining that thread is what guarantees the handles are closed. Waiting
+    // here instead blocked this callback for up to 10 s, and because the shutdown
+    // loop stops modules one at a time it also withheld the stop signal from the
+    // very modules this run loop can be parked on.
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
@@ -882,7 +901,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            logDbSyncUnavailable("DBSync not available for table " + table);
             return false;
         }
 
@@ -2033,18 +2052,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
                     // Not a real failure: the sync was aborted because the module is stopping.
                     m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
                 }
-                else if (syncResult.managerNotReady
+                else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                          && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
                 {
-                    // The manager is not ready for this agent yet, mostly right after a restart, and the
-                    // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-                    // retries this table on the next coordination cycle.
+                    // Either the manager is not ready for this agent yet, or the local sync intake
+                    // itself isn't reachable yet -- both mostly right after a restart -- and the
+                    // sync has not failed enough times in a row to suspect it will not clear.
+                    // Agent-info retries this table on the next coordination cycle.
                     m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
                                   syncResult.failureReason + " Will retry next cycle.");
                 }
-                else if (syncResult.managerNotReady)
+                else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
                 {
-                    // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                    // Neither condition has cleared for several cycles in a row.
                     m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
                                   std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                                   syncResult.failureReason);
@@ -2152,7 +2172,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                logDbSyncUnavailable("Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -2189,7 +2209,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                logDbSyncUnavailable("Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2271,7 +2291,7 @@ bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot check/record task " + taskId + ": DBSync not available");
+        logDbSyncUnavailable("Cannot check/record task " + taskId + ": DBSync not available");
         return false;
     }
 
@@ -2481,7 +2501,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 
         if (!m_dBSync)
         {
-            m_logFunction(LOG_WARNING, "Cannot observe VD feed offset: DBSync not available");
+            logDbSyncUnavailable("Cannot observe VD feed offset: DBSync not available");
             return result;
         }
 
@@ -2545,7 +2565,7 @@ bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot clear VD rescan pending: DBSync not available");
+        logDbSyncUnavailable("Cannot clear VD rescan pending: DBSync not available");
         return false;
     }
 
@@ -2681,7 +2701,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                logDbSyncUnavailable("Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2812,18 +2832,19 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             // Not a real failure: the integrity check was aborted because the module is stopping.
             m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
         }
-        else if (syncResult.managerNotReady
+        else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                  && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
-            // The manager is not ready for this agent yet, mostly right after a restart, and the
-            // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-            // retries this table on the next integrity cycle.
+            // Either the manager is not ready for this agent yet, or the local sync intake itself
+            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+            // failed enough times in a row to suspect it will not clear. Agent-info retries this
+            // table on the next integrity cycle.
             m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
                           syncResult.failureReason + " Will retry next cycle.");
         }
-        else if (syncResult.managerNotReady)
+        else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
         {
-            // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            // Neither condition has cleared for several cycles in a row.
             m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
                           std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                           syncResult.failureReason);

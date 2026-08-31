@@ -29,7 +29,7 @@
 namespace
 {
     constexpr auto KEYSTORE_SERVER_LOGTAG {"wazuh-manager-modulesd:keystore-server"};
-    constexpr auto KEYSTORE_SOCKET_PATH {"queue/sockets/keystore"};
+    constexpr auto KEYSTORE_SOCKET_PATH {"queue/sockets/keystore.sock"};
 
     const LogFn& logFn()
     {

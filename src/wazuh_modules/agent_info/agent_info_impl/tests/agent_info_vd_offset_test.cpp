@@ -32,8 +32,9 @@ class AgentInfoVdOffsetTest : public ::testing::Test
             EXPECT_CALL(*m_mockDBSync, handle())
             .WillRepeatedly(::testing::Return(nullptr));
 
-            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
+                m_logMessages.push_back({level, msg});
                 m_logOutput += msg + "\n";
             };
         }
@@ -102,33 +103,79 @@ class AgentInfoVdOffsetTest : public ::testing::Test
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunc;
         std::vector<std::string> m_queryModuleCalls;
         std::string m_logOutput;
+        std::vector<std::pair<modules_log_level_t, std::string>> m_logMessages;
 };
 
+// A shutdown can race observeVdFeedOffset() against releaseResources() closing the same
+// DBSync handle; that race is expected and harmless, so it must log at DEBUG during
+// shutdown (verified below) and WARNING otherwise.
 TEST_F(AgentInfoVdOffsetTest, ObserveFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, no shutdown signaled.
 
+    m_logMessages.clear();
     const auto result = m_agentInfo->observeVdFeedOffset(100);
     EXPECT_FALSE(result.changed);
     EXPECT_FALSE(result.pending);
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_WARNING, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot observe VD feed offset: DBSync not available"));
+}
+
+TEST_F(AgentInfoVdOffsetTest, ObserveWithoutDBSyncLogsDebugDuringShutdown)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+    m_agentInfo->stop(); // Signals a real shutdown is in progress (isShutdownInProgress() == true).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, same as the real shutdown path.
+
+    m_logMessages.clear();
+    const auto result = m_agentInfo->observeVdFeedOffset(100);
+    EXPECT_FALSE(result.changed);
+    EXPECT_FALSE(result.pending);
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_DEBUG, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot observe VD feed offset: DBSync not available"));
 }
 
 TEST_F(AgentInfoVdOffsetTest, ClearPendingFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
+    m_logMessages.clear();
     EXPECT_FALSE(m_agentInfo->clearVdRescanPending(100));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_WARNING, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot clear VD rescan pending: DBSync not available"));
+}
+
+TEST_F(AgentInfoVdOffsetTest, ClearPendingWithoutDBSyncLogsDebugDuringShutdown)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
+
+    m_logMessages.clear();
+    EXPECT_FALSE(m_agentInfo->clearVdRescanPending(100));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_DEBUG, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot clear VD rescan pending: DBSync not available"));
 }
 
 TEST_F(AgentInfoVdOffsetTest, GetStateFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
                                                   vdFirstSyncQueryFunc(true), m_mockDBSync);
-    m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     const auto state = m_agentInfo->getVdFeedState();
     EXPECT_FALSE(state.hasOffset);

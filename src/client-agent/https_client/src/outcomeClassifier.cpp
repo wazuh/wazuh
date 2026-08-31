@@ -66,10 +66,10 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::BackPressure;
     }
 
-    // 403/426 are not part of the manager contract: they reach the agent only
-    // from an intermediary (reverse proxy, WAF, mTLS gateway). Transient so a
-    // /stateless batch is retried rather than consumed as Permanent, and not
-    // Unreachable because something did answer.
+    // 403: the manager's source-address ACL (client.keys) refused this peer, or an intermediary
+    // (reverse proxy, WAF, mTLS gateway) blocked it; 426 only from an intermediary. Transient so the
+    // batch is retried and kept (not dropped) rather than consumed as Permanent, and not Unreachable
+    // because something answered.
     if (code == 403 || code == 426)
     {
         return OutcomeClass::ServerError;

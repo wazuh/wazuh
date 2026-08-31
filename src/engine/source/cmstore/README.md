@@ -73,7 +73,15 @@ enum class ResourceType : uint8_t {
 
 ### UUID System
 
-Every resource has a UUIDv4 identifier. When a resource is created via YAML/JSON, CMStore either extracts the existing `/id` field or generates a new UUID and injects it. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
+Every resource has a UUID identifier. When a resource is created via YAML/JSON, CMStore either extracts the existing `/id` field or generates a new UUIDv4 and injects it. Identifiers coming from the content are opaque: any UUID version (v4, v5, ...) or any other string is accepted and never interpreted. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
+
+The validity rule is `base::utils::generators::isValidResourceId()` (`base/utils/generator.hpp`), applied at every entry point (data types, `CMStoreNS::upsertUUID()`, the CRUD service and the `/_internal/content/get|delete` handlers):
+
+- non-empty (an empty `/id` means "no identifier" and triggers generation where allowed);
+- at most `MAX_RESOURCE_ID_LENGTH` (256) bytes;
+- no control characters (`0x00`-`0x1F`, `0x7F`).
+
+Identifiers are **never normalized**: no case folding, no trimming. They are stored, looked up and compared byte by byte, both in the cache and when `findDuplicateOrInvalidUUID()` rejects duplicates inside a reference list, so `ABC` and `abc` are two different identifiers.
 
 ### Bidirectional Cache (`CacheNS`)
 

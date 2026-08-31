@@ -52,7 +52,7 @@ namespace remoted::common
 
         /**
          * @param socketPath VD module UDS endpoint, as a raw filesystem path (e.g.
-         * "/queue/sockets/modulesd") -- NOT a "unix://" URI; httplib::Client's single-string
+         * "/queue/sockets/vd-http.sock") -- NOT a "unix://" URI; httplib::Client's single-string
          * constructor only parses http(s) URLs, so the path is passed as-is together with
          * set_address_family(AF_UNIX). Defaults to the real modulesd socket; overridable so
          * tests can point this at a fake server instead.
@@ -61,7 +61,7 @@ namespace remoted::common
          * @param failureRetryInterval See DEFAULT_FAILURE_RETRY_INTERVAL. Same testability
          * rationale as cacheTtl.
          */
-        explicit VdClient(std::string socketPath = "/queue/sockets/modulesd",
+        explicit VdClient(std::string socketPath = "/queue/sockets/vd-http.sock",
                           std::chrono::milliseconds cacheTtl = DEFAULT_CACHE_TTL,
                           std::chrono::milliseconds failureRetryInterval = DEFAULT_FAILURE_RETRY_INTERVAL);
         ~VdClient() = default;

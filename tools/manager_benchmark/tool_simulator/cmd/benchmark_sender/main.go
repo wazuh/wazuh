@@ -17,6 +17,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/runner"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/verdict"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
 // senderVersion is stamped into the artifacts; overridden at build time with
@@ -31,7 +32,7 @@ func run() int {
 	var (
 		scenarioPath = flag.String("scenario", "", "path to the scenario JSON (required)")
 		mode         = flag.String("mode", "", "transport: uds | agent (overrides the scenario)")
-		socket       = flag.String("socket", "queue/sockets/inventory-sync.sock", "uds mode: module socket path")
+		socket       = flag.String("socket", "queue/sockets/inventory-sync-http.sock", "uds mode: module socket path")
 		manager      = flag.String("manager", "127.0.0.1", "agent mode: manager host")
 		port         = flag.Int("port", 1517, "agent mode: remoted HTTPS port")
 		regPort      = flag.Int("reg-port", 1515, "agent mode: authd enrollment port")
@@ -42,7 +43,11 @@ func run() int {
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
 			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
-		cluster     = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
+		cluster      = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
+		globalPrefix = flag.String("global-prefix", "", "agent mode: the manager's <remote><https><global_prefix>. "+
+			"It is part of the request target, so it is SIGNED as well as sent and must match the manager "+
+			"exactly -- against a prefixed manager without it every request answers 404. \"\" and \"/\" both "+
+			"mean no prefix. Never applied in uds mode: the module socket is not published under the prefix")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
 		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
@@ -51,7 +56,7 @@ func run() int {
 		vdFeedOffset = flag.Uint64("vd-feed-offset", 0, "VDFirst/VDSync sessions declare this Start.feed_offset "+
 			"unless a step overrides it; a mismatch against the target's real current offset answers 409 "+
 			"version_mismatch instead of scanning. In uds mode this is the ONLY way to set it correctly (there is "+
-			"no /control to learn it from -- query it with 'curl --unix-socket queue/sockets/modulesd "+
+			"no /control to learn it from -- query it with 'curl --unix-socket queue/sockets/vd-http.sock "+
 			"http://localhost/vulnerability-detector/offset'); in agent mode it defaults to whatever the agent's "+
 			"own keepalive loop learns from /control's vd_feed_offset")
 	)
@@ -89,6 +94,15 @@ func run() int {
 		return 2
 	}
 
+	// The global prefix is normalized ONCE here, not per client: buildAgents creates one
+	// client per agent, and normalizing there would let the value the clients use drift
+	// from the one recorded in meta. A malformed prefix warns but does not abort --
+	// reproducing one on purpose is a legitimate use of this tool.
+	prefix := wire.NormalizeGlobalPrefix(*globalPrefix)
+	if w := wire.GlobalPrefixWarning(prefix); w != "" {
+		fmt.Fprintf(os.Stderr, "warning: --global-prefix %s\n", w)
+	}
+
 	// --validate loads and strictly checks the scenario (unknown fields, unknown
 	// step kinds, mode/kind constraints, expected block) and exits without
 	// sending anything. This is what the orchestration and CI use to gate the
@@ -109,6 +123,7 @@ func run() int {
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
 		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
+		GlobalPrefix: prefix,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -161,8 +176,8 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verd
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)
 	}
 	if c.ScanSent > 0 {
-		// 200 is "queued": remoted admits the re-scan and its worker pool
-		// dispatches it later (docu/14-scan-vd.md), so this line says how many
+		// 200 is "queued": VD admits the re-scan into its dispatch lane and
+		// scans it later (docu/14-scan-vd.md), so this line says how many
 		// requests were ACCEPTED, not how many scans finished.
 		scan := s.Hists["scan"]
 		fmt.Printf("scan/vd: sent=%d 200(queued)=%d 409=%d 503=%d other=%d  admission ms: p50=%.1f p99=%.1f\n",

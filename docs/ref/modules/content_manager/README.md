@@ -53,6 +53,40 @@ The module is configured programmatically by its caller (the Vulnerability Scann
 
 The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Configuration](configuration.md)).
 
+## On-demand updates (`POST /ondemand`)
+
+Topics registered with `ondemand: true` can be triggered explicitly over the manager-local
+`queue/sockets/vd-http.sock` Unix socket (served by the vulnerability scanner's shared HTTP-over-UDS
+server, where this module lives). This replaces the former `queue/sockets/updater-ondemand`
+socket and its `GET /ondemand/<topic>?offset=N` route.
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/vd-http.sock \
+     -X POST -d '{"topic":"<name>","offset":-1}' http://localhost/ondemand
+```
+
+Request body: `{"topic": "<name>", "offset": -1|0}` — `offset` is optional; `-1` (default)
+keeps the current offset, `0` restarts the content from scratch. The body is capped at 4 KiB
+(a larger declared `Content-Length` is rejected with `413` before any body byte is read).
+
+| Status | Body | Meaning |
+|---|---|---|
+| `200` | `{"status":"ok"}` | The update ran **to completion** (the response is deferred until it finishes) |
+| `400` | `{"error":"missing_required_fields"\|"invalid_topic"\|"invalid_offset"\|"invalid_request",...}` | Malformed request; not retryable |
+| `404` | `{"error":"unknown_topic",...}` | No such registered on-demand topic |
+| `409` | `{"error":"update_in_progress",...}` | An update for that topic is already running (the old socket answered `200` to this case) — retry later |
+| `500` | `{"error":"update_failed",...}` | The update itself failed; retryable |
+| `503` | `{"error":"ondemand_queue_full"\|"shutting_down",...}` | The short execution lane is full, or the module is stopping — retry later |
+
+Requests are executed by a bounded lane (queue of 4, two workers) so a burst of triggers sheds
+explicitly instead of piling up; concurrent triggers for the *same* topic serialize through the
+`409` above.
+
+Every rejection is logged under the `wazuh-manager-modulesd:content-updater` tag, **throttled**:
+one line per 90-second window carrying the number of occurrences it stands for, so a storm of
+triggers cannot flood `wazuh-manager.log`. Shutdown is the exception — its per-request `503`s are
+summarised in a single line reporting how many queued updates were shed.
+
 ## Key source files
 
 | File | Purpose |

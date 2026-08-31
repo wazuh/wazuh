@@ -3,6 +3,7 @@
 from pathlib import Path
 from argparse import ArgumentParser
 from typing import Callable
+import shlex
 import subprocess
 import time
 from json import dumps, loads
@@ -21,7 +22,10 @@ def get_executor(test_command: str, output: Path):
         # Set up command
         output_file = output / file.with_name(
             file.stem.replace('input', 'expected') + '.json').name
-        command = f'cat {file} | {test_command}'
+        if output.resolve() not in output_file.resolve().parents:
+            print(f'{file.name} -> output path outside {output}, skipped')
+            return
+        command = f'cat {shlex.quote(str(file))} | {test_command}'
 
         try:
             # Execute command
@@ -69,7 +73,7 @@ if __name__ == '__main__':
         pattern = args.pattern
         environment = Path(args.environment).resolve()
         test_integration = args.test_integration
-        api_sock = environment / 'queue/sockets/engine-api'
+        api_sock = environment / 'queue/sockets/engine-api-http.sock'
         test_command = f'engine-test -c {args.test_integration_conf_file} run {test_integration} --api-socket {api_sock} -j'
         output = args.output
         binary = args.binary

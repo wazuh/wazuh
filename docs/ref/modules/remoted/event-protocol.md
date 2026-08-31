@@ -2,18 +2,23 @@
 
 ## Overview
 
-The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are transmitted from remoted to analysisd. This protocol ensures that every event carries complete agent metadata for stateless processing.
+The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are transmitted from remoted to the engine. This protocol ensures that every event carries complete agent metadata for stateless processing.
 
 ## Protocol Identifier
 
 - **Name**: Wazuh Event Protocol v1
-- **Content-Type**: `application/x-wev1`
+- **Content-Type**: `application/x-wev1` (classic C dispatcher, `src/remoted/src/secure.c`), or
+  `application/x-ndjson` (the HTTPS `remoted_module` ingestion path,
+  `src/remoted/remoted_module/src/endpoints/statelessEndpoint.cpp`) — both carry the same `H`/`E`
+  wire format described below
 - **Version**: 1.0
 - **Status**: Active (Wazuh 5.0+)
 
 ## Transport
 
-HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/queue` with content-type `application/x-wev1`.
+HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` with content-type
+`application/x-wev1` (classic C dispatcher) or `application/x-ndjson` (HTTPS `remoted_module`
+ingestion path, forwarding to `POST /events/enriched`).
 
 ## Message Format
 

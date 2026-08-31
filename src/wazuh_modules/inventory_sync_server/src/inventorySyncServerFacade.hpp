@@ -25,15 +25,12 @@
 
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
-#include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/deleteAgentEndpoint.hpp"
 #include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
-#include "http_server/IUdsHttpServer.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
-#include "http_server/udsHttpServerFactory.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "indexer/IIndexerSession.hpp"
@@ -51,6 +48,9 @@
 #include "vd/serverScanCoordinator.hpp"
 #include "vd/vdScanLane.hpp"
 #include "vd/vdScannerFactory.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/socketPathCheck.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -100,9 +100,6 @@ namespace invsync
     /// The demoted flush timer of the pipeline's connectors -- see the overlay in
     /// tryStartHttpServer() for why this is a correctness requirement rather than tuning.
     constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {3600};
-    /// VD scan lane worker fallback: 1 until the scanner gains real scan parallelism (its global
-    /// mutex serializes scans anyway -- REQ-VDQ-7).
-    constexpr std::size_t DEFAULT_VD_WORKERS {1};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -143,9 +140,9 @@ namespace invsync
             {
                 // Before anything is allocated or spawned: an unusable socket path means this module can
                 // never serve, and modulesd must not come up pretending inventory ingress exists.
-                const auto resolved = invsync::http::buildServerConfig(configuration);
+                const auto resolved = invsync::buildServerConfig(configuration);
                 std::string reason;
-                if (!invsync::common::socketPathIsUsable(resolved.socketPath, reason))
+                if (!wazuh::uds_http::socketPathIsUsable(resolved.socketPath, reason))
                 {
                     LOGFN_ERROR(moduleLogFn(),
                                 "The inventory sync server cannot use its socket path '%s': %s. This path is fixed, "
@@ -361,22 +358,22 @@ namespace invsync
         }
 
     private:
-        void startHttpServer(const invsync::http::UdsHttpServerConfig& config)
+        void startHttpServer(const wazuh::uds_http::UdsHttpServerConfig& config)
         {
-            m_httpServer = invsync::http::makeUdsHttpServer();
+            m_httpServer = wazuh::uds_http::makeUdsHttpServer();
 
             // Liveness probe. Exempt from the in-flight byte budget so it keeps answering under
             // memory pressure -- which is exactly when someone is most likely to be probing it.
             m_httpServer->addRoute(
-                invsync::http::Method::Get,
+                wazuh::uds_http::Method::Get,
                 "/",
-                [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder)
+                [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
                 {
-                    responder->send(
-                        invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
+                    responder->send(wazuh::uds_http::HttpResponse::json(
+                        200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
-                /*countAgainstBudget=*/false);
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
             // The endpoint handlers take their dependencies WEAKLY (the shared_ptr members convert
             // to the weak_ptr fields implicitly) -- see stop()'s phase 2 for why that matters. Safe
@@ -400,44 +397,67 @@ namespace invsync
 
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
-            m_httpServer->addRoute(
-                invsync::endpoints::sync::method(),
-                invsync::endpoints::sync::path(),
-                invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                    m_syncPipeline,
-                    m_indexerConnectorSync,
-                    clusterIdentity,
-                    m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
-                                                             : DEFAULT_VD_RETRY_AFTER_SECS,
-                    m_vdScanLane,
-                    m_vdScanner,
-                    invsync::metrics::RequestCounters::make(*m_metricsManager),
-                    m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
-                                                         "503 responses carrying a Retry-After header",
-                                                         "count")}));
+            m_httpServer->addRoute(invsync::endpoints::sync::method(),
+                                   invsync::endpoints::sync::path(),
+                                   invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                                       m_syncPipeline,
+                                       m_indexerConnectorSync,
+                                       clusterIdentity,
+                                       m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
+                                                                                : DEFAULT_VD_RETRY_AFTER_SECS,
+                                       m_vdScanLane,
+                                       m_vdScanner,
+                                       invsync::metrics::RequestCounters::make(*m_metricsManager),
+                                       // The shared helper, NOT a getOrCreateCounter with its own strings: the lane
+                                       // registers this counter too, and getOrCreate keeps only the first
+                                       // registration's metadata -- a second copy of the strings here would be dead
+                                       // text that silently drifts.
+                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager)}),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
-            // rather than sharing one handler because their real payloads will diverge.
+            // rather than sharing one handler because their real payloads will diverge. DATA class
+            // (U4): these carry documents agents send through remoted -- payloads of agent origin
+            // that must charge the byte budget exactly like /stateful, not control-plane reads.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
-                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity));
+                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             m_httpServer->addRoute(invsync::endpoints::config::method(),
                                    invsync::endpoints::config::path(),
-                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity));
+                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
             // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
-            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST.
+            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST. CONTROL class (signed
+            // decision): the agent id travels in a header and the body is empty, so a saturated
+            // ingest budget must never fail deletions that cost it no payload memory; their real
+            // capacity control stays in the pipeline.
             {
-                const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
-                                                                                 m_indexerConnectorSync};
+                // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
+                // name): the deletion plane answers at admission, so all of its responses -- the
+                // inline 400/503 rejections and the 200 that accepts -- count into the same
+                // sync.requests.total.* cells the sync route already uses.
+                //
+                // The async connector is in here because the deletion has a half that belongs to
+                // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
+                // connector, so their deletes have to ride its own queue to be ordered after a
+                // report it has accepted but not yet pushed (see the route's header).
+                const invsync::endpoints::delete_agent::Dependencies deleteDeps {
+                    m_syncPipeline,
+                    m_indexerConnectorSync,
+                    m_indexerConnectorAsync,
+                    invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
                                        invsync::endpoints::delete_agent::altPath(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
             }
 
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
@@ -445,9 +465,10 @@ namespace invsync
             m_httpServer->addRoute(invsync::endpoints::metrics::method(),
                                    invsync::endpoints::metrics::path(),
                                    invsync::endpoints::metrics::makeHandler(m_metricsManager),
-                                   /*countAgainstBudget=*/false);
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
             m_httpServer->start(config);
+            registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
                        "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
@@ -459,6 +480,86 @@ namespace invsync
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
+        }
+
+        /**
+         * @brief Publish the transport's bounded resources as pull metrics (U10).
+         *
+         * Called after every successful start: the weak target is repointed at the new server,
+         * while the pulls themselves are registered exactly once (iManager has no unregister).
+         * After stop() resets m_httpServer the weak_ptr expires and every metric reads 0 --
+         * the documented quiesced value -- so a dump can never touch a dead server.
+         */
+        void registerTransportDiagnostics()
+        {
+            {
+                std::lock_guard<std::mutex> lock {m_transportDiagMutex};
+                m_transportDiagTarget = m_httpServer;
+            }
+            if (m_transportPullsRegistered)
+            {
+                return;
+            }
+            m_transportPullsRegistered = true;
+
+            const auto snapshot = [this]() -> wazuh::uds_http::TransportDiagnostics
+            {
+                std::lock_guard<std::mutex> lock {m_transportDiagMutex};
+                if (const auto server = m_transportDiagTarget.lock())
+                {
+                    return server->diagnostics();
+                }
+                return {};
+            };
+
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_AVAILABLE_BYTES,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
+                "Bytes the in-flight payload budget can still admit",
+                "bytes");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_IN_FLIGHT_BYTES,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
+                "Bytes currently reserved by admitted requests",
+                "bytes");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_IN_FLIGHT_REQUESTS,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
+                "Requests currently holding a budget reservation",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_LIVE,
+                [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
+                "Open transport connections, deferred replies included (superset: the per-class "
+                "counts exclude connections still reading their head)",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_DATA,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Data)]);
+                },
+                "Sessions classified on data-class routes",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_CONTROL,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Control)]);
+                },
+                "Sessions classified on control-class routes",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_LIVENESS,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Liveness)]);
+                },
+                "Sessions classified on liveness-class routes",
+                "connections");
         }
 
         /**
@@ -581,6 +682,19 @@ namespace invsync
             return cores / 2 > 0 ? cores / 2 : 1;
         }
 
+        /// vd_workers <= 0 follows the same "half the cores, at least one" convention as
+        /// sync_workers above -- the scanner's own per-slot pool (REQ-VDQ-7) makes
+        /// raising this safe.
+        static std::size_t resolveVdWorkers(const inventory_sync_server_config_t& config)
+        {
+            if (config.vd_workers > 0)
+            {
+                return static_cast<std::size_t>(config.vd_workers);
+            }
+            const auto cores = static_cast<std::size_t>(cpp_get_nproc());
+            return cores / 2 > 0 ? cores / 2 : 1;
+        }
+
         /// Diagnostic text for a stage. `label` appears in EVERY escalation branch; `settingHint`
         /// only in the first-attempt ERROR. One switch so a new stage cannot be half-added.
         struct StageDiagnostics
@@ -687,8 +801,8 @@ namespace invsync
             // deadlocks.
             std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
 
-            invsync::http::UdsHttpServerConfig serverConfig;
-            nlohmann::json rawIndexerConfig;
+            wazuh::uds_http::UdsHttpServerConfig serverConfig;
+            nlohmann::json sessionConfig;
             nlohmann::json syncConnectorConfig;
             nlohmann::json asyncConnectorConfig;
             IndexerSessionFactory sessionFactory;
@@ -698,7 +812,7 @@ namespace invsync
             std::size_t pipelineWorkers {1};
             std::string pipelineClusterName;
             invsync::vd::VdScanLaneConfig laneConfig;
-            std::size_t laneWorkers {DEFAULT_VD_WORKERS};
+            std::size_t laneWorkers {1};
             VdScannerFactory scannerFactory;
             std::uint64_t generation {0};
             bool needSession {false};
@@ -727,7 +841,7 @@ namespace invsync
 
                 // Resolved once per attempt and kept, so the failure path can name the actual path
                 // without rebuilding the configuration (and so the two can never disagree).
-                serverConfig = invsync::http::buildServerConfig(m_config);
+                serverConfig = invsync::buildServerConfig(m_config);
                 m_resolvedSocketPath = serverConfig.socketPath;
 
                 needSession = !m_indexerSession;
@@ -744,8 +858,7 @@ namespace invsync
                     m_agentRegistry = std::make_shared<invsync::vd::AgentInFlightRegistry>();
                 }
 
-                laneWorkers =
-                    m_config.vd_workers > 0 ? static_cast<std::size_t>(m_config.vd_workers) : DEFAULT_VD_WORKERS;
+                laneWorkers = resolveVdWorkers(m_config);
                 laneConfig.workers = laneWorkers;
                 laneConfig.queueSlots =
                     m_config.vd_scan_queue_slots > 0 ? static_cast<std::size_t>(m_config.vd_scan_queue_slots) : 0;
@@ -765,12 +878,13 @@ namespace invsync
                 pipelineConfig.bulkFlushBytes = m_config.indexer_sync_max_bulk_size > 0
                                                     ? static_cast<std::size_t>(m_config.indexer_sync_max_bulk_size)
                                                     : DEFAULT_BULK_FLUSH_BYTES;
+                pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
                 if (needSession || needSync || needAsync || needPipeline)
                 {
                     logIndexerSummary();
-                    rawIndexerConfig = m_indexerConfig;
+                    sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
                     syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
                     asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
 
@@ -818,7 +932,7 @@ namespace invsync
                                  [&]
                                  {
                                      return sessionFactory(
-                                         rawIndexerConfig,
+                                         sessionConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
                                  }))
             {
@@ -1148,7 +1262,17 @@ namespace invsync
         std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
             m_logFunction;
 
-        std::unique_ptr<invsync::http::IUdsHttpServer> m_httpServer; ///< HTTP-over-UDS transport.
+        /// HTTP-over-UDS transport. shared_ptr (not unique) so the transport-diagnostics pull
+        /// metrics can hold a WEAK reference that expires the moment stop() resets this.
+        std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_httpServer;
+
+        /// Pull metrics are registered once (there is no unregister -- iManager.hpp), but the
+        /// server they observe is replaced per start attempt, so the getters resolve the current
+        /// one through this weak target under its own tiny mutex (never the lifecycle mutex: a
+        /// metrics dump must not be able to contend with stop()).
+        mutable std::mutex m_transportDiagMutex;
+        std::weak_ptr<wazuh::uds_http::IUdsHttpServer> m_transportDiagTarget;
+        bool m_transportPullsRegistered {false};
 
         /*
          * The three indexer slots, each constructed at most once per start()/stop() cycle and memoised

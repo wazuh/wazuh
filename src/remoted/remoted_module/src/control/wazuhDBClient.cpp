@@ -18,6 +18,7 @@
 #include "socketWrapper.hpp"
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -60,6 +61,18 @@ namespace remoted::control
         }
 
         remoted::common::LogThrottle& ioErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& nonOkResponseThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& parseErrorThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -232,12 +245,22 @@ namespace remoted::control
                 try
                 {
                     LOGFN_DEBUG2(logFn(), "Sending WazuhDB command: %s", req.command.c_str());
+                    const auto sentAt = std::chrono::steady_clock::now();
                     client->send(req.command.data(), req.command.size());
 
                     std::unique_lock<std::mutex> respLock(responseMutex);
                     if (responseCv.wait_for(
                             respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
                     {
+                        // Observed only on success: wdbError already counts the failures, so the
+                        // histogram means "how long a HEALTHY round trip takes" -- the number that
+                        // sizes 'remoted.control_wdb_roundtrip_deadline'. Worker-thread-only,
+                        // dump-independent.
+                        observeWdbLatency(
+                            m_metrics,
+                            static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                                           std::chrono::steady_clock::now() - sentAt)
+                                                           .count()));
                         LOGFN_DEBUG2(logFn(), "Received WazuhDB response.");
                         req.callback(SocketError::None, response);
                     }
@@ -306,7 +329,18 @@ namespace remoted::control
                                     std::function<void(SocketError)> callback)
     {
         std::string command = "global " + queryName + " " + params.dump();
-        query(command, [callback = std::move(callback)](SocketError err, const std::string&) { callback(err); });
+        query(command,
+              [callback = std::move(callback)](SocketError err, const std::string& response)
+              {
+                  // wazuh-db reports application failures as "err ..." over a healthy socket, so
+                  // the transport status alone calls every one of them a success.
+                  if (err == SocketError::None && !isOk(response))
+                  {
+                      err = SocketError::ProtocolError;
+                  }
+
+                  callback(err);
+              });
     }
 
     void WazuhDBClient::getAgentGroups(AgentId id, std::function<void(SocketError, std::vector<std::string>)> callback)
@@ -325,6 +359,14 @@ namespace remoted::control
 
                   if (!isOk(response))
                   {
+                      if (const auto throttle = nonOkResponseThrottle().record())
+                      {
+                          LOGFN_WARN(logFn(),
+                                     "WazuhDB returned a non-ok response to getAgentGroups: %llu error(s) in the "
+                                     "last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                      }
                       callback(SocketError::ProtocolError, {});
                       return;
                   }
@@ -365,6 +407,14 @@ namespace remoted::control
                   }
                   catch (...)
                   {
+                      if (const auto throttle = parseErrorThrottle().record())
+                      {
+                          LOGFN_WARN(logFn(),
+                                     "WazuhDB getAgentGroups: could not parse the response: %llu error(s) in the "
+                                     "last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                      }
                       callback(SocketError::ProtocolError, {});
                   }
               });
@@ -480,6 +530,7 @@ namespace remoted::control
     void WazuhDBClient::updateStatusCode(AgentId id,
                                          AgentStatusCode statusCode,
                                          const std::string& version,
+                                         const std::string& connectionStatus,
                                          const std::string& syncStatus,
                                          std::function<void(SocketError)> callback)
     {
@@ -487,6 +538,10 @@ namespace remoted::control
         params["id"] = id;
         params["status_code"] = static_cast<int>(statusCode);
         params["version"] = version;
+        if (!connectionStatus.empty())
+        {
+            params["connection_status"] = connectionStatus;
+        }
         params["sync_status"] = syncStatus;
 
         globalQuery("update-status-code", params, std::move(callback));

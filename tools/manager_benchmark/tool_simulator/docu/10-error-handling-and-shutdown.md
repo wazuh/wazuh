@@ -21,6 +21,7 @@ checksum is a *result to record*, not a failure — so the sender separates two 
 | Scenario validation error (unknown field, bad reference) | Setup error | Refuse to start, naming the field | **Yes**, before any traffic |
 | `401` on any request | Sender bug (signing/clock) | Abort with the canonical string and timestamp used, for diagnosis | **Yes**, immediately |
 | `400` from `/control` (any subtype) | Sender bug | Abort naming the subtype (`invalid_json`, `invalid_version`, `invalid_host_info`, …) | **Yes**, immediately |
+| `409 invalid_version` from `/control` (`startup`) | Setup error | Abort: the configured agent version is above the manager's `allow_higher_versions` policy | **Yes**, immediately |
 | `400`/`403` from `/stateful` on a normal step | Sender bug | Abort: a correct sender never produces these on a `delta`/`cleans`/`checksum` step | **Yes** |
 | `400`/`403`/`413` from a `raw` or deliberately-oversized step | Expected result of that step | Count in its bucket; continue | No |
 | `409` checksum mismatch (`ModuleCheck`) | Result | Count; no implicit resync | No |

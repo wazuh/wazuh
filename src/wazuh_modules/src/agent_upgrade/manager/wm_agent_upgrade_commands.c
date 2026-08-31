@@ -58,17 +58,23 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
 STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const char *wpk_repository_config) __attribute__((nonnull(1)));
 
 /**
- * Gate remote_upgrade task creation to v5.0.0+ while remoted's <remote><https><verification_mode>
- * isn't 'none': no 5.x agent can speak HTTPS yet, so it may be unable to reconnect. Reads
- * remoted's config independently off disk (ReadConfig(CREMOTE, ...), same as remoted itself) --
- * no IPC, no shared live config between the two daemons.
+ * Gate remote_upgrade task creation on two independent remoted settings that both live in the
+ * same <remote> config block: (1) <remote><legacy> delivery being enabled, when the agent is
+ * still below v5.0.0 (with it disabled there is no way to deliver the task to that agent at
+ * all), and (2) <remote><https><verification_mode> being 'none' when the target is v5.0.0+ (no
+ * 5.x agent can speak HTTPS yet, so it may be unable to reconnect). Reads remoted's config
+ * independently off disk (ReadConfig(CREMOTE, ...), same as remoted itself) -- no IPC, no
+ * shared live config between the two daemons -- but only once per call, since a separate
+ * ReadConfig() per gate would parse the same file twice for every agent in a batch upgrade.
+ * @param current_version Agent's current wazuh_version, or NULL if unknown.
  * @param target_version Resolved target version (e.g. "v5.0.0"), or NULL if unresolvable.
  * @param force_upgrade Caller requested 'force' (repo-based path only; always false for the
  * custom-WPK path, which carries no such field -- see the unconditional-reject note below).
  * @return WM_UPGRADE_SUCCESS if the upgrade may proceed.
- * @retval WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE if it must be rejected.
+ * @retval WM_UPGRADE_LEGACY_DELIVERY_DISABLED if gate (1) rejects it.
+ * @retval WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE if gate (2) rejects it.
  */
-STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade);
+STATIC int wm_agent_upgrade_validate_remoted_delivery(const char *current_version, const char *target_version, bool force_upgrade);
 
 /**
  * Build Task Manager JSON message for upgrade task
@@ -278,13 +284,14 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         return validate_result;
     }
 
-    // HTTPS verification_mode / force gate: repo-based path has its target version resolved
-    // through the repository itself; custom-WPK cannot trust its filename for the same purpose
-    // (see the WM_UPGRADE_UPGRADE_CUSTOM branch below).
+    // Legacy delivery / HTTPS verification_mode gates: repo-based path has its target version
+    // resolved through the repository itself; custom-WPK cannot trust its filename for the same
+    // purpose (see the WM_UPGRADE_UPGRADE_CUSTOM branch below). Both gates read remoted's config
+    // in one shared ReadConfig() call.
     if (agent_task->task_info->command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
 
-        validate_result = wm_agent_upgrade_validate_https_verification_mode(task->wpk_version, task->force_upgrade);
+        validate_result = wm_agent_upgrade_validate_remoted_delivery(agent_task->agent_info->wazuh_version, task->wpk_version, task->force_upgrade);
 
         if (validate_result != WM_UPGRADE_SUCCESS) {
             return validate_result;
@@ -296,7 +303,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         // as if it targets v5.0.0+ here, rather than trusting the (unverifiable) filename. No
         // force_upgrade field exists on this task type (or 'force' param on /agents/upgrade_custom),
         // so this is an unconditional reject with no override.
-        validate_result = wm_agent_upgrade_validate_https_verification_mode(WM_UPGRADE_5X_MINIMUM_VERSION, false);
+        validate_result = wm_agent_upgrade_validate_remoted_delivery(agent_task->agent_info->wazuh_version, WM_UPGRADE_5X_MINIMUM_VERSION, false);
 
         if (validate_result != WM_UPGRADE_SUCCESS) {
             return validate_result;
@@ -327,8 +334,11 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     return validate_result;
 }
 
-STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade) {
-    if (!target_version || compare_wazuh_versions(target_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) < 0) {
+STATIC int wm_agent_upgrade_validate_remoted_delivery(const char *current_version, const char *target_version, bool force_upgrade) {
+    bool check_legacy_delivery = current_version && compare_wazuh_versions(current_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) < 0;
+    bool check_https_verification = target_version && compare_wazuh_versions(target_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) >= 0;
+
+    if (!check_legacy_delivery && !check_https_verification) {
         return WM_UPGRADE_SUCCESS;
     }
 
@@ -337,33 +347,40 @@ STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_
     tmp_remoted_cfg.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
 
     if (ReadConfig(CREMOTE, WAZUHCONF, &tmp_remoted_cfg, NULL) < 0) {
-        // Can't determine verification_mode (e.g. a transient config-parse issue remoted will
-        // surface itself) -- fail open rather than block the upgrade on this unrelated read failing.
+        // Can't determine legacy_enabled/verification_mode (e.g. a transient config-parse issue
+        // remoted will surface itself) -- fail open rather than block the upgrade on this
+        // unrelated read failing.
         return WM_UPGRADE_SUCCESS;
     }
 
+    bool legacy_enabled = tmp_remoted_cfg.legacy_enabled;
     int verification_mode = tmp_remoted_cfg.https.verification_mode;
 
     os_free(tmp_remoted_cfg.lip);
     os_free(tmp_remoted_cfg.https.bind_addr);
+    os_free(tmp_remoted_cfg.https.global_prefix);
     os_free(tmp_remoted_cfg.https.certificate);
     os_free(tmp_remoted_cfg.https.key);
     os_free(tmp_remoted_cfg.https.ca);
     os_free(tmp_remoted_cfg.https.ciphers);
 
-    if (verification_mode == REMOTED_HTTPS_VERIFY_UNSET || verification_mode == REMOTED_HTTPS_VERIFY_NONE) {
-        return WM_UPGRADE_SUCCESS;
+    if (check_legacy_delivery && !legacy_enabled) {
+        return WM_UPGRADE_LEGACY_DELIVERY_DISABLED;
     }
 
-    if (force_upgrade) {
+    // HTTPS verification_mode / force gate.
+    if (check_https_verification && verification_mode != REMOTED_HTTPS_VERIFY_UNSET && verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        if (!force_upgrade) {
+            return WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE;
+        }
+
         mtwarn(WM_AGENT_UPGRADE_LOGTAG,
                "Upgrading agent to '%s' while remoted's HTTPS verification_mode is not 'none': the "
                "agent may be unable to reconnect afterward. Proceeding because 'force' was set "
                "(accepted risk).", target_version);
-        return WM_UPGRADE_SUCCESS;
     }
 
-    return WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE;
+    return WM_UPGRADE_SUCCESS;
 }
 
 STATIC cJSON* wm_agent_upgrade_build_task_message(int agent_id, time_t request_time, const char *wpk_file, const char *wpk_sha1, const char *installer) {

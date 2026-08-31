@@ -13,6 +13,7 @@
 
 #include "curlHandle.hpp"
 
+#include <exception>
 #include <functional>
 #include <string>
 
@@ -23,8 +24,7 @@ namespace
     /// host block) and StatelessStream (the H line's host block) take. Returns
     /// "" when fn is null, so an unset callback degrades to "no extra metadata"
     /// rather than a crash.
-    std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*),
-                                                       void* userData)
+    std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*), void* userData)
     {
         return [fn, userData]() -> std::string
         {
@@ -60,27 +60,68 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_keyProvider(m_config.agentKeyHex)
     , m_signer(m_config.agentId, m_keyProvider)
     , m_spoolFactory(m_config.spoolDir)
-    , m_performer(m_config, defaultCurlHandleFactory())
+    , m_performer(m_config, defaultCurlHandleFactory(), m_fsProbe)
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_vdOffsetStore(callbacks.vd_offset_observe, callbacks.vd_offset_clear_pending, callbacks.user_data)
     , m_collectors(callbacks)
-    , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate,
-                  m_compressionGate, makeStatelessHostCollector(callbacks))
-    , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
-                 m_authGate, m_compressionGate, m_fileCompressor)
-    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
-                m_configHash, m_cluster, m_authGate, m_compressionGate, m_taskStore, m_vdOffsetStore,
+    , m_stateless(m_config,
+                  m_performer,
+                  m_signer,
+                  m_clock,
+                  m_random,
+                  m_dispatcher,
+                  m_authGate,
+                  m_compressionGate,
+                  makeStatelessHostCollector(callbacks))
+    , m_stateful(m_config,
+                 m_performer,
+                 m_signer,
+                 m_clock,
+                 m_random,
+                 m_spoolFactory,
+                 m_dispatcher,
+                 m_authGate,
+                 m_compressionGate,
+                 m_fileCompressor)
+    , m_control(m_config,
+                m_performer,
+                m_signer,
+                m_clock,
+                m_random,
+                m_dispatcher,
+                m_spoolFactory,
+                m_configHash,
+                m_cluster,
+                m_authGate,
+                m_compressionGate,
+                m_taskStore,
+                m_vdOffsetStore,
                 makeHostCollector(callbacks))
-    , m_reporter(m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
-                 m_cluster, m_collectors)
+    , m_reporter(
+          m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors)
 {
 }
 
 HttpsClientFacade::~HttpsClientFacade()
 {
-    stop();
+    // stop() is a long best-effort teardown chain (thread joins, JSON
+    // serialization, the sync intake) and is not noexcept; a destructor is
+    // implicitly noexcept(true), so letting anything escape here would call
+    // std::terminate() instead of completing a graceful shutdown. (CID 562609)
+    try
+    {
+        stop();
+    }
+    catch (const std::exception& e)
+    {
+        LOGFN_ERROR(m_logFn, "Exception during https_client shutdown: %s", e.what());
+    }
+    catch (...)
+    {
+        LOGFN_ERROR(m_logFn, "Unknown exception during https_client shutdown.");
+    }
 }
 
 bool HttpsClientFacade::start()
@@ -108,10 +149,11 @@ bool HttpsClientFacade::start()
     }
 
     LOGFN_INFO(m_logFn,
-               "Starting https_client (server=%s:%u, agent=%s).",
+               "Starting https_client (server=%s:%u, agent=%s, body compression %s).",
                m_config.serverHost.c_str(),
                m_config.serverPort,
-               m_config.agentId.c_str());
+               m_config.agentId.c_str(),
+               m_config.httpsCompressionEnabled ? "enabled" : "disabled");
     m_started = true;
     m_dispatcher.start();
     m_dispatcher.onStateChange(HC_STATE_STARTING);
@@ -138,7 +180,8 @@ void HttpsClientFacade::startSyncIntake()
     const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} :
                                  m_config.spoolDir;
     m_syncIntake = std::make_unique<SyncIntake>(
-                       m_config.syncSocketPath, spoolDir,
+                       m_config.syncSocketPath,
+                       spoolDir,
                        [this](const std::string & sessionId, const std::string & path, uint64_t size)
     {
         // The intake streamed the session to `path`; hand it to the stateful
@@ -149,8 +192,7 @@ void HttpsClientFacade::startSyncIntake()
             // Say so on both channels: the producer is another process and only
             // sees the intake's answer, while the outcome of every other session
             // reaches this agent through on_sync_response.
-            LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.",
-                       sessionId.c_str());
+            LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.", sessionId.c_str());
             // 503: the manager-not-ready code the sync protocol already knows how to
             // handle (retry next cycle) - this is local backpressure, never a real HTTP
             // response, but the semantics match.
@@ -164,13 +206,11 @@ void HttpsClientFacade::startSyncIntake()
 
     if (m_syncIntake->start())
     {
-        LOGFN_INFO(m_logFn, "Sync intake listening on %s.",
-                   m_config.syncSocketPath.c_str());
+        LOGFN_INFO(m_logFn, "Sync intake listening on %s.", m_config.syncSocketPath.c_str());
     }
     else
     {
-        LOGFN_ERROR(m_logFn, "Sync intake failed to bind %s.",
-                    m_config.syncSocketPath.c_str());
+        LOGFN_ERROR(m_logFn, "Sync intake failed to bind %s.", m_config.syncSocketPath.c_str());
         m_syncIntake.reset();
     }
 }
@@ -348,8 +388,7 @@ void HttpsClientFacade::drain()
 
 std::chrono::milliseconds HttpsClientFacade::controlInterval() const
 {
-    const uint32_t seconds =
-        m_control.useSlowCadence() ? m_config.rejectedRetryIntervalS : m_config.notifyIntervalS;
+    const uint32_t seconds = m_control.useSlowCadence() ? m_config.rejectedRetryIntervalS : m_config.notifyIntervalS;
     return std::chrono::seconds {seconds};
 }
 
@@ -386,8 +425,7 @@ bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* 
     return queued;
 }
 
-bool HttpsClientFacade::submitSyncSessionFile(const char* sessionId, const char* filePath,
-                                              uint64_t size)
+bool HttpsClientFacade::submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size)
 {
     std::lock_guard<std::mutex> lock(m_lifecycleMutex);
 
@@ -411,16 +449,21 @@ void HttpsClientFacade::notifyNow()
     }
 }
 
-bool HttpsClientFacade::setAgentKey(const char* keyHex)
+bool HttpsClientFacade::setAgentIdentity(const char* agentId, const char* keyHex)
 {
     // Callback-safe (no lifecycle lock): the natural flow is to call this from
-    // inside on_reenroll_required. It swaps the CMAC key, clears the auth pause
-    // and (via the gate's wake) drives the control loop to re-register.
-    if (keyHex == nullptr || !m_keyProvider.setKey(keyHex))
+    // inside on_reenroll_required. It swaps the signing key and id together (a
+    // re-enroll response, #38465, can hand back a new numeric id along with
+    // the new key -- the two must move as one, or subsequent tokens would
+    // name an id the manager no longer associates with this key),
+    // clears the auth pause, and (via the gate's wake) drives the control
+    // loop to re-register.
+    if (agentId == nullptr || keyHex == nullptr || !m_keyProvider.setKey(keyHex))
     {
-        return false; // Invalid material: the previous key stays in place.
+        return false; // Invalid material: the previous identity stays in place.
     }
 
+    m_signer.setAgentId(agentId);
     m_authGate.release();
     return true;
 }

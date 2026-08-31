@@ -13,6 +13,8 @@
 #include "control/wazuhDBClient.hpp"
 #include "fakeUdsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -131,7 +133,8 @@ TEST(WazuhDBClientTest, QueryRoundTripsCommandAndResponse)
 TEST(WazuhDBClientTest, GetAgentGroupsParsesCsvFromWdbResponse)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_grp");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok [{\"group\":\"default,web,dmz\"}]"; });
+    FakeUdsServer server(path,
+                         [](const std::string&) -> std::string { return "ok [{\"group\":\"default,web,dmz\"}]"; });
 
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
@@ -304,8 +307,10 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got1 = received;
     }
-    EXPECT_NE(got1.find("\"os_major\":\"22\""), std::string::npos) << "Ubuntu 22.04 should parse major=22, got: " << got1;
-    EXPECT_NE(got1.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 22.04 should parse minor=04, got: " << got1;
+    EXPECT_NE(got1.find("\"os_major\":\"22\""), std::string::npos)
+        << "Ubuntu 22.04 should parse major=22, got: " << got1;
+    EXPECT_NE(got1.find("\"os_minor\":\"04\""), std::string::npos)
+        << "Ubuntu 22.04 should parse minor=04, got: " << got1;
 
     // Test SUSE version format
     HostInfo host2;
@@ -324,7 +329,8 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got2 = received;
     }
-    EXPECT_NE(got2.find("\"os_major\":\"15\""), std::string::npos) << "SUSE 15-SP7 should parse major=15, got: " << got2;
+    EXPECT_NE(got2.find("\"os_major\":\"15\""), std::string::npos)
+        << "SUSE 15-SP7 should parse major=15, got: " << got2;
     EXPECT_NE(got2.find("\"os_minor\":\"7\""), std::string::npos) << "SUSE 15-SP7 should parse minor=7, got: " << got2;
 
     // Test version with patch number
@@ -344,8 +350,10 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got3 = received;
     }
-    EXPECT_NE(got3.find("\"os_major\":\"20\""), std::string::npos) << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
-    EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
+    EXPECT_NE(got3.find("\"os_major\":\"20\""), std::string::npos)
+        << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
+    EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos)
+        << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
 }
 
 TEST(WazuhDBClientTest, UpdateAgentDataOmitsOsTypeWhenEmpty)
@@ -395,7 +403,8 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
-    client.updateStatusCode(3, AgentStatusCode::InvalidVersion, "v0", "synced", [&](SocketError e) { w.complete(e); });
+    client.updateStatusCode(
+        3, AgentStatusCode::InvalidVersion, "v0", "", "synced", [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
 
     std::string got;
@@ -407,6 +416,21 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     // InvalidVersion == 1.
     EXPECT_NE(got.find("\"status_code\":1"), std::string::npos);
     EXPECT_NE(got.find("\"version\":\"v0\""), std::string::npos);
+    // An empty connectionStatus must not reach the wire: without the key, wdb
+    // keeps the plain status-code statement and does not touch the keepalive.
+    EXPECT_EQ(got.find("connection_status"), std::string::npos);
+
+    Waiter<SocketError> w2;
+    client.updateStatusCode(
+        3, AgentStatusCode::Ok, "v5.0.0", "pending", "synced", [&](SocketError e) { w2.complete(e); });
+    ASSERT_TRUE(w2.wait(3000ms));
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got = received;
+    }
+    EXPECT_NE(got.find("\"status_code\":0"), std::string::npos);
+    EXPECT_NE(got.find("\"version\":\"v5.0.0\""), std::string::npos);
+    EXPECT_NE(got.find("\"connection_status\":\"pending\""), std::string::npos);
 }
 
 // -----------------------------------------------------------------------------
@@ -419,7 +443,9 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     // Short deadline so the test doesn't wait forever.
     WazuhDBClient client(path, 1, /*deadlineMs*/ 100, 100, metrics);
 
@@ -427,7 +453,34 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::Timeout);
-    EXPECT_GE(metrics.wdbErrorCount.load(), 1U);
+    EXPECT_GE(metrics.wdbError->get(), 1U);
+    // A timeout is already accounted by wdbError; observing it would poison the latency
+    // histogram's "healthy round trip" meaning with deadline-shaped values.
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// -----------------------------------------------------------------------------
+// Latency: one observation per SUCCESSFUL round trip -- the histogram is the
+// number that sizes wdbRoundtripDeadlineMs, so failures must never feed it.
+// -----------------------------------------------------------------------------
+TEST(WazuhDBClientTest, SuccessfulRoundTripObservesLatencyOnce)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_lat");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> w;
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+
+    const auto snapshot = metrics.wdbLatency->snapshot();
+    EXPECT_EQ(snapshot.count, 1U);
+    EXPECT_EQ(metrics.wdbError->get(), 0U);
 }
 
 // -----------------------------------------------------------------------------
@@ -442,7 +495,9 @@ TEST(WazuhDBClientTest, QueueFullRejectsSynchronously)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     // 1 worker, queue depth 2. QueueFull is decided synchronously in query()
     // without touching the worker, so the deadline doesn't race the check --
     // we keep it small so the dtor does not have to wait for an in-flight
@@ -485,7 +540,7 @@ TEST(WazuhDBClientTest, QueueFullRejectsSynchronously)
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_GE(queueFull.load(), 3);
-    EXPECT_GE(metrics.wdbErrorCount.load(), 3U);
+    EXPECT_GE(metrics.wdbError->get(), 3U);
 }
 
 // -----------------------------------------------------------------------------
@@ -523,4 +578,40 @@ TEST(WazuhDBClientTest, DtorFailsPendingCallbacksWithIo)
     // The in-flight one may also have been failed with Io/Timeout; we assert on
     // the queued ones (>= 4 of the 5) to keep the test deterministic.
     EXPECT_GE(io.load(), 4);
+}
+
+// globalQuery: an application-level "err ..." travels over a socket that worked, so the transport
+// status alone reports every one of them as a success.
+TEST(WazuhDBClientTest, UpdateSurfacesApplicationLevelError)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_err");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "err Invalid agent id"; });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> keepalive;
+    client.updateKeepalive(1, "active", "synced", [&](SocketError e) { keepalive.complete(e); });
+    ASSERT_TRUE(keepalive.wait(3000ms));
+    EXPECT_EQ(keepalive.value, SocketError::ProtocolError);
+
+    Waiter<SocketError> connectionStatus;
+    client.updateConnectionStatus(
+        1, AgentStatusCode::Ok, "disconnected", "synced", [&](SocketError e) { connectionStatus.complete(e); });
+    ASSERT_TRUE(connectionStatus.wait(3000ms));
+    EXPECT_EQ(connectionStatus.value, SocketError::ProtocolError);
+}
+
+TEST(WazuhDBClientTest, UpdateSucceedsOnOk)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_ok");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> w;
+    client.updateKeepalive(1, "active", "synced", [&](SocketError e) { w.complete(e); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value, SocketError::None);
 }

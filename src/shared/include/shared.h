@@ -91,6 +91,17 @@
 #include <ws2tcpip.h>
 #include <shlwapi.h>
 #include <direct.h>
+
+/* windows.h (above) pulls in wincrypt.h, which #defines X509_NAME (and a
+ * few other similarly-named X509/PKCS7/OCSP tokens) as plain integer
+ * constants -- silently shadowing OpenSSL's own typedefs of the same names
+ * for any translation unit that already included an OpenSSL X.509 header
+ * before this point (e.g. generate_cert.c's own header includes OpenSSL
+ * first). openssl/types.h carries an explicit, unconditional #undef for
+ * exactly this collision (see the openssl/openssl issue 9981 tracker);
+ * re-including it here re-runs that undef after windows.h, restoring the
+ * correct meaning for the rest of the translation unit. */
+#include <openssl/types.h>
 #endif
 
 #ifdef __cplusplus
@@ -245,6 +256,7 @@ extern const char *__local_name;
 #include "information_messages.h"
 #include "warning_messages.h"
 #include "custom_output_search.h"
+#include "os_cert_bundle.h"
 #include "url.h"
 #include "yaml2json.h"
 #include "cluster_utils.h"
@@ -252,7 +264,6 @@ extern const char *__local_name;
 #include "os_utils.h"
 #include "schedule_scan.h"
 #include "bzip2_op.h"
-#include "enrollment_op.h"
 #include "buffer_op.h"
 #include "atomic.h"
 #include "binaries_op.h"

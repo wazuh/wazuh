@@ -53,7 +53,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(
         key::GEO_MANIFEST_URL,
         "WAZUH_GEO_MANIFEST_URL",
-        "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
+        "https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json");
     addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 60000);
 
     // Indexer connector
@@ -69,6 +69,8 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::INDEXER_LOGGER_QUEUE_SIZE, "WAZUH_INDEXER_LOGGER_QUEUE_SIZE", 8);
     addUnit<size_t>(key::INDEXER_LOGGER_THREADS, "WAZUH_INDEXER_LOGGER_THREADS", 1);
     addUnit<size_t>(key::INDEXER_MAX_RETRY_DELAY, "WAZUH_INDEXER_MAX_RETRY_DELAY", 15);
+    addUnit<size_t>(key::INDEXER_REQUEST_TIMEOUT, "WAZUH_INDEXER_REQUEST_TIMEOUT", 60);
+    addUnit<size_t>(key::INDEXER_MONITORING_INTERVAL, "WAZUH_INDEXER_MONITORING_INTERVAL", 10);
     addUnit<size_t>(
         key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE, "WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE", 100);
     // IOC Sync
@@ -102,14 +104,14 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Http server module
     addUnit<std::string>(
-        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/analysis").c_str());
+        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api-http.sock").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
     addUnit<int64_t>(key::SERVER_API_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_PAYLOAD_MAX_BYTES", 0);
 
     // Event server - enriched (http)
     addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
-                         (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+                         (wazuhRoot / "queue/sockets/engine-ingest-http.sock").c_str());
 
     // Enable or disable server event processing
     addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);

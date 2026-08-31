@@ -38,6 +38,9 @@ typedef struct authd_flags_t {
     unsigned short use_password:1;
     unsigned short verify_host:1;
     unsigned short remote_enrollment:1;
+    unsigned short legacy_enrollment:1;  ///< Gates only the legacy TCP/TLS listener (port 1515);
+                                          ///< remote_enrollment is the master switch for all remote
+                                          ///< self-enrollment. Defaults to enabled.
 } authd_flags_t;
 
 typedef struct authd_config_t {
@@ -54,6 +57,9 @@ typedef struct authd_config_t {
     bool ipv6;
     bool allow_higher_versions;
     unsigned int max_agents;
+    /// Seconds a deletion waits before its indexer purge is relayed (internal option
+    /// `authd.purge_delay`). 0 relays immediately, which is only meant for tests.
+    int purge_delay;
 } authd_config_t;
 
 /**

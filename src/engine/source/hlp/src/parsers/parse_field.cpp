@@ -58,7 +58,7 @@ getField(std::string_view input, const char delimiter, const char quote, const c
                     bool escaped = (last_escape_location + 1 == i) && (1 < i);
                     isEscaped = isEscaped || escaped;
                     last_escape_location += (i - last_escape_location) * size_t(!escaped);
-                    quote_opened = escaped || (input[i + 1] != delimiter);
+                    quote_opened = escaped || (i + 1 >= input.size() || input[i + 1] != delimiter);
                     isQuoted = true;
                 }
             }

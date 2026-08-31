@@ -64,6 +64,9 @@ namespace
             case CurlOption::NoSignal:
                 return "NOSIGNAL";
 
+            case CurlOption::SuppressConnectHeaders:
+                return "SUPPRESS_CONNECT_HEADERS";
+
             default:
                 return "unknown"; // LCOV_EXCL_LINE: applyTls sets none of the rest.
         }
@@ -71,9 +74,26 @@ namespace
 }
 
 CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory)
+    : CurlPerformer(config, std::move(factory), FsProbe {})
+{
+}
+
+CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory, const IFsProbe& fsProbe)
     : m_config(config)
     , m_factory(std::move(factory))
 {
+#if !defined(WIN32) && !defined(__APPLE__)
+
+    // Resolved once, here, instead of in applyTrustAnchors(): that runs on every perform(),
+    // which would mean probing the filesystem on every single request. A config that fails
+    // this (no bundle found) is rejected by ModuleConfig::validateTls before the client ever
+    // starts, so an empty result here is inert -- perform() is never reached in that case.
+    if (m_config.verifyMode == HC_VERIFY_SYSTEM && m_config.caPath.empty())
+    {
+        m_config.caPath = fsProbe.findSystemCaBundle();
+    }
+
+#endif
 }
 
 HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
@@ -106,7 +126,10 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     // complete file.
     const FilePtr responseGuard {responseFile, std::fclose};
 
-    configureRequest(*handle, spec, response);
+    if (!configureRequest(*handle, spec, response))
+    {
+        return response;
+    }
 
     if (!applyTls(*handle))
     {
@@ -117,6 +140,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     response.status = handle->perform();
     response.httpCode = handle->responseCode();
     response.localIp = handle->localIp();
+    response.curlError = handle->curlError();
     return response;
 }
 
@@ -141,7 +165,15 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
         return false;
     }
 
-    handle.streamBodyFromFile(file, spec.bodyFileSize); // Streamed POST (sets the method itself).
+    // Streamed POST (sets the method itself). Close the file ourselves on
+    // rejection: *fileOut is only set -- and so only owned by the caller's
+    // FilePtr guard -- once this call is known to have succeeded.
+    if (!handle.streamBodyFromFile(file, spec.bodyFileSize))
+    {
+        std::fclose(file);
+        return false;
+    }
+
     *fileOut = file;
     return true;
 }
@@ -153,8 +185,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
 
     if (spec.responseFilePath.empty())
     {
-        handle.captureResponseBody(&response.body);
-        return true;
+        return handle.captureResponseBody(&response.body);
     }
 
     // Open the response target WITHOUT following a symlink and owner-only: if
@@ -213,12 +244,19 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
         return false;
     }
 
-    handle.captureResponseToFile(file, spec.maxResponseBytes);
+    // Same ownership rule as configureBody()'s streamBodyFromFile: only own
+    // *fileOut once the handle has actually accepted the sink.
+    if (!handle.captureResponseToFile(file, spec.maxResponseBytes))
+    {
+        std::fclose(file);
+        return false;
+    }
+
     *fileOut = file;
     return true;
 }
 
-void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
+bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
                                      HttpResponse& response) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
@@ -234,19 +272,28 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     }
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
-    handle.captureRetryAfter(&response.retryAfterSeconds);
+
+    if (!handle.captureResponseHeaders({&response.retryAfterSeconds, &response.serverDateSeconds}))
+    {
+        return false;
+    }
+
     handle.setOptionLong(CurlOption::TimeoutMs, static_cast<long>(spec.timeoutMs));
 
-    if (spec.abortFlag != nullptr)
+    if (spec.abortFlag != nullptr && !handle.wireAbort(spec.abortFlag))
     {
-        handle.wireAbort(spec.abortFlag);
+        return false;
     }
+
+    return true;
 }
 
 bool CurlPerformer::applyTls(ICurlHandle& handle) const
 {
     const bool verifyPeer = m_config.verifyMode != HC_VERIFY_NONE;
-    const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL;
+    // system trusts a different anchor (the OS store instead of a configured CA) but is
+    // otherwise as strict as full: it checks the hostname too, the way a browser would.
+    const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL || m_config.verifyMode == HC_VERIFY_SYSTEM;
 
     // The manager's HTTPS listener sets a TLS 1.3 floor of its own
     // (SSL_CTX_set_min_proto_version in RestinioHttpServer), so match it instead
@@ -259,7 +306,11 @@ bool CurlPerformer::applyTls(ICurlHandle& handle) const
            && applyClientCertificate(handle)
            && applyCiphers(handle)
            && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
-           && setMandatoryOption(handle, CurlOption::NoSignal, 1L);      // H6.
+           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)       // H6.
+           // Never let a forward-proxy's CONNECT-tunnel response headers reach
+           // headerTrampoline: without this, a proxy's own Date could be
+           // captured as if it were the manager's (#38439 clock-skew fix).
+           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L);
 }
 
 bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
@@ -267,18 +318,25 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
     if (!m_config.caPath.empty())
     {
         // An explicit <ca> is the whole trust set; adding the machine's stores
-        // on top of it would widen what the agent accepts.
+        // on top of it would widen what the agent accepts. (verify_mode=system's
+        // Linux trust anchor also flows through here: the constructor resolves it
+        // into caPath once, up front, so this branch needs no mode-awareness.)
         return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
     }
 
-#ifdef WIN32
-    // Windows curl is built against our OpenSSL (src/external/CMakeLists.txt),
-    // which carries no CA bundle there, so without this nothing is trusted at
-    // all. Schannel used to consult the Windows stores implicitly; this asks
-    // OpenSSL for the same ROOT+CA stores through the Win32 crypto API.
+#if defined(WIN32) || defined(__APPLE__)
+    // Windows/macOS curl is built against our OpenSSL (src/external/CMakeLists.txt),
+    // which carries no CA bundle there, so without this nothing is trusted at all
+    // under verify_mode=system. Schannel/SecTrust used to consult the native store
+    // implicitly; this asks OpenSSL for the same store through the platform's own
+    // crypto API (Win32 CryptoAPI / Apple SecTrust). Reached under NONE too (caPath
+    // is also empty there), but harmless: applyTls() already turned off verifyPeer.
     return setMandatoryOption(handle, CurlOption::SslOptions, TLS_NATIVE_CA_STORE);
 #else
-    // Elsewhere libcurl already defaults to the system bundle it was built with.
+    // Elsewhere (verify_mode=none with no configured CA) libcurl already defaults
+    // to the system bundle it was built with. Not reached under verify_mode=system:
+    // the constructor's resolution guarantees caPath is non-empty there once
+    // validateTls has passed, so the branch above always handles that case.
     return true;
 #endif
 }

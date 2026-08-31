@@ -81,7 +81,10 @@ TEST_F(AuthGateTest, ConcurrentReportsAndReleasesNeverStrandUnpaused)
     {
         threads.emplace_back([&]
         {
-            while (!go.load(std::memory_order_acquire)) {}
+            while (!go.load(std::memory_order_acquire))
+            {
+                std::this_thread::yield(); // Barrier, not a busy-wait: see sysSeams_test.cpp.
+            }
 
             for (int n = 0; n < 2000; n++)
             {

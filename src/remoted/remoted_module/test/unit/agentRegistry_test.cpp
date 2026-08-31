@@ -53,6 +53,30 @@ TEST(AgentRegistryTest, GetOnEmptyReturnsNull)
     EXPECT_EQ(reg.get(42), nullptr);
 }
 
+// size() (the remoted.control.registry.agents pull) sums across ALL shards -- ids are sharded
+// by id % 8, so consecutive ids land in different shards and a per-shard bug would undercount --
+// counts replacements once, and shrinks with eviction.
+TEST(AgentRegistryTest, SizeSumsAcrossShardsAndTracksEviction)
+{
+    AgentRegistry reg;
+    EXPECT_EQ(reg.size(), 0U);
+
+    const auto now = static_cast<uint64_t>(std::time(nullptr));
+    for (AgentId id = 1; id <= 10; ++id) // 10 consecutive ids: every shard is hit
+    {
+        put(reg, id, now);
+    }
+    EXPECT_EQ(reg.size(), 10U);
+
+    put(reg, 1, now); // replacement, not a new entry
+    EXPECT_EQ(reg.size(), 10U);
+
+    put(reg, 11, now - 1000); // stale entry, past the ttl below
+    EXPECT_EQ(reg.size(), 11U);
+    reg.evictExpiredEntries(/*ttlSec=*/500);
+    EXPECT_EQ(reg.size(), 10U);
+}
+
 TEST(AgentRegistryTest, UpdateInsertsWhenAbsent)
 {
     AgentRegistry reg;

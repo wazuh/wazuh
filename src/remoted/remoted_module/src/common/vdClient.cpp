@@ -10,6 +10,7 @@
  */
 
 #include "vdClient.hpp"
+#include "common/logThrottle.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
 #include <httplib.h>
@@ -23,6 +24,17 @@ namespace remoted::common
         const LogFn& logFn()
         {
             static const LogFn instance {VD_CLIENT_LOGTAG};
+            return instance;
+        }
+
+        // Shared across every "VD unreachable/malformed response" message below: the offset
+        // query is single-flighted (see m_refreshInProgress in getOffset()) and gated by
+        // m_failureRetryInterval, so it cannot fire more than once per retry interval anyway --
+        // this only protects against a burst of concurrent callers all landing on the same
+        // failed attempt.
+        LogThrottle& queryFailureThrottle()
+        {
+            static LogThrottle instance;
             return instance;
         }
     } // namespace
@@ -104,7 +116,15 @@ namespace remoted::common
         // so the next attempt is gated by m_failureRetryInterval instead of firing on every call.
         m_lastAttemptFailed = true;
         m_cacheTime = std::chrono::steady_clock::now();
-        LOGFN_DEBUG1(logFn(), "Failed to query VD module, returning last known offset: %llu", m_cachedOffset);
+        if (const auto throttle = queryFailureThrottle().record())
+        {
+            LOGFN_WARN(logFn(),
+                       "Failed to query VD module, returning last known offset: %llu (%llu occurrence(s) in the "
+                       "last %d s).",
+                       m_cachedOffset,
+                       throttle.total,
+                       LogThrottle::kDefaultWindowSeconds);
+        }
         return m_hasValue ? m_cachedOffset : 0;
     }
 
@@ -125,7 +145,14 @@ namespace remoted::common
             auto res = client.Get("/vulnerability-detector/offset");
             if (!res || res->status != 200)
             {
-                LOGFN_DEBUG1(logFn(), "Failed to query VD offset: status=%d", res ? res->status : 0);
+                if (const auto throttle = queryFailureThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Failed to query VD offset: status=%d (%llu occurrence(s) in the last %d s).",
+                               res ? res->status : 0,
+                               throttle.total,
+                               LogThrottle::kDefaultWindowSeconds);
+                }
                 return {false, 0};
             }
 
@@ -137,13 +164,27 @@ namespace remoted::common
             }
             catch (const std::exception& e)
             {
-                LOGFN_DEBUG1(logFn(), "Failed to parse VD offset response: %s", e.what());
+                if (const auto throttle = queryFailureThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Failed to parse VD offset response: %s (%llu occurrence(s) in the last %d s).",
+                               e.what(),
+                               throttle.total,
+                               LogThrottle::kDefaultWindowSeconds);
+                }
                 return {false, 0};
             }
         }
         catch (const std::exception& e)
         {
-            LOGFN_DEBUG1(logFn(), "Failed to connect to VD module: %s", e.what());
+            if (const auto throttle = queryFailureThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Failed to connect to VD module: %s (%llu occurrence(s) in the last %d s).",
+                           e.what(),
+                           throttle.total,
+                           LogThrottle::kDefaultWindowSeconds);
+            }
             return {false, 0};
         }
     }

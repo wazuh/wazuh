@@ -44,11 +44,16 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(10u, typed.notifyIntervalS);
     EXPECT_EQ(60u, typed.rejectedRetryIntervalS);
     EXPECT_EQ(10000u, typed.requestTimeoutMs);
-    EXPECT_EQ(120000u, typed.statefulTimeoutMs);
+    EXPECT_EQ(90000u, typed.statefulTimeoutMs);
     EXPECT_EQ(1000u, typed.backoffBaseMs);
     EXPECT_EQ(60000u, typed.backoffCapMs);
     EXPECT_EQ(5000u, typed.drainTimeoutMs);
     EXPECT_EQ(200ULL * 1024 * 1024, typed.wpkMaxDownloadBytes);
+    EXPECT_EQ(4u, typed.controlMaxAttempts);
+    EXPECT_EQ(5u, typed.statelessMaxAttempts);
+    EXPECT_EQ(5u, typed.statefulMaxAttempts);
+    EXPECT_EQ(2u, typed.downloadMaxAttempts);
+    EXPECT_EQ(2u, typed.producerPauseThreshold);
     EXPECT_FALSE(typed.statsEnabled);
     EXPECT_EQ(60u, typed.statsIntervalS);
     EXPECT_FALSE(typed.configReportEnabled);
@@ -68,10 +73,28 @@ TEST(ModuleConfigTest, ExplicitValuesAreKept)
     config.server_port = 27840;
     config.batch_size_bytes = 2048;
     config.notify_interval_s = 5;
+    config.request_timeout_ms = 25000;
+    config.stateful_timeout_ms = 300000;
+    config.backoff_base_ms = 500;
+    config.backoff_cap_ms = 30000;
+    config.control_max_attempts = 2;
+    config.stateless_max_attempts = 3;
+    config.stateful_max_attempts = 3;
+    config.download_max_attempts = 1;
+    config.producer_pause_threshold = 5;
     const auto typed = ModuleConfig::fromC(config);
     EXPECT_EQ(27840, typed.serverPort);
     EXPECT_EQ(2048u, typed.batchSizeBytes);
     EXPECT_EQ(5u, typed.notifyIntervalS);
+    EXPECT_EQ(25000u, typed.requestTimeoutMs);
+    EXPECT_EQ(300000u, typed.statefulTimeoutMs);
+    EXPECT_EQ(500u, typed.backoffBaseMs);
+    EXPECT_EQ(30000u, typed.backoffCapMs);
+    EXPECT_EQ(2u, typed.controlMaxAttempts);
+    EXPECT_EQ(3u, typed.statelessMaxAttempts);
+    EXPECT_EQ(3u, typed.statefulMaxAttempts);
+    EXPECT_EQ(1u, typed.downloadMaxAttempts);
+    EXPECT_EQ(5u, typed.producerPauseThreshold);
 }
 
 TEST(ModuleConfigTest, UnterminatedFixedFieldIsBounded)
@@ -105,6 +128,26 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
     std::strncpy(ipv4.server_host, "10.0.0.1", sizeof(ipv4.server_host) - 1);
     ipv4.server_port = 8443;
     EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
+}
+
+// #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
+// deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
+// the manager routes on the literal wire request-target (prefix included;
+// the bearer does not bind it), so the prefix is folded into
+// HttpRequestSpec::target instead (RetrySender::attemptOnce, EnrollClient::performOnce),
+// not into the authority baseUrl() builds. See retrySender_test.cpp for the
+// URL/signature composition tests.
+
+TEST(ModuleConfigTest, ServerEndpointIsEmptyByDefault)
+{
+    EXPECT_EQ("", ModuleConfig::fromC(minimalConfig()).serverEndpoint);
+}
+
+TEST(ModuleConfigTest, ServerEndpointIsKeptVerbatimWhenConfigured)
+{
+    auto config = minimalConfig();
+    std::strncpy(config.server_endpoint, "wazuh-manager", sizeof(config.server_endpoint) - 1);
+    EXPECT_EQ("wazuh-manager", ModuleConfig::fromC(config).serverEndpoint);
 }
 
 TEST(ModuleConfigTest, ValidateRejectsMissingHostOrId)
@@ -169,6 +212,61 @@ TEST(ModuleConfigTest, NoneModeIsValidWithoutCa)
     EXPECT_TRUE(ModuleConfig::fromC(minimalConfig()).validate(fsProbe, TEST_LOG));
 }
 
+TEST(ModuleConfigTest, SystemModeValidWithoutCaWhenBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+#if !defined(WIN32) && !defined(__APPLE__)
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+#endif
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenCaIsSet)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.ca_path, "/etc/ca.pem", sizeof(config.ca_path) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// Paired timing options. getDefine_Int_default() range-checks each option on its
+// own, so an inverted pair is reachable from two individually valid values --
+// nothing else relates them.
+// -----------------------------------------------------------------------------
+
+TEST(ModuleConfigTest, ValidateRejectsInvertedBackoffBounds)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    auto config = minimalConfig();
+    config.backoff_base_ms = 60000;
+    config.backoff_cap_ms = 1000;
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateAcceptsEqualPairedBounds)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    auto config = minimalConfig();
+    config.backoff_base_ms = 2000;
+    config.backoff_cap_ms = 2000;
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
 TEST(ModuleConfigTest, ClientCertRequiresBothHalves)
 {
     NiceMock<MockFsProbe> fsProbe;
@@ -202,4 +300,35 @@ TEST(ModuleConfigTest, ClientCertValidWhenBothReadable)
     EXPECT_CALL(fsProbe, isReadableFile("/etc/agent.pem")).WillOnce(Return(true));
     EXPECT_CALL(fsProbe, isReadableFile("/etc/agent.key")).WillOnce(Return(true));
     EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+// validateTransport() (#38465): the same TLS/client-cert matrix as validate(),
+// but callable with no agent_id -- an enrolling agent has none yet.
+
+TEST(ModuleConfigTest, ValidateTransportIgnoresMissingAgentId)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.server_host[0] = '\0';
+    EXPECT_TRUE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillFailsClosedWithoutCa)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.verify_mode = HC_VERIFY_FULL;
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillRequiresBothClientCertHalves)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    ON_CALL(fsProbe, isReadableFile(::testing::_)).WillByDefault(Return(true));
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    std::strncpy(config.client_cert, "/etc/agent.pem", sizeof(config.client_cert) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
 }

@@ -101,6 +101,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_remote_enrollment = "remote_enrollment";
+    static const char *xml_legacy_enrollment = "legacy_enrollment";
     static const char *xml_agents = "agents";
 
     authd_config_t *config = (authd_config_t *)d1;
@@ -109,8 +110,13 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
 
-    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/authd.pem");
-    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/authd-key.pem");
+    /* Manager's unified TLS identity (see shared/include/ssl_op.h's CERTFILE/KEYFILE): authd no
+     * longer generates or owns a separate certificate, so this default now matches the one
+     * remoted_module's HTTPS server (/enroll's mTLS mode) presents. Read_Authd() is only ever
+     * called from manager binaries (wazuh-manager-authd, wazuh-manager-remoted) -- there is no
+     * agent-side caller this default would need to serve differently. */
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/remoted.pem");
+    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/remoted-key.pem");
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */
@@ -127,6 +133,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
     config->flags.remote_enrollment = 1;
+    config->flags.legacy_enrollment = 1;
     config->force_options.enabled = true;
     config->force_options.key_mismatch = true;
     config->force_options.disconnected_time_enabled = true;
@@ -217,6 +224,15 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.remote_enrollment = b;
+        } else if (!strcmp(node[i]->element, xml_legacy_enrollment)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.legacy_enrollment = b;
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             if (w_authd_validate_ciphers(node[i]->content) == OS_INVALID) {
                 return OS_INVALID;

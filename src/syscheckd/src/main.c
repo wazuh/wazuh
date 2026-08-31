@@ -28,11 +28,6 @@
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
-/* Milliseconds fim_shutdown_waiter() waits for the synchronization thread to report its
- * exit before giving up on the teardown; wazuh-control escalates to SIGKILL after ~30
- * seconds (MAX_KILL_TRIES in init/wazuh-client.sh), so stay well under that. */
-#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
-
 // LCOV_EXCL_START
 
 /* Print help statement */
@@ -52,7 +47,6 @@ __attribute__((noreturn)) static void help_syscheckd()
     exit(1);
 }
 
-extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
 extern pthread_t fim_sync_thread;
 extern bool fim_sync_thread_initialized;
@@ -158,15 +152,8 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-        /* fim.db itself runs journal_mode=truncate (no -wal/-shm files): this teardown
-         * releases the DBSync context in a controlled order before exit(), it is not WAL
-         * cleanup. FIMDB's internal guards turn the event/query paths into graceful
-         * no-ops after it, but the scan transaction path (fim_db_transaction_*) is not
-         * covered by them. The scan transaction lives entirely inside fim_scan_mutex, so
-         * tear down only when no scan is in flight and keep the mutex so a new scan
-         * cannot start a transaction against the released context; otherwise skip it —
-         * exiting with fim.db open is safe (the truncate journal recovers on the next
-         * start), closing it under a live transaction is not. */
+        fim_syscom_cleanup_pause();
+
         if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0)
         {
             fim_db_teardown();
@@ -369,7 +356,10 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    startup_gate_wait_for_ready(ARGV0);
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+        mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
+        exit(0);
+    }
 
     // Rootcheck initialization is deferred until after the startup hash
     // gate releases. rootcheck_init() emits STARTUP_MSG ("wazuh-rootcheck:

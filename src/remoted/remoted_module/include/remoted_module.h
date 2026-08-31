@@ -123,8 +123,8 @@ extern "C"
         /// "unset" sentinel: getDefine_Int_default() always resolves the final 0/1 value (defaulting
         /// to enabled) on the C side, so this field always carries the real value.
         bool http_content_encoding_enabled;
-        long long max_inflight_bytes;    ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
-        int max_parallel_connections;    ///< HTTPS max simultaneous connections (<=0 -> module default).
+        long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
+        int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
 
         // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
@@ -142,14 +142,24 @@ extern "C"
                                                      ///< cpp_get_nproc().
         long long downstream_max_response_body_size; ///< Cap on a downstream response body, bytes (<=0 -> default).
 
-        // Auth middleware (AES-CMAC request verification) tunables. <=0 -> module default (see remoted.auth_*).
-        int auth_max_request_age;     ///< Seconds a request timestamp may lag behind now.
-        int auth_max_future_skew;     ///< Seconds a request timestamp may lead ahead of now.
+        // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
+        int jwt_max_age;              ///< Max accepted token age, seconds: now - iat <= jwt_max_age + jwt_clock_skew.
+                                      ///< remoted.jwt_max_age, 1..43200 (profile ceiling; default 60); <=0 -> module
+                                      ///< default. The token's declared lifetime (exp - iat) is a fixed 60 s, NOT
+                                      ///< configurable.
+        int jwt_clock_skew;           ///< Tolerated agent/manager clock difference, seconds, both directions.
+                                      ///< remoted.jwt_clock_skew, 0..43200 (profile ceiling; default 30). Zero is a
+                                      ///< VALID setting ("no tolerance"), so this field is only read when
+                                      ///< jwt_clock_skew_set is non-zero; otherwise the module default applies.
+        int jwt_clock_skew_set;       ///< Non-zero when jwt_clock_skew carries a configured value (remoted always
+                                      ///< sets it). A zeroed struct therefore still means "module defaults".
         long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
         char bind_address[256];        ///< HTTPS listen address (empty -> module default).
+        char global_prefix[256];       ///< URL path prefix every route is registered under
+                                       ///< (empty -> "/", endpoints served unprefixed).
         char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
                                        ///< empty -> library default).
@@ -166,7 +176,40 @@ extern "C"
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
         int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
         int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 200).
-        int tm_max_queue_size; ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
+        int tm_max_queue_size;      ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
+        int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
+                                    ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
+
+        // Enrollment (POST /enroll bridging to authd) configuration. Unlike every other group
+        // above, the behavioral flags here are NOT sourced from <remote><https> or a dedicated
+        // XML tag: they are copied verbatim from authd's own <auth> config block, so /enroll and
+        // legacy port 1515 can never disagree on whether password auth is required or which
+        // agent versions are acceptable. Only the operational knobs are remoted-owned internal
+        // options.
+        bool enrollment_enabled;              ///< !authd's <disabled> && authd's <remote_enrollment>.
+                                              ///< Gates only the /enroll response (403 when false) --
+                                              ///< the route itself is always registered.
+        bool enroll_use_password;             ///< authd's <use_password>: Password mode requires this.
+        bool enroll_use_source_ip;            ///< authd's <use_source_ip>: governs /enroll's IP resolution.
+        bool enroll_allow_higher_versions;    ///< authd's OWN <agents><allow_higher_versions> --
+                                              ///< deliberately NOT the allow_higher_versions field
+                                              ///< above, which is a separate, independently
+                                              ///< configured <remote> setting used by /control.
+        int enroll_password_refresh_interval; ///< Seconds between etc/authd.pass change checks
+                                              ///< (hot-reload poll fallback). <=0 -> module default.
+        int authd_connect_timeout;            ///< Seconds to wait for the authd local-socket connect. <=0 -> default.
+        int authd_response_timeout;           ///< Seconds to wait for authd's reply to an enrollment request.
+                                              ///< <=0 -> module default, which is worker-aware (longer on a
+                                              ///< cluster worker, to outlast authd's own internal
+                                              ///< worker-to-master retry budget).
+        int authd_max_queue_size;             ///< AuthdClient request queue high-water mark; QueueFull over it
+                                              ///< (<=0 -> default).
+        int authd_worker_threads;             ///< Number of concurrent connect-per-request workers bridging to
+                                              ///< authd's local socket. <=0 -> default. authd's own accept loop
+                                              ///< is single-threaded, so this does not raise authd's processing
+                                              ///< rate -- it overlaps remoted's own connect+send latency with
+                                              ///< authd's turnaround so authd is never left idle waiting on
+                                              ///< remoted for the next request.
     } remoted_module_config_t;
 
     /**

@@ -60,9 +60,11 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
+                            -Wl,--wrap,rem_inc_recv_upgrade_ack \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
-                            -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS}")
+                            -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
+                            -Wl,--wrap,ReadConfig")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -108,7 +110,7 @@ list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
 
 list(APPEND remoted_names "test_legacy_task_delivery")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getpid \
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getpid -Wl,--wrap,sleep \
                            ${STDIO_OP_WRAPPERS} -Wl,--wrap,popen \
                            -Wl,--wrap,wfopen -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
                            -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,agent_meta_snapshot_str \

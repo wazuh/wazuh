@@ -98,43 +98,41 @@ def load_monitor(path: str) -> pd.DataFrame:
     return _keep_last_run(df)
 
 
-def load_remoted_stats(path: str) -> pd.DataFrame:
+# Columns every daemon-stats CSV carries as text; everything else is coerced to numbers so a
+# failed scrape (empty cells) plots as a gap instead of poisoning the column's dtype.
+_STATS_TEXT_COLS = ("timestamp", "query_error", "raw_response_json")
+
+
+def _load_stats_csv(path: str, text_cols: tuple[str, ...] = _STATS_TEXT_COLS) -> pd.DataFrame:
+    """Load one of the per-daemon stats CSVs written by monitor.py."""
     df = pd.read_csv(path)
     if "elapsed_s" not in df.columns:
         df["elapsed_s"] = range(len(df))
     df = _keep_last_run(df)
     for col in df.columns:
-        if col in (
-            "timestamp", "query_error", "message", "data_name", "raw_response_json",
-        ):
+        if col in text_cols:
             continue
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
+
+def load_remoted_stats(path: str) -> pd.DataFrame:
+    """Load stats-api-remoted.csv (remoted's C statistics over the framed socket)."""
+    return _load_stats_csv(path, _STATS_TEXT_COLS + ("message", "data_name"))
 
 
 def load_invsync_stats(path: str) -> pd.DataFrame:
     """Load stats-api-inventory-sync.csv (the module's GET /metrics scrape)."""
-    df = pd.read_csv(path)
-    if "elapsed_s" not in df.columns:
-        df["elapsed_s"] = range(len(df))
-    df = _keep_last_run(df)
-    for col in df.columns:
-        if col in ("timestamp", "query_error", "raw_response_json"):
-            continue
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+    return _load_stats_csv(path)
+
+
+def load_remoted_module_stats(path: str) -> pd.DataFrame:
+    """Load stats-api-remoted-module.csv (the C++ module's GET /metrics scrape)."""
+    return _load_stats_csv(path)
 
 
 def load_analysisd_stats(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    if "elapsed_s" not in df.columns:
-        df["elapsed_s"] = range(len(df))
-    df = _keep_last_run(df)
-    for col in df.columns:
-        if col in ("timestamp", "query_error", "raw_response_json"):
-            continue
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+    return _load_stats_csv(path)
 
 
 def parse_result_arg(arg: str) -> tuple[str, str]:
@@ -381,22 +379,146 @@ INVSYNC_METRICS = [
     ("requests_500",            "Sessions Failed (500)",             "Count"),
     ("requests_400",            "Sessions Rejected (400)",           "Count"),
     ("requests_403",            "Sessions Rejected (403)",           "Count"),
+    ("requests_409",            "Sessions Rejected (409)",           "Count"),
+    ("requests_other",          "Sessions Answered Off-contract (other)", "Count"),
     ("docs_indexed",            "Documents Indexed",                 "Count"),
     ("docs_skipped",            "Documents Skipped",                 "Count"),
     ("bytes_ingested",          "Bytes Ingested",                    "Bytes"),
     ("pipeline_shed_total",     "Pipeline Shed (queue full)",        "Count"),
     ("bulk_flushes",            "Group-commit Flushes",              "Count"),
     ("bulk_bytes_total",        "Bytes Flushed in Group Commits",    "Bytes"),
+    ("bulk_sessions_total",     "Sessions Answered by Group Commits", "Count"),
     ("shard_depth_sum",         "Sharded Queue Depth (all shards)",  "Items"),
     ("shard_depth_max",         "Sharded Queue Depth (hottest)",     "Items"),
+    ("shard_bytes_sum",         "Sharded Queue Bytes (all shards)",  "Bytes"),
+    ("shard_bytes_max",         "Sharded Queue Bytes (hottest)",     "Bytes"),
     ("vd_lane_depth",           "VD Scan Lane Depth",                "Sessions"),
     ("vd_capacity_503_total",   "VD Sessions Shed (lane full)",      "Count"),
     ("vd_scans_ok",             "VD Scans Completed",                "Count"),
     ("vd_scans_failed",         "VD Scans Failed",                   "Count"),
+    ("vd_scans_skipped",        "VD Scans Skipped (legitimately)",   "Count"),
+    ("vd_retry_after_total",    "VD 503s with Retry-After (feed not ready)", "Count"),
+    ("vd_offset_mismatch_total", "VD Sessions Rejected (feed-offset mismatch)", "Count"),
     ("session_duration_bulk_p99",      "Session Duration p99 (bulk)",      "microseconds"),
     ("session_duration_immediate_p99", "Session Duration p99 (immediate)", "microseconds"),
-    ("vd_lane_time_p99",        "VD Lane Time p99 (queue+scan+index)", "microseconds"),
+    ("vd_lane_time_p99",        "VD Lane Time p99 (all outcomes)",   "microseconds"),
     ("vd_scan_duration_p99",    "VD Scan Duration p99 (scanner only)", "microseconds"),
+    # Transport of the shared UDS server. All gauges: instantaneous levels, not growth.
+    ("server_budget_available_bytes",   "Transport — In-flight Budget Available", "Bytes"),
+    ("server_budget_inflight_bytes",    "Transport — In-flight Bytes Resident",   "Bytes"),
+    ("server_budget_inflight_requests", "Transport — In-flight Requests",         "Requests"),
+    ("server_sessions_live",     "Transport — Live Connections",            "Connections"),
+    ("server_sessions_data",     "Transport — Data-class Connections",      "Connections"),
+    ("server_sessions_control",  "Transport — Control-class Connections",   "Connections"),
+    ("server_sessions_liveness", "Transport — Liveness-class Connections",  "Connections"),
+]
+
+# remoted_module's own registry (admin socket). Counters are cumulative for the module's
+# lifetime; the admin.* block is the transport gauges of the admin server itself.
+REMOTED_MODULE_METRICS = [
+    ("scanvd_requests_total",     "VD Scan Requests Received",            "Count"),
+    ("scanvd_accepted",           "VD Scan Requests Queued by VD",        "Count"),
+    ("scanvd_queue_full",         "VD Scan Requests Shed (lane full)",    "Count"),
+    ("scanvd_indexer_unavailable", "VD Scan Requests Shed (indexer unavailable)", "Count"),
+    ("scanvd_vd_error",           "VD Scan Relay Failures (VD unreachable/not ready)", "Count"),
+    ("scanvd_version_mismatch",   "VD Scan Requests Rejected (offset mismatch)", "Count"),
+    ("control_notify",            "Control — Keepalive Requests",         "Count"),
+    ("control_startup",           "Control — Startup Requests",           "Count"),
+    ("control_shutdown",          "Control — Shutdown Requests",          "Count"),
+    ("control_rejected",          "Control — Malformed Requests Rejected (400)", "Count"),
+    ("control_wdb_error",         "Control — wazuh-db Failures",          "Count"),
+    ("control_wdb_latency_p99",   "Control — wazuh-db Round-trip p99 (successful)", "microseconds"),
+    ("control_task_fetch",        "Control — Task Fetches",               "Count"),
+    ("control_task_fetch_error",  "Control — Task Fetch Failures",        "Count"),
+    ("control_registry_agents",   "Control — Agents Tracked",             "Agents"),
+    ("keystore_agents",           "Keystore — Agents with a Usable Key",  "Agents"),
+    ("keystore_entries_skipped",   "Keystore — Unusable client.keys Lines", "Entries"),
+    ("keystore_reload_failures_total", "Keystore — client.keys Load Failures", "Count"),
+    ("http_stateless_responses_2xx", "POST /stateless — Accepted (2xx)",  "Count"),
+    ("http_stateless_responses_503", "POST /stateless — Shed/Failed (503)", "Count"),
+    ("http_stateless_latency_p99",   "POST /stateless — End-to-end p99",  "microseconds"),
+    ("http_stateful_responses_2xx",  "POST /stateful — Accepted (2xx)",   "Count"),
+    ("http_stateful_responses_503",  "POST /stateful — Shed/Failed (503)", "Count"),
+    ("http_stateful_latency_p99",    "POST /stateful — End-to-end p99",   "microseconds"),
+    ("server_budget_available_bytes", "Public Transport — In-flight Budget Available", "Bytes"),
+    ("server_budget_inflight_bytes",  "Public Transport — In-flight Bytes Resident",   "Bytes"),
+    ("server_budget_rejected_total",  "Public Transport — Requests Shed by the Budget", "Count"),
+    ("forwarder_deferred_inflight",   "Forwarder — Deferred Requests In Flight", "Requests"),
+    ("forwarder_deferred_rejected_total", "Forwarder — Requests Shed (slots full)", "Count"),
+    ("forwarder_downstream_5xx",      "Forwarder — Downstream 5xx Answers",   "Count"),
+    ("forwarder_error_response_timeout", "Forwarder — Downstream Response Timeouts", "Count"),
+    ("forwarder_route_mismatch",      "Forwarder — Downstream Route Mismatches (404/405)", "Count"),
+    ("download_started",              "POST /download — Transfers Started",   "Count"),
+    ("download_bytes_total",          "POST /download — Bytes Offered",       "Bytes"),
+    ("download_not_found",            "POST /download — Unknown Group/WPK (404)", "Count"),
+    ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
+]
+
+# WHY agents fail authentication, pre-collapse (the wire folds credential failures into one
+# generic 401, so only these counters keep the causes apart). Read together: one cause
+# dominating names the fix (NTP, re-enrollment, a scanner hammering the listener...).
+# Enrollment outcomes read together: one dominating line names the fix (authd down vs a full
+# queue vs a validation problem on the agent side).
+_ENROLL_OUTCOME_FUNNEL_COLS = [
+    "enroll_accepted",
+    "enroll_rejected_auth",
+    "enroll_rejected_validation",
+    "enroll_disabled",
+    "enroll_authd_error",
+    "enroll_authd_unavailable",
+    "enroll_authd_queue_rejected_total",
+]
+
+# Depth against its own cap: the pair that says whether authd_max_queue_size is sized right.
+_ENROLL_QUEUE_COLS = ["enroll_authd_queue_depth", "enroll_authd_queue_capacity"]
+
+_AUTH_REJECT_FUNNEL_COLS = [
+    "auth_reject_unknown_agent",
+    "auth_reject_invalid_signature",
+    "auth_reject_bad_token",
+    "auth_reject_identity_mismatch",
+    "auth_reject_clock_skew",
+    "auth_reject_unusable_key",
+    "auth_reject_address_not_allowed",
+    "auth_reject_enrollment_key_unavailable",
+    "auth_reject_payload_mismatch",
+    "auth_reject_body_too_large",
+    "auth_reject_bad_encoding",
+    "auth_reject_malformed",
+]
+
+# WHY forwarded requests fail, one line per cause. The per-endpoint responses funnels say WHICH
+# path is failing; this says which timeout/knob (or which downstream) to look at.
+_FWD_ERROR_FUNNEL_COLS = [
+    "forwarder_error_connect",
+    "forwarder_error_connect_timeout",
+    "forwarder_error_write_timeout",
+    "forwarder_error_response_timeout",
+    "forwarder_error_transport",
+    "forwarder_error_protocol",
+    "forwarder_error_response_too_large",
+    "forwarder_downstream_5xx",
+    "forwarder_route_mismatch",
+]
+
+# One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
+# structurally zero for a given endpoint (kept for a uniform vocabulary).
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
+_HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
+
+# The admission split: everything that arrived lands in exactly one of these. remoted is a
+# synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
+# and every rejection was VISIBLE to the agent (a 503 its next notify retries) -- a healthy
+# saturated run shows accepted at the lane's capacity and queue_full absorbing the excess,
+# with vd_error flat. An indexer outage moves the shed to indexer_unavailable (VD's own
+# reported cause, like queue_full) while VD holds what it already queued.
+_SCANVD_FUNNEL_COLS = [
+    "scanvd_requests_total",
+    "scanvd_accepted",
+    "scanvd_queue_full",
+    "scanvd_indexer_unavailable",
+    "scanvd_vd_error",
+    "scanvd_version_mismatch",
 ]
 
 REMOTED_METRICS = [
@@ -414,11 +536,6 @@ REMOTED_METRICS = [
     (
         "messages_received_breakdown_events_failed",
         "Remoted Messages Received Events Failed",
-        "Count",
-    ),
-    (
-        "messages_received_breakdown_states",
-        "Remoted Messages Received States",
         "Count",
     ),
     (
@@ -448,6 +565,19 @@ AGENT_CACHE_METRICS = [
     ("agent_cache_evictions",  "Agent Cache — Evictions (cumulative)",    "Count"),
 ]
 
+# CSVs in a results dir that are NOT per-process samples. Process discovery walks the
+# directory and treats every other .csv as "<process>.csv", so a daemon-stats file missing
+# from this set gets plotted as if it were a monitored process. One list, used everywhere the
+# directory is walked, so adding a scraper is a one-line change here.
+STATS_CSV_NAMES = frozenset({
+    "disk_usage.csv",
+    "logs.csv",
+    "stats-api-remoted.csv",
+    "stats-api-remoted-module.csv",
+    "stats-api-analysisd.csv",
+    "stats-api-inventory-sync.csv",
+})
+
 EXTRA_PROCESS_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
@@ -457,6 +587,13 @@ SIMPLE_MONITOR_EXTRA_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
 )
+
+# Memory is the one axis the indexer JVM cannot share: it sits around 6 GB while every manager
+# process stays under ~600 MB, so including it pins the axis and collapses the whole manager
+# into an unreadable band at the bottom. Its memory is not lost -- monitor_rss_total_with_indexer
+# is the combined view. The indexer-owned engine stays: it runs in the manager's range.
+_MEMORY_METRICS = frozenset({"rss_mb", "vms_mb"})
+_SCALE_BREAKING_COMPONENTS = frozenset({"wazuh-indexer"})
 TOTAL_MONITOR_EXTRA_COMPONENTS = EXTRA_PROCESS_COMPONENTS
 
 
@@ -476,6 +613,7 @@ def generate_charts(
     remoted_dfs: dict[str, pd.DataFrame] = {}
     analysisd_dfs: dict[str, pd.DataFrame] = {}
     invsync_dfs: dict[str, pd.DataFrame] = {}
+    remoted_module_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
     # Optional all-in-one components. Kept separate so manager-only charts
@@ -513,6 +651,11 @@ def generate_charts(
         if not os.path.isfile(invsync_stats_path):
             invsync_stats_path = os.path.join(path, "stats-api-inventory-sync.csv")
 
+        # remoted_module stats: prefer monitor/ subdir, fall back to root
+        remoted_module_stats_path = os.path.join(monitor_dir, "stats-api-remoted-module.csv")
+        if not os.path.isfile(remoted_module_stats_path):
+            remoted_module_stats_path = os.path.join(path, "stats-api-remoted-module.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
@@ -537,6 +680,11 @@ def generate_charts(
                 invsync_dfs[label] = load_invsync_stats(invsync_stats_path)
             except Exception as exc:
                 print(f"  warning: could not load {invsync_stats_path}: {exc}")
+        if os.path.isfile(remoted_module_stats_path):
+            try:
+                remoted_module_dfs[label] = load_remoted_module_stats(remoted_module_stats_path)
+            except Exception as exc:
+                print(f"  warning: could not load {remoted_module_stats_path}: {exc}")
 
         # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
         # then auto-discover per-process CSVs in root.
@@ -544,9 +692,7 @@ def generate_charts(
             for fname in sorted(os.listdir(monitor_dir)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("disk_usage.csv", "logs.csv",
-                             "stats-api-remoted.csv", "stats-api-analysisd.csv",
-                             "stats-api-inventory-sync.csv"):
+                if fname in STATS_CSV_NAMES:
                     continue
                 fpath = os.path.join(monitor_dir, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -568,9 +714,7 @@ def generate_charts(
             for fname in sorted(os.listdir(path)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("bench.csv", "disk_usage.csv", "logs.csv",
-                             "stats-api-remoted.csv", "stats-api-analysisd.csv",
-                             "stats-api-inventory-sync.csv"):
+                if fname == "bench.csv" or fname in STATS_CSV_NAMES:
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -587,7 +731,8 @@ def generate_charts(
 
     has_extra_procs = any(extra_proc_dfs.values())
     if (not monitors and not benches and not disk_dfs and not remoted_dfs
-            and not analysisd_dfs and not has_extra_procs):
+            and not analysisd_dfs and not invsync_dfs and not remoted_module_dfs
+            and not logs and not has_extra_procs):
         print("No data files found — nothing to generate.")
         return
 
@@ -598,6 +743,8 @@ def generate_charts(
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
     analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
     invsync_dfs = {k: v for k, v in invsync_dfs.items() if len(v) > 0}
+    remoted_module_dfs = {k: v for k, v in remoted_module_dfs.items() if len(v) > 0}
+    logs = {k: v for k, v in logs.items() if len(v) > 0}
     extra_proc_dfs = {
         name: {lbl: df for lbl, df in datasets.items() if len(df) > 0}
         for name, datasets in extra_proc_dfs.items()
@@ -605,7 +752,8 @@ def generate_charts(
     has_extra_procs = any(extra_proc_dfs.values())
 
     if (not monitors and not benches and not disk_dfs and not remoted_dfs
-            and not analysisd_dfs and not has_extra_procs):
+            and not analysisd_dfs and not invsync_dfs and not remoted_module_dfs
+            and not logs and not has_extra_procs):
         print("All CSV files are empty — nothing to generate.")
         return
 
@@ -629,12 +777,16 @@ def generate_charts(
                 monitors_with_simple_extras[key] = df
 
         for col, title_suffix, ylabel in MONITOR_METRICS:
+            datasets = monitors_with_simple_extras
+            title = f"Wazuh Manager — {title_suffix}"
+            if col in _MEMORY_METRICS:
+                datasets = {
+                    key: df for key, df in datasets.items()
+                    if key.split("/")[-1] not in _SCALE_BREAKING_COMPONENTS
+                }
+                title += " (manager processes)"
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
-            plot_timeseries(
-                monitors_with_simple_extras, col,
-                f"Wazuh Manager — {title_suffix}",
-                ylabel, out,
-            )
+            plot_timeseries(datasets, col, title, ylabel, out)
 
         if monitors:
             # manager-only: per-process lines + manager total (no indexer,
@@ -866,6 +1018,138 @@ def generate_charts(
                 "Inventory Sync Server \u2014 Accepted vs Shed",
                 os.path.join(out_dir, f"invsync_accepted_vs_shed.{fmt}"),
             )
+
+        # QoS: the reserve exists so control traffic keeps a lane while the data plane
+        # saturates. Control staying served with data pinned at its cap is the whole point.
+        if any("server_sessions_data" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "server_sessions_data", "server_sessions_control",
+                "Data-class connections", "Control-class connections",
+                "Connections", "Connections",
+                "Inventory Sync Server \u2014 Connections by Route Class",
+                os.path.join(out_dir, f"invsync_qos_sessions.{fmt}"),
+            )
+
+        # Budget pressure: bytes still admissible against what is resident in flight.
+        if any("server_budget_available_bytes" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "server_budget_available_bytes", "server_budget_inflight_bytes",
+                "Budget available", "Bytes in flight",
+                "Bytes", "Bytes",
+                "Inventory Sync Server \u2014 In-flight Byte Budget",
+                os.path.join(out_dir, f"invsync_budget.{fmt}"),
+            )
+
+    # -- remoted_module (admin socket) ---------------------------------------
+    if remoted_module_dfs:
+        for col, title_suffix, ylabel in REMOTED_MODULE_METRICS:
+            if not any(col in df.columns for df in remoted_module_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"remoted_module_{col}.{fmt}")
+            plot_timeseries(
+                remoted_module_dfs,
+                col,
+                f"Remoted Module \u2014 {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # The chart a saturation run is judged on: requests split into queued-and-will-run vs
+        # honestly-shed, with vd_error as the failure line that must stay flat. One per run,
+        # since the series only make sense read against each other.
+        for label, df in remoted_module_dfs.items():
+            if not any(col in df.columns for col in _SCANVD_FUNNEL_COLS):
+                continue
+            safe_label = label.replace(" ", "_")
+            plot_multiline_timeseries(
+                df, _SCANVD_FUNNEL_COLS,
+                f"Remoted Module \u2014 VD Scan Funnel ({label})",
+                "Count (cumulative)",
+                os.path.join(out_dir, f"remoted_module_scanvd_funnel_{safe_label}.{fmt}"),
+                y_min=0,
+            )
+
+        # WHY agents fail auth (pre-collapse causes) and WHY forwarded requests fail: same
+        # read-together rationale as the scanvd funnel \u2014 one dominating line names the fix.
+        for label, df in remoted_module_dfs.items():
+            safe_label = label.replace(" ", "_")
+            if any(col in df.columns for col in _AUTH_REJECT_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _AUTH_REJECT_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Auth Rejections by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_auth_reject_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_OUTCOME_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_OUTCOME_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Enrollment Outcomes ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_enroll_outcome_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_QUEUE_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_QUEUE_COLS,
+                    f"Remoted Module \u2014 authd Queue Depth vs Capacity ({label})",
+                    "Requests",
+                    os.path.join(out_dir, f"remoted_module_enroll_authd_queue_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _FWD_ERROR_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _FWD_ERROR_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Downstream Failures by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_fwd_error_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            # WHAT each forwarded endpoint answered its agents, one funnel per endpoint.
+            for endpoint in _HTTP_RESPONSE_ENDPOINTS:
+                cols = [f"http_{endpoint}_responses_{code}" for code in _HTTP_RESPONSE_CODES]
+                if not any(col in df.columns for col in cols):
+                    continue
+                plot_multiline_timeseries(
+                    df, cols,
+                    f"Remoted Module \u2014 POST /{endpoint} Responses ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_http_{endpoint}_responses_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+
+        # Backpressure pairs, mirroring the inventory-sync transport charts: budget occupancy
+        # (levels) and the deferred-work lane (occupancy vs its configured cap).
+        if any("server_budget_available_bytes" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "server_budget_available_bytes", "server_budget_inflight_bytes",
+                "Budget available", "Bytes in flight",
+                "Bytes", "Bytes",
+                "Remoted Module \u2014 In-flight Byte Budget",
+                os.path.join(out_dir, f"remoted_module_budget.{fmt}"),
+            )
+        if any("forwarder_deferred_inflight" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "forwarder_deferred_inflight", "forwarder_deferred_capacity",
+                "Deferred requests in flight", "Configured slot cap",
+                "Requests", "Requests",
+                "Remoted Module \u2014 Deferred-work Occupancy",
+                os.path.join(out_dir, f"remoted_module_deferred.{fmt}"),
+            )
+
+    # -- Manager log events --------------------------------------------------
+    # logs.csv counts what only the log can tell: throttled transport rejections (each line
+    # carries the count for its 90 s window) and the failures with no metric behind them.
+    for label, df in logs.items():
+        safe_label = label.replace(" ", "_")
+        _plot_log_events(
+            df, label,
+            os.path.join(out_dir, f"logs_events_{safe_label}.{fmt}"),
+        )
 
     # -- Summary bar charts --------------------------------------------------
     if monitors:
@@ -1284,6 +1568,47 @@ def _plot_combined(
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_log_events(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+    figsize=(14, 6),
+):
+    """Cumulative timeline of the manager-log event counters (logs.csv).
+
+    Only counters that actually fired in this run are drawn: the catalog covers every
+    condition monitor.py knows how to recognise, and a normal run trips a handful of them, so
+    plotting all of them would bury the signal under flat zero lines.
+
+    Cumulative rather than per-second on purpose -- the underlying rows are per-second buckets
+    of a THROTTLED log (one line every 90 s carrying its window's count), so the raw series is
+    a sparse comb of spikes. The running total is what reads as "how much was shed by now".
+    """
+    counters = [c for c in df.columns if c not in ("timestamp", "elapsed_s")]
+    active = [c for c in counters
+              if pd.to_numeric(df[c], errors="coerce").fillna(0).sum() > 0]
+    if not active:
+        return
+
+    fig, ax = plt.subplots(figsize=figsize)
+    for idx, col in enumerate(active):
+        series = pd.to_numeric(df[col], errors="coerce").fillna(0).cumsum()
+        ax.plot(df["elapsed_s"], series,
+                label=col.replace("_", "-"), color=run_color(idx),
+                linewidth=1.4, alpha=0.85)
+
+    ax.set_title(f"Manager Log Events — {label}", fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel("Events (cumulative)")
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)

@@ -18,12 +18,6 @@
 
 namespace
 {
-    /// Few attempts on purpose, matching ConfigFetcher: a WPK is fetched once
-    /// per task_id (the durable registry already guarantees that), so there
-    /// is no "next notify re-arms it" safety net here -- a failed download
-    /// simply aborts the upgrade (fire-and-forget).
-    constexpr uint32_t WPK_DOWNLOAD_MAX_ATTEMPTS = 2;
-
     std::string lowered(std::string value)
     {
         std::transform(value.begin(), value.end(), value.begin(),
@@ -41,7 +35,8 @@ WpkFetcher::WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
                        CompressionGate& compressionGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+               config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
 {
 }
@@ -67,13 +62,14 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
     spec.maxResponseBytes = m_config.wpkMaxDownloadBytes;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
 
-    const auto result = m_sender.send(spec, waiter, WPK_DOWNLOAD_MAX_ATTEMPTS);
+    const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s); aborting the upgrade "
+        LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s)%s; aborting the upgrade "
                    "(no /control response is sent; fire-and-forget).",
-                   wpkFile.c_str(), outcomeName(result.outcome));
+                   wpkFile.c_str(), outcomeName(result.outcome),
+                   transportReason(result.response.curlError).c_str());
         return nullptr;
     }
 

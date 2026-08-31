@@ -45,9 +45,11 @@ namespace
         std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", socketPath.c_str());
         config.io_threads = 1;
         config.drain_timeout = 1;
-        // One pipeline worker, deterministically: 0 would resolve to half the machine's cores and
-        // these tests count connector builds (the pipeline builds one per EXTRA worker).
+        // One pipeline worker and one VD scan-lane worker, deterministically: 0 would resolve to
+        // half the machine's cores on both knobs, and these tests count connector builds (the
+        // pipeline builds one per EXTRA worker, the VD lane builds one per worker of its own).
         config.sync_workers = 1;
+        config.vd_workers = 1;
         return config;
     }
 

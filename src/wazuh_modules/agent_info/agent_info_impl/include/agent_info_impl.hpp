@@ -89,6 +89,15 @@ class AgentInfoImpl
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
 
+        /**
+         * @brief Closes the DBSync connection and the sync protocol.
+         *
+         * Runs on the module thread once start()'s run loop has returned, so a caller
+         * that joins that thread is guaranteed the handles are closed. Idempotent, so
+         * the destructor can also call it for the case where start() never ran.
+         */
+        void releaseResources();
+
         /// @brief Override the flush poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
         /// Negative values are clamped to 0.
         void setFlushPollDelayMs(int delayMs)
@@ -403,6 +412,13 @@ class AgentInfoImpl
         /// stop() writes it from another thread (avoids a data race).
         std::atomic<bool> m_stopped{false};
 
+        /// @brief True only while start()'s run loop is executing.
+        /// Read by releaseResources() to refuse tearing down members the loop may still
+        /// be using. The join in stop_wmodules() / wm_handler() is not authoritative --
+        /// both only log when the budget expires and then continue to process exit -- so
+        /// the destructor can be reached with this loop still running.
+        std::atomic<bool> m_runLoopActive{false};
+
         /// @brief Predicate reporting whether a shutdown is in progress (may be null).
         /// Injected from the module wrapper; reports the *global* agent shutdown, which is
         /// signaled before this module's own stop() runs.
@@ -413,6 +429,14 @@ class AgentInfoImpl
         bool isShutdownInProgress() const
         {
             return m_stopped || (m_isShuttingDown && m_isShuttingDown());
+        }
+
+        /// @brief Logs a "DBSync not available" style message, demoted to DEBUG during shutdown.
+        /// Centralizes the isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING demotion used at
+        /// every !m_dBSync guard so the rule only needs to change in one place.
+        void logDbSyncUnavailable(const std::string& message)
+        {
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, message);
         }
 
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
@@ -463,15 +487,9 @@ class AgentInfoImpl
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
 
-        /// @brief Serializes destruction of m_spSyncProtocol in stop()
+        /// @brief Serializes destruction of m_spSyncProtocol in releaseResources()
+        /// against the readers that run on other threads (parseResponseBuffer()).
         std::mutex m_syncProtocolMutex;
-
-        /// @brief Clean-stop handshake: stop() blocks until the run loop (start()) has
-        /// exited, so the sync-protocol connection can be closed with no other thread
-        /// using it.
-        std::mutex m_shutdownMutex;
-        std::condition_variable m_shutdownCv;
-        bool m_runLoopActive = false;
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;

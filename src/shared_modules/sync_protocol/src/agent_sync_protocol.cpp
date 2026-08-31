@@ -52,11 +52,6 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
-        case SyncResult::NO_VD_OFFSET_ERROR:
-            failureReason = "No VD feed offset available yet. Waiting for the server to report one "
-                            "via /control. Cannot proceed with VD synchronization.";
-            break;
-
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
 
         default:
@@ -152,11 +147,27 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (!m_syncTransport->checkStatus())
     {
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to reach the sync intake socket.", shouldStop()};
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. It shares the same restart-hiccup-vs-lasting-problem
+        // shape (the module started before wazuh-agentd's https_client finished binding
+        // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
+        // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                trackLocalTransportFailure(stopped), false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     // Guard against concurrent calls. The timer thread and the AsyncFlushController
     // background thread may both call this method on the same instance. When a sync is
@@ -167,7 +178,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (!m_syncInProgress.compare_exchange_strong(expected, true))
     {
         m_logger(LOG_DEBUG, "Synchronization already in progress, skipping concurrent request");
-        return {true, {}};
+        SyncModuleResult skipped;
+        skipped.success = true;
+        skipped.sessionSkipped = true;
+        return skipped;
     }
 
     struct SyncInProgressGuard
@@ -316,13 +330,23 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         success = false;
     }
 
-    const std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    std::string failureReason;
+    bool managerNotReady = false;
+    bool awaitingPrerequisite = false;
+    {
+        // These fields are also written by applyHttpResult() on the response
+        // thread while phase stays WaitingResponse (cleared only by
+        // clearSyncState() below), so reading them without the lock races
+        // against a late/duplicate HCRESULT for this session. (CID 562615)
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        managerNotReady = m_syncState.lastSyncManagerNotReady;
+        awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+    }
     const bool stopped = shouldStop();
-    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
-    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -341,6 +365,21 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
     }
 
     return m_consecutiveSyncFailures.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+unsigned int AgentSyncProtocol::trackLocalTransportFailure(bool stopped)
+{
+    // Takes stopped as an already-computed parameter, mirroring trackSyncOutcome(): a stop in
+    // progress says nothing about the local transport itself, so it must not count towards this
+    // streak either. Reading shouldStop() again here (instead of reusing the caller's read) would
+    // race the single m_stopRequested load against a concurrent stop() -- the caller's "stopped"
+    // field and this streak could then disagree on whether a stop was in flight.
+    if (stopped)
+    {
+        return m_consecutiveLocalTransportFailures.load(std::memory_order_relaxed);
+    }
+
+    return m_consecutiveLocalTransportFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
@@ -387,7 +426,15 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         // Only spend the retry budget on an explicit checksum mismatch (409). Any other
         // failure (communication error, manager offline, timeout) returns false right
         // away -- it says nothing about whether the checksum actually matches.
-        const bool isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        bool isChecksumMismatch = false;
+        {
+            // Locked for the same reason as synchronizeDeltaByBlocks/
+            // synchronizeMetadataOrGroups above: phase is still WaitingResponse
+            // until clearSyncState() below, so a late response can still write
+            // this field concurrently. (CID 562605)
+            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        }
         clearSyncState();
 
         if (!isChecksumMismatch)
@@ -431,11 +478,27 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 
     if (!m_syncTransport->checkStatus())
     {
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to reach the sync intake socket.", shouldStop()};
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. It shares the same restart-hiccup-vs-lasting-problem
+        // shape (the module started before wazuh-agentd's https_client finished binding
+        // queue/sockets/queue-sync), but on its own dedicated streak: this never reaches the
+        // handshake, and m_consecutiveSyncFailures is reserved for outcomes that do (see its doc).
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                trackLocalTransportFailure(stopped), false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     clearSyncState();
 
@@ -464,16 +527,24 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         m_logger(LOG_DEBUG, "Synchronization failed for metadata/groups mode");
     }
 
-    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    std::string failureReason;
+    bool managerNotReady = false;
+    bool awaitingPrerequisite = false;
+    {
+        // Same unlocked-read race as synchronizeDeltaByBlocks(); see the
+        // comment there. (CID 562619)
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        managerNotReady = m_syncState.lastSyncManagerNotReady;
+        awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+    }
     // Report whether a stop was requested so the caller can demote an expected
     // shutdown-time failure from WARNING to INFO/DEBUG.
     // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
-    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
-    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
@@ -600,8 +671,14 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         else
         {
             m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
-            m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
-            m_syncState.lastSyncAwaitingPrerequisite = true;
+            {
+                // Unlocked writes here would race applyHttpResult() on the
+                // response thread, which can still write these same fields
+                // while phase is WaitingResponse. (CID 562608)
+                std::lock_guard<std::mutex> lock(m_syncState.mtx);
+                m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
+                m_syncState.lastSyncAwaitingPrerequisite = true;
+            }
 
             if (has_metadata)
             {
@@ -611,26 +688,14 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
             return 0;
         }
 
-        // VD (VDFirst/VDSync) syncs additionally require a feed offset already received
-        // from the manager (via /control notify) -- vd_feed_offset is 0 both when it was
-        // never set and when metadata_provider_get() legitimately returns no metadata at
-        // all, so this can only mean "not yet observed" here (mirrors the groups gate
-        // above; abort and retry next interval rather than syncing with no offset context).
-        if (isUncappedSyncOption(option) && metadata.vd_feed_offset == 0)
-        {
-            m_logger(LOG_DEBUG, "No VD feed offset available yet. Waiting for the server to report "
-                     "one via /control. Cannot proceed with VD synchronization.");
-            m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
-            m_syncState.lastSyncAwaitingPrerequisite = true;
-
-            if (has_metadata)
-            {
-                metadata_provider_free_metadata(&metadata);
-            }
-
-            return 0;
-        }
-
+        // A VD (VDFirst/VDSync) sync is NOT gated on having a feed offset. The offset is
+        // reported verbatim -- 0 included, which is what it reads as until the manager sends
+        // one -- and the decision about what to do with a session that does not match the
+        // node's own feed belongs to the manager: it answers 503 + Retry-After while its feed
+        // is still loading, and accepts the session (indexing the inventory without scanning
+        // it) when its scanner is not running at all. Deferring here instead would make the
+        // agent guess between those two from the same value, and a manager with vulnerability
+        // detection disabled would never index the agent's packages (#38599).
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata

@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-This document provides visual representations of the interactions between modules and the Agent Sync Protocol during various synchronization scenarios. Every scenario below sends **one** `FullSession` message and gets back **one** terminal answer — see [Protocol Lifecycle](lifecycle.md) for the message-level detail behind these diagrams.
+This document provides visual representations of the interactions between modules and the Agent Sync Protocol during various synchronization scenarios. Every scenario below sends **one** `FullSession` message and gets back **one** terminal answer — the HTTP result of the `/stateful` request that carried it, delivered back as an `HCRESULT:<session>:<code>:<body>` string and applied via `applyHttpResult()`. There is no FlatBuffer response message. See [Protocol Lifecycle](lifecycle.md) for the message-level detail behind these diagrams.
 
 Participants used throughout:
 
@@ -8,7 +8,7 @@ Participants used throughout:
 - **ASP** — `AgentSyncProtocol`.
 - **Queue** — the SQLite-backed persistent queue.
 - **Transport** — `SyncSocketTransport`, which streams the session over the agent's local `queue-sync` socket.
-- **AD** — `agentd`'s intake process, which hands the session to `https_client` and relays its HTTPS response back.
+- **AD** — `agentd`'s intake process, which hands the session to `https_client` and relays its HTTP result back as an `HCRESULT:<session>:<code>:<body>` string.
 - **Manager** — the Wazuh Manager, reached over HTTPS.
 
 ## Module Integration Flow
@@ -64,7 +64,7 @@ sequenceDiagram
     ASP->>Queue: fetchAndMarkForSync(byteCap)
     Queue-->>ASP: PersistedData[] (DataValue + DataContext mixed)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start + SyncData{values, contexts} + End
+    ASP->>ASP: Build ONE FullSession<br/>Start + SyncData{values, contexts}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD-->>Transport: Queued (status byte)
@@ -74,8 +74,9 @@ sequenceDiagram
 
     AD->>Manager: POST /stateful<br/>(X-Session-Id header, FullSession body)
     Manager->>Manager: Decode SyncData:<br/>values -> upsert/delete indexer docs<br/>contexts -> store, not indexed
-    Manager-->>AD: 200 OK, EndAck(status=Ok)
-    AD->>ASP: parseResponseBuffer(EndAck)
+    Manager-->>AD: 200 OK response to the /stateful request
+    AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
+    ASP->>ASP: applyHttpResult(200, body, session)
     ASP->>Queue: Delete synced items
     Queue-->>ASP: Success
 
@@ -101,7 +102,7 @@ sequenceDiagram
         Queue-->>ASP: Next block of PersistedData
         ASP->>Transport: sendSession(session_id_N, FullSession)
         Transport-->>Manager: (via agentd/https_client)
-        Manager-->>ASP: EndAck(status=Ok)
+        Manager-->>ASP: HCRESULT:session_id_N:200:<body>
         ASP->>Queue: clearSyncedItems() for this block
     end
 
@@ -121,7 +122,7 @@ sequenceDiagram
     Module->>Module: Calculate checksum for index
     Module->>ASP: requiresFullSync(index, checksum)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleCheck) + ChecksumModule{index, checksum} + End
+    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleCheck) + ChecksumModule{index, checksum}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD->>Manager: POST /stateful
@@ -129,13 +130,15 @@ sequenceDiagram
     Manager->>Manager: Compare agent checksum<br/>against indexed documents
 
     alt Checksum mismatch
-        Manager-->>AD: EndAck(status=ChecksumMismatch)
-        AD->>ASP: parseResponseBuffer(EndAck)
+        Manager-->>AD: 409 response to the /stateful request
+        AD->>ASP: parseResponseBuffer("HCRESULT:<session>:409:<body>")
+        ASP->>ASP: applyHttpResult(409, body, session)<br/>SyncResult::CHECKSUM_ERROR
         ASP-->>Module: true (full sync needed)
         Module->>Module: Schedule full synchronization
     else Checksum match
-        Manager-->>AD: EndAck(status=Ok)
-        AD->>ASP: parseResponseBuffer(EndAck)
+        Manager-->>AD: 200 OK response to the /stateful request
+        AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
+        ASP->>ASP: applyHttpResult(200, body, session)
         ASP-->>Module: false (integrity valid)
     end
 ```
@@ -152,15 +155,16 @@ sequenceDiagram
 
     Module->>ASP: synchronizeMetadataOrGroups(MetadataDelta, indices, globalVersion)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=MetadataDelta, global_version) + End<br/>(no SessionPayload set)
+    ASP->>ASP: Build ONE FullSession<br/>Start(mode=MetadataDelta, global_version)<br/>(no SessionPayload set)
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD->>Manager: POST /stateful
 
     Manager->>Manager: Apply metadata/group update
 
-    Manager-->>AD: EndAck(status=Ok)
-    AD->>ASP: parseResponseBuffer(EndAck)
+    Manager-->>AD: 200 OK response to the /stateful request
+    AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
+    ASP->>ASP: applyHttpResult(200, body, session)
     ASP-->>Module: SyncModuleResult{success=true}
 ```
 
@@ -179,15 +183,16 @@ sequenceDiagram
 
     Module->>ASP: notifyDataClean(indices)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=DELTA, index=[...]) +<br/>Cleans{DataClean per index} + End
+    ASP->>ASP: Build ONE FullSession<br/>Start(mode=DELTA, index=[...]) +<br/>Cleans{DataClean per index}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD->>Manager: POST /stateful
 
     Manager->>Manager: deleteByQuery for each index
 
-    Manager-->>AD: EndAck(status=Ok)
-    AD->>ASP: parseResponseBuffer(EndAck)
+    Manager-->>AD: 200 OK response to the /stateful request
+    AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
+    ASP->>ASP: applyHttpResult(200, body, session)
     ASP->>Queue: clearItemsByIndex() for each index
 
     ASP-->>Module: true (success)
@@ -208,10 +213,10 @@ sequenceDiagram
     Note over Module: Recovery initiated (e.g. checksum mismatch)
 
     Module->>ASP: notifyDataClean({index})
-    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta, index=[index]) + Cleans{DataClean(index)} + End
+    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta, index=[index]) + Cleans{DataClean(index)}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport-->>Manager: (via agentd/https_client)
-    Manager-->>ASP: EndAck(status=Ok)
+    Manager-->>ASP: HCRESULT:session_id:200:<body>
     ASP-->>Module: true
 
     loop For each item in the fresh snapshot
@@ -221,10 +226,10 @@ sequenceDiagram
 
     Module->>ASP: synchronizeModule(DELTA)
     ASP->>Queue: fetchAndMarkForSync(byteCap)
-    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta, size=N) + SyncData{values} + End
+    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta) + SyncData{values}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport-->>Manager: (via agentd/https_client)
-    Manager-->>ASP: EndAck(status=Ok)
+    Manager-->>ASP: HCRESULT:session_id:200:<body>
     ASP->>Queue: clearSyncedItems()
 
     ASP-->>Module: SyncModuleResult{success=true}
@@ -247,8 +252,8 @@ sequenceDiagram
 
     Note over Manager: Cannot serve this agent yet<br/>(e.g. right after enrollment)
 
-    Manager-->>ASP: EndAck(status=Offline)
-    Note over ASP: lastSyncResult = COMMUNICATION_ERROR<br/>managerNotReady = true
+    Manager-->>ASP: HCRESULT:session_id:503:<body>
+    Note over ASP: applyHttpResult(503, body, session)<br/>lastSyncResult = COMMUNICATION_ERROR<br/>managerNotReady = true
 
     ASP-->>Module: SyncModuleResult{success=false, managerNotReady=true,<br/>consecutiveFailures=N}
     Note over Module: N below SYNC_MANAGER_NOT_READY_TOLERANCE:<br/>log at INFO/DEBUG.<br/>N at or above it: log at WARNING.
@@ -267,8 +272,8 @@ sequenceDiagram
     ASP->>Transport: sendSession(session_id, FullSession)
     Transport-->>Manager: (via agentd/https_client)
 
-    Manager-->>ASP: EndAck(status=Error)
-    Note over ASP: lastSyncResult = PROTOCOL_ERROR<br/>syncFailed = true
+    Manager-->>ASP: HCRESULT:session_id:500:<body>
+    Note over ASP: applyHttpResult(500, body, session)<br/>lastSyncResult = PROTOCOL_ERROR<br/>syncFailed = true
 
     ASP-->>Module: SyncModuleResult{success=false}
     Note over Module: Items stay/return to PENDING,<br/>next periodic cycle retries.
@@ -295,9 +300,9 @@ sequenceDiagram
 
 ## Response Handling Flow
 
-### Two Response Paths Into `AgentSyncProtocol`
+### The HCRESULT Path Into `AgentSyncProtocol`
 
-The manager's verdict can reach the protocol through either of two independent paths, both terminal:
+There is a single, terminal path by which the manager's verdict reaches the protocol: the HTTP result of the `/stateful` request that carried the session, bridged back as an `HCRESULT:<session>:<code>:<body>` string and applied through `applyHttpResult()`. There is no FlatBuffer response message.
 
 ```mermaid
 sequenceDiagram
@@ -310,19 +315,12 @@ sequenceDiagram
     SyncThread->>ASP: synchronizeModule(DELTA)
     ASP->>ASP: Phase = WaitingResponse
     ASP->>AD: sendSession(session_id, FullSession)
-    SyncThread->>ASP: Block on condition variable
+    SyncThread->>ASP: Block on condition variable<br/>(up to SESSION_RESPONSE_TIMEOUT safety net, 15 min)
 
-    alt FlatBuffer EndAck path
-        Manager->>AD: 200 OK, Message{EndAck}
-        AD->>ResponseThread: Deliver body
-        ResponseThread->>ASP: parseResponseBuffer(data, length)
-        ASP->>ASP: Validate phase, apply status
-    else HTTPS result-code path
-        Manager->>AD: HTTP status code for this request
-        AD->>ResponseThread: "HCRESULT:<session>:<code>"
-        ResponseThread->>ASP: applyHttpResultCode(code, session)
-        ASP->>ASP: Validate phase + session id, apply code
-    end
+    Manager->>AD: HTTP status code for the /stateful request
+    AD->>ResponseThread: "HCRESULT:<session>:<code>:<body>"
+    ResponseThread->>ASP: parseResponseBuffer(data, length)
+    ASP->>ASP: applyHttpResult(httpCode, body, expectedSession)<br/>Validate phase + session id, apply code
 
     ASP->>ASP: Set responseReceived/syncFailed,<br/>notify condition variable
     ASP-->>SyncThread: Wake up, read result

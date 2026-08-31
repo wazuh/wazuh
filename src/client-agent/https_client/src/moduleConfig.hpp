@@ -31,6 +31,18 @@ struct ModuleConfig
 {
         std::string serverHost;
         uint16_t serverPort {443};
+        /// IPv6 zone id resolved from <endpoint> by the C-side parser (#38624).
+        /// baseUrl() appends it to the bracketed host as "%25<id>" so libcurl
+        /// scopes the connection to that interface. 0 -> no zone.
+        uint32_t serverScopeId {0};
+        /// Optional reverse-proxy path segment, <endpoint> (#38492), already
+        /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
+        /// today's unprefixed behavior. baseUrl() does NOT insert it: callers
+        /// fold it into HttpRequestSpec::target (via prefixedTarget(),
+        /// retrySender.cpp/enrollClient.cpp) and baseUrl() only ever sees that
+        /// already-prefixed target appended to it afterward. Routing only: the
+        /// bearer token does not bind the target.
+        std::string serverEndpoint;
         std::string agentId;
         std::string agentKeyHex;
         hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
@@ -60,10 +72,20 @@ struct ModuleConfig
         std::string configChecksum;
 
         uint32_t requestTimeoutMs {10000};
-        uint32_t statefulTimeoutMs {120000};
+        uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
         uint32_t drainTimeoutMs {5000};
+
+        // Per-stream retry budgets (total tries, not retries-after-the-first).
+        // Consumed only by Retryable/BackPressure outcomes.
+        uint32_t controlMaxAttempts {4};
+        uint32_t statelessMaxAttempts {5};
+        uint32_t statefulMaxAttempts {5};
+        uint32_t downloadMaxAttempts {2};
+
+        /// Consecutive undeliverable /control steps before producers pause.
+        uint32_t producerPauseThreshold {2};
 
         std::string spoolDir;
 
@@ -77,8 +99,8 @@ struct ModuleConfig
         std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
         // zstd-compress in-memory request bodies before signing/sending.
-        // internal_options.conf (agent.https_compression_enabled), off by default.
-        bool httpsCompressionEnabled {false};
+        // internal_options.conf (agent.https_compression_enabled), on by default.
+        bool httpsCompressionEnabled {true};
 
         // Always "https" in production (fromC never changes it); the component
         // test overrides it to "http" to drive the real curl path against a
@@ -89,9 +111,16 @@ struct ModuleConfig
 
         bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
 
+        /// The TLS half of validate() alone (fail-closed CA check + client-cert
+        /// pairing), without the serverHost/agentId precondition -- an
+        /// enrolling agent has no agentId yet, but the same TLS matrix still
+        /// has to hold before its /enroll request goes out (#38465).
+        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
+
         std::string baseUrl() const;
 
     private:
+        bool validateTiming(const LogFn& logFn) const;
         bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
         bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };

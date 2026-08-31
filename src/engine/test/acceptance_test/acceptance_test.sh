@@ -64,7 +64,7 @@ ANALYSISD_BIN="${WAZUH_HOME}/bin/wazuh-manager-analysisd"
 MANAGER_CTL="${WAZUH_HOME}/bin/wazuh-manager-control"
 
 # Analysis socket for route check
-ANALYSIS_SOCK="${WAZUH_HOME}/queue/sockets/analysis"
+ANALYSIS_SOCK="${WAZUH_HOME}/queue/sockets/engine-api-http.sock"
 
 # ---------------------------------------------------------------------------
 # Helpers

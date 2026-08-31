@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'rc1'
+  x-revision: 'beta5'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -149,6 +149,15 @@ x-rbac-catalog:
        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:reload']
+        resources: ['agent:id:050', 'agent:id:049']
+        effect: "deny"
+    'agent:scan_vulnerability':
+      description: "Trigger an on-demand vulnerability scan on agents"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:scan_vulnerability']
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
     'agent:uninstall':
@@ -1502,6 +1511,25 @@ components:
                   type: integer
                   format: int32
                   description: "Bytes sent to agents"
+            control_messages_queue_breakdown:
+              type: object
+              properties:
+                inserted:
+                  type: integer
+                  format: int32
+                  description: "Control messages inserted into the control messages queue"
+                processed:
+                  type: integer
+                  format: int32
+                  description: "Control messages taken from the control messages queue and processed"
+                replaced:
+                  type: integer
+                  format: int32
+                  description: "Control messages that replaced a pending one from the same agent"
+            control_messages_queue_usage:
+              type: integer
+              format: int32
+              description: "Current usage of the control messages queue (count)"
             keys_reload_count:
               type: integer
               format: int32
@@ -1515,7 +1543,7 @@ components:
                     control:
                       type: integer
                       format: int32
-                      description: "Control messages received from agents"
+                      description: "Control messages received from agents, including the ones that fail validation and are therefore absent from control_breakdown"
                     control_breakdown:
                       type: object
                       properties:
@@ -1543,10 +1571,14 @@ components:
                       type: integer
                       format: int32
                       description: "Messages discarded because the received queue was full"
-                    event:
+                    events:
                       type: integer
                       format: int32
                       description: "Event messages (syscheck, syscollector, logcollector, etc.) received from agents"
+                    events_failed:
+                      type: integer
+                      format: int32
+                      description: "Event messages accepted from the agent that could not be delivered to analysisd"
                     ping:
                       type: integer
                       format: int32
@@ -1555,6 +1587,10 @@ components:
                       type: integer
                       format: int32
                       description: "Not recognized messages"
+                    upgrade_ack:
+                      type: integer
+                      format: int32
+                      description: "Upgrade acknowledgments received from agents. The same message is also counted in events, or in events_failed when the enqueue drops it"
                 sent_breakdown:
                   type: object
                   properties:
@@ -1562,18 +1598,10 @@ components:
                       type: integer
                       format: int32
                       description : "ACK messages (response to keepalive, startup and shutdown) sent to agents"
-                    ar:
-                      type: integer
-                      format: int32
-                      description: "Active response messages sent to agents"
                     discarded:
                       type: integer
                       format: int32
                       description: "Messages discarded because the send queue was full"
-                    request:
-                      type: integer
-                      format: int32
-                      description: "Request messages (for example, WPK chunks) sent to agents"
                     shared:
                       type: integer
                       format: int32
@@ -1587,11 +1615,11 @@ components:
                     size:
                       type: integer
                       format: int32
-                      description: "Received messages queue size"
+                      description: "Byte capacity of the received messages queue (0 means unlimited)"
                     usage:
                       type: integer
                       format: int32
-                      description: "Current usage of the received queue (count)"
+                      description: "Bytes currently held in the received messages queue"
             tcp_sessions:
               type: integer
               format: int32
@@ -3051,6 +3079,7 @@ components:
       schema:
         type: string
         format: search
+        maxLength: 1024
     select:
       in: query
       name: select
@@ -3435,9 +3464,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'rc1'
+                revision: 'beta5'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -4302,8 +4331,11 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using the `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name or the
+      same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
+      an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
+      owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
+      the agent and let its deletion complete before reusing its ID"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -4319,7 +4351,7 @@ paths:
               name: NewHost_2
               ip: 10.0.10.11
               id: "123"
-              key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+              key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               force:
                 enabled: True
                 disconnected_time:
@@ -4665,6 +4697,68 @@ paths:
                           - '010'
                           - '011'
                   message: "Restart command was not sent to some agents"
+                  error: 2
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/scan/vulnerability:
+    put:
+      tags:
+        - Agents
+      summary: "Scan agents for vulnerabilities"
+      description: "Request an on-demand vulnerability scan for all agents or a list of them"
+      operationId: api.controllers.agent_controller.scan_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:scan_vulnerability'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agent scan requested"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - '001'
+                      - '003'
+                    total_affected_items: 2
+                    total_failed_items: 3
+                    failed_items:
+                      - error:
+                          code: 1701
+                          message: "Agent does not exist"
+                        id:
+                          - '002'
+                      - error:
+                          code: 8005
+                          message: "Vulnerability scan queue is full, please retry later"
+                        id:
+                          - '004'
+                      - error:
+                          code: 1764
+                          message: "Vulnerability scanning requires agent version 5.0 or higher."
+                        id:
+                          - '005'
+                  message: "Scan was requested for some agents"
                   error: 2
 
         '400':
@@ -5850,7 +5944,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node readiness"
-      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready."
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6023,16 +6117,19 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        legacy:
-                          port: 1514
-                          protocol:
-                            - tcp
-                          queue_size: 131072
-                        https:
-                          port: 1517
-                          bind_addr: "127.0.0.1"
-                          certificate: "etc/remoted-https/server.crt"
-                          key: "etc/remoted-https/server.key"
+                        - legacy:
+                            enabled: "yes"
+                            port: "1514"
+                            protocol:
+                              - tcp
+                            local_ip: "127.0.0.1"
+                          https:
+                            port: "1517"
+                            bind_addr: "127.0.0.1"
+                            certificate: "etc/certs/remoted.pem"
+                            key: "etc/certs/remoted-key.pem"
+                          agents:
+                            allow_higher_versions: "no"
                       syscollector:
                         disabled: no
                         interval: "1h"
@@ -6090,8 +6187,8 @@ paths:
                         use_password: "no"
                         ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/certs/authd.pem"
-                        ssl_manager_key: "etc/certs/authd-key.pem"
+                        ssl_manager_cert: "etc/certs/remoted.pem"
+                        ssl_manager_key: "etc/certs/remoted-key.pem"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"
@@ -6200,6 +6297,11 @@ paths:
                         bytes:
                           received: 0
                           sent: 0
+                        control_messages_queue_breakdown:
+                          inserted: 0
+                          processed: 0
+                          replaced: 0
+                        control_messages_queue_usage: 0
                         keys_reload_count: 0
                         messages:
                           received_breakdown:
@@ -6211,18 +6313,18 @@ paths:
                               startup: 0
                             dequeued_after: 0
                             discarded: 0
-                            event: 0
+                            events: 0
+                            events_failed: 0
                             ping: 0
                             unknown: 0
+                            upgrade_ack: 0
                           sent_breakdown:
                             ack: 0
-                            ar: 0
                             discarded: 0
-                            request: 0
                             shared: 0
                         queues:
                           received:
-                            size: 131072
+                            size: 67108864
                             usage: 0
                         tcp_sessions: 0
                   total_affected_items: 1

@@ -78,7 +78,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
   "data": {
     "title": "Wazuh API REST",
     "api_version": "5.0.0",
-    "revision": "rc1",
+    "revision": "beta5",
     "license_name": "GPL 2.0",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
@@ -199,6 +199,20 @@ curl -k -X DELETE "https://localhost:55000/agents?agents_list=009&status=all&pur
 
 ```bash
 curl -k -X GET "https://localhost:55000/overview/agents?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Trigger vulnerability scan
+
+**`PUT /agents/scan/vulnerability`** — Request an on-demand Vulnerability Detection scan for all agents or a specified list. All agents are selected by default if `agents_list` is not specified.
+
+```bash
+# Scan all agents
+curl -k -X PUT "https://localhost:55000/agents/scan/vulnerability?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Scan specific agents
+curl -k -X PUT "https://localhost:55000/agents/scan/vulnerability?agents_list=001,003&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -347,7 +361,8 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
-| GET | `/agents/uninstall` | Uninstall agents |
+| PUT | `/agents/scan/vulnerability` | Request on-demand vulnerability scan |
+| GET | `/agents/uninstall` | Check whether the calling user has permission to uninstall the given agents |
 | GET | `/agents/stats/distinct` | Distinct fields |
 | GET | `/agents/summary` | Summary |
 | GET | `/agents/summary/os` | OS summary |

@@ -38,13 +38,49 @@ class DBusWrapper : public IDBusWrapper
             ::dbus_error_free(error);
         }
 
-        /// @brief Gets a D-Bus connection for the specified bus type.
+        /// @brief Gets a private D-Bus connection for the specified bus type.
         /// @param type The type of bus (session, system, etc.).
         /// @param error Pointer to the DBusError structure.
         /// @return Pointer to the DBusConnection, or nullptr on failure.
-        DBusConnection* bus_get(DBusBusType type, DBusError* error) override
+        /// @note Private rather than shared, so the caller owns the connection and a dropped
+        /// bus does not leave a permanently unusable connection cached for the whole process.
+        /// @note libdbus binds every bus connection to the lifetime of the message bus by
+        /// default, which makes it call exit() once a "Disconnected" message is dispatched.
+        /// Nothing here dispatches today, so this is disabled defensively: the caller owns the
+        /// connection and a collector must never be able to terminate its host process.
+        DBusConnection* bus_get_private(DBusBusType type, DBusError* error) override
         {
-            return ::dbus_bus_get(type, error);
+            DBusConnection* connection = ::dbus_bus_get_private(type, error);
+
+            if (connection)
+            {
+                ::dbus_connection_set_exit_on_disconnect(connection, FALSE);
+            }
+
+            return connection;
+        }
+
+        /// @brief Closes a private D-Bus connection.
+        /// @param connection Pointer to the DBusConnection.
+        /// This function is safe to call with a nullptr.
+        void connection_close(DBusConnection* connection) override
+        {
+            if (connection)
+            {
+                ::dbus_connection_close(connection);
+            }
+        }
+
+        /// @brief Unreferences a D-Bus connection.
+        /// @param connection Pointer to the DBusConnection.
+        /// This function decrements the reference count and frees the connection if the count
+        /// reaches zero. It is safe to call this function with a nullptr.
+        void connection_unref(DBusConnection* connection) override
+        {
+            if (connection)
+            {
+                ::dbus_connection_unref(connection);
+            }
         }
 
         /// @brief Creates a new D-Bus method call message.
