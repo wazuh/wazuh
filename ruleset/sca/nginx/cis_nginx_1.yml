@@ -1470,7 +1470,7 @@ checks:
       - https://scotthelme.co.uk/perfect-forward-secrecy/
     condition: all
     rules:
-      - 'f:/etc/nginx/nginx.conf ->r:^\s*ssl_session_tickets\s+off'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_session_tickets\s+off'
 
   # 4.1.14 Ensure HTTP/2.0 is used (Not Scored)
   - id: 23036
