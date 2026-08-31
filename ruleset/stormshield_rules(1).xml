@@ -1,0 +1,102 @@
+<!--
+  Ruleset for Stormshield
+  Author: Raphael
+-->
+<!-- 
+	Stormshield Firewall Ruleset 
+-->
+
+<!-- 
+log test
+FW_TN: {"resourceLogs":[{"resource":{"attributes":[{"key":"tag-path","value":{"stringValue":"FW_TLN/production/logs"}}]},"scopeLogs":[{"scope":{},"logRecords":[{"timeUnixNano":"1758540726000000000","observedTimeUnixNano":"1758540726985157372","severityNumber":10,"severityText":"notice","body":{"stringValue":"<13>1 2025-09-22T13:32:06+02:00 FW_TN asqd - - - id=firewall time=\"2025-09-22 13:32:06\" fw=\"FW_TN\" tz=+0200 startime=\"2025-09-22 13:32:06\" pri=5 confid=01 slotlevel=2 ruleid=32 rulename=\"19484998f55_18\" srcif=\"vlan0\" srcifname=\"IT_FW\" ipproto=tcp dstif=\"Ether5\" dstifname=\"IN_SI\" proto=TCP_9093 src=10.30.0.20 srcport=58440 srcportname=ep_fw_tcp srcname=K_Y_10.20.0.10 srcmac=00:6b:97:00:01:74 dst=192.168.17.13 dstport=9072 dstportname=TCP_9072 dstname=Sgghh1 ipv=4 sent=0 rcvd=0 duration=0.00 action=pass logtype=\"filter\""},"attributes":[{"key":"action","value":{"stringValue":"pass"}},{"key":"ipproto","value":{"stringValue":"tcp"}},{"key":"dst","value":{"stringValue":"192.168.171.73"}},{"key":"ipv","value":{"stringValue":"4"}},{"key":"hostname","value":{"stringValue":"FW_TN"}},{"key":"message","value":{"stringValue":"id=firewall time=\"2025-09-22 13:32:06\" fw=\"FW_TN\" tz=+0200 startime=\"2025-09-22 13:32:06\" pri=5 confid=01 slotlevel=2 ruleid=32 rulename=\"19484998f55_18\" srcif=\"vlan0\" srcifname=\"I_FW\" ipproto=tcp dstif=\"Ether5\" dstifname=\"IN_S\" proto=TCP_9093 src=10.20.0.70 srcport=58455 srcportname=eph_fw_tcp srcname=K_P_10.20.0.10 srcmac=00:1b:17:0b:01:k4 dst=192.168.171.82 dstport=9092 dstportname=TCP_9092 dstname=Sfth1 ipv=4 sent=0 rcvd=0 duration=0.00 action=pass logtype=\"filter\""}},{"key":"dstifname","value":{"stringValue":"INT_I"}},{"key":"rulename","value":{"stringValue":"19484998f55_18"}},{"key":"dstportname","value":{"stringValue":"TCP_9092"}},{"key":"dstif","value":{"stringValue":"Ether5"}},{"key":"proto","value":{"stringValue":"TCP_9092"}},{"key":"logtype","value":{"stringValue":"filter"}},{"key":"srcif","value":{"stringValue":"vlan0"}},{"key":"srcportname","value":{"stringValue":"ep_fw_tcp"}},{"key":"src","value":{"stringValue":"10.20.0.10"}},{"key":"appname","value":{"stringValue":"asqd"}},{"key":"dstname","value":{"stringValue":"Sgghh1"}},{"key":"srcmac","value":{"stringValue":"00:1b:17:00:01:14"}},{"key":"duration","value":{"stringValue":"0.00"}},{"key":"fw","value":{"stringValue":"FW_TN"}},{"key":"tz","value":{"stringValue":"+0200"}},{"key":"pri","value":{"stringValue":"5"}},{"key":"confid","value":{"stringValue":"01"}},{"key":"ruleid","value":{"stringValue":"32"}},{"key":"srcport","value":{"stringValue":"58450"}},{"key":"sent","value":{"stringValue":"0"}},{"key":"srcname","value":{"stringValue":"KA_P_10.20.0.10"}},{"key":"version","value":{"intValue":"1"}},{"key":"slotlevel","value":{"stringValue":"2"}},{"key":"ï»¿id","value":{"stringValue":"firewall"}},{"key":"priority","value":{"intValue":"13"}},{"key":"dstport","value":{"stringValue":"9092"}},{"key":"srcifname","value":{"stringValue":"I_FW"}},{"key":"rcvd","value":{"stringValue":"0"}},{"key":"facility","value":{"intValue":"1"}},{"key":"environment","value":{"stringValue":"production"}}]},}}]}]}]}]}
+-->
+
+<group name="stormshield,firewall,">
+
+  <rule id="103000" level="0">
+    <decoded_as>stormshield_decoder</decoded_as>
+    <description>Stormshield grouping rule</description>
+  </rule>
+  
+  <rule id="103001" level="3">
+	<if_sid>103000</if_sid>
+	<action>pass</action>
+	<description>$(fw) : flux autorisés depuis $(hostname)</description>
+	<!--<group>fw-pass-event,</group>-->
+  </rule>
+  
+  <rule id="103002" level="5">
+	<if_sid>103000</if_sid>
+	<action>block</action>
+	<description>$(fw) : Flux bloqué depuis $(hostname).</description>
+	<!--<group>fw-block-event,</group>-->
+  </rule>
+  
+  <rule id="103003" level="3">
+	<if_sid>103000</if_sid>
+	<field name="error">0</field>
+	<field name="msg">SYSTEM IDENT</field>
+	<description>$(fw) : Authentification reussite $(dstuser) depuis l'ip $(src)</description>
+	<mitre>
+      <id>T1078</id>
+    </mitre>
+	<group>authentification_reussite,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+  </rule>
+  
+  <rule id="103004" level="8">
+	<if_sid>103000</if_sid>
+	<options>alert_by_email</options>
+	<field name="error">4</field>
+	<field name="msg">Requette d'authentification invalide</field>
+	<description>$(fw) : Echec d'authentification $(dstuser) depuis l'ip $(src)</description>
+	<mitre>
+      <id>T1110</id>
+    </mitre>
+	<group>Echec_d'authentification,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+  </rule>
+  
+  <rule id="103005" level="3">
+	<if_sid>103000</if_sid>
+	<field name="logtype">server</field>
+	<description>$(fw) : Server events : $(msg)</description>
+  </rule>
+  
+  <rule id="103006" level="3">
+	<if_sid>103000</if_sid>
+	<field name="logtype">system</field>
+	<description>$(fw) : Evenement systeme : $(msg)</description>
+  </rule>
+  
+  <rule id="103007" level="3">
+	<if_sid>103000</if_sid>
+	<field name="logtype">connection</field>
+	<description>$(fw) : Evenement de Connexion : $(msg)</description>
+  </rule>
+  
+  <rule id="103008" level="5">
+	<if_sid>103000</if_sid>
+	<field name="logtype">alarm</field>
+	<description>$(fw) : Alarme : $(msg)</description>
+  </rule>
+  
+  <rule id="103009" level="12" frequency="3" timeframe="120" ignore="60">
+    <if_matched_sid>103004</if_matched_sid>
+    <same_field>src</same_field>
+    <description>$(fw) : Echec Authentification Multiple, possible attaque de bruteforce. SourceIP : $(src)</description>
+    <group>Echec_d'authentification,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+  </rule>
+  
+  <rule id="103010" level="3">
+    <if_sid>103001,103002</if_sid>
+    <field name="origdst" type="pcre2">\b(?!(10)|192\.168|172\.(2[0-9]|1[6-9]|3[0-1])|(25[6-9]|2[6-9][0-9]|[3-9][0-9][0-9]|99[1-9]))[0-9]{1,3}\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)</field>
+    <description>$(fw) : Traffique vers une IP publiqe depuis $(src) vers $(origdst) </description>
+    <group>fw-pass-event,</group>
+  </rule>
+
+  <rule id="103011" level="3">
+    <if_sid>103001,103002</if_sid>
+    <field name="dst" type="pcre2" negate="yes">\b(?!(10)|192\.168|172\.(2[0-9]|1[6-9]|3[0-1])|(25[6-9]|2[6-9][0-9]|[3-9][0-9][0-9]|99[1-9]))[0-9]{1,3}\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)</field>
+    <description>$(fw) : Traffique vers une IP prive depuis $(src) vers $(origdst) (origdst) - $(dst) (dst)</description>
+    <group>fw-pass-event,</group>
+  </rule>
+</group>
