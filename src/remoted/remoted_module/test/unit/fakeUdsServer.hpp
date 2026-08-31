@@ -23,6 +23,7 @@
 #ifndef _REMOTED_TEST_FAKE_UDS_SERVER_HPP
 #define _REMOTED_TEST_FAKE_UDS_SERVER_HPP
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -102,8 +103,34 @@ namespace remoted::test
             }
             if (m_thread.joinable())
             {
+                // acceptLoop() only ever appends to m_connThreads/m_activeFds before returning,
+                // so joining it here means no more entries can appear after this point.
                 m_thread.join();
             }
+
+            // Per-connection threads are detached from the caller's perspective (accept() never
+            // blocks on them) but must still be joined before this object goes away: each one
+            // holds `this` in its serveConnection(fd) capture, and if it outlives the FakeUdsServer
+            // (e.g. still blocked in read()) it becomes a use-after-return once the test's stack
+            // frame holding this object is reused (seen under ASAN as stack-use-after-return).
+            std::vector<std::thread> connThreads;
+            {
+                std::lock_guard<std::mutex> lock(m_connMutex);
+                for (int fd : m_activeFds)
+                {
+                    // Unblock any thread parked in readAll()/read() on this connection.
+                    ::shutdown(fd, SHUT_RDWR);
+                }
+                connThreads.swap(m_connThreads);
+            }
+            for (auto& connThread : connThreads)
+            {
+                if (connThread.joinable())
+                {
+                    connThread.join();
+                }
+            }
+
             ::unlink(m_path.c_str());
         }
 
@@ -146,9 +173,12 @@ namespace remoted::test
                     continue;
                 }
 
-                // Each connection is served on its own thread so the client
-                // pool can hold N sockets concurrently.
-                std::thread([this, fd] { serveConnection(fd); }).detach();
+                // Each connection is served on its own thread so the client pool can hold N
+                // sockets concurrently. Tracked (not detached) so stop() can shut down and join
+                // them; see the stop() comment for why an untracked/detached thread is unsafe.
+                std::lock_guard<std::mutex> lock(m_connMutex);
+                m_activeFds.push_back(fd);
+                m_connThreads.emplace_back([this, fd] { serveConnection(fd); });
             }
         }
 
@@ -194,6 +224,10 @@ namespace remoted::test
                 }
             }
             ::close(fd);
+            {
+                std::lock_guard<std::mutex> lock(m_connMutex);
+                m_activeFds.erase(std::remove(m_activeFds.begin(), m_activeFds.end(), fd), m_activeFds.end());
+            }
         }
 
         static bool readAll(int fd, char* buf, size_t n)
@@ -252,6 +286,12 @@ namespace remoted::test
         std::atomic<bool> m_dropResponses {false};
         std::atomic<bool> m_closeAfterReply {false};
         std::atomic<size_t> m_requestCount {0};
+
+        // Guards m_activeFds/m_connThreads: acceptLoop() (its own thread) appends to both, and
+        // stop() (the destructor's thread) reads/shuts-down/joins them.
+        std::mutex m_connMutex;
+        std::vector<int> m_activeFds;
+        std::vector<std::thread> m_connThreads;
     };
 
     // Convenience: build a unique UDS path per test.
