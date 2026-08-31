@@ -1,4 +1,19 @@
 - sections:
+    - section: agent
+      elements:
+        - manager:
+            elements:
+                - address:
+                    value: 127.0.0.1
+                - port:
+                    value: 1517
+                # Empty on purpose (#38492): an absent <endpoint> defaults to the manager's
+                # /wazuh-manager/ prefix, which the remoted simulator does not serve, so every
+                # request 404s and the agent never reaches the accepted /startup the module
+                # start (behind the agentd startup gate) depends on. This section replaces the
+                # installed one, so the installer's own opt-out does not reach it.
+                - endpoint:
+                    value: ''
     - section: wodle
       attributes:
         - name: syscollector
