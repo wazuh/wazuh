@@ -9,6 +9,7 @@ import sys
 from copy import deepcopy
 from unittest.mock import patch, MagicMock, ANY, call
 
+from cachetools import TTLCache
 from connexion.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -20,9 +21,10 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.utils as rbac_utils
         from api.authentication import (generate_keypair, check_user_master, check_user, change_keypair,
                                         _private_key_path, _public_key_path, wazuh_uid, wazuh_gid, get_security_conf,
-                                        generate_token, check_token, decode_token)
+                                        generate_token, check_token, decode_token, get_optimized_policies)
         del sys.modules['wazuh.rbac.orm']
 
 
@@ -60,6 +62,14 @@ original_payload = {
 @pytest.fixture(autouse=True)
 def clear_generate_keypair_cache():
     generate_keypair.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def clear_policies_cache():
+    """Keep the module-level policies cache from leaking between tests."""
+    rbac_utils.POLICIES_CACHE.clear()
+    yield
+    rbac_utils.POLICIES_CACHE.clear()
 
 def test_check_user_master():
     result = check_user_master('test_user', 'test_pass')
@@ -265,6 +275,143 @@ def test_check_token_runas_revoked_dynamic_role(mock_optimize):
 
     assert result == {'valid': False}
     tm.is_token_valid.assert_any_call(role_id=1, user_id=101, token_nbf_time=200, run_as=True)
+
+
+def _authentication_mocks(user, roles, token_valid=True):
+    """Build the ORM manager mocks `check_token` reads its decision from."""
+    am = MagicMock()
+    am.get_user.return_value = user
+    am.user_allow_run_as.return_value = False
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = [MagicMock(id=role) for role in roles]
+    tm = MagicMock()
+    tm.is_token_valid.return_value = token_valid
+    return am, urm, tm
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_check_token_not_cached_after_user_deletion(mock_optimize):
+    """A token whose account has been deleted must be refused on the very next request.
+
+    Regression for the authorisation bypass: `check_token` used to be memoized under a TTL equal to
+    the token lifetime, so once a token had been used enough times to be cached, deleting the
+    account (or changing its password) did not end the session. No invalidation is signalled here
+    on purpose: the identity check must run unconditionally, whether or not the cache was flushed.
+    """
+    am, urm, tm = _authentication_mocks({'id': 101, 'username': 'qattl'}, roles=[1])
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        # Warm whatever caches exist, as a token in real use would.
+        for _ in range(5):
+            assert check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                               origin_node_type='master') == {'valid': True, 'policies': {'policy': 'test'}}
+
+        # The account is deleted. Nothing else changes and nothing is invalidated.
+        am.get_user.return_value = None
+
+        assert check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                           origin_node_type='master') == {'valid': False}
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_check_token_not_cached_after_token_revocation(mock_optimize):
+    """A blacklisted token must be refused on the next request, without an invalidation signal."""
+    am, urm, tm = _authentication_mocks({'id': 101, 'username': 'qattl'}, roles=[1])
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        for _ in range(5):
+            assert check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                               origin_node_type='master')['valid'] is True
+
+        tm.is_token_valid.return_value = False
+
+        assert check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                           origin_node_type='master') == {'valid': False}
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_check_token_caches_only_the_policies(mock_optimize):
+    """The policy preprocessing is cached; the validity checks are re-read on every request."""
+    am, urm, tm = _authentication_mocks({'id': 101, 'username': 'qattl'}, roles=[1])
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        for _ in range(3):
+            check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                        origin_node_type='master')
+
+    assert mock_optimize.call_count == 1, 'The expensive policy preprocessing must still be cached'
+    assert am.get_user.call_count == 3, 'The identity must be re-read on every request'
+    assert tm.is_token_valid.call_count >= 3, 'The blacklist must be consulted on every request'
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_check_token_does_not_return_the_cached_policies(mock_optimize):
+    """The returned policies must not alias the cached entry, which `decode_token` mutates."""
+    am, urm, tm = _authentication_mocks({'id': 101, 'username': 'qattl'}, roles=[1])
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        first = check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                            origin_node_type='master')
+        first['policies']['rbac_mode'] = 'black'
+
+        second = check_token(username='qattl', roles=tuple([1]), token_nbf_time=100, run_as=False,
+                             origin_node_type='master')
+
+    assert second['policies'] == {'policy': 'test'}
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_get_optimized_policies_invalidated_across_processes(mock_optimize):
+    """One revocation must flush the policies cache of every process, not only the first reader."""
+    cache_a = TTLCache(maxsize=10, ttl=900)
+    cache_b = TTLCache(maxsize=10, ttl=900)
+    lookup_a = rbac_utils.policies_cache(cache=cache_a)(get_optimized_policies.__wrapped__)
+    lookup_b = rbac_utils.policies_cache(cache=cache_b)(get_optimized_policies.__wrapped__)
+
+    assert lookup_a(roles=(1,), origin_node_type='master') == {'policy': 'test'}
+    assert lookup_b(roles=(1,), origin_node_type='master') == {'policy': 'test'}
+    assert mock_optimize.call_count == 2
+
+    mock_optimize.return_value = {'policy': 'updated'}
+    rbac_utils.clear_tokens_cache()
+
+    assert lookup_a(roles=(1,), origin_node_type='master') == {'policy': 'updated'}
+    assert lookup_b(roles=(1,), origin_node_type='master') == {'policy': 'updated'}
+
+
+def test_generate_keypair_reloads_after_rotation(tmp_path):
+    """A keypair rotated by another process must be picked up instead of masked by the cache.
+
+    Regression for GHSA-g66v-pj9q-26fw: `generate_keypair` was a plain `functools.cache` cleared
+    only in the process that handled the rotation, so `PUT /security/user/revoke` left every other
+    process signing and verifying with the superseded keys.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('old_priv')
+    public_path.write_text('old_pub')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)):
+        assert generate_keypair() == ('old_priv', 'old_pub')
+        # Served from this process's cache while the files are untouched.
+        assert generate_keypair() == ('old_priv', 'old_pub')
+
+        # Another process rotates the keys. Nothing clears this process's cache.
+        private_path.write_text('new_priv')
+        public_path.write_text('new_pub')
+        os.utime(private_path, ns=(2 * 10 ** 9, 2 * 10 ** 9))
+        os.utime(public_path, ns=(2 * 10 ** 9, 2 * 10 ** 9))
+
+        assert generate_keypair() == ('new_priv', 'new_pub')
 
 
 @patch('api.authentication.optimize_resources', return_value={'policy': 'test'})

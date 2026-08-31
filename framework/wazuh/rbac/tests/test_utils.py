@@ -2,14 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
-
 import pytest
 from cachetools import TTLCache
 
-with patch('api.configuration.security_conf', new={'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}):
-    from wazuh.rbac import utils as rbac_utils
-    from wazuh.core import common
+from wazuh.core import common
+from wazuh.rbac import utils as rbac_utils
 
 
 @pytest.fixture
@@ -23,13 +20,19 @@ def reset_generation():
 
 
 def _make_cached_lookup(cache, backing):
-    """Build a token_cache-decorated function reading from `backing`, mimicking one process."""
+    """Build a policies_cache-decorated function reading from `backing`, mimicking one process."""
 
-    @rbac_utils.token_cache(cache=cache)
+    @rbac_utils.policies_cache(cache=cache)
     def lookup(username):
         return backing[username]
 
     return lookup
+
+
+def test_policies_cache_ttl_is_bounded():
+    """The TTL must not be the token lifetime, so a missed invalidation is always recovered from."""
+    assert rbac_utils.POLICIES_CACHE.ttl == rbac_utils.POLICIES_CACHE_TTL
+    assert rbac_utils.POLICIES_CACHE_TTL <= 60
 
 
 def test_clear_tokens_cache_bumps_generation(reset_generation):
@@ -41,47 +44,46 @@ def test_clear_tokens_cache_bumps_generation(reset_generation):
 
 
 def test_single_process_invalidation(reset_generation):
-    """A cached decision is dropped after an invalidation and recomputed from source."""
+    """A cached entry is dropped after an invalidation and recomputed from source."""
     cache = TTLCache(maxsize=10, ttl=900)
-    backing = {'alice': {'valid': True}}
+    backing = {'alice': {'policy': 'old'}}
     lookup = _make_cached_lookup(cache, backing)
 
-    assert lookup(username='alice', origin_node_type='master') == {'valid': True}
+    assert lookup(username='alice', origin_node_type='master') == {'policy': 'old'}
 
-    # Account removed and cache invalidated: the stale "valid" entry must not survive.
-    backing['alice'] = {'valid': False}
+    backing['alice'] = {'policy': 'new'}
     rbac_utils.clear_tokens_cache()
 
-    assert lookup(username='alice', origin_node_type='master') == {'valid': False}
+    assert lookup(username='alice', origin_node_type='master') == {'policy': 'new'}
 
 
 def test_invalidation_reaches_every_process(reset_generation):
     """Regression for the lost-wakeup: one invalidation must flush every process's cache.
 
     Two independently decorated functions, each with its own cache and its own closure-local
-    applied-generation, stand in for two worker processes. Under the previous one-shot
-    multiprocessing.Event the first reader consumed the signal and the second kept serving a
-    stale decision until the TTL (the token lifetime) expired. Both must now flush.
+    applied-generation, stand in for two authentication workers. Under the previous one-shot
+    multiprocessing.Event the first reader consumed the signal and the second kept serving its
+    stale entry until the TTL (the token lifetime) expired. Both must now flush.
     """
-    backing_a = {'alice': {'valid': True}}
-    backing_b = {'alice': {'valid': True}}
+    backing_a = {'alice': {'policy': 'old'}}
+    backing_b = {'alice': {'policy': 'old'}}
     cache_a = TTLCache(maxsize=10, ttl=900)
     cache_b = TTLCache(maxsize=10, ttl=900)
     lookup_a = _make_cached_lookup(cache_a, backing_a)
     lookup_b = _make_cached_lookup(cache_b, backing_b)
 
-    # Warm both process caches with the "valid" decision.
-    assert lookup_a(username='alice', origin_node_type='master') == {'valid': True}
-    assert lookup_b(username='alice', origin_node_type='master') == {'valid': True}
+    # Warm both process caches.
+    assert lookup_a(username='alice', origin_node_type='master') == {'policy': 'old'}
+    assert lookup_b(username='alice', origin_node_type='master') == {'policy': 'old'}
 
-    # Delete the account and invalidate once, from a third context (e.g. the process pool worker).
-    backing_a['alice'] = {'valid': False}
-    backing_b['alice'] = {'valid': False}
+    # Invalidate once, from a third context (e.g. the process pool worker handling the revocation).
+    backing_a['alice'] = {'policy': 'new'}
+    backing_b['alice'] = {'policy': 'new'}
     rbac_utils.clear_tokens_cache()
 
     # The first reader flushing must NOT stop the second reader from flushing.
-    assert lookup_a(username='alice', origin_node_type='master') == {'valid': False}
-    assert lookup_b(username='alice', origin_node_type='master') == {'valid': False}
+    assert lookup_a(username='alice', origin_node_type='master') == {'policy': 'new'}
+    assert lookup_b(username='alice', origin_node_type='master') == {'policy': 'new'}
 
 
 def test_worker_node_bypasses_cache(reset_generation):
@@ -89,7 +91,7 @@ def test_worker_node_bypasses_cache(reset_generation):
     calls = []
     cache = TTLCache(maxsize=10, ttl=900)
 
-    @rbac_utils.token_cache(cache=cache)
+    @rbac_utils.policies_cache(cache=cache)
     def lookup(username):
         calls.append(username)
         return {'valid': True}

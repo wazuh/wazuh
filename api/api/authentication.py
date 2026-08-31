@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-from functools import cache
 import fcntl
 import hashlib
 import json
@@ -98,9 +97,48 @@ _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 _keypair_lock_path = os.path.join(SECURITY_PATH, '.keypair.lock')
 
-@cache
+# Keypair cached by this process, tagged with the identity of the files it was read from.
+#
+# This used to be a plain `functools.cache`, cleared by `change_keypair()` only in the process that
+# happened to handle the revocation. `revoke_tokens` runs in the `process_pool` while `jwt.decode`
+# runs in the API's main process, so every other process kept signing and verifying with the old
+# keys and `PUT /security/user/revoke` did not end the sessions it reported ending. Stamping the
+# cache with the files' identity makes each process notice a rotation on its own next use,
+# whichever process performed it.
+_keypair_cache = None
+
+
+def _keypair_stamp():
+    """Build the identity of the keypair currently on disk.
+
+    Returns
+    -------
+    tuple or None
+        Modification time, inode and size of the private and public key files, or None if either
+        of them is missing.
+    """
+    try:
+        private_stat = os.stat(_private_key_path)
+        public_stat = os.stat(_public_key_path)
+    except OSError:
+        return None
+
+    return (private_stat.st_mtime_ns, private_stat.st_ino, private_stat.st_size,
+            public_stat.st_mtime_ns, public_stat.st_ino, public_stat.st_size)
+
+
+def _clear_keypair_cache():
+    """Drop the keypair cached by this process."""
+    global _keypair_cache
+    _keypair_cache = None
+
+
 def generate_keypair():
     """Generate key files to keep safe or load existing public and private keys.
+
+    The result is cached per process and tagged with the identity of the key files it was read
+    from, so a rotation performed by any process, or outside the API altogether, is picked up on
+    the next call instead of being masked until the process restarts.
 
     Uses file-based locking to prevent race conditions between reading and writing keypairs.
     This ensures that if keys are regenerated (e.g., via revoke_tokens) while reading,
@@ -111,6 +149,15 @@ def generate_keypair():
     WazuhInternalError(6003)
         If there was an error trying to load the JWT secret.
     """
+    global _keypair_cache
+
+    # Taken before the keys are read on purpose: if a rotation lands between this stat and the
+    # read, the fresh keys end up tagged with the superseded stamp and are reloaded on the next
+    # call. Stamping afterwards would instead tag stale keys as current.
+    stamp = _keypair_stamp()
+    if _keypair_cache is not None and _keypair_cache[0] == stamp:
+        return _keypair_cache[1]
+
     lock_file = None
     try:
         # Try to acquire lock file (best-effort, only if security dir exists)
@@ -141,7 +188,17 @@ def generate_keypair():
         if lock_file:
             lock_file.close()
 
-    return private_key, public_key
+    keypair = (private_key, public_key)
+    # `stamp` is None only when the key files did not exist yet and have just been written by this
+    # call, so their identity has to be taken now.
+    _keypair_cache = (stamp if stamp is not None else _keypair_stamp(), keypair)
+
+    return keypair
+
+
+# Kept as an attribute so that the callers written against `functools.cache` (`change_keypair` and
+# the inotify watcher in `api.signals`) keep working unchanged.
+generate_keypair.cache_clear = _clear_keypair_cache
 
 
 def _read_keypair_locked(lock_file):
@@ -300,10 +357,36 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
 
-@rbac_utils.token_cache()
+@rbac_utils.policies_cache()
+def get_optimized_policies(roles: tuple) -> dict:
+    """Obtain the RBAC policies granted by a set of roles.
+
+    This is the expensive half of `check_token` and the only half that is cached. It depends solely
+    on the roles and on the policies linked to them, never on whether the account behind the token
+    still exists or whether the token has been revoked, so a cache hit cannot authenticate anyone.
+
+    Parameters
+    ----------
+    roles : tuple
+        Tuple of roles related with the current token.
+
+    Returns
+    -------
+    dict
+        Optimized policies granted by `roles`.
+    """
+    return optimize_resources(roles)
+
+
 @dapi_allower()
-def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
+def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
+                origin_node_type: str) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
+
+    The validity decision is never cached. Caching it meant that deleting a user, changing its
+    password or revoking its token did not end the session: the checks below were skipped for as
+    long as the cached decision lived, which was the token's own lifetime. Only the policy
+    preprocessing is cached, in `get_optimized_policies`.
 
     Parameters
     ----------
@@ -315,6 +398,9 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
         Issued at time of the current token (milliseconds).
     run_as : bool
         Indicate if the token has been granted through authorization context endpoint.
+    origin_node_type : str
+        Type of the node the request originated from. Only requests coming from the master node
+        may be served the cached policies.
 
     Returns
     -------
@@ -344,9 +430,11 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
                                              run_as=run_as):
                         return {'valid': False}
 
-    policies = optimize_resources(roles)
+    policies = get_optimized_policies(roles=roles, origin_node_type=origin_node_type)
 
-    return {'valid': True, 'policies': policies}
+    # Copied because the caller adds `rbac_mode` to it (see `decode_token`), which would otherwise
+    # mutate the entry shared by every token carrying the same roles.
+    return {'valid': True, 'policies': dict(policies)}
 
 
 def decode_token(token: str) -> dict:

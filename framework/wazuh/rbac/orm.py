@@ -777,6 +777,12 @@ class TokenManager(RBACManager):
                 clean = True
 
             clean and self.session.commit()
+
+            # This is the path taken by `revoke_tokens` and, through it, by
+            # `rbac_db_factory_reset`, which recreates the RBAC database from scratch: the policies
+            # cached for a set of roles no longer describe what those roles grant.
+            clear_tokens_cache()
+
             return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
