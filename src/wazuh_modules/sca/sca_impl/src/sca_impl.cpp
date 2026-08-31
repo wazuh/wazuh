@@ -670,42 +670,49 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     }
     else
     {
-        if (result.stopped || !m_keepRunning.load())
-        {
-            // Not a real failure: the sync was aborted because the module is stopping.
-            // Report it as an expected event, not a WARNING.
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
-        }
-        else if (result.awaitingPrerequisite)
-        {
-            // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
-            // most commonly right after enrollment/restart. Expected to clear on its own.
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
-        }
-        else if ((result.managerNotReady || result.localTransportUnavailable) &&
-                 result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
-        {
-            // Either the manager is not ready for this agent yet, or the local sync intake itself
-            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
-            // failed enough times in a row to suspect it will not clear. Not a WARNING yet.
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason +
-                                             " Will retry next cycle.");
-        }
-        else if (result.managerNotReady || result.localTransportUnavailable)
-        {
-            // Neither condition has cleared for several cycles in a row: this is no longer a restart
-            // hiccup, so it must stay visible.
-            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed " +
-                                             std::to_string(result.consecutiveFailures) + " times in a row: " +
-                                             result.failureReason);
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed" + (result.failureReason.empty() ? "." : ": " + result.failureReason));
-        }
+        logSyncFailure(result, "synchronization");
     }
 
     return result.success;
+}
+
+void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
+                                                     modules_log_level_t genericFailureLevel)
+{
+    if (result.stopped || !m_keepRunning.load())
+    {
+        // Not a real failure: the operation was aborted because the module is stopping.
+        // Report it as an expected event, not a WARNING.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA " + operationLabel + " aborted: the module is stopping.");
+    }
+    else if (result.awaitingPrerequisite)
+    {
+        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+        // most commonly right after enrollment/restart. Expected to clear on its own.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA " + operationLabel + " deferred: " + result.failureReason);
+    }
+    else if ((result.managerNotReady || result.localTransportUnavailable) &&
+             result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    {
+        // Either the manager is not ready for this agent yet, or the local sync intake itself
+        // isn't reachable yet -- both mostly right after a restart -- and the operation has not
+        // failed enough times in a row to suspect it will not clear. Not a WARNING yet.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA " + operationLabel + " deferred: " + result.failureReason +
+                                         " Will retry next cycle.");
+    }
+    else if (result.managerNotReady || result.localTransportUnavailable)
+    {
+        // Neither condition has cleared for several cycles in a row: this is no longer a restart
+        // hiccup, so it must stay visible.
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA " + operationLabel + " failed " +
+                                         std::to_string(result.consecutiveFailures) + " times in a row: " +
+                                         result.failureReason);
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(genericFailureLevel, "SCA " + operationLabel + " failed" +
+                                         (result.failureReason.empty() ? "." : ": " + result.failureReason));
+    }
 }
 
 void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
@@ -757,7 +764,7 @@ bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::str
 
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        return m_spSyncProtocol->notifyDataClean(indices).success;
     }
 
     return false;
@@ -943,43 +950,9 @@ int SecurityConfigurationAssessment::executeFlushSync()
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
     }
-    else if (result.stopped || !m_keepRunning.load())
-    {
-        // Not a real failure: the flush sync was aborted because the module is stopping.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
-        return -1;
-    }
-    else if (result.awaitingPrerequisite)
-    {
-        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
-        // most commonly right after enrollment/restart. Expected to clear on its own.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
-        return -1;
-    }
-    else if ((result.managerNotReady || result.localTransportUnavailable) &&
-             result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
-    {
-        // Either the manager is not ready for this agent yet, or the local sync intake itself
-        // isn't reachable yet -- both mostly right after a restart -- and the sync has not
-        // failed enough times in a row to suspect it will not clear. Not an error yet.
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
-                                         " Will retry next cycle.");
-        return -1;
-    }
-    else if (result.managerNotReady || result.localTransportUnavailable)
-    {
-        // Neither condition has cleared for several cycles in a row: this is no longer a restart
-        // hiccup, so it must stay visible.
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
-                                         std::to_string(result.consecutiveFailures) + " times in a row: " +
-                                         result.failureReason);
-        return -1;
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");
-        return -1;
-    }
+
+    logSyncFailure(result, "flush", LOG_ERROR);
+    return -1;
 }
 
 void SecurityConfigurationAssessment::resume()
@@ -1293,7 +1266,16 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
 bool SecurityConfigurationAssessment::performRecovery()
 {
-    return synchronizeDatabaseSnapshot(true, "recovery").success;
+    SyncModuleResult result = synchronizeDatabaseSnapshot(true, "recovery");
+
+    if (!result.success)
+    {
+        // Unlike syncModule(), performRecovery() has no periodic-cycle caller to log this for it
+        // (it runs on demand from the check_integrity command), so it must log its own outcome. (#38579)
+        logSyncFailure(result, "recovery");
+    }
+
+    return result.success;
 }
 
 SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
@@ -1347,11 +1329,20 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
         // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
         // payload and could permanently drop whatever didn't fit in that one session).
-        if (!m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}))
+        // trackConsecutiveFailures=true: this DataClean is part of the periodic sync/recovery cycle,
+        // so its outcome should feed the same manager-not-ready streak synchronizeModule() relies on.
+        SyncModuleResult dataCleanResult = m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}, Option::SYNC, true);
+
+        if (!dataCleanResult.success)
         {
+            // Transient sync failure (manager not ready yet / communication issue) clearing the
+            // index before a full resync -- most commonly right after an agent restart, before the
+            // manager can serve this agent again. The caller (syncModule() or performRecovery())
+            // emits the single WARNING, with tolerance for manager-not-ready hiccups, same policy as
+            // the DELTA sync failure below. (#36724, #38579)
             LoggingHelper::getInstance().log(
-                LOG_WARNING, "Failed to clear SCA index before " + syncReason + "; will retry later");
-            return {false, {}};
+                LOG_DEBUG, "Failed to clear SCA index before " + syncReason + "; will retry later");
+            return dataCleanResult;
         }
 
         for (const auto& check : checks)
@@ -1818,7 +1809,7 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
 
     while (!dataCleanSent && m_keepRunning)
     {
-        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices).success;
 
         if (!dataCleanSent && m_keepRunning)
         {

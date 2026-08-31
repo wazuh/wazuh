@@ -600,19 +600,44 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
             .localTransportUnavailable = false};
 }
 
-bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
-                                        Option option)
+SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
+                                                    Option option,
+                                                    bool trackConsecutiveFailures)
 {
     if (indices.empty())
     {
         m_logger(LOG_ERROR, "Cannot notify data clean with empty indices vector");
-        return false;
+        return {false, "Cannot notify data clean with empty indices vector"};
     }
 
     if (!m_syncTransport->checkStatus())
     {
-        return false;
+        // Single read, reused below: trackLocalTransportFailure() must see the same "stopped" this
+        // result reports, or a stop() landing between two separate shouldStop() calls could leave
+        // the two disagreeing (see trackLocalTransportFailure()'s doc).
+        const bool stopped = shouldStop();
+
+        // Propagate the reason so the calling module emits a single, informative message at the
+        // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
+        // itself only logs the low-level detail at debug.
+        //
+        // Reported as localTransportUnavailable, not managerNotReady: nothing was sent, so this
+        // says nothing about the manager. Same shape as synchronizeModule()'s equivalent branch.
+        //
+        // Gated by trackConsecutiveFailures for the same reason trackSyncOutcome() is below: unlike
+        // synchronizeModule()/synchronizeMetadataOrGroups() (always a periodic-cycle call, so their
+        // own trackLocalTransportFailure() calls stay unconditional), notifyDataClean() also has ad
+        // hoc callers whose retries are not part of that cycle and would otherwise pump up the same
+        // shared streak faster than the cycle itself fails, causing it to falsely read as past
+        // tolerance on its very next attempt.
+        const unsigned int localTransportFailures = trackConsecutiveFailures ? trackLocalTransportFailure(stopped) : 0;
+        return {false, "Failed to reach the sync intake socket.", stopped, false,
+                localTransportFailures, false, true};
     }
+
+    // Reaching past the check above means the local transport is currently available; whatever
+    // streak of failures to reach it was building has ended.
+    m_consecutiveLocalTransportFailures.store(0, std::memory_order_relaxed);
 
     clearSyncState();
 
@@ -665,8 +690,28 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         success = false;
     }
 
+    std::string failureReason;
+    bool managerNotReady = false;
+    bool awaitingPrerequisite = false;
+    {
+        // Same unlocked-read race as synchronizeModule(); see the comment there. (CID 562619)
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        managerNotReady = m_syncState.lastSyncManagerNotReady;
+        awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+    }
+    // Report whether a stop was requested so the caller can demote an expected
+    // shutdown-time failure from WARNING to INFO/DEBUG.
+    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
+    const bool stopped = shouldStop();
+    // Only feed the shared consecutive-failure streak when the caller opted in: unlike
+    // synchronizeModule(), notifyDataClean() has ad hoc callers (policy-removal cleanup, the
+    // public C-facing wrapper) whose retries are not part of the periodic sync cycle and would
+    // otherwise skew the tolerance window synchronizeModule() relies on for its own log-level
+    // decision. (#38579)
+    const unsigned int consecutiveFailures = trackConsecutiveFailures ? trackSyncOutcome(success, stopped) : 0;
     clearSyncState();
-    return success;
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
 }
 
 flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAndBuildStart(

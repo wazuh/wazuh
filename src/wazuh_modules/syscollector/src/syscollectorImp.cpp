@@ -2983,7 +2983,7 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        return m_spSyncProtocol->notifyDataClean(indices).success;
     }
 
     return false;
@@ -4474,7 +4474,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
         m_logFunction(LOG_DEBUG, "Notifying DataClean for disabled collectors indices: " + indices);
     }
 
-    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
+    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData).success;
     // LCOV_EXCL_STOP
 }
 
@@ -4917,7 +4917,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
         return false;
     }
 
-    if (!protocol->notifyDataClean({index}))
+    if (!protocol->notifyDataClean({index}).success)
     {
         m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
         return false;

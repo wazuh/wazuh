@@ -60,6 +60,13 @@ class SCAMock : public SecurityConfigurationAssessment
             return executeFlushSync();
         }
 
+        /// @brief Testing helper to drive full recovery synchronously.
+        /// @return true on success, false on failure.
+        bool callPerformRecovery()
+        {
+            return performRecovery();
+        }
+
         /// @brief Whether a scan has ever completed (issue 38428's persisted
         /// "first scan owed" tracking) -- exposed for tests.
         bool getFirstScanCompletedForTest() const
