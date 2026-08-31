@@ -89,6 +89,18 @@ void expect_fopen(const char* path, const char* mode, FILE *fp) {
     will_return(__wrap_fopen, fp);
 }
 
+FILE* __wrap_fdopen(int fd, const char* mode) {
+    check_expected(fd);
+    check_expected(mode);
+    return mock_ptr_type(FILE*);
+}
+
+void expect_fdopen(int fd, const char* mode, FILE *fp) {
+    expect_value(__wrap_fdopen, fd, fd);
+    expect_string(__wrap_fdopen, mode, mode);
+    will_return(__wrap_fdopen, fp);
+}
+
 int __wrap_fprintf(FILE *__stream, const char *__format, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
