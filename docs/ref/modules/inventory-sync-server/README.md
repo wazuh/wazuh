@@ -1,7 +1,7 @@
 # Inventory Sync Server Module
 
 Manager-side synchronization service for agent state data, exposed over an HTTP/1.1 Unix domain
-socket (`queue/sockets/inventory-sync.sock`) by `wazuh-manager-modulesd`. A whole synchronization
+socket (`queue/sockets/inventory-sync-http.sock`) by `wazuh-manager-modulesd`. A whole synchronization
 session travels as ONE FlatBuffers `Message{FullSession}` request through
 [Remoted](../remoted/README.md)'s authenticated `POST /stateful` route, and the HTTP response
 relayed back to the agent IS the session result — no acks, no retransmission, no session store.
@@ -23,10 +23,11 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   without processing.
 - **Agent deletion endpoint** (`DELETE /agents`, plus a `POST /agents/delete` alias for C callers):
   UDS-local, called by `wazuh-manager-authd` when an agent is removed. It reaches every index holding
-  the agent's documents — `wazuh-states-*` plus `wazuh-agent-config` and `wazuh-agent-stats` — and
-  issues one delete-by-query per index. The deletion defers to the agent's worker shard, so it
-  orders correctly against in-flight sessions of that same agent, and the HTTP status makes a lost
-  deletion visible instead of silent.
+  the agent's documents in two halves, one per writer: `wazuh-states-*` by delete-by-query on the
+  agent's worker shard (so it orders correctly against in-flight sessions of that same agent), and
+  the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous
+  connector that writes them (so it orders after a `/config` or `/stats` report that connector has
+  accepted but not yet pushed). The HTTP status makes a lost deletion visible instead of silent.
 - HTTP/1.1 over a Unix domain socket, so no TCP port is exposed; admission control before a body is
   read (in-flight byte budget, connection cap); two-phase shutdown; the socket does not open until
   the indexer session and connectors are constructed successfully.
@@ -54,7 +55,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 ## Overview
 
 1. An agent POSTs a whole session to `wazuh-manager-remoted` over authenticated HTTPS
-   (`POST /stateful`, AES-CMAC per agent).
+   (`POST /stateful`, a `wazuh-agent+jwt` bearer per agent).
 2. Remoted forwards the FlatBuffer verbatim to this module's Unix socket, adding the authenticated
    agent id as the `X-Wazuh-Agent-Id` header.
 3. This module verifies the buffer, cross-checks the session's identity against that header (`403`
@@ -104,13 +105,16 @@ agent's documents). The situations an operator will recognize:
   nothing else ever overwrites them. (A warning and not an error because the agent itself is gone and
   cannot reconnect; the leftover is orphaned data, not a broken manager.) Fix what the ERROR points at (an unhealthy indexer, or modulesd
   not listening on the socket) and repeat the deletion; it is idempotent, so re-running it is always
-  safe. Two narrower causes leave no ERROR behind: a `POST /config` or `POST /stats` report that was
-  still queued in the asynchronous connector when the deletion ran lands afterwards and recreates
-  that one document, and the same repeat clears it. `inventory_sync_server/tools/send_delete_agent.py
+  safe. One narrower cause leaves no ERROR behind: a `wazuh-states-*` document written inside the index
+  refresh interval is invisible to the deletion's search, and the same repeat clears it. (A
+  `POST /config` or `POST /stats` report in flight at deletion time is no longer one of these causes:
+  those two documents are deleted by id on the same asynchronous queue that writes them, so a report
+  the queue has accepted is applied before the delete queued behind it.)
+  `inventory_sync_server/tools/send_delete_agent.py
   --verify` counts the agent's documents before and after, which is the quickest way to see what a
   `200` actually did.
 - **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
-  reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock
+  reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock
   http://localhost/metrics`. Shard depths/bytes tell you whether load is skewed;
   `sync.pipeline.shed.total` counts admission-queue sheds; `vd.lane.*` covers the scan lane;
   `server.*` the transport's own budget and session levels. The full catalog — each metric with

@@ -10,7 +10,7 @@ two tools read alike where they do the same thing.
 | CLI | stdlib `flag` | Same dashed-flag style as the retired sender; no dependency for a dozen knobs |
 | HTTP client | stdlib `net/http` | Custom `DialContext` covers both TLS/1517 and `unix://`; per-agent client for identity isolation |
 | TLS | stdlib `crypto/tls` with `InsecureSkipVerify` | Test managers are self-signed; no client certificate is required |
-| AES-CMAC | stdlib `crypto/aes` + a CMAC implementation | Go's stdlib has no CMAC; a small vetted implementation (or ~40 lines following RFC 4493) is preferable to a heavy dependency. **MUST** be unit-tested against a known vector and against the reference in `remoted_module/tools/send_stateless.py` |
+| `wazuh-agent+jwt` bearer | stdlib `crypto/hmac` + `crypto/sha256` + `encoding/json` + `encoding/base64` (`RawURLEncoding`) | No JWT library: the profile is six fixed claims and HS256, and a library's tolerance is exactly what the manager rejects. **MUST** reproduce the frozen vector in `internal/wire/testdata/jwt_vectors.json` byte for byte (shared with the manager's C++ library and the Python tools) |
 | FlatBuffers | `github.com/google/flatbuffers/go` + `flatc --go` at build time | Bindings generated, never committed (see [05](05-flatbuffers-messages.md)) |
 | Pacing | `golang.org/x/time/rate` | Leaky bucket, same as the retired sender |
 | `github.com/klauspost/compress/zstd` | `Content-Encoding: zstd` request bodies (remoted's contract) and the `.json.zst` dump corpus | Pure Go: the no-cgo rule below rules out binding the repo's vendored C zstd |
@@ -25,7 +25,7 @@ two tools read alike where they do the same thing.
 tool_simulator/
 ├── cmd/benchmark_sender/main.go   # flags, scenario load, runner wiring, signals, exit code
 ├── internal/
-│   ├── wire/        # enrollment (authd), AES-CMAC signing, HTTPS and UDS transports
+│   ├── wire/        # enrollment (authd), wazuh-agent+jwt bearer minting, HTTPS and UDS transports
 │   ├── control/     # startup / notify / shutdown: build, send, validate-and-discard
 │   ├── fbbuild/     # scenario step -> Message{FullSession} bytes
 │   ├── fb/          # GENERATED bindings (flatc --go); gitignored
@@ -65,8 +65,8 @@ path, not three.
 
 The sender **SHOULD** ship two self-tests that need nothing running:
 
-1. a CMAC vector test (fixed key, timestamp, method, target, body → expected hex), cross-checked
-   against the Python reference;
+1. a JWT vector test (fixed key, agent id, `iat`, `jti` → the exact frozen token), the same vector
+   the manager's C++ tests and the Python tools use;
 2. a FlatBuffers round-trip test: build a session, parse it back with the generated bindings, assert
    the mode/option/payload and the document count.
 

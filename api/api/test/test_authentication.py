@@ -111,8 +111,11 @@ def test_generate_keypair_ko():
     """Verify expected exception is raised when IOError"""
     with patch('builtins.open'):
         with patch('os.chmod'):
-            with patch('os.chown', side_effect=PermissionError):
-                assert generate_keypair()
+            with patch('api.authentication.wazuh_uid', return_value=0):
+                with patch('api.authentication.wazuh_gid', return_value=0):
+                    with patch('os.chown', side_effect=PermissionError):
+                        assert generate_keypair()
+
 
 @patch("api.authentication._write_new_keypair", return_value=("priv", "pub"))
 @patch("os.path.exists", return_value=False)
@@ -293,7 +296,7 @@ def test_check_token_runas_valid(mock_optimize):
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                       mock_decode):
-    
+
     mock_decode.return_value = deepcopy(original_payload)
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]

@@ -1,0 +1,1220 @@
+openapi: 3.0.3
+
+info:
+  title: Wazuh Manager Agent API (remoted HTTPS)
+  version: 1.0.0
+  description: |
+    The agent-facing HTTPS API exposed by `wazuh-manager-remoted`. This is the agent-manager
+    transport in 5.0: a 5.x agent enrolls, reports and receives work over these routes exclusively.
+    The legacy AES-encrypted TCP/UDP channel on port 1514 is a separate, opt-in compatibility path
+    for 4.x agents and is not described here.
+
+    The listener only runs when a TLS certificate and key are present on disk; manager packages
+    generate a self-signed pair at install time.
+
+    All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` MUST carry the
+    `protocol-version` header. Every route except `GET /` and `POST /enroll` is
+    authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
+    32-byte key its 64-hex `client.keys` secret decodes to; the key is never transmitted. The token
+    binds the agent's identity (`kid`/`sub`/`iss`) and its freshness (`iat`/`nbf`/`exp`, 60 s, fresh
+    `jti` per request) — not the method, the request target or the body, which TLS protects.
+
+    Every path below is the endpoint's logical path, served under the configured
+    `<remote><https><global_prefix>` (the `globalPrefix` server variable). With a prefix in
+    effect the unprefixed paths answer `404`, and any proxy in between must forward the path
+    untouched: a rewritten path reaches no route and is answered `404` (the token does not bind it).
+
+    `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses the sibling
+    `wazuh-enroll+jwt` bearer keyed by the enrollment password (or no credential at all, depending
+    on the manager's configuration).
+
+    Statuses this API never returns: `429 Too Many Requests` and `426 Upgrade Required`. Capacity is
+    shed with `503`. An agent that receives either has been answered by an intermediary, not by
+    remoted.
+
+    The module's own statistics are not served here. They live on a separate manager-local Unix
+    socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
+
+servers:
+  - url: "https://{host}:{port}{globalPrefix}"
+    description: Default local bind (configurable via <remote><https>)
+    variables:
+      host:
+        default: "127.0.0.1"
+      port:
+        default: "1517"
+      globalPrefix:
+        default: "/wazuh-manager"
+        description: >
+          Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
+          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
+          string here). The signed request target includes this prefix.
+
+tags:
+  - name: Health
+    description: Liveness probe
+  - name: Events
+    description: Event ingestion
+  - name: State
+    description: Inventory state synchronization
+  - name: Control
+    description: Agent lifecycle, task dispatch and on-demand requests
+  - name: Files
+    description: Centralized configuration and upgrade package retrieval
+  - name: Reporting
+    description: Agent-reported statistics and configuration documents
+  - name: Enrollment
+    description: Agent registration
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      operationId: healthProbe
+      summary: Health probe (unauthenticated)
+      description: Returns a small JSON object indicating the module is up. No authentication.
+      responses:
+        "200":
+          description: The module is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  module: { type: string, example: remoted }
+
+  /stateless:
+    post:
+      tags: [Events]
+      operationId: ingestStatelessEvents
+      summary: Ingest stateless events (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Accepts a batch of events using the Wazuh H/E wire protocol.
+
+        The request MUST include:
+
+        ```text
+        protocol-version: 1
+        Authorization: Bearer <base64url(header)>.<base64url(claims)>.<base64url(signature)>
+        ```
+
+        The token follows the closed `wazuh-agent+jwt` profile: header exactly
+        `{"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}`, claims exactly `exp`, `iat`,
+        `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes, base64url), `nbf` (= `iat`) and
+        `sub` (= `<agent-id>`), `exp - iat = 60`, base64url without padding, at most 4096 bytes;
+        HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to. A token is
+        accepted while `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default) and is
+        never accepted more than `jwt_clock_skew` seconds before its `iat`. Anything outside the
+        profile (an extra member, a padded segment, a duplicate key, a string where an integer is
+        expected) is an invalid token.
+
+        The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
+        reordering, no normalization) and is matched by the router as is; the token does not cover it,
+        nor the body.
+
+        The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
+        only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
+        decompressing anything. Both the decoder's own buffers (sized from the frame header, so each
+        frame accounts for exactly what it needs) and the decompressed output (tracked incrementally
+        as it is produced) are charged against the server's live in-flight memory capacity -- so a
+        `413` here means the frame didn't fit in the capacity free at that moment, and a
+        highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
+        value other than `zstd` is rejected with `415`; a missing header is treated as an
+        uncompressed body, unchanged from today.
+
+        Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
+        (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
+        `agent-id`; a missing/malformed H line, a non-numeric `wazuh.agent.id`, or a mismatch is
+        rejected with `400 Invalid event batch` (`PayloadAgentMismatch`) and the batch is never
+        forwarded. Once that check passes, the module forwards the exact request body to the
+        engine's event ingress over a Unix-domain socket; the engine validates the H/E batch and a
+        bad batch surfaces as the same `400 Invalid event batch`.
+      requestBody:
+        required: true
+        content:
+          "*/*":
+            schema:
+              type: string
+              minLength: 1
+              description: |
+                Request payload. Authentication is independent of Content-Type and of the body: the
+                bearer token does not cover the wire bytes (TLS protects them, compressed or not).
+                The decompressed H/E batch is forwarded verbatim to the engine.
+            examples:
+              singleLineEvents:
+                summary: H/E batch (two events)
+                value: |-
+                  H {"wazuh":{"agent":{"id":"001","name":"srv1"}}}
+                  E 1:/var/log/syslog:May 07 10:00:00 srv1 sshd: Accepted publickey
+                  E 2:/var/log/auth.log:session opened for user root
+      responses:
+        "202":
+          description: |
+            Request authenticated and forwarded to the engine's event ingress, which accepted and
+            enqueued the batch. The response body is empty. Acceptance means the events were enqueued
+            for processing, NOT that they were fully processed.
+        "400":
+          description: |
+            Either the `protocol-version` header is missing/unsupported, the payload's
+            `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
+            missing/malformed/non-numeric), `Content-Encoding: zstd` is set but the body isn't a
+            valid/complete zstd frame, or the downstream engine rejected the forwarded H/E batch as
+            invalid. The middle two share the same `Invalid event batch` message by design.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                missingProtocolVersion:
+                  value: { error: "Missing required header: protocol-version", code: 400 }
+                unsupportedProtocolVersion:
+                  value: { error: "Unsupported protocol-version", code: 400 }
+                invalidEventBatch:
+                  summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
+                  value: { error: "Invalid event batch", code: 400 }
+                malformedContentEncoding:
+                  summary: "Content-Encoding: zstd set, but the body isn't a valid zstd frame"
+                  value: { error: "Malformed compressed body", code: 400 }
+        "401":
+          description: |
+            Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
+            header, an unknown agent, an unusable key, a peer address outside the one authorized for
+            the agent in `client.keys` (third column: an IP, a CIDR/netmask, or `any`), an
+            out-of-window timestamp and an invalid MAC all return the same response so the specific
+            reason is not exposed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidAuthentication:
+                  value: { error: "Invalid client authentication", code: 401 }
+        "413":
+          description: |
+            The request body exceeds the configured auth body limit (10 MiB). For
+            `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
+            in-flight memory capacity -- either the decoder's buffers (refused up front, from the
+            frame header) or the decompressed output as it was produced. Retryable: the same request
+            may succeed once the server is less loaded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                payloadTooLarge:
+                  value: { error: "Request payload is too large", code: 413 }
+        "415":
+          description: |
+            `Content-Encoding` is present but not (case-insensitively) `zstd`. `gzip` is not
+            supported.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                unsupportedContentEncoding:
+                  value: { error: "Unsupported Content-Encoding", code: 415 }
+        "503":
+          description: |
+            The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
+            many requests are already parked awaiting the downstream service), or the downstream engine
+            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
+            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
+        "500":
+          description: Unexpected internal error while handling the request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                internalError:
+                  value: { error: "Internal server error", code: 500 }
+
+  /control:
+    post:
+      tags: [Control]
+      operationId: agentControl
+      summary: Agent lifecycle and control messages (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Carries the agent's lifecycle messages and is the channel the manager answers with pending
+        work. Discriminated on the body's `type`: `startup`, `notify` or `shutdown`. Body cap 64 KiB.
+
+        `notify` is the hot path -- a keepalive every 10 s by default. Its response tells the agent
+        whether anything changed: `settings_hash` (over `limits` + `cluster.name` only, cached
+        process-wide and therefore identical for every agent -- a different value means re-`startup`),
+        `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
+        `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
+        agent, which must never derive that identifier from `agent.groups` itself),
+        `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
+        `tasks` when the manager has work to dispatch.
+
+        Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
+        `notify` reads it at `agent.version`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/ControlStartup"
+                - $ref: "#/components/schemas/ControlNotify"
+                - $ref: "#/components/schemas/ControlShutdown"
+              discriminator:
+                propertyName: type
+            examples:
+              startup:
+                summary: Sent on connect or after a configuration reload
+                value: { type: startup, version: "5.0.0" }
+              notify:
+                summary: Periodic keepalive, with host metadata on first report or on change
+                value:
+                  type: notify
+                  agent: { version: "5.0.0" }
+                  host:
+                    hostname: ubuntu-test
+                    architecture: x86_64
+                    ip: 192.168.1.100
+                    os: { name: Ubuntu, version: "20.04", platform: ubuntu, type: linux }
+              shutdown:
+                summary: Sent on clean exit
+                value: { type: shutdown }
+      responses:
+        "200":
+          description: |
+            Message accepted. The body depends on `type`: `startup` returns the agent's limits,
+            cluster name and groups; `notify` returns change-detection hashes, the VD feed offset and
+            any pending tasks; `shutdown` returns an empty object.
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                startup:
+                  value:
+                    limits:
+                      fim: { file: 30000, registry_key: 30000, registry_value: 30000 }
+                      syscollector: { hotfixes: 30000, packages: 30000, processes: 30000, ports: 30000 }
+                      sca: { checks: 30000 }
+                    cluster: { name: wazuh-cluster }
+                    agent: { groups: [default, web-servers] }
+                notifyNoTasks:
+                  summary: No pending work -- `tasks` is an empty array, never an absent key
+                  value:
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    settings_hash: "d7a8fbb3..."
+                    tasks: []
+                    vd_feed_offset: 12345678
+                notifyWithTasks:
+                  value:
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    settings_hash: "d7a8fbb3..."
+                    vd_feed_offset: 12345678
+                    tasks:
+                      - task_id: "42"
+                        task_type: active_response
+                        payload: {}
+                shutdown:
+                  value: {}
+        "400":
+          description: |
+            Control-specific rejections, in addition to the shared `protocol-version` and
+            `Content-Encoding` ones.
+
+            A **malformed** `version` (anything outside `MAJOR.MINOR.PATCH`) is rejected here, on
+            `startup` only -- `notify` deliberately skips the version check to keep the hot path
+            fast. A well-formed version that is merely too high for this manager's policy is a `409`
+            instead; see that response.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidBody:
+                  summary: Empty body or over 64 KiB
+                  value: { error: "invalid_body", code: 400 }
+                invalidJson:
+                  value: { error: "invalid_json", code: 400 }
+                invalidAgentId:
+                  value: { error: "invalid_agent_id", code: 400 }
+                unknownMessageType:
+                  summary: "`type` is not startup, notify or shutdown"
+                  value: { error: "unknown_message_type", code: 400 }
+                invalidVersion:
+                  summary: startup only, malformed version
+                  value: { error: "invalid_version", code: 400 }
+                invalidHostInfo:
+                  summary: notify only
+                  value: { error: "invalid_host_info", code: 400 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: |
+            The agent's version is well-formed but higher than this manager's, and
+            `<remote><agents><allow_higher_versions>` is `no`. `startup` only.
+
+            A conflict rather than a bad request: it can start succeeding without the agent changing
+            anything it sends -- an operator flips `allow_higher_versions`, or the manager is
+            upgraded. The agent's client treats this as `VersionRejected`, entering its `REJECTED`
+            state and re-trying `startup` on a slow cadence, whereas the `400` above is terminal.
+
+            Either way the manager also writes `status_code = invalid_version` to global.db; a
+            well-formed version is stored as reported, while a malformed one is stored as the `N/A`
+            sentinel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidVersion:
+                  value: { error: "invalid_version", code: 409 }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500":
+          description: |
+            wazuh-db failed while resolving the agent's groups. `startup` always answers this way;
+            `notify` only when there is no cached membership to fall back on (first contact since
+            the module started) -- with a cache, the stale membership is served instead.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                databaseError:
+                  value: { error: "database_error", code: 500 }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /stateful:
+    post:
+      tags: [State]
+      operationId: syncStatefulSession
+      summary: Synchronize an inventory state session (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Carries one whole inventory synchronization session as a FlatBuffer `Message{FullSession}`.
+        remoted holds **no session state**: the body is opaque to it and is relayed verbatim to the
+        Inventory Sync Server over `queue/sockets/inventory-sync-http.sock`, stamped with the
+        authenticated identity as `X-Wazuh-Agent-Id`.
+
+        Because the downstream answer **is** the session result, this is the one route whose
+        statuses and bodies are passed through as produced by the sync server, and the one route
+        that can return a `Retry-After` (digits-only, on a `503`). The sync server cross-checks the
+        FlatBuffer's `Start.agentid` against the forwarded header and answers `403` on a mismatch.
+
+        It also carries its own, longer response deadline
+        (`remoted.downstream_stateful_response_timeout`, default 20 s), since a session is validated,
+        indexed and flushed within the request rather than merely enqueued. Anything outside the
+        sync contract's status set -- and every transport failure -- collapses to a neutral `503`.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: FlatBuffer `Message{FullSession}`, optionally zstd-compressed.
+      responses:
+        "200":
+          description: |
+            Session applied, or a no-op. Body is the sync server's own response -- see the
+            [Inventory Sync Server response contract](../inventory-sync-server/api-reference.md).
+          content:
+            application/json:
+              schema: { type: object }
+        "400":
+          description: The sync server rejected the session. Body passed through.
+          content:
+            application/json:
+              schema: { type: object }
+        "403":
+          description: |
+            The FlatBuffer's `Start.agentid` does not match the authenticated agent id.
+          content:
+            application/json:
+              schema: { type: object }
+        "409":
+          description: Checksum mismatch. The agent restarts the session. Body passed through.
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500":
+          description: The sync server failed to apply the session. Body passed through.
+          content:
+            application/json:
+              schema: { type: object }
+        "503":
+          description: |
+            Out of capacity, the sync server was unreachable or did not answer in time, or it shed
+            the session itself. The only route that may carry a `Retry-After`, relayed from the sync
+            server when it sends a digits-only value.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Relayed from the sync server only.
+              schema: { type: integer, minimum: 0 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
+
+  /download:
+    post:
+      tags: [Files]
+      operationId: downloadResource
+      summary: Retrieve a centralized configuration or an upgrade package (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Serves the two files an agent pulls from the manager: its centralized configuration
+        (`merged.mg`) and a WPK upgrade package. The only route that answers with a **streamed**
+        body -- HTTP chunked transfer encoding, in `remoted.http_stream_chunk_size` slices
+        (default 64 KiB) -- so manager memory does not grow with file size.
+
+        Resolution:
+
+        | `resource_type` | `resource_id` | Resolves to |
+        | --- | --- | --- |
+        | `config` | one group name | `etc/shared/<group>/merged.mg` |
+        | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..8)>/merged.mg` |
+        | `wpk` | a package filename | `var/upgrade/<filename>` |
+
+        The comma-separated form is wazuh's multigroup selector: it lets an agent in several groups
+        fetch its **effective** configuration, and needs no database lookup because the directory
+        name is the first 8 hex characters of the SHA-256 of the selector verbatim.
+
+        **There is no group-membership check.** Any authenticated agent can fetch any group's or
+        multigroup's merged configuration.
+
+        A failed transfer is a truncation, never a short success: the terminating chunk is withheld
+        so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
+        after every chunk, and a size or mtime change aborts the transfer rather than serving a
+        mixture of two versions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DownloadRequest" }
+            examples:
+              singleGroup:
+                value: { resource_type: config, resource_id: web-servers }
+              multigroup:
+                value: { resource_type: config, resource_id: "default,web-servers" }
+              wpk:
+                value: { resource_type: wpk, resource_id: wazuh_agent_v5.0.0_linux_x86_64.wpk }
+      responses:
+        "200":
+          description: |
+            The resource, streamed with chunked transfer encoding.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "400":
+          description: Malformed request, unknown resource type, or a rejected identifier.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidRequestFormat:
+                  summary: Empty, over 4 KiB, not an object, wrong member count, non-string member
+                  value: { error: "Invalid request format", code: 400 }
+                invalidResourceType:
+                  value: { error: "Invalid resource type", code: 400 }
+                invalidResourceIdentifier:
+                  summary: Fails the grammar for its type
+                  value: { error: "Invalid resource identifier", code: 400 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: |
+            Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
+            indistinguishable to the agent.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                resourceNotFound:
+                  value: { error: "Resource not found", code: 404 }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500":
+          description: An unexpected `errno` while opening or stat-ing the resource.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                internalError:
+                  value: { error: "Internal server error", code: 500 }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /stats:
+    post:
+      tags: [Reporting]
+      operationId: reportAgentStats
+      summary: Report the agent's module statistics (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Receives the aggregated statistics document an agent reports for all of its modules, and
+        relays it to the Inventory Sync Server, which indexes it into `wazuh-agent-stats` as one
+        document per agent (replacing the previous one). **Off** by default on the agent
+        (`<agent><stats_report>`, interval 60 s when enabled).
+
+        remoted does not interpret the document: the only endpoint-level validation is that the body
+        is not empty. The authenticated agent id is forwarded as `X-Wazuh-Agent-Id` -- taken from the
+        verified `Authorization` header, never from the body, so a document claiming another agent
+        cannot override it.
+
+        A success answers a fixed `{}`: the agent has nothing to read back, and a constant keeps an
+        arbitrary downstream string off the wire.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              description: Any non-empty JSON object. Not interpreted by remoted.
+      responses:
+        "200":
+          description: Accepted for indexing. Fixed body.
+          content:
+            application/json:
+              schema: { type: object }
+              examples:
+                accepted:
+                  value: {}
+        "400":
+          description: Empty body, or the sync server rejected the document.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidStatsDocument:
+                  value: { error: "Invalid stats document", code: 400 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /config:
+    post:
+      tags: [Reporting]
+      operationId: reportAgentConfig
+      summary: Report the agent's effective configuration (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Same pipeline as `POST /stats`, for the agent's configuration document; indexed into
+        `wazuh-agent-config`. Unlike `/stats`, this one is **on** by default
+        (`<agent><config_report>`, interval 3600 s) -- the manager needs a configuration snapshot even
+        from an agent whose configuration nobody has touched.
+
+        It differs from `/stats` in exactly one way: a success passes the sync server's **enriched
+        document** back (it stamps `wazuh.agent.id` and `@timestamp` onto what the agent sent).
+        Failures are still collapsed to a fixed local message, so an arbitrary downstream string is
+        never reflected to an agent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              description: Any non-empty JSON object. Not interpreted by remoted.
+      responses:
+        "200":
+          description: Accepted for indexing. Body is the enriched document.
+          content:
+            application/json:
+              schema: { type: object }
+        "400":
+          description: Empty body, or the sync server rejected the document.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidConfigDocument:
+                  value: { error: "Invalid config document", code: 400 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /scan/vd:
+    post:
+      tags: [Control]
+      operationId: requestVulnerabilityScan
+      summary: Request an on-demand Vulnerability Detection re-scan (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        The agent asks for a re-scan once it notices, via `vd_feed_offset` in a `/control` notify
+        response, that this node's Vulnerability Detection feed has moved past the offset it last
+        synced against. Body cap 4 KiB.
+
+        Stateless HTTPS load-balances every request independently, so no node can know which agents
+        are "its own": the agent is the source of truth for "do I need a re-scan," and it asks
+        whichever node it is routed to. remoted holds no scan state -- it makes one inline call to
+        the `vulnerability_scanner` module and relays that answer verbatim, never retrying. The
+        agent's notify cycle is the retry loop.
+
+        A `200` is a promise the scan will run: it is relayed from VD's admission into its bounded
+        dispatch lane, never invented here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScanVdRequest" }
+            examples:
+              feedUpdate:
+                value: { type: feed_update, feed_offset: 12345678 }
+      responses:
+        "200":
+          description: |
+            Offset matched this node's current feed offset and VD queued the scan.
+          content:
+            application/json:
+              schema: { type: object }
+              examples:
+                queued:
+                  value: {}
+        "400":
+          description: Malformed or rejected request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidBody:
+                  summary: Empty or over 4 KiB
+                  value: { error: "invalid_body", code: 400 }
+                invalidJson:
+                  value: { error: "invalid_json", code: 400 }
+                invalidAgentId:
+                  value: { error: "invalid_agent_id", code: 400 }
+                missingType:
+                  value: { error: "missing_type", code: 400 }
+                invalidType:
+                  summary: "`type` other than feed_update"
+                  value: { error: "invalid_type", code: 400 }
+                missingFeedOffset:
+                  value: { error: "missing_feed_offset", code: 400 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: |
+            `feed_offset` does not equal this node's current offset -- the agent's value is stale, or
+            ahead of this node. Carries the real offset to retry with. The agent adopts
+            `current_version` only if it is strictly greater than what it already has.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScanVdConflict" }
+              examples:
+                versionMismatch:
+                  value: { error: version_mismatch, current_version: 12345680 }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "503":
+          description: |
+            Not accepted; the agent retries on its next notify cycle and its pending state survives.
+            The `error` code names the actual cause for an operator reading the exchange.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                scanQueueFull:
+                  value: { error: "scan_queue_full", code: 503 }
+                indexerUnavailable:
+                  value: { error: "indexer_unavailable", code: 503 }
+                feedNotReady:
+                  summary: Also scanner_not_ready / vd_not_initialized
+                  value: { error: "feed_not_ready", code: 503 }
+                vdUnreachable:
+                  summary: Also shutting_down / vd_error
+                  value: { error: "vd_unreachable", code: 503 }
+
+  /enroll:
+    post:
+      tags: [Enrollment]
+      operationId: enrollAgent
+      summary: Register a new agent
+      security:
+        - WazuhEnrollAuthentication: []
+        - {}
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Lets a new agent register over the same HTTPS channel it uses for everything afterward,
+        instead of the legacy `authd` listener on port 1515. It is a **bridge, not a second
+        implementation**: `authd` keeps all enrollment business logic, reached over its local socket.
+
+        It does **not** use the agent's `wazuh-agent+jwt` bearer -- an enrolling agent has no key yet.
+        Two credential checks apply independently, and an operator can require either, both or neither:
+        a TLS client certificate (a property of the listener's `verification_mode`, validated during
+        the handshake before the request reaches this endpoint) and a password (required whenever
+        `authd`'s `use_password` is enabled, presented as the `wazuh-enroll+jwt` bearer). With neither
+        configured, no credential is needed -- matching `authd`'s own behavior on port 1515 in that
+        configuration.
+
+        `protocol-version` is validated first, exactly as on every other authenticated route, and in
+        every mode -- including the credential-less one, since the version is a property of the
+        protocol rather than of the credential. The same value is the second line of the signed
+        canonical sequence, so the header and the signed bytes are the same field.
+
+        The route is **always registered**, answering `403` rather than a bare `404` when enrollment
+        is administratively disabled -- "an operator turned this off" is a different statement from
+        "this manager doesn't support enrollment at all". Decoded bodies are capped at 16 KiB.
+
+        Errors from this endpoint use a **nested** shape,
+        `{"error":{"code":<authd-code>,"message":"<text>"}}`, distinct from every other route's flat
+        `{"error":"...","code":...}`, so `authd`'s numeric codes survive for diagnostics. `code` is
+        `0` for rows that carry no `authd` code. The shared transport's own rejections (`500`, the
+        capacity `503`, and the mTLS peer-address `403`) still use the flat shape.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollRequest" }
+            examples:
+              enroll:
+                value:
+                  name: web-server-01
+                  version: "5.0.0"
+                  groups: "default,web-servers"
+                  ip: 10.0.0.15
+      responses:
+        "200":
+          description: |
+            Verbatim from `authd`. The `key` is what the agent must store and use to sign every
+            subsequent request under its new numeric `id`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollResponse" }
+              examples:
+                enrolled:
+                  value:
+                    id: "001"
+                    name: web-server-01
+                    ip: 10.0.0.15
+                    key: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915
+        "400":
+          description: |
+            A missing or unsupported `protocol-version` header (checked before anything else), a
+            malformed body, a missing `name`/`version`, an invalid `ip`, an agent version newer than
+            allowed, or an `authd` bad-argument code (9003-9006, 9014, 9017, 9019) passed through with its
+            message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                invalidBody:
+                  value: { error: { code: 0, message: "Invalid request body" } }
+                missingProtocolVersion:
+                  value: { error: { code: 0, message: "Missing required header: protocol-version" } }
+                unsupportedProtocolVersion:
+                  value: { error: { code: 0, message: "Unsupported protocol-version" } }
+        "401":
+          description: |
+            Missing or invalid credential. Collapsed to one generic message so a client cannot tell
+            which check failed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                invalidAuthentication:
+                  value: { error: { code: 0, message: "Invalid client authentication" } }
+        "403":
+          description: Enrollment is administratively disabled on this manager.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                disabled:
+                  value: { error: { code: 0, message: "Enrollment is disabled on this manager" } }
+        "409":
+          description: "`authd` reported a duplicate ip, name or id (9007/9008/9012)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "413":
+          description: |
+            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the bearer is
+            examined, in every mode including the credential-less one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "500":
+          description: "`authd` internal, parse or key-generation failure (9001/9002/9009)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "503":
+          description: |
+            `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
+            to the master failed (9016), or `authd` was unreachable / unparseable / timed out.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                unavailable:
+                  value:
+                    error: { code: -1, message: "Enrollment service temporarily unavailable" }
+
+components:
+  securitySchemes:
+    WazuhAuthentication:
+      type: http
+      scheme: bearer
+      bearerFormat: wazuh-agent+jwt
+      description: |
+        Bearer authentication with a self-signed JWT of the closed `wazuh-agent+jwt` profile
+        (RFC 7515 compact serialization, base64url without padding, at most 4096 bytes):
+
+        ```text
+        Authorization: Bearer <header>.<claims>.<signature>
+        ```
+
+        - header: exactly `{"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}` -- `kid` is
+          the canonical zero-padded agent id (digits only; the key is selected by it from
+          `client.keys` and is never sent)
+        - claims: exactly `exp`, `iat`, `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes,
+          base64url, fresh per request), `nbf` (= `iat`), `sub` (= `<agent-id>`); `exp - iat = 60`
+        - signature: HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to
+        - acceptance window: `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default,
+          `remoted.jwt_max_age` / `remoted.jwt_clock_skew`), never more than `jwt_clock_skew` s
+          before `iat`
+        - the JSON text of header and claims is ASCII; any non-ASCII byte is an invalid token
+
+        The token authenticates identity and freshness only: method, target and body are not signed
+        (TLS protects them). Every credential failure is the same `401` with
+        `WWW-Authenticate: Bearer`.
+
+    WazuhEnrollAuthentication:
+      type: http
+      scheme: bearer
+      bearerFormat: wazuh-enroll+jwt
+      description: |
+        Enrollment-only bearer, used by `POST /enroll` because an enrolling agent has no
+        `client.keys` entry to sign with. Same core as `wazuh-agent+jwt`, different domain:
+
+        ```text
+        Authorization: Bearer <header>.<claims>.<signature>
+        ```
+
+        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` -- no `kid`, there is one
+          shared key
+        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub`, there is no agent
+          identity yet; `exp - iat = 60`; same acceptance window and the same
+          `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
+        - key: `HKDF-SHA256(password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01,
+          32 bytes)` derived from `authd`'s enrollment password (`etc/authd.pass`). The password
+          bytes are never used directly.
+
+        A token of either profile presented to the other's endpoint is rejected on its header.
+        Required only when `authd`'s `use_password` is enabled. A missing, unreadable or invalid
+        password file fails **closed**: every request is rejected, never treated as if no password
+        were required. When neither a password nor a client certificate is configured, `/enroll`
+        accepts requests with no credential at all.
+
+  responses:
+    Unauthorized:
+      description: |
+        Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
+        header, an unknown agent, an unusable key, a peer address outside the one authorized for the
+        agent in `client.keys`, a malformed token, a stale token and an invalid signature all return
+        the same response (with `WWW-Authenticate: Bearer`), so the specific reason is not exposed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            invalidAuthentication:
+              value: { error: "Invalid client authentication", code: 401 }
+
+    PayloadTooLarge:
+      description: |
+        The request body exceeds the configured auth body limit (10 MiB default). For
+        `Content-Encoding: zstd` it instead means the frame did not fit in the server's live
+        in-flight memory capacity. Retryable.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            payloadTooLarge:
+              value: { error: "Request payload is too large", code: 413 }
+
+    UnsupportedContentEncoding:
+      description: |
+        `Content-Encoding` is present but not (case-insensitively) `zstd`, or `zstd` while
+        `remoted.http_content_encoding_enabled` is off. `gzip` is not supported.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            unsupportedContentEncoding:
+              value: { error: "Unsupported Content-Encoding", code: 415 }
+
+    ServiceUnavailable:
+      description: |
+        The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
+        requests are already parked awaiting a downstream service), or the downstream service was
+        unreachable or errored. Server-side load-shedding, not per-client rate-limiting: no
+        `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            serviceUnavailable:
+              value: { error: "Service unavailable", code: 503 }
+
+  parameters:
+    ProtocolVersion:
+      name: protocol-version
+      in: header
+      required: true
+      description: Version of the Wazuh request authentication protocol. Only `1` is supported.
+      schema:
+        type: string
+        enum: ["1"]
+      example: "1"
+
+    ContentEncoding:
+      name: Content-Encoding
+      in: header
+      required: false
+      description: |
+        Optional compression applied to the request body. Only `zstd` is supported (case-insensitive);
+        any other value is rejected with `415`. Omit the header to send an uncompressed body.
+      schema:
+        type: string
+        enum: ["zstd"]
+      example: "zstd"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          minLength: 1
+          description: Human-readable error message.
+          example: "Invalid client authentication"
+        code:
+          type: integer
+          format: int32
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+          example: 401
+
+    EnrollErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      description: |
+        `POST /enroll`'s error shape. Nested, unlike every other route's flat `ErrorResponse`, so
+        `authd`'s numeric codes survive for diagnostics.
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: integer
+              format: int32
+              description: |
+                `authd`'s own numeric code when the failure came from `authd`, `0` for failures
+                `/enroll` produced itself, `-1` when `authd` could not be reached or understood.
+              example: 0
+            message:
+              type: string
+              minLength: 1
+              example: "Invalid client authentication"
+
+    ControlStartup:
+      type: object
+      required: [type, version]
+      description: Sent on connect or after a configuration reload. Note `version` is top-level here.
+      properties:
+        type: { type: string, enum: [startup] }
+        version:
+          type: string
+          description: |
+            The agent's product version. Rejected with `409 invalid_version` if newer than the
+            manager's and `<remote><agents><allow_higher_versions>` is `no`, or with
+            `400 invalid_version` if it is not a well-formed `MAJOR.MINOR.PATCH`.
+          example: "5.0.0"
+
+    ControlNotify:
+      type: object
+      required: [type]
+      description: |
+        Periodic keepalive. Unlike `startup`, `version` lives under `agent`. `host` is optional and
+        sent on the first keepalive or whenever a value changes.
+      properties:
+        type: { type: string, enum: [notify] }
+        agent:
+          type: object
+          properties:
+            version: { type: string, example: "5.0.0" }
+        host:
+          type: object
+          properties:
+            hostname: { type: string, example: ubuntu-test }
+            architecture: { type: string, example: x86_64 }
+            ip: { type: string, example: 192.168.1.100 }
+            os:
+              type: object
+              properties:
+                name: { type: string, example: Ubuntu }
+                version: { type: string, example: "20.04" }
+                platform: { type: string, example: ubuntu }
+                type: { type: string, example: linux }
+
+    ControlShutdown:
+      type: object
+      required: [type]
+      description: Sent on clean exit. Carries nothing else.
+      properties:
+        type: { type: string, enum: [shutdown] }
+
+    DownloadRequest:
+      type: object
+      additionalProperties: false
+      required: [resource_type, resource_id]
+      description: |
+        Exactly these two members, both strings. An unknown extra member is a rejection, not
+        something skipped -- so a field a newer agent adds can never be silently ignored by an older
+        manager. The whole body is capped at 4 KiB before parsing.
+      properties:
+        resource_type:
+          type: string
+          enum: [config, wpk]
+        resource_id:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: |
+            For `config`: one group name, or several comma-separated (the multigroup selector). A
+            group name is at most 255 bytes, is not `.` or `..`, and draws from
+            `a-z A-Z 0-9 . : ; _ - = + ! @ ( )` -- note the absence of `/`. Every entry of a
+            selector must be valid on its own, which rejects leading, trailing and doubled commas;
+            the whole selector is capped at 4096 bytes.
+
+            For `wpk`: a filename of at most 255 bytes that must not begin with a dot, must end in
+            `.wpk`, and draws from the stricter `a-z A-Z 0-9 . _ -`.
+          example: web-servers
+
+    ScanVdRequest:
+      type: object
+      required: [type, feed_offset]
+      properties:
+        type:
+          type: string
+          enum: [feed_update]
+          description: |
+            Currently always `feed_update` -- reserved for other trigger reasons the design
+            anticipates but does not yet implement.
+        feed_offset:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            The offset the agent is asking to be scanned against, normally the value it most recently
+            received from `/control`.
+          example: 12345678
+
+    ScanVdConflict:
+      type: object
+      required: [error, current_version]
+      properties:
+        error: { type: string, enum: [version_mismatch] }
+        current_version:
+          type: integer
+          format: int64
+          description: This node's real current offset, to retry with.
+          example: 12345680
+
+    EnrollRequest:
+      type: object
+      required: [name, version]
+      description: |
+        `force`, `id` and a raw `key` are never sent, even though `authd`'s local socket accepts all
+        three for admin/restore use: `/enroll` is exclusively for a brand-new agent self-enrolling,
+        which always gets an auto-assigned id and an `authd`-generated key.
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 128
+          description: |
+            2-128 characters, no leading `.`, charset `[A-Za-z0-9._-]` -- the same rule the legacy
+            port-1515 path applies, so both enrollment paths accept exactly the same names.
+          example: web-server-01
+        version:
+          type: string
+          description: |
+            Rejected if newer than the manager's unless
+            `<remote><agents><allow_higher_versions>` is `yes`. `authd`'s local socket performs no
+            version check of its own, so this endpoint enforces it.
+          example: "5.0.0"
+        groups:
+          type: string
+          description: Comma-separated, passed through to `authd` unchanged.
+          example: "default,web-servers"
+        ip:
+          type: string
+          description: |
+            A syntactic IPv4/IPv6/CIDR value, or one of two sentinels: `any` (no override) or `src`
+            (use the observed peer address -- the agent-side sentinel, mirroring legacy port 1515's
+            own wire sentinel). Never forwarded to `authd` literally as `src`. If the manager's
+            `use_source_ip` is enabled it overrides whatever the body claims.
+          example: 10.0.0.15
+        key_hash:
+          type: string
+          description: |
+            Opaque hash of the agent's current key, if it has one. Drives `authd`'s
+            force/key-mismatch decision, same as port 1515's `K:` field.
+
+    EnrollResponse:
+      type: object
+      required: [id, name, ip, key]
+      description: Verbatim from `authd`.
+      properties:
+        id:
+          type: string
+          description: The agent's new numeric id, to be used in the `Authorization` header from now on.
+          example: "001"
+        name: { type: string, example: web-server-01 }
+        ip: { type: string, example: 10.0.0.15 }
+        key:
+          type: string
+          description: The pre-shared key the agent must store and sign every subsequent request with.
+          example: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915

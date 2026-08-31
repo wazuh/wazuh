@@ -20,7 +20,7 @@ void monitor_send_disconnection_msg(const char *agent_name, const char *agent_ip
 
     if (ag_id = wdb_find_agent(agent_name, agent_ip, NULL), ag_id > 0) {
         /* Log agent disconnection event to ossec.log */
-        minfo(OS_AG_DISCON, ag_id, agent_name);
+        mdebug1(OS_AG_DISCON, ag_id, agent_name);
     } else if (ag_id == -2) {
         // Agent no longer exists in database
         mdebug2("Agent '%s' (%s) is no longer in database, skipping disconnection alert", agent_name, agent_ip);
@@ -123,7 +123,7 @@ void monitor_agents_deletion(){
                         os_strdup(j_agent_name->valuestring, agent_name_ip);
                         wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
                         if(!delete_old_agent(agent_name_ip)){
-                            minfo(OS_AG_REMOVED, agents_array[i], j_agent_name->valuestring);
+                            mdebug1(OS_AG_REMOVED, agents_array[i], j_agent_name->valuestring);
                         }
                         os_free(agent_name_ip);
                     }

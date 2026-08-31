@@ -23,8 +23,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
-#include "cmac.hpp"
 #include "hashHelper.h"
+#include "jwt/jwtKeyDecoder.hpp"
 #include "loggerHelper.h"
 
 namespace remoted::auth
@@ -62,18 +62,18 @@ namespace remoted::auth
             return !field.empty() && (field[0] == '#' || field[0] == '!');
         }
 
+        // Exactly the key shape of the wazuh-agent+jwt profile: 64 lowercase hex chars -> 32 bytes.
+        // Anything else (uppercase, odd lengths, non-hex) decodes to an EMPTY key, so the agent is answered MissingKey
+        // -- "re-enroll"
+        // -- instead of failing signature checks forever.
         std::vector<std::uint8_t> decodeKey(const std::string& hex)
         {
-            if (hex.empty() || hex.size() % 2 != 0)
+            const auto key = jwt_profile::v1::JwtKeyDecoder::decode(hex);
+            if (!key)
             {
                 return {};
             }
-            std::vector<std::uint8_t> bytes(hex.size() / 2);
-            if (!fromLowerHex(hex, bytes.data(), bytes.size()))
-            {
-                return {};
-            }
-            return bytes;
+            return std::vector<std::uint8_t>(key->data(), key->data() + key->size());
         }
 
         // Non-negative integer, fully consuming the field. An agent id is always numeric by
@@ -126,11 +126,11 @@ namespace remoted::auth
         const int loaded = reload();
         if (loaded < 0)
         {
-            LOGFN_WARN(logFn(),
-                       "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
-                       "until the file becomes readable.",
-                       m_path.c_str(),
-                       errno);
+            LOGFN_ERROR(logFn(),
+                        "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
+                        "until the file becomes readable.",
+                        m_path.c_str(),
+                        errno);
         }
         else
         {
@@ -525,7 +525,8 @@ namespace remoted::auth
                     // instead of UnknownAgent. But do NOT count it as loaded -- it cannot
                     // authenticate anything, and counting it made a broken entry look healthy.
                     LOGFN_WARN(logFn(),
-                               "client.keys line %d: the key for agent %u does not decode to a valid AES key; that "
+                               "client.keys line %d: the key for agent %u does not decode to a valid 32-byte key (64 "
+                               "lowercase hex chars); that "
                                "agent's requests will be rejected. Re-enroll it.",
                                lineNumber,
                                *agentId);

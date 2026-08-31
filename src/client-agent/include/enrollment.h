@@ -27,7 +27,7 @@
 typedef struct w_enroll_request_t {
     char *body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
     char *password;  /**< Heap-allocated password, or NULL for mTLS/open mode
-                       *   (no WazuhEnroll header). Freed by w_enroll_request_destroy(). */
+                       *   (no bearer token). Freed by w_enroll_request_destroy(). */
 } w_enroll_request_t;
 
 /** @brief Outcome of parsing an /enroll response (#38465 R12). */

@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-// Identity is a registered agent: its manager-issued id and the hex key every
-// later request is signed with.
+// Identity is a registered agent: its manager-issued id and the 64-hex secret its
+// bearer tokens are signed with (see jwt.go).
 type Identity struct {
 	ID   string
 	Name string
-	Key  string // hex, as it appears in client.keys
+	Key  string // 64 lowercase hex chars, as it appears in client.keys
 }
 
 // Enroll registers one agent against authd over TLS (plain-text protocol):

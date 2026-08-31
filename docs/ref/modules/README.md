@@ -10,6 +10,7 @@
 - [Command](command/index.html) - Scheduled command execution through the command wodle
 - [Content Manager](content_manager/index.html) - CTI feed fetcher for Vulnerability Detection
 - [Control](control/index.html) - Manager control operations (restart, reload) via wm_control module
+- [Database Sync](database-sync/index.html) - Differential database synchronization library (DBSync) for inventory-type modules
 - [Engine](engine/index.html) - Event decoding, enrichment, and detection pipeline
 - [FIM](fim/index.html) - File Integrity Monitoring with persistent state synchronization
 - [Indexer Connector](indexer_connector/index.html) - OpenSearch indexing library (Filebeat replacement)
@@ -31,3 +32,5 @@
 - [Agent Sync Protocol](utils/sync-protocol/index.html) - Agent-side library for synchronizing data with the manager
 - [FlatBuffers](utils/flatbuffers/index.html) - High-performance serialization for synchronization protocol
 - [Schema Validator](utils/schema-validator/index.html) - JSON schema validation for synchronized data
+- [UDS HTTP Server](utils/uds-http-server/index.html) - Shared HTTP/1.1-over-UDS server transport for manager daemons (deferred responses, load shedding, two-phase shutdown)
+- [Metrics Library](utils/metrics/index.html) - Shared lock-free metrics library (wazuh_metrics) and how to query a module's /metrics

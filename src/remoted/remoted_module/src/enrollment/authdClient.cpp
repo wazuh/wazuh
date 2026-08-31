@@ -50,6 +50,12 @@ namespace remoted::enrollment
             return instance;
         }
 
+        remoted::common::LogThrottle& stoppingThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
         remoted::common::LogThrottle& connectFailThrottle()
         {
             static remoted::common::LogThrottle instance;
@@ -153,10 +159,12 @@ namespace remoted::enrollment
         void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
         {
             std::function<void(AuthdResult)> reject;
+            bool stopping = false;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_stopping)
                 {
+                    stopping = true;
                     reject = std::move(callback);
                 }
                 else if (m_queue.size() >= m_maxQueueSize)
@@ -175,6 +183,22 @@ namespace remoted::enrollment
             }
             if (reject)
             {
+                if (stopping)
+                {
+                    if (const auto throttle = stoppingThrottle().record())
+                    {
+                        LOGFN_DEBUG1(logFn(),
+                                     "AuthdClient is stopping: rejected %llu request(s) in the last %d s.",
+                                     throttle.total,
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    AuthdResult result;
+                    result.errorCode = -1;
+                    result.message = "AuthdClient is stopping";
+                    reject(std::move(result));
+                    return;
+                }
+
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),

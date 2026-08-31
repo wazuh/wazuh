@@ -73,6 +73,23 @@ STATIC int w_remoted_https_check_max_len(const char * element, const char * cont
  */
 STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers);
 
+/**
+ * @brief validates <remote><https><global_prefix> as a URL path prefix, so 'remoted -t'
+ *        rejects a bad value instead of the HTTPS server refusing to start at runtime.
+ *
+ * Accepted grammar: '/' alone (explicit identity: endpoints served unprefixed), or
+ * '/segment[/segment...]' with an optional trailing '/'. Every byte must be in
+ * [A-Za-z0-9._~/-] (RFC 3986 unreserved plus '/'): deliberately no '%' -- the prefix is
+ * compared byte-exactly against the wire target, never percent-decoded -- and no '?', '#',
+ * whitespace or XML-hostile characters. Empty segments ('//') and '.'/'..' segments are
+ * rejected: proxies dot-normalize request paths, so such a prefix could never match
+ * consistently. Length is checked separately (w_remoted_https_check_max_len).
+ *
+ * @param prefix raw <global_prefix> content
+ * @return OS_SUCCESS when the value is a usable prefix, OS_INVALID otherwise
+ */
+STATIC int w_remoted_validate_global_prefix(const char * prefix);
+
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -266,6 +283,7 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
 STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
     const char *xml_https_port = "port";
     const char *xml_https_bind_addr = "bind_addr";
+    const char *xml_https_global_prefix = "global_prefix";
     const char *xml_https_certificate = "certificate";
     const char *xml_https_key = "key";
     const char *xml_https_ca = "ca";
@@ -306,6 +324,17 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
                 merror(INVALID_IP, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_https_global_prefix) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_global_prefix, node[i]->content, REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
+            if (w_remoted_validate_global_prefix(node[i]->content) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
+            os_free(logr->https.global_prefix);
+            os_strdup(node[i]->content, logr->https.global_prefix);
         } else if (strcasecmp(node[i]->element, xml_https_certificate) == 0) {
             if (w_remoted_https_check_max_len(xml_https_certificate, node[i]->content, REMOTED_HTTPS_CERTIFICATE_MAX_LEN) == OS_INVALID) {
                 return (OS_INVALID);
@@ -454,6 +483,58 @@ STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers) {
 
         element = separator + 1;
     }
+}
+
+STATIC int w_remoted_validate_global_prefix(const char * prefix) {
+    if (prefix == NULL || *prefix == '\0') {
+        merror("Invalid '<remote><https><global_prefix>' option: the value cannot be empty.");
+        return (OS_INVALID);
+    }
+
+    if (prefix[0] != '/') {
+        merror("Invalid '<remote><https><global_prefix>' option: '%s' must start with '/'.", prefix);
+        return (OS_INVALID);
+    }
+
+    for (const char * p = prefix; *p; p++) {
+        const char c = *p;
+        const int allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                            c == '.' || c == '_' || c == '~' || c == '-' || c == '/';
+
+        if (!allowed) {
+            merror("Invalid character '%c' in the '<remote><https><global_prefix>' option: allowed characters are "
+                   "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.", c);
+            return (OS_INVALID);
+        }
+    }
+
+    if (strstr(prefix, "//") != NULL) {
+        merror("Invalid '<remote><https><global_prefix>' option: '%s' contains an empty path segment ('//').", prefix);
+        return (OS_INVALID);
+    }
+
+    // Walk the segments rejecting '.' and '..': proxies dot-normalize request paths, so a
+    // dot-segment prefix could never match consistently. Hand-walked like the ciphers
+    // validator above; the '//' rejection guarantees every segment here is non-empty.
+    const char * segment = prefix + 1; // skip the leading '/'
+
+    while (*segment) {
+        const char * separator = strchr(segment, '/');
+        const size_t length = separator ? (size_t)(separator - segment) : strlen(segment);
+
+        if ((length == 1 && segment[0] == '.') || (length == 2 && segment[0] == '.' && segment[1] == '.')) {
+            merror("Invalid '<remote><https><global_prefix>' option: '%s' contains a '.' or '..' path segment.", prefix);
+            return (OS_INVALID);
+        }
+
+        if (!separator) {
+            break;
+        }
+
+        segment = separator + 1;
+    }
+
+    return OS_SUCCESS;
 }
 
 STATIC int w_remoted_get_net_protocol(const char * content) {

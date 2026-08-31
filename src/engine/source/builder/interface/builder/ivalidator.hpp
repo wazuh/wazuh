@@ -50,7 +50,7 @@ public:
      *
      * Implementation may:
      *  - Check that the asset structure is valid according to its type.
-     *  - To decoders, ensure that KVDB references are UUIDv4 formatted, but do NOT check existence.
+     *  - To decoders, ensure that KVDB references are present, but do NOT check existence.
      *
      * @param assetJson Asset JSON definition.
      * @return base::OptError Empty on success, otherwise an error describing the failure.

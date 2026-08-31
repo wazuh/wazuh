@@ -358,6 +358,7 @@ STATIC int wm_agent_upgrade_validate_remoted_delivery(const char *current_versio
 
     os_free(tmp_remoted_cfg.lip);
     os_free(tmp_remoted_cfg.https.bind_addr);
+    os_free(tmp_remoted_cfg.https.global_prefix);
     os_free(tmp_remoted_cfg.https.certificate);
     os_free(tmp_remoted_cfg.https.key);
     os_free(tmp_remoted_cfg.https.ca);

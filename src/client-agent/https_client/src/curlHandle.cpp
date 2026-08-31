@@ -16,6 +16,7 @@
  */
 
 #include "curlHandle.hpp"
+#include "moduleLog.hpp"
 
 #include <curl/curl.h>
 
@@ -39,6 +40,16 @@ namespace
 
     static_assert(TLS_NATIVE_CA_STORE == CURLSSLOPT_NATIVE_CA,
                   "TLS_NATIVE_CA_STORE must stay equal to libcurl's CURLSSLOPT_NATIVE_CA");
+
+    /// One tag for the whole process: a handle is built per request, and LogFn owns a
+    /// std::string too long for the small-string buffer, so a member would cost an
+    /// allocation per request on the /stateless path. Never destroyed for the same
+    /// reason as optionMap() below.
+    const LogFn& handleLogFn()
+    {
+        static const LogFn* const logFn = new const LogFn {HTTPS_CLIENT_LOGTAG};
+        return *logFn;
+    }
 
     const std::map<CurlOption, CURLoption>& optionMap()
     {
@@ -291,13 +302,51 @@ namespace
 
             TransportStatus perform() override
             {
+                m_lastError.clear();
+
                 if (m_headers != nullptr &&
                         curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
                 {
                     return TransportStatus::OtherError;
                 }
 
-                return statusFromCurlCode(curl_easy_perform(m_handle));
+                // The CURLcode collapses into a coarse TransportStatus, so this is
+                // the only place the real cause exists: keep libcurl's own message.
+                char errorBuffer[CURL_ERROR_SIZE] {};
+                curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, errorBuffer);
+
+                const CURLcode code = curl_easy_perform(m_handle);
+
+                // A shutdown tripping the abort flag is not a transport failure, and
+                // Interrupted already says so: reporting "(42) Operation was aborted
+                // by callback" would only add libcurl's wording for what the caller
+                // asked for.
+                if (code != CURLE_OK && code != CURLE_ABORTED_BY_CALLBACK)
+                {
+                    // strerror() names the error class and is always available; the
+                    // error buffer carries the TLS/OpenSSL detail, but libcurl only
+                    // fills it for some errors, so it cannot be the sole reason.
+                    m_lastError = "(" + std::to_string(static_cast<int>(code)) + ") " +
+                                  curl_easy_strerror(code);
+
+                    if (errorBuffer[0] != '\0')
+                    {
+                        m_lastError += ": ";
+                        m_lastError += errorBuffer;
+                    }
+
+                    char* url = nullptr;
+                    curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url);
+                    LOGFN_DEBUG1(handleLogFn(),
+                                 "libcurl failed on %s: %s",
+                                 url != nullptr ? url : "unknown URL",
+                                 m_lastError.c_str());
+                }
+
+                // libcurl kept the pointer rather than copying it, so drop it
+                // before the buffer goes out of scope.
+                curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr);
+                return statusFromCurlCode(code);
             }
 
             long responseCode() override
@@ -314,11 +363,17 @@ namespace
                 return ip != nullptr ? std::string(ip) : std::string();
             }
 
+            std::string curlError() override
+            {
+                return m_lastError;
+            }
+
         private:
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
             HeaderCapture m_headerCapture {};
+            std::string m_lastError {}; ///< Last perform()'s reason, empty when it succeeded.
     };
 } // namespace
 

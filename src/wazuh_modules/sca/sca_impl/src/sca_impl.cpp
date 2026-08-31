@@ -664,16 +664,18 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             // most commonly right after enrollment/restart. Expected to clear on its own.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
         }
-        else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        else if ((result.managerNotReady || result.localTransportUnavailable) &&
+                 result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
-            // The manager is not ready for this agent yet, mostly right after a restart, and the sync
-            // has not failed enough times in a row to suspect it will not clear. Not a WARNING yet.
+            // Either the manager is not ready for this agent yet, or the local sync intake itself
+            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+            // failed enough times in a row to suspect it will not clear. Not a WARNING yet.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason +
                                              " Will retry next cycle.");
         }
-        else if (result.managerNotReady)
+        else if (result.managerNotReady || result.localTransportUnavailable)
         {
-            // The manager has not been ready for several cycles in a row: this is no longer a restart
+            // Neither condition has cleared for several cycles in a row: this is no longer a restart
             // hiccup, so it must stay visible.
             LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed " +
                                              std::to_string(result.consecutiveFailures) + " times in a row: " +
@@ -936,17 +938,19 @@ int SecurityConfigurationAssessment::executeFlushSync()
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
         return -1;
     }
-    else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    else if ((result.managerNotReady || result.localTransportUnavailable) &&
+             result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
     {
-        // The manager is not ready for this agent yet, mostly right after a restart, and the sync
-        // has not failed enough times in a row to suspect it will not clear. Not an error yet.
+        // Either the manager is not ready for this agent yet, or the local sync intake itself
+        // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+        // failed enough times in a row to suspect it will not clear. Not an error yet.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
                                          " Will retry next cycle.");
         return -1;
     }
-    else if (result.managerNotReady)
+    else if (result.managerNotReady || result.localTransportUnavailable)
     {
-        // The manager has not been ready for several cycles in a row: this is no longer a restart
+        // Neither condition has cleared for several cycles in a row: this is no longer a restart
         // hiccup, so it must stay visible.
         LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
                                          std::to_string(result.consecutiveFailures) + " times in a row: " +

@@ -72,7 +72,7 @@ extern "C" bool vdTesttoolSkipPostUpdateScan()
 
 namespace
 {
-    constexpr auto DEFAULT_SOCKET_PATH = "queue/sockets/inventory-sync.sock";
+    constexpr auto DEFAULT_SOCKET_PATH = "queue/sockets/inventory-sync-http.sock";
     constexpr auto PACKAGE_INDEX = "wazuh-states-inventory-packages";
     constexpr auto HOTFIX_INDEX = "wazuh-states-inventory-hotfixes";
     constexpr auto OS_INDEX = "wazuh-states-inventory-system";

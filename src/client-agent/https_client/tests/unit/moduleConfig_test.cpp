@@ -130,6 +130,26 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
     EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
 }
 
+// #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
+// deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
+// the manager routes on the literal wire request-target (prefix included;
+// the bearer does not bind it), so the prefix is folded into
+// HttpRequestSpec::target instead (RetrySender::attemptOnce, EnrollClient::performOnce),
+// not into the authority baseUrl() builds. See retrySender_test.cpp for the
+// URL/signature composition tests.
+
+TEST(ModuleConfigTest, ServerEndpointIsEmptyByDefault)
+{
+    EXPECT_EQ("", ModuleConfig::fromC(minimalConfig()).serverEndpoint);
+}
+
+TEST(ModuleConfigTest, ServerEndpointIsKeptVerbatimWhenConfigured)
+{
+    auto config = minimalConfig();
+    std::strncpy(config.server_endpoint, "wazuh-manager", sizeof(config.server_endpoint) - 1);
+    EXPECT_EQ("wazuh-manager", ModuleConfig::fromC(config).serverEndpoint);
+}
+
 TEST(ModuleConfigTest, ValidateRejectsMissingHostOrId)
 {
     NiceMock<MockFsProbe> fsProbe;
@@ -191,6 +211,37 @@ TEST(ModuleConfigTest, NoneModeIsValidWithoutCa)
     NiceMock<MockFsProbe> fsProbe;
     EXPECT_TRUE(ModuleConfig::fromC(minimalConfig()).validate(fsProbe, TEST_LOG));
 }
+
+TEST(ModuleConfigTest, SystemModeValidWithoutCaWhenBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+#if !defined(WIN32) && !defined(__APPLE__)
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+#endif
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenCaIsSet)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.ca_path, "/etc/ca.pem", sizeof(config.ca_path) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // Paired timing options. getDefine_Int_default() range-checks each option on its

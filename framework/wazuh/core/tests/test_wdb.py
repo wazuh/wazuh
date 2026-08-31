@@ -145,7 +145,7 @@ def test_wrong_character_encodings_wdb(send_mock, connect_mock):
     """
     Tests receiving a text with a bad character encoding from wazuh db
     """
-    def recv_mock(size_to_receive):
+    def recv_mock(size_to_receive, flags=0):
         bad_string = b' {"bad": "\x96bad"}'
         return format_msg(bad_string) if size_to_receive == 4 else bad_string
 
@@ -161,7 +161,7 @@ def test_null_values_are_removed(send_mock, connect_mock):
     """
     Tests '(null)' values are removed from the resulting dictionary
     """
-    def recv_mock(size_to_receive):
+    def recv_mock(size_to_receive, flags=0):
         nulls_string = b' [{"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}]'
         return format_msg(nulls_string) if size_to_receive == 4 else nulls_string
 
@@ -177,18 +177,37 @@ def test_failed_send_private(send_mock, connect_mock):
     """
         Tests an exception is properly raised when it's not possible to send a msg to the wdb socket
     """
-    def recv_mock(size_to_receive):
+    def recv_mock(size_to_receive, flags=0):
         error_string = b'err {"agents": {"001": "Error"}}'
         return format_msg(error_string) if size_to_receive == 4 else error_string
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
-        with pytest.raises(exception.WazuhException, match=".* 2003 .*"):
+        with pytest.raises(exception.WazuhException, match=".* 2003 .*") as exc_info:
             mywdb._send('test_msg')
+        # The raw backend error text must not leak into the exception message.
+        assert '{"agents": {"001": "Error"}}' not in str(exc_info.value)
+        assert exc_info.value.message == exception.WazuhException.ERRORS[2003]['message']
 
     with patch('socket.socket.recv', return_value=b'a' * (MAX_SOCKET_BUFFER_SIZE + 1)):
         mywdb = WazuhDBConnection()
         with pytest.raises(exception.WazuhException, match=".* 2009 .*"):
+            mywdb._send('test_msg')
+
+
+@patch("socket.socket.connect")
+@patch("socket.socket.send")
+def test_send_private_closed_connection(send_mock, connect_mock):
+    """Test that a closed/reset connection while reading the response header raises WazuhInternalError(2010)
+    instead of the unhandled struct.error/ConnectionResetError that used to escape `_send`."""
+    with patch('socket.socket.recv', return_value=b''):
+        mywdb = WazuhDBConnection()
+        with pytest.raises(exception.WazuhInternalError, match=r'\b2010\b'):
+            mywdb._send('test_msg')
+
+    with patch('socket.socket.recv', side_effect=ConnectionResetError):
+        mywdb = WazuhDBConnection()
+        with pytest.raises(exception.WazuhInternalError, match=r'\b2010\b'):
             mywdb._send('test_msg')
 
 

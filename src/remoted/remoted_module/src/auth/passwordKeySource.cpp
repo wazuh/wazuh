@@ -23,11 +23,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
-#include <openssl/core_names.h>
-#include <openssl/kdf.h>
-#include <openssl/params.h>
-
 #include "hashHelper.h"
+#include "jwt/enrollKeyDerivation.hpp"
 #include "loggerHelper.h"
 
 namespace remoted::auth
@@ -127,62 +124,6 @@ namespace remoted::auth
             return std::string(buf.data(), len);
         }
 
-        /**
-         * @brief HKDF-SHA256 derive a 32-byte AES-256 key from the password.
-         *
-         * Empty salt, info = "WAZUH-ENROLL-CMAC-KEY" + 0x01 -- see the Agent enrollment chapter
-         * of remoted_module/README.md for a verified known-answer vector (password
-         * "MyEnrollmentSecret123" -> key 2ea29504...5a9e, confirmed against three independent
-         * implementations -- see passwordKeySource_test.cpp's HkdfMatchesTheVerifiedKnownAnswerVector).
-         * The version byte in `info` reserves room to change this construction later without an
-         * ambiguous transition.
-         *
-         * @throws std::runtime_error on an OpenSSL provider failure (missing/misconfigured HKDF
-         *         provider, FIPS mode, etc.) -- global and permanent, same distinction Cmac makes
-         *         between a bad key (per-agent) and a provider failure (everyone fails). Never
-         *         thrown for a merely-short-or-empty password; that is rejected earlier by
-         *         readPasswordLine().
-         */
-        std::vector<std::uint8_t> deriveKeyFromPassword(const std::string& password)
-        {
-            static constexpr unsigned char kInfo[] = {'W', 'A', 'Z', 'U', 'H', '-', 'E', 'N', 'R', 'O', 'L',
-                                                      'L', '-', 'C', 'M', 'A', 'C', '-', 'K', 'E', 'Y', 0x01};
-            constexpr std::size_t kKeyLen = 32; // AES-256
-
-            EVP_KDF* kdf = EVP_KDF_fetch(nullptr, "HKDF", nullptr);
-            if (!kdf)
-            {
-                throw std::runtime_error("EVP_KDF_fetch(HKDF) failed");
-            }
-
-            EVP_KDF_CTX* kctx = EVP_KDF_CTX_new(kdf);
-            EVP_KDF_free(kdf);
-            if (!kctx)
-            {
-                throw std::runtime_error("EVP_KDF_CTX_new failed");
-            }
-
-            int mode = EVP_KDF_HKDF_MODE_EXTRACT_AND_EXPAND;
-            OSSL_PARAM params[5];
-            params[0] = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, const_cast<char*>("SHA2-256"), 0);
-            params[1] = OSSL_PARAM_construct_octet_string(
-                OSSL_KDF_PARAM_KEY, const_cast<char*>(password.data()), password.size());
-            params[2] = OSSL_PARAM_construct_octet_string(
-                OSSL_KDF_PARAM_INFO, const_cast<unsigned char*>(kInfo), sizeof(kInfo));
-            params[3] = OSSL_PARAM_construct_int(OSSL_KDF_PARAM_MODE, &mode);
-            params[4] = OSSL_PARAM_construct_end();
-            // No salt param -- empty salt, matching the verified known-answer vector.
-
-            std::vector<std::uint8_t> derived(kKeyLen);
-            const int rc = EVP_KDF_derive(kctx, derived.data(), derived.size(), params);
-            EVP_KDF_CTX_free(kctx);
-
-            if (rc != 1)
-            {
-                throw std::runtime_error("EVP_KDF_derive(HKDF) failed");
-            }
-            return derived;
-        }
     } // namespace
 
     PasswordKeySource::PasswordKeySource(std::string path, int refreshIntervalSeconds)
@@ -515,16 +456,15 @@ namespace remoted::auth
                     return false;
                 }
 
-                std::optional<std::vector<std::uint8_t>> derived;
-                try
+                // The one HKDF construction the agent shares (jwt/enrollKeyDerivation.hpp): see the
+                // Agent enrollment chapter of remoted_module/README.md for the known-answer vector.
+                auto derived = jwt_profile::v1::enroll::deriveEnrollKey(*password);
+                if (!derived)
                 {
-                    derived = deriveKeyFromPassword(*password);
-                }
-                catch (const std::exception& e)
-                {
-                    // Global/permanent (OpenSSL provider failure), not per-attempt -- log loudly
-                    // and fail closed, same as Cmac's CmacProviderError distinction.
-                    LOGFN_ERROR(logFn(), "Could not derive the enrollment CMAC key: %s.", e.what());
+                    // Global/permanent (OpenSSL HKDF provider failure), not per-attempt -- log loudly
+                    // and fail closed: no key means every Password-mode enrollment is rejected.
+                    LOGFN_ERROR(
+                        logFn(), "Could not derive the enrollment key from '%s' (HKDF unavailable).", m_path.c_str());
                     std::lock_guard<std::mutex> lock(m_mutex);
                     m_derivedKey.reset();
                     m_hasBaseline = true;
@@ -555,10 +495,14 @@ namespace remoted::auth
         return static_cast<bool>(currentKey());
     }
 
-    std::optional<std::vector<std::uint8_t>> PasswordKeySource::currentKey() const
+    std::optional<jwt_profile::v1::SecureBytes> PasswordKeySource::currentKey() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_derivedKey;
+        if (!m_derivedKey)
+        {
+            return std::nullopt;
+        }
+        return jwt_profile::v1::SecureBytes(m_derivedKey->data(), m_derivedKey->size()); // a wiped-on-destroy copy
     }
 
 } // namespace remoted::auth

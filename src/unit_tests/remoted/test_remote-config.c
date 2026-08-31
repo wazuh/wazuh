@@ -113,6 +113,7 @@ static int teardown(void **state) {
     test_state *ts = *state;
     if (ts->logr->lip) free(ts->logr->lip);
     if (ts->logr->https.bind_addr) free(ts->logr->https.bind_addr);
+    if (ts->logr->https.global_prefix) free(ts->logr->https.global_prefix);
     if (ts->logr->https.certificate) free(ts->logr->https.certificate);
     if (ts->logr->https.key) free(ts->logr->https.key);
     if (ts->logr->https.ca) free(ts->logr->https.ca);
@@ -644,9 +645,10 @@ static void test_w_remoted_parse_legacy_enabled_invalid(void **state) {
 static void test_w_remoted_parse_https_valid_full(void **state) {
     test_state *ts = *state;
 
-    xml_node **nodes = create_node_array(8,
+    xml_node **nodes = create_node_array(9,
         create_xml_node("port", "9443"),
         create_xml_node("bind_addr", "0.0.0.0"),
+        create_xml_node("global_prefix", "/wazuh-manager/"),
         create_xml_node("certificate", "etc/remoted-https/server.crt"),
         create_xml_node("key", "etc/remoted-https/server.key"),
         create_xml_node("ca", "etc/remoted-https/ca.crt"),
@@ -664,6 +666,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(ts->logr->https.port, 9443);
     assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
     assert_string_equal(ts->logr->https.certificate, "etc/remoted-https/server.crt");
     assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
     assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
@@ -710,6 +713,238 @@ static void test_w_remoted_parse_https_invalid_bind_addr(void **state) {
     assert_int_equal(result, OS_INVALID);
 
     free_node_array(nodes);
+}
+
+// global_prefix: valid values
+
+static void test_w_remoted_parse_https_global_prefix_valid(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/wazuh-manager/")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_root_identity(void **state) {
+    test_state *ts = *state;
+
+    // "/" is the explicit identity value: accepted, endpoints served unprefixed.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_no_trailing_slash(void **state) {
+    test_state *ts = *state;
+
+    // Both spellings are accepted; trailing-slash normalization is the C++ side's job.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/wazuh-manager")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_multi_segment(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "/edge/wazuh-5")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, "/edge/wazuh-5");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_max_len_boundary(void **state) {
+    test_state *ts = *state;
+
+    // Exactly REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN (255) characters: the last accepted length
+    // (one less than the 256-byte C-ABI buffer, leaving room for the NUL).
+    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1];
+    value[0] = '/';
+    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN - 1);
+    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", value)
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_string_equal(ts->logr->https.global_prefix, value);
+
+    free_node_array(nodes);
+}
+
+// global_prefix: invalid values (every one is fatal, so 'remoted -t' reports it)
+
+static void test_w_remoted_parse_https_global_prefix_too_long(void **state) {
+    test_state *ts = *state;
+
+    // One character over the limit: rejected by the shared max-len check, never truncated.
+    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 2];
+    value[0] = '/';
+    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN);
+    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", value)
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for '<remote><https><global_prefix>' exceeds the maximum length of 255 characters.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_empty(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid '<remote><https><global_prefix>' option: the value cannot be empty.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_no_leading_slash(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("global_prefix", "wazuh")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid '<remote><https><global_prefix>' option: 'wazuh' must start with '/'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.global_prefix);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_global_prefix_empty_segment(void **state) {
+    test_state *ts = *state;
+
+    const char *values[] = { "//", "/a//b", NULL };
+    const char *messages[] = {
+        "Invalid '<remote><https><global_prefix>' option: '//' contains an empty path segment ('//').",
+        "Invalid '<remote><https><global_prefix>' option: '/a//b' contains an empty path segment ('//').",
+        NULL
+    };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        expect_string(__wrap__merror, formatted_msg, messages[i]);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
+}
+
+static void test_w_remoted_parse_https_global_prefix_bad_chars(void **state) {
+    test_state *ts = *state;
+
+    // One representative per rejected class: query, space, percent-encoding (the prefix is
+    // matched byte-exactly against the wire, never decoded).
+    const char *values[] = { "/a?x=1", "/a b", "/a%20b", NULL };
+    const char *messages[] = {
+        "Invalid character '?' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        "Invalid character ' ' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        "Invalid character '%' in the '<remote><https><global_prefix>' option: allowed characters are "
+        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+        NULL
+    };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        expect_string(__wrap__merror, formatted_msg, messages[i]);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
+}
+
+static void test_w_remoted_parse_https_global_prefix_dot_segment(void **state) {
+    test_state *ts = *state;
+
+    // Proxies dot-normalize request paths, so a '.'/'..' prefix could never match consistently.
+    const char *values[] = { "/./a", "/a/../b", "/a/..", NULL };
+
+    for (int i = 0; values[i]; i++) {
+        xml_node **nodes = create_node_array(1,
+            create_xml_node("global_prefix", values[i])
+        );
+
+        char message[256];
+        snprintf(message, sizeof(message),
+                 "Invalid '<remote><https><global_prefix>' option: '%s' contains a '.' or '..' path segment.",
+                 values[i]);
+        expect_string(__wrap__merror, formatted_msg, message);
+
+        int result = w_remoted_parse_https(nodes, ts->logr);
+
+        assert_int_equal(result, OS_INVALID);
+        assert_null(ts->logr->https.global_prefix);
+
+        free_node_array(nodes);
+    }
 }
 
 static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
@@ -1130,6 +1365,186 @@ static void test_read_remote_local_ip_not_defaulted_for_ipv6(void **state) {
     free_node_array(nodes);
 }
 
+/* getRemoteConfig() -- what GET /manager/configuration?section=remote reports.
+ *
+ * These read the GLOBAL logr (remoted.c), not the per-test one the parser tests allocate, since
+ * that is what the real function reports on. Each test sets only the fields it asserts and clears
+ * the global afterwards, so no state leaks into the next one.
+ *
+ * Regression guard: this used to emit the pre-5.0 FLAT shape -- every option directly under the
+ * connection object, plus a "connection":"secure" key for an option that no longer exists -- and
+ * omitted the whole <https> block, so the manager's actual agent-facing listener was invisible to
+ * the API. */
+static void teardown_global_logr(void) {
+    memset(&logr, 0, sizeof(logr));
+}
+
+/* The report's single `remote` array element. `root` stays owned by the caller, which must
+ * cJSON_Delete() it; the returned pointer is borrowed from it. */
+static cJSON *remote_entry(cJSON *root) {
+    assert_non_null(root);
+    cJSON *array = cJSON_GetObjectItem(root, "remote");
+    assert_non_null(array);
+    assert_int_equal(cJSON_GetArraySize(array), 1);
+    cJSON *entry = cJSON_GetArrayItem(array, 0);
+    assert_non_null(entry);
+    return entry;
+}
+
+static void assert_string_field(const cJSON *object, const char *name, const char *expected) {
+    cJSON *item = cJSON_GetObjectItem((cJSON *)object, name);
+    assert_non_null(item);
+    assert_true(cJSON_IsString(item));
+    assert_string_equal(cJSON_GetStringValue(item), expected);
+}
+
+static void test_getRemoteConfig_reports_https_block(void **state) {
+    (void)state;
+    memset(&logr, 0, sizeof(logr));
+
+    logr.https.port = 1517;
+    logr.https.bind_addr = "0.0.0.0";
+    logr.https.global_prefix = "/wazuh-manager";
+    logr.https.certificate = "etc/certs/remoted.pem";
+    logr.https.key = "etc/certs/remoted-key.pem";
+    logr.https.ca = "etc/certs/root-ca.pem";
+    logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+    logr.https.ciphers = "TLS_AES_256_GCM_SHA384";
+    logr.https.max_body_size = 20971520;
+    logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+
+    cJSON *root = getRemoteConfig();
+    cJSON *entry = remote_entry(root);
+    cJSON *https = cJSON_GetObjectItem(entry, "https");
+    assert_non_null(https);
+
+    assert_string_field(https, "port", "1517");
+    assert_string_field(https, "bind_addr", "0.0.0.0");
+    assert_string_field(https, "global_prefix", "/wazuh-manager");
+    assert_string_field(https, "certificate", "etc/certs/remoted.pem");
+    assert_string_field(https, "key", "etc/certs/remoted-key.pem");
+    assert_string_field(https, "ca", "etc/certs/root-ca.pem");
+    assert_string_field(https, "verification_mode", "certificate");
+    assert_string_field(https, "ciphers", "TLS_AES_256_GCM_SHA384");
+    assert_string_field(https, "max_body_size", "20971520");
+    assert_string_field(https, "dual_stack", "yes");
+
+    /* The removed <connection> option must never reappear in the report. */
+    assert_null(cJSON_GetObjectItem(entry, "connection"));
+
+    cJSON_Delete(root);
+    teardown_global_logr();
+}
+
+static void test_getRemoteConfig_nests_legacy_options(void **state) {
+    (void)state;
+    memset(&logr, 0, sizeof(logr));
+
+    logr.legacy_enabled = true;
+    logr.port = 1514;
+    logr.proto = REMOTED_NET_PROTOCOL_TCP;
+    logr.ipv6 = 0;
+    logr.lip = "127.0.0.1";
+    logr.queue_size = 131072;
+    logr.rids_closing_time = 300;
+    logr.connection_overtake_time = 60;
+
+    cJSON *root = getRemoteConfig();
+    cJSON *entry = remote_entry(root);
+    cJSON *legacy = cJSON_GetObjectItem(entry, "legacy");
+    assert_non_null(legacy);
+
+    assert_string_field(legacy, "enabled", "yes");
+    assert_string_field(legacy, "port", "1514");
+    assert_string_field(legacy, "ipv6", "no");
+    assert_string_field(legacy, "local_ip", "127.0.0.1");
+    assert_string_field(legacy, "queue_size", "131072");
+    assert_string_field(legacy, "rids_closing_time", "300");
+    assert_string_field(legacy, "connection_overtake_time", "60");
+
+    cJSON *proto = cJSON_GetObjectItem(legacy, "protocol");
+    assert_non_null(proto);
+    assert_int_equal(cJSON_GetArraySize(proto), 1);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetArrayItem(proto, 0)), REMOTED_NET_PROTOCOL_TCP_STR);
+
+    /* None of these may appear at the top level any more: that was the flat 4.x shape. */
+    assert_null(cJSON_GetObjectItem(entry, "port"));
+    assert_null(cJSON_GetObjectItem(entry, "queue_size"));
+    assert_null(cJSON_GetObjectItem(entry, "protocol"));
+    assert_null(cJSON_GetObjectItem(entry, "local_ip"));
+
+    cJSON_Delete(root);
+    teardown_global_logr();
+}
+
+static void test_getRemoteConfig_reports_legacy_disabled(void **state) {
+    (void)state;
+    memset(&logr, 0, sizeof(logr));
+
+    logr.legacy_enabled = false;
+
+    cJSON *root = getRemoteConfig();
+    cJSON *entry = remote_entry(root);
+    cJSON *legacy = cJSON_GetObjectItem(entry, "legacy");
+    assert_non_null(legacy);
+
+    /* Reported as disabled rather than omitted, so "the listener is off" is distinguishable from
+     * "this manager is too old to report the block at all". No listener options alongside it. */
+    assert_string_field(legacy, "enabled", "no");
+    assert_null(cJSON_GetObjectItem(legacy, "port"));
+    assert_null(cJSON_GetObjectItem(legacy, "protocol"));
+
+    cJSON_Delete(root);
+    teardown_global_logr();
+}
+
+static void test_getRemoteConfig_reports_agents_without_queue_size(void **state) {
+    (void)state;
+    memset(&logr, 0, sizeof(logr));
+
+    /* allow_higher_versions used to be emitted only when queue_size was non-zero -- an unrelated
+     * legacy option -- so it went unreported on any manager that had not set one. It is a sibling
+     * of the listener blocks, not part of either. */
+    logr.legacy_enabled = false;
+    logr.queue_size = 0;
+    logr.allow_higher_versions = true;
+
+    cJSON *root = getRemoteConfig();
+    cJSON *entry = remote_entry(root);
+    cJSON *agents = cJSON_GetObjectItem(entry, "agents");
+    assert_non_null(agents);
+    assert_string_field(agents, "allow_higher_versions", "yes");
+
+    cJSON_Delete(root);
+    teardown_global_logr();
+}
+
+static void test_getRemoteConfig_omits_unset_verification_mode(void **state) {
+    (void)state;
+    memset(&logr, 0, sizeof(logr));
+
+    /* UNSET means "the operator never configured this", which must not be flattened into an
+     * explicit "none" -- those resolve differently once the module applies its own defaults. */
+    logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    cJSON *root = getRemoteConfig();
+    cJSON *entry = remote_entry(root);
+    cJSON *https = cJSON_GetObjectItem(entry, "https");
+    assert_non_null(https);
+    assert_null(cJSON_GetObjectItem(https, "verification_mode"));
+
+    /* Same for every other option the operator did not set: absent, not invented. An unset
+     * global_prefix in particular must not be reported as "/": the module's default is its own,
+     * and "/" is also a value the operator can set explicitly. */
+    assert_null(cJSON_GetObjectItem(https, "port"));
+    assert_null(cJSON_GetObjectItem(https, "bind_addr"));
+    assert_null(cJSON_GetObjectItem(https, "global_prefix"));
+    assert_null(cJSON_GetObjectItem(https, "dual_stack"));
+
+    cJSON_Delete(root);
+    teardown_global_logr();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1161,6 +1576,17 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_valid_full, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_valid, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_root_identity, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_trailing_slash, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_multi_segment, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_max_len_boundary, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_too_long, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_leading_slash, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty_segment, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_bad_chars, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_dot_segment, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_ciphers, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_dual_stack, setup, teardown),
@@ -1188,6 +1614,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_read_remote_explicit_values_cleared_when_disabled, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
 
+        /* getRemoteConfig() -- these drive the global logr, so they take no setup/teardown fixture. */
+        cmocka_unit_test(test_getRemoteConfig_reports_https_block),
+        cmocka_unit_test(test_getRemoteConfig_nests_legacy_options),
+        cmocka_unit_test(test_getRemoteConfig_reports_legacy_disabled),
+        cmocka_unit_test(test_getRemoteConfig_reports_agents_without_queue_size),
+        cmocka_unit_test(test_getRemoteConfig_omits_unset_verification_mode),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

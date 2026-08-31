@@ -1,6 +1,7 @@
 @ECHO off
 
 IF "%1"=="B" GOTO background
+IF "%1"=="--skip-manager-check" SET WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK=1
 
 COPY upgrade\upgrade.bat . > NUL
 COPY upgrade\do_upgrade.ps1 . > NUL

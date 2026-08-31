@@ -22,7 +22,7 @@ The default repository URL is auto-derived from the manager version as `packages
 ## Manager-side flow
 
 ```
-API / agent_upgrade CLI  ──►  queue/tasks/upgrade  (agent_upgrade manager)
+API / agent_upgrade CLI  ──►  queue/sockets/task-upgrade.sock  (agent_upgrade manager)
                                      │
                                      ▼
                        Validate agent, platform and version
@@ -31,7 +31,7 @@ API / agent_upgrade CLI  ──►  queue/tasks/upgrade  (agent_upgrade manager)
              Resolve WPK, download and SHA-1-verify it locally
                                      │
                                      ▼
-                       queue/tasks/task  (Task Manager)
+                       queue/sockets/task.sock  (Task Manager)
                        ┌──────────────────────────────────┐
                        │ action:      create_task         │
                        │ task_type:   remote_upgrade      │
@@ -70,10 +70,10 @@ download the WPK. If the file is missing on that node, the upgrade will fail.
 
 ### Manager-side sockets
 
-| Socket                | Direction | Purpose                                                            |
-| --------------------- | --------- | ------------------------------------------------------------------ |
-| `queue/tasks/upgrade` | Inbound   | Receives `upgrade` / `upgrade_custom` commands from the Server API |
-| `queue/tasks/task`    | Outbound  | Sends `create_task` requests to the Task Manager                   |
+| Socket                            | Direction | Purpose                                                            |
+| --------------------------------- | --------- | ------------------------------------------------------------------ |
+| `queue/sockets/task-upgrade.sock` | Inbound   | Receives `upgrade` / `upgrade_custom` commands from the Server API |
+| `queue/sockets/task.sock`         | Outbound  | Sends `create_task` requests to the Task Manager                   |
 
 The manager-side module no longer connects directly to Remoted or drives a WPK transfer thread pool from the API request path. For 5.x agents, WPK bytes are meant to flow from the manager to the agent through the HTTPS server on the manager, driven by the agent's poll: the agent fetches the file with `POST /download` once `/control` hands it a `remote_upgrade` task.
 
@@ -110,7 +110,7 @@ Windows agents accept the same JSON commands but through the agentd IPC layer in
 | File                                  | Purpose                                                                   |
 | ------------------------------------- | ------------------------------------------------------------------------- |
 | `wm_agent_upgrade.c` / `.h`           | Module entry point and dump/destroy hooks (manager and agent)             |
-| `manager/wm_agent_upgrade_manager.c`  | Manager listener on `queue/tasks/upgrade`; sends requests to Task Manager |
+| `manager/wm_agent_upgrade_manager.c`  | Manager listener on `queue/sockets/task-upgrade.sock`; sends requests to Task Manager |
 | `manager/wm_agent_upgrade_commands.c` | Per-agent validation, WPK resolution and Task Manager task creation       |
 | `manager/wm_agent_upgrade_parsing.c`  | Parses API messages and formats responses                                 |
 | `manager/wm_agent_upgrade_validate.c` | Version / platform / WPK integrity checks                                 |

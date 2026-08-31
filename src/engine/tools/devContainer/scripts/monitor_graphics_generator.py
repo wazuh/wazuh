@@ -474,7 +474,9 @@ _ENROLL_QUEUE_COLS = ["enroll_authd_queue_depth", "enroll_authd_queue_capacity"]
 
 _AUTH_REJECT_FUNNEL_COLS = [
     "auth_reject_unknown_agent",
-    "auth_reject_invalid_mac",
+    "auth_reject_invalid_signature",
+    "auth_reject_bad_token",
+    "auth_reject_identity_mismatch",
     "auth_reject_clock_skew",
     "auth_reject_unusable_key",
     "auth_reject_address_not_allowed",

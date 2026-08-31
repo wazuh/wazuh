@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	var sockPath string = "/var/wazuh-manager/queue/sockets/queue-http.sock" // Path to HTTP unix socket
+	var sockPath string = "/var/wazuh-manager/queue/sockets/engine-ingest-http.sock" // Path to HTTP unix socket
 
 	var logFile string
 	var logMessage string

@@ -20,6 +20,7 @@ default_policies:
           - agent:restart
           - agent:reload
           - agent:upgrade
+          - agent:scan_vulnerability
         resources:
           - agent:id:*
           - agent:group:*

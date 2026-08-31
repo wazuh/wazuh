@@ -574,6 +574,49 @@ TEST(VdScanLaneTest, VdSessionWithMismatchedFeedOffsetIsRejectedWith409BeforeSca
         << "a rejected session must still release the agent, or it is fenced forever";
 }
 
+// A node that runs no scanner at all (vulnerability detection disabled, or failed to start) has
+// no version to disagree about, so the gate must not fire even for a session built against an
+// offset the agent kept from before. The session reaches the scanner, which legitimately skips
+// it, and the agent's inventory is indexed unscanned instead of being rejected forever (#38599).
+// A feed that is merely still loading never gets here: D17 answers those 503 + Retry-After
+// before the gate.
+TEST(VdScanLaneTest, VdSessionWithAnyFeedOffsetIsAcceptedWhenTheNodeRunsNoScanner)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdScannerRunning.store(false);
+    fixture.events->m_vdCurrentOffset.store(0);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/849527), responder)));
+
+    EXPECT_EQ(200, responder->get().status);
+    const auto ops = fixture.events->syncOps();
+    ASSERT_FALSE(ops.empty());
+    EXPECT_EQ("scan", std::get<0>(ops[0])) << "with no scanner here the session must reach the scanner, not a 409";
+}
+
+// The exemption above is about the scanner being absent, NOT about the offset reading 0: a
+// running scanner reports 0 too while the content manager's offset store is not answering yet
+// (a window on every restart with a feed already on disk). Indexing an agent's packages
+// unscanned there would break the rule that packages and vulnerabilities go together whenever
+// vulnerability detection is enabled, so the mismatch must still be rejected.
+TEST(VdScanLaneTest, VdSessionIsStillRejectedWhenARunningScannerReportsOffsetZero)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdScannerRunning.store(true);
+    fixture.events->m_vdCurrentOffset.store(0);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/849527), responder)));
+
+    EXPECT_EQ(409, responder->get().status);
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected session must never reach the scanner";
+}
+
 TEST(VdScanLaneTest, NonVdSessionIgnoresFeedOffsetMismatch)
 {
     LaneUnderTest fixture;

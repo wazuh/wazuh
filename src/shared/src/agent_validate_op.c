@@ -10,9 +10,9 @@
 
 #include "cJSON.h"
 #include "agent_validate_op.h"
-#include "md5_op.h"
 #include "os_err.h"
 #include "wdb.h"
+#include <openssl/rand.h>
 #include <time.h>
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
@@ -33,6 +33,28 @@
 /* Global variables */
 fpos_t fp_pos;
 
+/* The agent key is the agent's HS256 secret (remoted's wazuh-agent+jwt bearer profile): exactly
+ * AGENT_KEY_BYTES bytes from the CSPRNG, stored in client.keys as AGENT_KEY_HEX_CHARS lowercase hex
+ * chars. remoted decodes those hex chars back into the 32 raw key bytes; nothing else is accepted. */
+#define AGENT_KEY_BYTES 32
+#define AGENT_KEY_HEX_CHARS (2 * AGENT_KEY_BYTES)
+
+int OS_IsValidAgentKey(const char *key)
+{
+    size_t i;
+
+    if (!key || strlen(key) != AGENT_KEY_HEX_CHARS) {
+        return (0);
+    }
+    for (i = 0; i < AGENT_KEY_HEX_CHARS; i++) {
+        const char c = key[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+            return (0);
+        }
+    }
+    return (1);
+}
+
 int OS_AddNewAgent(keystore *keys,
                    const char *id,
                    const char *name,
@@ -40,10 +62,9 @@ int OS_AddNewAgent(keystore *keys,
                    const char *key,
                    unsigned int max_agents)
 {
-    os_md5 md1;
-    os_md5 md2;
-    char str1[STR_SIZE + 1];
-    char str2[STR_SIZE + 1];
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AGENT_KEY_BYTES];
+    size_t i;
     char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
@@ -64,11 +85,18 @@ int OS_AddNewAgent(keystore *keys,
     }
 
     if (!key) {
-        snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), getuname());
-        snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
-        OS_MD5_Str(str1, -1, md1);
-        OS_MD5_Str(str2, -1, md2);
-        snprintf(buffer, KEYSIZE, "%s%s", md1, md2);
+        /* 32 bytes straight from the CSPRNG. Never fall back to a weaker generator: a key the agent
+         * will authenticate with for years is worth refusing the enrollment over. */
+        if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+            merror("Unable to generate a key for agent '%s': the CSPRNG (RAND_bytes) failed.", name);
+            return OS_INVALID;
+        }
+        for (i = 0; i < sizeof(rnd); i++) {
+            buffer[2 * i] = HEX[rnd[i] >> 4];
+            buffer[2 * i + 1] = HEX[rnd[i] & 0x0f];
+        }
+        buffer[AGENT_KEY_HEX_CHARS] = '\0';
+        OPENSSL_cleanse(rnd, sizeof(rnd));
         key = buffer;
     }
 
