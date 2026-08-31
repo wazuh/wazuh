@@ -135,6 +135,7 @@
     - [Event Protocol](ref/modules/remoted/event-protocol.md)
     - [HTTPS Agent API](ref/modules/remoted/https-events-api.md)
     - [Configuration](ref/modules/remoted/configuration.md)
+    - [Timing Tuning](ref/modules/remoted/timing-tuning.md)
     - [Metrics](ref/modules/remoted/metrics.md)
     - [Quick Reference](ref/modules/remoted/quick-reference.md)
     - [Load Balancers](ref/modules/remoted/load-balancers/README.md)
