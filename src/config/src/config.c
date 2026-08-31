@@ -49,7 +49,6 @@ static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
     {"agent-key-polling", OBS_ALWAYS,    "The agent key polling module was removed in 5.0.0."},
     {"agentless",       OBS_ALWAYS,      "The wazuh-agentlessd daemon was removed in 5.0.0."},
     {"alerts",          OBS_ALWAYS,      "Alert output is not configured in the configuration file."},
-    {"client_buffer",   OBS_ALWAYS,      "Event batching is configured under <agent><batch>."},
     {"command",         OBS_ALWAYS,      "Active Response commands are not defined in the configuration file."},
     {"database_output", OBS_ALWAYS,      "The wazuh-dbd daemon was removed in 5.0.0."},
     {"email_alerts",    OBS_ALWAYS,      "The wazuh-maild daemon was removed in 5.0.0."},
@@ -202,6 +201,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
 #endif
+        } else if (strcmp(node[i]->element, osbuffer) == 0) {
+            minfo("'%s' is no longer used and will be ignored. Event batching is configured "
+                  "under <client><batch>.", node[i]->element);
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
