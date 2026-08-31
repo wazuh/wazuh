@@ -197,11 +197,11 @@ Workaround checklist:
 
 A remote upgrade from 4.14.X to 5.0.0 never rewrites `ossec.conf`: the file the 4.X agent had is the file the 5.0 agent reads, which is why the `<client>` fallback above exists.
 
-Before installing anything, the WPK installer checks that the manager accepts connections on the HTTPS port the upgraded agent will use, and aborts if it does not:
+Before installing anything, the WPK installer checks that the manager answers HTTPS on the port/endpoint the upgraded agent will use, retrying a few times in case it's briefly unreachable, and aborts if it still does not. On hosts whose TLS stack can't negotiate the manager's TLS 1.3 minimum (e.g. EL7-era/Amazon Linux 2 system crypto libraries), the check falls back to a plain TCP connectivity check instead of treating that incompatibility as "manager unreachable":
 
 ```console
-2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517.
-2026/07/31 00:26:58 - Upgrade failed. The manager is not reachable at MANAGER_IP:1517, interrupting upgrade.
+2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517/wazuh-manager.
+2026/07/31 00:26:58 - Upgrade failed. The manager is not reachable at MANAGER_IP:1517/wazuh-manager, interrupting upgrade.
 ```
 
 The abort happens before the package manager runs, so the agent stays on 4.14.X, keeps running, and the upgrade can be retried once `1517` is reachable. `upgrade_result` is `2`.
