@@ -77,24 +77,14 @@ namespace
         return port;
     }
 
-    /// Whether a plain TCP connect to 127.0.0.1:port succeeds -- enough to prove the public
-    /// HTTPS listener is accepting, without dragging the TLS/bearer client machinery in here.
-    bool publicListenerAccepts(std::uint16_t port)
+    /// Whether the public HTTPS listener answers its unauthenticated liveness endpoint. This keeps
+    /// the test on the same TLS/HTTP contract production clients use, so shutdown does not race a
+    /// deliberately incomplete TLS connection.
+    bool publicLivenessProbeAnswers(std::uint16_t port)
     {
-        const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (fd < 0)
-        {
-            return false;
-        }
-
-        sockaddr_in address {};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = htons(port);
-
-        const bool connected = ::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0;
-        ::close(fd);
-        return connected;
+        const auto response = remoted::test::sendGetRequest(port, "/");
+        return response.find(" 200 ") != std::string::npos &&
+               response.find(R"("status":"ok")") != std::string::npos;
     }
 } // namespace
 
@@ -302,7 +292,7 @@ TEST_F(AdminServerTest, AdminBindFailureOnlyWarnsAndTheModuleKeepsServing)
     EXPECT_NO_THROW(port = startModule());
 
     EXPECT_TRUE(std::filesystem::is_regular_file(kAdminSocketPath));
-    EXPECT_TRUE(publicListenerAccepts(port)) << "the public HTTPS listener must be unaffected";
+    EXPECT_TRUE(publicLivenessProbeAnswers(port)) << "the public HTTPS listener must be unaffected";
     // The failure must be visible to the operator, as a WARN naming the admin server. (This
     // holds regardless of which suite installed the shared process-wide sink first: they all
     // pass the same testLogCallback -- see testLogRecorder.hpp.)
