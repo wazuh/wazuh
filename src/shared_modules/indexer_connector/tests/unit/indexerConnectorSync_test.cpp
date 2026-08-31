@@ -5394,3 +5394,132 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
     ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
     expectExactlyOnce(recorder.deliveredIds(), expected);
 }
+
+// ============================================================================
+// A 200 _bulk answer whose items report failures. HTTPRequest::post() runs
+// onSuccess INSIDE its try block and remaps anything thrown there to
+// onError(statusCode = -1); the mocks below reproduce that remapping because
+// it is the production semantics the connector's callbacks live under -- a
+// mock that lets the exception fly cannot see this bug class.
+// ============================================================================
+
+namespace
+{
+    /// Calls onSuccess(body) the way the real HTTPRequest::post() does: inside a try whose
+    /// generic catch remaps the exception to onError(what, -1, ...).
+    void respondLikeHttpRequestPost(const PostRequestParametersVariant& postParams, const std::string& body)
+    {
+        try
+        {
+            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+            {
+                std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+            }
+            else
+            {
+                std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string {body});
+            }
+        }
+        catch (const std::exception& e)
+        {
+            respondBulkError(postParams, e.what(), -1);
+        }
+    }
+
+    constexpr auto BULK_200_WITH_ITEM_ERRORS =
+        R"({"took":1,"errors":true,"items":[{"index":{"_index":"test_index","_id":"id1","status":500,)"
+        R"("error":{"type":"mapper_parsing_exception"}}}]})";
+} // namespace
+
+/// A 200 whose items failed used to be reported by THROWING out of onSuccess AFTER clearing
+/// m_bulkData; the remapped onError(-1) then took the transport branch and retried -- resending
+/// an emptied buffer. The failure must surface once, with exactly one POST.
+TEST_F(IndexerConnectorSyncTest, BulkItemFailuresSurfaceOnceAndNeverRetryAnEmptiedBuffer)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                if (++postCount == 1)
+                {
+                    respondLikeHttpRequestPost(postParams, BULK_200_WITH_ITEM_ERRORS);
+                    return;
+                }
+                // A real indexer answers an empty _bulk with 400; reaching this at all means the
+                // emptied buffer was retried.
+                respondBulkError(postParams, "Validation Failed: 1: no requests added;", 400);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "flush() must report the indexing failures";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("indexing failures"));
+    }
+    EXPECT_EQ(postCount.load(), 1) << "the emptied buffer was retried against the indexer";
+
+    // The failed batch was consumed: nothing may be left to flush.
+    connector.flush();
+    EXPECT_EQ(postCount.load(), 1);
+}
+
+/// The same remapping in the 413-split path: a chunk whose 200 answer carries item failures used
+/// to throw out of onSuccess, remap to onError(-1) and retry THE SAME CHUNK -- whose next 200
+/// carried the same failing items, forever. It must fail once, bounded.
+TEST_F(IndexerConnectorSyncTest, ChunkItemFailuresFailBoundedInsteadOfLivelocking)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                const auto attempt = ++postCount;
+                if (attempt == 1)
+                {
+                    respondBulkError(postParams, "Payload Too Large", 413);
+                    return;
+                }
+                if (attempt == 2)
+                {
+                    respondLikeHttpRequestPost(postParams, BULK_200_WITH_ITEM_ERRORS);
+                    return;
+                }
+                // The livelock escape hatch: if the fix regresses, the retried chunk lands here
+                // instead of spinning this test forever.
+                respondBulkError(postParams, "Bad Request", 400);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "flush() must report the chunk's indexing failures";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("indexing failures"));
+    }
+    EXPECT_EQ(postCount.load(), 2) << "the failing chunk was retried";
+}
