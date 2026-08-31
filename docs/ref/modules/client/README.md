@@ -61,9 +61,7 @@ Quick configuration example:
 ```xml
 <agent>
   <manager>
-    <address>manager.example.com</address>
-    <port>1517</port>
-    <protocol>tcp</protocol>
+    <endpoint>manager.example.com:1517</endpoint>
   </manager>
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
