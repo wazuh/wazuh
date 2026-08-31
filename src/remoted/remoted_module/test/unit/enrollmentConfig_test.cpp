@@ -149,7 +149,7 @@ TEST(EnrollmentConfigTest, UnsetTimePolicyValuesFallBackToTheProfileMaxima)
 TEST(EnrollmentConfigTest, TimePolicyAboveTheProfileMaximaThrows)
 {
     auto c = zeroedConfig();
-    c.jwt_max_age = 61;
+    c.jwt_max_age = 43201;
     EXPECT_THROW(buildEnrollmentConfig(c), std::invalid_argument);
 }
 

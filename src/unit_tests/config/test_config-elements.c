@@ -99,12 +99,30 @@ static void test_several_obsolete_elements_are_ignored(void **state) {
 /* An empty obsolete element has no children, so it takes a different path
  * through the reader than the ones above. It must be ignored just the same. */
 static void test_empty_obsolete_element_is_ignored(void **state) {
-    if (write_conf("<client_buffer></client_buffer>") != 0) {
+    if (write_conf("<agentless></agentless>") != 0) {
         fail();
     }
 
     expect_string(__wrap__mwarn, formatted_msg,
-                  "(1223): 'client_buffer' is no longer supported and will be ignored. "
+                  "(1223): 'agentless' is no longer supported and will be ignored. "
+                  "The wazuh-agentlessd daemon was removed in 5.0.0.");
+
+    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+}
+
+/* <client_buffer> was removed in 5.0.0, but to preserve smooth upgrades from
+ * 4.x it is ignored with an info log rather than warned or rejected. */
+static void test_client_buffer_is_ignored_with_info(void **state) {
+    if (write_conf("<client_buffer>"
+                   "<disabled>no</disabled>"
+                   "<queue_size>5000</queue_size>"
+                   "<events_per_second>500</events_per_second>"
+                   "</client_buffer>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "'client_buffer' is no longer used and will be ignored. "
                   "Event batching is configured under <agent><batch>.");
 
     assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
@@ -193,6 +211,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_obsolete_element_is_ignored, teardown_conf_file),
         cmocka_unit_test_teardown(test_several_obsolete_elements_are_ignored, teardown_conf_file),
         cmocka_unit_test_teardown(test_empty_obsolete_element_is_ignored, teardown_conf_file),
+        cmocka_unit_test_teardown(test_client_buffer_is_ignored_with_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_unknown_element_is_still_fatal, teardown_conf_file),
 #ifdef TEST_AGENT_TARGET
         cmocka_unit_test_teardown(test_active_response_is_valid_on_agent, teardown_conf_file),

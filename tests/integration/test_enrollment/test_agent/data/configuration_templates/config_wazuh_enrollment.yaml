@@ -7,10 +7,8 @@
                 value: 'yes'
             - manager:
                 elements:
-                - address:
-                    value: 127.0.0.1
                 - endpoint:
-                    value: ''
+                    value: '127.0.0.1:1517/'
             - enrollment:
                 elements:
                 - enabled:

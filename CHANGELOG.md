@@ -21,6 +21,7 @@
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Added the `POST /stats` HTTPS endpoint, which persists the statistics an agent reports as one document per agent in the `wazuh-agent-stats` index, replacing the previous report on every push. |
 | [#38007](https://github.com/wazuh/wazuh/issues/38007) | Added legacy `remote_upgrade` task delivery in `remoted`: a polling thread pushes pending Task Manager tasks to connected agents older than v5.0.0 over their existing session using the legacy six-step WPK push, gated on `remoted`'s HTTPS `verification_mode`. |
 | [#38157](https://github.com/wazuh/wazuh/issues/38157) | Added installation-time variables to customize the default `<remote>` configuration on source, DEB, and RPM manager installations. |
+| [#38553](https://github.com/wazuh/wazuh/issues/38553) | Added the `PUT /agents/scan/vulnerability` endpoint to trigger an on-demand vulnerability scan for one agent, a list of agents, or all agents. |
 
 #### Changed
 
@@ -89,6 +90,7 @@
 |-------|---------|
 | [#37831](https://github.com/wazuh/wazuh/issues/37831) | Changed the agent transport to HTTPS for all server communication, removing the legacy TCP data path and its internal-option fallback. |
 | [#38465](https://github.com/wazuh/wazuh/issues/38465) | Changed agent enrollment to consume the manager's HTTPS `POST /enroll` endpoint instead of the legacy `A:`/`K:` protocol over TCP/1515, reusing the same `<agent><ssl>`/`<agent><server>` transport as the rest of the agent's HTTPS traffic. |
+| [#38624](https://github.com/wazuh/wazuh/issues/38624) | Changed the `WAZUH_MANAGER_ENDPOINT` installation variable to carry the whole connection target — `host[:port][/prefix]`, with only the address mandatory — which the DEB/RPM, source and MSI installers write verbatim into the agent's single `<endpoint>` setting. It supersedes `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT` when set, and those keep working unchanged when it is not. A trailing slash (`host/`) opts out of the reverse-proxy prefix. Replaces the variable's previous prefix-only meaning. |
 | [#33378](https://github.com/wazuh/wazuh/issues/33378) | Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. |
 | [#34849](https://github.com/wazuh/wazuh/issues/34849) | Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. |
 | [#33199](https://github.com/wazuh/wazuh/issues/33199) | Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. |

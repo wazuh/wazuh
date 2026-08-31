@@ -20,6 +20,193 @@
 
 On Error Resume Next
 
+' Defaults substituted for the components WAZUH_MANAGER_ENDPOINT leaves out. The prefix
+' mirrors the manager's own default global_prefix (#38491) and the port
+' DEFAULT_HTTPS_REMOTE_PORT (src/config/include/client-config.h).
+Const MEP_DEFAULT_PORT = "1517"
+Const MEP_DEFAULT_ENDPOINT = "/wazuh-manager/"
+
+Dim MEP_HOST, MEP_PORT, MEP_ENDPOINT
+
+' IsNumeric() is no use here: it accepts "1e3", "&h10", a leading sign and surrounding
+' whitespace, none of which is a port.
+private function mep_is_all_digits(value)
+    Dim i, c
+    mep_is_all_digits = False
+    If Len(value) = 0 Then Exit Function
+    For i = 1 To Len(value)
+        c = Mid(value, i, 1)
+        If c < "0" Or c > "9" Then Exit Function
+    Next
+    mep_is_all_digits = True
+end function
+
+' No WScript object exists in the MSI scripting host, so the reason goes where the
+' shell installers put theirs -- the agent's own log.
+private sub mep_log(home_dir, objFSO, raw, reason)
+    Dim objLog
+    Set objLog = objFSO.OpenTextFile(home_dir & "ossec.log", 8, True)
+    objLog.WriteLine Now & " Invalid WAZUH_MANAGER_ENDPOINT '" & raw & "': " & reason
+    objLog.Close
+end sub
+
+' Validates WAZUH_MANAGER_ENDPOINT against the <endpoint> grammar (#38624). <endpoint>
+' takes this same language, so an accepted value is written into the config verbatim
+' and this only decides whether to write it at all. MEP_HOST / MEP_PORT / MEP_ENDPOINT
+' are still set, for callers that want the split:
+'
+'   [https://] host [:port] [/[prefix]]
+'
+' Only the host is mandatory. The subtlety worth keeping in mind: "no '/' at all" means
+' "default prefix", while "a trailing '/' with nothing after it" is the operator's
+' deliberate opt-out (#38614) and has to come out as an empty <endpoint></endpoint>.
+'
+' Same logic as parse_manager_endpoint() in src/init/register_configure_agent.sh and
+' ParseManagerEndpoint() in src/init/inst-functions.sh -- a change in one belongs in all
+' three. Returns True on success; on failure nothing is written and the reason is logged.
+private function ParseManagerEndpoint(raw, home_dir, objFSO)
+
+    Dim rest, scheme, authority, path, path_given, port_given, after_bracket, p, i, colons
+    Dim port_digits
+
+    ParseManagerEndpoint = False
+    MEP_HOST = ""
+    MEP_PORT = MEP_DEFAULT_PORT
+    MEP_ENDPOINT = MEP_DEFAULT_ENDPOINT
+
+    If raw = "" Then
+        mep_log home_dir, objFSO, raw, "a manager address is required."
+        Exit Function
+    End If
+
+    rest = raw
+
+    ' Optional scheme. Only treated as one when no '/' precedes the "://", so a path
+    ' that happens to contain "://" cannot be mistaken for a scheme.
+    p = InStr(rest, "://")
+    If p > 0 Then
+        scheme = Left(rest, p - 1)
+        If InStr(scheme, "/") = 0 Then
+            rest = Mid(rest, p + 3)
+            If LCase(scheme) <> "https" Then
+                mep_log home_dir, objFSO, raw, "unsupported scheme '" & scheme & "://'; only https is served."
+                Exit Function
+            End If
+        End If
+    End If
+
+    ' Authority up to the first '/', the prefix after it. Whether that '/' was there at
+    ' all is what separates "default prefix" from "opt-out".
+    p = InStr(rest, "/")
+    If p > 0 Then
+        authority = Left(rest, p - 1)
+        path = Mid(rest, p + 1)
+        path_given = True
+    Else
+        authority = rest
+        path = ""
+        path_given = False
+    End If
+
+    ' Host and optional port. A bracketed IPv6 literal ends at ']'; the brackets exist
+    ' only to keep its colons apart from the port's and are dropped here, because
+    ' <address> wants the bare literal (OS_IsValidIP does not match a bracketed one, and
+    ' ModuleConfig::baseUrl re-brackets it for the URL itself).
+    port_given = ""
+    If Left(authority, 1) = "[" Then
+        p = InStr(authority, "]")
+        If p = 0 Then
+            mep_log home_dir, objFSO, raw, "unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'."
+            Exit Function
+        End If
+        MEP_HOST = Mid(authority, 2, p - 2)
+        after_bracket = Mid(authority, p + 1)
+        If after_bracket <> "" Then
+            If Left(after_bracket, 1) = ":" Then
+                port_given = Mid(after_bracket, 2)
+            Else
+                mep_log home_dir, objFSO, raw, "unexpected '" & after_bracket & "' after the bracketed address."
+                Exit Function
+            End If
+        End If
+        ' A zone id (%25<iface>) stays part of the host: the agent resolves it with
+        ' if_nametoindex() at startup (#38624).
+    Else
+        colons = 0
+        For i = 1 To Len(authority)
+            If Mid(authority, i, 1) = ":" Then colons = colons + 1
+        Next
+        If colons > 1 Then
+            mep_log home_dir, objFSO, raw, "an IPv6 address must be bracketed, e.g. [2001:db8::1]:" & MEP_DEFAULT_PORT & "."
+            Exit Function
+        ElseIf colons = 1 Then
+            p = InStr(authority, ":")
+            MEP_HOST = Left(authority, p - 1)
+            port_given = Mid(authority, p + 1)
+        Else
+            MEP_HOST = authority
+        End If
+    End If
+
+    If MEP_HOST = "" Then
+        mep_log home_dir, objFSO, raw, "a manager address is required."
+        Exit Function
+    End If
+
+    If port_given <> "" Then
+        If Not mep_is_all_digits(port_given) Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is not a number."
+            Exit Function
+        End If
+        ' CLng() holds a 32-bit Long, so it overflows above 2147483647. That error is not
+        ' catchable here -- "On Error Resume Next" is procedure-scoped and this function
+        ' declares none, so an overflow abandons the caller mid-statement: config() stops
+        ' at the call, no diagnostic is written, and nothing it would have configured after
+        ' that point happens. Narrow the value to something CLng can hold before using it.
+        ' Leading zeros are stripped rather than rejected, so "000080" stays the port 80 --
+        ' matching parse_manager_endpoint() in the shell installers.
+        port_digits = port_given
+
+        Do While Len(port_digits) > 1 And Left(port_digits, 1) = "0"
+            port_digits = Mid(port_digits, 2)
+        Loop
+
+        ' Kept separate from the range test below because VBScript's Or does not
+        ' short-circuit: both sides are evaluated, so CLng must never be reached with an
+        ' oversized value.
+        If Len(port_digits) > 5 Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
+            Exit Function
+        End If
+
+        If CLng(port_digits) < 1 Or CLng(port_digits) > 65535 Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
+            Exit Function
+        End If
+        MEP_PORT = port_given
+    ElseIf Right(authority, 1) = ":" Then
+        mep_log home_dir, objFSO, raw, "trailing ':' with no port."
+        Exit Function
+    End If
+
+    If path_given Then
+        Do While Left(path, 1) = "/"
+            path = Mid(path, 2)
+        Loop
+        Do While Right(path, 1) = "/"
+            path = Left(path, Len(path) - 1)
+        Loop
+        If path = "" Then
+            MEP_ENDPOINT = ""
+        Else
+            MEP_ENDPOINT = "/" & path & "/"
+        End If
+    End If
+
+    ParseManagerEndpoint = True
+
+end function
+
 private function get_unique_array_values(array)
     Dim dicTemp : Set dicTemp = CreateObject("Scripting.Dictionary")
     Dim DicItem
@@ -74,76 +261,66 @@ public function config()
         objFile.Close
 
         If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-            If WAZUH_MANAGER <> "" Then
-                Set re = new regexp
-                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
-                If InStr(WAZUH_MANAGER,",") Then
-                    ip_list=Split(WAZUH_MANAGER,",")
+
+            ' WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and
+            ' takes priority when set. WAZUH_MANAGER (with WAZUH_MANAGER_PORT) still
+            ' works: an <endpoint> is composed from them, so existing 4.x-era MSI command
+            ' lines keep configuring an agent correctly.
+            '
+            ' The MSI's inability to carry a PROPERTY="" through the property table, which
+            ' the old "/" sentinel worked around, stops mattering: the opt-out is spelled
+            ' host/ and is non-empty, so it survives the property table on its own.
+            final_endpoint = ""
+
+            If WAZUH_MANAGER_ENDPOINT <> "" Then
+                If ParseManagerEndpoint(WAZUH_MANAGER_ENDPOINT, home_dir, objFSO) Then
+                    final_endpoint = WAZUH_MANAGER_ENDPOINT
+                End If
+                ' A rejected value leaves final_endpoint empty, so no block is written and
+                ' the shipped placeholder stays -- the agent then fails loudly at startup
+                ' rather than silently connecting somewhere unintended. Matches the shell
+                ' installers.
+            ElseIf WAZUH_MANAGER <> "" Then
+                ' Only one manager block is supported, so a comma-separated list keeps its
+                ' last entry (#37702 restrictions 2/3), matching the client parser.
+                If InStr(WAZUH_MANAGER, ",") Then
+                    ip_list = Split(WAZUH_MANAGER, ",")
+                    final_endpoint = ip_list(UBound(ip_list))
                 Else
-                    ip_list=Array(WAZUH_MANAGER)
+                    final_endpoint = WAZUH_MANAGER
                 End If
 
-                not_replaced = True
-                formatted_list = vbCrLf
+                ' A bare IPv6 literal needs bracketing once it shares a value with the
+                ' port, or its trailing group reads as one.
+                If InStr(final_endpoint, ":") > 0 And Left(final_endpoint, 1) <> "[" Then
+                    final_endpoint = "[" & final_endpoint & "]"
+                End If
+
+                If WAZUH_MANAGER_PORT <> "" Then
+                    final_endpoint = final_endpoint & ":" & WAZUH_MANAGER_PORT
+                End If
+            End If
+
+            If final_endpoint <> "" Then
+                Set re = new regexp
+                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
+
                 ' A 5.x file is <agent><manager>; a 4.x file preserved across an upgrade
-                ' is <client><server>, and the 5.x parser reads an address out of that
-                ' one only under <server> -- writing <manager> there would strand the
-                ' agent with no manager address.
+                ' is <client><server>, and the 5.x parser reads this block out of that one
+                ' only under <server> -- writing <manager> there would strand the agent
+                ' with no manager configured.
                 If InStr(strText, "<agent>") > 0 Then
                     inner_tag = "manager"
                 Else
                     inner_tag = "server"
                 End If
-                for i=0 to UBound(ip_list)
-                    If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <" & inner_tag & ">" & vbCrLf
-                        formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                        formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
-                        formatted_list = formatted_list & "      <endpoint>/wazuh-manager/</endpoint>" & vbCrLf
-                        if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </" & inner_tag & ">"
-                        Else
-                            formatted_list = formatted_list & "    </" & inner_tag & ">" & vbCrLf
-                        End If
-                    End If
-                next
+
+                formatted_list = vbCrLf & _
+                    "    <" & inner_tag & ">" & vbCrLf & _
+                    "      <endpoint>" & final_endpoint & "</endpoint>" & vbCrLf & _
+                    "    </" & inner_tag & ">"
+
                 strText = re.Replace(strText, formatted_list)
-            End If
-
-            If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
-                If InStr(strText, "<port>") > 0 Then
-                    Set re = new regexp
-                    re.Pattern = "<port>.*</port>"
-                    re.Global = True
-                    strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
-                End If
-
-            End If
-
-            ' Unlike the shell installers, an MSI property has no "unset" state
-            ' distinct from empty -- Windows Installer drops a PROPERTY="" command-line
-            ' assignment from the property table entirely, so WAZUH_MANAGER_ENDPOINT=""
-            ' is indistinguishable from not passing it at all and can never reach here
-            ' as a real value. Use WAZUH_MANAGER_ENDPOINT="/" to opt out instead: the
-            ' client parser already normalizes a slash-only <endpoint> to "no prefix"
-            ' the same way it does an empty one (w_normalize_agent_endpoint, #38492;
-            ' see test_agent_manager_endpoint_of_just_slashes_is_no_endpoint), so "/"
-            ' is the one non-empty value the MSI can actually carry through as an
-            ' opt-out. Write it as an empty tag to match the shell installers' own
-            ' opt-out spelling instead of leaving the literal slash in ossec.conf.
-            If WAZUH_MANAGER_ENDPOINT <> "" Then ' manager reverse-proxy prefix (#38492)
-                If InStr(strText, "<endpoint>") > 0 Then
-                    If WAZUH_MANAGER_ENDPOINT = "/" Then
-                        FINAL_ENDPOINT = ""
-                    Else
-                        FINAL_ENDPOINT = WAZUH_MANAGER_ENDPOINT
-                    End If
-                    Set re = new regexp
-                    re.Pattern = "<endpoint>.*</endpoint>"
-                    re.Global = True
-                    strText = re.Replace(strText, "<endpoint>" & FINAL_ENDPOINT & "</endpoint>")
-                End If
-
             End If
 
             If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then

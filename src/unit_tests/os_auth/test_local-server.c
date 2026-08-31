@@ -115,7 +115,8 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
     expect_any_always(__wrap__minfo, formatted_msg);
-    expect_any_always(__wrap__merror, formatted_msg);
+    // Business rejections forwarded by the master (9008 EDUPNAME here) log at warning, not error.
+    expect_any_always(__wrap__mwarn, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     will_return(__wrap_w_request_agent_add_clustered, -1);

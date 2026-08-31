@@ -187,28 +187,130 @@ check "the commented-out block does not absorb the insertion" \
 
 unset WAZUH_REGISTRATION_SERVER
 
-# WAZUH_MANAGER_ENDPOINT (#38492): the reverse-proxy prefix, written inside the
-# freshly-built <manager> block, defaulting like <port> to what the manager serves.
+# WAZUH_MANAGER_ENDPOINT (#38624) carries the whole connection target --
+# host[:port][/prefix] -- and <endpoint> now takes that same language, so an accepted
+# value is written into the config verbatim. Only the host is mandatory; an omitted
+# port or prefix takes its default when the agent parses the tag at startup.
+#
+# Collapses the emitted block to one line so a case reads as the tag it produced.
+manager_block() {
+
+    printf '%s\n' "$1" | awk '
+        /<manager>/ { inside = 1 }
+        inside { gsub(/^[[:space:]]+/, ""); printf "%s", $0 }
+        /<\/manager>/ { if (inside) { exit } }
+    '
+
+}
+
+# An accepted value reaches <endpoint> unchanged.
+accepted() {
+
+    local desc="$1" value="$2"
+
+    export WAZUH_MANAGER_ENDPOINT="${value}"
+    check "WAZUH_MANAGER_ENDPOINT='${value}' ${desc}" \
+          "<manager><endpoint>${value}</endpoint></manager>" \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER_ENDPOINT
+
+}
+
+# A grammar violation writes no <manager> block at all, leaving the shipped placeholder
+# so the agent fails loudly at startup instead of connecting somewhere unintended.
+rejected() {
+
+    local desc="$1" value="$2"
+
+    export WAZUH_MANAGER_ENDPOINT="${value}"
+    check "WAZUH_MANAGER_ENDPOINT='${value}' ${desc}" \
+          '<manager><address>MANAGER_IP</address></manager>' \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER_ENDPOINT
+
+}
+
+accepted "takes both defaults"                      "5.5.5.5"
+accepted "accepts a hostname"                       "dasd.net"
+accepted "takes an explicit port"                   "5.5.5.5:8443"
+accepted "takes an explicit prefix"                 "5.5.5.5/proxy"
+accepted "takes a multi-segment prefix"             "5.5.5.5:8443/a/b"
+accepted "tolerates an https:// scheme"             "https://5.5.5.5:8443/proxy/"
+accepted "matches the scheme case-insensitively"    "HTTPS://5.5.5.5/proxy"
+accepted "accepts a bracketed IPv6 literal"         "[2001:db8::1]:8443/proxy"
+accepted "accepts a bracketed IPv6 with no port"    "[2001:db8::1]"
+# v2 resolves the zone id with if_nametoindex() at startup, so the installer passes it
+# through rather than refusing it as v1 did.
+accepted "accepts an IPv6 zone id"                  "[fe80::1%25eth0]"
+
+# The distinction the whole grammar turns on: no '/' at all means "default prefix", a
+# trailing '/' with nothing after it is the operator's deliberate opt-out (#38614).
+# Both are written verbatim; the agent tells them apart when it parses the tag.
+accepted "with a trailing slash opts out of the prefix" "5.5.5.5/"
+accepted "opts out with an explicit port too"           "5.5.5.5:1517/"
+
+rejected "is rejected when empty"                        ""
+rejected "is rejected with no host"                      "/wazuh-manager/"
+rejected "is rejected for a non-https scheme"            "http://5.5.5.5/"
+rejected "is rejected for an out-of-range port"          "5.5.5.5:99999"
+rejected "is rejected for a non-numeric port"            "5.5.5.5:abc"
+rejected "is rejected for a trailing colon"              "5.5.5.5:"
+rejected "is rejected for an unbracketed IPv6 literal"   "2001:db8::1"
+
+# The 4.x-era variables are still supported: an equivalent <endpoint> is composed from
+# them, and WAZUH_MANAGER_ENDPOINT overrides them outright when set.
+legacy_case() {
+
+    local desc="$1" mgr="$2" port="$3" expected="$4"
+
+    export WAZUH_MANAGER="${mgr}"
+    [ -n "${port}" ] && export WAZUH_MANAGER_PORT="${port}"
+    check "WAZUH_MANAGER='${mgr}' WAZUH_MANAGER_PORT='${port}' ${desc}" \
+          "<manager><endpoint>${expected}</endpoint></manager>" \
+          "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+    unset WAZUH_MANAGER WAZUH_MANAGER_PORT
+
+}
+
+legacy_case "composes an endpoint"                "10.0.0.5"          ""     "10.0.0.5"
+legacy_case "appends an explicit port"            "10.0.0.5"          "8443" "10.0.0.5:8443"
+legacy_case "brackets a bare IPv6 literal"        "2001:db8::1"       "8443" "[2001:db8::1]:8443"
+legacy_case "keeps the last of several addresses" "a.example,b.example" ""   "b.example"
+
+# Precedence: the endpoint wins outright, and the old port must not leak into it.
 export WAZUH_MANAGER="10.0.0.5"
-export WAZUH_MANAGER_ENDPOINT="wazuh-manager"
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_ENDPOINT is written inside <manager>" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>wazuh-manager</endpoint>")"
+export WAZUH_MANAGER_PORT="8443"
+export WAZUH_MANAGER_ENDPOINT="6.6.6.6:9999/proxy"
+check "WAZUH_MANAGER_ENDPOINT overrides WAZUH_MANAGER and WAZUH_MANAGER_PORT" \
+      '<manager><endpoint>6.6.6.6:9999/proxy</endpoint></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT
 
-unset WAZUH_MANAGER_ENDPOINT
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "no WAZUH_MANAGER_ENDPOINT falls back to the manager's own default prefix" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint>/wazuh-manager/</endpoint>")"
+# The deprecated alias still feeds WAZUH_MANAGER.
+export WAZUH_MANAGER_IP="10.0.0.7"
+check "WAZUH_MANAGER_IP still aliases WAZUH_MANAGER" \
+      '<manager><endpoint>10.0.0.7</endpoint></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER_IP
 
-# WAZUH_MANAGER_ENDPOINT="" (set, but empty) is a distinct case from unset: it is the
-# operator's own explicit opt-out and must reach the client parser as an empty
-# <endpoint></endpoint> tag, not silently fall back to the default like unset does.
+# Priority is absolute: once WAZUH_MANAGER_ENDPOINT is set it decides the outcome, even
+# when its value is rejected. Falling back to WAZUH_MANAGER there would silently point the
+# agent at a different manager than the operator asked for.
+export WAZUH_MANAGER="10.0.0.5"
+export WAZUH_MANAGER_PORT="8443"
+export WAZUH_MANAGER_ENDPOINT="http://10.0.0.9/"
+check "a rejected WAZUH_MANAGER_ENDPOINT does not fall back to WAZUH_MANAGER" \
+      '<manager><address>MANAGER_IP</address></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT
+
+# An empty endpoint is a set value too, so it also wins -- and is rejected.
+export WAZUH_MANAGER="10.0.0.5"
 export WAZUH_MANAGER_ENDPOINT=""
-actual="$(run_target "${NO_ENROLLMENT_CONF}")"
-check "WAZUH_MANAGER_ENDPOINT='' is written as an empty <endpoint></endpoint> (opt-out), not the default" \
-      "1" "$(printf '%s\n' "${actual}" | grep -c "<endpoint></endpoint>")"
-unset WAZUH_MANAGER_ENDPOINT
-unset WAZUH_MANAGER
+check "an empty WAZUH_MANAGER_ENDPOINT does not fall back to WAZUH_MANAGER" \
+      '<manager><address>MANAGER_IP</address></manager>' \
+      "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
+unset WAZUH_MANAGER WAZUH_MANAGER_ENDPOINT
 
 echo
 echo "${checks} checks, ${failures} failed"

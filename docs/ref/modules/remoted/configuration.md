@@ -782,27 +782,34 @@ Cap on a downstream response body, in bytes.
 
 Maximum **age** (seconds) of an agent's bearer token (`wazuh-agent+jwt`) the auth middleware accepts:
 a token is usable while `now - iat <= jwt_max_age + jwt_clock_skew`. The token's declared lifetime
-(`exp - iat`) is a fixed 60 s of the profile and is not configurable; this option can only shorten
-the window in which an issued token is still honoured.
+(`exp - iat`) is a fixed 60 s of the profile and is not configurable; this option (together with
+`jwt_clock_skew` below) governs how much manager/agent clock drift is tolerated before an otherwise
+valid token is rejected as stale.
 
 - **Default value:** `60`
-- **Allowed values:** Integer from `1` to `60` (the profile maximum -- a larger value keeps remoted
-  from starting)
+- **Allowed values:** Integer from `1` to `43200` (12h, the profile maximum -- a larger value keeps
+  remoted from starting)
 - **Note:** Rejections against the time window (too old, expired, or issued in the future) are
   visible as `remoted.auth.reject.clock_skew` in
   [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A moving counter
-  usually means unsynchronized agent clocks — fix NTP before touching the window.
+  usually means unsynchronized agent clocks — fix NTP before widening the window. Widening it also
+  widens the replay window of a captured token (this profile has no replay store); rely on it only
+  as far as the deployment's clock drift actually requires.
 
 #### remoted.jwt_clock_skew
 
 Tolerated clock difference (seconds) between an agent and the manager, applied in both directions:
 a token may be issued up to `jwt_clock_skew` seconds in the future, and is still accepted up to
-`jwt_clock_skew` seconds after its `exp`.
+`jwt_clock_skew` seconds after its `exp`. This is the option that matters most for tolerating a real
+manager/agent clock difference -- `jwt_max_age` above bounds total token age, but a clock skew
+between the two hosts is compensated for here.
 
 - **Default value:** `30`
-- **Allowed values:** Integer from `0` to `30` (the profile maximum; `0` means no tolerance at all)
+- **Allowed values:** Integer from `0` to `43200` (12h, the profile maximum; `0` means no tolerance
+  at all)
 - **Note:** Shares the `remoted.auth.reject.clock_skew` counter with `remoted.jwt_max_age` (see
-  above). Also bounds the freshness window of `POST /enroll`.
+  above). Also bounds the freshness window of `POST /enroll`. Widening it also widens the replay
+  window of a captured token (this profile has no replay store).
 
 #### remoted.auth_max_body_size
 

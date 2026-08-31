@@ -31,6 +31,10 @@ struct ModuleConfig
 {
         std::string serverHost;
         uint16_t serverPort {443};
+        /// IPv6 zone id resolved from <endpoint> by the C-side parser (#38624).
+        /// baseUrl() appends it to the bracketed host as "%25<id>" so libcurl
+        /// scopes the connection to that interface. 0 -> no zone.
+        uint32_t serverScopeId {0};
         /// Optional reverse-proxy path segment, <endpoint> (#38492), already
         /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
         /// today's unprefixed behavior. baseUrl() does NOT insert it: callers

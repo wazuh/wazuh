@@ -381,13 +381,50 @@ Get-Service -Name wazuh
 #### Server connection
 
 **`WAZUH_MANAGER`**\
-Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server.
+Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
 
 **`WAZUH_MANAGER_PORT`**\
-Defines the port used to communicate with the Wazuh server. Default: `1517`.
+Defines the port used to communicate with the Wazuh server. Default: `1517`. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
 
 **`WAZUH_MANAGER_ENDPOINT`**\
-Optional reverse-proxy path segment the agent prepends to every request sent to the server (for example `wazuh-manager`, to send requests under `/wazuh-manager/...`). Must match the server's own configured prefix. Unset by default, which writes the server's own default prefix `/wazuh-manager/` into the generated configuration.
+The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. Takes priority over `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT`, which remain supported: when only those are set, an equivalent `<endpoint>` is composed from them. The separate `<address>` and `<port>` configuration settings are no longer written.
+
+```
+WAZUH_MANAGER_ENDPOINT = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+
+host   = IPv4 literal, hostname, or a bracketed IPv6 literal   ; REQUIRED
+port   = 1-65535                                               ; default 1517
+prefix = reverse-proxy path segments                           ; default wazuh-manager
+```
+
+The address is the only mandatory component; anything omitted takes its default, so `192.168.0.60` behaves exactly like `192.168.0.60:1517/wazuh-manager/`. The prefix must match the server's own configured prefix.
+
+| Value | Address | Port | Prefix |
+|---|---|---|---|
+| `192.168.0.60` | `192.168.0.60` | `1517` | `/wazuh-manager/` |
+| `manager.example.com:8443` | `manager.example.com` | `8443` | `/wazuh-manager/` |
+| `192.168.0.60/proxy/path` | `192.168.0.60` | `1517` | `/proxy/path/` |
+| `https://192.168.0.60:8443/proxy` | `192.168.0.60` | `8443` | `/proxy/` |
+| `192.168.0.60/` | `192.168.0.60` | `1517` | *none — see below* |
+| `[2001:db8::1]:8443` | `2001:db8::1` | `8443` | `/wazuh-manager/` |
+
+A **trailing slash with nothing after it** opts out of the prefix entirely, for a server that runs without one. Note the difference from omitting the slash: `192.168.0.60` gets the default prefix, while `192.168.0.60/` gets none.
+
+An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. A link-local IPv6 address may carry a zone id, written with the `%` percent-encoded as `%25` — `[fe80::1%25eth0]` or `[fe80::1%257]`. An interface name is resolved to its index while the configuration is parsed, so a name that does not exist on the host is rejected there rather than failing later as an obscure connection error.
+
+A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
+
+The value is written verbatim into the agent's configuration, which takes the same grammar:
+
+```xml
+<agent>
+  <manager>
+    <endpoint>192.168.0.60:1517/wazuh-manager/</endpoint>
+  </manager>
+</agent>
+```
+
+An agent upgraded in place keeps whatever `ossec.conf` it already had, so the older spelling with separate `<address>`, `<port>` and a prefix-only `<endpoint>` is still read. It logs a deprecation warning and will stop being accepted in a future release; rewrite it as a single `<endpoint>` when convenient.
 
 #### Enrollment configuration
 
@@ -401,7 +438,7 @@ certificate settings of its own.
 > `WAZUH_MANAGER` at the server and configure TLS once, for the whole connection.
 
 **`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
-Formerly the address of a separate enrollment server. Enrollment now always targets `WAZUH_MANAGER`.
+Formerly the address of a separate enrollment server. Enrollment now always targets the configured manager endpoint.
 
 **`WAZUH_REGISTRATION_PORT`** *(ignored in 5.0)*\
 Formerly the port of the legacy enrollment listener (`1515`). Enrollment now uses `WAZUH_MANAGER_PORT`.

@@ -171,6 +171,24 @@ TEST(DeleteAgentEndpoint, UnavailableIndexerIs503AtAdmission)
     EXPECT_TRUE(fixture.events->asyncOps().empty()) << "a refused deletion must queue nothing anywhere";
 }
 
+TEST(DeleteAgentEndpoint, TheAdmissionConnectorGoneIs503)
+{
+    // A handler of its own: EndpointUnderTest's pipeline keeps a strong reference to a connector,
+    // so this weak_ptr can only expire if this test owns the only other one -- distinct from
+    // UnavailableIndexerIs503AtAdmission, where the indexer is present but reports unhealthy.
+    EndpointUnderTest fixture;
+    std::shared_ptr<invsync::indexer::IIndexerConnectorSync> admission {
+        std::make_shared<FakeIndexerConnectorSync>(fixture.events, "admission")};
+    auto handler = delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, admission});
+    admission.reset(); // stop() clearing the connector
+
+    auto responder = std::make_shared<FutureResponder>();
+    handler(deleteRequest("7"), responder);
+
+    EXPECT_EQ(503, responder->get().status);
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "a terminal 503 queues nothing";
+}
+
 TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)
 {
     EndpointUnderTest fixture;
