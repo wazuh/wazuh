@@ -39,7 +39,7 @@ int authd_read_config(const char *path) {
     config.timeout_sec = getDefine_Int_default("auth", "timeout_seconds", 0, INT_MAX, 1);
     config.timeout_usec = getDefine_Int_default("auth", "timeout_microseconds", 0, 999999, 0);
     config.max_agents = (unsigned int)getDefine_Int_default("authd", "max_agents", 0, INT_MAX, 0);
-    /* How long a deletion waits before its indexer purge is relayed. The default is picked from the
+    /* How long a deletion waits before its indexer purge may run. The default is picked from the
      * three intervals it has to outlast, not guessed:
      *   - the index refresh (~1 s): a delete-by-query is a SEARCH, so it cannot match documents the
      *     indexer has not made searchable yet;
@@ -51,6 +51,19 @@ int authd_read_config(const char *path) {
      * so the default covers the widest of the three. A single-node manager only needs the first and
      * can lower this a lot; 0 (immediate) exists for tests. */
     config.purge_delay = getDefine_Int_default("authd", "purge_delay", 0, 3600, 120);
+
+    /* The writer thread creates a deletion's manager-task row over the same socket it already uses
+     * for wdb_remove_agent(), and that thread is the one that persists client.keys. An unbounded
+     * client turns a wedged wazuh-db into a stuck writer, and a stuck writer has no next cycle to
+     * recover in; bounded, the same failure just leaves the journal line for the next cycle. Ten
+     * seconds is generous for a local socket and still far below any human-noticeable stall. */
+    config.wdb_timeout = getDefine_Int_default("authd", "wdb_timeout", 1, 300, 10);
+
+    /* The Task Manager's own key, deliberately: this is a pre-check on a bound that wazuh-db
+     * enforces at creation, and two keys would let the two halves disagree. See the field's comment
+     * for why authd checks it at all. */
+    config.max_pending_deletes =
+        getDefine_Int_default("wazuh_modules", "manager_task_max_pending_deletes", 0, 1000000, 20000);
 
     return 0;
 }

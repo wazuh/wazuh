@@ -39,6 +39,8 @@ static int group_setup(void **state) {
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 600);
     will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 20000);
+    will_return(__wrap_getDefine_Int_default, 64);
 
     assert_int_equal(wm_manager_task_registry_init("queue/sockets/inventory-sync-http.sock"), 0);
 
@@ -473,6 +475,8 @@ void test_registry_init_rejects_unordered_timeouts(void **state) {
     will_return(__wrap_getDefine_Int_default, 600);
     will_return(__wrap_getDefine_Int_default, 600);
     will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 20000);
+    will_return(__wrap_getDefine_Int_default, 64);
 
     // Literal, not WM_TASK_MANAGER_LOGTAG: the module's objects are built with
     // -DARGV0="wazuh-manager-modulesd" and this translation unit is not, so the macro would

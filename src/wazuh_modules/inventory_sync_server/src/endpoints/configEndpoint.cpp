@@ -28,7 +28,7 @@ namespace
     constexpr auto CONFIG_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
 
     // Has to stay in sync with the wazuh-agent-config template's index_patterns. Taken from the
-    // deletion scope rather than re-spelled here, so DELETE /agents can never miss this index.
+    // deletion scope rather than re-spelled here, so the deletion route can never miss this index.
     constexpr std::string_view AGENT_CONFIG_INDEX_NAME {invsync::sync::AGENT_CONFIG_INDEX};
 
     // `wazuh.schema.version` marker, a string keyword per WCS (docs/ref/glossary.md). The value

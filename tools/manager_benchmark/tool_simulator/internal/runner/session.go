@@ -325,7 +325,11 @@ func (a *agent) runDelete(ctx context.Context, lane string) {
 	}
 	a.r.requestStarted()
 	defer a.r.requestFinished()
-	resp, err := a.client.Do("DELETE", "/agents", nil, "", "", now(), true)
+	// The agent id travels in the BODY, not in a header: the manager's real caller is the Task
+	// Manager's dispatcher, which POSTs a task row's payload verbatim and sets no headers of its
+	// own. Answered at completion, so a 200 here means the purge ran and flushed.
+	body := []byte(fmt.Sprintf(`{"agent_id":%q}`, a.id))
+	resp, err := a.client.Do("POST", "/_internal/agents/delete", body, "application/json", "", now(), false)
 	if err != nil {
 		a.r.reg.RecordTransportError(a.fleet.Name, lane)
 		return

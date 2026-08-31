@@ -99,7 +99,7 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
-        /// On the seam for DELETE /agents' sake, never called by this endpoint -- recorded so a
+        /// On the seam for the deletion route's sake, never called by this endpoint -- recorded so a
         /// regression that made /config delete something would fail a test instead of passing.
         void bulkDelete(std::string_view id, std::string_view index) override
         {

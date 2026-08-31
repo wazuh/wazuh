@@ -193,6 +193,15 @@ int wm_manager_task_registry_init(const char *inventory_sync_socket) {
                                                WM_MANAGER_TASK_DEFAULT_DELETE_TIMEOUT);
     int connect_timeout = getDefine_Int_default("wazuh_modules", "manager_task_create_timeout", 1, 60,
                                                 WM_MANAGER_TASK_DEFAULT_CONNECT_TIMEOUT);
+    /* The same key authd reads for its phase-0 pre-check, and deliberately so: this is ONE bound on
+     * ONE queue. wazuh-db enforces it authoritatively at creation from the descriptor below; authd
+     * checks it early so an operator gets a refusal instead of a deletion that half-succeeds. Two
+     * keys would let the two halves disagree, and the disagreement would surface as deletions that
+     * authd admits and wazuh-db then refuses. */
+    int max_pending_deletes = getDefine_Int_default("wazuh_modules", "manager_task_max_pending_deletes", 0, 1000000,
+                                                    WM_MANAGER_TASK_DEFAULT_MAX_PENDING_DELETES);
+    int max_pending_scans = getDefine_Int_default("wazuh_modules", "manager_task_max_pending_scans", 0, 1000000,
+                                                  WM_MANAGER_TASK_DEFAULT_MAX_PENDING_SCANS);
 
     // Asserted, not commented. A scan can park a deletion behind it on the consumer's per-agent
     // queue; if the deletion's own deadline can expire while it waits, it re-queues for the full
@@ -208,6 +217,14 @@ int wm_manager_task_registry_init(const char *inventory_sync_socket) {
 
     for (size_t i = 0; i < REGISTRY_COUNT; i++) {
         wm_manager_task_descriptor *desc = &manager_task_registry[i];
+
+        // The two admission bounds are configuration, not table constants, because another daemon
+        // pre-checks the same number: see the comment where they are read.
+        if (strcmp(desc->name, WM_MANAGER_TASK_AGENT_DELETE_INDEXER) == 0) {
+            desc->max_pending = max_pending_deletes;
+        } else if (strcmp(desc->name, WM_MANAGER_TASK_VD_SCAN) == 0) {
+            desc->max_pending = max_pending_scans;
+        }
 
         if (desc->lane >= WM_MANAGER_TASK_LANE_COUNT) {
             mterror(WM_TASK_MANAGER_LOGTAG, "Task type '%s' names an unknown lane.", desc->name);

@@ -61,7 +61,7 @@ namespace invsync::indexer
          *
          * On the seam because it is the ONLY way to delete a document this connector may still be
          * holding in its queue: the queue is FIFO, so a deletion enqueued after an index() of the
-         * same document is applied after it. DELETE /agents needs exactly that for the two indices
+         * same document is applied after it. The deletion route needs exactly that for the two indices
          * in AGENT_DELETION_SCOPE_BY_ID -- their documents are written here, so a delete-by-query on
          * the sync connector could neither drain this queue nor, being a SEARCH, see a document that
          * had not been refreshed yet, and a report accepted just before a deletion outlived it.

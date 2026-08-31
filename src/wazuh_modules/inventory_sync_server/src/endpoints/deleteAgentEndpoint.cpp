@@ -11,7 +11,6 @@
 
 #include "deleteAgentEndpoint.hpp"
 
-#include "endpoints/syncEndpoint.hpp" // agentIdHeader() -- one header name for every route
 #include "loggerHelper.h"
 #include "sync/fullSessionValidator.hpp" // isNumericAgentId(), padAgentId()
 #include "sync/stateIndexAllowlist.hpp"  // AGENT_DELETION_SCOPE_BY_ID
@@ -40,47 +39,22 @@ namespace
             status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
     }
 
-    /// The admission answer. "queued" rather than "ok" on purpose: the body is the wire's own
-    /// statement that the purge has NOT run yet, so a future reader of a capture cannot mistake it
-    /// for a completion the way the old `{"status":"ok"}` invited.
-    constexpr auto QUEUED_BODY {R"({"status":"queued"})"};
-
-    /// Which of the two contracts a built handler follows. The work is identical; only who answers,
-    /// when, and where the agent id is read from differ -- so they share one implementation and a
-    /// reader can see the whole difference in one place instead of diffing two near-copies.
-    enum class Answer
-    {
-        AtAdmission, ///< This handler sends the 200 as soon as the item is queued.
-        AtCompletion ///< The item carries its responder; the pipeline answers after the flush.
-    };
-
     /**
-     * @brief Read the target agent id from wherever this route's caller puts it.
+     * @brief Read the target agent id out of the request body.
      *
-     * At admission it is the `X-Wazuh-Agent-Id` header, which is what authd's relay sends. At
-     * completion it is the request body, because the dispatcher POSTs a manager-task row's PAYLOAD
-     * verbatim and adds no headers of its own -- the body is the only channel there is.
+     * The body, and only the body: the dispatcher POSTs a manager-task row's PAYLOAD verbatim and
+     * adds no headers of its own, so it is the only channel there is. `X-Wazuh-Agent-Id` is ignored
+     * even when present, because honouring it would hide a producer that forgot to write the id
+     * into the payload.
      *
-     * Neither form is authenticated remote input: both routes are UDS-local (D15) and both callers
-     * are other manager daemons, so this guards against a caller bug, not against spoofing.
+     * Not authenticated remote input: this route is UDS-local (D15) and its caller is another
+     * manager daemon, so this guards against a caller bug, not against spoofing.
      *
      * @param[out] reason Caller-facing 400 message, set only on failure.
      * @return The id as written by the caller (unpadded), or nullopt when it is absent or not an id.
      */
-    std::optional<std::string>
-    resolveAgentId(const wazuh::uds_http::HttpRequest& request, Answer answer, const char*& reason)
+    std::optional<std::string> resolveAgentId(const wazuh::uds_http::HttpRequest& request, const char*& reason)
     {
-        if (answer == Answer::AtAdmission)
-        {
-            const auto agentIdIt = request.headers.find(invsync::endpoints::sync::agentIdHeader());
-            if (agentIdIt == request.headers.end() || !invsync::sync::isNumericAgentId(agentIdIt->second))
-            {
-                reason = "Missing or non-numeric agent id header";
-                return std::nullopt;
-            }
-            return agentIdIt->second;
-        }
-
         // Non-throwing parse, like every other body-reading route here: a malformed body is
         // ordinary input, and letting nlohmann throw would cost an exception per bad request. A
         // discarded value is not an object, so the one check covers both.
@@ -121,14 +95,15 @@ namespace
         return agentId;
     }
 
-    /**
-     * @brief Build one of the two agent-deletion handlers. See the Answer enum for what differs.
-     */
-    wazuh::uds_http::RouteHandler makeRouteHandler(invsync::endpoints::delete_agent::Dependencies dependencies,
-                                                   Answer answer)
+} // namespace
+
+namespace invsync::endpoints::delete_agent
+{
+
+    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies)
     {
-        return [deps = std::move(dependencies), answer](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
-                                                        std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+        return [deps = std::move(dependencies)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                                std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local, same rationale as the sync route: how often these fire
             // is driven by how often callers request deletions, so one line per request would be a
@@ -139,16 +114,15 @@ namespace
 
             if (!request)
             {
-                // Every response this handler sends is counted here, the site that sends it. At
-                // admission that is all of them; at completion the terminal response is the
-                // pipeline's to count, so a request is never counted twice (Dependencies).
+                // Counted here, the site that sends it. The terminal response is the pipeline's to
+                // count, so a request is never counted twice (Dependencies).
                 deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Empty request"));
                 return;
             }
 
             const char* rejectionReason = nullptr;
-            const auto callerAgentId = resolveAgentId(*request, answer, rejectionReason);
+            const auto callerAgentId = resolveAgentId(*request, rejectionReason);
             if (!callerAgentId)
             {
                 deps.requestCounters.count(400);
@@ -156,16 +130,15 @@ namespace
                 return;
             }
 
-            // Admission availability gate, same rationale as the sync route: an unreachable
-            // indexer makes the deletion a guaranteed failure, and a 503 NOW is what lets the
-            // caller retry instead of losing the delete silently (the legacy behavior).
+            // The up-front availability gate, same rationale as the sync route: an unreachable
+            // indexer makes the deletion a guaranteed failure, and a 503 NOW is what lets the caller
+            // retry instead of losing the delete silently (the legacy behavior).
             //
-            // The execution route keeps it even though the worker re-checks at dispatch and would
-            // answer 503 anyway: this refuses without occupying a lane slot and a shard queue slot
-            // for work that is going to be refused. 503 rather than 409 -- the dispatcher reads a
-            // 5xx as retryable and backs off, capped at 15 minutes, which is what backoff is for;
-            // 409 means "already running this work" to it, and overloading that would make a real
-            // conflict unreadable.
+            // Kept even though the worker re-checks at dispatch and would answer 503 anyway: this
+            // refuses without occupying a lane slot and a shard queue slot for work that is going to
+            // be refused. 503 rather than 409 -- the dispatcher reads a 5xx as retryable and backs
+            // off, capped at 15 minutes, which is what backoff is for; 409 means "already running
+            // this work" to it, and overloading that would make a real conflict unreadable.
             const auto indexer = deps.indexer.lock();
             if (!indexer)
             {
@@ -209,21 +182,12 @@ namespace
 
             invsync::sync::SyncPipeline::Item item;
             item.request = request;
-            // WHO the item carries is the entire difference between the two contracts.
-            //
-            // At admission: no responder, and that is the whole point -- the queued deletion travels
-            // with nobody waiting on it. respond() already tolerates a null responder (it still
-            // releases the agent from the in-flight registry), so the worker needs no change.
-            //
-            // At completion: the responder rides along, so the SAME respond() answers the caller
-            // after executeDeleteAgent() has flushed its delete-by-query. That is what lets a
-            // manager-task row read `completed` and mean purged. It needs no change either -- the
-            // worker has always answered a DeleteAgent item, there has just never been anyone to
-            // answer -- which is why this route is additive rather than a rework of the pipeline.
-            if (answer == Answer::AtCompletion)
-            {
-                item.responder = responder;
-            }
+            // The responder rides along, and that is the whole contract: the pipeline's own
+            // respond() answers the caller after executeDeleteAgent() has flushed its
+            // delete-by-query, which is what lets a manager-task row read `completed` and mean
+            // purged. The worker needed no change for it -- it has always answered a DeleteAgent
+            // item, there has just never been anyone to answer.
+            item.responder = responder;
             item.kind = invsync::sync::SyncPipeline::Item::Kind::DeleteAgent;
             // Padded like every document `_id` and query -- the deletion must match what indexing
             // wrote. The shard hash uses this same string, so the deletion lands on the SAME
@@ -245,14 +209,14 @@ namespace
              *
              * A by-id delete also needs no index refresh (unlike the pipeline's delete-by-query), so
              * a report the queue pushed moments ago is still deletable, and deleting a document that
-             * is not there is a no-op the whole chain ignores -- which is what makes authd's retry
-             * of an already-purged agent free.
+             * is not there is a no-op the whole chain ignores -- which is what makes the
+             * dispatcher's retry of an already-purged agent free.
              *
              * If the pipeline then refuses the item below, these deletes have already been queued.
              * That is harmless: they are idempotent, the agent is gone from client.keys so nothing
-             * will write those documents again, and the caller -- authd's relay, or the dispatcher
-             * on the execution route -- retries the whole deletion until it is accepted. Each retry
-             * re-queues this pair for the same reason, which is bounded and free.
+             * will write those documents again, and the dispatcher retries the whole deletion until
+             * it is accepted -- this type has no attempt budget. Each retry re-queues this pair for
+             * the same reason, which is bounded and free.
              */
             try
             {
@@ -296,37 +260,12 @@ namespace
                 return;
             }
 
-            if (answer == Answer::AtCompletion)
-            {
-                // Nothing is sent and nothing is counted: the responder is on the item now, and the
-                // worker will answer through it. DEBUG rather than INFO because the pipeline already
-                // logs the outcome of every deletion, and a second per-request line would double the
-                // volume of a fleet-wide purge to say only that it started.
-                LOGFN_DEBUG1(logFn(), "Deletion of agent %s queued for execution.", agentId.c_str());
-                return;
-            }
-
-            // Both AFTER the enqueue: a 200 -- or a line claiming the deletion is queued -- sent
-            // before it would promise a purge that the very next branch refuses.
-            LOGFN_INFO(logFn(), "Deletion of agent %s queued.", agentId.c_str());
-            deps.requestCounters.count(200);
-            responder->send(wazuh::uds_http::HttpResponse::json(200, QUEUED_BODY));
+            // AFTER the enqueue, and nothing is sent or counted here: the responder is on the item
+            // now and the worker will answer through it. DEBUG rather than INFO because the pipeline
+            // already logs the outcome of every deletion, and a second per-request line would double
+            // the volume of a fleet-wide purge to say only that it started.
+            LOGFN_DEBUG1(logFn(), "Deletion of agent %s queued for execution.", agentId.c_str());
         };
-    }
-
-} // namespace
-
-namespace invsync::endpoints::delete_agent
-{
-
-    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies)
-    {
-        return makeRouteHandler(std::move(dependencies), Answer::AtAdmission);
-    }
-
-    wazuh::uds_http::RouteHandler makeCompletionHandler(Dependencies dependencies)
-    {
-        return makeRouteHandler(std::move(dependencies), Answer::AtCompletion);
     }
 
 } // namespace invsync::endpoints::delete_agent

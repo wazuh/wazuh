@@ -227,45 +227,99 @@ char *w_authd_read_password(const char *path);
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
-/* --- Pending indexer purges -------------------------------------------------------------------
+/* --- The agent-deletion handoff journal --------------------------------------------------------
  *
- * The queue between the writer thread and the relay that tells the inventory sync server to purge
- * a deleted agent's documents. Persisted in PENDING_PURGES_FILE, so a restart owes the same work
- * it owed before, and delayed on purpose (authd.purge_delay) so a purge cannot run before the
- * indexer refreshed and the cluster workers reloaded client.keys.
+ * PENDING_PURGES_FILE is no longer a queue with its own scheduler and retry ladder. It is a HANDOFF
+ * JOURNAL holding only the ids currently between phase 1 and phase 4 of a deletion, and it is
+ * normally empty: it drains at wazuh-db speed rather than at indexer speed. The purge itself is a
+ * manager-task row, executed by the Task Manager's dispatcher, and authd's whole responsibility is
+ * to make sure that row exists.
+ *
+ * The phases, in the order they run:
+ *
+ *   0. ADMIT OR REFUSE, on the REQUEST thread, before OS_DeleteKey -- purge_backlog_full(). It has
+ *      to be here: by phase 1 the agent is already out of the in-memory keystore and the caller has
+ *      already been told the deletion succeeded, so there is nothing left to refuse and nobody to
+ *      tell. This is the one phase that can say no.
+ *   1. INTENT, before OS_WriteKeys -- purge_journal_append(). A local file write, no external
+ *      dependency, so an outage anywhere else cannot block a client.keys write.
+ *   2. OS_WriteKeys. The point of no return, and its RETURN VALUE IS CAPTURED.
+ *   3. CREATE, only if step 2 succeeded. One row per id over the writer's own wazuh-db socket.
+ *      Create commits inside its own command, so that `ok` is the durability acknowledgement.
+ *   4. FORGET, on that ok -- purge_journal_drop().
+ *
+ * Gating 3 on 2 is load-bearing: the writer LOGS a failed OS_WriteKeys and falls through to the
+ * removal loop, so without the gate authd would create purge rows for agents still on disk.
+ *
+ * A crash anywhere in that sequence is resolved at the next start by purge_journal_reconcile(),
+ * which compares each line against the client.keys it has just read.
  */
 
-/// Give the queue's condition variable a monotonic clock. Call once, before any thread starts.
-void purge_queue_init(void);
+/// One journaled deletion: the agent, when it was requested, and its sequence.
+typedef struct purge_journal_entry_t {
+    char id[16];
+    time_t requested_at;
+    /// Monotonic per-entry sequence, persisted. It is what makes the task id of a deletion
+    /// derivable twice (phase 3 and reconciliation) without a second genuine deletion of the same
+    /// agent colliding with the first -- which a wall-clock stamp could not promise.
+    long long journal_seq;
+} purge_journal_entry_t;
 
-/// Recover what the previous run left pending, and raise the id counter past every id it mentions.
-/// Call after OS_ReadKeys() and before any thread starts.
+/// Recover the journal a previous run left behind, and raise the id counter past every id it
+/// mentions. Call after OS_ReadKeys() and before any thread starts.
 void purge_file_load(void);
 
-/// Queue (and persist) the indexer purge of a deleted agent. Called from the writer thread.
-void purge_queue_push(const char *agent_id);
+/// Phase 0. Whether the deletion backlog is too deep to admit another one. Called on the request
+/// thread; both of its terms are described at the definition.
+bool purge_backlog_full(void);
+
+/// Phase 1. Append @p count ids to the journal, assigning each the next sequence, and persist it.
+/// Releases each id's removal-time reservation and records it in the pending set, so an id is
+/// covered continuously from admission to phase 4.
+///
+/// @return A caller-owned array of @p count entries as journaled, or NULL when @p count is 0.
+purge_journal_entry_t* purge_journal_append(char **ids, size_t count);
+
+/// Phase 4. Drop these entries from the journal and persist the shorter file.
+void purge_journal_drop(const purge_journal_entry_t *entries, size_t count);
+
+/// Startup reconciliation. For every journaled line, consult the client.keys already read: an
+/// agent still listed there means the deletion never became final, so the line is dropped; an
+/// absent one means phase 2 completed and the row is still owed.
+///
+/// @param[out] count Entries still owed.
+/// @return A caller-owned array of them, or NULL when nothing is owed.
+purge_journal_entry_t* purge_journal_reconcile(size_t *count);
 
 /// Whether an id still owes a purge, so it must not be handed to a new agent.
 bool purge_is_pending(const char *agent_id);
 
+/// Seed the pending-id set from the deletion tasks wazuh-db still holds as outstanding. Until this
+/// succeeds once, every explicit-id insertion is refused -- an incomplete seed would accept an id
+/// that still owes a purge, and the purge matches by agent id alone. Auto-assigned ids are
+/// unaffected: keys.id_counter comes from the journal and needs no database.
+///
+/// Idempotent, and RETRIED LAZILY by purge_is_pending() rather than on a timer: an explicit-id
+/// insertion is the only thing the seed gates, so the moment one arrives is exactly when a retry is
+/// worth making. A timer would also be the only thing keeping the retry alive on an idle manager,
+/// since every other authd thread is driven by requests.
+///
+/// @return true when the pending set is now trustworthy.
+bool purge_pending_seed(void);
+
+/// Whether the startup seed has succeeded. Explicit-id insertions are refused until it has.
+bool purge_seed_complete(void);
+
+/// Publish the manager-task backlog depth the writer measured, for phase 0's second term. Failing
+/// to measure it must NOT be reported as zero: keep the last value instead, or a wazuh-db outage
+/// would silently lift the bound.
+void purge_pending_rows_update(int rows);
+
 /// Record the highest id handed out so far, so it is never reused after a restart.
 void purge_last_id_update(int id_counter);
 
-/// Wait until the head of the queue is due and return a copy of its id (NULL when shutting down).
-/// The entry stays queued until the relay confirms or defers it.
-char* purge_queue_peek_due(void);
-
-/// Drop the head after the server accepted the deletion.
-void purge_queue_drop_head(void);
-
-/// Keep the head and push its next attempt into the future, after a failed relay.
-void purge_queue_defer_head(const char *agent_id);
-
-/// Release the relay thread from any wait, so a shutdown can complete.
-void purge_queue_stop(void);
-
-/// Free the in-memory queue at shutdown and report what is still owed. The file is kept.
-void purge_queue_discard(void);
+/// Free the in-memory journal at shutdown and report what is still owed. The file is kept.
+void purge_journal_discard(void);
 
 extern volatile int running;
 extern pthread_mutex_t mutex_keys;

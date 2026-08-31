@@ -73,7 +73,7 @@ namespace invsync::sync
         /// points into alive -- and with it the transport's in-flight byte reservation.
         struct Item
         {
-            /// What this item asks the worker to do. DeleteAgent (DELETE /agents) rides the same
+            /// What this item asks the worker to do. DeleteAgent rides the same
             /// shard queue as the agent's sessions ON PURPOSE: the deletion orders FIFO against any
             /// in-flight session of that agent instead of racing it (design doc 04 §1) -- the
             /// legacy module's delete competed for a lock with no ordering at all.

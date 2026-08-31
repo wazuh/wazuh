@@ -837,8 +837,18 @@ class Agent:
 
         authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
-        data = authd_socket.receive()
-        authd_socket.close()
+        try:
+            data = authd_socket.receive()
+        except WazuhException as e:
+            if e.code == 9021:
+                # The manager is still applying earlier deletions to the indexer. Refused BEFORE the
+                # agent left the keystore, so it is untouched and the caller can simply retry --
+                # unlike the previous behaviour, which accepted the deletion and then dropped the
+                # indexer half of it, leaving documents nothing would ever overwrite.
+                raise WazuhError(1766, extra_message=str(self.id).zfill(3))
+            raise e
+        finally:
+            authd_socket.close()
 
         return data
 
@@ -944,6 +954,8 @@ class Agent:
             If the ID's previous owner still has documents pending deletion in the indexer.
         WazuhError(1765)
             If the ID is not a positive integer no greater than 2147483647, or is 0.
+        WazuhError(1766)
+            If too many agent deletions are still pending in the indexer.
 
         Returns
         -------
@@ -990,6 +1002,8 @@ class Agent:
                 raise WazuhError(1763, extra_message=id)
             elif e.code == 9020:
                 raise WazuhError(1765, extra_message=id)
+            elif e.code == 9021:
+                raise WazuhError(1766, extra_message=id)
             raise e
 
         self.id = data["id"]

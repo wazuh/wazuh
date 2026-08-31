@@ -43,7 +43,8 @@ typedef enum auth_local_err {
     EINVALIDNAME,
     EPENDINGPURGE,
     EINVALIDKEY,
-    EINVALIDID // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDID,
+    EDELETEBACKLOG // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -76,7 +77,13 @@ static const struct {
     { 9019, "Invalid agent key" },
     // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
     // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
-    { 9020, "Invalid agent ID" }
+    { 9020, "Invalid agent ID" },
+    // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
+    // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
+    // remedy is to wait rather than to pick a different id. 9021 rather than 9020: both features
+    // appended their code independently, and 9020 was already taken by the id check above -- the
+    // framework maps the two to different API errors.
+    { 9021, "Too many agent deletions are pending" }
 };
 
 // Dispatch local request
@@ -798,6 +805,17 @@ cJSON* local_remove(const char *id, int purge) {
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    } else if (purge_backlog_full()) {
+        /* PHASE 0, and it has to be here rather than anywhere later.
+         *
+         * One line below, add_remove() and OS_DeleteKey() have run: the agent is out of the
+         * in-memory keystore and this function is about to answer "deleted". From that point there
+         * is nothing left to refuse and nobody to tell, which is why the old code -- discovering
+         * the overflow in the writer -- could only choose between dropping the purge silently and
+         * logging it while the documents were orphaned. Refusing the REQUEST leaves the agent
+         * exactly as it was, and the caller can retry. */
+        mwarn("Error %d: %s.", ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
+        response = local_create_error_response(ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */

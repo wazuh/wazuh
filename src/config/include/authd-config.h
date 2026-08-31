@@ -57,9 +57,25 @@ typedef struct authd_config_t {
     bool ipv6;
     bool allow_higher_versions;
     unsigned int max_agents;
-    /// Seconds a deletion waits before its indexer purge is relayed (internal option
-    /// `authd.purge_delay`). 0 relays immediately, which is only meant for tests.
+    /// Seconds a deletion waits before its indexer purge may run (internal option
+    /// `authd.purge_delay`). It is the deletion task's initial NEXT_ATTEMPT_AT offset; 0 makes the
+    /// purge eligible immediately, which is only meant for tests.
     int purge_delay;
+    /// Seconds authd allows for one wazuh-db round trip (internal option `authd.wdb_timeout`).
+    ///
+    /// It exists because the writer thread creates the deletion rows, and the writer is the thread
+    /// that persists client.keys: with an unbounded client a wedged wazuh-db would HANG it, and a
+    /// stuck writer has no next cycle to self-heal from. Bounded, the same failure is a phase that
+    /// simply did not complete, which the journal makes recoverable.
+    int wdb_timeout;
+    /// Deletion tasks that may be outstanding before authd refuses new deletions at the request
+    /// (`wazuh_modules.manager_task_max_pending_deletes`). 0 disables the bound.
+    ///
+    /// Read from the Task Manager's namespace rather than authd's on purpose: it is ONE bound on
+    /// ONE queue, enforced authoritatively by wazuh-db at creation and pre-checked here so the
+    /// caller gets a refusal instead of a deletion that half-succeeds. Two keys would let the two
+    /// halves drift.
+    int max_pending_deletes;
 } authd_config_t;
 
 /**

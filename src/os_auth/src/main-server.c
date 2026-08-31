@@ -33,7 +33,7 @@
 #include "os_err.h"
 #include "generate_cert.h"
 #include <sys/epoll.h>
-#include "http_op.h"
+#include "manager_task_op.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -44,9 +44,8 @@ static void* run_remote_server(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
-/* Thread that relays agent deletions to the inventory sync server */
-static void* run_purge_relay(void *arg);
-
+/* Finish the deletions a previous run left mid-sequence, and seed the reusable-id guard. */
+static void purge_startup_recover(void);
 
 /* Thread that watches for authd.pass to appear on a worker node */
 static void* run_authpass_watcher(void *arg);
@@ -184,7 +183,6 @@ int main(int argc, char **argv)
     pthread_t thread_local_server = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
-    pthread_t thread_purge_relay = 0;
     pthread_t thread_authpass_watcher = 0;
     bool authpass_watcher_started = false;
 
@@ -675,14 +673,6 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
-    /* Initialize libcurl once per process: the writer thread notifies agent deletions to the
-     * inventory sync server over its UDS HTTP endpoint (uhttp_*). Not fatal on failure -- authd's
-     * job is enrollment; a deletion that cannot be notified is logged by the writer and is safe to
-     * repeat by hand (the server's delete-by-query treats a missing index as success). */
-    if (uhttp_global_init() != 0) {
-        mwarn("Could not initialize the HTTP client; agent deletions will not reach the inventory sync server.");
-    }
-
     /* Start working threads */
 
     if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
@@ -701,19 +691,13 @@ int main(int argc, char **argv)
     }
 
     if (!config.worker_node) {
-        /* Before any thread exists: give the queue its clock and take back whatever the previous
-         * run still owed the indexer. */
-        purge_queue_init();
+        /* Before any thread exists, so nothing contends for the journal: read what the previous run
+         * left, decide what each surviving line means against the client.keys just loaded, and
+         * record the deletions that were interrupted before their task row existed. */
         purge_file_load();
+        purge_startup_recover();
 
         if (status = pthread_create(&thread_writer, NULL, (void *)&run_writer, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
-        }
-
-        /* Paired with the writer: it is the only producer of the deletion queue, so a worker node
-         * (which has no writer) has nothing to relay either. */
-        if (status = pthread_create(&thread_purge_relay, NULL, (void *)&run_purge_relay, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
             return EXIT_FAILURE;
         }
@@ -739,10 +723,8 @@ int main(int argc, char **argv)
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
 
-        /* The relay is joined AFTER the writer, its only producer, so nothing it pushed on its way
-         * out is lost before the relay gets to report what it could not send. */
-        purge_queue_stop();
-        pthread_join(thread_purge_relay, NULL);
+        /* After the writer, its only producer, so a line it journaled on its way out is counted. */
+        purge_journal_discard();
     }
 
     /* Join the watcher so it cannot touch authpass/mutex_authpass during shutdown. */
@@ -1190,196 +1172,131 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-/* Deletion request budget. The per-request timeout is generous ON PURPOSE: a deletion refreshes
- * and then delete-by-queries the agent's whole scope, so on a loaded indexer it legitimately takes
- * seconds, and the old 5 s ceiling turned "slow" into "lost". It does not become a 3 x 30 s stall
- * when the indexer is simply DOWN: the server's admission gate answers 503 immediately, and a
- * modulesd that is not listening fails at connect_timeout_ms. The long wait only happens while the
- * server is actually working the deletion -- which is exactly when waiting is the right answer. */
-#define INV_SYNC_DELETE_TIMEOUT_MS      30000
-#define INV_SYNC_DELETE_CONNECT_TIMEOUT_MS 2000
-#define INV_SYNC_DELETE_ATTEMPTS        3
-
 /**
- * @brief Ask the inventory sync server to delete an agent's documents from the indexer.
+ * @brief Phases 3 and 4: record each journaled deletion as a manager task, then forget it.
  *
- * POST /agents/delete over the server's UDS socket (the POST alias of DELETE /agents: uhttp_*
- * only speaks POST), the target agent in the X-Wazuh-Agent-Id header, empty body. Unlike the old
- * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
- * flushed to the indexer.
+ * One row per id, over a socket the caller already holds, and the create commits inside its own
+ * wazuh-db command -- so its `ok` is the durability acknowledgement, not a buffered write. That is
+ * precisely what lets phase 4 drop the journal line: dropping it on a merely-buffered ok would
+ * leave a window in which wazuh-db's death loses the row AND the record that it was owed.
  *
- * Failure is never silent, but it is also never final: the caller (run_purge_relay) requeues
- * anything that does not return 0 and retries it again on the next pass, so no deletion is ever
- * lost or needs to be repeated by hand. That is why a server/network give-up after
- * INV_SYNC_DELETE_ATTEMPTS is only logged at debug level -- the retry queue is the actual signal,
- * not this function's return value. The one exception is a failure to even build the request
- * (add/reset a header): that is a manager-side bug, not the server or the network, so it stays an
- * ERROR naming the agent even though it too gets requeued. The transport result and the HTTP
- * status are reported separately: a curl-level failure carries no status, and printing "status 0"
- * for it is what made a modulesd that was not listening look like a server that refused.
+ * `collided` is SUCCESS here. A deletion has two legitimate creators -- this function on the
+ * writer's cycle, and the same function during startup recovery -- and the task id is derived from
+ * the agent and its journal sequence precisely so the second one is a no-op rather than a duplicate.
  *
- * Called only from the relay thread (never the writer: that is the entire point of the queue in
- * front of it). The client handle is per-thread by uhttp's contract, and the lazy static is what
- * keeps the connection alive (keepalive) across a batch of deletions.
+ * `queue_full` is NOT success and does not drop the line: the row was not created, so the deletion
+ * is still owed. The next writer cycle retries it, and the backlog it is waiting on is the same one
+ * phase 0 refuses new deletions against. The rest of the batch is abandoned for this pass, because
+ * a full queue does not empty between two rows.
  *
- * @param agent_id The ID of the agent to delete
- * @return 0 when the server accepted the deletion, -1 otherwise (the caller keeps it queued).
+ * @param entries The journaled deletions.
+ * @param count How many.
+ * @param wdb_sock Reusable wazuh-db socket.
+ * @return How many rows are now recorded.
  */
-static int send_agent_delete_to_inventory_sync(const char *agent_id) {
-    static uhttp_client_t *client = NULL;
+static size_t purge_create_rows(const purge_journal_entry_t *entries, size_t count, int *wdb_sock) {
+    size_t recorded = 0;
+    size_t i;
 
-    if (!client) {
-        uhttp_options_t opts = {
-            .unix_socket_path = INV_SYNC_SOCK,
-            .url = "http://localhost/agents/delete",
-            .timeout_ms = INV_SYNC_DELETE_TIMEOUT_MS,
-            .connect_timeout_ms = INV_SYNC_DELETE_CONNECT_TIMEOUT_MS,
-            .keepalive = true
-        };
-        client = uhttp_client_new(&opts);
-        if (!client) {
-            mwarn("Could not create the HTTP client for agent deletions; the deletion of agent '%s' stays queued.", agent_id);
-            return -1;
-        }
+    if (!entries || count == 0) {
+        return 0;
     }
 
-    // The header changes per call; reset-then-add keeps the client reusable. Reset rather than clear:
-    // clearing drops the headers the constructor installed (Content-Type, the Expect: suppression and
-    // the keep-alive this client asked for) and never rebuilds them.
-    char header[64];
-    snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
-    if (uhttp_client_reset_headers(client) != 0) {
-        mwarn("Could not prepare the deletion request for agent '%s'; the deletion stays queued.", agent_id);
-        return -1;
-    }
-    if (uhttp_client_add_header(client, header) != 0) {
-        merror("Could not build the deletion request for agent '%s'; the deletion stays queued.", agent_id);
-        return -1;
-    }
+    for (i = 0; i < count; i++) {
+        manager_task_request_t request = {0};
+        char payload[OS_SIZE_128];
+        char *task_id = NULL;
+        int result;
 
-    // Retries with a widening pause (0 s, 1 s, 3 s). A 503 is the server telling us to come back:
-    // it answers that while no indexer host is healthy, and an overloaded indexer flaps in and out
-    // of healthy in bursts of a few seconds. A single fixed 2 s retry could land both attempts
-    // inside the same burst; spreading them over ~4 s rides one out without designing a persistent
-    // queue for a rare, hand-recoverable event (design doc 04 §2).
-    static const unsigned int backoff_seconds[INV_SYNC_DELETE_ATTEMPTS] = {0, 1, 3};
-
-    for (int attempt = 0; attempt < INV_SYNC_DELETE_ATTEMPTS; attempt++) {
-        // Signals are blocked in this thread (authd_sigblock()), so nothing interrupts a sleep() or
-        // a request in flight: without these checks a shutdown asked for while the writer is working
-        // its removal queue waits out the whole budget (up to ~94 s) for EVERY queued agent before
-        // the daemon can exit. Giving up on shutdown is safe -- the deletion is idempotent and the
-        // warning below tells the operator to repeat it.
-        if (!running) {
-            mdebug1("Shutting down; the deletion of agent '%s' stays queued after %d attempt(s) and "
-                    "will be retried on the next start.",
-                    agent_id, attempt);
-            return -1;
+        if (task_id = manager_task_id_agent_delete(entries[i].id, entries[i].journal_seq), !task_id) {
+            merror("Could not derive the deletion task id of agent '%s'.", entries[i].id);
+            continue;
         }
 
-        if (backoff_seconds[attempt] > 0) {
-            // Debug, not info: this runs on the relay thread now, where waiting costs nothing --
-            // no key write and no other agent's deletion is behind it. It used to run on the writer
-            // thread, which is what turned a fleet-wide removal into an enrollment outage.
-            mdebug1("Retrying the deletion of agent '%s' in %u s (attempt %d/%d).",
-                    agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
+        /* The consumer's request body, verbatim: POST /_internal/agents/delete reads the agent id
+         * from here because the dispatcher forwards a row's payload and adds no headers. */
+        snprintf(payload, sizeof(payload), "{\"agent_id\":\"%s\"}", entries[i].id);
+
+        request.task_id = task_id;
+        request.task_type = MANAGER_TASK_TYPE_AGENT_DELETE;
+        request.agent_id = entries[i].id;
+        request.payload = payload;
+        request.create_time = (long long)entries[i].requested_at;
+        /* authd.purge_delay, expressed where it now belongs. Part of what it buys is the indexer
+         * having refreshed and the cluster workers having reloaded client.keys, neither of which
+         * this daemon can observe -- so it stays a delay rather than becoming a condition. */
+        request.next_attempt_at = (long long)entries[i].requested_at + config.purge_delay;
+        /* Never coalesced: two deletions of one agent are two obligations. */
+        request.coalesce = false;
+        request.max_pending = config.max_pending_deletes;
+
+        result = manager_task_create(&request, config.wdb_timeout, wdb_sock, NULL);
+
+        os_free(task_id);
+
+        switch (result) {
+        case MANAGER_TASK_CREATED:
+            recorded++;
+            break;
+
+        case MANAGER_TASK_COLLIDED:
+            mdebug1("The deletion of agent '%s' was already recorded.", entries[i].id);
+            recorded++;
+            break;
+
+        case MANAGER_TASK_QUEUE_FULL:
+            mwarn("The deletion of agent '%s' could not be recorded: %d deletions are already "
+                  "waiting to be applied to the indexer. It stays journaled and will be retried.",
+                  entries[i].id, config.max_pending_deletes);
+            return recorded;
+
+        default:
+            mwarn("The deletion of agent '%s' could not be recorded; it stays journaled and will be "
+                  "retried.", entries[i].id);
+            return recorded;
         }
 
-        for (unsigned int slept = 0; slept < backoff_seconds[attempt] && running; slept++) {
-            sleep(1);
-        }
-
-        uhttp_result_t result = {0};
-        const int posted = uhttp_post(client, NULL, 0, &result);
-
-        if (posted == 0 && result.http_status == 200) {
-            // 200 means QUEUED on the server side now, not purged: it records the deletion and
-            // answers at admission, so this is where authd's ownership of it ends.
-            minfo("The deletion of agent '%s' was accepted by the inventory sync server.", agent_id);
-            return 0;
-        }
-
-        const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
-
-        // Three outcomes hide behind a non-zero return, and naming the right one is what makes this
-        // log actionable. uhttp_post() returns the HTTP status itself for a non-2xx, so `posted`
-        // alone cannot classify anything -- the fields in `result` do:
-        //   - nothing set at all  -> the request was refused by the client and NEVER SENT. The
-        //     socket and the server are not the suspects; saying "could not reach the server" here
-        //     sends the operator to test an endpoint that was working all along.
-        //   - curl_code set       -> it was sent and failed in transport.
-        //   - http_status set     -> it was answered, with a status we did not want.
-        if (result.http_status != 0) {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
-
-            if (last_attempt) {
-                mdebug1("The inventory sync server did not accept the deletion of agent '%s' after %d "
-                        "attempt(s) (HTTP status %ld).",
-                        agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
-            }
-        } else if (result.curl_code != 0) {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
-
-            if (last_attempt) {
-                mdebug1("Could not reach the inventory sync server to delete agent '%s' after %d "
-                        "attempt(s) (curl code %d).",
-                        agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
-            }
-        } else {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' was not sent (client-side error).",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id);
-
-            if (last_attempt) {
-                merror("Could not build the deletion request for agent '%s' after %d attempt(s): it was "
-                       "never sent, so this is a manager-side fault, not an unreachable server. Report it.",
-                       agent_id, INV_SYNC_DELETE_ATTEMPTS);
-            }
-        }
+        // Phase 4, per entry rather than per batch: an entry whose row is durable must not be left
+        // owed because a LATER one in the same batch failed.
+        purge_journal_drop(&entries[i], 1);
     }
 
-    return -1;
+    return recorded;
 }
 
 /**
- * @brief Thread that relays queued agent deletions to the inventory sync server.
+ * @brief Startup recovery: finish the deletions a previous run left mid-sequence, then seed.
  *
- * Exists so the writer thread never blocks on the network. Everything expensive about a deletion --
- * the request, its timeout, its retries and their backoff sleeps -- happens here, where waiting
- * costs nothing: no key write, no other agent's deletion and no shutdown is behind it.
+ * Called from main() after OS_ReadKeys() and purge_file_load(), before any thread starts.
  *
- * A deletion is only dropped from the queue once the server has accepted it; anything else leaves it
- * queued and persisted, so nothing has to be repeated by hand.
- *
- * On shutdown it stops sending rather than draining, because draining would make the daemon wait
- * out the full retry budget of every queued deletion before it could exit. What is left stays in the
- * file and is reported by purge_queue_discard().
+ * The seed is attempted even when nothing is owed, and a failure here is not fatal: it only means
+ * explicit-id insertions are refused until purge_is_pending() retries it, which it does on the
+ * first one that arrives.
  */
-void* run_purge_relay(__attribute__((unused)) void *arg) {
-    authd_sigblock();
+static void purge_startup_recover(void) {
+    purge_journal_entry_t *owed = NULL;
+    size_t count = 0;
+    int wdb_sock = -1;
 
-    mdebug1("Deletion relay thread ready.");
+    owed = purge_journal_reconcile(&count);
 
-    while (running) {
-        char *agent_id = purge_queue_peek_due();
+    if (owed) {
+        size_t recorded = purge_create_rows(owed, count, &wdb_sock);
 
-        if (!agent_id) {
-            continue; // shutting down, or a spurious wake-up
+        if (recorded < count) {
+            mwarn("%zu recovered agent deletion(s) could not be recorded yet; they stay journaled "
+                  "and are retried on the next write cycle.", count - recorded);
         }
 
-        if (send_agent_delete_to_inventory_sync(agent_id) == 0) {
-            purge_queue_drop_head();
-        } else {
-            purge_queue_defer_head(agent_id);
-        }
-
-        os_free(agent_id);
+        os_free(owed);
     }
 
-    purge_queue_discard();
-    mdebug1("Deletion relay thread finished");
-    return NULL;
+    if (!purge_pending_seed()) {
+        mwarn("Could not read which agent IDs still owe a deletion; insertions naming an explicit "
+              "agent ID are refused until the database answers.");
+    }
+
+    wdbc_close(&wdb_sock);
 }
 
 /* Thread for writing keystore onto disk */
@@ -1401,6 +1318,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     while (running) {
         int inserted_agents = 0;
         int removed_agents = 0;
+        char **removed_ids = NULL;
+        size_t removed_count = 0;
+        purge_journal_entry_t *journaled = NULL;
+        bool keys_written = false;
 
         w_mutex_lock(&mutex_keys);
 
@@ -1422,9 +1343,31 @@ void* run_writer(__attribute__((unused)) void *arg) {
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
 
+        /* PHASE 1: the intent, before client.keys is rewritten.
+         *
+         * Local only -- a temp file and a rename. Creating the task rows here instead would put a
+         * wazuh-db round trip in front of every client.keys write, so a database outage would block
+         * enrollment: the wedge this whole design exists to remove. The rows come later, in phase 3,
+         * where a failure costs a retry rather than an outage. */
+        for (cur = copy_remove; cur; cur = cur->next) {
+            os_realloc(removed_ids, (removed_count + 1) * sizeof(char *), removed_ids);
+            removed_ids[removed_count++] = cur->id;
+        }
+
+        journaled = purge_journal_append(removed_ids, removed_count);
+        os_free(removed_ids);
+
         gettime(&t0);
 
-        if (OS_WriteKeys(copy_keys) < 0) {
+        /* PHASE 2: the point of no return, and its RESULT IS CAPTURED.
+         *
+         * A failure here is logged and falls through to the removal loop below -- it always has --
+         * so without an explicit gate phase 3 would create purge rows for agents that are still on
+         * disk. The in-memory keystore cannot serve as that gate: OS_DeleteKey() already ran, so it
+         * says "deleted" while the file still says "alive". */
+        keys_written = (OS_WriteKeys(copy_keys) >= 0);
+
+        if (!keys_written) {
             merror("Couldn't write file client.keys");
             sleep(1);
         }
@@ -1506,11 +1449,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            // Hand the indexer purge to the relay thread and move on. Doing it here is what used
-            // to stall this loop for up to 94 s per agent, and with it every client.keys write --
-            // so a fleet-wide removal locked out enrollment until the whole batch drained.
-            purge_queue_push(cur->id);
-
             os_free(cur->id);
             os_free(cur->name);
             os_free(cur->ip);
@@ -1521,11 +1459,37 @@ void* run_writer(__attribute__((unused)) void *arg) {
             removed_agents++;
         }
 
+        /* PHASES 3 and 4, gated on phase 2. Skipping them costs nothing: the journal lines stay,
+         * the next cycle retries them, and a start that never gets one reconciles them instead. */
+        if (journaled) {
+            if (keys_written) {
+                purge_create_rows(journaled, removed_count, &wdb_sock);
+            } else {
+                mwarn("client.keys could not be written, so %zu deletion(s) were not recorded; they "
+                      "stay journaled until a write succeeds.", removed_count);
+            }
+
+            os_free(journaled);
+        }
+
+        /* Phase 0's second term, refreshed once per cycle rather than once per agent. A failed
+         * measurement is passed through as -1 and keeps the previous value: reporting it as zero
+         * would lift the bound for exactly as long as wazuh-db is unreachable.
+         *
+         * It goes stale on an idle manager, which is harmless in both directions -- stale-high
+         * over-refuses, stale-low lets wazuh-db refuse at creation instead, which re-queues -- and
+         * the count only matters while deletions are flowing, which is when this thread cycles. */
+        purge_pending_rows_update(
+            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
+                               &wdb_sock));
+
         gettime(&global_t1);
         mdebug2("[Writer] Inserted agents: %d", inserted_agents);
         mdebug2("[Writer] Removed agents: %d", removed_agents);
         mdebug2("[Writer] Loop: %d ms.", (int)(1000. * (double)time_diff(&global_t0, &global_t1)));
     }
+
+    wdbc_close(&wdb_sock);
 
     return NULL;
 }

@@ -17,8 +17,12 @@ list(APPEND os_auth_names "test_auth")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
                            -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time -Wl,--wrap,wfopen \
                            -Wl,--wrap,fprintf -Wl,--wrap,popen -Wl,--wrap,pclose")
-list(APPEND os_auth_names "test_purge_queue")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_auth_names "test_purge_journal")
+# The two wazuh-db calls auth.c makes. Wrapped rather than reached: what these tests are about is
+# how their ANSWERS are interpreted, and a real socket would make "outstanding" and "the query
+# failed" the same case.
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
+                           -Wl,--wrap,manager_task_agent_status -Wl,--wrap,manager_task_agent_ids")
 list(APPEND os_auth_names "test_authd-config")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_local-server")

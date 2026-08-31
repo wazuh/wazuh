@@ -3481,7 +3481,9 @@ paths:
       tags:
         - Agents
       summary: "Delete agents"
-      description: "Delete all agents or a list of them based on optional criteria"
+      description: "Delete all agents or a list of them based on optional criteria. An agent whose
+      deletion cannot be admitted because too many earlier deletions are still being applied to the
+      indexer is reported with error 1766 and is left untouched - retry it once the backlog drains"
       operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'

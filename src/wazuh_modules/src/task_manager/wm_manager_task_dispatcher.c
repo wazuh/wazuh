@@ -620,6 +620,7 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
 
                 options.timeout_ms = lane_types[0]->request_timeout_ms;
                 options.connect_timeout_ms = lane_types[0]->connect_timeout_ms;
+                options.unix_socket_path = lane_types[0]->socket_path;
 
                 worker->http = uhttp_client_new(&options);
 

@@ -7,8 +7,8 @@ session result. There are no acknowledgment messages, no retransmission protocol
 session store: re-applying a session is idempotent, so the whole retry story is "the agent
 re-POSTs".
 
-The module also hosts the whole-agent deletion endpoint (`DELETE /agents`, called by authd) and
-runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
+The module also hosts the whole-agent deletion endpoint (`POST /_internal/agents/delete`, called by
+the Task Manager's dispatcher) and runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
 `200` for a VD session guarantees the scan ran AND the inventory was flushed.
 
 Three documentation layers cover this module, each with its own job:
@@ -27,8 +27,9 @@ Three documentation layers cover this module, each with its own job:
 - **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
   contract harness that measures this module end to end (see
   [Load & benchmarking](#load--benchmarking)).
-- **[`os_auth`](../../os_auth/README.md)** — the caller on the other side of `DELETE /agents`: why it
-  queues deletions, why it delays them, and what it does with the `200`.
+- **[`os_auth`](../../os_auth/README.md)** — where a deletion comes from: why authd records it as a
+  Task Manager row instead of calling this module, why it delays it, and what an id that still owes a
+  purge means for enrollment.
 
 ## Requirements
 
@@ -50,7 +51,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
 | RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
-| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`DELETE /agents`; authd is the only producer — D21) |
+| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`POST /_internal/agents/delete`; the Task Manager's dispatcher is the only caller, authd the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
@@ -148,7 +149,7 @@ inventory_sync_server/
 │   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck, metricNames (D18)
 │   ├── http_server/                   # HTTP/1.1-over-UDS transport (asio + llhttp, own interface)
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
-│   │                                  #   deleteAgentEndpoint (DELETE /agents), stats, config
+│   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete), stats, config
 │   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
 │   ├── sync/                          # the ingestion pipeline:
 │   │   ├── fullSessionValidator.*     #   request-level validation (verifier, identity, shape)
@@ -169,7 +170,7 @@ inventory_sync_server/
 ├── qa/                                # integration QA: pytest over the real socket + OpenSearch
 └── tools/                             # stdlib-only UDS drivers
     ├── send_sync.py                   #   smoke sender: health probe, every transport rejection
-    └── send_delete_agent.py           #   DELETE /agents, with optional indexer before/after
+    └── send_delete_agent.py           #   POST /_internal/agents/delete, with optional indexer before/after
 ```
 
 Two style rules keep the layout navigable: every submodule is included by prefix
@@ -502,12 +503,21 @@ unregisters FIRST, before the lane dies under the scanner's feet.
 
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
-`DELETE /agents` — plus a `POST /agents/delete` alias with the SAME handler, because the C-side
-HTTP helper (`uhttp_*`, libcurl) only speaks POST and authd is the production caller. UDS-local
-only; remoted has no downstream route to it.
+`POST /_internal/agents/delete`. UDS-local and manager-internal: the only caller is the Task
+Manager's dispatcher, executing a durable `agent_delete_indexer` row that authd created after
+removing the agent from `client.keys` and wazuh-db. remoted has no downstream route to it, and
+`_internal` marks it as a contract between two daemons of the same version with no compatibility
+promise. POST because the dispatcher's C-side HTTP helper (`uhttp_*`, libcurl) only speaks POST.
 
-The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `400`) and gates on
-indexer availability (→ `503`; the caller retries rather than losing the deletion). Then it queues
+**The agent id travels in the BODY** — `{"agent_id": "7"}` — not in `X-Wazuh-Agent-Id`. The dispatcher
+POSTs a task row's `PAYLOAD` verbatim and sets no headers of its own, so the body is the only channel
+there is; the header is ignored even when present, because honouring it would hide a producer that
+forgot to write the id into the payload. Both JSON spellings (`"7"` and `7`) are accepted, because
+this task type's `4xx` comes back to the dispatcher as *retryable* — rejecting the number form would
+re-queue the deletion forever rather than fail it.
+
+The handler validates that body (→ `400`) and gates on indexer availability (→ `503`; the caller
+retries rather than losing the deletion). Then it queues
 **two halves, one per writer** — a document can only be deleted in the right ORDER by the connector
 that writes it, which is why the scope is split into `AGENT_DELETION_SCOPE_BY_QUERY` and
 `AGENT_DELETION_SCOPE_BY_ID`:
@@ -529,45 +539,14 @@ A missing index counts as success inside the connector, and deleting a document 
 a no-op the whole chain ignores, so repeating a deletion is harmless and stays quiet — the callers'
 whole retry contract.
 
-**These two routes answer at ADMISSION: `200 {"status":"queued"}` means "recorded and queued, it WILL
-be purged".** Unlike `/stateful`, the caller is released as soon as the item is on the shard queue, and
-the purge's own outcome is reported only in this module's log. Answering after the flush is what
-wedged the caller: authd relays deletions from the single thread that persists `client.keys`, and on
-populated `wazuh-states-*` one `delete_by_query` legitimately outlives authd's 30 s budget — so it
-timed out, retried into the very same running purge, and blocked every key write in between, which
-meant no agent could enroll until the batch drained. `POST /vulnerability-detector/scan` moved to
-this same contract for the same reason.
-
-### `POST /_internal/agents/delete` — the same work, answered at COMPLETION
-
-The Task Manager's dispatcher drives this third route, and it records a manager-task row `completed`
-on the 200. A 200 meaning "queued" would therefore record a purge that has not happened, and a
-modulesd crash right after it would lose the queued deletion while the row already read `completed` —
-so this one carries its responder onto the `Item` and lets the pipeline's own `respond()` answer,
-after `executeDeleteAgent()` has run its delete-by-query **and** flushed it. That is what makes
-`completed` mean purged.
+**This route answers at COMPLETION: the `200` means the delete-by-query has run AND flushed.** The
+dispatcher records its manager-task row `completed` on that 200, so a 200 meaning "queued" would
+record a purge that has not happened — and a modulesd crash right after it would lose the queued
+deletion while the row already read `completed`. The item therefore carries its responder onto the
+`Item` and the pipeline's own `respond()` answers. That is what makes `completed` mean purged.
 
 It needed no pipeline change: the worker has always answered a `DeleteAgent` item, there has just
 never been anyone to answer.
-
-Three differences from the admission pair, and nothing else:
-
-- **The agent id travels in the BODY** — `{"agent_id": "7"}` — not in `X-Wazuh-Agent-Id`. The
-  dispatcher POSTs a task row's `PAYLOAD` verbatim and sets no headers of its own, so the body is the
-  only channel there is. The header is ignored here, deliberately: honouring it would hide a producer
-  that forgot to write the id into the payload. Both JSON spellings of the id are accepted (`"7"` and
-  `7`) because this task type's `4xx` comes back to the dispatcher as *retryable*, so rejecting the
-  number form would re-queue the deletion forever rather than fail it.
-- **Its own response backstop, 900 s** (`RouteOptions::responseTimeoutSec`). The transport's
-  server-wide backstop is 300 s and is written around the peer's deadline being the shorter one; the
-  Task Manager gives this route 600 s, deliberately longer than the scan route's 300 s. With the
-  server-wide value that ordering inverts, and a purge running past five minutes gets a synthesized
-  504 while it is still succeeding — retried forever, since this type has no attempt budget. Raising
-  it per route rather than globally keeps the leak backstop intact for everyone else. It must stay
-  above `manager_task_delete_timeout`.
-- **Capacity is the caller's.** `RouteClass::Control` requires a route doing real work to shed its own
-  capacity module-side; this one has no queue, so the bound is the dispatcher's delete-lane depth of
-  4 — at most four deletions in flight.
 
 **What `completed` does not cover:** the by-id half. Those two deletes are queued on the async
 connector and are fire-and-forget by construction — that queue is FIFO, which is the only thing that
@@ -576,9 +555,29 @@ promises the state documents were deleted and flushed, and promises only that th
 were queued. Closing that would mean giving up the ordering property the by-id half exists for; what
 limits it is idempotency, since a retried deletion re-queues them.
 
-**Both contracts are live at once**, and the admission pair goes away with authd's relay thread, not
-before — removing it first would land a change in which agent deletion stops purging documents
-entirely.
+**Its own response backstop, 900 s** (`RouteOptions::responseTimeoutSec`). The transport's server-wide
+backstop is 300 s and is written around the peer's deadline being the shorter one; the Task Manager
+gives this route 600 s, deliberately longer than the scan route's 300 s. With the server-wide value
+that ordering inverts, and a purge running past five minutes gets a synthesized 504 while it is still
+succeeding — retried forever, since this type has no attempt budget. Raising it per route rather than
+globally keeps the leak backstop intact for everyone else. It must stay above
+`manager_task_delete_timeout`.
+
+**Capacity is the caller's.** `RouteClass::Control` requires a route doing real work to shed its own
+capacity module-side; this one has no queue, so the bound is the dispatcher's delete-lane depth of 4 —
+at most four deletions in flight.
+
+### What replaced what
+
+`DELETE /agents` and its `POST /agents/delete` alias stood here until authd stopped relaying deletions
+itself. They answered at ADMISSION — `200 {"status":"queued"}` — because authd relayed from the single
+thread that persists `client.keys`, and on populated `wazuh-states-*` one `delete_by_query`
+legitimately outlives a 30 s budget: it timed out, retried into the very same running purge, and
+blocked every key write in between, so no agent could enroll until the batch drained.
+
+Answering at admission fixed that and left the obligation in memory: the durability chain ended in an
+in-memory pipeline, and a `200` recorded nothing anyone could act on later. A dispatcher lane waits
+now, which is what it is built to do, and the record is a row in `tasks.db`.
 
 **One window where a document can outlive the deletion.** It is known, it is recorded by a skipped
 test in `qa/test_delete_agent.py`, and repeating the deletion clears it (it is idempotent). It does
@@ -639,8 +638,7 @@ A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module'
 | Route | Handler | Notes |
 |---|---|---|
 | `POST /stateful` | `syncEndpoint` | The ingestion route. Strand-side: header + body checks, `validateFullSession`, VD routing (feed gate → lane), indexer admission gate, pipeline enqueue. Everything else is the workers'. |
-| `DELETE /agents`, `POST /agents/delete` | `deleteAgentEndpoint` | See above. Answered at admission. |
-| `POST /_internal/agents/delete` | `deleteAgentEndpoint` | The same deletion, answered at COMPLETION, for the Task Manager's dispatcher: agent id in the body, its own 900 s response backstop. See above. |
+| `POST /_internal/agents/delete` | `deleteAgentEndpoint` | Whole-agent deletion for the Task Manager's dispatcher, answered at COMPLETION: agent id in the body, its own 900 s response backstop. See above. |
 | `POST /stats`, `POST /config` | `statsEndpoint` / `configEndpoint` | Validate the agent's `modules`-keyed report, overlay the authoritative identity (agent id from the header, cluster identity, timestamp — never from the body) and index ONE document per agent (`wazuh-agent-stats` / `wazuh-agent-config`, agent id as document id, replace-on-push). Full contract in [the API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md). |
 | `GET /` | inline in the facade | Liveness probe, exempt from the byte budget so it answers under memory pressure. |
 | `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh_metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |
@@ -740,7 +738,8 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `tools/send_sync.py` — stdlib-only smoke sender for a live socket (health probe, every
   transport rejection on demand). See
   [test-tools.md](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
-- `tools/send_delete_agent.py` — stdlib-only driver for `DELETE /agents`, speaking authd's bytes.
+- `tools/send_delete_agent.py` — stdlib-only driver for `POST /_internal/agents/delete`, speaking the
+  dispatcher's bytes.
   `--verify` counts the agent's documents across the whole deletion scope before and after, which
   is the only way to see what the `200` did; `--witness` proves the deletion is per agent. Refuses
   an agent enrolled in `client.keys` unless `--force`.
@@ -843,8 +842,8 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
   recursively removed `queue/inventory_sync` at startup, and an underscored sibling would match an
   `inventory_sync*` glob on upgraded installs. Reserved, currently unused.
 - **Why does `200` mean FLUSHED and not queued on `/stateful`?** Because the agent deletes its
-  outbox on `200`. (`DELETE /agents` is the deliberate exception: nobody's outbox depends on it, so
-  it answers at admission — see its section above.)
+  outbox on `200`. The deletion route holds to it too, and that is what changed: its `200` means the
+  delete-by-query flushed, so the Task Manager row behind it can read `completed` and mean purged.
   Anything weaker (accepted, staged, timer-flushed-later) makes data loss invisible to the only
   party that can retry — that is also why the connectors' timer flush is overridden
   ([the flush-interval override](#the-connector-flush-interval-override)).

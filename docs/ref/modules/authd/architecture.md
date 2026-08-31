@@ -20,23 +20,22 @@ flowchart TB
         KS[(in-memory keystore\nkeys + id counter)]
         QR[queue_remove\nqueue_insert]
         WR[Writer thread]
-        PQ[(pending-purge queue\nin memory)]
-        RL[Purge relay thread]
+        PJ[(deletion journal\nin memory)]
 
         REMS -->|"under mutex_keys"| KS
         LOCS -->|"under mutex_keys"| KS
         KS --> QR
         QR --> WR
-        WR -->|"id + timestamp"| PQ
-        PQ -->|"when authd.purge_delay has elapsed"| RL
+        WR -->|"1. journal the intent"| PJ
     end
 
-    PQ <-->|"every change, atomically"| PF[(queue/authd/pending-purges\nsurvives a restart)]
+    PJ <-->|"every change, atomically"| PF[(queue/authd/pending-purges\nwhat a crash is reconciled against)]
 
-    WR ==>|"rewritten whole, atomically"| CK[(client.keys)]
+    WR ==>|"2. rewritten whole, atomically"| CK[(client.keys)]
     WR -->|"delete-agent"| WDB[(wazuh-db)]
-    RL -->|"POST /agents/delete (UDS)"| ISS[inventory_sync_server\nmodulesd]
-    ISS -.->|"200 = queued"| RL
+    WR -->|"3. create the deletion task\n4. drop the journal line"| MT[(tasks.db\nMANAGER_TASKS)]
+    MT --> DISP[Task Manager dispatcher\nmodulesd]
+    DISP -->|"POST /_internal/agents/delete (UDS)"| ISS[inventory_sync_server\nmodulesd]
     ISS -->|"deleteByQuery + flush"| IDX[(wazuh-indexer)]
     CK --> REMOTED[wazuh-manager-remoted\nauthenticates agents]
 ```
@@ -53,8 +52,7 @@ thread instead of being called inline.
 |---|---|---|
 | Remote server | any node with `remote_enrollment` | TLS enrollment on port 1515 |
 | Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
-| Writer | master only | persists `client.keys`, removes Wazuh DB rows, queues indexer purges |
-| Purge relay | master only | sends queued purges after their delay, owns every retry |
+| Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task |
 | authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
 
 ## The two stores
@@ -196,7 +194,7 @@ possession, not the key itself, and it is the last guard consulted rather than t
 
 ## Cluster
 
-A worker node runs neither the writer nor the purge relay: `if (!config.worker_node)` gates both. An
+A worker node runs no writer: `if (!config.worker_node)` gates it, and with it every deletion phase. An
 enrollment that arrives at a worker is forwarded to the master, and **the worker keeps nothing**.
 
 ```mermaid
@@ -249,6 +247,7 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
 | 9018 | the id still has a pending deletion | — |
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
+| 9021 | too many deletions are pending; the agent was NOT deleted (`1766` through the server API) | — |
 
 ## Agent removal
 
@@ -256,7 +255,7 @@ A removal touches four places, and only the first three are immediate.
 
 ```mermaid
 flowchart LR
-    D1["DELETE /agents\n(server API)"] --> ADD
+    D1["DELETE /agents\n(server API)"] -->|"refused if the deletion\nbacklog is full"| ADD
     D2["enrollment with a name\nthat already exists"] --> ADD
     D3["POST /agents/insert\nwith an explicit id"] -->|"refused if the id\nis not free to reuse"| REJ[["9012 Duplicate ID\n9018 pending deletion"]]
 
@@ -265,10 +264,9 @@ flowchart LR
     Q --> W[Writer pass]
     W --> M2["2. client.keys\n(rewritten whole)"]
     W --> M3["3. Wazuh DB row,\nrids counter, timestamp"]
-    W --> M4["4. indexer purge queued,\nnot sent"]
-    M4 -->|"recorded AFTER client.keys,\nnever before"| PF[(pending-purges file)]
-    M4 -->|"after authd.purge_delay"| REL[Purge relay] --> ISS[inventory_sync_server]
-    ISS -.->|"200: entry removed\nfrom queue and file"| PF
+    W --> M4["4. deletion task recorded,\nnot executed"]
+    M4 -->|"journaled BEFORE client.keys,\nrow created only AFTER"| PF[(pending-purges journal)]
+    M4 --> MT[(tasks.db)] -->|"first attempt after\nauthd.purge_delay"| DISP[Task Manager dispatcher] --> ISS[inventory_sync_server]
 ```
 
 Two of those doors are worth calling out:
@@ -279,14 +277,19 @@ Two of those doors are worth calling out:
   account for it.
 - **An insertion that names an id explicitly is refused rather than served** when that id belongs to
   an existing agent (`9012`) or still owes a purge (`9018`, reported as `1763` by the server API). A
-  queued purge always runs; cancelling it is never the answer. The id stops being reusable the moment
-  the agent is deleted, not when the writer gets around to queueing the purge: it is reserved in memory
+  recorded purge always runs; cancelling it is never the answer. The id stops being reusable the moment
+  the agent is deleted, not when the writer gets around to recording the task: it is reserved in memory
   in between, or an insertion arriving inside that window would take an id whose purge is on its way.
+- **A deletion itself can be refused** (`9021`, reported as `1766`) when too many earlier ones are
+  still pending. It is decided on the REQUEST thread, before the agent leaves the keystore, so the
+  agent is untouched and the caller can retry. One line later there would be nothing left to refuse
+  and nobody to tell — which is why the previous design, discovering a full queue in the writer, could
+  only drop the purge and orphan the documents.
 
 ### Why the purge waits
 
-The relay holds each id for at least `authd.purge_delay` seconds (default `120`) before sending it,
-because the purge has to outlast three intervals. A `_delete_by_query` is a *search*: it cannot match
+The deletion task's first attempt is set `authd.purge_delay` seconds out (default `120`), because the
+purge has to outlast three intervals. A `_delete_by_query` is a *search*: it cannot match
 documents the indexer has not made searchable yet, and in a cluster a worker node that still holds the
 previous `client.keys` keeps accepting that agent's data and writing it. **Whatever the purge misses
 survives forever**, because with the agent gone nothing overwrites it.
@@ -297,7 +300,7 @@ flowchart LR
     T1["~1 s · index refresh\nthe agent's last documents become searchable"] --> T2
     T2["9 s · cluster integrity sync\nworkers reload client.keys"] --> T3
     T3["120 s · keepalive tolerance\nthe longest a worker can be behind"] --> T4
-    T4[["t0 + authd.purge_delay\nthe purge is relayed"]]
+    T4[["t0 + authd.purge_delay\nthe task becomes eligible"]]
 ```
 
 See [`authd.purge_delay`](configuration.md#authdpurge_delay) for the full reasoning and for when a
@@ -305,58 +308,79 @@ single-node manager can lower it.
 
 ### Durability and the id mark
 
-**Why a file at all.** The queue between the writer and the relay is in memory, and the purge it holds
-is the *only* record that those documents still have to go: the agent is already out of `client.keys`
-and out of Wazuh DB, so nothing else in the system knows they are owed. Before this file existed, a
-manager restart dropped whatever was queued without a word, and the documents stayed in the indexer
-with nothing left to ever overwrite them.
+**Why a file at all.** The durable record of a deletion is its row in `tasks.db`, but that row cannot
+be created before `client.keys` is written — doing so would put a Wazuh DB round trip in front of
+every key write, so a database outage would block enrollment. The file covers the gap: it records the
+*intent* locally, before the point of no return, and it is normally **empty**, because it drains as
+fast as Wazuh DB answers rather than as fast as the indexer does.
 
 ```mermaid
 flowchart TB
     subgraph AUTHD["wazuh-manager-authd"]
         WR["Writer thread"]
-        MEM[("purge queue\nin memory")]
-        RL["Purge relay thread"]
+        MEM[("deletion journal\nin memory")]
     end
     CK[(client.keys)]
-    PF[("queue/authd/pending-purges\nlast_update - last_id - purge id epoch")]
+    PF[("queue/authd/pending-purges\nlast_update - last_id - last_seq - purge id epoch seq")]
+    MT[(tasks.db)]
     ISS["inventory_sync_server"]
 
-    WR -->|"1. rewrites client.keys first"| CK
-    WR -->|"2. appends the id + timestamp"| MEM
-    MEM -->|"3. persisted BEFORE the relay is woken"| PF
+    WR -->|"1. journals the id, timestamp and sequence"| MEM
+    MEM -->|"persisted BEFORE client.keys"| PF
+    WR ==>|"2. rewrites client.keys - the point of no return"| CK
     WR -->|"also: last_id, the highest id ever handed out"| PF
-    RL -->|"4. POST /agents/delete"| ISS
-    ISS -.->|"200 accepted"| RL
-    RL -->|"5. entry dropped, file rewritten"| PF
-    PF ==>|"on startup: entries replayed,\ndelays recomputed, id counter raised"| MEM
+    WR -->|"3. creates the task, only if 2 succeeded"| MT
+    MT -.->|"ok = committed, not buffered"| WR
+    WR -->|"4. drops the journal line"| PF
+    MT --> DISP["Task Manager dispatcher"] --> ISS
+    PF ==>|"on startup: every line compared against client.keys,\nowed tasks created, id counter raised"| MEM
 ```
 
-Pending purges live in `queue/authd/pending-purges`, written through a temporary and an atomic rename:
+The journal lives in `queue/authd/pending-purges`, written through a temporary and an atomic rename:
 
 ```
 last_update 1787582136
 last_id 161
-purge 003 1787582014
+last_seq 4
+purge 003 1787582014 4
 ```
 
-- The `purge` line is written **after** `client.keys` has been rewritten, never before: failing the
-  other way would leave a queued purge for an agent that is still alive.
-- An entry is removed only once inventory-sync has accepted it. A restart replays what is left, with
-  each delay recomputed from the stored timestamp, and logs how many purges were recovered.
+The four phases, and what each failure costs:
+
+| # | Phase | Where | A failure costs |
+|---|---|---|---|
+| 0 | admit or refuse (`9021`) | request thread, before the agent leaves the keystore | the deletion is refused; the agent is untouched |
+| 1 | journal the intent | writer, before `client.keys` | a warning; the phases continue |
+| 2 | rewrite `client.keys` | writer | logged, and **phase 3 is skipped** |
+| 3 | create the deletion task | writer, over Wazuh DB | the journal line stays; the next cycle retries |
+| 4 | drop the journal line | writer, on Wazuh DB's acknowledgement | the line stays; the next start re-creates the task and the id collides, which is success |
+
+Phase 3 is gated on phase 2 because the writer *logs* a failed key write and carries on, so without
+the gate authd would record purges for agents that are still listed on disk. Phase 4 can only drop a
+line because the task's creation commits inside its own Wazuh DB command — its `ok` is a durability
+acknowledgement rather than a buffered write.
+
+Every surviving journal line is resolved on the next start against the `client.keys` just read: an
+agent still listed there means the deletion never became final, so the line is dropped; an absent one
+means the task is still owed and is created now. That comparison closes the window this design exists
+for — a crash between the key write and the task's creation, which the previous relay design lost
+silently.
+
 - If the clock is **earlier** than `last_update` on startup, every stored timestamp is untrustworthy
-  and they are all re-stamped, so each entry waits its full delay again.
+  and they are all re-stamped, so each deletion waits its full delay again.
+- `last_seq` is a monotonic per-entry sequence, and the deletion task's id is derived from the agent
+  and its sequence. That is what makes the two legitimate creators — the writer and startup recovery —
+  produce the *same* id, so the second one collides harmlessly instead of duplicating the work.
+  Sequences are never reused and never reset; a wall-clock stamp could not promise that, and two
+  deletions of one agent that derived one id would silently become one.
 - `last_id` is the highest agent id ever handed out. On startup the id counter is raised to it if
   needed, so **an id is never reused**: a purge matches by agent id, and nothing in a state document
   distinguishes one owner of an id from the next.
 
-In memory the due time is monotonic, so an NTP correction while the daemon runs can neither bring a
-purge forward nor park it in a future the wall clock has already left.
-
 ### What a rebuilt manager inherits
 
-`queue/` survives an upgrade and a plain package removal, so the id mark and any pending purges survive
-with it. A full package purge — or an install into a clean tree — takes the file with it, and the id
+`queue/` survives an upgrade and a plain package removal, so the id mark survives with it — and so
+does `tasks.db`, which holds the deletions themselves. A full package purge — or an install into a clean tree — takes the file with it, and the id
 counter starts over while the indexer still holds the previous fleet's documents. **Deleting a manager
 should include deleting its indexer data**, or new agents can inherit documents from the agents that
 held their ids before, in the indices they do not resynchronise themselves.
@@ -368,28 +392,30 @@ held their ids before, in the indices they do not resynchronise themselves.
 | `etc/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
 | `etc/agents-timestamp` | per-agent registration timestamp |
 | `etc/authd.pass` | enrollment password |
-| `queue/authd/pending-purges` | pending indexer purges and the highest id ever handed out |
+| `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
 | `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
 
 ## Observability
 
 | Line | Meaning |
 |---|---|
-| `Recovered N pending agent deletion(s)` | startup replayed the state file |
+| `Recovered N agent deletion(s) that were interrupted...` | startup reconciliation found deletions whose task was never created, and is creating them now |
+| `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
+| `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; the entries were numbered by position |
 | `Raising the agent id counter from X to Y` | the counter would have gone backwards; ids are not reused |
-| `The deletion of agent 'N' was accepted by the inventory sync server` | the purge is now inventory-sync's responsibility |
-| `... could not be relayed ... will be retried in S s` | first failure for that entry; later attempts are debug |
-| `The pending deletion queue is full` | the cap was reached; that deletion has to be repeated |
-| `Shutting down with N pending agent deletion(s)` | they stay in the file and are retried on the next start |
+| `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next writer cycle retries |
+| `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated |
+| `N agent id(s) still owe an indexer deletion` | the startup seed; those ids will not be handed out again until their deletions finish |
+| `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
 
 The purge's own outcome — the `deleteByQuery` and its flush — is reported by
-[inventory_sync_server](../inventory-sync-server/architecture.md#agent-deletion), not by authd: authd's
-responsibility ends when the deletion is accepted.
+[inventory_sync_server](../inventory-sync-server/architecture.md#agent-deletion) and recorded as the
+task's status, not by authd: authd's responsibility ends at the durable task row.
 
 ## Related
 
 - [Authd overview](README.md) and [configuration](configuration.md)
 - [`src/os_auth/README.md`](https://github.com/wazuh/wazuh/blob/main/src/os_auth/README.md) — the
   developer map: invariants, tests and the reasoning behind each ordering decision
-- [Inventory Sync Server architecture](../inventory-sync-server/architecture.md) — the peer on the
-  other side of `DELETE /agents`
+- [Inventory Sync Server architecture](../inventory-sync-server/architecture.md) — the module that
+  applies the deletion, on the other side of `POST /_internal/agents/delete`

@@ -101,7 +101,7 @@ namespace invsync::endpoints::stats
 
     /// @brief The index holding one live statistics document per agent. A regular index, not a data
     /// stream, because a data stream forbids the stable document id the replacement relies on.
-    /// Taken from the deletion scope rather than re-spelled here, so DELETE /agents can never miss
+    /// Taken from the deletion scope rather than re-spelled here, so the deletion route can never miss
     /// this index.
     constexpr std::string_view indexName()
     {

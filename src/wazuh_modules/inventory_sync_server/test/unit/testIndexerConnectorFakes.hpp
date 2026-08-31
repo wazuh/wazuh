@@ -62,7 +62,7 @@ namespace invsync::test
         /// EVERY async operation, in call order: (op, id, index). `op` is the seam method name
         /// ("index"/"indexDataStream"/"bulkDelete"). Separate from m_writes because ORDER across
         /// the two kinds is what matters: the real connector's queue is FIFO, so a delete queued
-        /// behind a document's index() is applied after it -- that is what keeps DELETE /agents from
+        /// behind a document's index() is applied after it -- that is what keeps the deletion route from
         /// being outrun by a report this connector had not pushed yet. Guarded by m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string>> m_asyncOps;
         /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
