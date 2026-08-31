@@ -9,6 +9,7 @@ import json
 import jwt
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
@@ -105,7 +106,21 @@ _keypair_lock_path = os.path.join(SECURITY_PATH, '.keypair.lock')
 # keys and `PUT /security/user/revoke` did not end the sessions it reported ending. Stamping the
 # cache with the files' identity makes each process notice a rotation on its own next use,
 # whichever process performed it.
+#
+# Holds `(stamp, keypair, deadline)`, where `deadline` is the `time.monotonic()` value past which
+# the entry is re-read regardless of its stamp.
 _keypair_cache = None
+
+# Maximum time a process serves a cached keypair without re-reading it from disk, in seconds.
+#
+# The stamp is not by itself enough to tell every two generations apart: `_write_new_keypair()`
+# rewrites both files in place, so the inode never changes, and PEM-encoded SECP521R1 keys have a
+# fixed length, so neither does the size. That leaves `st_mtime_ns`, which comes from a coarse
+# clock, so two rotations landing within the same tick share a stamp, as does a restore that
+# preserves timestamps (`cp -p`, `rsync -a`). Without a lifetime, such a collision would make this
+# process reject every token signed with the current key until it is restarted; with one, it
+# recovers on its own.
+_KEYPAIR_CACHE_TTL = 5
 
 
 def _keypair_stamp():
@@ -138,7 +153,9 @@ def generate_keypair():
 
     The result is cached per process and tagged with the identity of the key files it was read
     from, so a rotation performed by any process, or outside the API altogether, is picked up on
-    the next call instead of being masked until the process restarts.
+    the next call instead of being masked until the process restarts. The entry is also re-read
+    every `_KEYPAIR_CACHE_TTL` seconds, so a rotation the stamp cannot distinguish from the
+    previous one is not masked for good either.
 
     Uses file-based locking to prevent race conditions between reading and writing keypairs.
     This ensures that if keys are regenerated (e.g., via revoke_tokens) while reading,
@@ -147,7 +164,8 @@ def generate_keypair():
     Raises
     ------
     WazuhInternalError(6003)
-        If there was an error trying to load the JWT secret.
+        If there was an error trying to load the JWT secret, or if only one of the two key files
+        is present on disk.
     """
     global _keypair_cache
 
@@ -155,7 +173,7 @@ def generate_keypair():
     # read, the fresh keys end up tagged with the superseded stamp and are reloaded on the next
     # call. Stamping afterwards would instead tag stale keys as current.
     stamp = _keypair_stamp()
-    if _keypair_cache is not None and _keypair_cache[0] == stamp:
+    if _keypair_cache is not None and _keypair_cache[0] == stamp and time.monotonic() < _keypair_cache[2]:
         return _keypair_cache[1]
 
     lock_file = None
@@ -167,7 +185,17 @@ def generate_keypair():
         except (OSError, IOError):
             pass  # Continue without locking
 
-        if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
+        private_key_exists = os.path.exists(_private_key_path)
+        public_key_exists = os.path.exists(_public_key_path)
+        if private_key_exists and public_key_exists:
+            # Keys exist - acquire shared lock for reading (if available)
+            private_key, public_key = _read_keypair_locked(lock_file)
+        elif private_key_exists or public_key_exists:
+            # Only one of the two files is there: a half-written or half-restored install. Creating
+            # a keypair here would silently rotate the keys and end every session in every process,
+            # so report the inconsistency instead of hiding it behind a rotation nobody asked for.
+            raise WazuhInternalError(6003)
+        else:
             # Need to create keys - acquire exclusive lock if available
             if lock_file:
                 try:
@@ -179,9 +207,6 @@ def generate_keypair():
                 private_key, public_key = _write_new_keypair()
             else:
                 private_key, public_key = _read_keypair_locked(lock_file)
-        else:
-            # Keys exist - acquire shared lock for reading (if available)
-            private_key, public_key = _read_keypair_locked(lock_file)
     except IOError:
         raise WazuhInternalError(6003)
     finally:
@@ -191,7 +216,8 @@ def generate_keypair():
     keypair = (private_key, public_key)
     # `stamp` is None only when the key files did not exist yet and have just been written by this
     # call, so their identity has to be taken now.
-    _keypair_cache = (stamp if stamp is not None else _keypair_stamp(), keypair)
+    _keypair_cache = (stamp if stamp is not None else _keypair_stamp(), keypair,
+                      time.monotonic() + _KEYPAIR_CACHE_TTL)
 
     return keypair
 
@@ -432,8 +458,11 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
 
     policies = get_optimized_policies(roles=roles, origin_node_type=origin_node_type)
 
-    # Copied because the caller adds `rbac_mode` to it (see `decode_token`), which would otherwise
-    # mutate the entry shared by every token carrying the same roles.
+    # Copied for safety only. The caller adds `rbac_mode` to this dictionary (see `decode_token`)
+    # and, on the master path, `get_optimized_policies` hands back the cached entry itself, but that
+    # mutation cannot reach the cache: the DAPI layer deep-copies the result (`WazuhResult.to_dict`)
+    # before `decode_token` gets to see it. The copy keeps correctness here from depending on what a
+    # distant layer happens to do.
     return {'valid': True, 'policies': dict(policies)}
 
 

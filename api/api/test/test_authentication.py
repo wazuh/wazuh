@@ -22,6 +22,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.utils as rbac_utils
+        from wazuh.core.exception import WazuhInternalError
         from api.authentication import (generate_keypair, check_user_master, check_user, change_keypair,
                                         _private_key_path, _public_key_path, wazuh_uid, wazuh_gid, get_security_conf,
                                         generate_token, check_token, decode_token, get_optimized_policies)
@@ -137,8 +138,8 @@ def test_generate_keypair_cache_no_keys(mock_exists, mock_write_keypair):
     assert first == ("priv", "pub")
     assert first is cached
 
-    # First call checks both private and public key paths
-    assert mock_exists.call_count == 2
+    # First call checks both private and public key paths, then both again under the lock
+    assert mock_exists.call_count == 3
     # But _write_new_keypair is called only once due to caching
     mock_write_keypair.assert_called_once()
 
@@ -412,6 +413,66 @@ def test_generate_keypair_reloads_after_rotation(tmp_path):
         os.utime(public_path, ns=(2 * 10 ** 9, 2 * 10 ** 9))
 
         assert generate_keypair() == ('new_priv', 'new_pub')
+
+
+def test_generate_keypair_reloads_after_indistinguishable_rotation(tmp_path):
+    """A rotation the stamp cannot tell apart from the previous one must not be masked for good.
+
+    `_write_new_keypair` rewrites both files in place and PEM-encoded SECP521R1 keys are
+    fixed-length, so neither the inode nor the size ever changes. Two rotations landing in the same
+    `st_mtime_ns` tick, or a restore that preserves timestamps, therefore share a stamp. The cache
+    entry's lifetime is what keeps this process from rejecting every token signed with the current
+    key until it restarts.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('old_priv')
+    public_path.write_text('old_pub')
+    frozen_ns = 7 * 10 ** 9
+    os.utime(private_path, ns=(frozen_ns, frozen_ns))
+    os.utime(public_path, ns=(frozen_ns, frozen_ns))
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')):
+        assert generate_keypair() == ('old_priv', 'old_pub')
+
+        # Another process rotates the keys, leaving the stamp exactly as it was.
+        private_path.write_text('new_priv')
+        public_path.write_text('new_pub')
+        os.utime(private_path, ns=(frozen_ns, frozen_ns))
+        os.utime(public_path, ns=(frozen_ns, frozen_ns))
+
+        # Stale while the entry is still live: the bounded window, not the fix.
+        assert generate_keypair() == ('old_priv', 'old_pub')
+
+        # Once the entry's lifetime is up the files are read again, stamp or no stamp.
+        with patch('api.authentication.time') as mock_time:
+            mock_time.monotonic.return_value = float('inf')
+            assert generate_keypair() == ('new_priv', 'new_pub')
+
+
+def test_generate_keypair_half_present_ko(tmp_path):
+    """A keypair with one file missing must be reported instead of silently rotated.
+
+    Creating one here would replace the surviving key and end every session in every process, which
+    is a much worse outcome for a half-restored install than a failed request.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('old_priv')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            generate_keypair()
+
+    assert exc_info.value.code == 6003
+    mock_write_keypair.assert_not_called()
+    assert private_path.read_text() == 'old_priv'
+    assert not public_path.exists()
 
 
 @patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
