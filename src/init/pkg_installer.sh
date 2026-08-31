@@ -262,9 +262,7 @@ probe_server() {
         curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         RC=$?
         [ ${RC} -eq 0 ] && return 0
-        # Only curl exit 2/4 (option unknown / not built in = this client can't do the TLS 1.3 the
-        # manager requires, #38607, e.g. EL7/AL2 system crypto) falls through to the TCP check;
-        # any other failure is a real "not reachable".
+        # Only exit 2/4 (this curl can't do TLS 1.3, #38607) falls through to TCP; the rest is real.
         [ ${RC} -ne 2 ] && [ ${RC} -ne 4 ] && return ${RC}
         echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, falling back to a TCP connectivity check (manager endpoint not verified)." >> ./logs/upgrade.log
     elif command -v wget > /dev/null 2>&1; then

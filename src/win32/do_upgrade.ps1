@@ -332,7 +332,13 @@ public static class WazuhProbeTrust {
 }
 
 function probe_tcp($server, $port) {
-    $client = New-Object System.Net.Sockets.TcpClient
+    # Match the socket family to the resolved address so an IPv6-only manager is still reachable.
+    $family = [System.Net.Sockets.AddressFamily]::InterNetwork
+    try {
+        $addr = [System.Net.Dns]::GetHostAddresses($server) | Select-Object -First 1
+        if ($addr) { $family = $addr.AddressFamily }
+    } catch { }
+    $client = New-Object System.Net.Sockets.TcpClient($family)
     try {
         $result = $client.BeginConnect($server, $port, $null, $null)
         return $result.AsyncWaitHandle.WaitOne(5000) -and $client.Connected
@@ -345,10 +351,8 @@ function probe_tcp($server, $port) {
 
 # Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
 # request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s. A TLS
-# handshake failure falls back to a TCP-only check: SChannel negotiates TLS 1.3 only on Win11 /
-# Server 2022, so older hosts can't complete the HTTPS probe (#38607) and there is no cheap,
-# reliable way to tell that apart from a broken manager here -- a genuinely down manager is still
-# caught by the post-install connection wait. Any non-TLS error is a real "not reachable".
+# handshake failure falls back to a TCP-only check, since older hosts can't negotiate the
+# manager's TLS 1.3 minimum (#38607); any non-TLS error is a real "not reachable".
 function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
