@@ -682,9 +682,11 @@ TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
 {
     const std::vector<std::pair<invsync::vd::AgentScanOutcome, int>> expected {
         {invsync::vd::AgentScanOutcome::Ok, 200},
-        // 200 as well: there is no scanner on this node, so retrying can never change the answer
-        // and a task that kept retrying would never terminate.
-        {invsync::vd::AgentScanOutcome::Skipped, 200},
+        // 503, not 200. No scan ran, and 200 would be recorded as `completed`, i.e. as a scan that
+        // was performed. Retrying is bounded: vd_scan carries the default attempt budget, so this
+        // dead-letters rather than looping forever, and a scanner that comes back still does the
+        // work in the meantime.
+        {invsync::vd::AgentScanOutcome::Skipped, 503},
         {invsync::vd::AgentScanOutcome::NotReady, 503},
         // The one non-retryable failure: the agent has no record to scan.
         {invsync::vd::AgentScanOutcome::NotFound, 404},

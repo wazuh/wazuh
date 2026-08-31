@@ -41,8 +41,19 @@ namespace
      * STATUS first and reads `error` only for the log line, so the statuses carry the meaning:
      * 5xx is retryable, 4xx is terminal for this task type, 200 is done. */
     constexpr auto SCAN_OK_BODY {R"({"status":"ok"})"};
-    /// 200, not a failure: there is no scanner on this node, and asking again will not change that.
-    constexpr auto SCAN_SKIPPED_BODY {R"({"status":"ok","skipped":true})"};
+    /* 503, NOT a 200: no scan happened, and the dispatcher records a 200 as `completed`, which in
+     * MANAGER_TASKS means the work was performed. That distinction is the reason the table exists
+     * apart from TASKS, where `delivered` only ever meant "handed over".
+     *
+     * Reachable without a cluster: the row is admitted while this node has a scanner (admission
+     * refuses otherwise), and executed after it no longer does -- VD disabled and the manager
+     * restarted, or the module failing to load. Answering 200 there marks a scan that never ran as
+     * done, and nothing afterwards revisits it.
+     *
+     * Retryable rather than terminal because the condition can lift on the next restart, and a
+     * returning scanner should still do the work. It terminates regardless: vd_scan carries the
+     * default attempt budget, so this dead-letters after it runs out. */
+    constexpr auto SCAN_NO_SCANNER_BODY {R"({"error":"no vulnerability scanner on this node","code":503})"};
     constexpr auto SCAN_NOT_READY_BODY {R"({"error":"vulnerability scanner not ready","code":503})"};
     /// 404 so the dispatcher stops: the agent has no record to scan, and no amount of retrying
     /// will produce one. Most often it was deleted between the request and its execution.
@@ -366,11 +377,13 @@ namespace invsync::vd
 
                     case AgentScanOutcome::Skipped:
                         m_scansSkipped->add();
-                        LOGFN_DEBUG1(logFn(),
-                                     "On-demand vulnerability scan for agent %s skipped: this node runs no "
-                                     "vulnerability scanner.",
-                                     item.session.agentId.c_str());
-                        finish(200, SCAN_SKIPPED_BODY);
+                        // WARN, not DEBUG1: a scan was requested of a node that cannot perform it,
+                        // which is a misconfiguration on the only node that will ever hold this row.
+                        LOGFN_WARN(logFn(),
+                                   "On-demand vulnerability scan for agent %s could not run: this node runs no "
+                                   "vulnerability scanner. The task will be retried and then dead-lettered.",
+                                   item.session.agentId.c_str());
+                        finish(503, SCAN_NO_SCANNER_BODY);
                         break;
 
                     case AgentScanOutcome::NotReady:

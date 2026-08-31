@@ -39,6 +39,7 @@
  * unrelated scan. The dispatcher asserts the ordering at startup rather than trusting a comment. */
 #define WM_MANAGER_TASK_DEFAULT_VD_SCAN_TIMEOUT 300
 #define WM_MANAGER_TASK_DEFAULT_DELETE_TIMEOUT  600
+/// Fixed, not configurable: see where it is applied.
 #define WM_MANAGER_TASK_DEFAULT_CONNECT_TIMEOUT 2
 
 /* Admission bound on pending on-demand scans, preserving the in-memory deque this replaces. */
@@ -191,8 +192,12 @@ int wm_manager_task_registry_init(const char *inventory_sync_socket) {
                                                 WM_MANAGER_TASK_DEFAULT_VD_SCAN_TIMEOUT);
     int delete_timeout = getDefine_Int_default("wazuh_modules", "manager_task_delete_timeout", 1, 7200,
                                                WM_MANAGER_TASK_DEFAULT_DELETE_TIMEOUT);
-    int connect_timeout = getDefine_Int_default("wazuh_modules", "manager_task_create_timeout", 1, 60,
-                                                WM_MANAGER_TASK_DEFAULT_CONNECT_TIMEOUT);
+    /* Not an operator knob, deliberately. Connecting to a consumer's Unix socket either succeeds
+     * immediately or fails immediately -- there is no name to resolve and no network in the way --
+     * so there is nothing here for a deployment to tune. It read `manager_task_create_timeout`
+     * before, which is the deadline VD's producer puts on its own wazuh-db round trip: an unrelated
+     * quantity that an operator raising one would silently move the other. */
+    const int connect_timeout = WM_MANAGER_TASK_DEFAULT_CONNECT_TIMEOUT;
     /* The same key authd reads for its phase-0 pre-check, and deliberately so: this is ONE bound on
      * ONE queue. wazuh-db enforces it authoritatively at creation from the descriptor below; authd
      * checks it early so an operator gets a refusal instead of a deletion that half-succeeds. Two

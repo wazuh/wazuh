@@ -35,10 +35,10 @@ static wm_manager_task_policy default_policy(void) {
  * exercises the happy path of init itself: a mis-specified descriptor fails here, loudly, rather
  * than becoming a row that is claimed and then silently dropped. */
 static int group_setup(void **state) {
-    // vd_scan timeout, delete timeout, connect timeout, in the order init reads them.
+    // vd_scan timeout, delete timeout, then the two admission bounds, in the order init reads them.
+    // The connect timeout is not among them: it is a constant, not an operator knob.
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 600);
-    will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 20000);
     will_return(__wrap_getDefine_Int_default, 64);
 
@@ -474,7 +474,6 @@ void test_registry_init_rejects_unordered_timeouts(void **state) {
     // that was never its own fault, so the ordering is asserted rather than left as a comment.
     will_return(__wrap_getDefine_Int_default, 600);
     will_return(__wrap_getDefine_Int_default, 600);
-    will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 20000);
     will_return(__wrap_getDefine_Int_default, 64);
 
