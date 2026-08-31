@@ -343,6 +343,16 @@ static int teardown_max_fps(void **state) {
     return 0;
 }
 
+// Unconditional counterpart to __wrap_asp_sync_module_use_full_result(true): a cmocka
+// expectation failure inside call_real_fim_run_integrity() longjmps out of the test body via
+// fail(), skipping any manual reset placed after that call. Without this teardown the toggle
+// would stay true, and the next test using the plain will_return(__wrap_asp_sync_module, <bool>)
+// API would have that bool reinterpreted as a SyncModuleResult_t* and dereferenced.
+static int teardown_asp_sync_module_full_result(void **state) {
+    __wrap_asp_sync_module_use_full_result(false);
+    return 0;
+}
+
 #ifdef TEST_WINAGENT
 
 static int setup_hash(void **state) {
@@ -466,6 +476,46 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
         expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
     }
+}
+
+// Drives asp_sync_module() through __wrap_asp_sync_module_use_full_result(true) so the failure can
+// carry local_transport_unavailable and consecutive_failures, then expects the INFO/WARNING log the
+// classification logic in run_check.c should produce for that failure streak.
+static void expect_fim_run_integrity_sync_body_local_transport_unavailable(AgentSyncProtocolHandle* handle,
+                                                                            uint32_t sync_interval,
+                                                                            unsigned int consecutive_failures) {
+    static SyncModuleResult_t sync_result;
+    // expect_string() stores the pointer, not a copy, so this must outlive the function
+    // (the comparison happens later, when __wrap__minfo/__wrap__mwarn are actually invoked).
+    static char expected_msg[SYNC_FAILURE_REASON_MAX_LEN + 64];
+
+    sync_result = (SyncModuleResult_t){0};
+    sync_result.local_transport_unavailable = true;
+    sync_result.consecutive_failures = consecutive_failures;
+    snprintf(sync_result.failure_reason, sizeof(sync_result.failure_reason), "Local sync intake is unreachable.");
+
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
+
+    __wrap_asp_sync_module_use_full_result(true);
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, &sync_result);
+
+    if (consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+        snprintf(expected_msg, sizeof(expected_msg), "FIM synchronization deferred: %s Will retry next cycle.",
+                 sync_result.failure_reason);
+        expect_string(__wrap__minfo, formatted_msg, expected_msg);
+    } else {
+        snprintf(expected_msg, sizeof(expected_msg), "FIM synchronization failed %u times in a row: %s",
+                 consecutive_failures, sync_result.failure_reason);
+        expect_string(__wrap__mwarn, formatted_msg, expected_msg);
+    }
+
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  sync_interval == 1
+                      ? "FIM synchronization finished, waiting for 1 seconds before next run."
+                      : "FIM synchronization finished, waiting for 0 seconds before next run.");
 }
 /* tests */
 
@@ -1340,6 +1390,105 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
     fim_flush_result.data = 0;
 }
 
+void test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    // Reproduces the pre-fix bug: a lone local-transport-unavailable failure must stay at INFO,
+    // not escalate to WARNING immediately.
+    expect_fim_run_integrity_sync_body_local_transport_unavailable(handle, syscheck.sync_interval, 1);
+
+    call_real_fim_run_integrity();
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+}
+
+void test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_deferred(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    // SYNC_MANAGER_NOT_READY_TOLERANCE is 3: right at the limit, still deferred at INFO.
+    expect_fim_run_integrity_sync_body_local_transport_unavailable(handle, syscheck.sync_interval,
+                                                                    SYNC_MANAGER_NOT_READY_TOLERANCE);
+
+    call_real_fim_run_integrity();
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+}
+
+void test_fim_run_integrity_local_transport_unavailable_past_tolerance_escalates_to_warning(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    // One past the tolerance: the streak is no longer a restart hiccup, so it must escalate.
+    expect_fim_run_integrity_sync_body_local_transport_unavailable(handle, syscheck.sync_interval,
+                                                                    SYNC_MANAGER_NOT_READY_TOLERANCE + 1);
+
+    call_real_fim_run_integrity();
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+}
+
 /* ---------------------------------- DataClean Tests ---------------------------------- */
 
 void test_fim_has_configured_directories_null_list(void **state) {
@@ -1522,6 +1671,12 @@ int main(void) {
         cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
         cmocka_unit_test(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed),
         cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure,
+                                        NULL, teardown_asp_sync_module_full_result),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_deferred,
+                                        NULL, teardown_asp_sync_module_full_result),
+        cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_past_tolerance_escalates_to_warning,
+                                        NULL, teardown_asp_sync_module_full_result),
         /* DataClean tests */
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
