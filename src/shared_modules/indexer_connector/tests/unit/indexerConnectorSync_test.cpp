@@ -1,8 +1,10 @@
 #include "indexerConnectorSyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -10,6 +12,8 @@
 #include <gtest/gtest.h>
 #include <json.hpp>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <sstream>
 #include <thread>
 
@@ -931,6 +935,59 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
 
     EXPECT_GT(validateBulkFormat(firstChunk), 0) << "First chunk should contain valid bulk operations";
     EXPECT_GT(validateBulkFormat(secondChunk), 0) << "Second chunk should contain valid bulk operations";
+}
+
+/// The residue path of a FAILED split: a 413 splits the batch, the first chunk then fails with a
+/// clearing error, and the whole flush throws. The buffer must come out empty -- kept bytes
+/// would be re-sent by whoever flushes next.
+TEST_F(IndexerConnectorSyncTest, HandleError413FailedSplitLeavesAnEmptyBuffer)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    const auto respondWith = [](auto postParams, const char* error, long status)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, status, "");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, status, "");
+        }
+    };
+
+    // Call 1 (the full 2-doc batch): 413, so the batch splits. Call 2 (the first 1-doc chunk):
+    // 500, which aborts the split with a throw. The second chunk is never attempted.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [this, &respondWith](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                respondWith(postParams, "Payload Too Large", 413);
+            }))
+        .WillOnce(Invoke(
+            [this, &respondWith](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                respondWith(postParams, "Internal Server Error", 500);
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", std::string(200, 'a'));
+        connector.bulkIndex("id2", "index1", std::string(200, 'b'));
+    }
+
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_EQ(callCount, 2);
+
+    // The buffer must be empty now: a second flush is a clean no-op with NO further post.
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(callCount, 2) << "a failed split must not leave bytes for the next flush to resend";
 }
 
 // Test processBulkChunk error handling - 413 with successful recursive splitting
@@ -4695,6 +4752,103 @@ TEST_F(IndexerConnectorSyncTest, FlushIntervalTimerDoesNotFlushWhenNoData)
     EXPECT_EQ(callCount, 0) << "No HTTP post should be made when the timer fires on an empty buffer";
 }
 
+namespace
+{
+    /// Threads alive in this process, from /proc/self/task. std::thread's constructor returns
+    /// only after the native thread exists, so the count is deterministic -- no sleeps.
+    std::size_t liveThreadCount()
+    {
+        std::size_t count = 0;
+        for ([[maybe_unused]] const auto& entry : std::filesystem::directory_iterator("/proc/self/task"))
+        {
+            ++count;
+        }
+        return count;
+    }
+} // namespace
+
+/// flush_interval_seconds = 0 means the CALLER owns every flush: no background thread exists,
+/// and staged data waits for an explicit flush() instead of racing a timer.
+TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
+{
+    config["flush_interval_seconds"] = 0;
+
+    const auto baseline = liveThreadCount();
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_EQ(baseline, liveThreadCount()) << "a zero interval must not start a flush thread";
+
+        // The caller-owned flush still works.
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+        }
+        connector.flush();
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must not leak a thread either";
+    EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
+}
+
+/**
+ * A caller that staged data and then flushed must NEVER be told the flush succeeded unless it
+ * did. With flush_interval_seconds = 0 the caller is the ONLY flusher, so a failure cannot be
+ * consumed behind its back by a background thread with nobody to report to. The test asserts the
+ * contract, not the mechanism: nothing may POST before the caller flushes, and the failure must
+ * reach the caller.
+ */
+TEST_F(IndexerConnectorSyncTest, TimerFlushFailureIsReportedToTheOwningCaller)
+{
+    config["flush_interval_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Every attempt fails with a clearing error: the kind a background flush would swallow.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this](auto, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+    }
+
+    // A bounded quiet window: nobody but the owner may flush the staged batch.
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    ASSERT_EQ(callCount, 0) << "a background thread flushed the caller's staged batch";
+
+    // The owner flushes; the failure must reach it -- never a clean return over lost data.
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_GE(callCount, 1);
+}
+
+/// The counting companion of the test above: a non-zero interval starts exactly one flush thread,
+/// which pins that liveThreadCount() can tell the two configurations apart.
+TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)
+{
+    const auto baseline = liveThreadCount();
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest); // default interval
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "a non-zero interval must start one flush thread";
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "the destructor must join the flush thread";
+}
+
 // Empty-buffer guard tests
 TEST_F(IndexerConnectorSyncTest, BulkIndexOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
 {
@@ -4799,4 +4953,573 @@ TEST_F(IndexerConnectorSyncTest, MixedBulkIndexAndDeleteRespectEmptyBufferGuard)
 
     EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
     EXPECT_EQ(callCount, 1) << "bulkIndex must flush the previously buffered bulkDelete";
+}
+
+// ============================================================================
+// Concurrency: many threads staging and flushing against ONE connector. The
+// oracle is conservation, not survival: every staged document must arrive in a
+// well-formed _bulk frame exactly once -- no loss, no duplicate, no torn frame.
+// ============================================================================
+
+namespace
+{
+    /// Thread-safe capture of every _bulk body a mocked post() saw.
+    class BulkBodyRecorder final
+    {
+    public:
+        void record(const RequestParamsVariant& requestParams)
+        {
+            std::string body;
+            if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+            {
+                body = std::get<TRequestParameters<std::string>>(requestParams).data;
+            }
+            else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+            {
+                body = std::string {std::get<TRequestParameters<std::string_view>>(requestParams).data};
+            }
+            else
+            {
+                body = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+            }
+            std::lock_guard lock {m_mutex};
+            m_bodies.push_back(std::move(body));
+        }
+
+        size_t bodyCount() const
+        {
+            std::lock_guard lock {m_mutex};
+            return m_bodies.size();
+        }
+
+        /// Every "_id" across all recorded bodies, with multiplicity. Fails the running test on
+        /// any torn frame: an unparsable line, an action line without its document line, an
+        /// orphan document line, or a body without its final newline.
+        std::multiset<std::string> deliveredIds() const
+        {
+            std::multiset<std::string> ids;
+            std::lock_guard lock {m_mutex};
+            for (const auto& body : m_bodies)
+            {
+                EXPECT_FALSE(body.empty()) << "an empty _bulk body was posted";
+                if (!body.empty())
+                {
+                    EXPECT_EQ(body.back(), '\n') << "torn frame: body not newline-terminated";
+                }
+                bool expectDocLine = false;
+                std::istringstream stream {body};
+                std::string line;
+                while (std::getline(stream, line))
+                {
+                    const auto parsed = nlohmann::json::parse(line, nullptr, false);
+                    EXPECT_FALSE(parsed.is_discarded()) << "torn frame, unparsable line: " << line;
+                    if (parsed.is_discarded())
+                    {
+                        continue;
+                    }
+                    if (expectDocLine)
+                    {
+                        expectDocLine = false;
+                    }
+                    else if (parsed.contains("index"))
+                    {
+                        ids.insert(parsed.at("index").at("_id").get<std::string>());
+                        expectDocLine = true;
+                    }
+                    else if (parsed.contains("delete"))
+                    {
+                        ids.insert(parsed.at("delete").at("_id").get<std::string>());
+                    }
+                    else
+                    {
+                        ADD_FAILURE() << "torn frame, orphan document line: " << line;
+                    }
+                }
+                EXPECT_FALSE(expectDocLine) << "torn frame: action line without its document line";
+            }
+            return ids;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::vector<std::string> m_bodies;
+    };
+
+    void respondBulkSuccess(const PostRequestParametersVariant& postParams)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+    }
+
+    void respondBulkError(const PostRequestParametersVariant& postParams, const std::string& error, long statusCode)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, statusCode, "");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, statusCode, "");
+        }
+    }
+
+    /// Asserts `delivered` holds exactly the ids in `expected`, once each.
+    void expectExactlyOnce(const std::multiset<std::string>& delivered, const std::vector<std::string>& expected)
+    {
+        EXPECT_EQ(delivered.size(), expected.size());
+        std::string missing;
+        std::string duplicated;
+        size_t missingCount = 0;
+        size_t duplicatedCount = 0;
+        constexpr size_t REPORT_CAP = 10;
+        for (const auto& id : expected)
+        {
+            const auto seen = delivered.count(id);
+            if (seen == 0 && ++missingCount <= REPORT_CAP)
+            {
+                missing += " " + id;
+            }
+            else if (seen > 1 && ++duplicatedCount <= REPORT_CAP)
+            {
+                duplicated += " " + id + " x" + std::to_string(seen);
+            }
+        }
+        EXPECT_EQ(missingCount, 0u) << "lost documents (first " << REPORT_CAP << "):" << missing;
+        EXPECT_EQ(duplicatedCount, 0u) << "documents delivered more than once (first " << REPORT_CAP
+                                       << "):" << duplicated;
+    }
+} // namespace
+
+/// Stagers (scopeLock + bulkIndex, the documented contract) race dedicated flushers and the
+/// inline size-triggered flushes of the 1KB connector. Every POST succeeds, so conservation
+/// must be exact.
+TEST_F(IndexerConnectorSyncTest, ConcurrentStagersAndFlushersDeliverEveryDocumentExactlyOnce)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 4;
+    constexpr size_t DOCS_PER_STAGER = 250;
+    constexpr size_t FLUSHERS = 2;
+    std::atomic<bool> stagingDone {false};
+
+    std::vector<std::string> expected;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+        {
+            expected.push_back("s" + std::to_string(stager) + "-" + std::to_string(doc));
+        }
+    }
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, stager]()
+            {
+                for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+                {
+                    const auto id = "s" + std::to_string(stager) + "-" + std::to_string(doc);
+                    auto lock = connector.scopeLock();
+                    connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                }
+            });
+    }
+    std::vector<std::thread> flushers;
+    for (size_t flusher = 0; flusher < FLUSHERS; ++flusher)
+    {
+        flushers.emplace_back(
+            [&connector, &stagingDone]()
+            {
+                while (!stagingDone.load())
+                {
+                    connector.flush();
+                    std::this_thread::yield();
+                }
+            });
+    }
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    for (auto& thread : flushers)
+    {
+        thread.join();
+    }
+    connector.flush();
+
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// Adds the third flush owner: the background timer at its smallest configurable scale (1s).
+/// Stagers and flushers run across ~3 timer periods so timer-driven flushes interleave with
+/// explicit ones mid-staging.
+TEST_F(IndexerConnectorSyncTest, TimerFlushersAndStagersRacingDeliverEveryDocumentExactlyOnce)
+{
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 4;
+    constexpr size_t FLUSHERS = 2;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    std::atomic<bool> stagingDone {false};
+    std::vector<std::vector<std::string>> staged(STAGERS);
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, &staged, stager, deadline]()
+            {
+                size_t doc = 0;
+                while (std::chrono::steady_clock::now() < deadline)
+                {
+                    const auto id = "t" + std::to_string(stager) + "-" + std::to_string(doc++);
+                    {
+                        auto lock = connector.scopeLock();
+                        connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                    }
+                    staged[stager].push_back(id);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+    }
+    std::vector<std::thread> flushers;
+    for (size_t flusher = 0; flusher < FLUSHERS; ++flusher)
+    {
+        flushers.emplace_back(
+            [&connector, &stagingDone]()
+            {
+                while (!stagingDone.load())
+                {
+                    connector.flush();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                }
+            });
+    }
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    for (auto& thread : flushers)
+    {
+        thread.join();
+    }
+    connector.flush();
+
+    std::vector<std::string> expected;
+    for (const auto& perStager : staged)
+    {
+        expected.insert(expected.end(), perStager.begin(), perStager.end());
+    }
+    ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the race never happened";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// Transport failures (-1) hit mid-race: the retry loop must resend the SAME buffer while
+/// other threads keep staging behind scopeLock. Conservation of what was eventually delivered
+/// stays exact -- the retried frame arrives once, nothing staged around it is lost.
+TEST_F(IndexerConnectorSyncTest, TransportRetriesUnderConcurrentStagingLoseNothing)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    std::atomic<int> transportFailuresLeft {2};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder, &transportFailuresLeft](auto requestParams, auto postParams, auto)
+            {
+                if (transportFailuresLeft.fetch_sub(1) > 0)
+                {
+                    respondBulkError(postParams, "Couldn't connect to server", -1);
+                    return;
+                }
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 2;
+    constexpr size_t DOCS_PER_STAGER = 150;
+    std::atomic<bool> stagingDone {false};
+
+    std::vector<std::string> expected;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+        {
+            expected.push_back("r" + std::to_string(stager) + "-" + std::to_string(doc));
+        }
+    }
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, stager]()
+            {
+                for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+                {
+                    const auto id = "r" + std::to_string(stager) + "-" + std::to_string(doc);
+                    auto lock = connector.scopeLock();
+                    connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                }
+            });
+    }
+    std::thread flusher(
+        [&connector, &stagingDone]()
+        {
+            while (!stagingDone.load())
+            {
+                connector.flush();
+                std::this_thread::yield();
+            }
+        });
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    flusher.join();
+    connector.flush();
+
+    EXPECT_LE(transportFailuresLeft.load(), 0) << "the transport failures never fired; the retry path went untested";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// The timer at its smallest configurable scale (1s) over an extended period -- default 10s,
+/// INDEXER_CONNECTOR_SOAK_SECONDS extends it -- with stagers running the whole time. The timer
+/// is the ONLY flusher (the 10MB default threshold keeps inline flushes out), so the POST
+/// floor attributes the flushes to it. Conservation stays exact and no thread accumulates.
+TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExactlyOnce)
+{
+    config["flush_interval_seconds"] = 1;
+    const char* soakEnv = std::getenv("INDEXER_CONNECTOR_SOAK_SECONDS");
+    const int soakSeconds = std::max(soakEnv ? std::atoi(soakEnv) : 10, 3);
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    const auto baseline = liveThreadCount();
+    std::vector<std::string> expected;
+    {
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "exactly one timer thread must exist";
+
+        constexpr size_t STAGERS = 2;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(soakSeconds);
+        std::vector<std::vector<std::string>> staged(STAGERS);
+
+        std::vector<std::thread> stagers;
+        for (size_t stager = 0; stager < STAGERS; ++stager)
+        {
+            stagers.emplace_back(
+                [&connector, &staged, stager, deadline]()
+                {
+                    size_t doc = 0;
+                    while (std::chrono::steady_clock::now() < deadline)
+                    {
+                        const auto id = "k" + std::to_string(stager) + "-" + std::to_string(doc++);
+                        {
+                            auto lock = connector.scopeLock();
+                            connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                        }
+                        staged[stager].push_back(id);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                    }
+                });
+        }
+        for (auto& thread : stagers)
+        {
+            thread.join();
+        }
+
+        EXPECT_EQ(baseline + 1, liveThreadCount()) << "the soak must not grow threads";
+        EXPECT_GE(recorder.bodyCount(), static_cast<size_t>(soakSeconds) / 2)
+            << "the 1s timer was expected to flush the continuously refilled buffer on most ticks";
+
+        connector.flush();
+        for (const auto& perStager : staged)
+        {
+            expected.insert(expected.end(), perStager.begin(), perStager.end());
+        }
+    }
+    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must join the timer thread";
+    ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+// ============================================================================
+// A 200 _bulk answer whose items report failures. HTTPRequest::post() runs
+// onSuccess INSIDE its try block and remaps anything thrown there to
+// onError(statusCode = -1); the mocks below reproduce that remapping because
+// it is the production semantics the connector's callbacks live under -- a
+// mock that lets the exception fly cannot see this bug class.
+// ============================================================================
+
+namespace
+{
+    /// Calls onSuccess(body) the way the real HTTPRequest::post() does: inside a try whose
+    /// generic catch remaps the exception to onError(what, -1, ...).
+    void respondLikeHttpRequestPost(const PostRequestParametersVariant& postParams, const std::string& body)
+    {
+        try
+        {
+            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+            {
+                std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+            }
+            else
+            {
+                std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string {body});
+            }
+        }
+        catch (const std::exception& e)
+        {
+            respondBulkError(postParams, e.what(), -1);
+        }
+    }
+
+    constexpr auto BULK_200_WITH_ITEM_ERRORS =
+        R"({"took":1,"errors":true,"items":[{"index":{"_index":"test_index","_id":"id1","status":500,)"
+        R"("error":{"type":"mapper_parsing_exception"}}}]})";
+} // namespace
+
+/// A 200 whose items failed used to be reported by THROWING out of onSuccess AFTER clearing
+/// m_bulkData; the remapped onError(-1) then took the transport branch and retried -- resending
+/// an emptied buffer. The failure must surface once, with exactly one POST.
+TEST_F(IndexerConnectorSyncTest, BulkItemFailuresSurfaceOnceAndNeverRetryAnEmptiedBuffer)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                if (++postCount == 1)
+                {
+                    respondLikeHttpRequestPost(postParams, BULK_200_WITH_ITEM_ERRORS);
+                    return;
+                }
+                // A real indexer answers an empty _bulk with 400; reaching this at all means the
+                // emptied buffer was retried.
+                respondBulkError(postParams, "Validation Failed: 1: no requests added;", 400);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "flush() must report the indexing failures";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("indexing failures"));
+    }
+    EXPECT_EQ(postCount.load(), 1) << "the emptied buffer was retried against the indexer";
+
+    // The failed batch was consumed: nothing may be left to flush.
+    connector.flush();
+    EXPECT_EQ(postCount.load(), 1);
+}
+
+/// The same remapping in the 413-split path: a chunk whose 200 answer carries item failures used
+/// to throw out of onSuccess, remap to onError(-1) and retry THE SAME CHUNK -- whose next 200
+/// carried the same failing items, forever. It must fail once, bounded.
+TEST_F(IndexerConnectorSyncTest, ChunkItemFailuresFailBoundedInsteadOfLivelocking)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                const auto attempt = ++postCount;
+                if (attempt == 1)
+                {
+                    respondBulkError(postParams, "Payload Too Large", 413);
+                    return;
+                }
+                if (attempt == 2)
+                {
+                    respondLikeHttpRequestPost(postParams, BULK_200_WITH_ITEM_ERRORS);
+                    return;
+                }
+                // The livelock escape hatch: if the fix regresses, the retried chunk lands here
+                // instead of spinning this test forever.
+                respondBulkError(postParams, "Bad Request", 400);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "flush() must report the chunk's indexing failures";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("indexing failures"));
+    }
+    EXPECT_EQ(postCount.load(), 2) << "the failing chunk was retried";
 }

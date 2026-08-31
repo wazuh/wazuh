@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -403,4 +404,120 @@ TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDe
     EXPECT_EQ(1, events->m_syncBuilds.load());
 
     inventory_sync_server_stop();
+}
+
+/**
+ * The lane-only-fails permutation: the first attempt publishes session + sync + async + pipeline
+ * and leaves ONLY the lane missing, so the retry exercises the config-building path with every
+ * other slot flag false. The lane's connector factory must still be handed a usable configuration.
+ */
+TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableConnectorConfig)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+
+    // A sync factory with the real connector's first validation (hosts must be present),
+    // recording every config it is handed.
+    auto recordedConfigs = std::make_shared<std::vector<nlohmann::json>>();
+    auto recordedMutex = std::make_shared<std::mutex>();
+    invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+        [events, recordedConfigs, recordedMutex](
+            const nlohmann::json& config,
+            const invsync::indexer::IIndexerSession&,
+            LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+        {
+            {
+                std::lock_guard<std::mutex> lock(*recordedMutex);
+                recordedConfigs->push_back(config);
+            }
+            events->m_syncBuilds.fetch_add(1);
+            if (!config.contains("hosts"))
+            {
+                throw std::runtime_error("No hosts found in the configuration");
+            }
+            return std::make_unique<invsync::test::FakeIndexerConnectorSync>(events, "sync");
+        });
+
+    // The scanner factory fails the FIRST lane attempt only. The scanner is built before the
+    // lane's own connectors, so attempt 1 fails the lane stage without consuming the sync config.
+    auto scannerAttempts = std::make_shared<std::atomic<int>>(0);
+    invsync::test_hooks::setVdScannerFactoryForTests(
+        [events, scannerAttempts]() -> std::shared_ptr<invsync::vd::IVdScanner>
+        {
+            if (scannerAttempts->fetch_add(1) == 0)
+            {
+                throw std::runtime_error("scanner not ready yet");
+            }
+            return std::make_shared<invsync::test::FakeVdScanner>(events);
+        });
+
+    const auto path = uniqueSocketPath("laneretry");
+    auto config = makeConfig(path);
+
+    // A real <indexer> block: its hosts must reach every connector factory call.
+    cJSON* indexer = cJSON_CreateObject();
+    cJSON* hosts = cJSON_CreateArray();
+    cJSON_AddItemToArray(hosts, cJSON_CreateString("https://127.0.0.1:9200"));
+    cJSON_AddItemToObject(indexer, "hosts", hosts);
+    config.indexer = indexer;
+
+    inventory_sync_server_start(testLogCallback, &config);
+    cJSON_Delete(indexer); // borrowed for the duration of start() only
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+
+    invsync::test_hooks::forceRetryForTests();
+
+    // The lane comes up on the retry and the socket opens.
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"))
+        << "a lane-only retry must succeed: the lane's connector factory needs a usable config";
+    EXPECT_TRUE(std::filesystem::exists(path));
+
+    // Every connector build -- the lane's retry included -- received a config with hosts.
+    std::lock_guard<std::mutex> lock(*recordedMutex);
+    ASSERT_FALSE(recordedConfigs->empty());
+    for (const auto& recorded : *recordedConfigs)
+    {
+        EXPECT_TRUE(recorded.contains("hosts")) << "a connector was handed a config with no hosts: " << recorded.dump();
+    }
+}
+
+/**
+ * Every sync connector the module builds -- the admission slot, the pipeline workers' and the VD
+ * lane's -- must be configured with flush_interval_seconds = 0: the workers own every flush, and
+ * a timer flush failure would have no responder to report to.
+ */
+TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithNoFlushTimer)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+
+    auto recordedConfigs = std::make_shared<std::vector<nlohmann::json>>();
+    auto recordedMutex = std::make_shared<std::mutex>();
+    invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+        [events, recordedConfigs, recordedMutex](
+            const nlohmann::json& config,
+            const invsync::indexer::IIndexerSession&,
+            LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+        {
+            {
+                std::lock_guard<std::mutex> lock(*recordedMutex);
+                recordedConfigs->push_back(config);
+            }
+            events->m_syncBuilds.fetch_add(1);
+            return std::make_unique<invsync::test::FakeIndexerConnectorSync>(events, "sync");
+        });
+
+    const auto path = uniqueSocketPath("notimer");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    std::lock_guard<std::mutex> lock(*recordedMutex);
+    // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's worker.
+    ASSERT_EQ(2U, recordedConfigs->size());
+    for (const auto& recorded : *recordedConfigs)
+    {
+        ASSERT_TRUE(recorded.contains("flush_interval_seconds")) << recorded.dump();
+        EXPECT_EQ(0, recorded.at("flush_interval_seconds").get<int>())
+            << "a pipeline connector was built with a live flush timer: " << recorded.dump();
+    }
 }

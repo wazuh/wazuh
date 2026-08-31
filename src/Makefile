@@ -114,6 +114,9 @@ endif
 ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DFSANITIZE=ON
 endif
+ifneq (,$(filter ${TSANITIZE},YES yes y Y 1))
+CMAKE_OPTS+=-DTSANITIZE=ON
+endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif

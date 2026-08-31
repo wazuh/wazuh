@@ -97,9 +97,10 @@ namespace invsync
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
     constexpr int DEFAULT_VD_RETRY_AFTER_SECS {60};
-    /// The demoted flush timer of the pipeline's connectors -- see the overlay in
-    /// tryStartHttpServer() for why this is a correctness requirement rather than tuning.
-    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {3600};
+    /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
+    /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
+    /// that failed would have no responder to report to.
+    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {0};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -881,25 +882,19 @@ namespace invsync
                 pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
-                if (needSession || needSync || needAsync || needPipeline)
+                if (needSession || needSync || needAsync || needPipeline || needLane)
                 {
                     logIndexerSummary();
-                    sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
-                    syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
-                    asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
-
-                    /*
-                     * The pipeline workers own EVERY flush (group commit: flush on queue-drain or
-                     * on the byte threshold), so the connector's own flush timer is demoted to a
-                     * last-resort safety net. That is a correctness requirement, not tuning: when
-                     * the TIMER's flush fails, the connector drops the staged buffer and swallows
-                     * the failure inside its background thread -- a worker that later flushed an
-                     * emptied buffer would answer 200 for data that was silently lost. The one-hour
-                     * interval keeps the timer from ever finding data in practice (a worker never
-                     * sleeps on a non-empty buffer) while still bounding a leak if one does.
-                     */
-                    syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
                 }
+
+                // Built on every attempt: any slot below -- the lane included -- may consume these
+                // on a retry where every other slot already succeeded.
+                sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
+                syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
+                asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+
+                // Correctness, not tuning: see PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS.
+                syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
             }
             catch (const std::exception& e)
             {

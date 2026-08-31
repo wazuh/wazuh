@@ -133,6 +133,42 @@ batch; the status is picked by connector availability — `503` when the indexer
 the log line is operator-actionable). Re-applying a session is idempotent (deterministic document
 ids, versioned upserts), which is what makes "just re-POST it" the whole recovery story.
 
+Because each worker owns its connector outright, all cross-thread contention in the ingestion
+path funnels into one mutex per connector with a single legitimate owner. Two ordering rules keep
+it acyclic, and both are enforced by scoping rather than by convention: the shard lock is always
+released before any flush (it lives in its own block inside the worker loop), and the connector's
+retry mutex — which exists only so the backoff can sleep without self-deadlocking on the staging
+mutex — is only ever taken from inside the staging one.
+
+```mermaid
+flowchart LR
+    subgraph TH["Threads"]
+        TR["connection strand"]
+        PW["pipeline worker i"]
+        LW["scan lane worker"]
+        HM["indexer health monitor"]
+    end
+    subgraph MX["Mutexes"]
+        SM["shard[i] mutex<br/>one FIFO deque"]
+        RG["agent in-flight registry"]
+        CM["connector[i] staging mutex<br/>held across the bulk request"]
+        RT["connector[i] retry mutex<br/>backoff sleep only"]
+    end
+    LF["atomic host-up flags<br/>+ atomic round-robin cursor"]
+    TR -->|enqueue| SM
+    TR -.->|isAvailable| LF
+    HM -.->|writes| LF
+    PW -->|own shard only| SM
+    SM -.->|released BEFORE any flush| CM
+    PW ==>|stage / flush| CM
+    LW --> RG
+    LW ==>|stage / flush| CM
+    CM ==>|inside the bulk request| RT
+```
+
+The availability verdict behind the `503` admission gate is read lock-free, so a worker blocked on
+the indexer never delays the strand that is deciding whether to admit the next session.
+
 ## The vulnerability-detection scan lane
 
 Sessions whose `Start.option` is `VDFirst` or `VDSync` carry data the vulnerability scanner must

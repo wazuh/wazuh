@@ -10,6 +10,7 @@
  */
 
 #include "IURLRequest.hpp"
+#include "defer.hpp"
 #include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
@@ -358,11 +359,19 @@ class IndexerConnectorSyncImpl final
 
         auto serverUrl = m_selector->getNext();
 
+        // No success callback below may throw: THttpRequest::post() invokes them inside its own
+        // try block and remaps anything thrown there to onError(statusCode = -1), which the error
+        // handlers read as a transport outage to retry -- resending a buffer that no longer
+        // matches what the callback saw. Callbacks report through these flags; the throw happens
+        // after post() returns, from this frame.
+        bool deleteByQueryLeftDocuments = false;
+        bool indexingFailures = false;
+
         // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
         // errors come back in a `failures` array inside the body. Reporting that run as success is
         // how documents survive a deletion that everyone upstream believes worked, so the failures
         // are raised like a transport error and the caller decides whether to retry.
-        const auto onSuccessDeleteByQuery = [this](const std::string& response)
+        const auto onSuccessDeleteByQuery = [this, &deleteByQueryLeftDocuments](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
@@ -398,7 +407,7 @@ class IndexerConnectorSyncImpl final
                        failures,
                        conflicts,
                        response.c_str());
-            throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+            deleteByQueryLeftDocuments = true;
         };
 
         const auto onErrorDeleteByQuery =
@@ -453,6 +462,10 @@ class IndexerConnectorSyncImpl final
                         .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
                     ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                if (deleteByQueryLeftDocuments)
+                {
+                    throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+                }
             }
             catch (...)
             {
@@ -466,17 +479,15 @@ class IndexerConnectorSyncImpl final
             }
         }
 
-        const auto onSuccess = [this, &needToRetry](const std::string& response)
+        const auto onSuccess = [this, &needToRetry, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                m_bulkData.clear();
-                m_boundaries.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
-                throw IndexerConnectorException("Bulk operation had indexing failures");
+                indexingFailures = true;
+                return;
             }
 
             m_shouldNotifyAfterBulk = true;
@@ -552,6 +563,7 @@ class IndexerConnectorSyncImpl final
                     return;
                 }
                 needToRetry = false;
+                indexingFailures = false;
 
                 std::string url;
                 url += m_selector->getNext();
@@ -564,6 +576,13 @@ class IndexerConnectorSyncImpl final
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                     ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                if (indexingFailures)
+                {
+                    m_bulkData.clear();
+                    m_boundaries.clear();
+                    m_lastBulkTime = std::chrono::steady_clock::now();
+                    throw IndexerConnectorException("Bulk operation had indexing failures");
+                }
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
@@ -588,6 +607,16 @@ class IndexerConnectorSyncImpl final
 
     void splitAndProcessBulk()
     {
+        // Clear on every exit path: on failure the caller re-stages, so bytes kept here would be
+        // re-sent by whoever flushes next.
+        DEFER(
+            [this]()
+            {
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+            });
+
         const size_t totalOperations = m_boundaries.size();
         if (totalOperations <= 1)
         {
@@ -636,23 +665,24 @@ class IndexerConnectorSyncImpl final
         {
             m_shouldNotifyAfterBulk = true;
         }
-        m_bulkData.clear();
-        m_boundaries.clear();
-        m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
     {
         bool needToRetry = false;
+        // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
+        // Throwing here additionally livelocked -- the remapped onError(-1) retried the same
+        // chunk, whose 200 answer carried the same failing items, forever.
+        bool indexingFailures = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Chunk processed successfully: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+                indexingFailures = true;
             }
         };
         const auto onError = [this, &needToRetry, boundaries](
@@ -720,6 +750,7 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            indexingFailures = false;
             // Resolved inside the loop so a retry rotates to the next healthy host -- and throws
             // (batch retained, resent by a later flush) once the monitor marks every host down,
             // instead of hammering the same dead host forever while holding m_mutex.
@@ -732,6 +763,10 @@ class IndexerConnectorSyncImpl final
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
+            if (indexingFailures)
+            {
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+            }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
@@ -848,6 +883,12 @@ public:
         }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
+
+        // 0 = no background flush thread; the caller owns every flush.
+        if (m_flushInterval == 0)
+        {
+            return;
+        }
         m_bulkThread = std::thread(
             [this]()
             {
