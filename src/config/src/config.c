@@ -99,6 +99,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
+    const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
     const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
     const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
@@ -203,7 +204,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
             minfo("'%s' is no longer used and will be ignored. Event batching is configured "
-                  "under <client><batch>.", node[i]->element);
+                  "under <agent><batch>.", node[i]->element);
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
