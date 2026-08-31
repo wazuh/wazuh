@@ -291,6 +291,8 @@ void test_uncompress_invalid_file_len(void **state) {
 void test_uncompress_gzopen_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
+    expect_string(__wrap_w_ref_parent_folder, path, package);
+    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -313,6 +315,8 @@ void test_uncompress_gzopen_fail(void **state) {
 void test_uncompress_fopen_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
+    expect_string(__wrap_w_ref_parent_folder, path, package);
+    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -352,6 +356,8 @@ void test_uncompress_fopen_fail(void **state) {
 void test_uncompress_fwrite_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
+    expect_string(__wrap_w_ref_parent_folder, path, package);
+    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -400,6 +406,8 @@ void test_uncompress_fwrite_fail(void **state) {
 void test_uncompress_gzread_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
+    expect_string(__wrap_w_ref_parent_folder, path, package);
+    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -445,6 +453,8 @@ void test_uncompress_gzread_fail(void **state) {
 void test_uncompress_success(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
+    expect_string(__wrap_w_ref_parent_folder, path, package);
+    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -608,13 +618,18 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -680,13 +695,18 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -758,13 +778,18 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -840,13 +865,18 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -928,13 +958,18 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1033,13 +1068,18 @@ void test_wm_agent_upgrade_com_success(void **state) {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_gzopen, path);
-        expect_string(__wrap_gzopen, mode, "rb");
-        will_return(__wrap_gzopen, 4);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "wb");
-        will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1211,13 +1251,18 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
             expect_any(__wrap_w_ref_parent_folder, path);
             will_return(__wrap_w_ref_parent_folder, 0);
 
-            expect_any(__wrap_gzopen, path);
-            expect_string(__wrap_gzopen, mode, "rb");
-            will_return(__wrap_gzopen, 4);
+            expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
-            expect_any(__wrap_wfopen, path);
-            expect_string(__wrap_wfopen, mode, "wb");
-            will_return(__wrap_wfopen, 5);
+#ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s, NULL);
+            expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+            will_return(__wrap_mkstemp, 8);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
+            expect_fdopen(8, "wb", (FILE *)5);
+#endif
 
             expect_value(__wrap_gzread, gz_fd, 4);
             will_return(__wrap_gzread, 4);

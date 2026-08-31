@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <cJSON.h>
 #include <dirent.h>
-#include "../external/zlib/zlib.h"
+#include "../../external/zlib/zlib.h"
 
 #ifdef WIN32
 #include <winsock2.h>

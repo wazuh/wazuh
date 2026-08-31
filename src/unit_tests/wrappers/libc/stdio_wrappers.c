@@ -89,10 +89,18 @@ void expect_fopen(const char* path, const char* mode, FILE *fp) {
     will_return(__wrap_fopen, fp);
 }
 
+// Weak: __real_fdopen only exists in binaries linked with -Wl,--wrap,fdopen; every other
+// test binary links this file too, and there this whole function is unreachable dead code.
+extern FILE* __real_fdopen(int fd, const char* mode) __attribute__((weak));
 FILE* __wrap_fdopen(int fd, const char* mode) {
-    check_expected(fd);
-    check_expected(mode);
-    return mock_ptr_type(FILE*);
+    // Guarded like __wrap_fopen: libgcov flushes coverage through fdopen after the
+    // group finishes, when nothing is queued and test_mode is already cleared.
+    if (test_mode) {
+        check_expected(fd);
+        check_expected(mode);
+        return mock_ptr_type(FILE*);
+    }
+    return __real_fdopen ? __real_fdopen(fd, mode) : NULL;
 }
 
 void expect_fdopen(int fd, const char* mode, FILE *fp) {
