@@ -3,6 +3,7 @@
 
 #include <sca.h>
 #include <sca_impl.hpp>
+#include <metadata_provider.h>
 
 #include <dbsync.hpp>
 #include <isca_policy.hpp>
@@ -27,6 +28,16 @@ class ScaTest : public ::testing::Test
         {
             m_logOutput.clear();
 
+            // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
+            // that provider is a file at a path relative to the working directory. Resetting it
+            // is not enough on its own: sca_recovery_test publishes agent id "001" into the very
+            // same file from its own SetUp, so under a parallel ctest that write can land after
+            // this reset and put these cases on the identity-changed branch, which nothing here
+            // scripts. Own directory per binary, like sca_identity_test.
+            std::filesystem::create_directories("sca_test_workdir/var/run");
+            std::filesystem::current_path("sca_test_workdir");
+            metadata_provider_reset();
+
             // Set up the logging callback to avoid "Log callback not set" errors
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
             {
@@ -36,6 +47,12 @@ class ScaTest : public ::testing::Test
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_sca = std::make_shared<SecurityConfigurationAssessment>("test_path", m_mockDBSync);
+        }
+
+        void TearDown() override
+        {
+            // Back out of the per-binary directory entered in SetUp.
+            std::filesystem::current_path("..");
         }
 
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;

@@ -173,10 +173,19 @@ int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     return 0;
 }
 
-/* bridge_on_startup_result republishes the agent metadata; the real one
- * (start_agent.c) would touch the metadata shared memory, out of scope here. */
+/* bridge_on_startup_result, bridge_on_control_response and bridge_reenroll_thread all
+ * republish the agent metadata; the real one (start_agent.c) would touch the metadata
+ * shared memory, out of scope here.
+ *
+ * Counted rather than turned into function_called(): three call sites reach this, and
+ * scripting an expectation into every test that touches any of them would be noise for
+ * the ones that do not care. Tests that do assert on g_populate_metadata_calls, which
+ * setup_test() resets. */
+unsigned int g_populate_metadata_calls = 0;
+
 void __wrap_w_agentd_populate_metadata(void)
 {
+    g_populate_metadata_calls++;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -337,6 +346,7 @@ static int setup_test(void **state)
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
     g_https_client_stopping = false;
+    g_populate_metadata_calls = 0;
 
     add_server_config("10.0.0.1", 8443);
     /* A syntactically valid 64-hex-char (32-byte, AES-256) key by default;
@@ -923,6 +933,11 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
                   "https_client: re-enrollment succeeded; reloading the signing identity.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: the new id has to reach the metadata provider here. Every outgoing session is
+     * stamped from it, and each module compares against it to notice its own id changed, so
+     * leaving it stale means 403s and blind detection until something else republishes. */
+    assert_int_equal(g_populate_metadata_calls, 1);
 }
 
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
@@ -982,6 +997,10 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
                   "https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: no republish when the identity failed validation -- the module keeps traffic
+     * paused, so there is no session to stamp and nothing for a module to act on yet. */
+    assert_int_equal(g_populate_metadata_calls, 0);
 }
 
 /* on_state_change -> .state (M7 partial): exercised through the real

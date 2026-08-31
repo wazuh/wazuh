@@ -176,11 +176,29 @@ void *bridge_reenroll_thread(void *arg)
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
      * now associates with this key). Both move together, never just the key. */
-    if (!hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key)) {
+    const bool identity_ok = hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key);
+
+    if (!identity_ok) {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
     }
 
     w_mutex_unlock(&g_https_client_lock);
+
+    /* Republish the agent metadata. The sync protocol stamps every session's
+     * Start.agentid from the shared-memory provider, and each module compares against that
+     * same value to notice its own id changed. Without this the provider keeps the
+     * pre-enrollment id until the next /startup response or agent-info cycle happens to
+     * rewrite it: sessions sent inside that window carry an id the manager answers with 403
+     * (identity mismatch), and identity detection stays blind for as long as it lasts.
+     *
+     * Published after unlocking: w_agentd_populate_metadata() takes a mutex of its own, and
+     * nesting it inside g_https_client_lock would introduce a lock order nothing else in this
+     * file establishes. Only on a valid identity -- when validation failed the module keeps
+     * traffic paused, so there is nothing to stamp yet. */
+    if (identity_ok) {
+        w_agentd_populate_metadata();
+    }
+
     return NULL;
 }
 

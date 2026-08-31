@@ -16,6 +16,11 @@ extern "C" {
         AgentSyncProtocol::setSessionMaxBytes(static_cast<size_t>(max_session_bytes));
     }
 
+    long asp_get_agent_id(void)
+    {
+        return AgentSyncProtocol::currentAgentId();
+    }
+
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
@@ -113,15 +118,17 @@ extern "C" {
 
             cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
 
+            cResult.sent_anything = cppResult.sentAnything;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
         catch (...)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
     }
 
@@ -214,15 +221,17 @@ extern "C" {
 
             cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
 
+            cResult.sent_anything = cppResult.sentAnything;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
         catch (...)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
     }
 

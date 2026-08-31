@@ -72,6 +72,12 @@ constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 // opportunity) is retried on the next chance instead of silently waiting a
 // full <interval>.
 constexpr auto SCA_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
+// The agent id whose manager-side copy of this module's data is the one first_sync_completed
+// refers to. Absence means "never recorded" and is adopted without resyncing -- which is what
+// keeps an in-place upgrade of an existing fleet from making every agent resync at once. Stored
+// as a number: OS_IsValidID() has already rejected anything but at most 8 digits by the time an
+// id reaches client.keys, so it fits the INTEGER column the table already has.
+constexpr auto SCA_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
@@ -612,6 +618,12 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     // Log
     LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA synchronization.");
 
+    // Before deciding snapshot-vs-delta, make sure the identity that decision is about
+    // has not changed underneath us. Runs inside the sync entry point so it cannot interleave
+    // with this module's own cycle, and it may complete the whole snapshot itself -- in which
+    // case first_sync_completed is already true below and the delta branch is the right one.
+    checkAgentIdentity();
+
     refreshFirstSyncCompletedState();
 
     const bool firstSyncPending = !m_firstSyncCompleted.load();
@@ -648,7 +660,13 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     if (result.success)
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization finished successfully.");
+        // Success alone cannot tell "the manager took everything" from "there was
+        // nothing queued, so no session was opened". Both are fine outcomes, but only one of
+        // them means the manager has our data.
+        LoggingHelper::getInstance().log(LOG_INFO,
+                                         result.sentAnything
+                                         ? "SCA synchronization finished successfully."
+                                         : "SCA synchronization finished: nothing to send.");
     }
     else
     {
@@ -1484,6 +1502,72 @@ void SecurityConfigurationAssessment::refreshFirstSyncCompletedState()
     {
         m_firstSyncCompleted.store(firstSyncCompleted > 0);
     }
+}
+
+void SecurityConfigurationAssessment::checkAgentIdentity()
+{
+    const long currentId = AgentSyncProtocol::currentAgentId();
+
+    if (currentId == 0)
+    {
+        // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
+        // previous id, must never read as a new identity.
+        return;
+    }
+
+    int64_t syncedId = 0;
+
+    if (!getMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
+    {
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return;
+    }
+
+    if (syncedId == 0)
+    {
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install first_sync_completed
+        // is absent too and the ordinary snapshot covers it, and on an upgraded agent the
+        // manager's copy is exactly the one this agent has been maintaining all along.
+        updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+        return;
+    }
+
+    if (syncedId == currentId)
+    {
+        return;
+    }
+
+    LoggingHelper::getInstance().log(
+        LOG_INFO,
+        "SCA was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
+        std::to_string(currentId) + ". Resending a full snapshot.");
+
+    // increaseVersions stays false: the manager builds indexer document ids as
+    // clusterName_agentId_id, so under a new identity every document this snapshot writes is one
+    // the indexer has never seen and there is nothing of ours left to outrank. Recovery needs
+    // true only because it is repairing documents written under this same id, where the stale
+    // versions really are present.
+    const auto result = synchronizeDatabaseSnapshot(false, "agent id change");
+
+    if (!result.success || !m_keepRunning.load())
+    {
+        // Leave both markers untouched so this re-fires next cycle. Recording it now would
+        // claim the manager holds data it never received -- and on shutdown the snapshot is
+        // cut short rather than finished.
+        return;
+    }
+
+    // Advanced together, and only here: synchronizeDatabaseSnapshot() reports success only
+    // after the manager accepted the DataClean, so this cannot record a cycle that never
+    // reached it. Gating on a plain sync result would, since an empty queue reports success
+    // without opening a session at all.
+    updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+    updateMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+    m_firstSyncCompleted.store(true);
 }
 
 void SecurityConfigurationAssessment::refreshFirstScanCompletedState()

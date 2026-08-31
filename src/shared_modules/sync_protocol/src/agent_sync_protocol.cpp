@@ -15,6 +15,8 @@
 #include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <set>
@@ -69,6 +71,41 @@ void AgentSyncProtocol::setSessionMaxBytes(size_t maxBytes)
     {
         s_sessionMaxBytes.store(maxBytes);
     }
+}
+
+long AgentSyncProtocol::currentAgentId()
+{
+    agent_metadata_t metadata {};
+
+    if (metadata_provider_get(&metadata) != 0)
+    {
+        // No metadata published yet (agent-info not up, or agentd has not run
+        // w_agentd_populate_metadata()). "Unknown", not "changed".
+        return 0;
+    }
+
+    long id = 0;
+
+    // Ids are validated by OS_IsValidID() before client.keys is written: digits only, at most
+    // 8 characters, so the value always fits a long and strtol cannot overflow here. Parse
+    // defensively anyway -- anything that is not a plain number reads as unknown, never as a
+    // new identity. Zero-padding ("001") is presentational; the manager compares ids
+    // numerically too (fullSessionValidator.cpp).
+    if (metadata.agent_id[0] != '\0')
+    {
+        char* end = nullptr;
+        errno = 0;
+        const long parsed = std::strtol(metadata.agent_id, &end, 10);
+
+        if (errno == 0 && end != metadata.agent_id && *end == '\0' && parsed > 0)
+        {
+            id = parsed;
+        }
+    }
+
+    metadata_provider_free_metadata(&metadata);
+
+    return id;
 }
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
@@ -346,7 +383,17 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
+    // Designated on purpose: this struct gains fields from more than one direction, they are all
+    // bool, and a positional list binds by position -- a new field landing between two of these
+    // would silently take another's value without a warning.
+    return {.success = success,
+            .failureReason = std::move(failureReason),
+            .stopped = stopped,
+            .managerNotReady = managerNotReady,
+            .consecutiveFailures = consecutiveFailures,
+            .awaitingPrerequisite = awaitingPrerequisite,
+            .localTransportUnavailable = false,
+            .sentAnything = sentAny};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -544,7 +591,13 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite, false};
+    return {.success = success,
+            .failureReason = std::move(failureReason),
+            .stopped = stopped,
+            .managerNotReady = managerNotReady,
+            .consecutiveFailures = consecutiveFailures,
+            .awaitingPrerequisite = awaitingPrerequisite,
+            .localTransportUnavailable = false};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,

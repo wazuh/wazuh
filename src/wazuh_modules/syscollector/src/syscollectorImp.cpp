@@ -93,6 +93,18 @@ constexpr auto QUEUE_SIZE
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync_completed"};
+// The agent id whose manager-side copy of this inventory is the one first_sync_completed refers
+// to. Absence means "never recorded" and is adopted without resyncing -- which is what keeps an
+// in-place upgrade of an existing fleet from making every agent resync at once. Stored as a
+// number: OS_IsValidID() has already rejected anything but at most 8 digits by the time an id
+// reaches client.keys, so it fits the INTEGER column the table already has.
+constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
+// The VD lane's own record of the identity it last resent under. Separate from the combined
+// marker above because that one only advances once *both* lanes have landed: a plain table that
+// keeps failing would otherwise keep the whole pass "unfinished" and have the VD inventory
+// cleared and resent on every cycle -- each time as a first scan, which suppresses alerts, so a
+// genuinely new CVE appearing between two of those cycles would never raise one.
+constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -2372,12 +2384,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
     bool overallSuccess = true;
+    // #38601: true once either protocol actually opened a session with queued items. Success
+    // alone cannot say that -- an empty queue reports success without contacting the manager.
+    bool sentAnything = false;
     std::string failureReason;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+        sentAnything = sentAnything || result.sentAnything;
 
         if (result.success)
         {
@@ -2439,6 +2455,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     if (m_spSyncProtocolVD)
     {
         SyncModuleResult vdResult = synchronizeVDTables(mode);
+        sentAnything = sentAnything || vdResult.sentAnything;
 
         if (!vdResult.success)
         {
@@ -2487,10 +2504,23 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
 
     if (overallSuccess)
     {
-        m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
+        m_logFunction(LOG_INFO,
+                      sentAnything
+                      ? "Syscollector synchronization process finished successfully."
+                      : "Syscollector synchronization process finished: nothing to send.");
     }
 
-    return {overallSuccess, std::move(failureReason)};
+    // Eight initializers for eight fields: localTransportUnavailable sits between
+    // awaitingPrerequisite and sentAnything, and omitting it would silently put sentAnything in
+    // its place -- two consecutive bools, so nothing would fail to compile.
+    // Designated, not positional: this struct grows from more than one direction and its new
+    // fields are all bool, so a list written for the old shape still compiles and binds values
+    // to the wrong members. That is not hypothetical -- rebasing onto #38656, which appends
+    // sessionSkipped, left this list one short and fed sentAnything into sessionSkipped, which
+    // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
+    return {.success = overallSuccess,
+            .failureReason = std::move(failureReason),
+            .sentAnything = sentAnything};
 }
 // LCOV_EXCL_STOP
 
@@ -2501,19 +2531,30 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
     // coordination polls), so the members it reaches must not be reset underneath it.
     std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
+    if (auto* protocol = protocolForIndex(index))
+    {
+        protocol->persistDifference(id, operation, index, data, version, isDataContext);
+    }
+}
+
+bool Syscollector::isVDIndex(const std::string& index)
+{
     // VD tables: system (os), packages, hotfixes
-    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+    return index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+           index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+           index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
+}
+
+IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
+{
+    const bool isVDTable = isVDIndex(index);
 
     if (isVDTable && m_spSyncProtocolVD)
     {
-        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+        return m_spSyncProtocolVD.get();
     }
-    else if (m_spSyncProtocol)
-    {
-        m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
-    }
+
+    return m_spSyncProtocol.get();
 }
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
@@ -3449,6 +3490,26 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector first sync completion";
+            }
+        }
+        else if (command == "get_synced_agent_id")
+        {
+            // #38601: which agent id the manager's copy of this inventory belongs to. Zero means
+            // none has been recorded yet, which is adopted rather than resynced. Exposed for the
+            // same reason as the markers above -- it decides whether a cycle resends everything,
+            // so it has to be observable without opening the database by hand.
+            int64_t syncedAgentId = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedAgentId))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector synced agent id retrieved";
+                response["data"]["synced_agent_id"] = syncedAgentId;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector synced agent id";
             }
         }
         else if (command == "get_first_scan_completed")
@@ -4752,151 +4813,395 @@ bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int
     return (elapsedTime >= integrityInterval);
 }
 
+bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) const
+{
+    if (tableName == OS_TABLE) return m_os;
+
+    if (tableName == HW_TABLE) return m_hardware;
+
+    if (tableName == HOTFIXES_TABLE) return m_hotfixes;
+
+    if (tableName == PACKAGES_TABLE) return m_packages;
+
+    if (tableName == PROCESSES_TABLE) return m_processes;
+
+    if (tableName == PORTS_TABLE) return m_ports;
+
+    if (tableName == NET_ADDRESS_TABLE || tableName == NET_IFACE_TABLE || tableName == NET_PROTOCOL_TABLE) return m_network;
+
+    if (tableName == USERS_TABLE) return m_users;
+
+    if (tableName == GROUPS_TABLE) return m_groups;
+
+    if (tableName == SERVICES_TABLE) return m_services;
+
+    if (tableName == BROWSER_EXTENSIONS_TABLE) return m_browserExtensions;
+
+    return true;
+}
+
+// #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
+// are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
+// persist loop below still needs a manager, and that is what stays excluded.
+bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index, const bool syncNow)
+{
+    try
+    {
+        m_spDBSync->increaseEachEntryVersion(tableName);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+        return false;
+    }
+
+    std::vector<nlohmann::json> items;
+
+    // Determine if we need to filter by sync=1
+    // Only filter when document limits are configured (limit > 0)
+    // If limit == 0 (unlimited), recover all items without filtering
+    size_t documentLimit = getDocumentLimit(index);
+    std::string rowFilterClause;
+
+    try
+    {
+        if (documentLimit > 0)
+        {
+            // With limits: only recover items with sync=1
+            // Items with sync=0 exceeded the document limit and should not be recovered
+            rowFilterClause = "WHERE sync=1";
+        }
+        else
+        {
+            // No limits: recover all items regardless of sync value
+            rowFilterClause = "";
+        }
+
+        auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == ReturnTypeCallback::SELECTED)
+            {
+                items.push_back(data);
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"*"})
+                           .rowFilter(rowFilterClause)
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+        return false;
+    }
+
+    // Clear the manager's index before resending: a full-replace sync is now a
+    // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
+    // (which used to make the manager unconditionally deleteByQuery over a
+    // byte-capped/truncated payload and could permanently drop whatever didn't
+    // fit in that one session).
+    //
+    // #38601: on the protocol this index's data actually rides, not unconditionally
+    // the plain one. Recovering a VD index while cleaning the plain queue would
+    // clear a queue that never held the rows and leave the VD one holding stale
+    // ones.
+    auto* protocol = protocolForIndex(index);
+
+    if (!protocol)
+    {
+        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; will retry later");
+        return false;
+    }
+
+    if (!protocol->notifyDataClean({index}))
+    {
+        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+        return false;
+    }
+
+    // LCOV_EXCL_START
+    for (const auto& item : items)
+    {
+        // Build stateful event
+        auto [newData, version] = ecsData(item, tableName);
+        const auto statefulToSend{newData.dump()};
+
+        // Validate stateful event before persisting for recovery
+        bool shouldPersist = true;
+        std::string context = "recovery event, table: " + tableName;
+
+        // Use helper function to validate and log
+        bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
+
+        if (!validationPassed)
+        {
+            m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+            shouldPersist = false;
+        }
+
+        if (shouldPersist)
+        {
+            // #38601: same protocol the DataClean above targeted. Sending a VD
+            // index's rows down the plain protocol repopulates
+            // wazuh-states-inventory-* but never reaches the vulnerability
+            // scanner, so a recovered agent gets its inventory back while its
+            // vulnerability documents stay missing.
+            protocol->persistDifference(
+                calculateHashId(item, tableName),
+                Operation::CREATE,
+                index,
+                statefulToSend,
+                item["version"].get<uint64_t>()
+            );
+        }
+    }
+
+    // LCOV_EXCL_STOP
+
+    m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
+
+    if (!syncNow)
+    {
+        // Left in the queue on purpose; the caller sends it.
+        return true;
+    }
+
+    m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
+    bool recoverySucceeded = syncModule(Mode::DELTA).success;
+
+    if (recoverySucceeded)
+    {
+        m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+    }
+
+
+    return true;
+}
+
+void Syscollector::checkAgentIdentity()
+{
+    const long currentId = AgentSyncProtocol::currentAgentId();
+
+    if (currentId == 0)
+    {
+        // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
+        // previous id, must never read as a new identity.
+        return;
+    }
+
+    int64_t syncedId = 0;
+
+    if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
+    {
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return;
+    }
+
+    if (syncedId == 0)
+    {
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
+        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // been maintaining all along.
+        updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+        return;
+    }
+
+    if (syncedId == currentId)
+    {
+        return;
+    }
+
+    m_logFunction(LOG_INFO,
+                  "Inventory was last synchronized as agent " + std::to_string(syncedId) +
+                  ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
+
+    bool anyFailed = false;
+    std::vector<std::string> vdTablesResent;
+
+    // Has the VD lane already landed for this identity? Only the combined marker below waits for
+    // both lanes, so without this a stuck plain table would have the VD inventory wiped and
+    // resent every cycle. A read that fails counts as "not done": one redundant resend is noise,
+    // while skipping it on a guess leaves the vulnerability inventory missing.
+    int64_t vdSyncedId = 0;
+    const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
+                                 && vdSyncedId == static_cast<int64_t>(currentId);
+
+    // The plain lane keeps one session per table: an index is cleared immediately before its own
+    // rows are queued, so a session that never reaches the manager leaves the others untouched
+    // and the marker below stays gated on what each table proved individually.
+    //
+    // The VD lane cannot work that way. To the manager a re-enrolled agent is a new agent, and a
+    // new agent's first scan is the one that indexes its vulnerabilities without raising an alert
+    // for each -- the FirstFullScan chain, which drops TEventSendReport. The agent asks for it by
+    // sending Option::VDFIRST, which it does only while vd_first_sync_completed is unset. So the
+    // three VD indices are cleared and re-persisted here without sending, the marker is reset
+    // once they are all queued, and a single session carries them: one VDFirst session over the
+    // complete inventory. Sending them table by table would give the first one a partial
+    // inventory and re-arm the marker, leaving the rest to go out as VDSYNC and alert; and each
+    // VDFirst session opens with a deleteByQuery scoped to this agent, so a second one would
+    // delete what the first indexed. The cost is that the three are cleared before any is sent.
+    // Two passes, and the order matters: syncModule() drains both protocols, so a plain table's
+    // session would also flush whatever the VD lane had queued. Persisting the VD tables only
+    // after the last plain session is what keeps their rows together for the single VDFirst
+    // session below.
+    for (const int pass :
+            {
+                0, 1
+            })
+    {
+        for (const auto& [tableName, index] : INDEX_MAP)
+        {
+            if (m_stopping.load())
+            {
+                // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
+                // than recording a pass that never finished.
+                return;
+            }
+
+            if (!isCollectorEnabledForTable(tableName))
+            {
+                continue;
+            }
+
+            // Only while the VD lane exists. With m_vdSyncEnabled false -- packages, os or,
+            // on Windows, hotfixes switched off -- synchronizeVDTables() sends Option::SYNC,
+            // so these tables gain nothing from the deferred single-session treatment and are
+            // routed through the plain lane instead. That also leaves vdTablesResent empty,
+            // which is the point: a run with no VD lane must not record vd_synced_agent_id and
+            // claim a lane that never ran. A later run that does enable the lane would honour
+            // that marker, skip the whole VD inventory, and leave it to go out as VDSYNC --
+            // an alert for every finding the manager has never seen for this identity.
+            const bool vdTable = isVDIndex(index) && m_vdSyncEnabled;
+
+            // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
+            if (vdTable != (pass == 1))
+            {
+                continue;
+            }
+
+            if (vdTable && vdAlreadyResent)
+            {
+                // Already sent under this identity by an earlier cycle whose plain lane did not
+                // finish. Clearing and requeueing it again would buy nothing and cost an alert
+                // window.
+                continue;
+            }
+
+            if (!resyncTableToManager(tableName, index, !vdTable))
+            {
+                // Keep going: the tables that can be resent should be, and aborting here would
+                // make every later pass re-upload the ones that already succeeded. The marker is
+                // what must not move -- recording it would claim the manager holds data it never
+                // received -- so remember the failure and leave it alone at the end.
+                anyFailed = true;
+            }
+            else if (vdTable)
+            {
+                // Queued, not sent. Its integrity clock waits for the session below to land.
+                vdTablesResent.push_back(tableName);
+            }
+            else
+            {
+                // Stamp the integrity clock exactly as the checksum loop does after its own
+                // resync. Without this, that loop -- same pass, same locked region, immediately
+                // behind this one -- can find the interval elapsed for a table this pass just
+                // full-replaced, ask the manager for a checksum it has had no chance to
+                // recompute, and issue a second notifyDataClean for it. Duplicated work at best,
+                // and if that second clean is ordered after the rows queued here, it deletes
+                // them.
+                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            }
+        }
+    }
+
+    if (!vdTablesResent.empty())
+    {
+        // Reset before sending, never after: synchronizeVDTables() reads this to choose the
+        // option, and persistVDFirstSyncIfNeeded() re-arms it once the session succeeds.
+        if (!updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, 0))
+        {
+            // Send anyway. Alerts for pre-existing findings are noise; VD indices left cleared
+            // with their rows still queued locally are missing data.
+            m_logFunction(LOG_WARNING,
+                          "Could not reset the VD first-sync marker; the vulnerability inventory "
+                          "will be resent as an ordinary synchronization.");
+        }
+
+        if (syncModule(Mode::DELTA).success)
+        {
+            // Recorded here, not with the combined marker at the end: this lane is done for this
+            // identity even if a plain table still is not, and the next cycle must not redo it.
+            updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+
+            for (const auto& tableName : vdTablesResent)
+            {
+                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            }
+        }
+        else
+        {
+            // The rows stay queued and the marker stays unset, so the next cycle sends them as a
+            // VDFirst session too. The identity marker is what must not move.
+            anyFailed = true;
+        }
+    }
+
+    if (anyFailed)
+    {
+        // At least one table did not reach the manager, so the identity is not fully
+        // synchronized yet and the next pass has to try again.
+        return;
+    }
+
+    // currentId was read once, before the loop: if a second re-enrollment lands mid-pass, the
+    // rows sent after it go out stamped with the newer id while this records the older one, so
+    // the next cycle sees a mismatch and resends everything. One extra pass under rapid
+    // re-enrollment churn, never a marker claiming more than was actually sent.
+    //
+    // Both markers move together, and only once every table above proved the manager accepted
+    // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
+    // reports success without opening a session at all -- record a cycle that never landed.
+    updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+    updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+}
+
 void Syscollector::runRecoveryProcess()
 {
+    // #38601: identity before integrity. If this agent's id changed, the manager holds nothing
+    // under it, and the per-table checksum loop below would only rediscover that one table at a
+    // time, an integrity_interval apart each. Safe to drive the resync from here rather than
+    // from syncModule(): the wodle calls this after a successful sync, so resyncTableToManager()
+    // reaching syncModule() internally cannot recurse.
+    checkAgentIdentity();
+
     for (const auto& [tableName, index] : INDEX_MAP)
     {
-        // Skip disabled modules
-        if (tableName == OS_TABLE && !m_os) continue;
-
-        if (tableName == HW_TABLE && !m_hardware) continue;
-
-        if (tableName == HOTFIXES_TABLE && !m_hotfixes) continue;
-
-        if (tableName == PACKAGES_TABLE && !m_packages) continue;
-
-        if (tableName == PROCESSES_TABLE && !m_processes) continue;
-
-        if (tableName == PORTS_TABLE && !m_ports) continue;
-
-        if (((tableName == NET_ADDRESS_TABLE) || (tableName == NET_IFACE_TABLE) || (tableName == NET_PROTOCOL_TABLE)) && !m_network) continue;
-
-        if (tableName == USERS_TABLE && !m_users) continue;
-
-        if (tableName == GROUPS_TABLE && !m_groups) continue;
-
-        if (tableName == SERVICES_TABLE && !m_services) continue;
-
-        if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
+        if (!isCollectorEnabledForTable(tableName)) continue;
 
         // LCOV_EXCL_START
         // Recovery process requires manager integration for checksum validation.
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
-            bool full_sync_required = checkIfFullSyncRequired(tableName);
 
-            if (full_sync_required)
+            if (checkIfFullSyncRequired(tableName) && !resyncTableToManager(tableName, index))
             {
-                try
-                {
-                    m_spDBSync->increaseEachEntryVersion(tableName);
-                }
-                catch (const std::exception& ex)
-                {
-                    m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
-                    return;
-                }
-
-                std::vector<nlohmann::json> items;
-
-                // Determine if we need to filter by sync=1
-                // Only filter when document limits are configured (limit > 0)
-                // If limit == 0 (unlimited), recover all items without filtering
-                size_t documentLimit = getDocumentLimit(index);
-                std::string rowFilterClause;
-
-                try
-                {
-                    if (documentLimit > 0)
-                    {
-                        // With limits: only recover items with sync=1
-                        // Items with sync=0 exceeded the document limit and should not be recovered
-                        rowFilterClause = "WHERE sync=1";
-                    }
-                    else
-                    {
-                        // No limits: recover all items regardless of sync value
-                        rowFilterClause = "";
-                    }
-
-                    auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
-                    {
-                        if (result == ReturnTypeCallback::SELECTED)
-                        {
-                            items.push_back(data);
-                        }
-                    };
-
-                    auto selectQuery = SelectQuery::builder()
-                                       .table(tableName)
-                                       .columnList({"*"})
-                                       .rowFilter(rowFilterClause)
-                                       .build();
-
-                    m_spDBSync->selectRows(selectQuery.query(), callback);
-                }
-                catch (const std::exception& ex)
-                {
-                    m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
-                    return;
-                }
-
-                // Clear the manager's index before resending: a full-replace sync is now a
-                // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
-                // (which used to make the manager unconditionally deleteByQuery over a
-                // byte-capped/truncated payload and could permanently drop whatever didn't
-                // fit in that one session).
-                if (!m_spSyncProtocol->notifyDataClean({index}))
-                {
-                    m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
-                    return;
-                }
-
-                for (const auto& item : items)
-                {
-                    // Build stateful event
-                    auto [newData, version] = ecsData(item, tableName);
-                    const auto statefulToSend{newData.dump()};
-
-                    // Validate stateful event before persisting for recovery
-                    bool shouldPersist = true;
-                    std::string context = "recovery event, table: " + tableName;
-
-                    // Use helper function to validate and log
-                    bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
-
-                    if (!validationPassed)
-                    {
-                        m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
-                        shouldPersist = false;
-                    }
-
-                    if (shouldPersist)
-                    {
-                        m_spSyncProtocol->persistDifference(
-                            calculateHashId(item, tableName),
-                            Operation::CREATE,
-                            index,
-                            statefulToSend,
-                            item["version"].get<uint64_t>()
-                        );
-                    }
-                }
-
-                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
-                m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool recoverySucceeded = syncModule(Mode::DELTA).success;
-
-                if (recoverySucceeded)
-                {
-                    m_logFunction(LOG_DEBUG, "Recovery completed successfully");
-                }
-                else
-                {
-                    m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
-                }
-
+                // Preserved from before this was extracted: a table that cannot be resynced
+                // aborts the whole pass instead of moving on, so its integrity timestamp is
+                // left untouched and the next cycle retries it from the same point.
+                return;
             }
 
             // Update the last sync time regardless of whether full sync was required
