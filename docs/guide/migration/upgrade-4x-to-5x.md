@@ -210,11 +210,17 @@ The target address and port come from the same place the agent reads them: `<age
 
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 
-Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
+Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.yml` (`auth` section) and the agent's `<enrollment>` block in `ossec.conf`.
 
-### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
+### Manager: `auth.ciphers` must use a TLS 1.3 ciphersuite list
 
-`wazuh-authd` validates `<ciphers>` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
+`wazuh-authd` validates `auth.ciphers` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
+
+```console
+(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [schema /properties/auth/properties/ciphers].
+```
+
+The schema check runs before `wazuh-authd` starts (`bin/wazuh-manager-conf validate`, the control script, `-t`). `wazuh-authd` keeps its own check for the same list, so an invalid value that somehow bypasses the schema fails at startup instead:
 
 ```console
 ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in 'ciphers' option
@@ -227,15 +233,16 @@ ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
 ERROR: SSL context setup failed. Exiting.
 ```
 
-Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
+Either way, `wazuh-authd` does not start and no agent can enroll until `auth.ciphers` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
 
-`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an invalid element and blocks the manager from starting:
+`ssl_auto_negotiate` was also removed entirely. `etc/wazuh-manager.yml` rejects it as an unknown option of the `auth` section, and the manager does not start:
 
 ```console
-ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.
+ERROR: (1244): Invalid configuration at 'etc/wazuh-manager.yml': /auth/ssl_auto_negotiate: unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
+CRITICAL: (1202): Configuration error at 'etc/wazuh-manager.yml'.
 ```
 
-Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.
+Do not carry `ssl_auto_negotiate` into the `auth` section of the 5.0 configuration.
 
 ### Agent: `<enrollment><ssl_cipher>` must also use a TLS 1.3 ciphersuite list
 

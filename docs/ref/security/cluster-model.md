@@ -16,18 +16,13 @@ Communication on the cluster protocol is encrypted and authenticated using a
 shared Fernet key. Possession of this key is what defines membership in the
 cluster.
 
-> **Note:** The `<cluster>` XML section (where the key and other cluster
-> settings are configured) is not parsed or validated by the shared C
-> configuration library — it is recognized but otherwise ignored at that
-> layer. All parsing and validation happen later, in Python (lenient parsing
-> via `utils.read_cluster_config`, used generally; strict validation via
-> `cluster.check_cluster_config`, used only at daemon startup / CLI). This is
-> relevant to the key-handling caveat described in
-> [Cluster Configuration](../modules/cluster/configuration.md): a manually
-> written, incomplete `<cluster>` block will pass through the C parser
-> without error, and a missing `<key>` field silently falls back to a
-> hardcoded, shared value rather than causing a validation failure or a new
-> random key being generated.
+> **Note:** The `cluster` section of `etc/wazuh-manager.yml` (where the key and the other
+> cluster settings live) is validated against the manager schema before any daemon starts:
+> `key` is a required option, so a hand-written section without it is rejected instead of
+> falling back to a shared value. Python then parses the validated document (lenient defaults
+> for the optional options via `utils.read_cluster_config`, strict value checks via
+> `cluster.check_cluster_config` at daemon startup / CLI); see
+> [Cluster Configuration](../modules/cluster/configuration.md).
 
 ## Trust Boundary
 
@@ -66,7 +61,7 @@ Independently of the trust model, the DAPI does enforce a small set of
 restrictions on operations between nodes:
 
 - **Local configuration**: a node will not accept remote modifications to its
-  local  `wazuh-manager.conf` (previously `ossec.conf`).
+  local  `wazuh-manager.yml` (previously `ossec.conf`).
 - **Authority context boundary**: operations outside the scope of the Wazuh
   product (i.e. outside the Wazuh authority context) are not executed through
   the DAPI.
@@ -189,7 +184,7 @@ cluster surface:
 - Joining the cluster, or executing operations on the cluster protocol,
   without possession of the Fernet key.
 - Bypassing the explicit restrictions listed above (writing local
-  `wazuh-manager.conf` remotely, or executing operations outside the Wazuh authority
+  `wazuh-manager.yml` remotely, or executing operations outside the Wazuh authority
   context through the DAPI).
 - Any vector that allows a principal outside the cluster authority context to
   cross into it.

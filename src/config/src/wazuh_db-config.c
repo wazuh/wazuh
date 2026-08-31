@@ -15,116 +15,6 @@
 #include "wdb.h"
 #include "string_op.h"
 
-static short eval_bool(const char *str) {
-    if (!str) {
-        return OS_INVALID;
-    } else if (!strcmp(str, "yes")) {
-        return 1;
-    } else if (!strcmp(str, "no")) {
-        return 0;
-    } else {
-        return OS_INVALID;
-    }
-}
-
-int Read_WazuhDB(const OS_XML *xml, XML_NODE child_node) {
-    const char *xml_backup = "backup";
-    const char *xml_database = "database";
-    const char *xml_database_global = "global";
-
-    xml_node *node = *child_node;
-
-    if (node->element == NULL) {
-        merror(XML_ELEMNULL);
-        return OS_INVALID;
-    }
-
-    if (strcmp(node->element, xml_backup) != 0) {
-        merror(XML_INVELEM, node->element);
-        return OS_INVALID;
-    }
-
-    char **attr = node->attributes;
-    if (attr == NULL || attr[0] == NULL || strcmp(attr[0], xml_database) != 0) {
-        merror(XML_INVATTR, attr && attr[0] ? attr[0] : "", node->element);
-        return OS_INVALID;
-    }
-
-    char **val = node->values;
-    if (val == NULL || val[0] == NULL || strcmp(val[0], xml_database_global) != 0) {
-        merror(XML_VALUEERR, node->attributes[0], val && val[0] ? val[0] : "");
-        return OS_INVALID;
-    }
-
-    return Read_WazuhDB_Backup(xml, node, WDB_GLOBAL_BACKUP);
-}
-
-int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE) {
-    const char* xml_enabled = "enabled";
-    const char* xml_interval = "interval";
-    const char* xml_max_files = "max_files";
-    XML_NODE chld_node = NULL;
-
-    chld_node = OS_GetElementsbyNode(xml, node);
-    if(!chld_node) {
-        merror(XML_ELEMNULL);
-        return OS_INVALID;
-    }
-
-    for (int i = 0; chld_node[i]; i++) {
-        if (!chld_node[i]->element) {
-            merror(XML_ELEMNULL);
-            OS_ClearNode(chld_node);
-            return OS_INVALID;
-        } else if (!chld_node[i]->content) {
-            merror(XML_VALUENULL, chld_node[i]->element);
-            OS_ClearNode(chld_node);
-            return OS_INVALID;
-        } else if (!strcmp(chld_node[i]->element, xml_enabled)) {
-            short tmp_bool = eval_bool(chld_node[i]->content);
-
-            if (tmp_bool < 0) {
-                merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-
-            wconfig.wdb_backup_settings[BACKUP_NODE]->enabled = tmp_bool;
-        } else if (!strcmp(chld_node[i]->element, xml_interval)) {
-            long time_value = w_parse_time(chld_node[i]->content);
-
-            if (time_value > 0) {
-                wconfig.wdb_backup_settings[BACKUP_NODE]->interval = time_value;
-            } else {
-                merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(chld_node[i]->element, xml_max_files)) {
-            if (!OS_StrIsNum(chld_node[i]->content)) {
-                merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                OS_ClearNode(chld_node);
-                return (OS_INVALID);
-            }
-
-            wconfig.wdb_backup_settings[BACKUP_NODE]->max_files = atoi(chld_node[i]->content);
-
-            if (wconfig.wdb_backup_settings[BACKUP_NODE]->max_files <= 0) {
-                merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                OS_ClearNode(chld_node);
-                return (OS_INVALID);
-            }
-        } else {
-            merror(XML_INVELEM, chld_node[i]->element);
-            OS_ClearNode(chld_node);
-            return OS_INVALID;
-        }
-    }
-
-    OS_ClearNode(chld_node);
-    return OS_SUCCESS;
-}
-
 void wdb_init_conf() {
     os_calloc(WDB_LAST_BACKUP, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings);
 
@@ -142,3 +32,49 @@ void wdb_free_conf() {
     }
     os_free(wconfig.wdb_backup_settings);
 }
+
+#ifndef CLIENT
+#include "mconf-config.h"
+
+/* Reader of the `wdb` section of the effective YAML document (mconf-config.h): fills the global-backup
+ * settings of wconfig, which wdb_init_conf() has already set to their defaults. Types and ranges come
+ * guaranteed by the schema; the value rules of the XML reader are repeated. */
+int Read_WazuhDB_JSON(const struct cJSON *wdb) {
+    const cJSON *backup = wdb != NULL ? cJSON_GetObjectItem(wdb, "backup") : NULL;
+    const cJSON *global = cJSON_IsObject(backup) ? cJSON_GetObjectItem(backup, "global") : NULL;
+    const cJSON *item = NULL;
+    wdb_backup_settings_node *settings = NULL;
+
+    if (!cJSON_IsObject(global)) {
+        return OS_SUCCESS;
+    }
+
+    if (wconfig.wdb_backup_settings == NULL || wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP] == NULL) {
+        merror("Wazuh-DB backup settings are not initialized.");
+        return OS_INVALID;
+    }
+    settings = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP];
+
+    settings->enabled = w_mconf_json_bool(cJSON_GetObjectItem(global, "enabled"), settings->enabled);
+
+    if (item = cJSON_GetObjectItem(global, "interval"), item != NULL) {
+        long interval = w_mconf_json_time(item);
+
+        if (interval <= 0) {
+            w_mconf_json_invalid("interval", item);
+            return OS_INVALID;
+        }
+        settings->interval = interval;
+    }
+
+    if (item = cJSON_GetObjectItem(global, "max_files"), item != NULL) {
+        if (!cJSON_IsNumber(item) || item->valuedouble <= 0) {
+            w_mconf_json_invalid("max_files", item);
+            return OS_INVALID;
+        }
+        settings->max_files = item->valueint;
+    }
+
+    return OS_SUCCESS;
+}
+#endif /* CLIENT */

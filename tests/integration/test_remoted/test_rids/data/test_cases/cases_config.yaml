@@ -1,27 +1,24 @@
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     remoted.verify_msg_id: 1
     remoted.worker_pool: 4
-    expected_start: False
-
-
+    expected_start: false
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     remoted.verify_msg_id: 1
     remoted.worker_pool: 1
-    expected_start: True
-
+    expected_start: true
 - name: Command config wazuh manager  for RIDS
   description: Command config wazuh manager for RIDS
   configuration_parameters:
-    PORT: '1514'
+    PORT: 1514
   metadata:
     remoted.verify_msg_id: 0
     remoted.worker_pool: 4
-    expected_start: True
+    expected_start: true

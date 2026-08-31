@@ -44,9 +44,9 @@ echo "=== 2. backup of the manager files this lab modifies ==="
 mkdir -p "$HERE/backup"
 # The CA is included because a previous setup (manual or an older lab) may have left one that the
 # config references: without a backup, cleanup.sh cannot know whether the CA was the lab's own or
-# pre-existing, and restoring a config whose <ca> file is gone leaves remoted unable to start
+# pre-existing, and restoring a config whose remote.https.ca file is gone leaves remoted unable to start
 # (load_verify_file). Backups are keyed by basename, so they follow whatever the config names.
-for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL" etc/wazuh-manager.conf; do
+for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL" etc/wazuh-manager.yml; do
     name="$(basename "$rel")"
     if [[ ! -f "$HERE/backup/$name" && -f "$MANAGER/$rel" ]]; then
         cp -a "$MANAGER/$rel" "$HERE/backup/$name"

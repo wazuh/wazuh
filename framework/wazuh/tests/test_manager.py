@@ -34,6 +34,15 @@ def mock_wazuh_path():
         yield
 
 
+@pytest.fixture(scope='module', autouse=True)
+def installed_schema():
+    """The schema the installer copies to etc/wazuh-manager.schema.json, from its source in the repository."""
+    schema_path = os.path.join(test_data_path, '..', '..', '..', '..', 'src', 'shared_modules', 'manager_config', 'schema',
+                               'wazuh-manager.schema.json')
+    with patch('wazuh.core.common.MANAGER_CONF_SCHEMA', new=schema_path):
+        yield
+
+
 class InitManager:
     def __init__(self):
         """Sets up necessary environment to test manager functions"""
@@ -441,10 +450,10 @@ def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
-        "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
+        "'/var/wazuh-manage/etc/wazuh-manager.yml'.")
 ])
-@patch('wazuh.manager.validate_ossec_conf')
-def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
+@patch('wazuh.manager.validate_manager_conf')
+def test_validation(mock_validate_manager_conf, error_flag, error_msg):
     """Test validation() method works as expected
 
     Tests configuration validation function with multiple scenarios:
@@ -461,10 +470,10 @@ def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
     """
     if error_flag == 0:
         # Success case - validation passes
-        mock_validate_ossec_conf.return_value = {'status': 'OK'}
+        mock_validate_manager_conf.return_value = {'status': 'OK'}
     else:
         # Error case - validation fails
-        mock_validate_ossec_conf.side_effect = WazuhError(1908, extra_message=error_msg)
+        mock_validate_manager_conf.side_effect = WazuhError(1908, extra_message=error_msg)
 
     result = validation()
 
@@ -478,7 +487,7 @@ def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
     WazuhError(1113),  # XML validation error
     WazuhError(1908)  # General validation error
 ])
-@patch('wazuh.manager.validate_ossec_conf')
+@patch('wazuh.manager.validate_manager_conf')
 def test_validation_ko(mock_validate, exception):
     mock_validate.side_effect = exception
 
@@ -509,9 +518,9 @@ def test_get_config_ko():
 
 
 @pytest.mark.parametrize('raw', [True, False])
-def test_read_ossec_conf(raw):
-    """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf(raw=raw)
+def test_read_manager_conf(raw):
+    """Tests read_manager_conf() function works as expected"""
+    result = read_manager_conf(raw=raw)
 
     if raw:
         assert isinstance(result, str), 'No expected result type'
@@ -520,60 +529,63 @@ def test_read_ossec_conf(raw):
         assert result.render()['data']['total_failed_items'] == 0
 
 
-def test_read_ossec_con_ko():
-    """Tests read_ossec_conf() function returns an error"""
-    result = read_ossec_conf(section='test')
+def test_read_manager_conf_ko():
+    """Tests read_manager_conf() function returns an error"""
+    result = read_manager_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
 # ---------------------------------------------------------------------------
-# Tests for cluster.key masking in read_ossec_conf (CVE fix)
+# Tests for cluster.key masking in read_manager_conf (CVE fix)
 # ---------------------------------------------------------------------------
 
-_OSSEC_CONF_WITH_CLUSTER_KEY = """\
-<ossec_config>
-  <cluster>
-    <name>wazuh</name>
-    <node_name>master-node</node_name>
-    <key>REAL_CLUSTER_SECRET</key>
-    <port>1516</port>
-    <disabled>no</disabled>
-  </cluster>
-</ossec_config>"""
+_MANAGER_CONF_WITH_CLUSTER_KEY = """\
+# Wazuh manager configuration
+cluster:
+  name: wazuh
+  node_name: master-node
+  key: REAL_CLUSTER_SECRET
+  port: 1516
+  hidden: false
+global:
+  key: this_should_not_be_masked
+"""
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
-    result = read_ossec_conf(raw=True)
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
+    """read_manager_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' not in result
-    assert '<key>*****</key>' in result
+    assert '  key: *****' in result
+    assert 'this_should_not_be_masked' in result
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_no_masking_for_admin(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) returns the real cluster key for admin users with update_config."""
-    result = read_ossec_conf(raw=True)
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_no_masking_for_admin(mock_file, mock_perms):
+    """read_manager_conf(raw=True) returns the real cluster key for admin users with update_config."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' in result
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
     """Masking cluster.key must not corrupt other fields in the configuration."""
-    result = read_ossec_conf(raw=True)
+    result = read_manager_conf(raw=True)
 
-    assert '<name>wazuh</name>' in result
-    assert '<node_name>master-node</node_name>' in result
-    assert '<port>1516</port>' in result
+    assert '  name: wazuh' in result
+    assert '  node_name: master-node' in result
+    assert '  port: 1516' in result
+    assert '  hidden: false' in result
 
 
 @patch('wazuh.core.common.os.chown')
@@ -589,44 +601,62 @@ def test_get_basic_info(mock_uid, mock_gid, mock_open_file, mock_exists, mock_ch
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.remove')
-@patch('wazuh.manager.exists', return_value=True)
-@patch('wazuh.manager.full_copy')
-@patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
-def test_update_ossec_conf(validate_conf_mock, write_mock, validate_xml_mock, full_copy_mock, exists_mock,
-                           remove_mock, move_mock):
-    """Test update_ossec_conf works as expected."""
-    result = update_ossec_conf(new_conf="placeholder config")
-    write_mock.assert_called_once()
-    validate_conf_mock.assert_called_once()
+_UPDATE_PATCHES = [
+    ('wazuh.manager.safe_move', {}),
+    ('wazuh.manager.remove', {}),
+    ('wazuh.manager.exists', {'return_value': True}),
+    ('wazuh.manager.full_copy', {}),
+    ('wazuh.manager.load_yaml_text', {'return_value': {'cluster': {'name': 'wazuh'}}}),
+    ('wazuh.manager.validate_document', {}),
+    ('wazuh.manager.apply_defaults', {}),
+    ('wazuh.manager.load_manager_conf', {'return_value': {'cluster': {'name': 'wazuh'}}}),
+    ('wazuh.manager.check_protected_sections', {}),
+    ('wazuh.manager.write_manager_conf', {}),
+    ('wazuh.manager.validate_manager_conf', {'return_value': {'status': 'OK'}}),
+]
+
+
+@pytest.fixture
+def update_mocks():
+    """Every collaborator of update_manager_conf() mocked, keyed by function name."""
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        yield {target.rsplit('.', 1)[1]: stack.enter_context(patch(target, **kwargs)) for target, kwargs in _UPDATE_PATCHES}
+
+
+def test_update_manager_conf(update_mocks):
+    """update_manager_conf() validates the YAML (syntax, schema, protected sections), writes it and validates the file."""
+    result = update_manager_conf(new_conf="cluster:\n  name: wazuh\n")
+
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
-    remove_mock.assert_called_once()
+    update_mocks['load_yaml_text'].assert_called_once_with("cluster:\n  name: wazuh\n")
+    update_mocks['validate_document'].assert_called_once()
+    update_mocks['check_protected_sections'].assert_called_once()
+    update_mocks['write_manager_conf'].assert_called_once_with("cluster:\n  name: wazuh\n")
+    update_mocks['validate_manager_conf'].assert_called_once()
+    update_mocks['remove'].assert_called_once()
 
 
-@pytest.mark.parametrize('new_conf', [
-    None,
-    "invalid configuration"
+@pytest.mark.parametrize('new_conf, failing, error, expected_code', [
+    (None, None, None, 1125),
+    ("cluster: [", 'load_yaml_text', WazuhError(1131), 1131),
+    ("auth:\n  use_password: yes\n", 'validate_document', WazuhError(1130, '/auth/use_password'), 1130),
+    ("indexer:\n  hosts: []\n", 'check_protected_sections', WazuhError(1127, '/indexer'), 1127),
+    ("cluster:\n  name: wazuh\n", 'validate_manager_conf', None, 1125),
 ])
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.remove')
-@patch('wazuh.manager.exists', return_value=True)
-@patch('wazuh.manager.full_copy')
-@patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.validate_ossec_conf')
-def test_update_ossec_conf_ko(validate_conf_mock, write_mock, validate_xml_mock, full_copy_mock, exists_mock,
-                              remove_mock, move_mock, new_conf):
-    """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
-    is not valid."""
-    # For invalid configuration case, make validate_ossec_conf return invalid status
-    if new_conf == "invalid configuration":
-        validate_conf_mock.return_value = {'status': 'ERROR'}
+def test_update_manager_conf_ko(update_mocks, new_conf, failing, error, expected_code):
+    """update_manager_conf() reports the first failing check, never writes when the text is rejected and restores the
+    backup when the written file is refused by the validator."""
+    if failing == 'validate_manager_conf':
+        update_mocks[failing].return_value = {'status': 'ERROR'}
+    elif failing:
+        update_mocks[failing].side_effect = error
 
-    result = update_ossec_conf(new_conf=new_conf)
+    result = update_manager_conf(new_conf=new_conf)
+
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
-    move_mock.assert_called_once()
+    assert result.render()['data']['failed_items'][0]['error']['code'] == expected_code
+    if failing != 'validate_manager_conf':
+        update_mocks['write_manager_conf'].assert_not_called()
+    update_mocks['safe_move'].assert_called_once()

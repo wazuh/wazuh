@@ -17,9 +17,9 @@ COPY --from=builder /var/wazuh-manager /var/wazuh-manager
 RUN ln -s /var/wazuh-manager/framework/python/bin/python3 /bin/wpy && \
     ln -s /var/wazuh-manager/framework/python/bin/pip3 /bin/wpip
 
-ADD xml/xml_parser.py /scripts/xml_parser.py
-ADD xml/master_wazuh-manager_conf.xml /scripts/master_wazuh-manager_conf.xml
-ADD xml/worker_wazuh-manager_conf.xml /scripts/worker_wazuh-manager_conf.xml
+ADD yml/yaml_merge.py /scripts/yaml_merge.py
+ADD yml/master_wazuh-manager.yml /scripts/master_wazuh-manager.yml
+ADD yml/worker_wazuh-manager.yml /scripts/worker_wazuh-manager.yml
 ADD entrypoint.sh /scripts/entrypoint.sh
 ADD healthcheck.sh /scripts/healthcheck.sh
 RUN chmod +x /scripts/healthcheck.sh

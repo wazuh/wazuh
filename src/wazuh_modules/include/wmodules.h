@@ -92,8 +92,11 @@ void wm_sleep_until_interruptible(time_t abs_time);
 // Like select() on a single read fd but checks wm_shutdown_requested every second; returns 0 on shutdown.
 int wm_select_interruptible(int sock, fd_set *fdset);
 
-// Read XML configuration and internal options
+// Read the configuration (etc/wazuh-manager.yml on the manager, XML on the agent) and internal options
 int wm_config();
+#ifndef CLIENT
+extern const char *wm_config_path;   // Manager configuration file (etc/wazuh-manager.yml); modulesd -c overrides it.
+#endif
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
 int modulesSync(char* args, size_t length);

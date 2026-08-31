@@ -10,29 +10,29 @@ For module overview and architecture, see [Indexer Connector Module](index.html)
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<indexer>`
+**YAML section:** `indexer` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#indexer)
 
 **Internal Options:** None
 
 The Indexer Connector configuration establishes TLS-secured connections to one or more Indexer nodes for data indexing and feed synchronization.
 
-**Required fields:** Both `<hosts>` and `<ssl>` are required. The parser returns an error if either is absent or empty.
+**Required fields:** Both `indexer.hosts` and `indexer.ssl` are required. The parser returns an error if either is absent or empty.
 
 ### hosts
 
-List of Indexer node URLs. Each node is specified with a `<host>` child element.
+List of Indexer node URLs. Each node is one entry of the `indexer.hosts` list.
 
 - **Default value:** None (required configuration)
 - **Allowed values:** URL in the form `http://<address>:<port>` or `https://<address>:<port>`
 - **Note:** At least one host must be defined. Must start with `http://` or `https://` and include a port number. The connector load-balances across all listed hosts and fails over if a node is unavailable
 
 Example:
-```xml
-<hosts>
-  <host>https://127.0.0.1:9200</host>
-</hosts>
+```yaml
+indexer:
+  hosts:
+  - https://127.0.0.1:9200
 ```
 
 ### ssl
@@ -45,19 +45,18 @@ TLS/SSL configuration block.
 
 #### certificate_authorities
 
-Path to one or more CA certificates used to verify the Indexer's TLS certificate. Each CA is listed with a `<ca>` child element.
+Path to one or more CA certificates used to verify the Indexer's TLS certificate. Each CA is one entry of the `indexer.ssl.certificate_authorities` list.
 
 - **Default value:** None
 - **Allowed values:** Path to a PEM-encoded CA certificate (relative or absolute)
 - **Note:** Omitting this disables server certificate verification (not recommended for production). Path must exist on disk at startup time
 
 Example:
-```xml
-<ssl>
-  <certificate_authorities>
-    <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-  </certificate_authorities>
-</ssl>
+```yaml
+indexer:
+  ssl:
+    certificate_authorities:
+    - /var/wazuh-manager/etc/certs/root-ca.pem
 ```
 
 #### certificate
@@ -95,9 +94,9 @@ For full keystore usage, see [Keystore Module](../keystore/index.html).
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/local_internal_options.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
 
-The Indexer Connector does not have dedicated internal options. Connection and bulk indexing behavior is controlled through the XML configuration and module-specific settings.
+The Indexer Connector does not have dedicated internal options. Connection and bulk indexing behavior is controlled through the `indexer` section and module-specific settings.
 
 ---
 
@@ -107,76 +106,60 @@ The Indexer Connector does not have dedicated internal options. Connection and b
 
 Basic configuration with one Indexer node:
 
-```xml
-<indexer>
-  <hosts>
-    <host>https://127.0.0.1:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+  - https://127.0.0.1:9200
+  ssl:
+    certificate_authorities:
+    - /var/wazuh-manager/etc/certs/root-ca.pem
+    certificate: /var/wazuh-manager/etc/certs/indexer-connector.pem
+    key: /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 ### Multi-Node Cluster
 
 High availability configuration with multiple Indexer nodes:
 
-```xml
-<indexer>
-  <hosts>
-    <host>https://10.0.0.1:9200</host>
-    <host>https://10.0.0.2:9200</host>
-    <host>https://10.0.0.3:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+  - https://10.0.0.1:9200
+  - https://10.0.0.2:9200
+  - https://10.0.0.3:9200
+  ssl:
+    certificate_authorities:
+    - /var/wazuh-manager/etc/certs/root-ca.pem
+    certificate: /var/wazuh-manager/etc/certs/indexer-connector.pem
+    key: /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 ### Multiple CA Certificates
 
 If using certificates from different CAs:
 
-```xml
-<indexer>
-  <hosts>
-    <host>https://indexer1.example.com:9200</host>
-    <host>https://indexer2.example.com:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-1.pem</ca>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-2.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+  - https://indexer1.example.com:9200
+  - https://indexer2.example.com:9200
+  ssl:
+    certificate_authorities:
+    - /var/wazuh-manager/etc/certs/root-ca-1.pem
+    - /var/wazuh-manager/etc/certs/root-ca-2.pem
+    certificate: /var/wazuh-manager/etc/certs/indexer-connector.pem
+    key: /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 ### Development/Testing (No TLS Verification)
 
 **WARNING:** Not recommended for production. Only for isolated development environments.
 
-```xml
-<indexer>
-  <hosts>
-    <host>http://127.0.0.1:9200</host>
-  </hosts>
-  <ssl>
-    <!-- Empty SSL block required but no verification -->
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+  - http://127.0.0.1:9200
+  ssl: {}   # empty section: no certificate verification
 ```
 
 ---

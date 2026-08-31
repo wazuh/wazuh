@@ -49,7 +49,7 @@ This package provides debug information for package %{name}.
 %prep
 %setup -q
 
-./src/init/gen_wazuh.sh conf manager centos %rhel %{_localstatedir} > etc/wazuh-manager.conf
+./src/init/gen_wazuh.sh conf manager centos %rhel %{_localstatedir} > etc/wazuh-manager.yml
 
 %build
 pushd src
@@ -315,6 +315,20 @@ if [ "$1" -eq 2 ]; then
     cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
   fi
 
+  # A manager installed before the YAML configuration existed gets a default etc/wazuh-manager.yml;
+  # an existing one is never touched (the configuration is generated, not shipped).
+  if [ ! -f %{_localstatedir}/etc/wazuh-manager.yml ]; then
+    . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
+    if %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.yml \
+        && %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f %{_localstatedir}/etc/wazuh-manager.yml; then
+      chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.yml
+      chmod 0660 %{_localstatedir}/etc/wazuh-manager.yml
+    else
+      rm -f %{_localstatedir}/etc/wazuh-manager.yml
+      echo "WARNING: could not generate %{_localstatedir}/etc/wazuh-manager.yml; create it before starting the manager." >&2
+    fi
+  fi
+
 fi
 
 # Fresh install code block
@@ -322,14 +336,19 @@ if [ "$1" -eq 1 ]; then
 
   . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
 
-  # Generating wazuh-manager.conf file
-  if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf; then
-    rm -f %{_localstatedir}/etc/wazuh-manager.conf
-    echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.conf." >&2
+  # Generating wazuh-manager.yml
+  if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.yml; then
+    rm -f %{_localstatedir}/etc/wazuh-manager.yml
+    echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.yml." >&2
     exit 1
   fi
-  chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
-  chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f %{_localstatedir}/etc/wazuh-manager.yml; then
+    rm -f %{_localstatedir}/etc/wazuh-manager.yml
+    echo "ERROR: the generated %{_localstatedir}/etc/wazuh-manager.yml is not a valid manager configuration." >&2
+    exit 1
+  fi
+  chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.yml
+  chmod 0660 %{_localstatedir}/etc/wazuh-manager.yml
 
   touch %{_localstatedir}/logs/wazuh-manager.log
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
@@ -388,9 +407,11 @@ rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 # Set merged.mg permissions to new ones
 find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-# Restore wazuh-manager.conf permissions after upgrading
-chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
-chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
+# Restore wazuh-manager.yml permissions after upgrading
+if [ -f %{_localstatedir}/etc/wazuh-manager.yml ]; then
+  chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.yml
+  chmod 0660 %{_localstatedir}/etc/wazuh-manager.yml
+fi
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
@@ -570,6 +591,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
 %attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
@@ -578,12 +600,13 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
-%attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
+%attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.yml
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted.pem
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default

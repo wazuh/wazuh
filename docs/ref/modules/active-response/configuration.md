@@ -54,13 +54,9 @@ Prevent this agent from executing any active response scripts:
 
 ---
 
-## Manager Configuration
+## Manager Side
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
-
-**XML Section:** `<active-response>` (for defining response triggers)
-
-Active response scripts and triggers are defined on the manager. The manager analyzes events and sends execution commands to agents when conditions match.
+The manager configuration file (`/var/wazuh-manager/etc/wazuh-manager.yml`) has no `active-response` or `command` section: `<active-response>` and `<command>` are agent configuration (`ossec.conf`, or the centralized `agent.conf`). On the manager, the response triggers are the rules the engine evaluates; when a rule matches, the engine sends the execution command to the agent.
 
 For manager-side active response configuration, see:
 - [Active Response Executables](executables.md) - Available response scripts
@@ -273,10 +269,10 @@ aa-status | grep wazuh
 ls -l /var/ossec/active-response/bin/script-name.sh
 ```
 
-**Check manager configuration:**
+**Check the script on the agent:**
 ```bash
-# Verify script name matches manager configuration
-grep -A5 "<command>" /var/wazuh-manager/etc/wazuh-manager.conf
+# The script named by the response must exist here
+ls -l /var/ossec/active-response/bin/
 ```
 
 ### Too Many Concurrent Executions

@@ -2,9 +2,9 @@
 
 Complete configuration reference for the Wazuh enrollment service (authd), which issues keys and registers new agents.
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<auth>`
+**YAML section:** `auth` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#auth)
 
 **Module:** Manager-only
 
@@ -16,15 +16,15 @@ For module overview and architecture, see [Auth Daemon Module](index.html).
 
 ## Configuration Options
 
-The `<auth>` section configures the enrollment service that handles agent registration.
+The `auth` section configures the enrollment service that handles agent registration.
 
 ### disabled
 
 Disables the enrollment service entirely.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When the `<auth>` block is present but this option is not set, the service starts
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
+- **Note:** When the `auth` block is present but this option is not set, the service starts
 
 ### port
 
@@ -38,15 +38,15 @@ TCP port on which the enrollment service listens.
 
 Enable IPv6 support.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
 
 ### use_source_ip
 
 Register agents using their source IP address instead of `any`.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
 - **Note:** When enabled, agents can only connect from the IP they enrolled from. Both listeners
   enforce this: the classic one via `OS_IsAllowedDynamicID()`, and the HTTPS one via the `ip` column
   check described in
@@ -64,22 +64,22 @@ it out (see [Force re-enrollment](index.html#force-re-enrollment)) — the activ
 is always deleted regardless of this setting. What `purge` decides is whether that deleted entry is
 also retained as a `!`-prefixed placeholder line in `client.keys` (e.g. `001 !oldname 1.2.3.4
 <key>`), which keeps a record of the old ID/name/IP so it is not reused. By default the placeholder
-line is kept; setting `purge` to `yes` suppresses it, so the entry is removed with no trace left
+line is kept; setting `purge` to `true` suppresses it, so the entry is removed with no trace left
 behind.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
 
 ### use_password
 
 Require agents to provide a shared enrollment password.
 
-- **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false` (the configuration shipped by the installer sets it to `true`)
+- **Allowed values:** `true`, `false`
 
 When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-authd` generates a random password on start, stores it in that file, and reuses it on later starts. If the file exists but is empty or invalid, `wazuh-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
-**Agent-side setup:** Because `use_password` is `yes` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
+**Agent-side setup:** Because `use_password` is `true` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
 
 ```bash
 sudo cat /var/wazuh-manager/etc/authd.pass
@@ -112,26 +112,26 @@ turns off both at once; use [`legacy_enrollment`](#legacy_enrollment) to turn of
 while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth.sock`) used by
 `manage_agents`/the API stays available regardless of this setting.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 
 ### legacy_enrollment
 
-Narrows `remote_enrollment` further, without affecting it: when `remote_enrollment` is `yes`, this
-flag controls whether port 1515's TCP/TLS listener specifically starts. Set to `no` to retire
+Narrows `remote_enrollment` further, without affecting it: when `remote_enrollment` is `true`, this
+flag controls whether port 1515's TCP/TLS listener specifically starts. Set to `false` to retire
 legacy 1515 while keeping `/enroll` — the manager's intended long-term enrollment path — available.
-Has no effect when `remote_enrollment` is `no` (both paths are already off), and no effect on
+Has no effect when `remote_enrollment` is `false` (both paths are already off), and no effect on
 `/enroll` at all, which this flag exists specifically to leave alone.
 
 | `disabled` | `remote_enrollment` | `legacy_enrollment`  | Port 1515 | `POST /enroll` |
 | ---------- | -------------------- | --------------------- | --------- | -------------- |
-| `yes`      | –                    | –                     | off       | off            |
-| `no`       | `no`                 | –                     | off       | off            |
-| `no`       | `yes`                | `yes` (default)       | on        | on             |
-| `no`       | `yes`                | `no`                  | off       | **on**         |
+| `true`      | –                    | –                     | off       | off            |
+| `false`       | `false`                 | –                     | off       | off            |
+| `false`       | `true`                | `true` (default)       | on        | on             |
+| `false`       | `true`                | `false`                  | off       | **on**         |
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 
 ### ciphers
 
@@ -151,8 +151,8 @@ Path to the CA certificate used to verify agent client certificates during mutua
 
 Verify that the CN of the agent certificate matches the agent's IP address. Requires `ssl_agent_ca` to be set.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
 
 ### ssl_manager_cert
 
@@ -172,7 +172,7 @@ Path to the private key corresponding to `ssl_manager_cert`.
 
 ### force
 
-Sub-element that controls forced re-enrollment behavior when an agent already exists in the manager keystore.
+Sub-section that controls forced re-enrollment behavior when an agent already exists in the manager keystore.
 
 **Sub-options:**
 
@@ -180,29 +180,29 @@ Sub-element that controls forced re-enrollment behavior when an agent already ex
 
 Allow forced re-enrollment (overwrite an existing agent entry).
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 
 #### force / key_mismatch
 
 Force re-enrollment when an agent reconnects with a key that does not match what the manager has stored.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 
 #### force / disconnected_time
 
 Minimum time an agent must have been disconnected before it can be forcibly re-enrolled. The `enabled` attribute gates this check. The value is the duration; `enabled` controls whether the check is active.
 
 - **Default value:** `1h` with `enabled="yes"`
-- **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`; attribute `enabled`: `yes`/`no`
+- **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`; attribute `enabled`: `true`/`false`
 
-```xml
-<!-- Enable the check, require 2h disconnection -->
-<disconnected_time enabled="yes">2h</disconnected_time>
-
-<!-- Disable the check entirely -->
-<disconnected_time enabled="no">0</disconnected_time>
+```yaml
+auth:
+  force:
+    disconnected_time:
+      enabled: false
+      value: 0
 ```
 
 #### force / after_registration_time
@@ -216,15 +216,15 @@ Minimum time since an agent was last registered before a forced re-enrollment is
 
 Accept enrollment from agents running a newer Wazuh version than the manager.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `false`
+- **Allowed values:** `true`, `false`
 
-**Note:** This option controls the **enrollment gate** (authd, port 1515). There is an independent option with the same name under `<remote><agents>` that controls the **connection gate** (remoted, port 1514). Both must be set to `yes` for a higher-version agent to both enroll and connect. Setting them differently — for example allowing enrollment but not connection — will result in agents that obtain keys but cannot communicate, which is difficult to diagnose.
+**Note:** This option controls the **enrollment gate** (authd, port 1515). There is an independent option with the same name under `remote.agents` that controls the **connection gate** (remoted, port 1514). Both must be set to `true` for a higher-version agent to both enroll and connect. Setting them differently — for example allowing enrollment but not connection — will result in agents that obtain keys but cannot communicate, which is difficult to diagnose.
 
-```xml
-<agents>
-  <allow_higher_versions>no</allow_higher_versions>
-</agents>
+```yaml
+auth:
+  agents:
+    allow_higher_versions: false
 ```
 
 ---
@@ -285,114 +285,109 @@ Pending purges are persisted, so the wait survives a restart: see
 
 Standard enrollment with password protection:
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <use_password>yes</use_password>
-  <force>
-    <enabled>yes</enabled>
-    <key_mismatch>yes</key_mismatch>
-    <disconnected_time enabled="yes">1h</disconnected_time>
-    <after_registration_time>1h</after_registration_time>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_password: true
+  force:
+    enabled: true
+    key_mismatch: true
+    disconnected_time:
+      enabled: true
+      value: 1h
+    after_registration_time: 1h
 ```
 
 ### Secure Configuration with TLS
 
 Mutual TLS with client certificate verification:
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <use_password>yes</use_password>
-  <ssl_agent_ca>/var/wazuh-manager/etc/rootCA.pem</ssl_agent_ca>
-  <ssl_verify_host>yes</ssl_verify_host>
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
-  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
-  <force>
-    <enabled>yes</enabled>
-    <key_mismatch>yes</key_mismatch>
-    <disconnected_time enabled="yes">2h</disconnected_time>
-    <after_registration_time>2h</after_registration_time>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_password: true
+  ssl_agent_ca: /var/wazuh-manager/etc/rootCA.pem
+  ssl_verify_host: true
+  ssl_manager_cert: /var/wazuh-manager/etc/certs/remoted.pem
+  ssl_manager_key: /var/wazuh-manager/etc/certs/remoted-key.pem
+  ciphers: TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+  force:
+    enabled: true
+    key_mismatch: true
+    disconnected_time:
+      enabled: true
+      value: 2h
+    after_registration_time: 2h
 ```
 
 ### Strict IP Binding
 
 Register agents with their source IP:
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <use_source_ip>yes</use_source_ip>
-  <use_password>yes</use_password>
-  <purge>yes</purge>
-  <force>
-    <enabled>no</enabled>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_source_ip: true
+  use_password: true
+  purge: true
+  force:
+    enabled: false
 ```
 
 ### Allow Higher Agent Versions
 
 Accept enrollment from newer agent versions:
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <use_password>yes</use_password>
-  <agents>
-    <allow_higher_versions>yes</allow_higher_versions>
-  </agents>
-  <force>
-    <enabled>yes</enabled>
-    <key_mismatch>yes</key_mismatch>
-    <disconnected_time enabled="yes">1h</disconnected_time>
-    <after_registration_time>1h</after_registration_time>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_password: true
+  agents:
+    allow_higher_versions: true
+  force:
+    enabled: true
+    key_mismatch: true
+    disconnected_time:
+      enabled: true
+      value: 1h
+    after_registration_time: 1h
 ```
 
 ### Local-Only Enrollment
 
 Disable remote enrollment (require local socket):
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <remote_enrollment>no</remote_enrollment>
-  <use_password>yes</use_password>
-  <force>
-    <enabled>yes</enabled>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  remote_enrollment: false
+  use_password: true
+  force:
+    enabled: true
 ```
 
 ### Development/Testing Configuration
 
 Relaxed settings for testing (NOT for production):
 
-```xml
-<auth>
-  <disabled>no</disabled>
-  <port>1515</port>
-  <use_password>no</use_password>
-  <purge>yes</purge>
-  <force>
-    <enabled>yes</enabled>
-    <key_mismatch>yes</key_mismatch>
-    <disconnected_time enabled="no">0</disconnected_time>
-    <after_registration_time>0</after_registration_time>
-  </force>
-</auth>
+```yaml
+auth:
+  disabled: false
+  port: 1515
+  use_password: false
+  purge: true
+  force:
+    enabled: true
+    key_mismatch: true
+    disconnected_time:
+      enabled: false
+      value: 0
+    after_registration_time: 0
 ```
 
 ---

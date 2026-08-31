@@ -1,55 +1,28 @@
-- sections:
-    - section: auth
-      elements:
-      - disabled:
-          value: 'no'
-      - port:
-          value: 1515
-      - use_source_ip:
-          value: 'no'
-      - force:
-          elements:
-          - enabled:
-              value: 'yes'
-          - key_mismatch:
-              value: 'no'
-          - after_registration_time:
-              value: '0h'
-          - disconnected_time:
-              attributes:
-              - enabled: 'yes'
-              value: '0h'
-      - purge:
-          value: 'yes'
-      - use_password:
-          value: 'no'
-      - ciphers:
-          value: 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256'
-      - ssl_verify_host:
-          value: 'no'
-      - ssl_manager_cert:
-          value: '/var/wazuh-manager/etc/certs/remoted.pem'
-      - ssl_manager_key:
-          value: '/var/wazuh-manager/etc/certs/remoted-key.pem'
-    - section: cluster
-      elements:
-      - name:
-          value: wazuh
-      - node_name:
-          value: worker1
-      - node_type:
-          value: worker
-      - key:
-          value: FERNET_KEY
-      - port:
-          value: 1516
-      - bind_addr:
-          value: 0.0.0.0
-      - nodes:
-          elements:
-          - node:
-              value: 127.0.0.1
-      - hidden:
-          value: 'no'
-      - disabled:
-          value: 'no'
+- fragments:
+    auth:
+      disabled: false
+      port: 1515
+      use_source_ip: false
+      force:
+        enabled: true
+        key_mismatch: false
+        after_registration_time: 0h
+        disconnected_time:
+          enabled: true
+          value: 0h
+      purge: true
+      use_password: false
+      ciphers: TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256
+      ssl_verify_host: false
+      ssl_manager_cert: /var/wazuh-manager/etc/certs/remoted.pem
+      ssl_manager_key: /var/wazuh-manager/etc/certs/remoted-key.pem
+    cluster:
+      name: wazuh
+      node_name: worker1
+      node_type: worker
+      key: FERNET_KEY
+      port: 1516
+      bind_addr: 0.0.0.0
+      nodes:
+      - 127.0.0.1
+      hidden: false

@@ -37,7 +37,7 @@ configure_component() {
             DELETED_DATA_REL="data/store/schema/engine-schema/0"
             BINARY_REL="bin/wazuh-manager-analysisd"
             COMMENT_MARKERS=(
-                "etc/wazuh-manager.conf|wazuh-manager.conf|<!-- | -->"
+                "etc/wazuh-manager.yml|wazuh-manager-yml|# |"
                 "etc/shared/agent-template.conf|agent-template|<!-- | -->"
                 "etc/shared/default/agent.conf|shared-default-agent|<!-- | -->"
                 "etc/wazuh-manager-internal-options.conf|internal-options|# |"

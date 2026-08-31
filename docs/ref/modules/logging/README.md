@@ -13,19 +13,17 @@ The Logging module controls the format and output of Wazuh daemon logs for both 
 
 ## Configuration
 
-The logging module is configured via the `<logging>` XML block in the main configuration file:
+The logging module is configured via the `logging` section of the manager configuration (`etc/wazuh-manager.yml`) — on agents, the `<logging>` XML block of `ossec.conf`:
 
-- **Manager:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+- **Manager:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 - **Agent:** `/var/ossec/etc/ossec.conf`
 
 ### Quick Example
 
-```xml
-<ossec_config>
-  <logging>
-    <log_format>plain</log_format>
-  </logging>
-</ossec_config>
+```yaml
+logging:
+  log_format:
+  - plain
 ```
 
 ## Log Files

@@ -98,11 +98,11 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
-        1125: {'message': 'Invalid ossec configuration',
-               'remediation': 'Please, provide a valid ossec configuration'
+        1125: {'message': 'Invalid manager configuration',
+               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.yml)'
                },
-        1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
+        1126: {'message': 'Error updating manager configuration',
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.yml` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -113,6 +113,13 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
+        1130: {'message': 'Configuration does not match the schema',
+               'remediation': 'The message names the offending option as a JSON pointer (e.g. /auth/use_password). '
+                              'Fix it in `WAZUH_PATH/etc/wazuh-manager.yml`; `bin/wazuh-manager-conf validate` reports '
+                              'the same problem.'},
+        1131: {'message': 'YAML syntax error',
+               'remediation': 'Please, provide a valid single-document YAML file: only true/false are booleans and '
+                              'anchors, aliases and tags are not allowed.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -316,7 +323,7 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[wazuh-manager.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
+                              f"[wazuh-manager.yml](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
                               f"ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",

@@ -1,0 +1,38 @@
+# Wazuh - Manager - Default configuration.
+# More info at: https://documentation.wazuh.com
+# Mailing list: https://groups.google.com/forum/#!forum/wazuh
+
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 0
+
+# Format of the internal logs: plain, json or both ([plain, json])
+logging:
+  log_format: [plain]
+
+remote:
+  https:
+    port: 1517
+    bind_addr: 127.0.0.1
+    global_prefix: /wazuh-manager/
+    certificate: etc/certs/remoted.pem
+    key: etc/certs/remoted-key.pem
+  legacy:
+    enabled: true
+    port: 1514
+    protocol: [tcp]
+    local_ip: 127.0.0.1
+  agents:
+    allow_higher_versions: false
+
+# Configuration for wazuh-manager-authd
+auth:
+  disabled: false
+  port: 1515
+  use_source_ip: false
+  purge: true
+  use_password: true
+  # ssl_agent_ca: etc/certs/ca.pem
+  ssl_verify_host: false
+  ssl_manager_cert: etc/certs/remoted.pem
+  ssl_manager_key: etc/certs/remoted-key.pem

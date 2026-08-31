@@ -20,7 +20,7 @@ set -euo pipefail
 # answers 403 to a foreign cluster); --cluster overrides it, and a remote --manager
 # must pass it explicitly. There is no node knob: a session declares no cluster node.
 #
-# --global-prefix (agent mode only): the manager's <remote><https><global_prefix>. It is
+# --global-prefix (agent mode only): the manager's remote.https.global_prefix>. It is
 # part of the request target, so it is SIGNED as well as sent and must match the manager
 # exactly. Against a prefixed manager without it, every request answers 404 and the run
 # reads as a broken manager. Read from the LOCAL manager's config exactly like the
@@ -53,7 +53,7 @@ REG_PORT=1515
 SEED=""
 CLUSTER=""
 GLOBAL_PREFIX=""
-MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.yml"
 ENROLL_SETTLE=""
 DO_METRICS=true
 DO_MONITOR=true
@@ -72,23 +72,26 @@ fi
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
 
-# Read <cluster><name> out of the manager's config. Scoped to the <cluster> block so
-# a <name> elsewhere in the file cannot be picked up by mistake. Prints nothing when
-# the file is missing or unreadable, which the caller treats as "not detected" rather
+# The manager's own CLI resolves the effective value (defaults applied) from the YAML
+# configuration, so nothing is parsed here. Prints nothing when the file is missing or
+# unreadable or the CLI is not installed, which the caller treats as "not detected" rather
 # than as an error.
-cluster_name_from_conf() {
+manager_conf_get() {
+    local mconf
     [[ -r "$MANAGER_CONF" ]] || return 0
-    sed -n '/<cluster>/,/<\/cluster>/p' "$MANAGER_CONF" 2>/dev/null \
-        | sed -n "s:.*<name>\(.*\)</name>.*:\1:p" | head -1
+    mconf="$(cd "$(dirname "$MANAGER_CONF")/.." 2>/dev/null && pwd)/bin/wazuh-manager-conf"
+    [[ -x "$mconf" ]] || return 0
+    "$mconf" -H "$(dirname "$mconf")/.." -f "$MANAGER_CONF" get "$1" 2>/dev/null || true
 }
 
-# Same idea for <remote><https><global_prefix>, scoped to the <https> block. An absent tag
-# prints nothing, which is not an error here: it is exactly what "no prefix" means to the
-# manager too.
+cluster_name_from_conf() {
+    manager_conf_get cluster.name
+}
+
+# Same idea for remote.https.global_prefix. The value is the effective one (the manager's
+# default when the option is not set), which is exactly the prefix the manager serves.
 global_prefix_from_conf() {
-    [[ -r "$MANAGER_CONF" ]] || return 0
-    sed -n '/<https>/,/<\/https>/p' "$MANAGER_CONF" 2>/dev/null \
-        | sed -n "s:.*<global_prefix>\(.*\)</global_prefix>.*:\1:p" | head -1
+    manager_conf_get remote.https.global_prefix
 }
 
 while [[ $# -gt 0 ]]; do
@@ -154,7 +157,7 @@ if [[ -z "$CLUSTER" ]]; then
         echo "  $MANAGER_CONF is missing or unreadable (try sudo, or pass --conf/--cluster)." >&2
     else
         echo "  --manager is remote ($MANAGER), so the local config is not consulted." >&2
-        echo "  Pass --cluster with the REMOTE manager's <cluster><name>." >&2
+        echo "  Pass --cluster with the REMOTE manager's cluster.name." >&2
     fi
     echo "  Without it every session is answered 403 and the run measures nothing." >&2
     exit 1

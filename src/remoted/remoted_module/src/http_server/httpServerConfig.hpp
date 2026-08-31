@@ -33,7 +33,7 @@ namespace remoted::http
      * positive value here just means "an internal option was set"; <=0 means "not set,
      * use the built-in default". Bind address, port, max body size, the
      * certificate/private key paths, the mTLS settings (ca, ciphers,
-     * verification_mode), and dual_stack are regular `<remote><https>` settings that
+     * verification_mode), and dual_stack are regular `remote.https` settings that
      * remoted copies straight from the parsed config (see w_remoted_build_module_config()
      * in secure.c):
      *   - certificate/private key/ca default to `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem`,
@@ -47,7 +47,7 @@ namespace remoted::http
      *   - global_prefix is copied VERBATIM (empty buffer -> "" == "/" == no prefix, today's
      *     behavior); its canonicalization (trailing-slash strip, identity collapse) happens in
      *     RestinioHttpServer::start() via normalizeGlobalPrefix() below -- never here -- and its
-     *     grammar was already validated fatally by the C parser (w_remoted_parse_https()).
+     *     grammar was already validated fatally by the C reader (w_remoted_validate_global_prefix()).
      * The in-flight byte budget and max parallel connections are set directly by remoted in
      * secure.c (deliberately not an internal option), independent of
      * `remoted_module_https_config()`.

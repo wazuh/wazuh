@@ -37,7 +37,7 @@ INSTYPE="manager"
 INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""
 CEXTRA=""
-WAZUH_CONF="wazuh-manager.conf"
+WAZUH_CONF="wazuh-manager.yml"
 WAZUH_LOGFILE="wazuh-manager.log"
 WAZUH_LOGJSON="wazuh-manager.json"
 

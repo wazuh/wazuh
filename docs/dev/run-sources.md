@@ -151,7 +151,7 @@ Get-Service -Name wazuh
 The main server configuration file is located at:
 
 ```
-/var/wazuh-manager/etc/wazuh-manager.conf
+/var/wazuh-manager/etc/wazuh-manager.yml
 ```
 
 After modifying the configuration, restart the server:

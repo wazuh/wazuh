@@ -1,0 +1,3 @@
+# Format of the internal logs: plain, json or both ([plain, json])
+logging:
+  log_format: [plain]

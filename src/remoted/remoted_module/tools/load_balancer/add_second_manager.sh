@@ -53,30 +53,26 @@ cp "$NODE1/etc/wazuh-manager-internal-options.conf" "$NODE2/etc/" 2>/dev/null ||
 cp "$NODE1/etc/localtime" "$NODE2/etc/" 2>/dev/null || true
 
 echo "==> own configuration, port $PORT"
-cat > "$NODE2/etc/wazuh-manager.conf" <<CONFIG
-<wazuh_config>
-  <logging>
-    <log_format>plain</log_format>
-  </logging>
+# etc/wazuh-manager.yml (validated by remoted itself at start-up; no cluster section: the schema
+# does not require one and node 2 is never part of a cluster).
+cat > "$NODE2/etc/wazuh-manager.yml" <<CONFIG
+logging:
+  log_format: [plain]
 
-  <remote>
-    <https>
-      <port>${PORT}</port>
-      <bind_addr>0.0.0.0</bind_addr>
-      <certificate>${MANAGER_CERT_REL}</certificate>
-      <key>${MANAGER_KEY_REL}</key>
-      <ca>${LAB_CA_REL}</ca>
-      <verification_mode>none</verification_mode>
-    </https>
+remote:
+  https:
+    port: ${PORT}
+    bind_addr: 0.0.0.0
+    certificate: ${MANAGER_CERT_REL}
+    key: ${MANAGER_KEY_REL}
+    ca: ${LAB_CA_REL}
+    verification_mode: none
 
-    <legacy>
-      <port>${LEGACY_PORT}</port>
-      <protocol>tcp</protocol>
-      <local_ip>127.0.0.1</local_ip>
-      <queue_size>131072</queue_size>
-    </legacy>
-  </remote>
-</wazuh_config>
+  legacy:
+    port: ${LEGACY_PORT}
+    protocol: [tcp]
+    local_ip: 127.0.0.1
+    queue_size: 131072
 CONFIG
 
 echo "==> rids files: remoted needs one per agent (legacy 1514 channel) or it dies with"

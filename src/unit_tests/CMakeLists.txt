@@ -98,23 +98,7 @@ if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
 elseif(${TARGET} STREQUAL "manager")
   include("./server.cmake")
-  configure_file(
-    "config_files/test_vulnerability_detection_multiple_configuration.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_multiple_configuration.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection_duplicate_configuration.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_duplicate_configuration.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection_invalid_index_status_setting.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_invalid_index_status_setting.conf"
-    COPYONLY)
-elseif(${TARGET} STREQUAL "agent")
+        elseif(${TARGET} STREQUAL "agent")
   include("./agent.cmake")
   configure_file("config_files/test_anti_tampering.conf"
                  "client-agent/test_anti_tampering.conf" COPYONLY)

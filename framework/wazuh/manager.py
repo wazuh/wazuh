@@ -10,13 +10,16 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
-from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.engine_http import EngineHTTPClient, VdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
-    get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
+    get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
+from wazuh.core.manager_conf import apply_defaults, load_manager_conf, load_yaml_text, validate_document, \
+    write_manager_conf
+from wazuh.core.manager_conf_policy import check_protected_sections
+from wazuh.core.utils import process_array, safe_move, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
 logger = logging.getLogger('wazuh')
@@ -343,7 +346,7 @@ def validation() -> AffectedItemsWazuhResult:
     result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
 
     try:
-        response = validate_ossec_conf()
+        response = validate_manager_conf()
         result.affected_items.append({'name': node_id, **response})
         result.total_affected_items += 1
     except WazuhError as e:
@@ -389,9 +392,9 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 @mask_sensitive_config()
 @expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
-def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
+def read_manager_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Wrapper for get_ossec_conf.
+    """Read the manager configuration file (etc/wazuh-manager.yml), as the effective document or as raw text.
 
     Parameters
     ----------
@@ -418,9 +421,9 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
 
     try:
         if raw:
-            with open(common.OSSEC_CONF) as f:
+            with open(common.MANAGER_CONF) as f:
                 return f.read()
-        result.affected_items.append(get_ossec_conf(section=section, field=field, distinct=distinct))
+        result.affected_items.append(get_manager_conf(section=section, field=field))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
@@ -454,8 +457,12 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
-def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
-    """Replace wazuh configuration (wazuh-manager.conf) with the provided configuration.
+def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
+    """Replace the manager configuration (etc/wazuh-manager.yml) with the provided one.
+
+    The new text is checked before anything is written (YAML syntax, schema, protected sections); the file is then
+    replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure restores the
+    previous file.
 
     Parameters
     ----------
@@ -473,33 +480,36 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_file = f'{common.OSSEC_CONF}.backup'
+    backup_file = f'{common.MANAGER_CONF}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
             raise WazuhError(1125)
 
-        # Check if the configuration is valid
-        validate_wazuh_xml(new_conf)
+        # YAML syntax (1131), schema (1130) and protected sections (1127/1129), before touching the file
+        new_document = load_yaml_text(new_conf)
+        validate_document(new_document)
+        apply_defaults(new_document)
+        check_protected_sections(new_document, load_manager_conf())
 
         # Create a backup of the current configuration before attempting to replace it
         try:
-            full_copy(common.OSSEC_CONF, backup_file)
+            full_copy(common.MANAGER_CONF, backup_file)
         except IOError:
             raise WazuhError(1019)
 
-        # Write the new configuration and validate it
-        write_ossec_conf(new_conf)
-        is_valid = validate_ossec_conf()
-
+        # Write the new configuration and validate it with the daemons' loader (cross-field semantics)
+        write_manager_conf(new_conf)
+        is_valid = validate_manager_conf()
         if is_valid.get('status') != 'OK':
             raise WazuhError(1125)
+
         result.affected_items.append(node_id)
         exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, common.OSSEC_CONF)
+        exists(backup_file) and safe_move(backup_file, common.MANAGER_CONF)
 
     result.total_affected_items = len(result.affected_items)
     return result

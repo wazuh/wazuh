@@ -84,13 +84,13 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "enabled")));
     #ifdef TEST_SERVER
     assert_non_null(cJSON_GetObjectItem(conf, "wpk_repository"));
     assert_string_equal(cJSON_GetObjectItem(conf, "wpk_repository")->valuestring, "wazuh.com/packages");
     #else
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "ca_verification")));
     cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_non_null(certs);
     assert_int_equal(cJSON_GetArraySize(certs), 1);
@@ -125,10 +125,10 @@ void test_wm_agent_upgrade_dump_disabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "enabled")));
     #ifndef TEST_SERVER
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "ca_verification")));
     cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_null(certs);
     #endif
@@ -187,6 +187,67 @@ void test_wm_agent_upgrade_main_disabled(void **state)
     wm_agent_upgrade_main(config);
 }
 
+#ifdef TEST_SERVER
+/* wm_agent_upgrade_read_json: the effective `agent-upgrade` section of etc/wazuh-manager.yml over the module
+ * default_modules[] initialised with wm_agent_upgrade_read(NULL, NULL, module). */
+
+static void free_read_json_module(wmodule *module) {
+    wm_agent_upgrade *data = module->data;
+    os_free(data->manager_config.wpk_repository);
+    os_free(module->data);
+    os_free(module->tag);
+}
+
+void test_wm_agent_upgrade_read_json_sets_enabled_and_repository(void **state)
+{
+    (void) state;
+    wmodule module = { 0 };
+    cJSON *section = cJSON_Parse("{\"enabled\":false,\"wpk_repository\":\"repo.example/wpk/\"}");
+
+    assert_int_equal(wm_agent_upgrade_read(NULL, NULL, &module), 0);
+    assert_int_equal(wm_agent_upgrade_read_json(section, &module), 0);
+    cJSON_Delete(section);
+
+    wm_agent_upgrade *data = module.data;
+    assert_false(data->enabled);
+    assert_string_equal(data->manager_config.wpk_repository, "repo.example/wpk/");
+    free_read_json_module(&module);
+}
+
+void test_wm_agent_upgrade_read_json_null_section_keeps_defaults(void **state)
+{
+    (void) state;
+    wmodule module = { 0 };
+
+    assert_int_equal(wm_agent_upgrade_read(NULL, NULL, &module), 0);
+    assert_int_equal(wm_agent_upgrade_read_json(NULL, &module), 0);
+
+    wm_agent_upgrade *data = module.data;
+    assert_true(data->enabled);
+    assert_null(data->manager_config.wpk_repository); // no schema default: repository chosen by target version
+    free_read_json_module(&module);
+}
+
+void test_wm_agent_upgrade_read_json_replaces_repository(void **state)
+{
+    (void) state;
+    wmodule module = { 0 };
+    cJSON *first = cJSON_Parse("{\"wpk_repository\":\"first.example/wpk/\"}");
+    cJSON *second = cJSON_Parse("{\"enabled\":true,\"wpk_repository\":\"second.example/wpk/\"}");
+
+    assert_int_equal(wm_agent_upgrade_read(NULL, NULL, &module), 0);
+    assert_int_equal(wm_agent_upgrade_read_json(first, &module), 0);
+    assert_int_equal(wm_agent_upgrade_read_json(second, &module), 0);
+    cJSON_Delete(first);
+    cJSON_Delete(second);
+
+    wm_agent_upgrade *data = module.data;
+    assert_true(data->enabled);
+    assert_string_equal(data->manager_config.wpk_repository, "second.example/wpk/");
+    free_read_json_module(&module);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_dump
@@ -196,7 +257,13 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_destroy),
         // wm_agent_upgrade_main
         cmocka_unit_test(test_wm_agent_upgrade_main_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_main_disabled)
+        cmocka_unit_test(test_wm_agent_upgrade_main_disabled),
+#ifdef TEST_SERVER
+        // wm_agent_upgrade_read_json
+        cmocka_unit_test(test_wm_agent_upgrade_read_json_sets_enabled_and_repository),
+        cmocka_unit_test(test_wm_agent_upgrade_read_json_null_section_keeps_defaults),
+        cmocka_unit_test(test_wm_agent_upgrade_read_json_replaces_repository),
+#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

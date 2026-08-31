@@ -66,9 +66,14 @@ case "$1" in
 
         # The redirection truncates the target before the generator runs: a rejected
         # variable would otherwise leave an empty file that a retry treats as pre-existing.
-        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf; then
-            rm -f ${DIR}/etc/wazuh-manager.conf
-            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.yml; then
+            rm -f ${DIR}/etc/wazuh-manager.yml
+            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.yml." >&2
+            exit 1
+        fi
+        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${DIR}/etc/wazuh-manager.yml; then
+            rm -f ${DIR}/etc/wazuh-manager.yml
+            echo "ERROR: the generated ${DIR}/etc/wazuh-manager.yml is not a valid manager configuration." >&2
             exit 1
         fi
 
@@ -87,12 +92,16 @@ case "$1" in
     else
         # A reference file for the administrator, not the active configuration: a rejected
         # variable must not abort the upgrade.
-        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new; then
-            rm -f ${DIR}/etc/wazuh-manager.conf.new
-            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.conf.new. The current configuration is unchanged." >&2
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.yml.new; then
+            rm -f ${DIR}/etc/wazuh-manager.yml.new
+            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.yml.new. The current configuration is unchanged." >&2
         else
-            chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
-            chmod 660 ${DIR}/etc/wazuh-manager.conf.new
+            chown root:${GROUP} ${DIR}/etc/wazuh-manager.yml.new
+            chmod 660 ${DIR}/etc/wazuh-manager.yml.new
+            # A manager installed before the YAML configuration existed gets it now.
+            if [ ! -f ${DIR}/etc/wazuh-manager.yml ]; then
+                mv ${DIR}/etc/wazuh-manager.yml.new ${DIR}/etc/wazuh-manager.yml
+            fi
         fi
     fi
 
@@ -209,8 +218,10 @@ case "$1" in
         chown root:${GROUP} "${DIR}/bin/verify-agent-conf"
     fi
 
-    chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
-    chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager.yml > /dev/null 2>&1 || true
+    chmod 660 ${DIR}/etc/wazuh-manager.yml > /dev/null 2>&1 || true
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager.schema.json > /dev/null 2>&1 || true
+    chmod 640 ${DIR}/etc/wazuh-manager.schema.json > /dev/null 2>&1 || true
     chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
 

@@ -241,7 +241,7 @@ flowchart LR
 
 ## 6. `verification_mode`: read this before enabling it
 
-`<remote><https><verification_mode>` controls whether remoted requires a **client certificate**. It
+`remote.https.verification_mode` controls whether remoted requires a **client certificate**. It
 has three values: `none` (default), `certificate` and `full`. All three are meant for a manager that
 agents reach **directly**; this section is about what changes once a balancer sits in between.
 

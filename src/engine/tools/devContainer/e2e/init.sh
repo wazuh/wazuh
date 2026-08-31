@@ -83,7 +83,12 @@ WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 # Containerised agents reach the devContainer host over the docker bridge, so
 # loopback-only listeners refuse them with "Transport endpoint is not connected".
 function open_manager_listeners() {
-    local conf="${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf"
+    local conf="${WAZUH_MANAGER_HOME}/etc/wazuh-manager.yml"
+    local mconf="${WAZUH_MANAGER_HOME}/bin/wazuh-manager-conf"
+    # The manager's own Python ships PyYAML; yaml_merge.py is the repo's YAML editing tool
+    # (api/test/integration/env/tools), also used by the API integration environment.
+    local python="${WAZUH_MANAGER_HOME}/framework/python/bin/python3"
+    local yaml_merge="${SCRIPT_DIR}/../../../../../api/test/integration/env/tools/yaml_merge.py"
 
     echo "==> Opening manager listeners for containerised agents..."
 
@@ -92,20 +97,22 @@ function open_manager_listeners() {
         echo "    Re-run this script after installing it, or set WAZUH_MANAGER_HOME."
         return 0
     fi
+    [ -x "$python" ] || python=python3
 
-    # Scoped to <remote>: <cluster> carries its own <bind_addr>127.0.0.1</bind_addr>
-    # that must stay loopback for a single-node dev environment.
-    sed -i "/<remote>/,/<\/remote>/ {
-        s|<local_ip>127\.0\.0\.1</local_ip>|<local_ip>0.0.0.0</local_ip>|
-        s|<bind_addr>127\.0\.0\.1</bind_addr>|<bind_addr>0.0.0.0</bind_addr>|
-    }" "$conf"
+    # Only the remote listeners: cluster.bind_addr carries its own 127.0.0.1 that must stay
+    # loopback for a single-node dev environment. (yaml_merge.py rewrites the file without its
+    # comments; this is the development manager.)
+    "$python" "$yaml_merge" set "$conf" remote.legacy.local_ip 0.0.0.0
+    "$python" "$yaml_merge" set "$conf" remote.https.bind_addr 0.0.0.0
 
-    # Editors and package upgrades reset the group; remoted runs as wazuh-manager
-    # and reports a permission failure as "Error reading XML file (line 0)".
+    # Editors and package upgrades reset the group; remoted runs as wazuh-manager and reports
+    # a permission failure as "(1239): Configuration file not found".
     chown root:wazuh-manager "$conf"
     chmod 660 "$conf"
 
-    grep -nE "<local_ip>|<bind_addr>" "$conf" | sed 's/^/    /'
+    "$mconf" -H "${WAZUH_MANAGER_HOME}" --skip-file-checks validate
+    echo "    remote.legacy.local_ip: $("$mconf" -H "${WAZUH_MANAGER_HOME}" --skip-file-checks get remote.legacy.local_ip)"
+    echo "    remote.https.bind_addr: $("$mconf" -H "${WAZUH_MANAGER_HOME}" --skip-file-checks get remote.https.bind_addr)"
     echo "==> Restart the manager to apply: ${WAZUH_MANAGER_HOME}/bin/wazuh-manager-control restart"
 }
 

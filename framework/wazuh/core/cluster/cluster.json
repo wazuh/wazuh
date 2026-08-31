@@ -34,7 +34,7 @@
         },
 
         "excluded_files": [
-            "wazuh-manager.conf"
+            "wazuh-manager.yml"
         ],
 
         "excluded_extensions": [

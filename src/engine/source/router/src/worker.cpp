@@ -2,6 +2,7 @@
 
 #include <base/eventParser.hpp>
 #include <base/logging.hpp>
+#include <base/managerConfig.hpp>
 #include <base/process.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/timeUtils.hpp>
@@ -31,18 +32,12 @@ void RouterWorker::start()
         return;
     }
 
-    // Get cluster info if available
+    // Cluster info from the manager configuration (etc/wazuh-manager.yml) when it is loaded; standalone
+    // mode and unit tests run without it and do not enrich the events.
     std::string clusterName, nodeName;
-    if (base::libwazuhshared::isInitialized())
+    if (base::managerConfig::isLoaded())
     {
-        try
-        {
-            std::tie(clusterName, nodeName) = base::libwazuhshared::getClusterNameAndNodeName();
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("[RouterWorker] Failed to get cluster and node name from libwazuhshared: {}", e.what());
-        }
+        std::tie(clusterName, nodeName) = base::managerConfig::clusterNames();
     }
 
     m_isRunning = true;

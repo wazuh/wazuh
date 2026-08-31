@@ -14,12 +14,12 @@ authentication, their threading, nor their code:
 | Transport | TLS 1.3 over TCP | TCP or UDP, AES-encrypted payloads |
 | Authentication | per-request `wazuh-agent+jwt` bearer token (HS256) self-signed with the agent's pre-shared key | AES session key derived from `client.keys` |
 | Direction | agent-initiated requests only; work is handed back in responses | persistent connection, manager can push |
-| Enabled | always | only when `<remote><legacy>` is present and enabled |
+| Enabled | always | only when `remote.legacy` is present and enabled |
 | Serves | 5.x agents | 4.x agents |
 | Implemented in | C++ (`remoted_module`) | C |
 
 A 5.x agent uses the HTTPS API exclusively — it has no legacy code path at all. The legacy channel
-exists to keep 4.x agents working during a migration, and when `<remote><legacy>` is absent or
+exists to keep 4.x agents working during a migration, and when `remote.legacy` is absent or
 disabled, `start_legacy_subsystems()` is a no-op: no listener is bound, and the legacy keystore,
 metadata cache, event queue and dispatcher threads are never created.
 
@@ -135,7 +135,7 @@ The module's own metrics are served on a manager-local Unix socket
 
 ## Legacy pipeline (opt-in)
 
-Everything in this section runs **only** when `<remote><legacy>` is present and enabled. It exists
+Everything in this section runs **only** when `remote.legacy` is present and enabled. It exists
 to serve 4.x agents.
 
 ### 1. Network listener
@@ -188,28 +188,23 @@ Agent sends event → listener → decrypt and validate → classify:
 
 ## Key configuration options
 
-```xml
-<remote>
-  <https>
-    <port>1517</port>
-    <bind_addr>0.0.0.0</bind_addr>
-    <certificate>etc/certs/remoted.pem</certificate>
-    <key>etc/certs/remoted-key.pem</key>
-  </https>
-
-  <legacy>
-    <enabled>yes</enabled>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-  </legacy>
-
-  <agents>
-    <allow_higher_versions>no</allow_higher_versions>
-  </agents>
-</remote>
+```yaml
+remote:
+  https:
+    port: 1517
+    bind_addr: 0.0.0.0
+    certificate: etc/certs/remoted.pem
+    key: etc/certs/remoted-key.pem
+  legacy:
+    enabled: true
+    port: 1514
+    protocol:
+    - tcp
+  agents:
+    allow_higher_versions: false
 ```
 
-Tuning lives in internal options rather than `wazuh-manager.conf` — the HTTPS server's transport and
+Tuning lives in internal options rather than `wazuh-manager.yml` — the HTTPS server's transport and
 capacity knobs under `remoted.http_*`, `remoted.max_inflight_bytes` and
 `remoted.max_deferred_requests`, and the legacy pipeline's under `remoted.control_msg_queue_size`,
 `remoted.batch_events_capacity` and `remoted.worker_pool`.

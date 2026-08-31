@@ -85,7 +85,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-monitord
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-manager-monitord PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+    wazuh-manager-monitord PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                         ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-monitord PRIVATE monitord_lib)
   wazuh_link_jemalloc(wazuh-manager-monitord)

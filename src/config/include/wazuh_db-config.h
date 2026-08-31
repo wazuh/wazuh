@@ -12,24 +12,18 @@
 #ifndef WAZUH_DB_CONFIG_H
 #define WAZUH_DB_CONFIG_H
 
-/**
- * @brief This method will read the nodes of the main configuration block "wdb".
- *
- * @param xml The configuration file to read.
- * @param chld_node The "wdb" configuration block.
- * @return int OS_SUCCESS if the configuration was read with no errors, OS_INVALID otherwise.
- */
-int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node);
 
+
+#ifndef CLIENT
+struct cJSON;
 /**
- * @brief This method will read the "backup" configuration block of Wazuh-DB.
+ * @brief Reader of the `wdb` section of the effective YAML document (etc/wazuh-manager.yml, see mconf-config.h).
  *
- * @param xml The configuration file to read.
- * @param node The "backup" configuration block.
- * @param BACKUP_NODE A valid configuration node declared in the enumeration wdb_backup_db.
- * @return int OS_SUCCESS if the configuration was read with no errors, OS_INVALID otherwise.
+ * @param wdb The section returned by w_mconf_section("wdb"); NULL or an absent backup block keeps the defaults.
+ * @return OS_SUCCESS, or OS_INVALID when a value breaks the rules the schema cannot express.
  */
-int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE);
+int Read_WazuhDB_JSON(const struct cJSON *wdb);
+#endif
 
 /**
  * @brief Allocates the memory for all the configuration nodes declared in wdb_backup_db and sets the default

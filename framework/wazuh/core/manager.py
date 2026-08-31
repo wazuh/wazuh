@@ -4,7 +4,9 @@
 
 import copy
 import json
+import os
 import re
+import subprocess  # nosec B404 - runs bin/wazuh-manager-conf with a fixed argv and no shell
 from datetime import timezone
 from enum import Enum
 from os.path import exists
@@ -14,8 +16,8 @@ from api import configuration
 from wazuh import WazuhError, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.utils import get_utc_strptime, tail, load_wazuh_xml
+from wazuh.core.configuration import get_manager_conf
+from wazuh.core.utils import get_utc_strptime, tail
 
 WAZUH_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
 
@@ -88,7 +90,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    logging_config = get_ossec_conf(section='logging')['logging']
+    logging_config = get_manager_conf(section='logging')['logging']
     return LoggingFormat.plain if 'plain' in logging_config.get('log_format') else LoggingFormat.json
 
 def get_wazuh_logs(limit: int = 2000) -> list:
@@ -153,42 +155,49 @@ def get_logs_summary(limit: int = 2000) -> dict:
     return tags
 
 
-def validate_ossec_conf() -> dict:
-    """Check if Wazuh configuration is OK.
+def validate_manager_conf(conf_file: str = None) -> dict:
+    """Check that the manager configuration file (etc/wazuh-manager.yml) is valid.
 
-    Validates the ossec.conf file by reading and parsing the XML structure.
-    This replaces the previous socket-based validation after execd removal.
+    Delegates to `bin/wazuh-manager-conf validate`, the same loader the daemons use, so the schema and the
+    cross-field semantics (certificate files, port collisions...) are checked exactly once, in one place.
+
+    Parameters
+    ----------
+    conf_file : str
+        File to validate. Default: common.MANAGER_CONF.
 
     Raises
     ------
     WazuhInternalError(1020)
         If the configuration file doesn't exist.
-    WazuhError(1113)
-        If there are XML syntax errors.
+    WazuhError(1130)
+        If the file does not match the schema or its semantics (the message carries the JSON pointer).
     WazuhError(1908)
-        If there are validation errors in the configuration.
+        If the validator could not run.
 
     Returns
     -------
     dict
         Status of the configuration with 'status' key set to 'OK' if valid.
     """
-    # Check if configuration file exists
-    if not exists(common.OSSEC_CONF):
+    conf_file = conf_file or common.MANAGER_CONF
+    if not exists(conf_file):
         raise WazuhInternalError(1020)
 
-    # Load and validate XML structure
-    # This will raise WazuhError(1113) if there are syntax errors
+    command = [os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-conf'), '-H', common.WAZUH_PATH,
+               '-f', conf_file, 'validate']
     try:
-        load_wazuh_xml(xml_path=common.OSSEC_CONF)
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=30)  # nosec B603
+    except (OSError, subprocess.SubprocessError) as e:
+        raise WazuhError(1908, extra_message=str(e))
+
+    if completed.returncode == 0:
         return {'status': 'OK'}
 
-    except WazuhError as e:
-        # Re-raise WazuhError (includes validation errors)
-        raise
-    except Exception as e:
-        # Wrap other exceptions as validation errors
-        raise WazuhError(1908, extra_message=str(e))
+    detail = (completed.stderr or completed.stdout).strip()
+    if completed.returncode == 1:
+        raise WazuhError(1130, extra_message=detail)
+    raise WazuhError(1908, extra_message=detail)
 
 
 def get_api_conf() -> dict:

@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Server API and Framework module.
 
-The Server API provides a RESTful interface for Wazuh manager operations, including agent management, cluster coordination, and security controls. Configuration is managed through YAML files, not the traditional XML configuration.
+The Server API provides a RESTful interface for Wazuh manager operations, including agent management, cluster coordination, and security controls. Configuration is managed through its own YAML file (`api.yaml`).
 
 - **Module:** Manager-only
 - **Configuration format:** YAML
@@ -16,7 +16,7 @@ For module overview and architecture, see [Server API Module](index.html).
 
 **Configuration file:** `/var/wazuh-manager/api/configuration/api.yaml`
 
-**XML Section:** None (YAML-based configuration)
+**Manager configuration section:** none — `etc/wazuh-manager.yml` does not configure the API
 
 **Internal Options:** None
 
@@ -218,16 +218,11 @@ upload_configuration:
 
 ## Framework Configuration
 
-The API framework reads additional configuration from the manager configuration file.
+The framework reads the manager configuration file for the `cluster` section (node identity, `key`, `nodes`), the `indexer` section (the connection used by the indexer clients) and the sections it serves through `GET`/`PUT /cluster/{node_id}/configuration`.
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-The framework parses manager configuration for:
-- Component-specific settings
-- Integration parameters
-- Global limits and thresholds
-
-Configuration parsing uses `lxml` and `defusedxml` for XML validation.
+It is parsed with PyYAML (`framework/wazuh/core/configuration.py`, `get_manager_conf`); a `PUT` validates the new document with `bin/wazuh-manager-conf validate` before replacing the file. `lxml` and `defusedxml` remain in use only for the agents' XML (`agent.conf`).
 
 ---
 

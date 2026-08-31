@@ -14,6 +14,7 @@
 #include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
+#include "mconf-config.h"
 #include "config.h"
 #include "string_op.h"
 #include "wazuhdb_queries_op.h"
@@ -100,22 +101,17 @@ cJSON *getMonitorInternalOptions(void) {
     return root;
 }
 
+/* getconfig "global": the effective `global` section of etc/wazuh-manager.yml (schema defaults applied),
+ * exactly what MonitordConfig() loaded. */
 cJSON *getMonitorGlobalOptions(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *monconf = cJSON_CreateObject();
+    cJSON *global = w_mconf_section("global");
 
-    cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
-    cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
-
-    cJSON_AddItemToObject(root,"monitord",monconf);
-
+    cJSON_AddItemToObject(root, "global", global != NULL ? global : cJSON_CreateObject());
     return root;
 }
 
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait) {
-    int modules = 0;
-
     /* Get config options */
     mond->day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int_default("monitord", "day_wait", 0, MAX_DAY_WAIT, 10);
     mond->compress = (unsigned int) getDefine_Int_default("monitord", "compress", 0, 1, 1);
@@ -130,8 +126,19 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->global.agents_disconnection_time = 900;
     mond->global.agents_disconnection_alert_time = 0;
 
-    if (ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
+    /* etc/wazuh-manager.yml: loaded once per process, then the `global` section as cJSON (mconf-config.h). */
+    if (w_mconf_load(cfg) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    {
+        cJSON *global = w_mconf_section("global");
+        int ret = Read_Global_JSON(global, &mond->global);
+        cJSON_Delete(global);
+
+        if (ret < 0) {
+            merror_exit(CONFIG_ERROR, cfg);
+        }
     }
 
     return OS_SUCCESS;

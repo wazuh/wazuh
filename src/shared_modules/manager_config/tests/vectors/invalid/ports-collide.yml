@@ -1,0 +1,5 @@
+remote:
+  legacy:
+    port: 1515
+auth:
+  port: 1515

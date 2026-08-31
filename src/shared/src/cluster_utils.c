@@ -1,5 +1,5 @@
 /*
- * URL download support library
+ * Cluster identity of this manager node, read from the effective etc/wazuh-manager.yml.
  * Copyright (C) 2015, Wazuh Inc.
  * October 26, 2018.
  *
@@ -9,76 +9,57 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #include "shared.h"
-#include "config.h"
-#include "global-config.h"
+#include <cJSON.h>
+#include "mconf_hook.h"
+
+/* The `cluster` section of the effective document through the hook libconfig registers
+ * (mconf_hook.h). NULL without provider or document: libwazuhshared.so as the engine loads it, or a
+ * process that never loaded its configuration -- the getters then answer as they always did when the
+ * configuration file could not be read. */
+static cJSON *cluster_section(void) {
+    return w_mconf_hook_section("cluster");
+}
+
+static const char *string_item(const cJSON *object, const char *key) {
+    const cJSON *item = object != NULL ? cJSON_GetObjectItem(object, key) : NULL;
+    return item != NULL && cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0' ? item->valuestring : NULL;
+}
 
 int w_is_worker(void) {
-    OS_XML xml;
-    const char * xmlf[] = {WAZUHCONFIG, "cluster", NULL};
-    const char * xmlf2[] = {WAZUHCONFIG, "cluster", "node_type", NULL};
-    const char *cfgfile = WAZUHCONF;
+    cJSON *cluster = cluster_section();
     int is_worker = OS_INVALID;
 
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    } else {
-        char * cl_config = OS_GetOneContentforElement(&xml, xmlf);
-        if (cl_config && cl_config[0] != '\0') {
-            char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
-            if (cl_type && cl_type[0] != '\0') {
-                if (!strcmp(cl_type, "worker")) {
-                    is_worker = 1;
-                } else {
-                    is_worker = 0;
-                }
-                free(cl_type);
-            } else {
-                // node_type defaults to "master" when not explicitly defined
-                is_worker = 0;
-            }
-            free(cl_config);
-        } else {
-            is_worker = 0;
-        }
+    if (cluster != NULL) {
+        // node_type defaults to "master" when not explicitly defined
+        const char *node_type = string_item(cluster, "node_type");
+        is_worker = node_type != NULL && strcmp(node_type, "worker") == 0 ? 1 : 0;
     }
-    OS_ClearXML(&xml);
 
+    cJSON_Delete(cluster);
     return is_worker;
 }
 
 int w_is_single_node(int* is_worker) {
-    OS_XML xml;
-    const char * xmlf[] = {WAZUHCONFIG, "cluster", NULL};
-    const char * xmlf2[] = {WAZUHCONFIG, "cluster", "node_type", NULL};
-    const char *cfgfile = WAZUHCONF;
+    cJSON *cluster = cluster_section();
     int _is_worker = OS_INVALID;
     int is_single_node = OS_INVALID;
 
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    } else {
-        char * cl_config = OS_GetOneContentforElement(&xml, xmlf);
-        if (cl_config && cl_config[0] != '\0') {
-            char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
-            if (cl_type && cl_type[0] != '\0') {
-                // Since cluster is always enabled, if we have cluster config with node_type, it's not a single node
-                is_single_node = 0;
-                if (!strcmp(cl_type, "worker")) {
-                    _is_worker = 1;
-                } else {
-                    _is_worker = 0;
-                }
-                free(cl_type);
-            } else {
-                is_single_node = 1;
-            }
-            free(cl_config);
+    if (cluster != NULL) {
+        const char *node_type = string_item(cluster, "node_type");
+
+        if (node_type != NULL) {
+            // Since cluster is always enabled, if we have cluster config with node_type, it's not a single node
+            is_single_node = 0;
+            _is_worker = strcmp(node_type, "worker") == 0 ? 1 : 0;
         } else {
             is_single_node = 1;
         }
     }
-    OS_ClearXML(&xml);
+
+    cJSON_Delete(cluster);
 
     if (is_worker) {
         *is_worker = _is_worker;
@@ -87,66 +68,21 @@ int w_is_single_node(int* is_worker) {
     return is_single_node;
 }
 
-char *get_master_node(void) {
-    OS_XML xml;
-    const char * xmlf[] = {WAZUHCONFIG, "cluster", "nodes", "node", NULL};
-    const char *cfgfile = WAZUHCONF;
-    char *master_node = NULL;
+static char *dup_or_undefined(const char *key) {
+    cJSON *cluster = cluster_section();
+    const char *value = string_item(cluster, key);
+    char *result = strdup(value != NULL ? value : "undefined");
 
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    } else {
-        master_node = OS_GetOneContentforElement(&xml, xmlf);
-    }
-
-    OS_ClearXML(&xml);
-
-    if (!master_node) {
-        master_node = strdup("undefined");
-    }
-
-    return master_node;
+    cJSON_Delete(cluster);
+    return result;
 }
 
 char *get_node_name(void) {
-    OS_XML xml;
-    const char * xmlf[] = {WAZUHCONFIG, "cluster", "node_name", NULL};
-    const char *cfgfile = WAZUHCONF;
-    char *node_name = NULL;
-
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    } else {
-        node_name = OS_GetOneContentforElement(&xml, xmlf);
-    }
-
-    OS_ClearXML(&xml);
-
-    if (!node_name) {
-        node_name = strdup("undefined");
-    }
-
-    return node_name;
+    return dup_or_undefined("node_name");
 }
 
 char *get_cluster_name(void) {
-    OS_XML xml;
-    const char * xmlf[] = {WAZUHCONFIG, "cluster", "name", NULL};
-    const char *cfgfile = WAZUHCONF;
-    char *cluster_name = NULL;
-
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    } else {
-        cluster_name = OS_GetOneContentforElement(&xml, xmlf);
-    }
-
-    OS_ClearXML(&xml);
-
-    if (!cluster_name) {
-        cluster_name = strdup("undefined");
-    }
-
-    return cluster_name;
+    return dup_or_undefined("name");
 }
 
+#endif /* CLIENT */

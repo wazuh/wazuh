@@ -34,7 +34,7 @@ rules pipeline.
 obtains its key, and declares its agent group. A 5.x agent enrolls over HTTPS
 (`POST /enroll` on Remoted's port 1517), which bridges to `wazuh-manager-authd`;
 `authd` owns the registration logic either way. Its own TLS listener on port 1515
-remains only for 4.x agents, gated by `<auth><legacy_enrollment>`.
+remains only for 4.x agents, gated by `auth.legacy_enrollment`.
 
 **Event** — Normalized record produced by the Engine from raw input. Decoded
 events are indexed under `wazuh-events-v5-<category>` (or
@@ -89,9 +89,9 @@ gone).
 across 5.0 indices and event payloads, e.g. `source.ip`, `user.name`,
 `wazuh.rule.level`.
 
-**`wazuh-manager.conf`** — Main manager configuration file
-(`/var/wazuh-manager/etc/wazuh-manager.conf`, root tag `<wazuh_config>`); the
-5.0 rename of the manager-side `ossec.conf`.
+**`wazuh-manager.yml`** — Main manager configuration file
+(`/var/wazuh-manager/etc/wazuh-manager.yml`, a YAML mapping validated against
+`wazuh-manager.schema.json`); replaces the manager-side XML `ossec.conf` of 4.x.
 
 **Wodle** — Pluggable module configured as `<wodle name="...">` and executed by
 `wazuh-manager-modulesd` (manager) or `wazuh-modulesd` (agent), e.g. `command`,

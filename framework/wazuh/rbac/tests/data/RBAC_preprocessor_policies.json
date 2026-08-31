@@ -342,7 +342,7 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       },
       {
@@ -367,28 +367,28 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "deny"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       }
     ],
     "processed_policies": {
       "cluster:read_file": {
-        "node:id:*&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "allow"
       }
     }
   },
@@ -396,12 +396,12 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       },
       {
@@ -411,14 +411,14 @@
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/wazuh-manager.conf"],
+        "resources": ["node:id:*&file:path:etc/wazuh-manager.yml"],
         "effect": "allow"
       }
     ],
     "processed_policies": {
       "cluster:read_file": {
         "node:id:*&file:path:*": "deny",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "allow"
       }
     }
   }

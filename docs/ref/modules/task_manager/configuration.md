@@ -8,13 +8,13 @@ The Task Manager stores tasks addressed to agents (agent upgrades, active respon
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<task-manager>`
+**YAML section:** `task-manager` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#task-manager)
 
 **Internal Options:** None
 
-The `<task-manager>` block accepts the options below. All values are non-negative integers expressed in seconds (except where noted). A value of `0` — or omitting the option — makes the module fall back to its built-in default.
+The `task-manager` section accepts the options below. All values are non-negative integers expressed in seconds (except where noted). A value of `0` — or omitting the option — makes the module fall back to its built-in default.
 
 ### task_ttl
 
@@ -60,42 +60,38 @@ Maximum number of tasks returned by a single `get_pending_tasks` call. Additiona
 
 The section can be omitted entirely — the module runs with all built-in defaults and is always started on the master node:
 
-```xml
-<task-manager>
-</task-manager>
+```yaml
+task-manager: {}
 ```
 
 Or explicit:
 
-```xml
-<task-manager>
-  <task_ttl>3600</task_ttl>
-  <cleanup_interval>300</cleanup_interval>
-  <max_payload_bytes>1048576</max_payload_bytes>
-  <max_tasks_per_poll>100</max_tasks_per_poll>
-</task-manager>
+```yaml
+task-manager:
+  task_ttl: 3600
+  cleanup_interval: 300
+  max_payload_bytes: 1048576
+  max_tasks_per_poll: 100
 ```
 
 ### High-Volume Environment
 
 For deployments with many agents and frequent task creation, enlarge the response batch size and give tasks more time before they are considered expired:
 
-```xml
-<task-manager>
-  <task_ttl>7200</task_ttl>
-  <cleanup_interval>600</cleanup_interval>
-  <max_tasks_per_poll>500</max_tasks_per_poll>
-</task-manager>
+```yaml
+task-manager:
+  task_ttl: 7200
+  cleanup_interval: 600
+  max_tasks_per_poll: 500
 ```
 
 ### Larger Active Response Payloads
 
 The default 1 MiB limit is enough for the majority of tasks. Raise it only if the payload the producer is attaching is legitimately large (e.g. an Active Response event with rich context):
 
-```xml
-<task-manager>
-  <max_payload_bytes>4194304</max_payload_bytes>
-</task-manager>
+```yaml
+task-manager:
+  max_payload_bytes: 4194304
 ```
 
 ---

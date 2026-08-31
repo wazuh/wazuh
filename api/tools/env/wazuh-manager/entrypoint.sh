@@ -19,14 +19,19 @@ echo "Certificates found."
 echo 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
 echo 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 
-# Configure wazuh configuration file and api.yaml based on the Master role
+# Configure the manager configuration file (etc/wazuh-manager.yml) and api.yaml based on the role: merge the
+# YAML fragment of the role with the manager's own Python (PyYAML), then validate the result against the schema.
+MANAGER_CONF=/var/wazuh-manager/etc/wazuh-manager.yml
+YAML_MERGE="/bin/wpy /scripts/yaml_merge.py"
 if [ "$ROLE" == "master" ]; then
-    python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/master_wazuh-manager_conf.xml
+    $YAML_MERGE merge "$MANAGER_CONF" /scripts/master_wazuh-manager.yml
     sed -i "s:# access:access:g" /var/wazuh-manager/api/configuration/api.yaml
     sed -i "s:#  max_request_per_minute\: 300:  max_request_per_minute\: 99999:g" /var/wazuh-manager/api/configuration/api.yaml
 else
-    python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
+    $YAML_MERGE merge "$MANAGER_CONF" /scripts/worker_wazuh-manager.yml
+    $YAML_MERGE set "$MANAGER_CONF" cluster.node_name "$HOSTNAME"
 fi
+/var/wazuh-manager/bin/wazuh-manager-conf validate
 
 echo "wazuh_db.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
 echo "authd.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf

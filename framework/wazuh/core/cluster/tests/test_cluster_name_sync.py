@@ -75,14 +75,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_success(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test successful cluster name synchronization for disconnected agents."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
+        mock_get_manager_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
 
         task._get_disconnected_agents = AsyncMock(
             return_value=[
@@ -106,9 +106,9 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_already_executed(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test that cluster name sync is skipped if already executed."""
         task, indexer = task_with_indexer
@@ -123,14 +123,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_no_disconnected_agents(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test sync when no disconnected agents are found."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
+        mock_get_manager_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
         task._get_disconnected_agents = AsyncMock(return_value=[])
 
         await task.run_cluster_name_sync()
@@ -142,14 +142,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_missing_ossec_conf(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test sync when cluster name is missing from ossec.conf."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.side_effect = Exception("Config not found")
+        mock_get_manager_conf.side_effect = Exception("Config not found")
         task._get_disconnected_agents = AsyncMock(
             return_value=[{"id": "001", "status": "disconnected"}]
         )
@@ -161,14 +161,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_empty_cluster_name(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test sync when cluster name is empty in ossec.conf."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.return_value = {}
+        mock_get_manager_conf.return_value = {}
         task._get_disconnected_agents = AsyncMock(
             return_value=[{"id": "001", "status": "disconnected"}]
         )
@@ -176,20 +176,20 @@ class TestRunClusterNameSync:
         await task.run_cluster_name_sync()
 
         task.logger.warning.assert_called_with(
-            "Cluster name not found in wazuh-manager.conf; aborting sync"
+            "Cluster name not found in wazuh-manager.yml; aborting sync"
         )
         assert task._cluster_name_sync_done
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_no_agents_need_update(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test sync when all agents already have correct cluster name."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
+        mock_get_manager_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
 
         task._get_disconnected_agents = AsyncMock(
             return_value=[
@@ -212,14 +212,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_partial_update_failure(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test sync continues even if some agents fail to update."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
+        mock_get_manager_conf.return_value = {"cluster": {"name": "wazuh-cluster"}}
 
         task._get_disconnected_agents = AsyncMock(
             return_value=[
@@ -244,14 +244,14 @@ class TestRunClusterNameSync:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
-    @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
+    @patch("wazuh.core.indexer.disconnected_agents.get_manager_conf")
     async def test_cluster_name_sync_final_flag_set(
-        self, mock_get_ossec_conf, mock_sleep, task_with_indexer
+        self, mock_get_manager_conf, mock_sleep, task_with_indexer
     ):
         """Test that _cluster_name_sync_done flag is always set at the end."""
         task, indexer = task_with_indexer
 
-        mock_get_ossec_conf.side_effect = Exception("Error")
+        mock_get_manager_conf.side_effect = Exception("Error")
         task._get_disconnected_agents = AsyncMock(side_effect=Exception("DB error"))
 
         await task.run_cluster_name_sync()

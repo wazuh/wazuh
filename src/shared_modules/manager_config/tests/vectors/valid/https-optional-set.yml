@@ -1,0 +1,10 @@
+remote:
+  https:
+    ca: etc/certs/root-ca.pem
+    verification_mode: full
+    ciphers: TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    max_body_size: 2M
+    dual_stack: true
+  legacy:
+    protocol: [tcp, udp]
+    rids_closing_time: 2h

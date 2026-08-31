@@ -23,6 +23,6 @@ Its main responsibilities are:
   horizontal scaling and high availability by default.
 
 The manager is a multi-daemon system installed under `/var/wazuh-manager` and
-configured through `etc/wazuh-manager.conf`. See the
+configured through `etc/wazuh-manager.yml`. See the
 [Architecture](architecture.md) page for the full component breakdown and the
 [Modules](modules/README.md) section for per-module documentation.

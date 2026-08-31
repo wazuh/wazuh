@@ -1,0 +1,3 @@
+remote:
+  legacy:
+    protocol: [tcp, tcp]

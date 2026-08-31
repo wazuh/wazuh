@@ -23,7 +23,7 @@ The library provides two classes depending on the use case:
 
 ## How it works
 
-1. The caller instantiates a connector with a JSON configuration (derived from the `<indexer>` XML block).
+1. The caller instantiates a connector with a JSON configuration (derived from the `indexer` section of `etc/wazuh-manager.yml`).
 2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
 3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
 4. A server-selector performs round-robin load balancing across available nodes.

@@ -14,6 +14,7 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
+        from api.controllers.util import YAML_CONTENT_TYPE
         from api.controllers.cluster_controller import (
             get_api_config, get_cluster_node, get_cluster_nodes,
             get_conf_validation, get_config, get_configuration_node,
@@ -237,7 +238,7 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
                         'field': None,
                         'raw': False
                         }
-            mock_dapi.assert_called_once_with(f=manager.read_ossec_conf,
+            mock_dapi.assert_called_once_with(f=manager.read_manager_conf,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='distributed_master',
                                               is_async=False,
@@ -250,10 +251,10 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
                                        call(mock_dfunc.return_value)])
             assert mock_exc.call_count == 2
             mock_remove.assert_called_once_with(f_kwargs)
-            if mock_isinstance.return_value:
-                assert isinstance(result, ConnexionResponse)
-            else:
-                assert isinstance(result, ConnexionResponse)
+            assert isinstance(result, ConnexionResponse)
+            if not mock_isinstance.return_value:
+                # raw=True: the file text is returned as YAML
+                assert result.content_type == YAML_CONTENT_TYPE
 
 
 @pytest.mark.asyncio
@@ -508,14 +509,17 @@ async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove
 async def test_update_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_configuration' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
-        with patch('api.controllers.cluster_controller.Body.validate_content_type'):
+        with patch('api.controllers.cluster_controller.Body.validate_content_type') as mock_ctype:
             with patch('api.controllers.cluster_controller.Body.decode_body') as mock_dbody:
                 result = await update_configuration(node_id='001',
                                                     body={})
+                # Both application/octet-stream and application/yaml carry the YAML text
+                mock_ctype.assert_called_once_with(
+                    mock_request, expected_content_type=('application/octet-stream', 'application/yaml'))
                 f_kwargs = {'node_id': '001',
                             'new_conf': mock_dbody.return_value
                             }
-                mock_dapi.assert_called_once_with(f=manager.update_ossec_conf,
+                mock_dapi.assert_called_once_with(f=manager.update_manager_conf,
                                                   f_kwargs=mock_remove.return_value,
                                                   request_type='distributed_master',
                                                   is_async=False,

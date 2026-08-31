@@ -1,0 +1,47 @@
+# Equivalent of the file WriteManager() generates on a default install (01-formato-actual §2).
+global:
+  agents_disconnection_time: 15m
+  agents_disconnection_alert_time: 0
+logging:
+  log_format: [plain]
+remote:
+  https:
+    port: 1517
+    bind_addr: 127.0.0.1
+    global_prefix: /wazuh-manager/
+    certificate: etc/certs/remoted.pem
+    key: etc/certs/remoted-key.pem
+  legacy:
+    enabled: true
+    port: 1514
+    protocol: [tcp]
+    local_ip: 127.0.0.1
+  agents:
+    allow_higher_versions: false
+vulnerability-detection:
+  enabled: true
+  feed-update-interval: 60m
+indexer:
+  hosts: ["https://127.0.0.1:9200"]
+  ssl:
+    certificate_authorities: [etc/certs/root-ca.pem]
+    certificate: etc/certs/indexer-connector.pem
+    key: etc/certs/indexer-connector-key.pem
+auth:
+  disabled: false
+  port: 1515
+  use_source_ip: false
+  purge: true
+  use_password: true
+  ssl_verify_host: false
+  ssl_manager_cert: etc/certs/remoted.pem
+  ssl_manager_key: etc/certs/remoted-key.pem
+cluster:
+  name: wazuh
+  node_name: node01
+  node_type: master
+  key: 0123456789abcdef0123456789abcdef
+  port: 1516
+  bind_addr: 127.0.0.1
+  nodes: [127.0.0.1]
+  hidden: false

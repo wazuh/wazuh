@@ -1,0 +1,22 @@
+# Manager configuration of the master node of the development environment (api/tools/env), deep-merged into
+# etc/wazuh-manager.yml by the entrypoint (yml/yaml_merge.py). Mappings merge key by key; lists replace.
+cluster:
+  name: wazuh
+  node_name: master-node
+  node_type: master
+  key: 9d273b53510fef702b54a92e9cffc82e
+  port: 1516
+  bind_addr: 0.0.0.0
+  hidden: false
+
+indexer:
+  hosts:
+    - https://wazuh.indexer:9200
+  ssl:
+    certificate_authorities:
+      - /var/wazuh-manager/etc/certs/root-ca.pem
+    certificate: /var/wazuh-manager/etc/certs/wazuh.manager.pem
+    key: /var/wazuh-manager/etc/certs/wazuh.manager-key.pem
+
+auth:
+  use_source_ip: false

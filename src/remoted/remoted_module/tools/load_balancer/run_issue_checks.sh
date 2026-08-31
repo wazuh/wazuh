@@ -128,7 +128,7 @@ echo "=== preflight ==="
 use_mode none
 # Explicit identity prefix: every group below assumes unprefixed endpoints except the #38491
 # one, which flips it and flips it back. Makes the suite self-contained regardless of the
-# manager's current <global_prefix>.
+# manager's current remote.https.global_prefix.
 use_prefix /
 use_config both_topologies
 require "$NODE1" "manager node 1"

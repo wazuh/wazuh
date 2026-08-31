@@ -30,9 +30,14 @@ def restart_wazuh_expect_error() -> None:
 @pytest.fixture
 def get_real_configuration(test_configuration):
     """
-    description: gets 'elements' configuration parameters  from 'sections' field and converts it from list to list dict
-    return  configuration parameters
+    description: returns the configured `remote` options in the shape compare_config_api_response expects.
+                 Manager templates are YAML fragments of etc/wazuh-manager.yml: the `remote` mapping is returned
+                 as is (the API answers the effective section, compared as a subset). The legacy XML `sections`
+                 form is still converted to the list-of-{'value'} shape.
     """
+    if "fragments" in test_configuration:
+        return test_configuration["fragments"]["remote"]
+
     config_data = test_configuration.get("sections", {})[0]["elements"]
     real_config = dict()
 

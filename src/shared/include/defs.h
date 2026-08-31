@@ -312,28 +312,32 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Built-in defines */
 
+/* The configuration file of the running product, relative to its home: the agent's XML
+ * etc/ossec.conf or the manager's YAML etc/wazuh-manager.yml. Code shared by both builds
+ * (for example the command module's messages) names it through this macro. */
 #ifndef WAZUHCONF
 #ifndef WIN32
 #ifdef CLIENT
 #define WAZUHCONF "etc/ossec.conf"
 #else
-#define WAZUHCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF "etc/wazuh-manager.yml"
 #endif
 #else
 #define WAZUHCONF "ossec.conf"
 #endif
 #endif
 
+/* Manager configuration in YAML (etc/wazuh-manager.yml), read by the manager daemons through
+ * libconfig's w_mconf_*() (src/config/src/mconf-config.c). Same file as WAZUHCONF on the manager;
+ * the explicit name marks the code paths that only exist there. */
+#if !defined(CLIENT) && !defined(WIN32)
+#define WAZUHCONF_YML "etc/wazuh-manager.yml"
+#endif
+
+/* Root element of the agent XML configuration files (etc/ossec.conf). The manager has no XML
+ * configuration of its own anymore; it only parses agent files (agent.conf, root agent_config). */
 #ifndef WAZUHCONFIG
-#ifndef WIN32
-#ifdef CLIENT
 #define WAZUHCONFIG "ossec_config"
-#else
-#define WAZUHCONFIG "wazuh_config"
-#endif
-#else
-#define WAZUHCONFIG "ossec_config"
-#endif
 #endif
 
 #define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"

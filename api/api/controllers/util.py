@@ -7,6 +7,7 @@ from api.encoder import dumps, prettify
 
 JSON_CONTENT_TYPE="application/json"
 XML_CONTENT_TYPE="application/xml; charset=utf-8"
+YAML_CONTENT_TYPE="application/yaml; charset=utf-8"
 ERROR_CONTENT_TYPE="application/problem+json; charset=utf-8"
 
 

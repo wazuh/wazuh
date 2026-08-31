@@ -1,33 +1,18 @@
-- sections:
-  - section: auth
-    elements:
-    - disabled:
-        value: 'no'
-    - port:
-        value: 1515
-    - use_source_ip:
-        value: USE_SOURCE_IP
-    - ipv6:
-        value: 'yes'
-    - force:
-        elements:
-        - enabled:
-            value: 'yes'
-        - key_mismatch:
-            value: 'no'
-        - after_registration_time:
-            value: '0h'
-        - disconnected_time:
-            attributes:
-            - enabled: 'yes'
-            value: '0h'
-    - purge:
-        value: 'yes'
-    - ciphers:
-        value: 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256'
-    - ssl_verify_host:
-        value: 'no'
-    - ssl_manager_cert:
-        value: '/var/wazuh-manager/etc/certs/remoted.pem'
-    - ssl_manager_key:
-        value: '/var/wazuh-manager/etc/certs/remoted-key.pem'
+- fragments:
+    auth:
+      disabled: false
+      port: 1515
+      use_source_ip: USE_SOURCE_IP
+      ipv6: true
+      force:
+        enabled: true
+        key_mismatch: false
+        after_registration_time: 0h
+        disconnected_time:
+          enabled: true
+          value: 0h
+      purge: true
+      ciphers: TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256
+      ssl_verify_host: false
+      ssl_manager_cert: /var/wazuh-manager/etc/certs/remoted.pem
+      ssl_manager_key: /var/wazuh-manager/etc/certs/remoted-key.pem

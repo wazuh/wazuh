@@ -46,7 +46,7 @@ endpoint = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
 - **Example:** `192.168.1.100`, `manager.example.com:8443/gateway`,
   `[2001:db8::1]:1517`, `[fe80::1%25eth0]:1517`
 - **Note on the prefix:** omitting the slash entirely selects the default prefix
-  `wazuh-manager`, matching a manager whose `<remote><https><global_prefix>` is the shipped
+  `wazuh-manager`, matching a manager whose `remote.https.global_prefix` is the shipped
   `/wazuh-manager/`. A **trailing slash with nothing after it** is the explicit opt-out for a
   manager serving unprefixed endpoints — so `192.168.1.100` and `192.168.1.100/` mean
   different things. This mirrors the manager, where `<global_prefix>` is `/` to serve no
@@ -372,7 +372,7 @@ An attempt count is the **total** number of tries, not retries after the first: 
 once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;
 authentication failures, permanent errors and version rejections stop immediately. A step's worst
 case is therefore about `attempts × timeout` plus the jittered backoff between tries — check that
-figure against `<global><agents_disconnection_time>` before raising either.
+figure against `global.agents_disconnection_time` before raising either.
 
 ```ini
 # Per-request budget for /control, /stateless, /stats and /config, in

@@ -17,13 +17,8 @@ from wazuh_testing.utils import configuration as wazuh_config
 def configure_for_api_test():
     """Write an auth-enabled configuration so authd is running when daemons restart for API tests."""
     backup = wazuh_config.get_wazuh_conf()
-    config_with_auth = wazuh_config.set_section_wazuh_conf([{
-        'section': 'auth',
-        'elements': [
-            {'disabled': {'value': 'no'}},
-            {'remote_enrollment': {'value': 'yes'}},
-        ]
-    }])
+    # etc/wazuh-manager.yml: the `auth` section is replaced as a whole, the schema fills the rest with defaults.
+    config_with_auth = wazuh_config.set_manager_conf({'auth': {'disabled': False, 'remote_enrollment': True}})
     wazuh_config.write_wazuh_conf(config_with_auth)
     yield
     wazuh_config.write_wazuh_conf(backup)

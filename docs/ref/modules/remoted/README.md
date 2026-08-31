@@ -5,7 +5,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 It serves two channels at once, and they share almost nothing:
 
 - The **HTTPS agent API** on port `1517` — the transport in 5.0. A 5.x agent enrolls, reports and receives work over it exclusively.
-- The **legacy AES-encrypted TCP/UDP channel** on port `1514` — kept only to serve 4.x agents, and started only when `<remote><legacy>` is explicitly enabled.
+- The **legacy AES-encrypted TCP/UDP channel** on port `1514` — kept only to serve 4.x agents, and started only when `remote.legacy` is explicitly enabled.
 
 ## Key Features
 

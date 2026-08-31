@@ -559,10 +559,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "deny"
       }
     },
     "decorator_params": {
@@ -580,10 +580,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "deny"
       }
     },
     "decorator_params": {
@@ -593,7 +593,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -601,10 +601,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "deny"
       }
     },
     "decorator_params": {
@@ -614,7 +614,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -630,18 +630,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -651,18 +651,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -672,7 +672,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -680,10 +680,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/wazuh-manager.conf": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.yml": "allow",
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -693,18 +693,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:*&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -714,19 +714,19 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+      "file:path:*": ["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:*&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -739,16 +739,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:master-node&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -761,16 +761,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+      "file:path:*": ["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
     "allowed_resources": [["etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:master-node&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -783,8 +783,8 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
@@ -800,16 +800,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.yml", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -819,7 +819,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -827,10 +827,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
-        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
-        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -840,17 +840,17 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.yml": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
-        "node:id:worker1&file:path:etc/wazuh-manager.conf": "allow"
+        "node:id:worker1&file:path:etc/wazuh-manager.yml": "allow"
       }
     },
     "decorator_params": {
@@ -860,10 +860,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
@@ -876,10 +876,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/wazuh-manager.conf"]
+      "path": ["etc/wazuh-manager.yml"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/wazuh-manager.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.yml"]]
   },
   {
     "rbac": {
@@ -896,7 +896,7 @@
     "function_params": {
       "path": ["etc/rules/local_rules.xml"]
     },
-    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/wazuh-manager.conf"]},
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/wazuh-manager.yml"]},
     "allowed_resources": [["etc/rules/local_rules.xml"]]
   }
 ]

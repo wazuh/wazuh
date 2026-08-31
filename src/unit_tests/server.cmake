@@ -37,7 +37,12 @@ set(TEST_DEPS
     ${WAZUHLIB}
     ${WAZUHEXT}
     -lschema_validator
+    # libconfig's w_mconf_*() (etc/wazuh-manager.yml) wraps the C++ manager_config library.
+    -lmanager_config
+    ${SRC_FOLDER}/external/yaml-cpp/build/libyaml-cpp.a
     -Wl,--end-group
+    -lstdc++
+    -lm
     -lpthread
     -ldl
     -lcmocka

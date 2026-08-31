@@ -15,7 +15,7 @@ For module overview and architecture, see [File Integrity Monitoring Overview](i
 
 ## Metadata
 
-**Configuration file:** `/var/ossec/etc/ossec.conf` (agent) or `/var/wazuh-manager/etc/wazuh-manager.conf` (manager)
+**Configuration file:** `/var/ossec/etc/ossec.conf` (agent). The manager configuration (`etc/wazuh-manager.yml`) has no `syscheck` section.
 
 **XML Section:** `<syscheck>`
 

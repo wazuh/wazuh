@@ -1,0 +1,10 @@
+global:
+  agents_disconnection_time: 900
+wdb:
+  backup:
+    global:
+      enabled: false
+      interval: 3600
+      max_files: 1
+task-manager:
+  task_ttl: 0

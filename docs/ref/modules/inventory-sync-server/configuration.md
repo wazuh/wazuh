@@ -1,15 +1,15 @@
 # Inventory Sync Server Configuration
 
-The Inventory Sync Server module has no XML configuration block of its own. It is registered
-unconditionally and reads the `<indexer>` block for its connection to the indexer; everything else is
+The Inventory Sync Server module has no section of its own in `etc/wazuh-manager.yml`. It is registered
+unconditionally and reads the `indexer` section for its connection to the indexer; everything else is
 tuned through internal options.
 
 ## Configuration Sources
 
 | Source | What it provides |
 |---|---|
-| `<indexer>` in the manager configuration | Indexer hosts and TLS material |
-| `<cluster>` in the manager configuration | The cluster name stamped onto every document |
+| `indexer` section of the manager configuration | Indexer hosts and TLS material |
+| `cluster` section of the manager configuration | The cluster name stamped onto every document |
 | Internal options | Every transport and connector tunable listed below |
 
 Two values are deliberately NOT configurable:
@@ -564,7 +564,7 @@ missing, is not writable, or a file that is not a socket is sitting at the path.
 
 ### `/stats` and `/config` answer 503
 
-No configured indexer host is healthy. The module keeps serving and retries; check the `<indexer>` hosts
+No configured indexer host is healthy. The module keeps serving and retries; check the `indexer.hosts`
 and that the indexer is running. This is expected while the indexer starts up after the manager.
 
 ### Requests are answered 503 under load

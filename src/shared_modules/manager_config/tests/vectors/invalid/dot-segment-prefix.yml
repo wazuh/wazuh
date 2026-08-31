@@ -1,0 +1,3 @@
+remote:
+  https:
+    global_prefix: "/a/../b/"

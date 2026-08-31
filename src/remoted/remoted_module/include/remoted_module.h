@@ -38,7 +38,7 @@ extern "C"
 #include "commonDefs.h" // full_log_fnc_t
 
     /**
-     * @brief <remote><https><verification_mode> values.
+     * @brief remote.https.verification_mode values.
      *
      * Kept in sync by hand with the config-parser mirror in
      * src/config/include/remote-config.h (REMOTED_HTTPS_VERIFY_*), since the value
@@ -53,7 +53,7 @@ extern "C"
     };
 
     /**
-     * @brief <remote><https><dual_stack> values.
+     * @brief remote.https.dual_stack values.
      *
      * Only meaningful when the listener binds to an IPv6 address: controls the
      * IPV6_V6ONLY socket option, i.e. whether the same socket also accepts IPv4
@@ -79,7 +79,7 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int port;                        ///< HTTPS listening port. Regular <remote> setting (wazuh-manager.conf),
+        int port;                        ///< HTTPS listening port. Regular remote setting (wazuh-manager.yml),
                                          ///< not an internal option. <=0 -> module default.
         bool worker_node;                ///< true if this manager is a cluster worker node.
         char cluster_name[256];          ///< Cluster name.
@@ -88,8 +88,8 @@ extern "C"
         int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
         int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
                                          ///< (see remoted.http_worker_threads).
-        long http_max_body_size;         ///< Transport body cap, bytes. Regular <remote><https> setting
-                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module
+        long http_max_body_size;         ///< Transport body cap, bytes. Regular remote.https setting
+                                         ///< (wazuh-manager.yml), not an internal option. <=0 -> module
                                          ///< default.
         int http_read_timeout;           ///< Seconds to wait for a full request on a connection (also covers
                                          ///< the TLS handshake window). <=0 -> module default
@@ -169,7 +169,7 @@ extern "C"
         // Control endpoint configuration. Defaults apply when <=0 or empty.
         char manager_version[64];        ///< Manager version string.
         bool allow_higher_versions;      ///< Allow agents with version > manager version.
-        char limits_json[4096];          ///< Limits JSON (rendered from <remote><limits> in manager conf).
+        char limits_json[4096];          ///< Limits JSON (rendered from remote.limits in manager conf).
         int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
         int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
         int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 2000).
@@ -181,8 +181,8 @@ extern "C"
                                     ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
 
         // Enrollment (POST /enroll bridging to authd) configuration. Unlike every other group
-        // above, the behavioral flags here are NOT sourced from <remote><https> or a dedicated
-        // XML tag: they are copied verbatim from authd's own <auth> config block, so /enroll and
+        // above, the behavioral flags here are NOT sourced from remote.https or a dedicated
+        // key of their own: they are copied verbatim from authd's own auth section, so /enroll and
         // legacy port 1515 can never disagree on whether password auth is required or which
         // agent versions are acceptable. Only the operational knobs are remoted-owned internal
         // options.
@@ -194,7 +194,7 @@ extern "C"
         bool enroll_allow_higher_versions;    ///< authd's OWN <agents><allow_higher_versions> --
                                               ///< deliberately NOT the allow_higher_versions field
                                               ///< above, which is a separate, independently
-                                              ///< configured <remote> setting used by /control.
+                                              ///< configured remote setting used by /control.
         int enroll_password_refresh_interval; ///< Seconds between etc/authd.pass change checks
                                               ///< (hot-reload poll fallback). <=0 -> module default.
         int authd_connect_timeout;            ///< Seconds to wait for the authd local-socket connect. <=0 -> default.

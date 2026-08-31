@@ -1,11 +1,7 @@
-- sections:
-    - section: remote
-      elements:
-        - legacy:
-            elements:
-              - port:
-                  value: PORT
-              - protocol:
-                  value: TCP
-              - rids_closing_time:
-                  value: RIDS_CLOSING_TIME
+- fragments:
+    remote:
+      legacy:
+        port: PORT
+        protocol:
+        - tcp
+        rids_closing_time: RIDS_CLOSING_TIME

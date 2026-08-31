@@ -248,9 +248,9 @@ which is commented line by line and is where the deployment rules actually live.
 | `start_load_balancer.sh` | Starts or restarts **NGINX** with the chosen `nginx/*.conf` scenario. |
 | `start_haproxy.sh` | Starts or restarts **HAProxy** with the chosen `haproxy/*.cfg` scenario, on the same ports. Validates the config before starting. |
 | `add_second_manager.sh` | Builds node 2 on `:1518` (remoted only, ~3 MB, hard-linked binary). |
-| `set_manager_verification_mode.sh` | Switches `<verification_mode>` (`none`, `certificate`, `full`, or an invalid value on purpose) and restarts remoted. |
+| `set_manager_verification_mode.sh` | Switches `remote.https.verification_mode` in `etc/wazuh-manager.yml` (`none`, `certificate`, `full`, or an invalid value on purpose) and restarts remoted. |
 | `cleanup.sh` | Undoes everything the lab touched outside this directory. |
-| `lib_manager_paths.sh` | Sourced by the scripts above, not run. Works out which files in the manager hold remoted's certificate and key, by reading its configuration instead of hardcoding names. |
+| `lib_manager_paths.sh` | Sourced by the scripts above, not run. Works out which files in the manager hold remoted's certificate and key by asking the manager's own `bin/wazuh-manager-conf get` instead of hardcoding names, and edits `remote.https` in `etc/wazuh-manager.yml` for the scripts above. |
 | `package_lab.sh` | **Use this to hand the lab over.** Zips it while excluding `certs/` and `backup/` — the lab's CA key and a copy of the manager's real private key — and then verifies the archive instead of trusting the exclusion. Never `zip -r` this directory by hand. |
 
 ### NGINX scenarios

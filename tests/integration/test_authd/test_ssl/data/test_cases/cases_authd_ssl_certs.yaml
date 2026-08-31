@@ -1,63 +1,56 @@
 - name: NO CERT - Verify Host NO
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'no'
+    SSL_VERIFY_HOST: false
   metadata:
-    sim_option: 'NO CERT'
+    sim_option: NO CERT
     verify_host: 'no'
-
 - name: VALID CERT - Verify Host NO
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'no'
+    SSL_VERIFY_HOST: false
   metadata:
-    sim_option: 'VALID CERT'
+    sim_option: VALID CERT
     verify_host: 'no'
-
 - name: INCORRECT CERT - Verify Host NO
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'no'
+    SSL_VERIFY_HOST: false
   metadata:
-    sim_option: 'INCORRECT CERT'
+    sim_option: INCORRECT CERT
     verify_host: 'no'
-
 - name: INCORRECT HOST - Verify Host NO
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'no'
+    SSL_VERIFY_HOST: false
   metadata:
-    sim_option: 'INCORRECT HOST'
+    sim_option: INCORRECT HOST
     verify_host: 'no'
-
 - name: NO CERT - Verify Host YES
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'yes'
+    SSL_VERIFY_HOST: true
   metadata:
-    sim_option: 'NO CERT'
+    sim_option: NO CERT
     verify_host: 'yes'
-
 - name: VALID CERT - Verify Host YES
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'yes'
+    SSL_VERIFY_HOST: true
   metadata:
-    sim_option: 'VALID CERT'
+    sim_option: VALID CERT
     verify_host: 'yes'
-
 - name: INCORRECT CERT - Verify Host YES
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'yes'
+    SSL_VERIFY_HOST: true
   metadata:
-    sim_option: 'INCORRECT CERT'
+    sim_option: INCORRECT CERT
     verify_host: 'yes'
-
 - name: INCORRECT HOST - Verify Host YES
-  description: 'Checks wazuh-manager-authd can manage SSL connections'
+  description: Checks wazuh-manager-authd can manage SSL connections
   configuration_parameters:
-    SSL_VERIFY_HOST: 'yes'
+    SSL_VERIFY_HOST: true
   metadata:
-    sim_option: 'INCORRECT HOST'
+    sim_option: INCORRECT HOST
     verify_host: 'yes'

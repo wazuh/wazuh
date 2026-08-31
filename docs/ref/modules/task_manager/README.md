@@ -8,9 +8,9 @@ The Task Manager is a generic manager-side task-broker that stores tasks address
 
 **Type:** Manager-only
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<task-manager>`
+**YAML section:** `task-manager` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#task-manager)
 
 Source: [src/wazuh_modules/src/task_manager/](../../../../src/wazuh_modules/src/task_manager/)
 
@@ -176,13 +176,12 @@ For every option and defaults, see the [Task Manager Configuration Reference](co
 
 Minimal example:
 
-```xml
-<task-manager>
-  <task_ttl>3600</task_ttl>
-  <cleanup_interval>300</cleanup_interval>
-  <max_payload_bytes>1048576</max_payload_bytes>
-  <max_tasks_per_poll>100</max_tasks_per_poll>
-</task-manager>
+```yaml
+task-manager:
+  task_ttl: 3600
+  cleanup_interval: 300
+  max_payload_bytes: 1048576
+  max_tasks_per_poll: 100
 ```
 
 ---

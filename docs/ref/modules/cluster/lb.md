@@ -2,10 +2,9 @@
 
 A load balancer distributes workloads across multiple resources. In a Wazuh server cluster, it distributes Wazuh agents among worker nodes to improve scalability, availability, and performance.
 
-> **Note:** The `<cluster>` XML section referenced throughout the cluster
-> docs is not parsed or validated by the shared C configuration library — it
-> is recognized but otherwise ignored at that layer, with all parsing and
-> validation performed later in Python. See
+> **Note:** The `cluster` section of `etc/wazuh-manager.yml` referenced throughout the cluster
+> docs is validated against the manager schema before any daemon starts (`key` required); the
+> value checks are then performed in Python. See
 > [Cluster Configuration](configuration.md) for details.
 
 ## Overview
@@ -21,7 +20,7 @@ Load balancers allow agents to enroll and report to different Wazuh server nodes
 >
 > The examples on this page balance the **legacy** channel: agent traffic on `1514` and legacy
 > enrollment on `1515`. They apply only to a cluster still serving 4.x agents, with
-> `<remote><legacy>` and `<auth><legacy_enrollment>` enabled.
+> `remote.legacy.enabled` and `auth.legacy_enrollment` set to `true`.
 
 This document covers two commonly used load balancers:
 

@@ -3,7 +3,7 @@
 `remoted` embeds a self-contained C++ module (`remoted_module`) that runs an **HTTPS listener** on
 port `1517`. This is the agent-manager transport in 5.0: a 5.x agent enrolls, reports and receives
 work over it exclusively. The classic AES-encrypted TCP/UDP channel on port `1514` still exists, but
-only to keep serving 4.x agents, and only when it is explicitly enabled with `<remote><legacy>` —
+only to keep serving 4.x agents, and only when it is explicitly enabled with `remote.legacy` —
 see [Configuration](configuration.md).
 
 The listener is built on RESTinio + OpenSSL and authenticates every request with a per-agent
@@ -42,15 +42,15 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
   ownership, or the module fails to start (see
   [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
-  max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
+  max 64 header fields, and a transport body cap of 20 MiB by default (`remote.https.max_body_size`);
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
   limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
   below.
 
 ### Bind address: IPv4, IPv6 and dual-stack
 
-`<remote><https><bind_addr>` accepts any literal IPv4 or IPv6 address (validated with the same
-`OS_IsValidIP()` check used for the classic `<remote><legacy><local_ip>`, so both families work
+`remote.https.bind_addr` accepts any literal IPv4 or IPv6 address (validated with the same
+`OS_IsValidIP()` check used for the classic `remote.legacy.local_ip`, so both families work
 with no extra configuration). A few things to know before choosing one:
 
 - **`0.0.0.0`** binds an IPv4-only socket. Only IPv4 clients can connect; there is no way for an
@@ -58,11 +58,11 @@ with no extra configuration). A few things to know before choosing one:
 - **`::`** binds an IPv6 socket that listens on every local address. Whether IPv4 clients can also
   reach it depends on the **`IPV6_V6ONLY`** socket option, which the server sets to `1` (IPv6-only)
   by default -- `::` alone does **not** accept IPv4 connections unless
-  `<remote><https><dual_stack>yes</dual_stack>` is explicitly configured -- see
+  `remote.https.dual_stack: true` is explicitly configured -- see
   [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when `bind_addr` is IPv6;
-  an explicit `yes` or `no` is ignored (with a warning) for an IPv4 `bind_addr`. Leaving
-  `<dual_stack>` unset never warns, even on an IPv4 `bind_addr` -- it produces the same effective
-  behavior as an explicit `no`, just without the warning.
+  an explicit `true` or `false` is ignored (with a warning) for an IPv4 `bind_addr`. Leaving
+  `remote.https.dual_stack` unset never warns, even on an IPv4 `bind_addr` -- it produces the same effective
+  behavior as an explicit `false`, just without the warning.
 - **A specific literal** (`10.0.0.5`, `2001:db8::1`, ...) binds only that address/family, same as
   today.
 - Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
@@ -417,24 +417,24 @@ async I/O threads.
 
 Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
 ciphers, client verification mode) are **not** internal options -- they are regular, user-facing
-`<remote><https>` settings (`wazuh-manager.conf`). All resolve as **`<https>` tag value → built-in
-default**; an absent `<https>` block, or an absent individual option within it, falls back to the
+`remote.https` settings (`wazuh-manager.yml`). All resolve as **`remote.https` option value → built-in
+default**; an absent `remote.https` block, or an absent individual option within it, falls back to the
 built-in default below. See
 [Configuration Reference — HTTPS Configuration](configuration.md#https-configuration) for the full
-`<https>` tag reference and examples (including mutual TLS). Threading (`io_threads`,
-`http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
+`remote.https` option reference and examples (including mutual TLS). Threading (`io_threads`,
+`http_worker_threads`) is not exposed in `remote.https` and remains an internal option (see the table
 above).
 
-| Setting                                                                          | `<https>` tag       | Default                                                                                       |
+| Setting                                                                          | `remote.https` option    | Default                                                                                       |
 | -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
 | Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `127.0.0.1`                                                                                   |
-| Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
+| Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `false` (force IPv6-only)                                                                        |
 | Port                                                                             | `port`              | `1517`                                                                                        |
 | Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |
 | TLS certificate chain                                                            | `certificate`       | `etc/certs/remoted.pem`                                                                       |
 | TLS private key                                                                  | `key`               | `etc/certs/remoted-key.pem`                                                                   |
 | Client CA bundle                                                                 | `ca`                | `etc/certs/root-ca.pem`                                                                       |
-| Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
+| Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `remote.https.ca` is set without `remote.https.verification_mode`) |
 | TLS 1.3 ciphersuites                                                             | `ciphers`           | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`                  |
 
 > There is no `enabled` toggle: the listener always attempts to start and self-gates on the
@@ -508,7 +508,7 @@ own forward to the master can retry internally for several seconds before answer
 client-side timeout here would cut off a legitimate, still-in-progress worker enrollment as a
 spurious `503`. All other enrollment behavior (whether it's enabled, whether a password/client
 certificate is required, which agent versions are accepted) is deliberately **not** a separate
-`remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
+`remoted`-owned setting — it's read from `authd`'s own `auth` block so the two enrollment paths
 can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
 **Why more than one worker.** `authd`'s local-socket accept loop hands each accepted connection to
@@ -667,7 +667,7 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Cause | HTTP | wazuh-db `version` column |
 | --- | --- | --- |
 | Version is malformed (not `MAJOR.MINOR.PATCH`) | `400` | `N/A` sentinel — the framework's version parser raises on anything else, which would break the whole agent listing |
-| Version is well-formed but higher than the manager's, and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
+| Version is well-formed but higher than the manager's, and `remote.agents.allow_higher_versions` is `false` | `409` | stored as reported |
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -865,7 +865,7 @@ The two version rejections deliberately carry different statuses even though the
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
 agent treats it as terminal. A version that is merely **higher than this manager allows** is a
 `409 Conflict` — it can start succeeding without the agent changing anything (an operator sets
-`<remote><agents><allow_higher_versions>` to `yes`, or the manager is upgraded), so the agent enters
+`remote.agents.allow_higher_versions` to `true`, or the manager is upgraded), so the agent enters
 its `REJECTED` state and re-tries `startup` on a slow cadence instead of giving up.
 
 Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the same responses as
@@ -992,7 +992,7 @@ operator can retire port 1515 while keeping `/enroll` (or disable both together 
 `remote_enrollment`).
 
 **The route is always registered**, regardless of configuration. When enrollment is
-administratively disabled (`<auth><disabled>yes</disabled>`, or `<auth><remote_enrollment>no</auth>`),
+administratively disabled (`auth.disabled: true`, or `auth.remote_enrollment: false`),
 it answers **`403`** rather than disappearing — a missing route (`404`) would mean "this manager
 doesn't support enrollment at all," which is a different, more permanent statement than "an operator
 turned this off."
@@ -1083,7 +1083,7 @@ replay store either: a captured token could be replayed inside its window, bound
 | Field | Required | Notes |
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, `manage_agents` and the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
-| `version` | yes | Rejected if newer than the manager's unless `<remote><agents><allow_higher_versions>` is `yes` — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `version` | yes | Rejected if newer than the manager's unless `remote.agents.allow_higher_versions` is `true` — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
 | `groups` | no | Comma-separated, passed through unchanged. |
 | `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
@@ -1267,7 +1267,7 @@ agent's [`<stats_report>` / `<config_report>`](../client/configuration.md)):
 | `POST /config` | `<agent><config_report>` | **yes** | 3600 s |
 
 `/config` ships on because the manager needs a configuration snapshot even from an agent whose
-configuration nobody has touched; `/stats` is opt-in. An explicit `<enabled>` always overrides the
+configuration nobody has touched; `/stats` is opt-in. An explicit `remote.legacy.enabled` always overrides the
 default. They
 replace the pull-style API endpoints of 4.x — the manager no longer asks an agent for its stats, the
 agent reports them and the manager indexes what arrives.
@@ -1458,7 +1458,7 @@ python3 send_enroll.py --password Secret123 --all
 ## References
 
 - [Event Protocol Specification](event-protocol.md) — the `H`/`E` wire format for event batches.
-- [Configuration](configuration.md) — classic `remoted` (`<remote>`) options and internal options.
+- [Configuration](configuration.md) — classic `remoted` (`remote`) options and internal options.
 - [Architecture](architecture.md) — where the HTTPS listener sits in the `remoted` pipeline.
 - [Authd](../authd/README.md) / [Authd Configuration](../authd/configuration.md) — the enrollment
   service `/enroll` bridges to, and the `remote_enrollment`/`legacy_enrollment` flags that gate

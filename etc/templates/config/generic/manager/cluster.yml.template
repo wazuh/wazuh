@@ -1,0 +1,10 @@
+cluster:
+  name: wazuh
+  node_name: node01
+  node_type: master
+  key: "${CLUSTER_KEY}"
+  port: 1516
+  bind_addr: 127.0.0.1
+  nodes:
+    - 127.0.0.1
+  hidden: false

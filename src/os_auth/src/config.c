@@ -12,6 +12,7 @@
 #include "shared.h"
 #include "auth.h"
 #include "config.h"
+#include "mconf-config.h"
 
 // Read configuration
 int authd_read_config(const char *path) {
@@ -20,8 +21,19 @@ int authd_read_config(const char *path) {
 
     mdebug2("Reading configuration '%s'", path);
 
-    if (ReadConfig(CAUTHD, path, &config, NULL) < 0) {
+    /* etc/wazuh-manager.yml: loaded once per process, then the `auth` section as cJSON (mconf-config.h). */
+    if (w_mconf_load(path) < 0) {
         return OS_INVALID;
+    }
+
+    {
+        cJSON *auth = w_mconf_section("auth");
+        int ret = Read_Authd_JSON(auth, &config);
+        cJSON_Delete(auth);
+
+        if (ret < 0) {
+            return OS_INVALID;
+        }
     }
 
     if (!config.ciphers) {
@@ -55,45 +67,14 @@ int authd_read_config(const char *path) {
     return 0;
 }
 
+/* getconfig "auth": the effective `auth` section of etc/wazuh-manager.yml (schema defaults applied,
+ * native types), exactly what authd_read_config() loaded. The internal options authd reads on top of it
+ * (auth.timeout_*, authd.max_agents, authd.purge_delay) are not configuration-file options and are not
+ * reported here. */
 cJSON *getAuthdConfig(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *auth = cJSON_CreateObject();
-    cJSON *force = cJSON_CreateObject();
-    cJSON *disconnected_time = cJSON_CreateObject();
+    cJSON *auth = w_mconf_section("auth");
 
-    cJSON_AddNumberToObject(auth,"port",config.port);
-    if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
-    if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
-    if (config.flags.legacy_enrollment) cJSON_AddStringToObject(auth,"legacy_enrollment","yes"); else cJSON_AddStringToObject(auth,"legacy_enrollment","no");
-    if (config.ipv6) cJSON_AddStringToObject(auth,"ipv6","yes"); else cJSON_AddStringToObject(auth,"ipv6","no");
-    if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
-    if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
-    cJSON_AddNumberToObject(auth, "purge_delay", config.purge_delay);
-    if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
-    if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");
-    if (config.ciphers) cJSON_AddStringToObject(auth,"ciphers",config.ciphers);
-    if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
-    if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
-    if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
-
-    if (config.force_options.enabled) cJSON_AddStringToObject(force, "enabled", "yes"); else cJSON_AddStringToObject(force, "enabled", "no");
-    if (config.force_options.key_mismatch) cJSON_AddStringToObject(force, "key_mismatch", "yes"); else cJSON_AddStringToObject(force, "key_mismatch", "no");
-    if (config.force_options.disconnected_time_enabled) cJSON_AddStringToObject(disconnected_time, "enabled", "yes"); else cJSON_AddStringToObject(disconnected_time, "enabled", "no");
-    if (config.force_options.disconnected_time) cJSON_AddNumberToObject(disconnected_time, "value", config.force_options.disconnected_time);
-    cJSON_AddItemToObject(force, "disconnected_time", disconnected_time);
-    if (config.force_options.after_registration_time) cJSON_AddNumberToObject(force, "after_registration_time", config.force_options.after_registration_time);
-    cJSON_AddItemToObject(auth, "force", force);
-
-    cJSON * agents = cJSON_CreateObject();
-    cJSON_AddStringToObject(agents, "allow_higher_versions", config.allow_higher_versions ? "yes" : "no");
-    cJSON_AddItemToObject(auth, "agents", agents);
-
-    if (config.max_agents > 0) {
-        cJSON_AddNumberToObject(auth, "max_agents", config.max_agents);
-    }
-
-    cJSON_AddItemToObject(root,"auth",auth);
-
+    cJSON_AddItemToObject(root, "auth", auth != NULL ? auth : cJSON_CreateObject());
     return root;
 }

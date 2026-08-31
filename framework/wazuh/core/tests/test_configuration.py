@@ -12,7 +12,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import OSSEC_CONF
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -55,8 +54,8 @@ def test_insert(json_dst, section_name, option, value):
 
 
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
-    ({'global': {'label': 5}}, 'global', {'label': 4}),
-    ({'cluster': {'label': 5}}, 'cluster', {'label': 4})
+    ({'syscheck': {'label': 5}}, 'syscheck', {'label': 4}),
+    ({'anti_tampering': {'label': 5}}, 'anti_tampering', {'label': 4})
 ])
 def test_insert_section(json_dst, section_name, section_data):
     """Checks insert_section function."""
@@ -80,58 +79,28 @@ def test_read_option():
         data = fromstring(f.read())
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
-        data = fromstring(f.read())
-        EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'feed-update-interval': '60m'}
-        )
-        for section in data:
-            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
-                                                                                     EXPECTED_VALUES[section.tag])
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
-        data = fromstring(f.read())
-        EXPECTED_VALUES = MappingProxyType(
-            {
-                'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
-                'username': 'admin',
-                'password': 'admin',
-            }
-        )
-        for section in data:
-            assert configuration._read_option('indexer', section) == (section.tag,
-                                                                    EXPECTED_VALUES[section.tag])
+def test_conf_sections_are_agent_only():
+    """CONF_SECTIONS only describes agent.conf sections: the manager's own ones live in etc/wazuh-manager.yml."""
+    manager_sections = {'remote', 'global', 'auth', 'cluster', 'indexer', 'vulnerability-detection'}
+
+    assert not manager_sections & set(configuration.CONF_SECTIONS)
+    assert {'syscheck', 'rootcheck', 'localfile', 'sca', 'active-response'} <= set(configuration.CONF_SECTIONS)
 
 
-def test_read_option_remote_legacy():
-    """<remote><legacy> must expose 'protocol' as a list, matching the former flat <remote><protocol>."""
+def test_agentconf2json_ignores_manager_sections():
+    """An agent.conf carrying manager sections keeps the agent ones and drops the rest without failing."""
     xml_conf = fromstring(
-        '<remote><legacy><port>1514</port><protocol>tcp,udp</protocol></legacy></remote>'
+        '<root><agent_config os="Linux">'
+        '<syscheck><frequency>43200</frequency></syscheck>'
+        '<remote><legacy><port>1514</port></legacy></remote>'
+        '<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>'
+        '</agent_config></root>'
     )
 
-    for section in xml_conf:
-        name, value = configuration._read_option('remote', section)
-        assert name == 'legacy'
-        assert value == {'port': '1514', 'protocol': ['tcp', 'udp']}
+    result = configuration._agentconf2json(xml_conf)
 
-
-def test_read_option_remote_https():
-    """<remote><https> options must be exposed as scalars, not wrapped in single-element lists."""
-    xml_conf = fromstring(
-        '<remote><https><port>9443</port><bind_addr>0.0.0.0</bind_addr>'
-        '<certificate>etc/remoted-https/server.crt</certificate>'
-        '<verification_mode>full</verification_mode></https></remote>'
-    )
-
-    for section in xml_conf:
-        name, value = configuration._read_option('remote', section)
-        assert name == 'https'
-        assert value == {
-            'port': '9443',
-            'bind_addr': '0.0.0.0',
-            'certificate': 'etc/remoted-https/server.crt',
-            'verification_mode': 'full',
-        }
+    assert result == [{'filters': {'os': 'Linux'}, 'config': {'syscheck': {'frequency': '43200'}}}]
 
 
 @pytest.mark.parametrize("configuration_file, expected_values", [
@@ -208,37 +177,37 @@ def test_merged_mg2json():
     assert item['file_size'] == 76
 
 
-def test_get_ossec_conf():
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration.get_ossec_conf()
+SCHEMA_PATH = os.path.join(parent_directory, '..', '..', '..', 'src', 'shared_modules', 'manager_config', 'schema',
+                           'wazuh-manager.schema.json')
+FIXTURE_YML = os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.yml')
 
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            configuration.get_ossec_conf(from_import=True)
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 0
+
+@patch('wazuh.core.common.MANAGER_CONF_SCHEMA', new=SCHEMA_PATH)
+def test_get_manager_conf():
+    """get_manager_conf() returns the effective document (schema defaults applied) or a filtered part of it."""
+    with pytest.raises(WazuhError, match=".* 1101 .*"):
+        configuration.get_manager_conf(conf_file=os.path.join(parent_directory, tmp_path, 'configuration/noexists.yml'))
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
-        configuration.get_ossec_conf(section='noexists',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
+        configuration.get_manager_conf(section='noexists', conf_file=FIXTURE_YML)
 
-    with pytest.raises(WazuhError, match=".* 1106 .*"):
-        configuration.get_ossec_conf(section='remote',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
+    with pytest.raises(WazuhError, match=".* 1103 .*"):
+        configuration.get_manager_conf(section='cluster', field='noexists', conf_file=FIXTURE_YML)
 
-    assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
+    whole = configuration.get_manager_conf(conf_file=FIXTURE_YML)
+    assert whole['cluster']['name'] == 'wazuh'
+    assert whole['cluster']['hidden'] is False
+    # Sections the fixture omits exist with their schema defaults
+    assert whole['remote']['https']['port'] == 1517
+    assert whole['indexer'] == {'hosts': [], 'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}}
 
-    assert configuration.get_ossec_conf(
-        section='cluster',
-        conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
+    assert configuration.get_manager_conf(section='cluster', conf_file=FIXTURE_YML)['cluster']['node_name'] == 'master-node'
+    assert configuration.get_manager_conf(section='cluster', field='name', conf_file=FIXTURE_YML) == \
+        {'cluster': {'name': 'wazuh'}}
 
-    assert configuration.get_ossec_conf(
-        section='cluster', field='name',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
-    )['cluster']['name'] == 'wazuh'
+    with patch('wazuh.core.configuration.load_manager_conf', return_value={'global': {}}):
+        with pytest.raises(WazuhError, match=".* 1106 .*"):
+            configuration.get_manager_conf(section='cluster')
 
 
 def test_get_agent_conf():
@@ -261,7 +230,7 @@ def test_get_agent_conf():
 def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
-            configuration.get_file_conf(filename='wazuh-manager.conf', group_id='default', type_conf='conf',
+            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf',
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
@@ -395,18 +364,12 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
             configuration.upload_group_file('default', [], 'a.conf')
 
 @pytest.mark.parametrize("component, socket, socket_dir, rec_msg", [
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": true}}'),
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": false}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {}}'),
-    ('agent', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('analysis', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
     ('monitor', 'monitor.sock', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
     ('request', 'remote.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('wazuh-manager-db', 'wdb.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('wmodules', 'wmodules.sock', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
 ])
@@ -441,7 +404,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                     mock_receive.assert_called_once()
                     mock_close.assert_called_once()
 
-                    if result.get('auth', {}).get('use_password') == "yes":
+                    if result.get('auth', {}).get('use_password') is True:
                         assert result.get('authd.pass') == 'test_password'
                     else:
                         assert 'authd.pass' not in result
@@ -453,9 +416,9 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
     ('test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
 
     # Simple messages
-    ('syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
-    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
+    ('monitor', 'global', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
+    ('monitor', 'global', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
+    ('monitor', 'global', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
     # JSON messages
     ('request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
@@ -476,17 +439,3 @@ def test_get_active_configuration_ko(mock_exists, component, config, socket_exis
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
                         configuration.get_active_configuration(component=component, configuration=config)
-
-
-def test_write_ossec_conf():
-    content = "New config"
-    with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
-        configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(OSSEC_CONF, 'w')
-        mocked_file().writelines.assert_called_once_with(content)
-
-
-def test_write_ossec_conf_exceptions():
-    with patch('wazuh.core.configuration.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1126 .*"):
-            configuration.write_ossec_conf(new_conf="placeholder")

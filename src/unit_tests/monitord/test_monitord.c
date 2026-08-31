@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 
 #include "../../external/cJSON/cJSON.h"
 #include "store_op.h"
@@ -35,12 +36,6 @@
 #endif
 
 /* redefinitons/wrapping */
-
-int __wrap_ReadConfig(int modules, const char *cfgfile, __attribute__((unused)) void *d1, __attribute__((unused)) void *d2) {
-    check_expected(modules);
-    check_expected(cfgfile);
-    return mock();
-}
 
 extern monitor_time_control mond_time_control;
 
@@ -349,26 +344,23 @@ void test_getMonitorInternalOptions_success(void **state) {
 /* Tests getMonitorGlobalOptions */
 
 void test_getMonitorGlobalOptions_success(void **state) {
-    cJSON *root = NULL;
-    cJSON *object = NULL;
+    /* The effective `global` section of the YAML document, not a view of mond.global */
+    expect_string(__wrap_w_mconf_section, section, "global");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"agents_disconnection_time\":\"15m\",\"agents_disconnection_alert_time\":20}"));
 
-    // Arbitrary configuration
-    mond.global.agents_disconnection_time = 20;
-    mond.global.agents_disconnection_alert_time = 100;
+    cJSON *root = getMonitorGlobalOptions();
+    cJSON *global = cJSON_GetObjectItem(root, "global");
 
-    root = getMonitorGlobalOptions();
-
-    if (root) {
-        object = cJSON_GetObjectItem(root->child, "agents_disconnection_time");
-        assert_int_equal(object->valueint, mond.global.agents_disconnection_time);
-        object = cJSON_GetObjectItem(root->child, "agents_disconnection_alert_time");
-        assert_int_equal(object->valueint, mond.global.agents_disconnection_alert_time);
-    }
+    assert_true(cJSON_IsObject(global));
+    assert_string_equal(cJSON_GetObjectItem(global, "agents_disconnection_time")->valuestring, "15m");
+    assert_int_equal(cJSON_GetObjectItem(global, "agents_disconnection_alert_time")->valueint, 20);
+    assert_null(cJSON_GetObjectItem(root, "monitord"));
 
     cJSON_Delete(root);
 }
 
-/* Tests ReadConfig */
+/* Tests MonitordConfig (YAML document through w_mconf_*) */
 
 void test_MonitordConfig_success(void **state) {
     int result = 0;
@@ -378,15 +370,17 @@ void test_MonitordConfig_success(void **state) {
 
     will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, 0);
+    expect_string(__wrap_w_mconf_load, cfgfile, cfg);
+    will_return(__wrap_w_mconf_load, 0);
+    expect_string(__wrap_w_mconf_section, section, "global");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"agents_disconnection_time\":\"15m\",\"agents_disconnection_alert_time\":30}"));
 
     result = MonitordConfig(cfg, &mond, no_agents, day_wait);
 
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(mond.global.agents_disconnection_time, 900);
-    assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
+    assert_int_equal(mond.global.agents_disconnection_alert_time, 30);
 
     assert_int_equal(mond.day_wait, 1);
     assert_int_equal(mond.compress, 1);
@@ -405,9 +399,8 @@ void test_MonitordConfig_fail(void **state) {
 
     will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, -1);
+    expect_string(__wrap_w_mconf_load, cfgfile, cfg);
+    will_return(__wrap_w_mconf_load, -1); // the helper already logged CONFIG_YAML_INVALID
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at '/config_path'.");
 

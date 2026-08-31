@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "mconf-config.h"
 #include "generate_cert.h"
 #include <unistd.h>
 
@@ -31,7 +32,7 @@ static void help_remoted(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_YML);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out("    -C          Specify the certificate validity in days.");
@@ -80,7 +81,7 @@ int main(int argc, char **argv)
         }
     }
 
-    const char *cfg = WAZUHCONF;
+    const char *cfg = WAZUHCONF_YML;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
 
@@ -281,6 +282,10 @@ int main(int argc, char **argv)
 
     /* Exit if test_config is set */
     if (test_config) {
+        /* Start-up does not require the certificate files to exist; the test run does. */
+        if (w_mconf_validate(cfg) < 0) {
+            merror_exit(CONFIG_ERROR, cfg);
+        }
         /* The http_*, downstream_* and control_* options are resolved in secure.c, on the daemon
          * path only, so without this '-t' accepts every one of them whatever the value. */
         w_remoted_validate_module_config();

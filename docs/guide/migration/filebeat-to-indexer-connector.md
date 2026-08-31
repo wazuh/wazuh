@@ -10,12 +10,12 @@ Filebeat is not uninstalled automatically during the manager upgrade. Removing i
 
 | `filebeat.yml` (4.x) | Wazuh 5.x | Where |
 |---|---|---|
-| `output.elasticsearch.hosts` | `<indexer><hosts><host>` (include `https://` and port) | `wazuh-manager.conf` |
+| `output.elasticsearch.hosts` | `indexer.hosts[]` (include `https://` and port) | `wazuh-manager.yml` |
 | `output.elasticsearch.username` | `wazuh-manager-keystore -f indexer -k username -v <value>` | Keystore |
 | `output.elasticsearch.password` | `wazuh-manager-keystore -f indexer -k password -v <value>` | Keystore |
-| `output.elasticsearch.ssl.certificate_authorities` | `<indexer><ssl><certificate_authorities><ca>` | `wazuh-manager.conf` |
-| `output.elasticsearch.ssl.certificate` | `<indexer><ssl><certificate>` | `wazuh-manager.conf` |
-| `output.elasticsearch.ssl.key` | `<indexer><ssl><key>` | `wazuh-manager.conf` |
+| `output.elasticsearch.ssl.certificate_authorities` | `indexer.ssl.certificate_authorities[]` | `wazuh-manager.yml` |
+| `output.elasticsearch.ssl.certificate` | `indexer.ssl.certificate` | `wazuh-manager.yml` |
+| `output.elasticsearch.ssl.key` | `indexer.ssl.key` | `wazuh-manager.yml` |
 
 Every other `filebeat.yml` setting is gone and requires no action:
 
@@ -73,33 +73,29 @@ sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v <yo
 sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v <your_password>
 ```
 
-### 4. Configure the `<indexer>` block
+### 4. Configure the `indexer` block
 
-Add the block to `/var/wazuh-manager/etc/wazuh-manager.conf` using your hosts and certificate paths:
+Add the block to `/var/wazuh-manager/etc/wazuh-manager.yml` using your hosts and certificate paths:
 
-```xml
-<indexer>
-  <hosts>
-    <host>https://127.0.0.1:9200</host>
-  </hosts>
-  <ssl>
-    <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-    </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
-  </ssl>
-</indexer>
+```yaml
+indexer:
+  hosts:
+  - https://127.0.0.1:9200
+  ssl:
+    certificate_authorities:
+    - /var/wazuh-manager/etc/certs/root-ca.pem
+    certificate: /var/wazuh-manager/etc/certs/indexer-connector.pem
+    key: /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
-For a multi-node indexer cluster, list each node as a separate `<host>`:
+For a multi-node indexer cluster, list each node as a separate `indexer.hosts[]`:
 
-```xml
-<hosts>
-  <host>https://10.0.0.1:9200</host>
-  <host>https://10.0.0.2:9200</host>
-  <host>https://10.0.0.3:9200</host>
-</hosts>
+```yaml
+indexer:
+  hosts:
+  - https://10.0.0.1:9200
+  - https://10.0.0.2:9200
+  - https://10.0.0.3:9200
 ```
 
 Credentials are not set here; they come from the keystore (step 3).

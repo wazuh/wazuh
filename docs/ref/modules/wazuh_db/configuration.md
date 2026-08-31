@@ -10,11 +10,11 @@ For module overview, architecture, and database schemas, see [Wazuh DB Module](i
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.yml`
 
-**XML Section:** `<wdb>`
+**YAML section:** `wdb` — see the [Manager Configuration Reference](../../configuration/manager/reference.md#wdb)
 
-**Internal Options:** `wazuh_database.*`
+**Internal Options:** `wazuh_db.*`
 
 The Wazuh DB configuration controls automatic database backups and retention policies.
 
@@ -30,8 +30,8 @@ Database backup configuration block. Use the `database` attribute to specify whi
 
 Enable automatic backups of the selected database.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
+- **Default value:** `true`
+- **Allowed values:** `true`, `false`
 - **Note:** When disabled, no automatic backups are created. Manual backups are still possible
 
 #### interval
@@ -103,14 +103,13 @@ wazuh_db.check_fragmentation_interval=7200
 
 Standard backup settings:
 
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>1d</interval>
-    <max_files>3</max_files>
-  </backup>
-</wdb>
+```yaml
+wdb:
+  backup:
+    global:
+      enabled: true
+      interval: 1d
+      max_files: 3
 ```
 
 Backup files are written to `/var/wazuh-manager/backup/db/`.
@@ -119,40 +118,37 @@ Backup files are written to `/var/wazuh-manager/backup/db/`.
 
 For critical environments requiring more frequent backups:
 
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>6h</interval>
-    <max_files>8</max_files>
-  </backup>
-</wdb>
+```yaml
+wdb:
+  backup:
+    global:
+      enabled: true
+      interval: 6h
+      max_files: 8
 ```
 
 ### Extended Retention
 
 Keep more backup history:
 
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>1d</interval>
-    <max_files>30</max_files>
-  </backup>
-</wdb>
+```yaml
+wdb:
+  backup:
+    global:
+      enabled: true
+      interval: 1d
+      max_files: 30
 ```
 
 ### Disable Backups
 
 For testing or storage-constrained environments:
 
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>no</enabled>
-  </backup>
-</wdb>
+```yaml
+wdb:
+  backup:
+    global:
+      enabled: false
 ```
 
 ---
@@ -246,14 +242,13 @@ Typical sizes:
 
 For deployments with large databases:
 
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>12h</interval>     <!-- Less frequent -->
-    <max_files>5</max_files>     <!-- Fewer retained backups -->
-  </backup>
-</wdb>
+```yaml
+wdb:
+  backup:
+    global:
+      enabled: true
+      interval: 12h
+      max_files: 5
 ```
 
 ---
@@ -293,7 +288,7 @@ Expected output: `ok`
 ### Common Issues
 
 **Issue:** Backup files not being created
-**Solution:** Check disk space, verify `<enabled>yes</enabled>`, check logs for errors
+**Solution:** Check disk space, verify `wdb.backup.global.enabled: true`, check logs for errors
 
 **Issue:** wazuh-db high CPU usage
 **Solution:** Reduce query frequency from other modules, increase `worker_pool_size` in internal options

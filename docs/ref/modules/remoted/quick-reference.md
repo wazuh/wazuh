@@ -5,7 +5,7 @@
 Wazuh 5.0+ automatically enriches all events with agent metadata (OS, version, groups, etc.) before
 forwarding them to the engine. No configuration required.
 
-The metadata **cache** described on this page belongs to the legacy `<remote><legacy>` channel, which
+The metadata **cache** described on this page belongs to the legacy `remote.legacy` channel, which
 extracts it from 4.x keep-alives. A 5.x agent instead reports its host metadata on `POST /control`
 (`notify`), and the manager writes it straight to wazuh-db — see
 [HTTPS Agent API](https-events-api.md#control-endpoint-post-control).
@@ -89,7 +89,7 @@ E	{"log":"Authentication successful"}
 
 ### Statistics file *(legacy channel)*
 
-These counters describe the `<remote><legacy>` pipeline only. They stay at zero on a manager serving
+These counters describe the `remote.legacy` pipeline only. They stay at zero on a manager serving
 5.x agents over HTTPS.
 
 ```bash

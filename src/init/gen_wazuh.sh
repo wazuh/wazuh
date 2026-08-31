@@ -21,6 +21,7 @@ Use()
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
   echo "   - installation_path (optional): changes the default path '/var/wazuh-manager' for server and '/var/ossec' for agent"
+  echo " The manager configuration is YAML (etc/wazuh-manager.yml); the agent one is XML (etc/ossec.conf)."
 }
 
 # Read script values
@@ -41,7 +42,7 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
     DIST_VER="$4"
     DIST_SUBVER="0"
   fi
-  if [ "$#" = "5" ]; then
+  if [ "$#" -ge "5" ]; then
     INSTALLDIR="$5"
   fi
 

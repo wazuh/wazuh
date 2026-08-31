@@ -153,7 +153,8 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 
 
 # ================================================ Wazuh path - Config =================================================
-OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
+MANAGER_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.yml')
+MANAGER_CONF_SCHEMA = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.schema.json')
 INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
 CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')

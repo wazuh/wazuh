@@ -93,7 +93,7 @@ void test_wm_task_manager_dump_enabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "task-manager");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "enabled")));
 }
 
 void test_wm_task_manager_dump_disabled(void **state)
@@ -110,7 +110,7 @@ void test_wm_task_manager_dump_disabled(void **state)
     cJSON *conf = cJSON_GetObjectItem(ret, "task-manager");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
-    assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "no");
+    assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "enabled")));
 }
 
 void test_wm_task_manager_destroy(void **state)
@@ -252,6 +252,47 @@ void test_wm_task_manager_init_disabled(void **state)
     expect_assert_failure(wm_task_manager_init(config));
 }
 
+/* wm_task_manager_read_json: the effective `task-manager` section of etc/wazuh-manager.yml over the module
+ * default_modules[] initialised with wm_task_manager_read(NULL, NULL, module). */
+
+void test_wm_task_manager_read_json_values(void **state)
+{
+    (void) state;
+    wmodule module = { 0 };
+    cJSON *section = cJSON_Parse("{\"task_ttl\":60,\"cleanup_interval\":30,\"max_payload_bytes\":2048,\"max_tasks_per_poll\":5}");
+
+    assert_int_equal(wm_task_manager_read(NULL, NULL, &module), 0);
+    assert_int_equal(wm_task_manager_read_json(section, &module), 0);
+    cJSON_Delete(section);
+
+    wm_task_manager *data = module.data;
+    assert_true(data->enabled);
+    assert_int_equal(data->task_ttl, 60);
+    assert_int_equal(data->cleanup_interval, 30);
+    assert_int_equal(data->max_payload_bytes, 2048);
+    assert_int_equal(data->max_tasks_per_poll, 5);
+    os_free(module.data);
+    os_free(module.tag);
+}
+
+void test_wm_task_manager_read_json_null_section_keeps_zero_defaults(void **state)
+{
+    (void) state;
+    wmodule module = { 0 };
+
+    assert_int_equal(wm_task_manager_read(NULL, NULL, &module), 0);
+    assert_int_equal(wm_task_manager_read_json(NULL, &module), 0);
+
+    wm_task_manager *data = module.data;
+    assert_true(data->enabled);
+    assert_int_equal(data->task_ttl, 0);          // 0 = module default (dump() shows WM_TASK_DEFAULT_TTL)
+    assert_int_equal(data->cleanup_interval, 0);
+    assert_int_equal(data->max_payload_bytes, 0);
+    assert_int_equal(data->max_tasks_per_poll, 0);
+    os_free(module.data);
+    os_free(module.tag);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_dump
@@ -266,7 +307,9 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_init_polling_interval_safe),
         cmocka_unit_test(test_wm_task_manager_init_polling_interval_equals_task_ttl),
         cmocka_unit_test(test_wm_task_manager_init_disabled),
-        // wm_task_manager_dispatch
+        // wm_task_manager_read_json
+        cmocka_unit_test(test_wm_task_manager_read_json_values),
+        cmocka_unit_test(test_wm_task_manager_read_json_null_section_keeps_zero_defaults),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

@@ -13,7 +13,7 @@ The following components should be included in your Wazuh manager backup strateg
 #### Essential Data
 
 - **Configuration files**: `/var/wazuh-manager/etc/`
-  - `wazuh-manager.conf` - Main configuration file
+  - `wazuh-manager.yml` - Main configuration file (YAML)
   - `wazuh-manager-internal-options.conf` - Internal configuration overrides
 
 - **Agent keys**: `/var/wazuh-manager/etc/client.keys`
@@ -313,7 +313,7 @@ BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
 # Configuration only for worker nodes
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf wazuh-manager-internal-options.conf
+sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.yml wazuh-manager-internal-options.conf
 ```
 
 ### Cluster Restore Procedures
@@ -321,7 +321,7 @@ sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc w
 #### Restore Master Node
 
 1. Follow the full manager restore procedure
-2. Verify cluster configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`
+2. Verify the `cluster` section of `/var/wazuh-manager/etc/wazuh-manager.yml` (`sudo /var/wazuh-manager/bin/wazuh-manager-conf get cluster`)
 3. Start the manager service
 4. Verify cluster status: `sudo /var/wazuh-manager/bin/cluster_control -l`
 
@@ -586,7 +586,7 @@ sudo systemctl start wazuh-manager
 
 ```bash
 # Verify cluster configuration
-sudo grep -A10 "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf
+sudo /var/wazuh-manager/bin/wazuh-manager-conf get cluster
 
 # Restart cluster daemon
 sudo systemctl restart wazuh-manager

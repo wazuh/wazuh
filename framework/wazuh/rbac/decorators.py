@@ -570,8 +570,44 @@ def _mask_xml_by_path(text: str, path: str, mask_text: str) -> str:
     pattern = _build_xml_mask_pattern(path)
     return pattern.sub(rf'\1{mask_text}\3', text)
 
+def _build_yaml_mask_pattern(path: str) -> re.Pattern:
+    """Build a compiled regex pattern to locate a value in a nested YAML block mapping.
+
+    The dotted ``path`` is walked as nested block keys: the top-level key starts the block and every following
+    line that is indented, blank or a comment belongs to it, so the search never crosses into the next top-level
+    section. Group 1 is everything up to and including ``key:`` (with its trailing spaces); group 2 is the value,
+    without the spaces and inline comment that may follow it.
+
+    Parameters
+    ----------
+    path : str
+        Dotted path, e.g. ``"cluster.key"`` maps to ``cluster:`` ... ``  key: value``.
+
+    Returns
+    -------
+    re.Pattern
+        Compiled regular expression with ``re.MULTILINE`` enabled.
+    """
+    keys = path.split('.')
+    filler = r'(?:[ \t]+[^\n]*\n|[ \t]*(?:#[^\n]*)?\n)*?'
+    pattern = rf'^{re.escape(keys[0])}:[^\n]*\n'
+    for key in keys[1:-1]:
+        pattern += rf'{filler}[ \t]+{re.escape(key)}:[^\n]*\n'
+    if len(keys) == 1:
+        pattern = rf'^({re.escape(keys[0])}:[ \t]*)([^\n#]*?)(?=[ \t]*(?:#[^\n]*)?$)'
+    else:
+        pattern = rf'({pattern}{filler}[ \t]+{re.escape(keys[-1])}:[ \t]*)([^\n#]*?)(?=[ \t]*(?:#[^\n]*)?$)'
+    return re.compile(pattern, re.MULTILINE)
+
+
+def _mask_yaml_by_path(text: str, path: str, mask_text: str) -> str:
+    """Replace the value at a nested YAML path with a mask string (unchanged text if the path is absent)."""
+    pattern = _build_yaml_mask_pattern(path)
+    return pattern.sub(lambda m: f'{m.group(1)}{mask_text}', text, count=1)
+
+
 def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
-    """Apply XML masking for every path defined in ``SENSITIVE_FIELD_PATHS``.
+    """Apply XML and YAML masking for every path defined in ``SENSITIVE_FIELD_PATHS``.
 
     Iterates over all sensitive field paths and delegates each substitution to
     `_mask_xml_by_path`, chaining the results so that every sensitive field in
@@ -592,6 +628,7 @@ def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
     """
     for path in SENSITIVE_FIELD_PATHS:
         text = _mask_xml_by_path(text, path, mask_text)
+        text = _mask_yaml_by_path(text, path, mask_text)
     return text
 
 
