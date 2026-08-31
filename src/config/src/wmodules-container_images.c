@@ -62,6 +62,10 @@ static void add_reference(wm_container_images_t *container_images, const char *t
 // Parse the <references> block. Every entry type of the grammar is accepted here, and
 // the module reports the ones it cannot read yet: keeping them out of the parser would
 // mean changing the configuration grammar again when they are implemented.
+//
+// An entry that cannot be used costs that entry only: an unrecognised type and an empty
+// value are both reported and skipped, so the remaining references are still configured
+// and the module still starts.
 static int parse_references(const OS_XML *xml, xml_node *references_node, wm_container_images_t *container_images) {
     xml_node **children = OS_GetElementsbyNode(xml, references_node);
     int retval = 0;
@@ -83,10 +87,13 @@ static int parse_references(const OS_XML *xml, xml_node *references_node, wm_con
             continue;
         }
 
+        // Skipped rather than rejected, like an unrecognised entry type above. Rejecting
+        // made the whole module configuration invalid, which stops wazuh-modulesd from
+        // starting, and the control script tests every daemon before starting any of them,
+        // so one empty entry left the agent with no daemon running at all.
         if (!children[j]->content || !strlen(children[j]->content)) {
-            merror("Empty '%s' reference at module '%s'.", children[j]->element, WM_CONTAINER_IMAGES_CONTEXT.name);
-            retval = OS_INVALID;
-            break;
+            mwarn("Empty '%s' reference at module '%s', ignoring it.", children[j]->element, WM_CONTAINER_IMAGES_CONTEXT.name);
+            continue;
         }
 
         add_reference(container_images, children[j]->element, children[j]->content);
