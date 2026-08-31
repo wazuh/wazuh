@@ -40,20 +40,30 @@ t_cache = TTLCache(maxsize=4500, ttl=60)
 def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
+    A PID file only proves that some process had that PID at the time the file was
+    written. If the PID has since been recycled by an unrelated process (or by this
+    same daemon's own new instance), killing it blindly can terminate the wrong
+    process. A process is only treated as the stale owner of the file when it was
+    already alive before the file's mtime.
+
     Parameters
     ----------
     daemon : str
         Daemon's name.
     """
+    own_pid = os.getpid()
     regex = rf'{daemon}[\w_]*-(\d+).pid'
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
+            pid = int(match.group(1))
+            full_path = path.join(common.OSSEC_PIDFILE_PATH, pid_file)
             try:
-                pid = int(match.group(1))
                 process = psutil.Process(pid)
                 command = process.cmdline()[-1]
+                belongs_to_daemon = daemon.replace('-', '_') in command
+                predates_file = process.create_time() <= path.getmtime(full_path)
 
-                if daemon.replace('-', '_') in command:
+                if pid != own_pid and belongs_to_daemon and predates_file:
                     os.kill(pid, SIGKILL)
                     print(f"{daemon}: Orphan child process {pid} was terminated.")
                 else:
@@ -62,7 +72,7 @@ def clean_pid_files(daemon: str) -> None:
             except (OSError, psutil.NoSuchProcess):
                 print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                os.remove(full_path)
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
