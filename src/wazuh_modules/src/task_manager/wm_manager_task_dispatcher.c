@@ -26,6 +26,19 @@
 /// Slack over a call's own deadline before the watchdog calls it a stall rather than a slow call.
 #define WM_MANAGER_TASK_WATCHDOG_MARGIN 30
 
+/* How long an idle lane worker parks before claiming unprompted.
+ *
+ * A lost-wakeup net, NOT the poll mechanism: discovery is the scheduler's one grouped
+ * poll_manager_tasks per poll_interval, which signals only the lanes that have work actually due.
+ * Waking every worker on a short timer instead makes every worker issue its own claim, which is
+ * the cost the grouped poll exists to avoid -- on an idle manager with no manager task ever
+ * created, that is one wazuh-db query per worker per tick, forever.
+ *
+ * Long enough to be negligible, short enough that a lane cannot sit idle indefinitely if a signal
+ * is ever missed. A missed signal otherwise self-heals on the next scheduler poll anyway, since a
+ * row that is still due is signalled again. */
+#define WM_MANAGER_TASK_LANE_IDLE_FALLBACK 60
+
 /// Longest error text carried into LAST_ERROR.
 #define WM_MANAGER_TASK_ERROR_LEN 256
 
@@ -265,7 +278,7 @@ STATIC void wm_manager_task_lane_wait(wm_manager_task_dispatcher *dispatcher, wm
 
     if (!dispatcher->lane_signalled[lane] && !wm_shutdown_requested) {
         clock_gettime(CLOCK_REALTIME, &deadline);
-        deadline.tv_sec += 1;
+        deadline.tv_sec += WM_MANAGER_TASK_LANE_IDLE_FALLBACK;
 
         pthread_cond_timedwait(&dispatcher->lane_cond[lane], &dispatcher->lane_mutex[lane], &deadline);
     }
@@ -282,6 +295,19 @@ STATIC void wm_manager_task_lane_signal(wm_manager_task_dispatcher *dispatcher, 
     w_mutex_lock(&dispatcher->lane_mutex[lane]);
     dispatcher->lane_signalled[lane] = true;
     pthread_cond_signal(&dispatcher->lane_cond[lane]);
+    w_mutex_unlock(&dispatcher->lane_mutex[lane]);
+}
+
+/**
+ * @brief Wake every worker of a lane, not just one of them.
+ *
+ * For shutdown only. One signal wakes one waiter, so on a lane of depth 4 the other three would
+ * sleep out the idle fallback before noticing the flag, and stop() joins them.
+ */
+STATIC void wm_manager_task_lane_wake_all(wm_manager_task_dispatcher *dispatcher, wm_manager_task_lane lane) {
+    w_mutex_lock(&dispatcher->lane_mutex[lane]);
+    dispatcher->lane_signalled[lane] = true;
+    pthread_cond_broadcast(&dispatcher->lane_cond[lane]);
     w_mutex_unlock(&dispatcher->lane_mutex[lane]);
 }
 
@@ -672,10 +698,11 @@ void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
         return;
     }
 
-    // The flag is already set by the module's stop callback; signalling every lane is what stops
-    // them waiting out their one second tick before noticing it.
+    // The flag is already set by the module's stop callback; waking every lane is what stops its
+    // workers sleeping out the idle fallback below before noticing it. Broadcast, not signal: the
+    // joins that follow wait for all of them, not for one per lane.
     for (wm_manager_task_lane lane = 0; lane < WM_MANAGER_TASK_LANE_COUNT; lane++) {
-        wm_manager_task_lane_signal(dispatcher, lane);
+        wm_manager_task_lane_wake_all(dispatcher, lane);
     }
 
     if (dispatcher->scheduler_started) {

@@ -1278,10 +1278,24 @@ static void purge_startup_recover(void) {
     size_t count = 0;
     int wdb_sock = -1;
 
+    /* wazuh-db is started AFTER this daemon (wazuh-server.sh starts the reversed daemon list, and
+     * authd comes before wazuh-manager-db in it), so on a normal start its socket does not exist
+     * yet and neither call below can succeed. Both are self-healing -- owed rows are retried by the
+     * writer's next cycle, and the seed by the first insertion that names an explicit id -- so
+     * attempting them here would buy nothing and cost a failed connect plus an ERROR line from the
+     * wazuh-db client on every single manager start.
+     *
+     * Existence only, and access() rather than w_is_file(): the latter opens the path, which fails
+     * on a socket whether or not anything is listening. A socket that exists but has no listener
+     * yet still fails below, and is handled the same way. */
+    const bool wdb_listening = access(WDB_LOCAL_SOCK, F_OK) == 0;
+
+    // Local work regardless: this reads the journal against client.keys and populates the pending
+    // set. Only the row creation and the seed need the database.
     owed = purge_journal_reconcile(&count);
 
     if (owed) {
-        size_t recorded = purge_create_rows(owed, count, &wdb_sock);
+        size_t recorded = wdb_listening ? purge_create_rows(owed, count, &wdb_sock) : 0;
 
         if (recorded < count) {
             mwarn("%zu recovered agent deletion(s) could not be recorded yet; they stay journaled "
@@ -1291,7 +1305,10 @@ static void purge_startup_recover(void) {
         os_free(owed);
     }
 
-    if (!purge_pending_seed()) {
+    if (!wdb_listening) {
+        mdebug1("The database is not up yet; the list of agent IDs still owing a deletion will be "
+                "read on the first insertion that names an explicit agent ID.");
+    } else if (!purge_pending_seed()) {
         mwarn("Could not read which agent IDs still owe a deletion; insertions naming an explicit "
               "agent ID are refused until the database answers.");
     }
@@ -1479,9 +1496,15 @@ void* run_writer(__attribute__((unused)) void *arg) {
          * It goes stale on an idle manager, which is harmless in both directions -- stale-high
          * over-refuses, stale-low lets wazuh-db refuse at creation instead, which re-queues -- and
          * the count only matters while deletions are flowing, which is when this thread cycles. */
-        purge_pending_rows_update(
-            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
-                               &wdb_sock));
+        // Not on the way out. It feeds phase 0, which refuses new deletions, and no deletion will
+        // be admitted after this point -- while wazuh-db is being stopped alongside this daemon, so
+        // the query would usually just fail and put an ERROR from the wazuh-db client in the log of
+        // every clean stop.
+        if (running) {
+            purge_pending_rows_update(
+                manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
+                                   &wdb_sock));
+        }
 
         gettime(&global_t1);
         mdebug2("[Writer] Inserted agents: %d", inserted_agents);

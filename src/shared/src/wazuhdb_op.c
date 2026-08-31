@@ -192,7 +192,12 @@ int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const in
             // than waiting on it forever.
             merror("database socket is full");
             return retval;
-        } else if (errno == EPIPE) {
+        } else if (errno == EPIPE || errno == ECONNRESET) {
+            // ECONNRESET belongs here with EPIPE: both mean the connection is gone, and which one
+            // arrives depends only on whether wazuh-db had unread data queued when it closed. With
+            // it in the catch-all below, a wazuh-db restart failed the query outright on the very
+            // path this reconnect exists to cover.
+            //
             // Retry to connect
             merror("Connection with wazuh-manager-db lost. Reconnecting.");
             close(*sock);
@@ -204,7 +209,11 @@ int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const in
                 return retval;
             }
         } else {
-            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
+            // Named by the half that actually failed: wdbc_query() returns -2 when the send failed
+            // and -1 when the response did. Reporting both as a send failure is what made a
+            // wazuh-db that closed the connection mid-answer -- the ordinary shape of a manager
+            // stop, arriving as ECONNRESET -- read as this process failing to write to it.
+            merror("Cannot %s message: (%d) '%s'.", retval == -2 ? "send" : "receive", errno, strerror(errno));
             return retval;
         }
     }

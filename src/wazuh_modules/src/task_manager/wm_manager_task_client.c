@@ -88,7 +88,18 @@ int wm_manager_task_client_call(wm_manager_task_client *client,
     os_free(parameters_str);
 
     if (wdbc_query_ex_timeout(&client->sock, query, output, sizeof(output), client->timeout) != 0) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Cannot send '%s' to the tasks database.", command);
+        if (wm_shutdown_requested) {
+            // Expected, not a fault: wazuh-db is a separate daemon with no ordering guarantee
+            // against this one, so a manager stop routinely closes its socket while a lane is
+            // mid-call. The row stays claimed and the next start's ownership sweep reclaims it,
+            // which is the same recovery a crash would get -- so reporting it as an error would
+            // put a red line in the log of every clean shutdown.
+            mtdebug1(WM_TASK_MANAGER_LOGTAG, "Could not send '%s' to the tasks database while shutting down.",
+                     command);
+        } else {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Cannot send '%s' to the tasks database.", command);
+        }
+
         os_free(query);
 
         // The connection's state is unknown after a failed or timed-out call, so it is dropped
