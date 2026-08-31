@@ -2397,6 +2397,15 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // RAII guard ensures m_syncing is set to false even if function exits early
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
+    // Held for the whole function: setSyncProtocol()/setSyncProtocolVD() replace these
+    // pointers under the exclusive lock, and synchronizeModule() below can run for a while
+    // (network round trip), so a shared lock is needed for its full duration -- not just
+    // around the "if (m_spSyncProtocol)" check -- to keep the object alive while it runs.
+    // quiesce() calls stop() on both protocols before releaseResources() takes the
+    // exclusive lock, so an in-flight synchronizeModule() call held here returns promptly
+    // instead of blocking teardown.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     bool overallSuccess = true;
     // #38601: true once either protocol actually opened a session with queued items. Success
     // alone cannot say that -- an empty queue reports success without contacting the manager.
