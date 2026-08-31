@@ -145,3 +145,4 @@
 | [#38065](https://github.com/wazuh/wazuh/issues/38065) | Fixed SCA and Syscollector sync threads not blocking `SIGTERM`, which could cause the shutdown handler to run on a module thread instead of the main thread and time out joining it. |
 | [#38212](https://github.com/wazuh/wazuh/issues/38212) | Fixed the Windows agent leaving the FIM synchronization database open when the service stopped, which left the `queue\` directory behind after an uninstall without purge. |
 | [#38646](https://github.com/wazuh/wazuh/pull/38646) | Fixed SCA HIPAA compliance mappings across policy checks. |
+| [#38694](https://github.com/wazuh/wazuh/issues/38694) | Fixed two CIS Amazon Linux 2023 SCA checks (`gpgcheck`, `vsftpd`) reporting false failures on compliant systems. |
