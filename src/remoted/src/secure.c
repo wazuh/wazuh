@@ -318,9 +318,16 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->downstream_max_response_body_size =
         getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
 
-    // Auth middleware (AES-CMAC request verification) tunables.
-    rm_config->auth_max_request_age = getDefine_Int_default("remoted", "auth_max_request_age", 1, 3600, 300);
-    rm_config->auth_max_future_skew = getDefine_Int_default("remoted", "auth_max_future_skew", 1, 300, 30);
+    // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
+    // The wazuh-agent+jwt profile's ceiling (12h, jwt_profile::v1::kMaxAgeSec/kMaxClockSkewSec) is the
+    // upper bound: a value above it is a configuration error and keeps remoted from starting, never
+    // silently widens the window. Defaults stay at the profile's original 60 s / 30 s; the ceiling only
+    // exists so a deployment can tolerate manager/agent clock drift larger than that combined 90 s.
+    // A zero skew is a valid setting ("no tolerance"), which a zeroed struct could not express -- hence the
+    // explicit jwt_clock_skew_set flag that tells the module the value is configured, not absent.
+    rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
+    rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
+    rm_config->jwt_clock_skew_set = 1;
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
 }
 
@@ -399,6 +406,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
+    }
+
+    if (logr->https.global_prefix) {
+        snprintf(rm_config->global_prefix, sizeof(rm_config->global_prefix), "%s", logr->https.global_prefix);
     }
 
     if (logr->https.certificate) {
@@ -487,6 +498,20 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     // must stay above whatever cadence the agent ships.
     rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
 
+    // The throttle suppresses the update-keepalive write for its whole window, and monitord marks
+    // any agent whose last_keepalive is older than <agents_disconnection_time>. The staleness the
+    // threshold sees is the throttle PLUS the agent's notify interval, which remoted does not
+    // know, so the guard fires from half: anything at or above it can cross once the agent's
+    // cadence is added, and half is also the safe setting for detection latency, because
+    // monitord's sweep period is the threshold itself and detection lands anywhere in [1x, 2x].
+    if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
+        mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
+              "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+              "are answering normally are marked disconnected. Keep it below half.",
+              rm_config->keepalive_throttle_sec,
+              logr.global.agents_disconnection_time);
+    }
+
     extern module_limits_t manager_module_limits;
     extern bool manager_module_limits_enabled;
 
@@ -501,6 +526,12 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     } else {
         snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
     }
+}
+
+void w_remoted_validate_module_config(void) {
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&logr, &rm_config);
+    remoted_module_control_config(&rm_config);
 }
 
 /* Handle secure connections */

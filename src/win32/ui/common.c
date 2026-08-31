@@ -331,11 +331,10 @@ int get_ossec_server()
     char *str = NULL;
     int success = 0;
 
-    /* Definitions. <agent> is the 5.x name of the block; the <client> paths are kept
-     * because a WPK upgrade never rewrites ossec.conf
+    /* Definitions. <agent><manager> is the 5.x shape; the <client> paths are kept
+     * because a WPK upgrade never rewrites ossec.conf.
      */
-    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "server", "address", NULL};
-    const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
+    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
     const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
     const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
@@ -358,19 +357,6 @@ int get_ossec_server()
         config_inst.server = str;
         success = 1;
         goto ret;
-    }
-    if (str = OS_GetOneContentforElement(&xml, xml_manageraddr), str) {
-        if (OS_IsValidIP(str, NULL) == 1) {
-            config_inst.server_type = SERVER_IP_USED;
-            config_inst.server = str;
-            success = 1;
-            goto ret;
-        } else {
-            config_inst.server_type = SERVER_HOST_USED;
-            config_inst.server = str;
-            success = 1;
-            goto ret;
-        }
     }
     if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
         if (OS_IsValidIP(str, NULL) == 1) {
@@ -462,13 +448,12 @@ int set_ossec_server(char *ip, HWND hwnd)
 {
     OS_XML xml;
     char *str = NULL;
-    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "server", "address", NULL};
-    const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
+    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
     /* Write order. The block that already holds an address is tried first so an
-     * upgraded 4.x file keeps its <client> shape and a 5.x file gets <agent>.
-     * The remaining paths are the fallback for a config that has neither. */
-    const char **xml_paths[] = {xml_agentaddr, xml_manageraddr, xml_serveraddr};
+     * upgraded 4.x file keeps its <client><server> shape and a 5.x file gets
+     * <agent><manager>. The other path is the fallback for a config with neither. */
+    const char **xml_paths[] = {xml_agentaddr, xml_serveraddr};
     const size_t xml_paths_len = sizeof(xml_paths) / sizeof(xml_paths[0]);
     size_t i;
     char config_tmp[] = CONFIG;
@@ -492,7 +477,7 @@ int set_ossec_server(char *ip, HWND hwnd)
         config_inst.server_type = SERVER_IP_USED;
     }
 
-    /* Keep agent/manager/server tag compatibility depending on current config: move the
+    /* Keep <agent>/<client> block compatibility depending on current config: move the
      * block that already carries an address to the front of the write order. */
     if (OS_ReadXML(CONFIG, &xml) == 0) {
         for (i = 0; i < xml_paths_len; i++) {

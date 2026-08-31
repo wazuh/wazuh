@@ -1,14 +1,17 @@
+# SERVER_ADDRESS now carries the COMPLETE endpoint (#38624): host, port and the trailing
+# '/' that opts out of the reverse-proxy prefix. The template substitutes it as a whole
+# value, and metadata.server_address stays the bare address the assertions match on.
 - name: Invalid server address
   description: Invalid server address
   configuration_parameters:
-      SERVER_ADDRESS: MANAGER_IP
+      SERVER_ADDRESS: 'MANAGER_IP:1517/'
   metadata:
       server_address: MANAGER_IP
 
 - name: Server address Ipv4
   description: Server address Ipv4
   configuration_parameters:
-      SERVER_ADDRESS: 127.0.0.1
+      SERVER_ADDRESS: '127.0.0.1:1517/'
   metadata:
       server_address: 127.0.0.1
       valid_ip: True
@@ -17,7 +20,7 @@
 - name: Server address ipv6
   description: Server address ipv6
   configuration_parameters:
-      SERVER_ADDRESS: ::1
+      SERVER_ADDRESS: '[::1]:1517/'
   metadata:
       server_address: ::1
       valid_ip: True
@@ -27,13 +30,17 @@
 - name: Could not resolve hostname
   description: Could not resolve hostname
   configuration_parameters:
-      SERVER_ADDRESS: 172.28.128.hello
+      SERVER_ADDRESS: '172.28.128.hello:1517/'
   metadata:
       server_address: 172.28.128.hello
 
+# A malformed IPv6 literal is now rejected while the configuration is parsed, before any
+# name resolution is attempted, so this case asserts the endpoint error rather than the
+# resolver error it used to reach.
 - name: Invalid IP, unable to connect (IPv6 compressed)
   description: Invalid IP, unable to connect (IPv6 compressed)
   configuration_parameters:
-      SERVER_ADDRESS: ::ffff:ac1c::::::::800c
+      SERVER_ADDRESS: '[::ffff:ac1c::::::::800c]:1517/'
   metadata:
       server_address: ::ffff:ac1c::::::::800c
+      invalid_endpoint: True

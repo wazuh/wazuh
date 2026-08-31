@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-// End-to-end tests of the module's LOCAL admin socket (queue/sockets/remoted-module.sock),
+// End-to-end tests of the module's LOCAL admin socket (queue/sockets/remote-admin-http.sock),
 // brought up by RemotedModuleFacade::start() through the same C-ABI black-box route
 // remotedModule_test.cpp takes, and driven with a real httplib::Client over the UDS socket --
 // the inverse of fakeVdServer.hpp, where a real httplib::Server stands in for a module client's
@@ -46,7 +46,7 @@ namespace
     // install dir; here it simply resolves against the test process's cwd, the same convention
     // remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally so a
     // change of the facade's constant is a conscious test change too.
-    constexpr auto kAdminSocketPath {"queue/sockets/remoted-module.sock"};
+    constexpr auto kAdminSocketPath {"queue/sockets/remote-admin-http.sock"};
 
     // A port the OS says is free, asked for right before the module binds it -- same rationale
     // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.
@@ -78,7 +78,7 @@ namespace
     }
 
     /// Whether a plain TCP connect to 127.0.0.1:port succeeds -- enough to prove the public
-    /// HTTPS listener is accepting, without dragging the TLS/CMAC client machinery in here.
+    /// HTTPS listener is accepting, without dragging the TLS/bearer client machinery in here.
     bool publicListenerAccepts(std::uint16_t port)
     {
         const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -178,7 +178,9 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
 {
     startModule();
 
-    struct stat socketStat {};
+    struct stat socketStat
+    {
+    };
     ASSERT_EQ(::stat(kAdminSocketPath, &socketStat), 0) << "admin socket was not bound at the fixed path";
     EXPECT_TRUE(S_ISSOCK(socketStat.st_mode));
     EXPECT_EQ(socketStat.st_mode & 0777U, 0660U);
@@ -229,7 +231,9 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.forwarder.deferred.inflight",
                              "remoted.forwarder.deferred.capacity",
                              "remoted.forwarder.deferred.rejected.total",
-                             "remoted.auth.reject.invalid_mac",
+                             "remoted.auth.reject.invalid_signature",
+                             "remoted.auth.reject.bad_token",
+                             "remoted.auth.reject.identity_mismatch",
                              "remoted.auth.reject.address_not_allowed",
                              "remoted.auth.reject.enrollment_key_unavailable",
                              "remoted.http.enroll.responses.2xx",

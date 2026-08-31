@@ -5,12 +5,16 @@ end, with deferred responses, an in-flight byte budget with real load shedding, 
 two-phase shutdown with named guarantees. Extracted verbatim from
 `wazuh_modules/inventory_sync_server` (where it was designed and hardened); that module is its
 first consumer. Intended consumers: manager daemons that serve local peers over
-`queue/sockets/*` — inventory sync, the vulnerability scanner's `vd.sock`, remoted_module's
+`queue/sockets/*` — inventory sync, the vulnerability scanner's `vd-http.sock`, remoted_module's
 local admin socket.
 
 What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol PEER of this
 library, not a layer of it), and not a general web framework — one request per connection,
 exact-match routing, no TLS, no keep-alive, no chunked encoding.
+
+Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (status semantics,
+architecture, integration guide). This library has no standalone configuration — the
+transport knobs are documented in each consumer's `configuration.md`.
 
 ## Requirements
 

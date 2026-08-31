@@ -15,7 +15,7 @@
  * prove: a genuine TLS handshake, a real HTTP round trip, and a signature the
  * fake manager verifies with its own independently-invoked EnrollSigner --
  * the same reuse-the-production-signer idiom the rest of this component
- * suite already uses for CmacSigner (facadeE2e/tlsVerification). hc_enroll()
+ * suite already uses for JwtSigner (facadeE2e/tlsVerification). hc_enroll()
  * is deliberately handle-less (no hc_create()/hc_start() involved): it must
  * work before any handle exists, exactly as it does on a real first boot.
  */
@@ -85,8 +85,8 @@ namespace
             X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
             X509_set_pubkey(cert, pkey);
             X509_NAME* name = X509_get_subject_name(cert);
-            X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-                                       reinterpret_cast<const unsigned char*>("agent01"), -1, -1, 0);
+            X509_NAME_add_entry_by_txt(
+                name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("agent01"), -1, -1, 0);
             X509_set_issuer_name(cert, name);
             X509_sign(cert, pkey, EVP_sha256());
 
@@ -142,11 +142,11 @@ TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
                          /*keyHex=*/"",
                          /*tls=*/true,
                          /*settingsFlipAfter=*/0,
-                         /*configBlob=*/{},
+                         /*configBlob=*/ {},
                          /*statelessMaxBody=*/0,
                          /*rotateKeyAfterNotifies=*/0,
-                         /*rotatedKeyHex=*/{},
-                         /*statefulHoldFile=*/{},
+                         /*rotatedKeyHex=*/ {},
+                         /*statefulHoldFile=*/ {},
                          /*vdFeedOffset=*/0,
                          /*scanVdRejectFirstNAttempts=*/0,
                          /*enrollPassword=*/PASSWORD};
@@ -163,7 +163,17 @@ TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
 TEST(EnrollComponentTest, PasswordModeIsRejectedWhenPasswordsDiffer)
 {
     constexpr uint16_t port = 44872;
-    FakeManager manager {port, "", true, 0, {}, 0, 0, {}, {}, 0, 0,
+    FakeManager manager {port,
+                         "",
+                         true,
+                         0,
+                         {},
+                         0,
+                         0,
+                         {},
+                         {},
+                         0,
+                         0,
                          /*enrollPassword=*/PASSWORD};
 
     const auto config = tlsConfig(port);
@@ -196,7 +206,14 @@ TEST(EnrollComponentTest, ClientCertConfigCoexistsWithPasswordOverRealHandshake)
     FakeManager manager {port,
                          "",
                          /*tls=*/true,
-                         0, {}, 0, 0, {}, {}, 0, 0,
+                         0,
+                         {},
+                         0,
+                         0,
+                         {},
+                         {},
+                         0,
+                         0,
                          /*enrollPassword=*/PASSWORD};
 
     TempCertPair certPair;

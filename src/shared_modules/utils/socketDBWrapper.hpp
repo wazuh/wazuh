@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 
-auto constexpr WDB_SOCKET {"queue/db/wdb"};
+auto constexpr WDB_SOCKET {"queue/sockets/wdb.sock"};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
 char constexpr DB_WRAPPER_ERROR[] = {"err"};

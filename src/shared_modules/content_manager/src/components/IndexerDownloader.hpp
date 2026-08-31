@@ -633,13 +633,26 @@ private:
             catch (const std::exception& e)
             {
                 ++queryFailures;
-                logDebug2(WM_CONTENTUPDATER,
-                          "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
-                          "before retrying (attempt %zu).",
-                          indexName.c_str(),
-                          e.what(),
-                          pollSeconds,
-                          queryFailures);
+                if (queryFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                            "before retrying.",
+                            indexName.c_str(),
+                            e.what(),
+                            pollSeconds);
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                              "before retrying (attempt %zu/%zu).",
+                              indexName.c_str(),
+                              e.what(),
+                              pollSeconds,
+                              queryFailures,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(

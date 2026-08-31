@@ -45,6 +45,7 @@
 fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
+void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates);
 void create_unix_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
@@ -117,17 +118,17 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
 }
 #endif
 
-extern void __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern int __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
 
 /* Snapshot of mutex_unlock_call_count taken inside the wrap below, used by the
  * regression test for issue #37824 (fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction). */
 static unsigned int unlock_count_at_pending_sync_updates = 0;
 
-void __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
+int __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
     function_called();
     unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
-    __real_process_pending_sync_updates(table_name, pending_items);
+    return __real_process_pending_sync_updates(table_name, pending_items);
 }
 
 static int setup_fim_data(void **state) {
@@ -1146,7 +1147,7 @@ static void test_fim_file_add(void **state) {
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
@@ -1163,6 +1164,121 @@ static void test_fim_file_add(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
+// Regression test for #38522, end-to-end through fim_file()'s non-transactional (realtime/
+// whodata) path itself — not through transaction_callback() called directly. The other tests in
+// this file only prove process_pending_sync_updates() gets called with whatever list fim_file()
+// built; since __wrap_fim_db_file_update() never drives its callback, that list is always empty,
+// so they can't tell a correctly-wired callback_ctx.pending_sync_updates apart from a NULL one
+// silently dropped by transaction_callback's own NULL guard — the exact regression this issue was
+// about. This test drives the mocked callback for real, so fim_file()'s own local
+// pending_sync_updates list gets genuinely populated by the same code fim_file() constructs,
+// and asserts process_pending_sync_updates() reports 1 processed item, not 0.
+// Saved/restored around test_fim_file_add_queues_sync_flag_update_end_to_end via cmocka
+// setup/teardown (not inline in the test body) so a failed assert/expectation mid-test still
+// restores global state instead of leaking it into the next test.
+typedef struct {
+    int original_notify_scan;
+    int original_synced_docs_files;
+} end_to_end_saved_state_t;
+
+static int setup_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    end_to_end_saved_state_t *saved = calloc(1, sizeof(end_to_end_saved_state_t));
+    if (saved == NULL) {
+        return -1;
+    }
+    saved->original_notify_scan = notify_scan;
+    saved->original_synced_docs_files = synced_docs_files;
+    *state = saved;
+    return 0;
+}
+
+static int teardown_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    end_to_end_saved_state_t *saved = *state;
+    if (saved != NULL) {
+        notify_scan = saved->original_notify_scan;
+        synced_docs_files = saved->original_synced_docs_files;
+        free(saved);
+    }
+    // Guards against a leftover one-shot flag if this test aborted before
+    // __wrap_fim_db_file_update() consumed it.
+    reset_fim_db_file_update_invoking_callback();
+    return 0;
+}
+
+static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM };
+#ifdef TEST_WINAGENT
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+#else
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
+#endif
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+
+    // send_syscheck_msg() only fires when notify_scan is set — true on a live agent past its
+    // first scan (this file's OTHER tests never reach this check, so nothing else in this group
+    // sets it; only the separate test_transaction_callback_* fixture does, for its own tests).
+    notify_scan = 1;
+
+    expect_get_data(strdup("user"), strdup("group"), file_path, 1);
+
+#ifdef TEST_WINAGENT
+    cJSON *result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"c:\\\\windows\\\\system32\\\\cmd.exe\","
+        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+#else
+    cJSON *result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file_38522.txt\","
+        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+#endif
+    assert_non_null(result);
+
+    expect_fim_db_file_update_invoking_callback();
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    will_return(__wrap_fim_db_file_update, INSERTED);
+    will_return(__wrap_fim_db_file_update, result);
+
+    // Inside transaction_callback's INSERTED branch (file_limit=0/unlimited in this test group).
+    expect_function_call(__wrap_send_syscheck_msg);
+    will_return(__wrap_validate_and_persist_fim_event, true);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\system32\\cmd.exe");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\system32\\cmd.exe (version: 1, sync: 1)");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file_38522.txt");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file_38522.txt (version: 1, sync: 1)");
+#endif
+
+    // process_pending_sync_updates() now genuinely has 1 item to process. No "Processed N
+    // pending sync flag updates" log is expected here: that summary is only logged by callers
+    // that run once per full scan (fim_file_scan(), fim_registry_scan()) — logging it from this
+    // realtime/whodata call site too would flood debug=1 on a mass create/modify (#38537 review).
+    expect_function_call(__wrap_process_pending_sync_updates);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: c:\\windows\\system32\\cmd.exe");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /etc/a_test_file_38522.txt");
+#endif
+
+    fim_file(file_path, &configuration, &evt_data, NULL, NULL);
+
+    cJSON_Delete(result);
+}
+
 static void test_fim_file_modify_transaction(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
@@ -1176,7 +1292,7 @@ static void test_fim_file_modify_transaction(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup("file");
@@ -1237,7 +1353,7 @@ static void test_fim_file_modify(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup("file");
@@ -1281,6 +1397,208 @@ static void test_fim_file_modify(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
+// Regression tests for #38608: reconcile_failed_paths_with_pending_sync() must remove, from
+// pending_sync_updates, only the items whose path also failed schema validation this scan
+// (failed_paths), compensating synced_docs_files for any that had sync_value == 1 — and must
+// leave every other pending item (and the counter, when nothing matches) untouched.
+
+static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/unrelated_failed.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 1);
+    pending_sync_item_t *item = (pending_sync_item_t *)OSList_GetFirstNode(pending_sync_updates)->data;
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")), "/etc/a_test_file.txt");
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    // The matching item (and the count it had already added to synced_docs_files) is gone.
+    assert_int_equal(synced_docs_files, 4);
+    assert_int_equal(pending_sync_updates->currently_size, 0);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 0);
+    cJSON_Delete(item_json);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    // Removed from the pending list either way (its row is about to be deleted), but nothing
+    // to compensate: transaction_callback() never counted a sync_value == 0 item in the first
+    // place.
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 0);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_AddData(failed_paths, strdup("/etc/b_failed.txt"));
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+    const char *paths[3] = {"/etc/a_ok.txt", "/etc/b_failed.txt", "/etc/c_ok.txt"};
+    for (int i = 0; i < 3; i++) {
+        cJSON *item_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(item_json, "path", paths[i]);
+        cJSON_AddNumberToObject(item_json, "version", 1);
+        add_pending_sync_item(pending_sync_updates, item_json, 1);
+        cJSON_Delete(item_json);
+    }
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
+    assert_int_equal(synced_docs_files, 4);
+    assert_int_equal(pending_sync_updates->currently_size, 2);
+
+    // Both surviving items keep their own data intact, in original relative order — proves
+    // OSList_DeleteThisNode() on the middle node didn't corrupt the remaining links.
+    OSListNode *node_it;
+    int found_a = 0, found_c = 0;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        const char *path = cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"));
+        if (strcmp(path, "/etc/a_ok.txt") == 0) {
+            found_a = 1;
+        } else if (strcmp(path, "/etc/c_ok.txt") == 0) {
+            found_c = 1;
+        } else {
+            fail_msg("Unexpected surviving item: %s", path);
+        }
+    }
+    assert_int_equal(found_a, 1);
+    assert_int_equal(found_c, 1);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
+static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(void **state) {
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+
+    OSList *failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
+    OSList *pending_sync_updates = OSList_Create();
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+    int original_synced_docs_files = synced_docs_files;
+    synced_docs_files = 5;
+
+    // Both lists empty.
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+    assert_int_equal(synced_docs_files, 5);
+
+    // failed_paths empty, pending_sync_updates non-empty: nothing to reconcile against.
+    cJSON *item_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
+    cJSON_AddNumberToObject(item_json, "version", 1);
+    add_pending_sync_item(pending_sync_updates, item_json, 1);
+    cJSON_Delete(item_json);
+
+    reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+    assert_int_equal(synced_docs_files, 5);
+    assert_int_equal(pending_sync_updates->currently_size, 1);
+
+    synced_docs_files = original_synced_docs_files;
+    OSList_Destroy(failed_paths);
+    OSList_Destroy(pending_sync_updates);
+}
+
 static void test_fim_file_no_attributes(void **state) {
     char buffer1[OS_SIZE_256];
     char buffer2[OS_SIZE_256];
@@ -1291,7 +1609,7 @@ static void test_fim_file_no_attributes(void **state) {
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[] = "/bin/ls";
+    char file_path[] = "/etc/a_test_file_38522.txt";
 #endif
 
     // Inside fim_get_data
@@ -1341,7 +1659,7 @@ static void test_fim_file_error_on_insert(void **state) {
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
     fim_data->fentry->file_entry.path = strdup(file_path);
@@ -3745,6 +4063,73 @@ static void test_transaction_callback_add(void **state) {
     data->txn_context->entry = NULL;
 }
 
+// Regression test for #38522: fim_file()'s non-transactional path (realtime/whodata) now wires a
+// real pending_sync_updates list into the callback_ctx it hands to transaction_callback (it used to
+// leave the field NULL, so the INSERTED branch below silently skipped queuing the sync flag update
+// and the row stayed at sync=0 forever). This asserts the queuing itself, given a non-NULL list.
+static void test_transaction_callback_add_queues_sync_flag_update(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+#ifndef TEST_WINAGENT
+    char *path = "/etc/a_test_file.txt";
+#else
+    char *path = "c:\\windows\\a_test_file.txt";
+#endif
+
+    callback_ctx *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    cJSON *result = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+
+    txn_context->entry = &entry;
+    data->dbsync_event = result;
+
+    OSList *pending_sync_updates = OSList_Create();
+    assert_non_null(pending_sync_updates);
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    txn_context->pending_sync_updates = pending_sync_updates;
+
+#ifndef TEST_WINAGENT // The order of the functions is different between windows an linux
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
+    expect_function_call(__wrap_send_syscheck_msg);
+    will_return(__wrap_validate_and_persist_fim_event, true);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 1, sync: 1)");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 1, sync: 1)");
+#endif
+
+    transaction_callback(INSERTED, result, txn_context);
+
+    int items_found = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        assert_non_null(item);
+        assert_int_equal(item->sync_value, 1);
+        assert_non_null(item->json);
+        assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")), path);
+        items_found++;
+    }
+    assert_int_equal(items_found, 1);
+
+    OSList_Destroy(pending_sync_updates);
+    txn_context->pending_sync_updates = NULL;
+    data->txn_context->entry = NULL;
+}
+
 static void test_transaction_callback_modify(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
@@ -3782,6 +4167,78 @@ static void test_transaction_callback_modify(void **state) {
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
+    data->txn_context->entry = NULL;
+}
+
+// Regression test for #38522: the MODIFIED branch's promotion path ("old" row has sync=0 and
+// there's room under file_limit) reads txn_context->pending_sync_updates the same way INSERTED
+// does. Before the fix, fim_file()'s non-transactional (realtime/whodata) path left that field
+// NULL, so this promotion was silently skipped there too, not just the INSERTED case. This
+// asserts the queuing given a non-NULL list, mirroring test_transaction_callback_add_queues_sync_flag_update.
+static void test_transaction_callback_modify_promotes_pending_sync_update(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+#ifndef TEST_WINAGENT
+    char *path = "/etc/a_test_file.txt";
+#else
+    char *path = "c:\\windows\\a_test_file.txt";
+#endif
+    callback_ctx *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    txn_context->entry = &entry;
+
+    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"sync\":0,\"version\":1}}");
+    data->dbsync_event = result;
+
+    int original_file_limit = syscheck.file_limit;
+    syscheck.file_limit = 999999; // must be > 0 and > synced_docs_files for the promotion branch to run
+    int original_synced_docs_files = synced_docs_files;
+
+    OSList *pending_sync_updates = OSList_Create();
+    assert_non_null(pending_sync_updates);
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+    txn_context->pending_sync_updates = pending_sync_updates;
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
+    expect_function_call(__wrap_send_syscheck_msg);
+    will_return(__wrap_validate_and_persist_fim_event, true);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 2, sync: 1)");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 2, sync: 1)");
+#endif
+
+    transaction_callback(MODIFIED, result, txn_context);
+    assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
+
+    int items_found = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        assert_non_null(item);
+        assert_int_equal(item->sync_value, 1);
+        assert_non_null(item->json);
+        assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")), path);
+        items_found++;
+    }
+    assert_int_equal(items_found, 1);
+
+    OSList_Destroy(pending_sync_updates);
+    txn_context->pending_sync_updates = NULL;
+    syscheck.file_limit = original_file_limit;
+    synced_docs_files = original_synced_docs_files;
     data->txn_context->entry = NULL;
 }
 
@@ -4279,8 +4736,18 @@ int main(void) {
         /* init_fim_data_entry */
         cmocka_unit_test(test_init_fim_data_entry),
 
+        /* reconcile_failed_paths_with_pending_sync (#38608) */
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_no_overlap),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match),
+        cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop),
+
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
+        cmocka_unit_test_setup_teardown(test_fim_file_add_queues_sync_flag_update_end_to_end,
+                                        setup_fim_file_add_queues_sync_flag_update_end_to_end,
+                                        teardown_fim_file_add_queues_sync_flag_update_end_to_end),
         cmocka_unit_test_setup_teardown(test_fim_file_modify, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_file_modify_transaction, setup_fim_entry, teardown_fim_entry),
 
@@ -4376,7 +4843,9 @@ int main(void) {
 
         /* transaction_callback */
         cmocka_unit_test_setup_teardown(test_transaction_callback_add, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_add_queues_sync_flag_update, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_modify, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_promotes_pending_sync_update, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_modify_empty_changed_attributes, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_modify_report_changes, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_delete, setup_transaction_callback, teardown_transaction_callback),

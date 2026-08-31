@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/5_testcomponent_remoted_module.yml"
       - "src/remoted/remoted_module/**"
+      - "src/shared_modules/metrics/**"
       - "src/shared_modules/utils/**"
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"

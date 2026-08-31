@@ -17,6 +17,7 @@
 
 #include "curlPerformer.hpp"
 #include "mockCurlHandle.hpp"
+#include "mockFsProbe.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -53,7 +54,10 @@ namespace
     {
         auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(handle));
         return CurlPerformer {config,
-                              [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); }};
+                              [shared]() -> std::unique_ptr<ICurlHandle>
+        {
+            return std::move(*shared);
+        }};
     }
 
     /// Partial-expectation tests: absorb the option calls they do not assert
@@ -90,8 +94,9 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_CALL(*handle, appendHeader("Authorization: Wazuh 001:1:aa"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::TimeoutMs, 1234L));
     EXPECT_CALL(*handle, captureResponseBody(NotNull()));
-    EXPECT_CALL(*handle, captureResponseHeaders(AllOf(Field(&HeaderCapture::retryAfter, NotNull()),
-                                                      Field(&HeaderCapture::serverDate, NotNull()))));
+    EXPECT_CALL(*handle,
+                captureResponseHeaders(
+                    AllOf(Field(&HeaderCapture::retryAfter, NotNull()), Field(&HeaderCapture::serverDate, NotNull()))));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
@@ -100,6 +105,15 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_EQ(TransportStatus::Ok, response.status);
     EXPECT_EQ(200, response.httpCode);
 }
+
+// #38492/#38491: CurlPerformer itself no longer knows about the endpoint --
+// the manager routes on the literal wire request-target (prefix included),
+// so the prefix must be folded into HttpRequestSpec::target upstream of this
+// class (see RetrySender::attemptOnce and EnrollClient::performOnce, both of
+// which fold it in via requestTarget.hpp's prefixedTarget()). configureRequest()'s
+// baseUrl() + spec.target composition is deliberately unaware of it and
+// stays exactly as it was before #38492 -- see MemoryBodyMapsToExactOptions
+// above, which already pins that composition with a bare target.
 
 TEST(CurlPerformerTest, ContentTypeEmittedWhenSet)
 {
@@ -266,10 +280,14 @@ TEST(CurlPerformerTest, RejectedTlsOptionAbortsBeforePerforming)
     // What a backend that does not implement the option answers.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslVersion, _)).WillOnce(Return(false));
     EXPECT_CALL(*handle, perform()).Times(0);
+    EXPECT_CALL(*handle, curlError()).Times(0);
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    // Nothing ran, so there is no libcurl reason: the log sites must render a
+    // bare outcome rather than a dangling separator.
+    EXPECT_TRUE(response.curlError.empty());
 }
 
 TEST(CurlPerformerTest, RejectedCipherListAbortsBeforePerforming)
@@ -311,8 +329,8 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
     allowOtherOptions(*handle);
 
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
-#ifdef WIN32
-    // Our OpenSSL-backed Windows curl has no bundle of its own to fall back on.
+#if defined(WIN32) || defined(__APPLE__)
+    // Our OpenSSL-backed Windows/macOS curl has no bundle of its own to fall back on.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
 #else
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
@@ -321,6 +339,60 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     performer.perform(HttpRequestSpec {});
 }
+
+TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    NiceMock<MockFsProbe> fsProbe;
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::VerifyPeer, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::VerifyHost, 2L)); // Same strictness as full.
+
+#if defined(WIN32) || defined(__APPLE__)
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
+#else
+    ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+#endif
+
+    auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(mock));
+    CurlPerformer performer {config,
+                             [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); },
+                             fsProbe};
+    performer.perform(HttpRequestSpec {});
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(CurlPerformerTest, TlsSystemModeResolvesTrustAnchorOnceNotPerRequest)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    NiceMock<MockFsProbe> fsProbe;
+
+    // Resolved once at construction; perform() below runs twice and must not
+    // probe the filesystem again on the second request.
+    EXPECT_CALL(fsProbe, findSystemCaBundle())
+    .Times(1)
+    .WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+        EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory, fsProbe};
+    performer.perform(HttpRequestSpec {});
+    performer.perform(HttpRequestSpec {});
+}
+#endif
 
 TEST(CurlPerformerTest, FileBodyStreamsInsteadOfPostFields)
 {
@@ -368,7 +440,10 @@ TEST(CurlPerformerTest, MissingBodyFileFailsWithoutPerforming)
 TEST(CurlPerformerTest, FactoryFailureYieldsOtherError)
 {
     CurlPerformer performer {makeConfig(HC_VERIFY_NONE),
-                             []() -> std::unique_ptr<ICurlHandle> { return nullptr; }};
+                             []() -> std::unique_ptr<ICurlHandle>
+    {
+        return nullptr;
+    }};
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::OtherError, response.status);
     EXPECT_EQ(0, response.httpCode);
@@ -383,7 +458,8 @@ TEST(CurlPerformerTest, ResponseFilePathStreamsToTheFileNotMemory)
 
     std::FILE* sink = nullptr;
     EXPECT_CALL(*handle, captureResponseToFile(NotNull(), _))
-    .WillOnce(Invoke([&](std::FILE * file, uint64_t) -> bool
+    .WillOnce(Invoke(
+                  [&](std::FILE * file, uint64_t) -> bool
     {
         sink = file;
         return true;
@@ -442,7 +518,8 @@ TEST(CurlPerformerTest, RetryTruncatesThePreviousAttemptsPartialBody)
     {
         auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
         ON_CALL(*handle, captureResponseToFile(_, _))
-        .WillByDefault(Invoke([&](std::FILE * file, uint64_t) -> bool
+        .WillByDefault(Invoke(
+                           [&](std::FILE * file, uint64_t) -> bool
         {
             sink = file;
             return true;

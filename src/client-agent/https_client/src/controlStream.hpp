@@ -114,11 +114,14 @@ class ControlStream final
         void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void updateProducerPause(OutcomeClass outcome);
-        void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
+        /// resourceId is the manager-supplied agent.config_token, passed to /download verbatim
+        /// (opaque to the agent). Falls back to the group selector only for a manager that
+        /// reports no token -- see handleNotifyBody().
+        void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
-        void updateLocalIp(const HttpResponse& response);
+        void updateConnectionInfo(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
         const ModuleConfig& m_config;
@@ -141,6 +144,10 @@ class ControlStream final
         /// The agent's own IP (CURLINFO_LOCAL_IP), captured from the last
         /// /control connection and reported as host.ip on the next Notify.
         std::string m_localIp;
+        /// The last /control attempt's transport reason, empty whenever that
+        /// attempt reached the manager at all. Handed to the consumer when the
+        /// producer pause is armed.
+        std::string m_lastCurlError;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings

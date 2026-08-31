@@ -21,13 +21,25 @@
 
 #include <gtest/gtest.h>
 
-#include "auth/cmac.hpp" // toLowerHex(), for the known-answer-vector assertion
 #include "auth/passwordKeySource.hpp"
+#include "jwt/testVectors.hpp"
 
 using namespace remoted::auth;
 
 namespace
 {
+    std::string toLowerHex(const std::uint8_t* data, std::size_t len)
+    {
+        static constexpr char kDigits[] = "0123456789abcdef";
+        std::string out;
+        out.reserve(len * 2);
+        for (std::size_t i = 0; i < len; ++i)
+        {
+            out.push_back(kDigits[data[i] >> 4]);
+            out.push_back(kDigits[data[i] & 0x0f]);
+        }
+        return out;
+    }
 
     class PasswordKeySourceTest : public ::testing::Test
     {
@@ -96,9 +108,10 @@ namespace
         EXPECT_EQ(*first, *second);
     }
 
-    // Verified known-answer vector (see the Agent enrollment chapter of remoted_module/README.md):
-    // computed independently via `openssl kdf ... HKDF` against the exact construction this class
-    // implements (HKDF-SHA256, empty salt, info = "WAZUH-ENROLL-CMAC-KEY" + 0x01, 32-byte output).
+    // Frozen known-answer vector (jwt/testVectors.hpp, mirrored in jwt_vectors.json; computed with
+    // Python's stdlib as an independent oracle) of the exact construction the shared
+    // jwt/enrollKeyDerivation.hpp implements: HKDF-SHA256, salt 32 x 0x00,
+    // info = "WAZUH-ENROLL-JWT-KEY" + 0x01, 32-byte output.
     TEST_F(PasswordKeySourceTest, HkdfMatchesTheVerifiedKnownAnswerVector)
     {
         writeFile("MyEnrollmentSecret123\n");
@@ -106,8 +119,7 @@ namespace
 
         const auto key = source.currentKey();
         ASSERT_TRUE(key.has_value());
-        EXPECT_EQ(toLowerHex(key->data(), key->size()),
-                  "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e");
+        EXPECT_EQ(toLowerHex(key->data(), key->size()), jwt_profile::v1::test_vectors::enroll::kKeyHex);
     }
 
     TEST_F(PasswordKeySourceTest, DifferentPasswordsProduceDifferentKeys)

@@ -40,7 +40,9 @@ typedef enum auth_local_err {
     EINVGROUP,
     ENOMASTER,
     ENOMASTERCOMM,
-    EINVALIDNAME // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDNAME,
+    EPENDINGPURGE,
+    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -66,7 +68,11 @@ static const struct {
     { 9016, "Cannot communicate with master node" },
     // A name that IS present but not storable in client.keys (see is_storable_agent_name()), as
     // opposed to 9005 "No such name", which means the argument was missing.
-    { 9017, "Invalid agent name" }
+    { 9017, "Invalid agent name" },
+    { 9018, "Agent ID has a pending deletion" },
+    // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
+    // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
+    { 9019, "Invalid agent key" }
 };
 
 // Dispatch local request
@@ -610,24 +616,44 @@ cJSON* local_add(const char *id,
         }
     }
 
+    /* A caller-supplied key must already have the shape remoted will accept (64 lowercase hex chars
+     * -> the agent's 32-byte HS256 key). Anything else would be stored fine and then rejected on
+     * every request as an unusable key, which is far harder to diagnose than refusing it here. */
+    if (key && !OS_IsValidAgentKey(key)) {
+        ierror = EINVALIDKEY;
+        goto fail;
+    }
+
+    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
+     * owner is still being cleaned up. Both branches below refuse instead of reassigning it,
+     * because the pending purge matches by agent id and would delete the NEW agent's documents --
+     * and nothing in a state document lets the purge tell the two owners apart.
+     *
+     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
+     * caller is told to come back, which for a migration script is a retry, not a data loss. */
+    if (id && purge_is_pending(id)) {
+        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
+        ierror = EPENDINGPURGE;
+        goto fail;
+    }
+
     // Check for duplicate ID
     //
-    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so each of
-    // the three duplicate checks below frees what the previous one left -- an add matching on more
-    // than one of ID/IP/name would otherwise leak, since only one os_free() runs at the end.
+    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so the
+    // duplicate IP and name checks below free what the previous one left -- an add matching on both
+    // would otherwise leak, since only one os_free() runs at the end. The ID check does not
+    // participate: it refuses instead of replacing, so it never writes str_result.
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        os_free(str_result);
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-            minfo("Duplicate ID. %s", str_result);
-        } else {
-            if (warn) {
-                mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
-            } else {
-                minfo("Duplicate ID, rejecting enrollment. %s", str_result);
-            }
-            ierror = EDUPID;
-            goto fail;
-        }
+        /* NOT replaced, even when force would allow it: replacing by the SAME id queues a purge for
+         * an id that gets a new owner in this very operation. The agent has to be deleted first,
+         * and its purge has to finish, before the id can be reused.
+         *
+         * Nothing is freed here, unlike the IP and name checks below: this branch no longer calls
+         * w_auth_replace_agent(), so it leaves nothing in str_result for them to free. */
+        mwarn("Duplicate ID '%s', rejecting the insertion: delete the agent and let its deletion "
+              "finish before reusing the ID.", id);
+        ierror = EDUPID;
+        goto fail;
     }
 
     /* Check for duplicate IP */
@@ -646,7 +672,7 @@ cJSON* local_add(const char *id,
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            os_free(str_result); // see the duplicate-ID check above
+            os_free(str_result); // see the note on str_result above
             if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
                 minfo("Duplicate IP '%s'. %s", _ip, str_result);
             } else {
@@ -663,15 +689,9 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check whether the agent name is the same as the manager */
-    if (!strcmp(name, shost)) {
-        ierror = EDUPNAME;
-        goto fail;
-    }
-
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        os_free(str_result); // see the duplicate-ID check above
+        os_free(str_result); // see the note on str_result above
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
             minfo("Duplicate name. %s", str_result);
         } else {
@@ -740,7 +760,8 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         if (!strncmp(message, "ERROR: ", 7)) {
             message += 7;
         }
-        merror("ERROR %d: %s.", master_error_code, message);
+
+        mwarn("Error %d: %s.", master_error_code, message);
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.

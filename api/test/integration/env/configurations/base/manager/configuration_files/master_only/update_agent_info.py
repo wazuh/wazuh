@@ -5,7 +5,7 @@ import time
 import yaml
 
 output_file = '/tmp_volume/configuration_files/agent_info_output'
-ADDR = '/var/wazuh-manager/queue/db/wdb'
+ADDR = '/var/wazuh-manager/queue/sockets/wdb.sock'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
 

@@ -18,30 +18,31 @@
 #include <string>
 #include <vector>
 
-/// Source of the AES-CMAC signing key.
+/// Source of the HS256 key the `wazuh-agent+jwt` bearer is signed with.
 class IKeyProvider
 {
     public:
         virtual ~IKeyProvider() = default;
-        /// The 16-byte AES-128 key, or nullopt when the material is unusable.
-        virtual std::optional<std::vector<uint8_t>> cmacKey() const = 0;
+        /// The 32-byte key, or nullopt when the material is unusable.
+        virtual std::optional<std::vector<uint8_t>> signingKey() const = 0;
 };
 
 /**
- * @brief Derives the CMAC key from the configured credential material.
+ * @brief Decodes the signing key from the configured credential material.
  *
- * The recipe (settled by the manager's resolver): the client.keys hex is
- * decoded verbatim, cipher chosen by byte length (16/24/32 -> AES-128/192/
- * 256). The key is swappable at runtime (setKey) after a re-enrollment, so
- * cmacKey() is guarded; the ISigner interface stays const-reference.
+ * The recipe (the manager's keystore applies the same one): the client.keys
+ * secret is exactly 64 lowercase hex chars, decoded verbatim into the 32 key
+ * bytes -- never hashed, never used as ASCII. Anything else is unusable and
+ * the agent must re-enroll. The key is swappable at runtime (setKey) after a
+ * re-enrollment, so signingKey() is guarded; ISigner stays const-reference.
  */
 class ConfigKeyProvider final : public IKeyProvider
 {
     public:
         explicit ConfigKeyProvider(std::string keyHex);
-        std::optional<std::vector<uint8_t>> cmacKey() const override;
+        std::optional<std::vector<uint8_t>> signingKey() const override;
 
-        /// Replaces the key when the given hex decodes to a valid AES length.
+        /// Replaces the key when the given hex is a valid 64-hex secret.
         /// Returns false (keeping the previous key) otherwise.
         bool setKey(const std::string& keyHex);
 

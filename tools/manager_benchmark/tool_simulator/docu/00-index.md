@@ -13,7 +13,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [01-overview.md](01-overview.md) | What the tool measures, its two modes, and what it deliberately does not do |
 | [02-functional-requirements.md](02-functional-requirements.md) | The HTTP contract the sender must honor (FR-1…FR-14) |
 | [03-control-protocol.md](03-control-protocol.md) | `POST /control`: startup, keepalives, shutdown — shapes, auth, cadence |
-| [04-wire-protocol.md](04-wire-protocol.md) | Enrollment, the AES-CMAC canonical string, HTTPS and UDS transports |
+| [04-wire-protocol.md](04-wire-protocol.md) | Enrollment, the `wazuh-agent+jwt` bearer token, HTTPS and UDS transports |
 | [05-flatbuffers-messages.md](05-flatbuffers-messages.md) | Building `Message{FullSession}` from a scenario |
 | [06-agent-state-machine.md](06-agent-state-machine.md) | The simulated agent's lifecycle and the (stateless) session lifecycle |
 | [07-scenario-schema.md](07-scenario-schema.md) | The scenario JSON schema |

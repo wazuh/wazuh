@@ -58,7 +58,9 @@ class ICallbackSink
         virtual void onBufferLevel(hc_buffer_level_t level) = 0;
         /// /control is confirmed unreachable (true) or reachable again (false);
         /// the core arms/disarms its producer lock. Emitted on transitions only.
-        virtual void onProducerPause(bool paused) = 0;
+        /// reason carries the transport-level cause for the consumer's own log
+        /// line, empty when there is none to add.
+        virtual void onProducerPause(bool paused, const std::string& reason) = 0;
 };
 
 #endif // _HC_CALLBACK_SINK_HPP

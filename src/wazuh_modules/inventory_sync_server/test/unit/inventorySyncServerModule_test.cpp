@@ -270,12 +270,12 @@ TEST_F(InventorySyncServerModuleTest, AnUnusableSocketPathIsFatalAndNamesThePath
     // reported would be about the indexer rather than the socket this test means to exercise.
     invsync::test::installAlwaysAvailableFakeIndexers();
 
-    auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
+    auto config = makeConfig("/proc/self/does-not-exist/inventory-sync-http.sock");
 
     EXPECT_NE(0, inventory_sync_server_start(testLogCallback, &config))
         << "an unusable socket path must be reported as fatal, not retried";
 
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("/proc/self/does-not-exist/inventory-sync.sock"))
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("/proc/self/does-not-exist/inventory-sync-http.sock"))
         << "the failure must name the path";
     EXPECT_FALSE(LogRecorder::sawMessageContaining("inventory_sync_server_socket_path"))
         << "it must not send the operator after a setting that does not exist";

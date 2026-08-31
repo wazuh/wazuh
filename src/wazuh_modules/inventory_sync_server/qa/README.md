@@ -12,7 +12,7 @@ from the indexer.
   `inventorySync.fbs` (into `.generated/`, never committed) with `flatc`.
 - The server under test is the real module pair booted by
   `inventory_sync_server_testtool --serve --no-vd --config config.json` in a
-  temp directory; the suite talks to `queue/sockets/inventory-sync.sock` there.
+  temp directory; the suite talks to `queue/sockets/inventory-sync-http.sock` there.
   `--no-vd` keeps the vulnerability scanner facade down, which makes VD-flagged
   sessions take the scan lane and resolve as D22's *legitimate skip* (index +
   200) — deterministic, no CVE feed required. The scan-gating rows (failed
@@ -55,7 +55,7 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 | `test_cleans_and_resync.py` | Cleans single/multi-index (agent-scoped, deduplicated), forbidden-index noop, and the composed full resync (D19: Cleans + ModuleDelta) |
 | `test_checksum.py` | **ModuleCheck for real** (the legacy suite's hole): match, mismatch→409, agent scoping, `search_after` pagination past 1000 documents, empty-set aggregate |
 | `test_metadata_groups.py` | MetadataDelta/GroupDelta across declared indices, the `global_version` stale-writer guard, MetadataCheck repair-if-needed, forbidden-indices noop |
-| `test_delete_agent.py` | `DELETE /agents` + POST alias: agent-scoped wipe across the whole deletion scope (`wazuh-states-*` **plus** `wazuh-agent-config` and `wazuh-agent-stats`), 404-as-success retries, 400s, FIFO vs the agent's own sessions. The tests refresh the indices before deleting, because the server does not. Carries two **skipped** tests recording the two known limitations: a document written inside the index refresh interval, and a `/config` or `/stats` report still queued in the asynchronous connector when the deletion runs, both survive it |
+| `test_delete_agent.py` | `DELETE /agents` + POST alias: agent-scoped wipe across the whole deletion scope — `wazuh-states-*` by query, **plus** `wazuh-agent-config` and `wazuh-agent-stats` by document id on the asynchronous connector that writes them — 404-as-success retries, 400s, FIFO vs the agent's own sessions, and a `/config`/`/stats` report still in that connector's queue when the deletion runs (queued behind it, so it cannot land afterwards). The tests refresh the indices before deleting, because the server does not. Carries one **skipped** test recording the remaining known limitation: a `wazuh-states-*` document written inside the index refresh interval survives the deletion |
 | `test_vd_lane.py` | VD-flagged sessions under `--no-vd`: the legitimate-skip row indexes + 200, VD Cleans take the normal pipeline, and `GET /metrics` reflects the lane traffic |
 
 Deliberately NOT here: capacity/budget rejections (413/503) and scan-failure

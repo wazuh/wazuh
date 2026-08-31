@@ -115,7 +115,8 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
     expect_any_always(__wrap__minfo, formatted_msg);
-    expect_any_always(__wrap__merror, formatted_msg);
+    // Business rejections forwarded by the master (9008 EDUPNAME here) log at warning, not error.
+    expect_any_always(__wrap__mwarn, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     will_return(__wrap_w_request_agent_add_clustered, -1);
@@ -161,6 +162,27 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
 /* STATIC in local-server.c, visible here under WAZUH_UNIT_TESTING. Guards the one invariant every
  * caller must satisfy: the name has to survive a round trip through client.keys' line format. */
 int is_storable_agent_name(const char *name);
+
+/* A caller-supplied key that is not 64 lowercase hex chars is refused up front with 9019, before any
+ * keystore lookup: stored as-is it would only fail later, on every request, as an unusable key. */
+static void test_local_add_rejects_a_malformed_explicit_key(void **state) {
+    (void) state;
+    cJSON *response;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    response = local_add(NULL, "agent1", "any", NULL, "2b7e151628aed2a6abf7158809cf4f3c", NULL, &config.force_options);
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9019);
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Invalid agent key");
+    cJSON_Delete(response);
+
+    response = local_add(NULL, "agent1", "any", NULL,
+                         "0030557A9FC4E90E33587DA2C7EC11365B80A5CAEF14395E83A8CDF2173C61FF", NULL, &config.force_options);
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9019);
+    cJSON_Delete(response);
+}
 
 static void test_storable_agent_name_accepts_ordinary_names(void **state) {
     (void) state;
@@ -288,6 +310,7 @@ int main(void) {
         cmocka_unit_test(test_local_add_clustered_success),
         cmocka_unit_test(test_local_add_clustered_business_rejection_preserves_master_code),
         cmocka_unit_test(test_local_add_clustered_transport_failure_maps_to_9016),
+        cmocka_unit_test(test_local_add_rejects_a_malformed_explicit_key),
         cmocka_unit_test(test_storable_agent_name_accepts_ordinary_names),
         cmocka_unit_test(test_storable_agent_name_accepts_names_os_isvalidname_rejects),
         cmocka_unit_test(test_storable_agent_name_rejects_whitespace_and_control_bytes),

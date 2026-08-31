@@ -15,6 +15,9 @@
 #include "IHttpServer.hpp"
 #include "remoted_module.h"
 
+#include <string>
+#include <string_view>
+
 namespace remoted::http
 {
 
@@ -41,6 +44,10 @@ namespace remoted::http
      *     ClientVerificationMode::None here, since this struct has no separate "unset" state.
      *   - dual_stack defaults to Unset (its C-ABI default already matches), and only applies to
      *     an IPv6 bind address.
+     *   - global_prefix is copied VERBATIM (empty buffer -> "" == "/" == no prefix, today's
+     *     behavior); its canonicalization (trailing-slash strip, identity collapse) happens in
+     *     RestinioHttpServer::start() via normalizeGlobalPrefix() below -- never here -- and its
+     *     grammar was already validated fatally by the C parser (w_remoted_parse_https()).
      * The in-flight byte budget and max parallel connections are set directly by remoted in
      * secure.c (deliberately not an internal option), independent of
      * `remoted_module_https_config()`.
@@ -49,6 +56,21 @@ namespace remoted::http
      * @return Resolved HttpServerConfig.
      */
     HttpServerConfig buildHttpServerConfig(const remoted_module_config_t& config);
+
+    /**
+     * @brief Canonicalize a global endpoint prefix (HttpServerConfig::globalPrefix).
+     *
+     * "" and "/" (and any all-'/' value) mean "no prefix" and normalize to "". Anything else
+     * normalizes to `/seg[/seg...]`: a leading '/' is ensured, every trailing '/' is stripped
+     * (so route concatenation can never produce "//"). Exported here -- rather than kept as a
+     * transport-local helper -- so the weird-value table is unit-testable without sockets;
+     * the ONE runtime call site is RestinioHttpServer::start().
+     *
+     * @throws std::invalid_argument for a byte outside [A-Za-z0-9._~/-] (RFC 3986 unreserved
+     *         plus '/'; notably no '%': the prefix is compared byte-exactly against the wire,
+     *         never percent-decoded) or for an empty interior segment ("//").
+     */
+    std::string normalizeGlobalPrefix(std::string_view raw);
 
 } // namespace remoted::http
 

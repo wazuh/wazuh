@@ -57,6 +57,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(TransportStatus, perform, (), (override));
         MOCK_METHOD(long, responseCode, (), (override));
         MOCK_METHOD(std::string, localIp, (), (override));
+        MOCK_METHOD(std::string, curlError, (), (override));
 };
 
 #endif // _HC_MOCK_CURL_HANDLE_HPP

@@ -55,6 +55,20 @@ namespace invsync::indexer
 
         /// @brief Queue a document for a data stream. Fire-and-forget, same as index().
         virtual void indexDataStream(std::string_view index, std::string_view data) = 0;
+
+        /**
+         * @brief Queue the deletion of ONE document by id. Fire-and-forget, same as index().
+         *
+         * On the seam because it is the ONLY way to delete a document this connector may still be
+         * holding in its queue: the queue is FIFO, so a deletion enqueued after an index() of the
+         * same document is applied after it. DELETE /agents needs exactly that for the two indices
+         * in AGENT_DELETION_SCOPE_BY_ID -- their documents are written here, so a delete-by-query on
+         * the sync connector could neither drain this queue nor, being a SEARCH, see a document that
+         * had not been refreshed yet, and a report accepted just before a deletion outlived it.
+         *
+         * Idempotent: deleting a document that is not there is not an error anywhere in the chain.
+         */
+        virtual void bulkDelete(std::string_view id, std::string_view index) = 0;
     };
 
 } // namespace invsync::indexer

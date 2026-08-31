@@ -1,6 +1,6 @@
 # Inventory Sync Server API Reference
 
-All routes are served over a Unix domain socket at `queue/sockets/inventory-sync.sock`, relative to the
+All routes are served over a Unix domain socket at `queue/sockets/inventory-sync-http.sock`, relative to the
 installation directory. There is no TCP listener.
 
 The only production peer is [Remoted](../remoted/README.md), which authenticates the agent and forwards
@@ -14,7 +14,7 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | `GET` | `/` | `200` | Liveness probe, answers `{"status":"ok","module":"inventory_sync_server"}`. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
-| `DELETE` | `/agents` | `200` | Deletes every document of the agent named by `X-Wazuh-Agent-Id` across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` (this cluster's scope), one delete-by-query per index. Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means every delete-by-query was flushed. Two documented windows can still leave a document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). UDS-local only: the production caller is authd. |
+| `DELETE` | `/agents` | `200` | Deletes every document of the agent named by `X-Wazuh-Agent-Id`, in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"queued"}` means both halves are queued, not that the documents are already gone. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). UDS-local only: the production caller is authd. |
 | `POST` | `/agents/delete` | `200` | Alias of `DELETE /agents` with the same handler, for C callers whose HTTP helper only speaks POST. |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
@@ -136,24 +136,36 @@ header that is not valid UTF-8) is answered `400` rather than crashing the handl
 deletion scope: `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`, one delete-by-query per
 index.
 
-What a `200` guarantees: every delete-by-query in the scope was flushed, AND none of them reported
-per-shard failures or skipped documents. An index that does not exist counts as success, so repeating
-a deletion is harmless — that is the caller's retry contract, and authd relies on it.
+The deletion has **two halves, one per writer**, because a document can only be deleted in order by
+the connector that writes it:
 
-Two windows can still leave a single document behind, and neither turns the `200` into a failure.
-Repeating the deletion clears either one:
+| Half | Indices | Mechanism | Ordered against |
+|---|---|---|---|
+| By query | `wazuh-states-*` | one `deleteByQuery`, cluster-scoped, on the sync connector | that agent's in-flight `/stateful` sessions, by the shard FIFO |
+| By document id | `wazuh-agent-config`, `wazuh-agent-stats` | one `bulkDelete` each, queued on the **asynchronous** connector at admission | that agent's `/config` and `/stats` reports, by the queue's FIFO |
 
-- **The index refresh interval.** A delete-by-query is a SEARCH, so it only sees refreshed segments,
-  and authd deletes immediately after removing the agent from `client.keys`. Documents the agent's
-  last session wrote inside that interval are invisible to the query, and with the agent gone nothing
-  overwrites them. Refreshing each index first would close this, but `_refresh` requires the
-  `indices:admin/refresh` privilege, which the manager's least-privilege indexer role does not grant —
-  granting it and restoring the refresh is tracked as a follow-up.
-- **The asynchronous write queue.** `POST /config` and `POST /stats` are written through the module's
-  asynchronous connector, whose queue the deletion cannot drain. A report still queued when the
-  deletion runs lands after it and recreates that document. Ordering those two routes against the
-  deletion (as `/stateful` sessions already are, through the agent's worker shard) is the other
-  follow-up.
+The second half is why a report in flight can no longer outlive its agent. Those two documents are
+written by `POST /config` and `POST /stats` through the asynchronous connector, which accumulates and
+pushes in batches; queueing their deletes on that same queue means a report it had accepted but not
+yet pushed is applied *before* the delete that follows it. A by-id delete also resolves against the
+live version map, so unlike a search-based one it is unaffected by the index refresh interval. Those
+two indices are therefore no longer in the by-query scope at all.
+
+What a `200` guarantees: both halves were queued, and the by-query half was flushed with no per-shard
+failures or skipped documents. An index that does not exist counts as success, and deleting a document
+that is not there is a no-op, so repeating a deletion is harmless — that is the caller's retry
+contract, and authd relies on it.
+
+One window can still leave a document behind, and it does not turn the `200` into a failure.
+Repeating the deletion clears it:
+
+- **The index refresh interval, for `wazuh-states-*`.** A delete-by-query is a SEARCH, so it only sees
+  refreshed segments. State documents the agent's last session wrote inside that interval are
+  invisible to the query, and with the agent gone nothing overwrites them. Refreshing each index first
+  would close this, but `_refresh` requires the `indices:admin/refresh` privilege, which the manager's
+  least-privilege indexer role does not grant — granting it and restoring the refresh is tracked as a
+  follow-up. In practice authd's `authd.purge_delay` (default 120 s) means the refresh has long since
+  happened by the time the query runs. The by-id half is not exposed to this window.
 
 ## The `/stateful` session semantics
 
@@ -197,7 +209,7 @@ The D18 statistics dump. UDS-local like every route here — remoted exposes not
 it, so agents cannot read it; the consumers are operators and the benchmark harness:
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
 ```
 
 ```json
@@ -256,13 +268,13 @@ transport level (health check, oversized bodies, malformed encodings) but does n
 route-specific payload. The liveness probe with curl:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/
+curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/
 ```
 
 A `/config` report, simulating what remoted forwards for an authenticated agent:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/config \
+curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/config \
   -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
   -d '{"modules":{"fim":{"frequency":43200},"logcollector":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}}'
 ```

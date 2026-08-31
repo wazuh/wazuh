@@ -30,9 +30,11 @@ must be migrated).
 filtering, and output to the indexer. It replaces the legacy `analysisd`
 rules pipeline.
 
-**Enrollment** — Handshake through which an agent registers with the manager
-(`wazuh-manager-authd`, port 1515), obtains its key, and declares its agent
-group.
+**Enrollment** — Handshake through which an agent registers with the manager,
+obtains its key, and declares its agent group. A 5.x agent enrolls over HTTPS
+(`POST /enroll` on Remoted's port 1517), which bridges to `wazuh-manager-authd`;
+`authd` owns the registration logic either way. Its own TLS listener on port 1515
+remains only for 4.x agents, gated by `<auth><legacy_enrollment>`.
 
 **Event** — Normalized record produced by the Engine from raw input. Decoded
 events are indexed under `wazuh-events-v5-<category>` (or

@@ -4,7 +4,7 @@ Complete configuration reference for the Remoted module.
 
 The remoted module is responsible for managing secure communication between Wazuh agents and the manager. It handles agent connections, authentication, message routing, and event enrichment. This is a manager-only module.
 
-For module overview and architecture, see [Remoted Module](index.html).
+For module overview and architecture, see [Remoted Module](README.md).
 
 ---
 
@@ -129,8 +129,32 @@ Address the HTTPS listener binds to.
 - **Allowed values:** Valid IPv4 or IPv6 address
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
-  [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
+  [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
   for the full explanation.
+
+### https.global_prefix
+
+URL path prefix every HTTPS endpoint is served under: with `/wazuh-manager/` configured,
+`POST /stateless` is exposed as `POST /wazuh-manager/stateless` and the health probe as
+`GET /wazuh-manager/`. With a prefix in effect, the unprefixed paths answer `404`.
+
+This is a **URL path**, unrelated to the installation directory `/var/wazuh-manager` despite the
+similar spelling: nothing on disk is looked up under it.
+
+- **Default value:** `/` (no prefix) when the tag is absent — an upgraded configuration keeps
+  serving today's unprefixed endpoints. Freshly generated configurations ship
+  `/wazuh-manager/`.
+- **Allowed values:** `/` (explicit "no prefix"), or `/segment[/segment...]` with an optional
+  trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
+  segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
+  configuration error (`wazuh-manager-remoted -t` reports it).
+- **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
+  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
+  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
+  counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
+  local admin socket is not. See
+  [HTTPS Events API](https-events-api.md#authentication-jwt-bearer).
 
 ### https.dual_stack
 
@@ -141,7 +165,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 - **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
   rejected as a configuration error
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
-  `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
+  `bind_addr`. See [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
 ### https.certificate
 
@@ -314,7 +338,7 @@ Interval in seconds between polls of the Task Manager's pending tasks on behalf 
 agents older than v5.0.0. Every cycle, `remoted` checks each connected agent's self-reported
 version and, for agents confirmed below v5.0.0, asks the Task Manager for pending tasks and
 delivers any `remote_upgrade` (WPK) one over the agent's existing session — see
-[Remote agent upgrade](/guide/migration/remote-agent-upgrade.md) for the full delivery flow.
+[Remote agent upgrade](../../../guide/migration/remote-agent-upgrade.md) for the full delivery flow.
 
 - **Default value:** `900` (15 minutes)
 - **Allowed values:** Integer from `300` to `86400`
@@ -326,7 +350,7 @@ delivers any `remote_upgrade` (WPK) one over the agent's existing session — se
 ### remoted.keyupdate_interval
 
 Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
-`remoted_module` C++ `Keystore` (see [HTTPS Events API](https-events-api.md)): it hot-reloads
+`remoted_module` C++ `Keystore` (see [HTTPS Agent API](https-events-api.md)): it hot-reloads
 `client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
 periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
 introducing a second one for the same concept.
@@ -516,12 +540,12 @@ Event count threshold for logging compression statistics.
 
 ### HTTPS Agent Server (`remoted_module`)
 
-Advanced tuning for the experimental HTTPS agent server (see
-[HTTPS Events API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
+Advanced tuning for the HTTPS agent server (see
+[HTTPS Agent API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
 downstream UDS client and auth middleware tunables (`remoted.downstream_*`, `remoted.auth_*`,
 further down this section). None of these are part of the regular `<remote>` configuration --
 bind address, port and max body size are regular `<remote>` settings instead (see
-[HTTPS Events API](https-events-api.md#configuration)). An option present in
+[HTTPS Agent API](https-events-api.md#configuration)). An option present in
 `wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
 `remoted` from starting, same as every other internal option.
 
@@ -538,7 +562,7 @@ Number of I/O threads (accept + read/write) for the HTTPS agent server.
 Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
 
 - **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
-  work can block on AES-CMAC verification and `client.keys` file I/O)
+  work can block on token verification and `client.keys` file I/O)
 - **Allowed values:** Integer from `0` to `256`
 - **Note:** Size it from the end-to-end latency histograms (`remoted.http.stateless.latency`,
   `remoted.http.stateful.latency`) in
@@ -754,27 +778,38 @@ Cap on a downstream response body, in bytes.
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
 
-#### remoted.auth_max_request_age
+#### remoted.jwt_max_age
 
-How far in the past (seconds) a request's timestamp may be before the auth middleware rejects it
-as expired.
+Maximum **age** (seconds) of an agent's bearer token (`wazuh-agent+jwt`) the auth middleware accepts:
+a token is usable while `now - iat <= jwt_max_age + jwt_clock_skew`. The token's declared lifetime
+(`exp - iat`) is a fixed 60 s of the profile and is not configurable; this option (together with
+`jwt_clock_skew` below) governs how much manager/agent clock drift is tolerated before an otherwise
+valid token is rejected as stale.
 
-- **Default value:** `300`
-- **Allowed values:** Integer from `1` to `3600`
-- **Note:** Rejections against this window (either direction) are visible as
-  `remoted.auth.reject.clock_skew` in
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `43200` (12h, the profile maximum -- a larger value keeps
+  remoted from starting)
+- **Note:** Rejections against the time window (too old, expired, or issued in the future) are
+  visible as `remoted.auth.reject.clock_skew` in
   [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A moving counter
-  usually means unsynchronized agent clocks — fix NTP before widening the window.
+  usually means unsynchronized agent clocks — fix NTP before widening the window. Widening it also
+  widens the replay window of a captured token (this profile has no replay store); rely on it only
+  as far as the deployment's clock drift actually requires.
 
-#### remoted.auth_max_future_skew
+#### remoted.jwt_clock_skew
 
-How far in the future (seconds) a request's timestamp may be before the auth middleware rejects
-it.
+Tolerated clock difference (seconds) between an agent and the manager, applied in both directions:
+a token may be issued up to `jwt_clock_skew` seconds in the future, and is still accepted up to
+`jwt_clock_skew` seconds after its `exp`. This is the option that matters most for tolerating a real
+manager/agent clock difference -- `jwt_max_age` above bounds total token age, but a clock skew
+between the two hosts is compensated for here.
 
 - **Default value:** `30`
-- **Allowed values:** Integer from `1` to `300`
-- **Note:** Shares the `remoted.auth.reject.clock_skew` counter with
-  `remoted.auth_max_request_age` (see above).
+- **Allowed values:** Integer from `0` to `43200` (12h, the profile maximum; `0` means no tolerance
+  at all)
+- **Note:** Shares the `remoted.auth.reject.clock_skew` counter with `remoted.jwt_max_age` (see
+  above). Also bounds the freshness window of `POST /enroll`. Widening it also widens the replay
+  window of a captured token (this profile has no replay store).
 
 #### remoted.auth_max_body_size
 
@@ -784,7 +819,7 @@ not an internal option).
 
 Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
 once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
-see [HTTPS Events API](https-events-api.md#content-encoding-zstd). Rejections against either cap
+see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against either cap
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
@@ -799,10 +834,25 @@ database.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This must stay at or above the agent's notify cadence, or every notify becomes a
-  database write. It must also stay well below `<global><agents_disconnection_time>` (default
-  `15m`), since a throttled notify is what refreshes `last_keepalive` -- set the throttle above
-  the disconnection time and active agents are reported as disconnected.
+- **Note:** `last_keepalive` is refreshed by the first notify that is **not** throttled, that is,
+  the first one arriving at or after the end of a window. A throttled notify never reaches the
+  database, so the effective staleness of `last_keepalive` is up to one whole window. Two writes
+  ignore the window: the first host-carrying notify, and the first notify after a `startup`
+  (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
+- **Note:** Keep it below half of `<global><agents_disconnection_time>` (default `15m`); remoted
+  warns at startup from half upward. The staleness monitord compares against the threshold is the
+  throttle plus the agent's notify interval, so any value at or above half can disconnect agents
+  that are answering normally. Half rather than just below the threshold also bounds detection:
+  monitord's sweep period is the disconnection time itself, so detection lands anywhere between
+  one and two times it.
+- **Note:** A value at or below the fleet's notify cadence suppresses nothing: the throttle can
+  only drop a notify that arrives inside an open window. This is not checked at startup, because
+  remoted does not know the agent's `notify_time`.
+- **Note:** 5.x agents only. A 4.x keepalive is written by the legacy path, ungated, so a sizing
+  table built from this option has to count 5.x agents alone.
+- **Note:** The throttle state lives in remoted's in-memory registry, which is per node. An agent
+  alternating between cluster nodes is throttled independently on each, so its worst-case
+  database write rate is one write per window **per node**.
 
 #### remoted.control_groups_refresh_interval
 
@@ -810,7 +860,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This is the propagation latency an agent sees for a centralised-configuration change.
+- **Note:** This is the propagation latency an agent sees for a change of group **membership**
+  only. Group **content** travels on a different path: the merged-groups watcher picks up a
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds while membership
+  waits out this interval. At the defaults that is roughly 60 s against 10 s, and at the maximum
+  of `3600` the two differ by about two orders of magnitude.
+- **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
+  `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
 
 #### remoted.control_wdb_request_connections
 
@@ -1119,6 +1175,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
     <https>
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
+      <global_prefix>/wazuh-manager/</global_prefix>
       <certificate>etc/certs/remoted.pem</certificate>
       <key>etc/certs/remoted-key.pem</key>
       <ca>etc/certs/root-ca.pem</ca>
@@ -1249,7 +1306,7 @@ authentication-rejection and downstream-failure taxonomies, backpressure occupan
 health — served as a JSON dump on the module's local admin socket:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 The full catalog, with each metric linked back to the setting it helps size, is in
@@ -1293,7 +1350,7 @@ grep "discarded_count" /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 
 - [Remoted Module](README.md) - Module overview and architecture
 - [Metrics](metrics.md) - The HTTPS agent server's metric catalog, linked back to these settings
-- [HTTPS Events API](https-events-api.md) - The HTTPS transport, protocol and endpoints
+- [HTTPS Agent API](https-events-api.md) - The HTTPS transport, protocol and endpoints
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata caching system
 - [Event Protocol](event-protocol.md) - Agent-manager communication protocol
 - [Architecture](architecture.md) - Module design and implementation

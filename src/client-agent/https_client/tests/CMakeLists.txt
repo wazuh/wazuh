@@ -25,6 +25,13 @@ target_link_libraries(
   optimized gmock
   https_client
   ext_zstd
+  # jwtSigner_test.cpp / enrollSigner_test.cpp check the minted bearers with the
+  # shared verifiers (shared_modules/utils/jwt/, header-only over jwt-cpp +
+  # rapidjson + OpenSSL). ext_jwt_cpp brings the static libcrypto.a (and, on
+  # winagent, its crypt32/ws2_32 system deps): unlike libhttps_client.dll this
+  # .exe does not link wazuhext, so OpenSSL resolves from the archive here.
+  ext_jwt_cpp
+  ext_rapidjson
   pthread)
 
 target_include_directories(
@@ -62,7 +69,16 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # cpp-httplib SSLServer/SSLClient (the TLS fake manager) needs the OpenSSL
   # support macro and the vendored OpenSSL symbols linked directly (wazuhext
   # does not re-export them).
-  target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+  # CPPHTTPLIB_ZSTD_SUPPORT: cpp-httplib >= 0.20 answers 415 to any
+  # `Content-Encoding: zstd` request it cannot decode, so with the manager
+  # tree's 0.25.0 the fake manager decodes compressed /stateful sessions the
+  # way the real manager does (ext_zstd is linked below anyway). Agent builds
+  # (Linux TARGET=agent, macOS) do not ship cpp-httplib in EXTERNAL_RES: the
+  # http-request CMake downloads 0.10.9 (its EXTERNAL_DEPS_VERSION=19 default),
+  # which ignores this macro and passes the frame through -- fakeManager.hpp
+  # inflates it itself in that case, so the tests hold under both versions.
+  target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT
+                                                                 CPPHTTPLIB_ZSTD_SUPPORT)
   target_link_libraries(
     https_client_component_test
     debug gtestd
@@ -71,6 +87,10 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gmock
     https_client
     ext_zstd
+    # The fake manager authenticates requests with the manager's own shared verifier
+    # (shared_modules/utils/jwt/: jwt-cpp + rapidjson, both header-only).
+    ext_jwt_cpp
+    ext_rapidjson
     ${SRC_FOLDER}/external/openssl/libssl.a
     ${SRC_FOLDER}/external/openssl/libcrypto.a
     pthread)
