@@ -52,7 +52,10 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         module->data = data;
     }
 
+    #ifdef CLIENT
+    // Only the agent branch reads it below; the manager side would leave a dead store.
     data = module->data;
+    #endif
 
     #ifdef CLIENT
     // Read deprecated CA configuration

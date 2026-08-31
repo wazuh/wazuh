@@ -25,7 +25,7 @@ static cJSON *cluster_section(void) {
 
 static const char *string_item(const cJSON *object, const char *key) {
     const cJSON *item = object != NULL ? cJSON_GetObjectItem(object, key) : NULL;
-    return cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0' ? item->valuestring : NULL;
+    return item != NULL && cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0' ? item->valuestring : NULL;
 }
 
 int w_is_worker(void) {

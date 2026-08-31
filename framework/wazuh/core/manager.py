@@ -6,7 +6,7 @@ import copy
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - runs bin/wazuh-manager-conf with a fixed argv and no shell
 from datetime import timezone
 from enum import Enum
 from os.path import exists
