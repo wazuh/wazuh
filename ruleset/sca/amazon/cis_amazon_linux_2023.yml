@@ -1449,8 +1449,8 @@ checks:
           - "Exploitation for Client Execution"
     condition: all
     rules:
-      - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
-      - "not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck=0"
+      - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1|gpgcheck=True"
+      - "not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck=0|gpgcheck=False"
 
   # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
   # 1.2.4 Ensure gpgcheck is globally activated. (Automated) - Not Implemented
@@ -2919,7 +2919,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - "c:rpm -q vsftpd -> r:^package vsftpd  is not installed$"
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed$"
 
   # 2.2.7 Ensure TFTP Server is not installed. (Automated)
   - id: 31063
