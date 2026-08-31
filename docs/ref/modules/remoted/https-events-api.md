@@ -579,9 +579,14 @@ Three more that are not about tuning:
   that can actually authenticate — a key that fails to decode is reported separately and is **not**
   counted, so this number can be trusted. If `client.keys` is unreadable, that is logged explicitly:
   otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
+- A missing or unreadable `etc/authd.pass`, at `remoted` startup or on a later poll, is normally a
+  **WARNING** naming the file. The exception is a cluster worker within about a minute of starting:
+  there, the file not having synced down from the master yet is expected, so it logs at **DEBUG1**
+  instead ("waiting for the enrollment password to be synchronized from the master node"). A worker
+  still missing the file past that window, or a master hitting this path at all, still warns.
 - **`Could not derive the enrollment key from 'etc/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
-  distinct from an unreadable or invalid password file (a WARNING naming the file).
+  distinct from an unreadable or invalid password file (see above).
 - **The HTTPS server failing to start** is an ERROR naming which of the two is the problem (the
   certificate or the private key). There is no retry: remoted must not start without the HTTPS
   transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
