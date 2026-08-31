@@ -388,6 +388,30 @@ TEST_F(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing
     EXPECT_EQ(readMarker(), 1);
 }
 
+// The combined marker waits for both lanes, so a plain table that keeps failing leaves the pass
+// unfinished cycle after cycle. The VD lane must not be redone on the strength of that: every
+// redo clears the vulnerability index and resends it as a first scan, which suppresses alerts,
+// so a CVE appearing between two cycles would never raise one.
+TEST_F(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle)
+{
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    // The VD lane lands, once, across both cycles.
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _)).Times(1).WillOnce(Return(true));
+    // The plain lane never does, and is retried on the second cycle.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _)).Times(2).WillRepeatedly(Return(false));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+    Syscollector::instance().checkAgentIdentity();
+
+    // The identity is still not fully synchronized, so the combined marker stays where it was.
+    EXPECT_EQ(readMarker(), 1);
+}
+
 // Each resent table stamps the integrity clock, so the checksum loop running right behind this
 // one in the same pass does not clear and re-upload what was just replaced.
 TEST_F(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable)

@@ -99,6 +99,12 @@ constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync
 // number: OS_IsValidID() has already rejected anything but at most 8 digits by the time an id
 // reaches client.keys, so it fits the INTEGER column the table already has.
 constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
+// The VD lane's own record of the identity it last resent under. Separate from the combined
+// marker above because that one only advances once *both* lanes have landed: a plain table that
+// keeps failing would otherwise keep the whole pass "unfinished" and have the VD inventory
+// cleared and resent on every cycle -- each time as a first scan, which suppresses alerts, so a
+// genuinely new CVE appearing between two of those cycles would never raise one.
+constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -5024,6 +5030,14 @@ void Syscollector::checkAgentIdentity()
     bool anyFailed = false;
     std::vector<std::string> vdTablesResent;
 
+    // Has the VD lane already landed for this identity? Only the combined marker below waits for
+    // both lanes, so without this a stuck plain table would have the VD inventory wiped and
+    // resent every cycle. A read that fails counts as "not done": one redundant resend is noise,
+    // while skipping it on a guess leaves the vulnerability inventory missing.
+    int64_t vdSyncedId = 0;
+    const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
+                                 && vdSyncedId == static_cast<int64_t>(currentId);
+
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
     // and the marker below stays gated on what each table proved individually.
@@ -5069,6 +5083,14 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
+            if (vdTable && vdAlreadyResent)
+            {
+                // Already sent under this identity by an earlier cycle whose plain lane did not
+                // finish. Clearing and requeueing it again would buy nothing and cost an alert
+                // window.
+                continue;
+            }
+
             if (!resyncTableToManager(tableName, index, !vdTable))
             {
                 // Keep going: the tables that can be resent should be, and aborting here would
@@ -5111,6 +5133,10 @@ void Syscollector::checkAgentIdentity()
 
         if (syncModule(Mode::DELTA).success)
         {
+            // Recorded here, not with the combined marker at the end: this lane is done for this
+            // identity even if a plain table still is not, and the next cycle must not redo it.
+            updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+
             for (const auto& tableName : vdTablesResent)
             {
                 updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());

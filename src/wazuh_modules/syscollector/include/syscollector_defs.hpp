@@ -32,7 +32,8 @@
     FRIEND_TEST(SyscollectorIdentityTest, ChangedIdSkipsDisabledCollectors);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, ChangedIdSendsTheVDInventoryAsAFirstSync);                                  \
     FRIEND_TEST(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing);                            \
-    FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable)
+    FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING
