@@ -11,6 +11,8 @@
 
 #include "endpoints/downloadEndpoint.hpp"
 
+#include "control/agentRegistry.hpp"
+
 #include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
@@ -196,12 +198,46 @@ namespace
         return request;
     }
 
-    std::shared_ptr<RecordingResponder> runHandler(const std::string& bodyText, ResourcePaths paths = {})
+    /// A registry holding one agent's groups, standing in for what /control would have recorded.
+    std::shared_ptr<remoted::control::AgentRegistry> registryWith(remoted::control::AgentId id,
+                                                                  std::vector<std::string> groups)
+    {
+        auto registry = std::make_shared<remoted::control::AgentRegistry>();
+        registry->update(id,
+                         [&groups](std::shared_ptr<const remoted::control::AgentEntry>)
+                         {
+                             auto entry = std::make_shared<remoted::control::AgentEntry>();
+                             entry->groups = groups;
+                             entry->groupsRefreshedAtSec = 1;
+                             return entry;
+                         });
+        return registry;
+    }
+
+    /// Agent 001 in the one group VALID_CONFIG_BODY asks for: the authorized baseline every
+    /// pre-existing handler test now runs against.
+    std::shared_ptr<remoted::control::AgentRegistry> webServersRegistry()
+    {
+        return registryWith(1, {"web-servers"});
+    }
+
+    std::shared_ptr<RecordingResponder> runHandlerAs(const std::string& agentId,
+                                                     const std::string& bodyText,
+                                                     std::shared_ptr<const remoted::control::AgentRegistry> registry,
+                                                     ResourcePaths paths = {})
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        makeHandler(std::move(paths))(authenticatedRequest(body), responder);
+        makeHandler(std::move(registry), std::move(paths))(authenticatedRequest(body, agentId), responder);
         return responder;
+    }
+
+    std::shared_ptr<RecordingResponder>
+    runHandler(const std::string& bodyText,
+               ResourcePaths paths = {},
+               std::shared_ptr<const remoted::control::AgentRegistry> registry = webServersRegistry())
+    {
+        return runHandlerAs("001", bodyText, std::move(registry), std::move(paths));
     }
 
     DownloadRequest configRequest(std::string group)
@@ -785,25 +821,47 @@ TEST(DownloadHandlerTest, MetricsCountEachOutcomeAndOfferedBytes)
     ResourcePaths paths;
     paths.sharedDir = dir.path() + "/shared";
 
+    // Agent 1 owns the group that exists; agent 2 owns one that does not, which is how the 404
+    // cell is reached now that an unauthorized selector never gets as far as the filesystem.
+    auto registry = std::make_shared<remoted::control::AgentRegistry>();
+    const auto put = [&registry](remoted::control::AgentId id, std::vector<std::string> groups)
+    {
+        registry->update(id,
+                         [&groups](std::shared_ptr<const remoted::control::AgentEntry>)
+                         {
+                             auto entry = std::make_shared<remoted::control::AgentEntry>();
+                             entry->groups = std::move(groups);
+                             return entry;
+                         });
+    };
+    put(1, {"web-servers"});
+    put(2, {"ghosts"});
+
     wazuh::metrics::Manager manager;
     const auto metrics = makeDownloadMetrics(manager);
-    auto handler = makeHandler(paths, metrics);
+    auto handler = makeHandler(registry, paths, metrics);
 
-    const auto run = [&handler](const std::string& bodyText)
+    const auto run = [&handler](const std::string& agentId, const std::string& bodyText)
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        handler(authenticatedRequest(body), responder);
+        handler(authenticatedRequest(body, agentId), responder);
         return responder;
     };
 
-    EXPECT_EQ(run("not json")->status, 400);
+    EXPECT_EQ(run("001", "not json")->status, 400);
     EXPECT_EQ(metrics.rejected->get(), 1U);
 
-    EXPECT_EQ(run(R"({"resource_type":"config","resource_id":"no-such-group"})")->status, 404);
+    // Well-formed, but it is agent 2's group, not agent 1's.
+    EXPECT_EQ(run("001", R"({"resource_type":"config","resource_id":"ghosts"})")->status, 403);
+    EXPECT_EQ(metrics.forbidden->get(), 1U);
+
+    // Agent 2 IS entitled to "ghosts"; it just has no merged.mg on disk. Authorized-but-absent is
+    // the 404, and keeping it distinct from the 403 above is the point of asserting both here.
+    EXPECT_EQ(run("002", R"({"resource_type":"config","resource_id":"ghosts"})")->status, 404);
     EXPECT_EQ(metrics.notFound->get(), 1U);
 
-    const auto streamedResponder = run(VALID_CONFIG_BODY);
+    const auto streamedResponder = run("001", VALID_CONFIG_BODY);
     EXPECT_TRUE(streamedResponder->streamed);
     EXPECT_EQ(metrics.started->get(), 1U);
     EXPECT_EQ(metrics.bytesTotal->get(), contents.size());
@@ -824,15 +882,21 @@ TEST(DownloadHandlerTest, StreamsTheEffectiveConfigForAMultigroupSelector)
     paths.sharedDir = dir.path() + "/shared";
     paths.multigroupsDir = dir.path() + "/multigroups";
 
-    const auto responder = runHandler(R"({"resource_type":"config","resource_id":"web-servers,databases"})", paths);
+    const auto responder = runHandler(R"({"resource_type":"config","resource_id":"web-servers,databases"})",
+                                      paths,
+                                      registryWith(1, {"web-servers", "databases"}));
 
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, "EFFECTIVE MULTIGROUP CONFIG");
 }
 
-TEST(DownloadHandlerTest, StreamsTheGroupTheAgentNamed)
+TEST(DownloadHandlerTest, StreamsEachAgentItsOwnGroupAndNoOther)
 {
+    // The regression this endpoint shipped with: `resource_id` used to be served verbatim, so
+    // BOTH reads below succeeded for the same agent. Each agent must now get its own group and be
+    // refused the other's -- one registry, two agents, so the two outcomes are proven to depend on
+    // the caller rather than on anything about the groups themselves.
     TempDir dir;
     dir.makeDir("shared/web-servers");
     dir.makeDir("shared/databases");
@@ -842,8 +906,34 @@ TEST(DownloadHandlerTest, StreamsTheGroupTheAgentNamed)
     ResourcePaths paths;
     paths.sharedDir = dir.path() + "/shared";
 
-    EXPECT_EQ(runHandler(VALID_CONFIG_BODY, paths)->body, "WEB SERVERS CONFIG");
-    EXPECT_EQ(runHandler(R"({"resource_type":"config","resource_id":"databases"})", paths)->body, "DATABASES CONFIG");
+    auto registry = std::make_shared<remoted::control::AgentRegistry>();
+    const auto put = [&registry](remoted::control::AgentId id, std::vector<std::string> groups)
+    {
+        registry->update(id,
+                         [&groups](std::shared_ptr<const remoted::control::AgentEntry>)
+                         {
+                             auto entry = std::make_shared<remoted::control::AgentEntry>();
+                             entry->groups = std::move(groups);
+                             return entry;
+                         });
+    };
+    put(1, {"web-servers"});
+    put(2, {"databases"});
+
+    constexpr auto WEB_BODY {R"({"resource_type":"config","resource_id":"web-servers"})"};
+    constexpr auto DB_BODY {R"({"resource_type":"config","resource_id":"databases"})"};
+
+    EXPECT_EQ(runHandlerAs("001", WEB_BODY, registry, paths)->body, "WEB SERVERS CONFIG");
+    EXPECT_EQ(runHandlerAs("002", DB_BODY, registry, paths)->body, "DATABASES CONFIG");
+
+    const auto crossA = runHandlerAs("001", DB_BODY, registry, paths);
+    EXPECT_EQ(crossA->status, 403);
+    EXPECT_FALSE(crossA->streamed);
+    EXPECT_EQ(crossA->body.find("DATABASES CONFIG"), std::string::npos);
+
+    const auto crossB = runHandlerAs("002", WEB_BODY, registry, paths);
+    EXPECT_EQ(crossB->status, 403);
+    EXPECT_FALSE(crossB->streamed);
 }
 
 TEST(DownloadHandlerTest, StreamsAStagedWpk)
@@ -874,4 +964,190 @@ TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
 
     EXPECT_EQ(responder->status, 404);
     EXPECT_FALSE(responder->streamed);
+}
+
+// ---------------------------------------------------------------------------
+// authorizeConfigSelector
+// ---------------------------------------------------------------------------
+
+TEST(DownloadAuthorizeTest, AcceptsTheAgentsOwnSelector)
+{
+    EXPECT_EQ(authorizeConfigSelector("web-servers", {"web-servers"}), AuthzError::None);
+    EXPECT_EQ(authorizeConfigSelector("web-servers,databases", {"web-servers", "databases"}), AuthzError::None);
+}
+
+TEST(DownloadAuthorizeTest, RejectsAGroupTheAgentIsNotIn)
+{
+    EXPECT_EQ(authorizeConfigSelector("databases", {"web-servers"}), AuthzError::NotItsOwn);
+    EXPECT_EQ(authorizeConfigSelector("default", {"web-servers"}), AuthzError::NotItsOwn);
+}
+
+TEST(DownloadAuthorizeTest, RejectsASubsetOfTheAgentsOwnGroups)
+{
+    // A multi-group agent asking for one member group would resolve to etc/shared/<group>, not to
+    // its own multigroup directory. That is a different file, and /control reports config_hash over
+    // the multigroup one -- so accepting this would both widen the check and loop the agent.
+    EXPECT_EQ(authorizeConfigSelector("web-servers", {"web-servers", "databases"}), AuthzError::NotItsOwn);
+    EXPECT_EQ(authorizeConfigSelector("databases", {"web-servers", "databases"}), AuthzError::NotItsOwn);
+}
+
+TEST(DownloadAuthorizeTest, RejectsASupersetAndAnUnrelatedGroupAppended)
+{
+    EXPECT_EQ(authorizeConfigSelector("web-servers,databases", {"web-servers"}), AuthzError::NotItsOwn);
+    EXPECT_EQ(authorizeConfigSelector("web-servers,secrets", {"web-servers"}), AuthzError::NotItsOwn);
+}
+
+TEST(DownloadAuthorizeTest, OrderIsPartOfTheIdentity)
+{
+    // Not pedantry: the multigroup directory is the digest of the selector verbatim, so a
+    // reordered CSV names a different file. Accepting it would mean authorizing a path we did not
+    // check. The agent must send the order /control reported.
+    EXPECT_EQ(authorizeConfigSelector("databases,web-servers", {"web-servers", "databases"}), AuthzError::NotItsOwn);
+}
+
+TEST(DownloadAuthorizeTest, AnAgentWithNoGroupsOnRecordIsEntitledToNothing)
+{
+    EXPECT_EQ(authorizeConfigSelector("web-servers", {}), AuthzError::UnknownAgent);
+    EXPECT_EQ(authorizeConfigSelector("", {}), AuthzError::UnknownAgent);
+}
+
+TEST(DownloadAuthorizeTest, PrefixesAndSuffixesOfTheOwnSelectorAreNotMatches)
+{
+    // Guards against the check ever being relaxed to a prefix/substring comparison, which is the
+    // shape a "startsWith" refactor would take.
+    EXPECT_EQ(authorizeConfigSelector("web", {"web-servers"}), AuthzError::NotItsOwn);
+    EXPECT_EQ(authorizeConfigSelector("web-servers-2", {"web-servers"}), AuthzError::NotItsOwn);
+    EXPECT_EQ(authorizeConfigSelector("web-servers,", {"web-servers"}), AuthzError::NotItsOwn);
+}
+
+TEST(DownloadErrorResponseTest, EveryAuthzErrorGivesTheSameOpaqueForbidden)
+{
+    // "which agents exist" and "which groups exist" must not be readable off the response.
+    const auto unknown = errorResponseFor(AuthzError::UnknownAgent);
+    const auto notOwn = errorResponseFor(AuthzError::NotItsOwn);
+
+    EXPECT_EQ(unknown.status, 403);
+    EXPECT_EQ(notOwn.status, 403);
+    EXPECT_EQ(unknown.body, notOwn.body);
+}
+
+// ---------------------------------------------------------------------------
+// Handler authorization
+// ---------------------------------------------------------------------------
+
+TEST(DownloadHandlerAuthzTest, RefusesAnotherGroupsMergedConfigWithoutRevealingWhetherItExists)
+{
+    // The enumeration oracle the missing check left behind: a 200/404 split told an attacker which
+    // group names are real. Both cases must now be the same 403, byte for byte.
+    TempDir dir;
+    dir.makeDir("shared/databases");
+    dir.writeFile("shared/databases/merged.mg", "DATABASES CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto existing = runHandler(R"({"resource_type":"config","resource_id":"databases"})", paths);
+    const auto absent = runHandler(R"({"resource_type":"config","resource_id":"no-such-group"})", paths);
+
+    EXPECT_EQ(existing->status, 403);
+    EXPECT_EQ(absent->status, 403);
+    EXPECT_EQ(existing->body, absent->body);
+    EXPECT_FALSE(existing->streamed);
+    EXPECT_FALSE(absent->streamed);
+}
+
+TEST(DownloadHandlerAuthzTest, RefusesAnAgentWithNoRegistryEntry)
+{
+    // Agent 009 never completed a /control startup or notify against this process, so the manager
+    // has no groups for it and cannot authorize anything.
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "WEB SERVERS CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandlerAs("009", VALID_CONFIG_BODY, webServersRegistry(), paths);
+
+    EXPECT_EQ(responder->status, 403);
+    EXPECT_FALSE(responder->streamed);
+}
+
+TEST(DownloadHandlerAuthzTest, ANullRegistryDeniesEveryConfigRequest)
+{
+    // Fail closed. A handler built without its groups source must refuse, never fall back to
+    // serving what the agent named -- that fallback IS the vulnerability.
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "WEB SERVERS CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandlerAs("001", VALID_CONFIG_BODY, nullptr, paths);
+
+    EXPECT_EQ(responder->status, 403);
+    EXPECT_FALSE(responder->streamed);
+    EXPECT_EQ(responder->body.find("WEB SERVERS CONFIG"), std::string::npos);
+}
+
+TEST(DownloadHandlerAuthzTest, ANonNumericAgentIdIsRefusedRatherThanServed)
+{
+    // The gateway only admits ids it matched against client.keys, so this is unreachable in
+    // production. Asserted anyway so the endpoint does not silently depend on that.
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "WEB SERVERS CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    EXPECT_EQ(runHandlerAs("00x", VALID_CONFIG_BODY, webServersRegistry(), paths)->status, 403);
+    EXPECT_EQ(runHandlerAs("", VALID_CONFIG_BODY, webServersRegistry(), paths)->status, 403);
+}
+
+TEST(DownloadHandlerAuthzTest, AMultigroupAgentIsRefusedOneMemberGroupsOwnConfig)
+{
+    // The subset case end to end: the single-group file exists and is readable, and the agent is
+    // genuinely a member of that group -- it is still not the configuration it is entitled to.
+    TempDir dir;
+    const std::string selector = "web-servers,databases";
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "SINGLE GROUP - must not be served");
+    dir.makeDir("multigroups/" + multigroupDirName(selector));
+    dir.writeFile("multigroups/" + multigroupDirName(selector) + "/merged.mg", "EFFECTIVE MULTIGROUP CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    paths.multigroupsDir = dir.path() + "/multigroups";
+
+    auto registry = registryWith(1, {"web-servers", "databases"});
+
+    const auto member = runHandler(R"({"resource_type":"config","resource_id":"web-servers"})", paths, registry);
+    EXPECT_EQ(member->status, 403);
+    EXPECT_FALSE(member->streamed);
+
+    const auto effective =
+        runHandler(R"({"resource_type":"config","resource_id":"web-servers,databases"})", paths, registry);
+    EXPECT_EQ(effective->status, 200);
+    EXPECT_EQ(effective->body, "EFFECTIVE MULTIGROUP CONFIG");
+}
+
+TEST(DownloadHandlerAuthzTest, AWpkIsStillServedWithoutAMembershipCheck)
+{
+    // Documented, deliberate: there is no per-agent authorization source for packages here (see
+    // makeHandler()'s doc comment). This test exists so the exemption stays a decision rather than
+    // drifting into an assumption -- if WPK authorization lands, this is what must be rewritten.
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "PACKAGE BYTES");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    // An agent with no registry entry at all: refused for config, still served a package.
+    const auto responder = runHandlerAs("009", R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", nullptr, paths);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "PACKAGE BYTES");
 }
