@@ -20,6 +20,11 @@ int __wrap_gzread(gzFile gz_fd,
 gzFile __wrap_gzopen(const char * file,
                      const char * mode);
 
+gzFile __wrap_w_gzopen_nofollow(const char * basedir,
+                                const char * filename,
+                                const char * mode);
+void expect_w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode, gzFile ret);
+
 int __wrap_gzclose(gzFile file);
 
 int __wrap_gzeof(gzFile file);
