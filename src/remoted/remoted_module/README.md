@@ -1199,16 +1199,36 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   a truncated file that looks complete. RESTinio always fires the write callback (with
   `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
-- **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
-  request names either one group (`etc/shared/<group>/merged.mg`) or several, comma-separated —
-  wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:8]>/merged.mg`.
-  A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
-  lets an agent in several groups fetch its *effective* configuration rather than one member
-  group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
-  There is no group lookup and no membership check (protocol decision on #38022), so **any
-  authenticated agent can fetch any group's or multigroup's merged configuration**. `/control` must
-  report `config_hash` over the file this resolves to for the selector it hands the agent, or that
-  agent re-downloads on every notify.
+- **`resource_id` names the resource; the manager decides whether the caller may have it.** A
+  `config` request names either one group (`etc/shared/<group>/merged.mg`) or several,
+  comma-separated — wazuh's own multigroup form — which resolves to
+  `var/multigroups/<sha256(resource_id)[:8]>/merged.mg`. A `wpk` request names a filename and gets
+  `var/upgrade/<filename>`. The multigroup form is what lets an agent in several groups fetch its
+  *effective* configuration rather than one member group's, and it needs no database: the selector
+  is hashed exactly as wazuh-db names the directory. `/control` must report `config_hash` over the
+  file this resolves to for the selector it hands the agent, or that agent re-downloads on every
+  notify.
+- **A config request is authorized against the agent's own groups (#38683).** `resource_id` must
+  equal the requesting agent's group selector *exactly* — `toGroupsCsv(entry->groups)` from the
+  `AgentRegistry` that `/control` populates and refreshes — or the answer is `403`. The groups come
+  from the registry, never from the request, so naming a group is not the same as being in it. The
+  lookup is a sharded-map read: no wazuh-db call on the download path.
+  - **Exact match, not a subset.** A multi-group agent asking for one member group would resolve to
+    `etc/shared/<group>` rather than to its own multigroup directory — a different file, and not the
+    one `config_hash` was computed over, so it would re-download forever. Order counts too: the
+    multigroup directory is the digest of the selector verbatim.
+  - **Fail closed.** A null registry, an unparseable agent id and an agent with no entry all deny.
+    An agent has no entry only before its first `/control` startup or notify against this process,
+    and a config download is always preceded by one (that is where `config_hash` comes from).
+  - **One opaque `403` for every cause**, so the status cannot be read as an oracle for which groups
+    or which agents exist. The distinction survives only in the (throttled) manager-side `WARN` and
+    in `remoted.download.forbidden`.
+- **A `wpk` request carries no membership check.** Which package an agent may fetch is decided by
+  its pending upgrade task in the task manager — not by anything `/control` exchanges or the
+  registry holds — so there is nothing here to authorize it against. The residual exposure is
+  accepted and bounded: WPKs are signed, publicly distributed packages, so an unauthorized fetch
+  discloses which package is staged, not secret material, and a tampered one fails signature
+  verification on the agent. Closing it properly means task-based authorization, tracked separately.
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
   traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
   there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
@@ -1638,7 +1658,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, forbidden, not_found, open_error, started, bytes.total}` | cross-group config requests (`forbidden`), group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
