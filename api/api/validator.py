@@ -352,6 +352,11 @@ def format_agent_id(value):
     return check_exp(value, _numbers) and 0 < int(value) <= 2147483647
 
 
+@Draft4Validator.FORMAT_CHECKER.checks("agent_id_or_all")
+def format_agent_id_or_all(value):
+    return value == 'all' or format_agent_id(value)
+
+
 @Draft4Validator.FORMAT_CHECKER.checks("path")
 def format_path(value):
     if not is_safe_path(value):

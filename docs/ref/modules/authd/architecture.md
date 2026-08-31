@@ -246,9 +246,8 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9013 | `max_agents` reached | `503` |
 | 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
 | 9018 | the id still has a pending deletion | — |
-| 9019 | invalid caller-supplied key | `400` |
-| 9020 | invalid caller-supplied id (outside `[1, 2147483647]`, or `0`) | `500` — unmapped in `enrollmentEndpoint.cpp`'s switch (falls to its default case); not yet reachable in practice, self-enrollment never sends an id |
-| 9021 | id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `500` — same unmapped default; the closer semantic fit would be `9013`'s `503`, but self-enrollment *can* reach this one (it never sends an id, so it always goes through auto-assignment) and the mapping has not been added yet |
+| 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
+| 9021 | id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `503` — same "out of capacity" shape as `9013`, and reachable from ordinary self-enrollment since it never sends an id of its own |
 
 ## Agent removal
 

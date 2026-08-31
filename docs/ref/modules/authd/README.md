@@ -123,6 +123,12 @@ when the agents holding the highest ids have been deleted and `client.keys` no l
 a purge in flight matches by agent id, so recycling one would let it delete the documents of a *new*
 agent. On startup the id counter is raised to that mark if needed, and the change is logged.
 
+Both `client.keys` and the database keep the id in a signed 32-bit integer, so a fleet large or
+long-lived enough can drive the counter all the way to `INT_MAX` on its own — no out-of-range input
+anywhere. Authd refuses to hand out the next id rather than wrapping it to a negative value: the
+auto-assigned enrollment fails with `9021 Agent ID counter exhausted` instead of silently producing
+a record `client.keys` and the database would disagree about.
+
 For the same reason, an insertion that names an id explicitly
 (`POST /agents/insert`) is **refused** while that id still owes a purge, rather than cancelling the
 purge: a queued purge always runs.
@@ -159,8 +165,10 @@ persistence above apply to enrollment just as much as to `DELETE /agents`.
 
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
-`POST /agents/insert`, and there authd refuses rather than replacing: an id that belongs to an
-existing agent answers `9012 Duplicate ID`, and one whose purge is still pending answers
+`POST /agents/insert`, and there authd refuses rather than replacing: an id outside
+`[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
+reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
+answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
 
@@ -202,7 +210,10 @@ A request is a single-line JSON object:
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
     `manage_agents` and the API have always accepted — containing `%`, a single character, or a
     leading `.` — keep working.
-  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
+  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
+    be a positive integer no greater than `2147483647` (the width `client.keys` and the database
+    store it in) and other than `0` (reserved for the manager), or the request fails with
+    `9020 Invalid agent ID`
   - `groups` (optional) — comma-separated centralized group(s) to assign
   - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
@@ -291,5 +302,5 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
   requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
-  decisions (D1–D8) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
+  decisions (D1–D9) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
   and which test suite covers what.

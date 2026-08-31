@@ -306,6 +306,8 @@ namespace remoted::enrollment
                            // two checks ever diverge.
                 case 9019: // invalid caller-supplied key. Unreachable from here too: self-enrollment
                            // never sends a key (authd generates it); mapped for completeness.
+                case 9020: // invalid caller-supplied id. Unreachable from here too: self-enrollment
+                           // never sends an id (authd assigns it); mapped for completeness.
                     return 400;
                 case 9007:
                 case 9008:
@@ -313,6 +315,9 @@ namespace remoted::enrollment
                 case 9013: // max_agents reached
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
+                case 9021: // authd's id-assignment counter is exhausted: same "out of capacity" shape
+                           // as 9013, and reachable from ordinary self-enrollment since it never sends
+                           // an id of its own.
                     return 503;
                 default: return 500;
             }

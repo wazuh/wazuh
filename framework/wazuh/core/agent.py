@@ -940,6 +940,12 @@ class Agent:
             If there is an agent with the same ID.
         WazuhError(1709)
             If the key size is too short.
+        WazuhError(1763)
+            If the ID's previous owner still has documents pending deletion in the indexer.
+        WazuhError(1765)
+            If the ID is not a positive integer no greater than 2147483647, or is 0.
+        WazuhError(1766)
+            If the manager has no more agent IDs left to hand out.
 
         Returns
         -------
@@ -984,6 +990,10 @@ class Agent:
                 # the indexer. Reusing it now would let that purge delete the new agent's documents,
                 # so authd refuses until the deletion has been handed over.
                 raise WazuhError(1763, extra_message=id)
+            elif e.code == 9020:
+                raise WazuhError(1765, extra_message=id)
+            elif e.code == 9021:
+                raise WazuhError(1766)
             raise e
 
         self.id = data["id"]

@@ -2,9 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""Verify POST /agents/insert's `id` schema (AgentID) allows the full range the manager can store
-it in -- up to INT32_MAX (2147483647), the boundary of the signed 32-bit int the manager keeps
-this value in -- and rejects anything past it before the request ever reaches authd (#38626).
+"""Verify the AgentID/AgentIDListAll schemas allow the full range the manager can store an id in --
+up to INT32_MAX (2147483647), the boundary of the signed 32-bit int the manager keeps this value
+in -- and reject anything past it or equal to 0, both when creating an agent (POST /agents/insert,
+AgentID) and when referencing existing ones with the `all` keyword allowed (DELETE /agents,
+AgentIDListAll) (#38626).
 """
 
 import os
@@ -54,4 +56,35 @@ def test_id_past_int32_max_is_rejected_before_reaching_authd():
 
 def test_id_zero_is_rejected_as_reserved_for_the_manager():
     response = _post_insert('000')
+    assert response.status_code == 400
+
+
+def _delete_agents(agents_list: str):
+    with patch.object(authentication, 'decode_token', new=AsyncMock(return_value={'sub': 'wazuh', 'rbac_policies': {}})):
+        client = _build_client()
+        return client.request('DELETE', '/agents', params={'agents_list': agents_list, 'status': 'all'},
+                               headers={'Authorization': 'Bearer test-token'})
+
+
+def test_delete_agents_accepts_the_all_keyword():
+    """AgentIDListAll must keep accepting the `all` keyword the plain AgentID schema does not."""
+    response = _delete_agents('all')
+    assert not (response.status_code == 400 and 'format' in response.text)
+
+
+def test_delete_agents_accepts_id_at_int32_max():
+    response = _delete_agents(str(INT32_MAX))
+    assert not (response.status_code == 400 and 'format' in response.text)
+
+
+def test_delete_agents_rejects_id_past_int32_max():
+    """Referencing an existing agent through DELETE /agents must reject the same out-of-range ids
+    POST /agents/insert does -- AgentIDListAll used to fall back to the unrelated numbers_or_all
+    format, which had no upper bound at all."""
+    response = _delete_agents(str(INT32_MAX + 1))
+    assert response.status_code == 400
+
+
+def test_delete_agents_rejects_id_zero():
+    response = _delete_agents('000')
     assert response.status_code == 400
