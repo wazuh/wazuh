@@ -43,7 +43,7 @@ namespace
         .WillRepeatedly(testing::Return(nullptr));
 
         auto agentInfo = std::make_unique<AgentInfoImplMock>(":memory:", nullptr, logFunc, noopQueryModuleFunction,
-                                                              mockDBSync);
+                                                             mockDBSync);
 
         auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();
         EXPECT_CALL(*mockSyncProtocol, synchronizeMetadataOrGroups(testing::_, testing::_, testing::_))
@@ -61,8 +61,8 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableWit
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
-                          logOutput, mockDBSync,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true});
+                         logOutput, mockDBSync,
+                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
@@ -77,9 +77,9 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableAtT
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
-                          logOutput, mockDBSync,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
-                                           SYNC_MANAGER_NOT_READY_TOLERANCE, false, true});
+                         logOutput, mockDBSync,
+                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
+                                          SYNC_MANAGER_NOT_READY_TOLERANCE, false, true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
@@ -95,8 +95,8 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailablePas
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
-                          logOutput, mockDBSync,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true});
+                         logOutput, mockDBSync,
+                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 

@@ -5929,7 +5929,7 @@ namespace
     // return `result` for a Mode::DELTA/Option::SYNC call. Returns the log capture the caller
     // should assert against.
     std::unique_ptr<LogCapture> initSyscollectorWithMockedSync(const std::shared_ptr<MockSysInfo>& spInfoWrapper,
-                                                                const SyncModuleResult& result)
+                                                               const SyncModuleResult& result)
     {
         auto logCapture = std::make_unique<LogCapture>();
         auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log)

@@ -922,7 +922,7 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
-                                                SYNC_MANAGER_NOT_READY_TOLERANCE, false, true}));
+                                               SYNC_MANAGER_NOT_READY_TOLERANCE, false, true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
