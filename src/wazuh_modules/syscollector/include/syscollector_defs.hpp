@@ -19,7 +19,10 @@
 //
 // What this buys: the identity resync and its VD-versus-plain routing become assertable. Driving
 // them for real needs a manager to answer every notifyDataClean(), which is why the recovery path
-// carried no assertions at all until #38601 added these.
+// carried no assertions at all until #38601 added these. The same reasoning applies to
+// SyscollectorImpTest's local-transport-unavailable cases (#38621): they used to reach in through
+// a public setSyncProtocol()/setSyncProtocolVD() pair that existed only for this, the one seam
+// that had no compile guard.
 //
 // The fixture is befriended as well as its cases: FRIEND_TEST reaches the TEST_F bodies only, and
 // the setup those bodies share has to establish state that start() computes and never runs here --
@@ -39,7 +42,10 @@
     FRIEND_TEST(SyscollectorIdentityTest, RefusedDataCleanWithholdsTheMarkerAndKeepsGoing);                            \
     FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle);                              \
-    FRIEND_TEST(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker)
+    FRIEND_TEST(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker);                                      \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING

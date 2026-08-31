@@ -856,7 +856,9 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyWithinToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -878,7 +880,9 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -900,7 +904,9 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = 1u,
+                                               .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -921,8 +927,9 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
-                                               SYNC_MANAGER_NOT_READY_TOLERANCE, false, true}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                                               .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -946,7 +953,9 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = streak,
+                                               .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -971,9 +980,10 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult
     {
-        false,
+        .failureReason =
         "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        false, false, 0u, true}));
+        .awaitingPrerequisite = true
+    }));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -993,7 +1003,9 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -1013,7 +1025,9 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -1034,9 +1048,10 @@ TEST_F(ScaTest, ExecuteFlushSync_AwaitingPrerequisiteLogsDeferredNotError)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult
     {
-        false,
+        .failureReason =
         "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        false, false, 0u, true}));
+        .awaitingPrerequisite = true
+    }));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -1055,7 +1070,7 @@ TEST_F(ScaTest, ExecuteFlushSync_GenuineFailureKeepsError)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Manager sent an unexpected or invalid response.", false, false, 0u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Manager sent an unexpected or invalid response."}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);

@@ -2365,20 +2365,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     }
 }
 
-void Syscollector::setSyncProtocol(std::unique_ptr<IAgentSyncProtocol> syncProtocol)
-{
-    // Same locking discipline as initSyncProtocol(): publish under the exclusive lock so a
-    // concurrent shared-lock reader never observes a half-assigned pointer.
-    std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
-    m_spSyncProtocol = std::move(syncProtocol);
-}
-
-void Syscollector::setSyncProtocolVD(std::unique_ptr<IAgentSyncProtocol> syncProtocol)
-{
-    std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
-    m_spSyncProtocolVD = std::move(syncProtocol);
-}
-
 // LCOV_EXCL_START
 SyncModuleResult Syscollector::syncModule(Mode mode)
 {

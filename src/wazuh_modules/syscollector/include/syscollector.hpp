@@ -105,14 +105,6 @@ class EXPORTED Syscollector final
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
 
-        /// @brief Test-only seam: swaps the regular (non-VD) sync protocol for an injected
-        /// instance (e.g. a gmock) so tests can drive SyncModuleResult classification without a
-        /// live transport. Production code always goes through initSyncProtocol(), which
-        /// constructs the real AgentSyncProtocol.
-        void setSyncProtocol(std::unique_ptr<IAgentSyncProtocol> syncProtocol);
-
-        /// @brief Same as setSyncProtocol(), for the VD sync protocol.
-        void setSyncProtocolVD(std::unique_ptr<IAgentSyncProtocol> syncProtocol);
         SyncModuleResult syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);

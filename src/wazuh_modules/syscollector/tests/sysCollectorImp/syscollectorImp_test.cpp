@@ -5912,8 +5912,9 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
 }
 
 // --- Local-transport-unavailable log-level decision (issue #38621) ------------------------------
-// These inject a MockAgentSyncProtocol via setSyncProtocol()/setSyncProtocolVD() so the
-// classification logic in syncModule() is exercised without a live transport.
+// These inject a MockAgentSyncProtocol via m_spSyncProtocol/m_spSyncProtocolVD (through the
+// FRIEND_TEST grants in syscollector_defs.hpp) so the classification logic in syncModule() is
+// exercised without a live transport.
 
 namespace
 {
@@ -5924,41 +5925,35 @@ namespace
         EXPECT_CALL(mockSyncProtocolVD, synchronizeModule(testing::_, testing::_))
         .WillRepeatedly(testing::Return(SyncModuleResult{true}));
     }
-
-    // Injects fresh mocks for both the regular and VD sync protocols, wiring the regular one to
-    // return `result` for a Mode::DELTA/Option::SYNC call. Returns the log capture the caller
-    // should assert against.
-    std::unique_ptr<LogCapture> initSyscollectorWithMockedSync(const std::shared_ptr<MockSysInfo>& spInfoWrapper,
-                                                               const SyncModuleResult& result)
-    {
-        auto logCapture = std::make_unique<LogCapture>();
-        auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log)
-        {
-            logCapturePtr->capture(level, log);
-        };
-
-        Syscollector::instance().init(spInfoWrapper,
-                                      reportFunction,
-                                      persistFunction,
-                                      captureLogFunction,
-                                      SYSCOLLECTOR_DB_PATH,
-                                      "",
-                                      "",
-                                      3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
-        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
-
-        auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();
-        EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-        .WillOnce(testing::Return(result));
-        Syscollector::instance().setSyncProtocol(std::move(mockSyncProtocol));
-
-        auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();
-        expectVDSyncSucceeds(*mockSyncProtocolVD);
-        Syscollector::instance().setSyncProtocolVD(std::move(mockSyncProtocolVD));
-
-        return logCapture;
-    }
 }
+
+/// Initializes Syscollector and injects fresh mocks for both the regular and VD sync protocols,
+/// wiring the regular one to return `result` for a Mode::DELTA/Option::SYNC call. Declares
+/// `logCapture` for the caller to assert against. Written as a macro, not a helper function, for
+/// the same reason as INJECT_MOCK_PROTOCOLS() in syscollector_identity_tests.cpp: FRIEND_TEST
+/// grants access to the test body, not to a function it calls.
+#define INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(spInfoWrapper, ...)                                                        \
+    auto logCapture = std::make_unique<LogCapture>();                                                                \
+    auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log) \
+    {                                                                                                                 \
+        logCapturePtr->capture(level, log);                                                                          \
+    };                                                                                                                \
+    Syscollector::instance().init(spInfoWrapper,                                                                     \
+                                  reportFunction,                                                                     \
+                                  persistFunction,                                                                    \
+                                  captureLogFunction,                                                                 \
+                                  SYSCOLLECTOR_DB_PATH,                                                               \
+                                  "",                                                                                 \
+                                  "",                                                                                 \
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false); \
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);                        \
+    auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();                                               \
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))                                     \
+    .WillOnce(testing::Return(__VA_ARGS__));                                                                         \
+    Syscollector::instance().m_spSyncProtocol = std::move(mockSyncProtocol);                                         \
+    auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();                                             \
+    expectVDSyncSucceeds(*mockSyncProtocolVD);                                                                       \
+    Syscollector::instance().m_spSyncProtocolVD = std::move(mockSyncProtocolVD)
 
 // While the local sync intake itself isn't reachable yet (streak within tolerance), the
 // synchronization is reported at INFO as deferred, not as a WARNING.
@@ -5967,9 +5962,11 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceL
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
-    auto logCapture = initSyscollectorWithMockedSync(
-                          spInfoWrapper,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true});
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = 1u,
+                         .localTransportUnavailable = true});
 
     Syscollector::instance().syncModule(Mode::DELTA);
 
@@ -5986,10 +5983,11 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsD
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
-    auto logCapture = initSyscollectorWithMockedSync(
-                          spInfoWrapper,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
-                                           SYNC_MANAGER_NOT_READY_TOLERANCE, false, true});
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                         .localTransportUnavailable = true});
 
     Syscollector::instance().syncModule(Mode::DELTA);
 
@@ -6007,9 +6005,11 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLog
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
-    auto logCapture = initSyscollectorWithMockedSync(
-                          spInfoWrapper,
-                          SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true});
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = streak,
+                         .localTransportUnavailable = true});
 
     Syscollector::instance().syncModule(Mode::DELTA);
 

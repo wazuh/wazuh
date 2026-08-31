@@ -62,7 +62,9 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableWit
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
                          logOutput, mockDBSync,
-                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false, 1u, false, true});
+                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                          .consecutiveFailures = 1u,
+                                          .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
@@ -78,8 +80,9 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableAtT
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
                          logOutput, mockDBSync,
-                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false,
-                                          SYNC_MANAGER_NOT_READY_TOLERANCE, false, true});
+                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                          .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                                          .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
@@ -96,7 +99,9 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailablePas
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto agentInfo = makeAgentInfoWithMockedSync(
                          logOutput, mockDBSync,
-                         SyncModuleResult{false, "Local sync intake is unreachable.", false, false, streak, false, true});
+                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                          .consecutiveFailures = streak,
+                                          .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
