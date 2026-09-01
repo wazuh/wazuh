@@ -213,6 +213,44 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
 }
 #endif
 
+#define BRIDGE_CRED_RETRY_DELTA_S_DEFAULT 10
+#define BRIDGE_CRED_RETRY_MAX_S_DEFAULT 30
+
+/* Ramped delay (s). Confined to the single CallbackDispatcher worker, so no lock. */
+int g_cred_retry_delay = 0;
+
+/* Re-presenting the held id/key releases AuthGate, so the endpoints retry a transient
+ * 401 (fresh token, re-run skew correction) instead of re-enrolling. */
+void *bridge_cred_retry_thread(void *arg)
+{
+    hc_handle *handle = (hc_handle *)arg;
+    sleep((unsigned int)g_cred_retry_delay);
+
+    if (bridge_stopping()) {
+        mdebug1("https_client: agent shutting down; abandoning credential retry.");
+        return NULL;
+    }
+
+    w_mutex_lock(&g_https_client_lock);
+    if (g_https_client_stopping) {
+        w_mutex_unlock(&g_https_client_lock);
+        return NULL;
+    }
+    if (!hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key)) {
+        merror("https_client: failed to re-present the signing identity; traffic stays paused.");
+    }
+    w_mutex_unlock(&g_https_client_lock);
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI bridge_cred_retry_thread_win(LPVOID arg)
+{
+    bridge_cred_retry_thread(arg);
+    return 0;
+}
+#endif
+
 /* Startup-response parsing: applies module limits and cluster-name authority
  * from the handshake. Deliberately separate, local copies of
  * client-agent/src/start_agent.c's parse_fim_limits()/
@@ -423,7 +461,26 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
 static void bridge_on_reenroll_required(void *user_data)
 {
     (void)user_data;
-    mwarn("https_client: credential rejected (401); re-enrolling.");
+
+    const int retry_delta = getDefine_Int_default("agent", "auth_retry_delta", 1, 3600,
+                                                  BRIDGE_CRED_RETRY_DELTA_S_DEFAULT);
+    const int retry_max = getDefine_Int_default("agent", "auth_retry_max", 1, 86400,
+                                               BRIDGE_CRED_RETRY_MAX_S_DEFAULT);
+
+    if (g_cred_retry_delay < retry_max) {
+        g_cred_retry_delay += retry_delta;
+        if (g_cred_retry_delay > retry_max) {
+            g_cred_retry_delay = retry_max;
+        }
+        mwarn("https_client: credential rejected (401); retrying held credential in %d s.",
+              g_cred_retry_delay);
+#ifdef WIN32
+        CloseHandle(w_create_thread(NULL, 0, bridge_cred_retry_thread_win, g_https_client, 0, NULL));
+#else
+        w_create_thread(bridge_cred_retry_thread, g_https_client);
+#endif
+        return;
+    }
 
     if (!agt->enrollment.enabled) {
         merror("https_client: re-enrollment required but auto-enrollment is disabled "
@@ -431,8 +488,9 @@ static void bridge_on_reenroll_required(void *user_data)
         return;
     }
 
+    mwarn("https_client: credential rejected (401); re-enrolling.");
 #ifdef WIN32
-    w_create_thread(NULL, 0, bridge_reenroll_thread_win, g_https_client, 0, NULL);
+    CloseHandle(w_create_thread(NULL, 0, bridge_reenroll_thread_win, g_https_client, 0, NULL));
 #else
     w_create_thread(bridge_reenroll_thread, g_https_client);
 #endif
@@ -635,7 +693,7 @@ static void bridge_dispatch_control_task(const char *task_id, bool restart)
     ctx->restart = restart;
 
 #ifdef WIN32
-    w_create_thread(NULL, 0, bridge_control_task_thread_win, ctx, 0, NULL);
+    CloseHandle(w_create_thread(NULL, 0, bridge_control_task_thread_win, ctx, 0, NULL));
 #else
     w_create_thread(bridge_control_task_thread, ctx);
 #endif
@@ -909,7 +967,7 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     os_strdup(installer, ctx->installer);
 
 #ifdef WIN32
-    w_create_thread(NULL, 0, bridge_upgrade_thread_win, ctx, 0, NULL);
+    CloseHandle(w_create_thread(NULL, 0, bridge_upgrade_thread_win, ctx, 0, NULL));
 #else
     w_create_thread(bridge_upgrade_thread, ctx);
 #endif
@@ -1258,6 +1316,7 @@ static void bridge_on_state_change(int state, void *user_data)
      * the latter, since it only fires on a paused->running transition and each
      * run starts believing it has paused nothing. os_delwait() is idempotent. */
     if (state == HC_STATE_REGISTERED) {
+        g_cred_retry_delay = 0;
         os_delwait();
     }
 }
