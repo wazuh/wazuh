@@ -150,7 +150,13 @@ statfunc long concat_path_strings(unsigned char **full_path,
     size_t dir_path_len = ret;
 
     buf_off = dir_path_len - 1;
-    if (out_buf->data[buf_off - 1] != '/') {
+
+    /* Probe the character before the terminator to avoid a doubled separator.
+     * The index goes through a volatile plus the buffer mask: clang would
+     * otherwise fold it into a raw "-1" offset the verifier rejects with
+     * "R2 min value is negative", which drops every bpf_d_path variant. */
+    volatile size_t separator_off = buf_off - 1;
+    if (buf_off == 0 || out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(separator_off)] != '/') {
         out_buf->data[buf_off] = '/';
         buf_off++;
     }
