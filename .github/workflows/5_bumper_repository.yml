@@ -135,10 +135,17 @@ jobs:
           bash ${{ env.BUMP_SCRIPT_PATH }} ${{ steps.vars.outputs.script_params }}
 
       - name: Commit changes (Bump)
+        id: bump_step
         if: inputs.revert != true
         run: |
           git add .
-          git commit -m "feat: bump ${{ github.ref_name }}"
+          if git diff --staged --quiet; then
+            echo "No changes to commit. Skipping."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "feat: bump ${{ github.ref_name }}"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Revert references (Revert)
         id: revert_step
@@ -157,11 +164,14 @@ jobs:
           PR_NUMBER=$(gh pr list --head "$BUMP_BRANCH" --base "${{ github.ref_name }}" --state merged --json number --jq '.[0].number')
 
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
-            echo "Error: The original PR for the bump was not found"
+            echo "The original PR for the bump was not found"
             echo "Searching merged PR from: $BUMP_BRANCH to ${{ github.ref_name }}"
-            exit 1
+            echo "pr_found=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
+          echo "pr_found=true" >> $GITHUB_OUTPUT
           echo "Original PR found: #$PR_NUMBER"
 
           MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
@@ -207,13 +217,13 @@ jobs:
           fi
 
       - name: Push changes
-        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
+        if: (inputs.revert != true && steps.bump_step.outputs.has_changes == 'true') || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
         run: |
           git push origin ${{ steps.vars.outputs.branch_name }}
 
       - name: Create pull request
         id: create_pr
-        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
+        if: (inputs.revert != true && steps.bump_step.outputs.has_changes == 'true') || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
         run: |
           gh auth setup-git
           PR_URL=$(gh pr create \
@@ -226,10 +236,21 @@ jobs:
           echo "pull_request_url=${PR_URL}" >> $GITHUB_OUTPUT
 
       - name: Merge pull request
-        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
+        if: (inputs.revert != true && steps.bump_step.outputs.has_changes == 'true') || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
         run: |
           # Any checks for the PR are bypassed since the branch is expected to be functional
           gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge --admin
+
+      - name: "Result: original bump pull request not found"
+        if: inputs.revert == true && steps.revert_step.outputs.pr_found == 'false'
+        run: echo "There is no original bump pull request to revert, nothing to do."
+
+      - name: "Result: no changes to commit"
+        if: >-
+          (inputs.revert != true && steps.bump_step.outputs.has_changes == 'false') ||
+          (inputs.revert == true && steps.revert_step.outputs.pr_found == 'true' &&
+          steps.revert_step.outputs.has_changes == 'false')
+        run: echo "The bump produced no changes, no pull request was created."
 
       - name: Show logs
         if: inputs.revert != true
