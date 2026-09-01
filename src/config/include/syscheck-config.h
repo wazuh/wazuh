@@ -422,6 +422,8 @@ typedef struct _config {
     uint32_t sync_interval;                            /* Synchronization interval */
     uint32_t sync_end_delay;                           /* Delay for synchronization end message in seconds */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
+    int sync_flush_batch_size;                         /* Persistent sync queue: max buffered events before an immediate flush */
+    int sync_flush_interval_ms;                        /* Persistent sync queue: max time to wait before flushing a non-full buffer (ms) */
     uint32_t integrity_interval;                       /* Integrity check interval */
     int max_eps;                                       /* Maximum events per second. */
     unsigned int notify_first_scan;                    /* Notify the first scan */

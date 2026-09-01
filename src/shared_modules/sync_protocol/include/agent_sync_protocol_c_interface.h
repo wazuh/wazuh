@@ -51,8 +51,11 @@ long asp_get_agent_id(void);
 /// @param module Name of the module associated with this instance.
 /// @param db_path Optional full path to the SQLite database file (nullptr for in-memory only).
 /// @param logger Callback function used for logging messages.
+/// @param flush_batch_size Persistent queue flush batch size override, or 0 to use the built-in default.
+/// @param flush_interval_ms Persistent queue flush interval override in milliseconds, or 0 to use the built-in default.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                     uint64_t flush_batch_size, uint64_t flush_interval_ms);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///

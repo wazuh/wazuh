@@ -3,6 +3,7 @@
 #include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include "sync_socket_transport.hpp"
+#include <chrono>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -21,7 +22,8 @@ extern "C" {
         return AgentSyncProtocol::currentAgentId();
     }
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                         uint64_t flush_batch_size, uint64_t flush_interval_ms)
     {
         try
         {
@@ -35,7 +37,12 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper)));
+            std::optional<std::size_t> flushBatchSizeOpt =
+                flush_batch_size > 0 ? std::make_optional(static_cast<std::size_t>(flush_batch_size)) : std::nullopt;
+            std::optional<std::chrono::milliseconds> flushIntervalOpt =
+                flush_interval_ms > 0 ? std::make_optional(std::chrono::milliseconds(flush_interval_ms)) : std::nullopt;
+
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt));
         }
         catch (const std::exception& ex)
         {

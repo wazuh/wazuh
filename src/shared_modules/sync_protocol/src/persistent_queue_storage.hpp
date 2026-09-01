@@ -85,6 +85,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
+        /// @brief Returns the WAL auto-checkpoint threshold currently configured on this connection.
+        /// @return The configured threshold, in WAL pages.
+        int32_t getWalAutocheckpoint() const;
+
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;

@@ -40,7 +40,13 @@ class PersistentQueue : public IPersistentQueue
         /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
         ///                If null, a default PersistentQueueStorage is used.
-        explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+        /// @param flushBatchSize Maximum buffered events before an immediate flush. If unset, DEFAULT_FLUSH_BATCH_SIZE is used.
+        /// @param flushInterval Maximum time to wait before flushing a non-full buffer. If unset, DEFAULT_FLUSH_INTERVAL is used.
+        explicit PersistentQueue(const std::string& dbPath,
+                                 LoggerFunc logger,
+                                 std::shared_ptr<IPersistentQueueStorage> storage = nullptr,
+                                 std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                 std::optional<std::chrono::milliseconds> flushInterval = std::nullopt);
 
         /// @brief Destructor.
         ~PersistentQueue() override;
@@ -87,11 +93,21 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
+        /// @brief Default maximum number of buffered events before triggering an immediate flush,
+        ///        used when the constructor is not given an explicit override (e.g. from
+        ///        syscheck.sync_flush_batch_size). Callers other than FIM always get this default.
+        static constexpr std::size_t DEFAULT_FLUSH_BATCH_SIZE = 100;
+
+        /// @brief Default maximum time to wait before flushing a non-full buffer, used when the
+        ///        constructor is not given an explicit override (e.g. from
+        ///        syscheck.sync_flush_interval_ms). Callers other than FIM always get this default.
+        static constexpr std::chrono::milliseconds DEFAULT_FLUSH_INTERVAL{500};
+
         /// @brief Maximum number of buffered events before triggering an immediate flush.
-        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
+        const std::size_t FLUSH_BATCH_SIZE;
 
         /// @brief Maximum time to wait before flushing a non-full buffer.
-        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
+        const std::chrono::milliseconds FLUSH_INTERVAL;
 
         /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
