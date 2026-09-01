@@ -39,12 +39,12 @@ info:
 
     <SecurityDefinitions />
 
-  version: '5.0.0'
-  x-revision: 'beta5'
+  version: '5.1.0'
+  x-revision: 'alpha0'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.1.0-alpha0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -354,7 +354,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.1/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -421,7 +421,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/5.1/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -434,7 +434,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.1/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -3464,9 +3464,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'beta5'
+                revision: 'alpha0'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.1.0-alpha0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -9110,4 +9110,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/5.1/user-manual/api/index.html'
