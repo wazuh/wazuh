@@ -73,6 +73,10 @@ if(${TARGET} STREQUAL "manager")
 
     list(APPEND config_names "test_wmodules-config")
     list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
+
+    # etc/wazuh-manager.conf loader (real manager_config library, temporary XML files).
+    list(APPEND config_names "test_mconf-config")
+    list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 # Compiling tests

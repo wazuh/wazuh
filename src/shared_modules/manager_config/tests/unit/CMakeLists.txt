@@ -25,8 +25,15 @@ target_link_libraries(
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})
 
+# End-to-end: the CLI (bin/wazuh-manager-conf) over the vectors and over the file the installer
+# generates (src/init/gen_wazuh.sh, WriteManager twin).
+add_test(NAME manager_config_cli
+         COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/../cli/manager_conf_cli_test.sh
+                 $<TARGET_FILE:wazuh-manager-conf>
+                 ${CMAKE_CURRENT_SOURCE_DIR}/../vectors
+                 ${SRC_FOLDER}/..)
+
 # Parity with the Python validator (jsonschema Draft4) over the same vectors, when a venv is available.
-# The CLI end-to-end test (manager_config_cli) arrives with bin/wazuh-manager-conf in E1b.
 find_program(MANAGER_CONFIG_PYTHON NAMES python3 HINTS $ENV{TMP_PY_VENV}/bin NO_DEFAULT_PATH)
 if(MANAGER_CONFIG_PYTHON)
   add_test(NAME manager_config_parity

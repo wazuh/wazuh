@@ -37,7 +37,12 @@ set(TEST_DEPS
     ${WAZUHLIB}
     ${WAZUHEXT}
     -lschema_validator
+    # libconfig's w_mconf_*() (etc/wazuh-manager.conf) wraps the C++ manager_config library.
+    -lmanager_config
+    ${SRC_FOLDER}/external/pugixml/build/libpugixml.a
     -Wl,--end-group
+    -lstdc++
+    -lm
     -lpthread
     -ldl
     -lcmocka
