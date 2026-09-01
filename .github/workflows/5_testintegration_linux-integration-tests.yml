@@ -129,12 +129,15 @@ jobs:
 
           # The trailing '/' is the opt-out from the manager's default /wazuh-manager/ prefix
           # (#38624: <endpoint> is now the whole connection target, "host[:port][/[prefix]]", and
-          # an omitted prefix takes the default). Without it the agent addresses that prefix, gets
-          # a 404 from the manager these suites run against, and never opens agentd's startup gate
-          # -- so modulesd blocks in startup_gate_wait_for_ready() and no module ever starts. The
-          # suites that own a <manager> block carry the same opt-out in their own templates; the
-          # ones that do not (sca, syscollector, github, office365) inherit the package's
-          # ossec.conf and need it here.
+          # an omitted prefix takes the default). It is kept here as the install-time default for
+          # every suite that doesn't override <endpoint> itself (the ones that do carry their own
+          # opt-out in their own templates -- see qa-integration-framework#835). RemotedSimulator
+          # became lenient (qa-integration-framework#840): it now accepts the default prefix too,
+          # so this opt-out is no longer required for correctness, only left in place because
+          # dropping it here would change the default for suites (sca, syscollector, github,
+          # office365, and any other that inherits the package's ossec.conf) that were not
+          # individually verified against the real default prefix -- widen that verification
+          # before changing this value.
           sudo WAZUH_MANAGER_ENDPOINT="127.0.0.1:1517/" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
 
           sudo awk '

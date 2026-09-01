@@ -138,13 +138,11 @@ def set_agent_config(request: pytest.FixtureRequest):
             {
                 "manager": {
                     "elements": [
-                        # Trailing '/' on purpose: it is the explicit opt-out from the default
-                        # /wazuh-manager/ prefix, which RemotedSimulator does not serve. The
-                        # empty <endpoint> that used to spell this opt-out is now rejected while
-                        # the configuration is parsed ("a manager address is required"), so the
-                        # daemons never start and every case here times out waiting for a line
-                        # that is never logged.
-                        {"endpoint": {"value": "127.0.0.1:1517/"}},
+                        # RemotedSimulator now understands the manager's default
+                        # /wazuh-manager/ reverse-proxy prefix (qa-integration-framework#835),
+                        # so the agent no longer needs to opt out of it to reach the simulator
+                        # -- this exercises the same default path a real deployment takes.
+                        {"endpoint": {"value": "127.0.0.1:1517"}},
                     ]
                 }
             }

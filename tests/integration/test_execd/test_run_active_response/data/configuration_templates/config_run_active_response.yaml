@@ -9,13 +9,12 @@
             value: "yes"
         - manager:
             elements:
-                # Trailing '/' on purpose (#38624): it is the explicit opt-out from the
-                # endpoint prefix. Without it the agent takes the default /wazuh-manager/
-                # prefix, which RemotedSimulator does not serve -- every request 404s and the
-                # agent never reaches the accepted /startup this suite waits for. This section
-                # replaces the installed one, so the installer's own opt-out does not reach it.
+                # RemotedSimulator now understands the manager's default /wazuh-manager/
+                # reverse-proxy prefix (qa-integration-framework#835), so this no longer
+                # needs to opt out of it -- this section replaces the installed one, so
+                # the installer's own default endpoint still reaches the simulator fine.
                 - endpoint:
-                    value: '127.0.0.1:1517/'
+                    value: '127.0.0.1:1517'
     - section: active-response
       elements:
         - disabled:
