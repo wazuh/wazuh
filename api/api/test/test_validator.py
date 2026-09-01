@@ -18,6 +18,7 @@ from api.validator import (
     _sort_param,
     _timeframe_type,
     allowed_fields,
+    format_agent_id,
     is_safe_path,
     _wazuh_version,
     _symbols_alphanumeric_param,
@@ -147,6 +148,13 @@ def test_is_safe_path():
     assert not is_safe_path("/..")
     assert not is_safe_path("\\..")
 
+
+@pytest.mark.parametrize("value", [None, 123, ["1"], {"id": "1"}])
+def test_format_agent_id_rejects_non_string(value):
+    """format_agent_id() must reject a non-string value instead of raising."""
+    assert format_agent_id(value) is False
+
+
 @pytest.mark.parametrize(
     "value, format",
     [
@@ -157,9 +165,6 @@ def test_is_safe_path():
         ("651403650840", "numbers"),
         ("001", "agent_id"),
         ("2147483647", "agent_id"),
-        ("001", "agent_id_or_all"),
-        ("2147483647", "agent_id_or_all"),
-        ("all", "agent_id_or_all"),
         ("/var/wazuh/test", "path"),
         ("test,.", "search"),
         ("+field", "sort"),
@@ -198,9 +203,6 @@ def test_validation_json_ok(value, format):
         # Above INT32_MAX, the value OS_AddNewAgent()/wdb_global_insert_agent() store it as would wrap
         ("2147483648", "agent_id"),
         ("4294967296", "agent_id"),
-        ("0", "agent_id_or_all"),
-        ("2147483648", "agent_id_or_all"),
-        ("All", "agent_id_or_all"),  # only the lowercase keyword is accepted
         ("!/var/wazuh/test", "path"),
         ("test,.&", "search"),
         ("+field&", "sort"),
