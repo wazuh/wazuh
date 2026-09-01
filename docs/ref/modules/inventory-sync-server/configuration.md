@@ -367,7 +367,8 @@ intact.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size
 
-Forwarded to the Indexer Connector as `max_bulk_size`.
+The ingestion pipeline's group-commit threshold, measured in **request payload bytes** (wire
+FlatBuffer size): a worker flushes its open batch once the staged sessions reach this many bytes.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
@@ -375,11 +376,31 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** Forwarded to the Indexer Connector as `max_bulk_size` — and it plays a second role: the
-  ingestion pipeline uses the same value as its group-commit threshold, measured in **request
-  payload bytes** (wire FlatBuffer size), which is a different byte measure than the connector's
-  serialized bulk. The group-commit behavior it drives is visible as `sync.bulk.*` in
-  [`GET /metrics`](metrics.md#group-commit--syncbulk).
+- **Note:** This option no longer reaches the Indexer Connector: the size of the actual `_bulk`
+  requests is capped separately by
+  `inventory_sync_server_indexer_sync_connector_max_bulk_size` below, so raising the group-commit
+  threshold cannot push a single request past the indexer's `http.max_content_length` anymore. The
+  group-commit behavior this option drives is visible as `sync.bulk.*` in
+  [`GET /metrics`](metrics.md#group-commit--syncbulk); the real request traffic is
+  `sync.indexer.bulk.*`.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size
+
+Forwarded to the Indexer Connector as `max_bulk_size`: the serialized NDJSON bytes the connector
+stages before it cuts a `_bulk` request.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=10485760
+```
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** 4096 to 104857600
+- **Note:** Distinct from the group-commit threshold above on purpose, and measured in a different
+  unit (serialized NDJSON, which the manager's metadata overlay inflates past the wire FlatBuffer
+  size). Keep it at or below the indexer's `http.max_content_length`; an oversized request costs a
+  `413` round-trip plus a split retry. One group commit can therefore produce several `_bulk`
+  requests — `sync.indexer.bulk.requests` vs `sync.bulk.flushes` in
+  [`GET /metrics`](metrics.md#group-commit--syncbulk) shows exactly how many.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
@@ -394,7 +415,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
 
 - **Default value:** `20` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal.
+- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal. A
+  value other than the default logs a startup `WARNING` naming the option, so a tuned-but-dead
+  knob is visible instead of silently ignored.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
 

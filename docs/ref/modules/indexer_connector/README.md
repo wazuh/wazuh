@@ -31,7 +31,7 @@ The library provides two classes depending on the use case:
 
 ### Sync flush behavior
 
-- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size` for Inventory Sync Server).
+- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size` for Inventory Sync Server).
 - Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner; the Inventory Sync Server deliberately overrides its periodic flush — its ingestion workers own every flush, see its [configuration reference](../inventory-sync-server/configuration.md)).
 - `flush_interval_seconds = 0` means **no background flush thread at all**: the connector is never created with one and every flush is the caller's. Use it when the caller has to answer for a failed flush — a timer flush that fails discards the staging buffer and has no caller to report to, so a later `flush()` finds an empty buffer and returns success for data that never landed. The value is set directly by the Inventory Sync Server; it is not reachable through the Vulnerability Scanner's `wazuh_modules.indexer_flush_interval`, whose range is 1–3600.
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.

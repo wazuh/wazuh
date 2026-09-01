@@ -14,6 +14,7 @@
 
 #include <json.hpp>
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -78,6 +79,25 @@ namespace invsync::indexer
 
         /// @brief Sends the staged bulk operations now, on the caller's thread. Throws on failure.
         virtual void flush() = 0;
+
+        /**
+         * @brief The `_bulk` HTTP requests the connector actually sent -- attempts, splits and
+         *        retries included -- accumulated since the previous call, which resets the counts.
+         *
+         * Defaulted to zeros rather than pure so fakes that do not model request traffic need no
+         * override; a group commit's own flush accounting under-counts precisely when splits or
+         * retries happen, which is what these numbers exist to expose.
+         */
+        struct BulkRequestStats
+        {
+            std::uint64_t requests {0}; ///< `_bulk` POSTs sent.
+            std::uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+        };
+
+        virtual BulkRequestStats takeBulkRequestStats()
+        {
+            return {};
+        }
     };
 
 } // namespace invsync::indexer

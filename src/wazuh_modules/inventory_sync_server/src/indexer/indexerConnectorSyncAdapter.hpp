@@ -103,6 +103,12 @@ namespace invsync::indexer
             m_inner.flush();
         }
 
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            const auto stats = m_inner.takeBulkRequestStats();
+            return {stats.requests, stats.bytes};
+        }
+
     private:
         IndexerConnectorSync m_inner;
     };

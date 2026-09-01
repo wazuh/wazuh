@@ -319,6 +319,16 @@ extern "C"
         int indexer_sync_max_retry_duration_seconds; ///< Wall-clock deadline, seconds, for one
                                                      ///< operation's retries.
                                                      ///< -> `max_retry_duration_seconds`. <=0 -> 15 s.
+
+        /* ---- SYNC connector `_bulk` request cap -- APPENDED, same ABI rule as above. Separate
+         *      from `indexer_sync_max_bulk_size` on purpose: that older option is the ingestion
+         *      pipeline's group-commit threshold (wire FlatBuffer bytes), while this one caps the
+         *      serialized NDJSON of one `_bulk` request. One knob driving both let raising the
+         *      group-commit threshold silently raise the request size past the indexer's
+         *      `http.max_content_length`. ---- */
+        int indexer_sync_connector_max_bulk_size; ///< NDJSON bytes staged before the connector cuts
+                                                  ///< a `_bulk` request. -> `max_bulk_size`.
+                                                  ///< <=0 -> 10 MiB.
     } inventory_sync_server_config_t;
 
     /**

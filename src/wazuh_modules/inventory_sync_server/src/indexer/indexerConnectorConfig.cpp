@@ -49,7 +49,9 @@ namespace invsync::indexer
     {
         nlohmann::json result = indexerConfig;
 
-        setIfPositive(result, "max_bulk_size", config.indexer_sync_max_bulk_size);
+        // NOT indexer_sync_max_bulk_size: that option is the ingestion pipeline's group-commit
+        // threshold and stays out of the connector, whose own request cap this key is.
+        setIfPositive(result, "max_bulk_size", config.indexer_sync_connector_max_bulk_size);
         setIfPositive(result, "flush_interval_seconds", config.indexer_sync_flush_interval_seconds);
         setIfPositive(result, "max_retry_delay_seconds", config.indexer_sync_max_retry_delay_seconds);
         setIfPositive(result, "request_timeout_seconds", config.indexer_sync_request_timeout_seconds);

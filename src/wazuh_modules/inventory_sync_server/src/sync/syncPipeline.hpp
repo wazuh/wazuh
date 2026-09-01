@@ -186,6 +186,8 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkFlushes;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkBytesTotal;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsTotal;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkRequests;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkBytes;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationBulk;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationImmediate;
         /// One pair per shard. GAUGES the workers update, not pull metrics: a pull would capture

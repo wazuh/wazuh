@@ -71,6 +71,9 @@ namespace invsync::test
         /// m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
+        /// What the sync fake hands out from takeBulkRequestStats(), once (taking resets them).
+        std::atomic<std::uint64_t> m_bulkStatsRequests {0};
+        std::atomic<std::uint64_t> m_bulkStatsBytes {0};
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
         nlohmann::json m_searchResponse = nlohmann::json::object();
         /// When non-empty, executeSearchQuery() pops from here instead (front first) -- lets a test
@@ -350,6 +353,15 @@ namespace invsync::test
                 m_events->throwIfInjected("flush");
                 m_events->m_syncFlushes.fetch_add(1);
             }
+        }
+
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            if (!m_events)
+            {
+                return {};
+            }
+            return {m_events->m_bulkStatsRequests.exchange(0), m_events->m_bulkStatsBytes.exchange(0)};
         }
 
     private:

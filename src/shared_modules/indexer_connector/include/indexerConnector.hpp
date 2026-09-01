@@ -151,6 +151,17 @@ public:
 };
 
 /**
+ * @brief Snapshot of the `_bulk` HTTP requests a sync connector actually sent -- every attempt
+ *        counts, splits and retries included, so a caller can compare its own logical flushes
+ *        against the real request traffic those flushes produced.
+ */
+struct IndexerBulkRequestStats
+{
+    uint64_t requests {0}; ///< `_bulk` POSTs sent (full buffers and split chunks alike).
+    uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+};
+
+/**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
@@ -391,6 +402,11 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
+     */
+    IndexerBulkRequestStats takeBulkRequestStats();
 };
 
 /**

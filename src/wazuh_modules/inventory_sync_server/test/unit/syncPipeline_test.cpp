@@ -11,9 +11,12 @@
 
 #include "sync/syncPipeline.hpp"
 
+#include "common/metricNames.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -151,6 +154,32 @@ TEST(SyncPipelineTest, ABulkSessionIsStagedFlushedAndAnswered200)
     EXPECT_EQ(R"({"status":"ok"})", response.body);
     EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "queue drained -> exactly one flush";
     EXPECT_EQ(0, responder->extraSends());
+}
+
+/**
+ * R-08 observability: sync.bulk.flushes counts group commits, but one group commit can be several
+ * real `_bulk` requests (splits, retries, auto-flushes). The pipeline drains the connector's own
+ * request counts after every flush so the metrics carry the real traffic too.
+ */
+TEST(SyncPipelineTest, TheConnectorsRealBulkRequestsReachTheMetrics)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    auto events = std::make_shared<ConnectorEvents>();
+    events->m_bulkStatsRequests = 3;
+    events->m_bulkStatsBytes = 4096;
+
+    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+    SyncPipeline pipeline {SyncPipelineConfig {}, std::move(connectors), CLUSTER, nullptr, metrics};
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), responder)));
+    EXPECT_EQ(200, responder->get().status);
+
+    const auto requests = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS, "", "count");
+    const auto bytes = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_BYTES, "", "bytes");
+    EXPECT_EQ(3U, requests->get());
+    EXPECT_EQ(4096U, bytes->get());
 }
 
 TEST(SyncPipelineTest, GroupCommitBatchesWhateverQueuedBehindABlockedFlush)

@@ -6301,3 +6301,68 @@ TEST_F(IndexerConnectorSyncTest, EachRequestOfAMixedFlushUsesItsOwnSelectedHost)
     EXPECT_THAT(urls[2], HasSubstr("host-c"));
     EXPECT_THAT(urls[2], HasSubstr("/_bulk"));
 }
+
+// ============================================================================
+// Real _bulk request accounting (R-08)
+//
+// takeBulkRequestStats() reports every _bulk POST actually sent -- splits and
+// retries included -- so a caller comparing its own flush count against these
+// numbers can see the amplification its flushes produced.
+// ============================================================================
+
+TEST_F(IndexerConnectorSyncTest, BulkRequestStatsCountEveryAttemptAndResetOnTake)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_EQ(connector.takeBulkRequestStats().requests, 0U);
+
+    connector.bulkIndex("id1", "index1", R"({"field":"value"})");
+    connector.flush();
+
+    ASSERT_EQ(receivedData.size(), 1U);
+    const auto stats = connector.takeBulkRequestStats();
+    EXPECT_EQ(stats.requests, 1U);
+    EXPECT_EQ(stats.bytes, receivedData.front().size());
+
+    const auto taken = connector.takeBulkRequestStats();
+    EXPECT_EQ(taken.requests, 0U) << "taking the stats resets them";
+    EXPECT_EQ(taken.bytes, 0U);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkRequestStatsIncludeSplitChunks)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    std::atomic<size_t> postedBytes {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount, &postedBytes](auto requestParams, auto postParams, auto)
+            {
+                const std::string body = extractBulkBody(requestParams);
+                postedBytes += body.size();
+                // Reject the first (multi-operation) frame with 413; accept the two halves.
+                if (postCount++ == 0)
+                {
+                    respondBulkError(postParams, "Payload too large", 413);
+                }
+                else
+                {
+                    respondBulkSuccess(postParams);
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("id1", "index1", R"({"f":"a"})");
+    connector.bulkIndex("id2", "index1", R"({"f":"b"})");
+    connector.flush();
+
+    EXPECT_EQ(postCount.load(), 3);
+    const auto stats = connector.takeBulkRequestStats();
+    EXPECT_EQ(stats.requests, 3U) << "the rejected full frame and both chunks are all real requests";
+    EXPECT_EQ(stats.bytes, postedBytes.load());
+}

@@ -84,9 +84,11 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
-             "request_timeout_seconds=%d, max_retry_attempts=%d, max_retry_duration_seconds=%d",
+             "indexer sync: max_bulk_size=%d, connector_max_bulk_size=%d, flush_interval_seconds=%d, "
+             "max_retry_delay_seconds=%d, request_timeout_seconds=%d, max_retry_attempts=%d, "
+             "max_retry_duration_seconds=%d",
              config->indexer_sync_max_bulk_size,
+             config->indexer_sync_connector_max_bulk_size,
              config->indexer_sync_flush_interval_seconds,
              config->indexer_sync_max_retry_delay_seconds,
              config->indexer_sync_request_timeout_seconds,
@@ -245,7 +247,13 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
      * silent fallback to the default. ---- */
     config->indexer_sync_max_bulk_size =
         getDefine_Int_default("wazuh_modules",
-                              "inventory_sync_server_indexer_sync_max_bulk_size", /* -> max_bulk_size */
+                              "inventory_sync_server_indexer_sync_max_bulk_size", /* pipeline group-commit threshold */
+                              4096,
+                              100 * 1024 * 1024,
+                              10 * 1024 * 1024);
+    config->indexer_sync_connector_max_bulk_size =
+        getDefine_Int_default("wazuh_modules",
+                              "inventory_sync_server_indexer_sync_connector_max_bulk_size", /* -> max_bulk_size */
                               4096,
                               100 * 1024 * 1024,
                               10 * 1024 * 1024);
@@ -533,6 +541,8 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
         config, "indexer_sync_max_retry_attempts", data->config->indexer_sync_max_retry_attempts);
     cJSON_AddNumberToObject(
         config, "indexer_sync_max_retry_duration_seconds", data->config->indexer_sync_max_retry_duration_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_connector_max_bulk_size", data->config->indexer_sync_connector_max_bulk_size);
 
     cJSON_AddItemToObject(root, "inventory_sync_server", config);
     return root;

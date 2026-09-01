@@ -100,17 +100,21 @@ histograms.
 ### Group commit — `sync.bulk.*`
 
 A worker flushes its open batch when the accumulated **request payload bytes** reach the
-group-commit threshold, or when its queue drains. The threshold is fed from the same option as
-the connector's own serialized-bulk cap, so
-[`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size)
-plays two roles against two **different** byte measures — see its entry in the configuration
-reference.
+group-commit threshold, or when its queue drains. The threshold
+([`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size))
+and the connector's own serialized-bulk request cap
+([`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size))
+are separate options against **different** byte measures, so one group commit can produce several
+real `_bulk` requests (auto-flushes while staging, `413` splits, retries). `sync.bulk.*` counts the
+group commits; `sync.indexer.bulk.*` counts the real requests those commits produced.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `sync.bulk.flushes` | counter | count | **Successful** pipeline group-commit flushes (immediate-session and lane flushes are not counted here) | [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) |
 | `sync.bulk.bytes.total` | counter | bytes | Request payload bytes (wire FlatBuffer size) of the sessions flushed by group commits — NOT the serialized indexer bytes (that is `sync.bytes.ingested`) | as above |
 | `sync.bulk.sessions.total` | counter | count | Sessions answered by group-commit flushes | as above |
+| `sync.indexer.bulk.requests` | counter | count | `_bulk` HTTP requests the sync connectors actually sent — attempts, splits and retries included, successful or not | [`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size) |
+| `sync.indexer.bulk.bytes.total` | counter | bytes | Serialized NDJSON payload bytes those `_bulk` requests carried | as above |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 

@@ -42,6 +42,7 @@ namespace
         config.indexer_monitoring_interval_seconds = 3333;
         config.indexer_sync_max_retry_attempts = 4444;
         config.indexer_sync_max_retry_duration_seconds = 5555;
+        config.indexer_sync_connector_max_bulk_size = 6666;
         return config;
     }
 
@@ -81,7 +82,9 @@ TEST(IndexerConnectorConfigTest, SyncOverlayEmitsOnlyTheSyncKeyNames)
     EXPECT_FALSE(result.contains("logger_queue_size"));
     EXPECT_FALSE(result.contains("logger_threads"));
 
-    EXPECT_EQ(111U, result.at("max_bulk_size").get<std::size_t>());
+    EXPECT_EQ(6666U, result.at("max_bulk_size").get<std::size_t>())
+        << "the connector's request cap comes from indexer_sync_connector_max_bulk_size, not from the "
+           "pipeline's group-commit threshold";
     EXPECT_EQ(222U, result.at("flush_interval_seconds").get<std::size_t>());
     EXPECT_EQ(333U, result.at("max_retry_delay_seconds").get<std::size_t>());
     EXPECT_EQ(1111U, result.at("request_timeout_seconds").get<std::size_t>());
@@ -211,6 +214,7 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_monitoring_interval_seconds = -5;
     config.indexer_sync_max_retry_attempts = -6;
     config.indexer_sync_max_retry_duration_seconds = 0;
+    config.indexer_sync_connector_max_bulk_size = -7;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)
@@ -229,6 +233,20 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     {
         EXPECT_FALSE(sessionResult.contains(key)) << "non-positive value must not be written: " << key;
     }
+}
+
+/// Raising the group-commit threshold must not drag the connector's request cap with it: that
+/// coupling is how a tuned deployment ended up sending `_bulk` requests past the indexer's
+/// `http.max_content_length`.
+TEST(IndexerConnectorConfigTest, ThePipelineGroupCommitThresholdNeverReachesTheConnector)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_bulk_size = 50 * 1024 * 1024;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+    EXPECT_FALSE(result.contains("max_bulk_size"))
+        << "indexer_sync_max_bulk_size is the pipeline's threshold; absent the connector option, the "
+           "connector keeps its own default";
 }
 
 /// `0` for max_queue_bytes is the connector's own legitimate "unlimited", so it must reach the

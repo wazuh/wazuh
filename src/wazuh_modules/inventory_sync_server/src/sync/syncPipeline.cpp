@@ -71,6 +71,13 @@ namespace invsync::sync
             "bytes");
         m_bulkSessionsTotal = m_metrics->getOrCreateCounter(
             invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered by group-commit flushes", "count");
+        m_indexerBulkRequests =
+            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS,
+                                          "_bulk HTTP requests the sync connectors actually sent (splits "
+                                          "and retries included), vs. sync.bulk.flushes group commits",
+                                          "count");
+        m_indexerBulkBytes = m_metrics->getOrCreateCounter(
+            invsync::metrics::INDEXER_BULK_BYTES, "NDJSON payload bytes those _bulk requests carried", "bytes");
         m_durationBulk = m_metrics->getOrCreateHistogram(
             invsync::metrics::SESSION_DURATION_BULK, "Enqueue-to-response time of bulk sessions", "microseconds");
         m_durationImmediate = m_metrics->getOrCreateHistogram(invsync::metrics::SESSION_DURATION_IMMEDIATE,
@@ -316,6 +323,12 @@ namespace invsync::sync
                 logFn(), "A bulk flush of %zu session(s) failed: %s. The agents will retry.", batch.size(), e.what());
             respondConnectorFailure(batch, connector);
         }
+
+        // Drained here, once per flush attempt, so auto-flushes fired during staging are also
+        // picked up by the next group commit's drain.
+        const auto requestStats = connector.takeBulkRequestStats();
+        m_indexerBulkRequests->add(requestStats.requests);
+        m_indexerBulkBytes->add(requestStats.bytes);
 
         batch.clear();
         batchBytes = 0;

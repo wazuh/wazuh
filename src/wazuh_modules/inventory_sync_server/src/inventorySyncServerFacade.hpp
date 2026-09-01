@@ -102,6 +102,9 @@ namespace invsync
     /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
     /// that failed would have no responder to report to.
     constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {0};
+    /// modulesd's default for the ignored flush-interval option, mirrored here so start() can
+    /// tell "left alone" from "an operator tuned a knob that does nothing" and warn on the latter.
+    constexpr int IGNORED_SYNC_FLUSH_INTERVAL_DEFAULT_SECS {20};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -171,6 +174,16 @@ namespace invsync
             ++m_startGeneration;
 
             LOGFN_INFO(moduleLogFn(), "Starting inventory sync server (cluster='%s').", m_config.cluster_name);
+
+            if (m_config.indexer_sync_flush_interval_seconds > 0 &&
+                m_config.indexer_sync_flush_interval_seconds != IGNORED_SYNC_FLUSH_INTERVAL_DEFAULT_SECS)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds' (%d) has no "
+                           "effect and is slated for removal: the ingestion workers own every flush, so the "
+                           "connector's periodic flush is always disabled.",
+                           m_config.indexer_sync_flush_interval_seconds);
+            }
 
             // The UDS server itself is started from run() (see tryStartHttpServer()), which keeps
             // start() fast and gives the retry loop for free. m_running is set only AFTER the

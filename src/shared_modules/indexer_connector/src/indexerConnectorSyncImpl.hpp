@@ -348,6 +348,13 @@ class IndexerConnectorSyncImpl final
     static constexpr size_t DEFAULT_MAX_RETRY_DURATION_SECONDS {15};
     size_t m_maxRetryAttempts {DEFAULT_MAX_RETRY_ATTEMPTS};
     std::chrono::milliseconds m_maxRetryDuration {std::chrono::seconds {DEFAULT_MAX_RETRY_DURATION_SECONDS}};
+    /// The `_bulk` requests actually sent (attempts, splits and retries included), for callers
+    /// whose own flush accounting would otherwise under-count the real request traffic. Atomics:
+    /// bumped under m_mutex by the flushing thread but drained by takeBulkRequestStats() from any
+    /// thread.
+    std::atomic<uint64_t> m_bulkRequestsSent {0};
+    std::atomic<uint64_t> m_bulkBytesSent {0};
+
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
     /// Upper bound in milliseconds for one data request against the indexer
@@ -613,6 +620,8 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Sending bulk data to: %s", url.c_str());
                 LOGFN_DEBUG2(m_logFn, "Bulk data: %s", m_bulkData.c_str());
 
+                m_bulkRequestsSent.fetch_add(1);
+                m_bulkBytesSent.fetch_add(m_bulkData.size());
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = m_bulkData,
                                                        .secureCommunication = m_secureCommunication},
@@ -815,6 +824,8 @@ class IndexerConnectorSyncImpl final
             url += m_selector->getNext();
             url += "/_bulk";
             LOGFN_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
+            m_bulkRequestsSent.fetch_add(1);
+            m_bulkBytesSent.fetch_add(data.size());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
@@ -1831,5 +1842,13 @@ public:
     bool isAvailable() const
     {
         return m_selector->isAvailable();
+    }
+
+    /**
+     * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
+     */
+    IndexerBulkRequestStats takeBulkRequestStats()
+    {
+        return {m_bulkRequestsSent.exchange(0), m_bulkBytesSent.exchange(0)};
     }
 };
