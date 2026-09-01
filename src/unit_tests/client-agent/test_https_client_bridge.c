@@ -240,7 +240,9 @@ int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, in
  * it every test, since w_https_client_start() (the normal reset point) isn't
  * called by the tests that invoke bridge_reenroll_thread directly. */
 extern void *bridge_reenroll_thread(void *arg);
+extern void *bridge_cred_retry_thread(void *arg);
 extern bool g_https_client_stopping;
+extern int g_cred_retry_delay;
 
 /* bridge_control_task_thread/bridge_upgrade_thread are
  * likewise non-static so tests can call them directly, bypassing
@@ -358,6 +360,7 @@ static int setup_test(void **state)
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
     g_https_client_stopping = false;
+    g_cred_retry_delay = 0;
     g_populate_metadata_calls = 0;
     g_resolved_options[0] = '\0';
 
@@ -533,6 +536,30 @@ static void test_bridge_does_not_resolve_the_enrollment_retry_ramp(void **state)
 
     assert_null(strstr(g_resolved_options, "enrollment_retry_max"));
     assert_null(strstr(g_resolved_options, "enrollment_retry_delta"));
+
+    w_https_client_stop();
+}
+
+/* #38610: the auth-retry ramp is resolved once at startup, not in the 401 callback, so an
+ * out-of-range value refuses the start instead of aborting the agent on its first 401. */
+static void test_bridge_resolves_the_auth_retry_ramp_at_startup(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_non_null(strstr(g_resolved_options, "auth_retry_delta:1:3600;"));
+    assert_non_null(strstr(g_resolved_options, "auth_retry_max:1:86400;"));
 
     w_https_client_stop();
 }
@@ -922,38 +949,83 @@ static void start_client_successfully(void)
     w_https_client_start();
 }
 
-static void test_reenroll_callback_disabled_enrollment_logs_error_only(void **state)
+/* #38610: with auto-enrollment disabled the held credential is still retried
+ * (the whole ramp) before the "paused, fix manually" error. */
+static void test_reenroll_callback_disabled_retries_then_logs_error(void **state)
 {
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mwarn, formatted_msg, "https_client: credential rejected (401); re-enrolling.");
+    for (int delay = 10; delay <= 30; delay += 10) {
+        char msg[128];
+        snprintf(msg, sizeof(msg),
+                 "https_client: credential rejected (401); retrying held credential in %d s.", delay);
+        expect_string(__wrap__mwarn, formatted_msg, msg);
+        g_captured_callbacks.on_reenroll_required(g_captured_callbacks.user_data);
+    }
+
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: re-enrollment required but auto-enrollment is disabled "
                   "(<enrollment><enabled>); traffic stays paused until the key is fixed manually.");
-
     g_captured_callbacks.on_reenroll_required(g_captured_callbacks.user_data);
-    /* No CreateThread expectation needed: the shared __wrap_CreateThread
-     * always succeeds without invoking its argument, and this path must not
-     * even reach the call. */
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-static void test_reenroll_callback_enabled_enrollment_only_warns(void **state)
+/* #38610: the first 401 retries the held credential instead of re-enrolling. */
+static void test_reenroll_callback_first_401_retries_held_credential(void **state)
 {
     (void)state;
     enable_enrollment();
     start_client_successfully();
 
-    expect_string(__wrap__mwarn, formatted_msg, "https_client: credential rejected (401); re-enrolling.");
-    /* No __wrap__merror expectation: the disabled-path error must not fire. */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "https_client: credential rejected (401); retrying held credential in 10 s.");
 
     g_captured_callbacks.on_reenroll_required(g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
+}
+
+/* #38610: only after the back-off ramps to its cap does it re-enroll. */
+static void test_reenroll_callback_reenrolls_after_retries_exhausted(void **state)
+{
+    (void)state;
+    enable_enrollment();
+    start_client_successfully();
+
+    for (int delay = 10; delay <= 30; delay += 10) {
+        char msg[128];
+        snprintf(msg, sizeof(msg),
+                 "https_client: credential rejected (401); retrying held credential in %d s.", delay);
+        expect_string(__wrap__mwarn, formatted_msg, msg);
+        g_captured_callbacks.on_reenroll_required(g_captured_callbacks.user_data);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "https_client: credential rejected (401); re-enrolling.");
+    g_captured_callbacks.on_reenroll_required(g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* #38610: the retry thread sleeps the ramped delay, then re-presents the held
+ * id/key. Called directly to bypass w_create_thread. */
+static void test_cred_retry_thread_represents_held_identity(void **state)
+{
+    (void)state;
+
+    g_cred_retry_delay = 20;
+    expect_value(__wrap_sleep, seconds, 20);
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, true);
+
+    bridge_cred_retry_thread(FAKE_HANDLE);
 }
 
 /* bridge_reenroll_thread's retry-loop logic, called directly (synchronously)
@@ -2724,6 +2796,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bridge_does_not_resolve_the_enrollment_retry_ramp, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_bridge_resolves_the_auth_retry_ramp_at_startup, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_configured_endpoint_reaches_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
@@ -2741,8 +2815,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_valid_64_char_key_is_accepted, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_create_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_start_failure_destroys_and_logs, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_retries_then_logs_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_callback_first_401_retries_held_credential, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_callback_reenrolls_after_retries_exhausted, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_cred_retry_thread_represents_held_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,
