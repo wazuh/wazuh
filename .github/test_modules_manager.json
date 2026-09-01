@@ -101,6 +101,26 @@
         "tests/integration/conftest.py",
         "tests/integration/test_authd/**"
       ]
+    },
+    {
+      "name": "manager_control",
+      "suite_type": "manager_install",
+      "pytest_target": "test_manager_control/",
+      "tiers": ["0"],
+      "timeout_minutes": 120,
+      "_comment": "Regression coverage for #38695 (wazuh-manager-control killing its own restarted daemon on a stale-pidfile PID collision).",
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_manager.yml",
+        ".github/test_modules_manager.json",
+        ".github/workflows/.python-version-it",
+        ".github/actions/reinstall_cmake/**",
+        "framework/wazuh/core/utils.py",
+        "src/init/wazuh-server.sh",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_manager_control/**"
+      ]
     }
   ]
 }
