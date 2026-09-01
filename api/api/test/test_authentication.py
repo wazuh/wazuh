@@ -2,15 +2,21 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import hashlib
 import json
 import os
 import sys
+import threading
+import time
 from copy import deepcopy
 from unittest.mock import patch, MagicMock, ANY, call
 
 from cachetools import TTLCache
 from connexion.exceptions import Unauthorized
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -102,20 +108,21 @@ def test_generate_keypair(mock_write_keypair):
                           '-----BEGIN PUBLIC KEY-----')
         mock_write_keypair.assert_called_once()
 
-    generate_keypair.cache_clear()
 
-    # Test reading existing keys
-    with patch('os.path.exists', return_value=True):
-        with patch('builtins.open', create=True) as mock_open:
-            mock_file = MagicMock()
-            mock_file.__enter__ = MagicMock(return_value=mock_file)
-            mock_file.__exit__ = MagicMock(return_value=False)
-            mock_file.read = MagicMock(side_effect=['priv_key', 'pub_key'])
-            mock_file.fileno = MagicMock(return_value=99)
-            mock_open.return_value = mock_file
+def test_generate_keypair_reads_existing_keys(tmp_path):
+    """Verify generate_keypair reads the keys already on disk instead of creating new ones."""
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('priv_key')
+    public_path.write_text('pub_key')
 
-            result = generate_keypair()
-            assert result == ('priv_key', 'pub_key')
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        assert generate_keypair() == ('priv_key', 'pub_key')
+
+    mock_write_keypair.assert_not_called()
 
 
 def test_generate_keypair_ko():
@@ -128,41 +135,44 @@ def test_generate_keypair_ko():
                         assert generate_keypair()
 
 
-@patch("api.authentication._write_new_keypair", return_value=("priv", "pub"))
-@patch("os.path.exists", return_value=False)
-def test_generate_keypair_cache_no_keys(mock_exists, mock_write_keypair):
-    """Verify caching works when keys don't exist"""
-    first = generate_keypair()
-    cached = generate_keypair()
+def test_generate_keypair_cache_no_keys(tmp_path):
+    """Verify caching works when the keys have to be created."""
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
 
-    assert first == ("priv", "pub")
-    assert first is cached
+    def write_keypair():
+        private_path.write_text('priv')
+        public_path.write_text('pub')
+        return 'priv', 'pub'
 
-    # First call checks both private and public key paths, then both again under the lock
-    assert mock_exists.call_count == 3
-    # But _write_new_keypair is called only once due to caching
-    mock_write_keypair.assert_called_once()
-
-@patch("os.path.exists", return_value=True)
-def test_generate_keypair_cache(mock_exists, clear_generate_keypair_cache):
-    """Verify caching works when keys exist"""
-    with patch('builtins.open', create=True) as mock_open:
-        mock_file = MagicMock()
-        mock_file.__enter__ = MagicMock(return_value=mock_file)
-        mock_file.__exit__ = MagicMock(return_value=False)
-        mock_file.read = MagicMock(side_effect=["priv", "pub"])
-        mock_file.fileno = MagicMock(return_value=99)
-        mock_open.return_value = mock_file
-
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair', side_effect=write_keypair) as mock_write_keypair:
         first = generate_keypair()
         cached = generate_keypair()
 
-        assert first == ("priv", "pub")
-        assert first is cached
+    assert first == ('priv', 'pub')
+    assert first is cached
+    # The keys written by the first call are read from the cache by the second one.
+    mock_write_keypair.assert_called_once()
 
-        assert mock_exists.call_count == 2
-        # Should read files twice (private + public) only once due to caching
-        assert mock_file.read.call_count == 2
+def test_generate_keypair_cache(tmp_path):
+    """Verify caching works when keys exist."""
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('priv')
+    public_path.write_text('pub')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')):
+        first = generate_keypair()
+        cached = generate_keypair()
+
+    assert first == ('priv', 'pub')
+    # A re-read would build a new tuple, so identity is what proves the second call was a hit.
+    assert first is cached
 
 @patch('api.authentication._write_new_keypair', return_value=('new_priv', 'new_pub'))
 def test_change_keypair(mock_write_keypair):
@@ -275,7 +285,10 @@ def test_check_token_runas_revoked_dynamic_role(mock_optimize):
                                             run_as=True, origin_node_type='master')
 
     assert result == {'valid': False}
-    tm.is_token_valid.assert_any_call(role_id=1, user_id=101, token_nbf_time=200, run_as=True)
+    # The user and run_as rules are checked once, before the loop; the role iterations ask only
+    # for the role rule so that they do not re-read the same two rows per role.
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=200, run_as=True)
+    tm.is_token_valid.assert_any_call(role_id=1, token_nbf_time=200)
 
 
 def _authentication_mocks(user, roles, token_valid=True):
@@ -388,6 +401,36 @@ def test_get_optimized_policies_invalidated_across_processes(mock_optimize):
     assert lookup_b(roles=(1,), origin_node_type='master') == {'policy': 'updated'}
 
 
+def test_generate_keypair_cache_read_survives_a_concurrent_clear(tmp_path):
+    """A rotation landing mid-read must not break the request that was reading the cache.
+
+    `cache_clear()` sets the cached entry to None and runs on another thread of this process
+    whenever the API falls back to a single thread pool for local requests, so the entry has to be
+    bound once rather than re-read between the guard and each subscript.
+    """
+    authentication = sys.modules['api.authentication']
+
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('priv')
+    public_path.write_text('pub')
+
+    class ClearingEntry(tuple):
+        """Cache entry that is dropped from under the reader as soon as it is subscripted."""
+
+        def __getitem__(self, index):
+            authentication._keypair_cache = None
+            return tuple.__getitem__(self, index)
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')):
+        first = generate_keypair()
+        authentication._keypair_cache = ClearingEntry(authentication._keypair_cache)
+
+        assert generate_keypair() == first
+
+
 def test_generate_keypair_reloads_after_rotation(tmp_path):
     """A keypair rotated by another process must be picked up instead of masked by the cache.
 
@@ -452,15 +495,86 @@ def test_generate_keypair_reloads_after_indistinguishable_rotation(tmp_path):
             assert generate_keypair() == ('new_priv', 'new_pub')
 
 
-def test_generate_keypair_half_present_ko(tmp_path):
-    """A keypair with one file missing must be reported instead of silently rotated.
+def test_generate_keypair_orphan_public_key_ko(tmp_path):
+    """A public key whose private counterpart is missing must be reported, not rotated.
 
-    Creating one here would replace the surviving key and end every session in every process, which
-    is a much worse outcome for a half-restored install than a failed request.
+    Nothing can be derived from a public key, and creating a pair here would replace it and end
+    every session in every process, which is a much worse outcome for a half-restored install than
+    a failed request.
     """
     private_path = tmp_path / 'private_key.pem'
     public_path = tmp_path / 'public_key.pem'
-    private_path.write_text('old_priv')
+    public_path.write_text('old_pub')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            generate_keypair()
+
+    assert exc_info.value.code == 6003
+    # The generic 6003 message leaves an operator with nothing to act on, so the missing file is
+    # named in the error and in the log.
+    assert str(private_path) in exc_info.value.message
+    mock_write_keypair.assert_not_called()
+    assert public_path.read_text() == 'old_pub'
+    assert not private_path.exists()
+
+
+def _build_keypair():
+    """Build a PEM keypair of the same kind `_write_new_keypair` stores.
+
+    Returns
+    -------
+    tuple
+        (private_key, public_key) strings.
+    """
+    key_obj = ec.generate_private_key(ec.SECP521R1())
+    private_pem = key_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    ).decode('utf-8')
+    public_pem = key_obj.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+
+    return private_pem, public_pem
+
+
+def test_generate_keypair_rebuilds_a_missing_public_key(tmp_path):
+    """A missing public key must be rebuilt from the private one instead of failing every request.
+
+    The public key carries nothing the private key does not, so an install left half-written by an
+    interrupted `_write_new_keypair` recovers without rotating the keypair, which would have ended
+    every active session.
+    """
+    private_pem, public_pem = _build_keypair()
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text(private_pem)
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication.wazuh_uid', return_value=0), \
+            patch('api.authentication.wazuh_gid', return_value=0), \
+            patch('os.chown'), patch('os.chmod'), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        assert generate_keypair() == (private_pem, public_pem)
+
+    mock_write_keypair.assert_not_called()
+    assert private_path.read_text() == private_pem
+    assert public_path.read_text() == public_pem
+
+
+def test_generate_keypair_unloadable_private_key_ko(tmp_path):
+    """A private key that cannot be loaded cannot be used to rebuild the public one either."""
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('not a PEM')
 
     with patch('api.authentication._private_key_path', str(private_path)), \
             patch('api.authentication._public_key_path', str(public_path)), \
@@ -471,7 +585,210 @@ def test_generate_keypair_half_present_ko(tmp_path):
 
     assert exc_info.value.code == 6003
     mock_write_keypair.assert_not_called()
-    assert private_path.read_text() == 'old_priv'
+    assert not public_path.exists()
+
+
+def test_generate_keypair_waits_for_a_concurrent_writer(tmp_path):
+    """A keypair in the middle of being written must not be reported as half-present.
+
+    `_write_new_keypair` creates the two files one after the other, so a reader that classifies the
+    directory before taking the exclusive lock can catch the writer between both calls and answer
+    6003 to a request that only had to wait for the lock.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    lock_path = tmp_path / '.keypair.lock'
+    half_written = threading.Event()
+
+    def write_keypair():
+        with open(lock_path, 'a+') as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            private_path.write_text('new_priv')
+            half_written.set()
+            time.sleep(0.5)
+            public_path.write_text('new_pub')
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+    writer = threading.Thread(target=write_keypair)
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(lock_path)), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        writer.start()
+        assert half_written.wait(timeout=5)
+        try:
+            assert generate_keypair() == ('new_priv', 'new_pub')
+        finally:
+            writer.join()
+
+    mock_write_keypair.assert_not_called()
+
+
+def test_generate_keypair_rebuilds_without_persisting_when_unlocked(tmp_path):
+    """A public key rebuilt without the exclusive lock must not be written to disk.
+
+    The lock is best-effort, and holding it is what proves no other process is between the two
+    writes of `_write_new_keypair`. Truncating the public key file without it would let a concurrent
+    reader, which holds a shared lock at most, pick up an empty key.
+    """
+    private_pem, public_pem = _build_keypair()
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text(private_pem)
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / 'absent' / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        assert generate_keypair() == (private_pem, public_pem)
+
+    mock_write_keypair.assert_not_called()
+    assert not public_path.exists()
+
+
+def test_generate_keypair_rebuilds_a_truncated_public_key(tmp_path):
+    """A public key file left empty by an interrupted write must be rebuilt, not read.
+
+    Every writer truncates before writing, so the realistic artefact of an interrupted rotation is a
+    zero-byte file rather than a missing one, and reading it yields a key nothing can verify with.
+    """
+    private_pem, public_pem = _build_keypair()
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text(private_pem)
+    public_path.write_text('')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication.wazuh_uid', return_value=0), \
+            patch('api.authentication.wazuh_gid', return_value=0), \
+            patch('os.chown'), patch('os.chmod'), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        assert generate_keypair() == (private_pem, public_pem)
+
+    mock_write_keypair.assert_not_called()
+    assert public_path.read_text() == public_pem
+
+
+def test_generate_keypair_rebuild_survives_a_failed_chmod(tmp_path):
+    """A repair that already wrote the key must not be discarded by the permissions call.
+
+    Raising there would throw away a rebuild that succeeded and repeat it on every request, over a
+    file that is correct on disk.
+    """
+    private_pem, public_pem = _build_keypair()
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text(private_pem)
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication.wazuh_uid', return_value=0), \
+            patch('api.authentication.wazuh_gid', return_value=0), \
+            patch('os.chown', side_effect=PermissionError), \
+            patch('os.chmod', side_effect=PermissionError), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        assert generate_keypair() == (private_pem, public_pem)
+
+    mock_write_keypair.assert_not_called()
+    assert public_path.read_text() == public_pem
+
+
+def test_generate_keypair_rotation_in_progress_is_not_reported_as_broken(tmp_path):
+    """An empty private key must not be called a broken install when no lock could be taken.
+
+    `_write_new_keypair` truncates the private key before writing it, so a rotation in flight looks
+    exactly like an install that lost its private key. Only the exclusive lock tells them apart, and
+    telling an operator to restore from a backup because of a routine rotation is a false alarm.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('')
+    public_path.write_text('old_pub')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / 'absent' / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            generate_keypair()
+
+    assert exc_info.value.code == 6003
+    assert 'is being written' in exc_info.value.message
+    assert 'Restore' not in (exc_info.value.remediation or '')
+    mock_write_keypair.assert_not_called()
+
+
+def test_generate_keypair_truncated_private_key_ko(tmp_path):
+    """A private key file left empty must be reported, not treated as a key that is there."""
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('')
+    public_path.write_text('old_pub')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            generate_keypair()
+
+    assert exc_info.value.code == 6003
+    assert str(private_path) in exc_info.value.message
+    # Held the lock, so the diagnosis is conclusive and says what to do about it.
+    assert f"Restore '{private_path}'" in exc_info.value.remediation
+    mock_write_keypair.assert_not_called()
+    assert public_path.read_text() == 'old_pub'
+
+
+def test_generate_keypair_unlocked_rebuild_keeps_the_cached_entry(tmp_path):
+    """A call that cannot stamp what it built must leave the cache alone, not blank it.
+
+    The entry it would overwrite carries a stamp of its own and is checked against the disk on the
+    next call, and another thread may have stored it moments earlier.
+    """
+    authentication = sys.modules['api.authentication']
+    private_pem, public_pem = _build_keypair()
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text(private_pem)
+    entry = ('stamp-stored-by-another-thread', ('priv', 'pub'), time.monotonic() + 5)
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / 'absent' / '.keypair.lock')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        authentication._keypair_cache = entry
+        # Nothing can be persisted or stamped without the lock, so the rebuilt key is used as is.
+        assert generate_keypair() == (private_pem, public_pem)
+        assert authentication._keypair_cache == entry
+
+    mock_write_keypair.assert_not_called()
+    assert not public_path.exists()
+
+
+def test_generate_keypair_unsupported_private_key_ko(tmp_path):
+    """`UnsupportedAlgorithm` is neither a ValueError nor an OSError, so it needs its own handling.
+
+    Left untranslated it would reach the API as an unhandled exception instead of a 6003.
+    """
+    private_path = tmp_path / 'private_key.pem'
+    public_path = tmp_path / 'public_key.pem'
+    private_path.write_text('irrelevant, the loader is mocked')
+
+    with patch('api.authentication._private_key_path', str(private_path)), \
+            patch('api.authentication._public_key_path', str(public_path)), \
+            patch('api.authentication._keypair_lock_path', str(tmp_path / '.keypair.lock')), \
+            patch('api.authentication.serialization.load_pem_private_key',
+                  side_effect=UnsupportedAlgorithm('unsupported curve')), \
+            patch('api.authentication._write_new_keypair') as mock_write_keypair:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            generate_keypair()
+
+    assert exc_info.value.code == 6003
+    mock_write_keypair.assert_not_called()
     assert not public_path.exists()
 
 

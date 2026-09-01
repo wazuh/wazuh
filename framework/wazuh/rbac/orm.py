@@ -621,9 +621,17 @@ class TokenManager(RBACManager):
             True if the token is valid, False otherwise.
         """
         try:
-            user_rule = self.session.scalars(select(UsersTokenBlacklist).filter_by(user_id=user_id).limit(1)).first()
-            role_rule = self.session.scalars(select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first()
-            runas_rule = self.session.query(RunAsTokenBlacklist).first()
+            # One row is read per argument actually given. Both tables key on their id column, so
+            # querying them without one could never match anyway, and the run_as rule is not looked
+            # at unless `run_as` is set: skipping those keeps a caller that checks a token against
+            # several roles from re-reading the same user and run_as rows once per role.
+            user_rule = self.session.scalars(
+                select(UsersTokenBlacklist).filter_by(user_id=user_id).limit(1)).first() \
+                if user_id is not None else None
+            role_rule = self.session.scalars(
+                select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first() \
+                if role_id is not None else None
+            runas_rule = self.session.query(RunAsTokenBlacklist).first() if run_as else None
 
             user_nbf_invalid_until = self._normalize_timestamp(user_rule.nbf_invalid_until) if user_rule else None
             role_nbf_invalid_until = self._normalize_timestamp(role_rule.nbf_invalid_until) if role_rule else None

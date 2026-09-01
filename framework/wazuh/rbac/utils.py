@@ -25,7 +25,7 @@ RESOURCES_CACHE = TTLCache(maxsize=100, ttl=10)
 
 
 def clear_tokens_cache():
-    """Invalidate the RBAC policies cache in every process.
+    """Invalidate the RBAC policies cache in every process of the caller's process tree.
 
     Called from the token revocation paths (`TokenManager.add_user_roles_rules` and
     `TokenManager.delete_all_rules`), since a revocation may also have changed which policies a
@@ -33,6 +33,13 @@ def clear_tokens_cache():
 
     Bumps the shared generation counter so that every process flushes its own copy of the cache on
     its next cached call, rather than relying on a one-shot flag that only one process consumes.
+
+    The counter is a `multiprocessing.Value`, so it only reaches the process tree that created it:
+    in practice the API's own pools, which are forked from it. A mutation executed elsewhere -- an
+    RBAC change forwarded from a worker node runs inside `wazuh-clusterd` -- bumps that tree's
+    counter instead, and the API only picks the change up when `POLICIES_CACHE_TTL` expires. That
+    is a freshness bound, not a security one: `check_token` re-reads the account, its roles and the
+    token blacklist on every request, so no stale identity is ever served.
     """
     with common.token_cache_generation.get_lock():
         common.token_cache_generation.value += 1

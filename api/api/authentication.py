@@ -13,6 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
+from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from connexion.exceptions import Unauthorized
@@ -123,6 +124,29 @@ _keypair_cache = None
 _KEYPAIR_CACHE_TTL = 5
 
 
+def _keypair_file_ready(path):
+    """Whether a key file is on disk with content in it.
+
+    Every writer truncates before writing, so an interrupted write leaves a zero-byte file rather
+    than a missing one. Classifying that as present is what would send it to a read that returns an
+    unusable key instead of to the recovery below.
+
+    Parameters
+    ----------
+    path : str
+        Path of the key file.
+
+    Returns
+    -------
+    bool
+        True if the file exists and is not empty.
+    """
+    try:
+        return os.path.getsize(path) > 0
+    except OSError:
+        return False
+
+
 def _keypair_stamp():
     """Build the identity of the keypair currently on disk.
 
@@ -155,7 +179,9 @@ def generate_keypair():
     from, so a rotation performed by any process, or outside the API altogether, is picked up on
     the next call instead of being masked until the process restarts. The entry is also re-read
     every `_KEYPAIR_CACHE_TTL` seconds, so a rotation the stamp cannot distinguish from the
-    previous one is not masked for good either.
+    previous one is not masked for good either. Nothing is cached when that identity cannot be
+    established, which is the case for keys this call had to write or rebuild without holding the
+    exclusive lock.
 
     Uses file-based locking to prevent race conditions between reading and writing keypairs.
     This ensures that if keys are regenerated (e.g., via revoke_tokens) while reading,
@@ -164,8 +190,8 @@ def generate_keypair():
     Raises
     ------
     WazuhInternalError(6003)
-        If there was an error trying to load the JWT secret, or if only one of the two key files
-        is present on disk.
+        If there was an error trying to load the JWT secret, or if the private key file is missing
+        or empty while the public one holds a key.
     """
     global _keypair_cache
 
@@ -173,8 +199,14 @@ def generate_keypair():
     # read, the fresh keys end up tagged with the superseded stamp and are reloaded on the next
     # call. Stamping afterwards would instead tag stale keys as current.
     stamp = _keypair_stamp()
-    if _keypair_cache is not None and _keypair_cache[0] == stamp and time.monotonic() < _keypair_cache[2]:
-        return _keypair_cache[1]
+    # Bound once instead of read three times: `cache_clear()` sets this global to None and can run
+    # on another thread of this very process, since the API falls back to a single
+    # `ThreadPoolExecutor` for every local request when `/dev/shm` is not accessible. Re-reading the
+    # global between the guard and the subscripts would then raise `TypeError` on a request that has
+    # nothing to do with the rotation.
+    cached_keypair = _keypair_cache
+    if cached_keypair is not None and cached_keypair[0] == stamp and time.monotonic() < cached_keypair[2]:
+        return cached_keypair[1]
 
     lock_file = None
     try:
@@ -185,28 +217,78 @@ def generate_keypair():
         except (OSError, IOError):
             pass  # Continue without locking
 
-        private_key_exists = os.path.exists(_private_key_path)
-        public_key_exists = os.path.exists(_public_key_path)
-        if private_key_exists and public_key_exists:
+        if _keypair_file_ready(_private_key_path) and _keypair_file_ready(_public_key_path):
+            if stamp is None:
+                # The files were not there when the stat at entry ran, so that None is not their
+                # identity: another process finished writing them in between, which is what two
+                # processes starting at once do. Re-stat before reading, never after.
+                stamp = _keypair_stamp()
             # Keys exist - acquire shared lock for reading (if available)
             private_key, public_key = _read_keypair_locked(lock_file)
-        elif private_key_exists or public_key_exists:
-            # Only one of the two files is there: a half-written or half-restored install. Creating
-            # a keypair here would silently rotate the keys and end every session in every process,
-            # so report the inconsistency instead of hiding it behind a rotation nobody asked for.
-            raise WazuhInternalError(6003)
         else:
-            # Need to create keys - acquire exclusive lock if available
+            # Either no keys at all or only one of them. Nothing can be concluded yet: the pair is
+            # written one file at a time, so a writer holding the exclusive lock has a window where
+            # only the private key is on disk. Take the lock before classifying the situation.
+            locked_exclusively = False
             if lock_file:
                 try:
                     fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                    locked_exclusively = True
                 except (OSError, IOError):
                     pass  # Continue without exclusive lock
-            # Double-check after acquiring lock (another process might have created them)
-            if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
-                private_key, public_key = _write_new_keypair()
-            else:
+            private_key_ready = _keypair_file_ready(_private_key_path)
+            public_key_ready = _keypair_file_ready(_public_key_path)
+            if private_key_ready and public_key_ready:
+                # The pair was written while this process waited. Its identity has to be taken now,
+                # before the read: the stat done on entry saw the directory incomplete.
+                stamp = _keypair_stamp()
                 private_key, public_key = _read_keypair_locked(lock_file)
+            elif private_key_ready:
+                # The public key is fully determined by the private one, so this half of the
+                # inconsistency is repairable: rebuilding it recovers a write interrupted between
+                # its two files, or a partial restore, without rotating the keypair and without
+                # ending a single session. It also covers a writer caught mid-write when no lock
+                # could be taken, since `_write_new_keypair` stores the private key first and the
+                # key rebuilt here is the very one it is about to write.
+                private_key, public_key = _restore_public_key(persist=locked_exclusively)
+                stamp = _keypair_stamp() if locked_exclusively else None
+            elif public_key_ready:
+                # Nothing can be derived from a public key. Creating a pair here would silently
+                # rotate the keys and end every session in every process, so report the
+                # inconsistency instead of hiding it behind a rotation nobody asked for, and name
+                # the file: 6003 alone gives an operator nothing to act on.
+                #
+                # Only the exclusive lock makes the diagnosis conclusive. Without it, a routine
+                # rotation looks identical: `_write_new_keypair` truncates the private key before
+                # writing it, so for an instant the private half is empty while the public one
+                # still holds the previous key. Telling an operator to restore from a backup
+                # because of that would be a false alarm.
+                if locked_exclusively:
+                    remediation = (f"Restore '{_private_key_path}' from a backup, or remove "
+                                   f"'{_public_key_path}' to have a new keypair generated, which will "
+                                   f"end every active session")
+                    logging.getLogger('wazuh-api').error(
+                        f"Incomplete JWT keypair: '{_private_key_path}' is missing or empty while "
+                        f"'{_public_key_path}' holds a key. {remediation}."
+                    )
+                    raise WazuhInternalError(6003,
+                                             extra_message=f"'{_private_key_path}' is missing or empty "
+                                                           f"while '{_public_key_path}' holds a key",
+                                             extra_remediation=remediation)
+
+                logging.getLogger('wazuh-api').debug(
+                    f"'{_private_key_path}' is missing or empty while '{_public_key_path}' holds a "
+                    f"key, and the exclusive lock could not be taken to tell a keypair being "
+                    f"written from an incomplete one."
+                )
+                raise WazuhInternalError(6003, extra_message=f"'{_private_key_path}' is missing or "
+                                                             f"empty, or is being written")
+            else:
+                private_key, public_key = _write_new_keypair()
+                # Stamping after the write is only sound while the exclusive lock is held: no
+                # rotation can have slipped in between. Without the lock there is no identity that
+                # can be trusted, so the entry is left uncached and the next call reads again.
+                stamp = _keypair_stamp() if locked_exclusively else None
     except IOError:
         raise WazuhInternalError(6003)
     finally:
@@ -214,10 +296,15 @@ def generate_keypair():
             lock_file.close()
 
     keypair = (private_key, public_key)
-    # `stamp` is None only when the key files did not exist yet and have just been written by this
-    # call, so their identity has to be taken now.
-    _keypair_cache = (stamp if stamp is not None else _keypair_stamp(), keypair,
-                      time.monotonic() + _KEYPAIR_CACHE_TTL)
+    # `stamp` is None when the identity of these files could not be established: they were written
+    # by this very call and no lock protected the window in which they had to be stat'ed. There is
+    # nothing to invalidate such an entry against, and None is also what `_keypair_stamp()` returns
+    # once the files are gone, so caching it would keep serving a keypair that no longer exists.
+    # Whatever is already cached is left alone rather than overwritten with None: it carries a stamp
+    # of its own and is checked against the disk on the next call, and another thread may have just
+    # stored it.
+    if stamp is not None:
+        _keypair_cache = (stamp, keypair, time.monotonic() + _KEYPAIR_CACHE_TTL)
 
     return keypair
 
@@ -249,6 +336,79 @@ def _read_keypair_locked(lock_file):
         private_key = key_file.read()
     with open(_public_key_path, mode='r') as key_file:
         public_key = key_file.read()
+    return private_key, public_key
+
+
+def _restore_public_key(persist):
+    """Rebuild a missing public key from the surviving private key.
+
+    Reachable when a write was interrupted after truncating or creating the public key file, when a
+    restore brought back only one of the two files, or -- with no lock held -- while another process
+    is between the two writes of `_write_new_keypair`. The public key carries no information the
+    private key does not, so rebuilding it is not a rotation: every active session stays valid.
+
+    Parameters
+    ----------
+    persist : bool
+        Whether the rebuilt key may be stored. Only true while the exclusive lock is held: without
+        it another process may be writing the pair, and truncating the public key file here would
+        let a concurrent reader, which holds a shared lock at most, pick up an empty key.
+
+    Returns
+    -------
+    tuple
+        (private_key, public_key) strings.
+
+    Raises
+    ------
+    WazuhInternalError(6003)
+        If the surviving private key cannot be loaded.
+    """
+    with open(_private_key_path, mode='r') as key_file:
+        private_key = key_file.read()
+
+    try:
+        key_obj = serialization.load_pem_private_key(private_key.encode('utf-8'), password=None)
+    # `UnsupportedAlgorithm` is neither a `ValueError` nor an `OSError`, so it would otherwise reach
+    # the API untranslated.
+    except (ValueError, TypeError, UnsupportedAlgorithm) as exc:
+        raise WazuhInternalError(6003, extra_message=f"'{_public_key_path}' is missing and "
+                                                     f"'{_private_key_path}' cannot be loaded to "
+                                                     f"rebuild it") from exc
+
+    public_key = key_obj.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+
+    if persist:
+        with open(_public_key_path, mode='w') as key_file:
+            key_file.write(public_key)
+
+        try:
+            os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
+        except PermissionError:
+            pass
+        # Guarded here, unlike in `_write_new_keypair`: the key has already been written and is
+        # correct, so raising would discard a repair that succeeded and repeat it on every call,
+        # and what it would be protecting is the public half of the pair.
+        try:
+            os.chmod(_public_key_path, 0o640)
+        except PermissionError:
+            pass
+
+        logging.getLogger('wazuh-api').warning(
+            f"Rebuilt the missing JWT public key '{_public_key_path}' from '{_private_key_path}'. "
+            f"Active sessions are unaffected."
+        )
+    else:
+        # Not a warning: with no lock held this is most often a writer caught between its two
+        # files, which is transient and would flood the log at request rate.
+        logging.getLogger('wazuh-api').debug(
+            f"Rebuilt the missing JWT public key '{_public_key_path}' in memory, since the "
+            f"exclusive lock needed to store it could not be taken."
+        )
+
     return private_key, public_key
 
 
@@ -451,18 +611,18 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
                 # Validate every role carried by the token, not only the statically-linked ones.
                 # run_as users have their roles assigned dynamically, so those roles travel in the
                 # token (roles) instead of being returned by get_all_roles_from_user (user_roles).
+                # Only the role rule is asked for here: `is_token_valid` reads one row per
+                # argument it is given, and the user and run_as rules were checked just above.
                 for role in set(user_roles) | set(roles):
-                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time),
-                                             run_as=run_as):
+                    if not tm.is_token_valid(role_id=role, token_nbf_time=int(token_nbf_time)):
                         return {'valid': False}
 
     policies = get_optimized_policies(roles=roles, origin_node_type=origin_node_type)
 
-    # Copied for safety only. The caller adds `rbac_mode` to this dictionary (see `decode_token`)
-    # and, on the master path, `get_optimized_policies` hands back the cached entry itself, but that
-    # mutation cannot reach the cache: the DAPI layer deep-copies the result (`WazuhResult.to_dict`)
-    # before `decode_token` gets to see it. The copy keeps correctness here from depending on what a
-    # distant layer happens to do.
+    # Shallow copy: it isolates the cached entry from the top-level `rbac_mode` key the caller adds
+    # (see `decode_token`), which is the only mutation on this path, and which on the master path
+    # would otherwise land on the cached dictionary `get_optimized_policies` hands back. The nested
+    # per-action dictionaries stay shared with the cache, so no caller may mutate them in place.
     return {'valid': True, 'policies': dict(policies)}
 
 
