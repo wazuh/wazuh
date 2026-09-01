@@ -381,9 +381,13 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
         mock_req.query_params.update({'password': '****'} if q_password else {})
         body.update({'password': '****'} if b_key else {})
         body.update({'key': '****'} if b_key and endpoint == '/agents' else {})
+        # A 403 on a login endpoint is a blocked IP, refused before any credential was checked, so
+        # the body is not logged.
+        expected_body = {} if status_code == 403 and endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
+            else body
         mock_custom_logging.assert_called_once_with(
             expected_user, mock_req.client.host, mock_req.method,
-            endpoint, mock_req.query_params, body, 0.0, response.status_code,
+            endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
             hash_auth_context=hash, headers=mock_req.headers
         )
         if status_code == 403 and \
@@ -730,24 +734,35 @@ async def test_check_auth_context_size_middleware_allowed(path, content_length, 
     assert (receive.await_count if receive else 0) == receive_chunks
 
 
-@pytest.mark.parametrize('context, expected_body', [
-    ({'user': 'wazuh', 'token_info': {}}, {'field': 'value'}),
-    ({'token_info': {'rbac_policies': {}}}, {'field': 'value'}),
-    # Nobody vouched for this payload, so it must not reach api.log or api.json.
-    ({}, {}),
+@pytest.mark.parametrize('status_code, path, expected_body', [
+    # The request reached the endpoint, so its body is worth auditing.
+    (200, '/agents', {'field': 'value'}),
+    (400, '/agents', {'field': 'value'}),
+    # An authenticated caller denied by RBAC: still worth auditing.
+    (403, '/agents', {'field': 'value'}),
+    # Refused before, or instead of, authenticating. Nobody vouched for these payloads, so they
+    # must not reach api.log or api.json.
+    (401, '/agents', {}),
+    (404, '/agents', {}),
+    (405, '/agents', {}),
+    (413, '/agents', {}),
+    (429, '/agents', {}),
+    # A 403 on a login endpoint is a blocked IP, refused before any credential was checked.
+    (403, LOGIN_ENDPOINT, {}),
+    (403, RUN_AS_LOGIN_ENDPOINT, {}),
 ])
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_access_log_omits_unauthenticated_body(context, expected_body, mock_req):
+async def test_access_log_omits_unauthenticated_body(status_code, path, expected_body, mock_req):
     """Check that the body of a request that never authenticated is not logged."""
     response = MagicMock()
-    response.status_code = 200
+    response.status_code = status_code
     mock_req._json = MagicMock()
     mock_req.json = AsyncMock(return_value={'field': 'value'})
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = context
-    mock_req.scope = {'path': '/agents'}
+    mock_req.context = {'user': 'wazuh', 'token_info': {'hash_auth_context': 'h'}}
+    mock_req.scope = {'path': path}
     mock_req.headers = {'content-type': 'application/json'}
 
     with patch('api.middlewares.custom_logging') as mock_custom_logging, \

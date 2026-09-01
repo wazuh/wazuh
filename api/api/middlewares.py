@@ -44,6 +44,14 @@ HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 # Allowed upper bound for auth_context payload
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
+# Status codes the API can answer with before the security handler has accepted the caller: routing
+# and every middleware above security produce these on their own. A request body is
+# caller-controlled content written to both api.log and api.json, so for any of these it must not
+# reach the logs. The request context cannot answer this question in `access_log`: connexion keeps
+# it in the ASGI scope's `extensions`, which the middlewares below this one do not share upwards,
+# which is also why the username there has to be recovered from the authorization header.
+PRE_AUTHENTICATION_STATUS_CODES = frozenset({401, 404, 405, 413, 417, 429})
+
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -135,9 +143,6 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     time_diff = time.time() - prev_time
 
     context = request.context if hasattr(request, 'context') else {}
-    # connexion populates the context with the caller's identity only once the security handler has
-    # accepted the request, so an empty context means the request never authenticated.
-    authenticated = bool(context.get('user', None) or context.get('token_info', None))
     headers = request.headers if hasattr(request, 'headers') else {}
     path = request.scope.get('path', '') if hasattr(request, 'scope') else ''
     host = request.client.host if hasattr(request, 'client') else ''
@@ -193,11 +198,13 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
 
-    # A request body is caller-controlled content, and it is written to both api.log and api.json.
-    # Only a caller that got past the security handler gets its payload recorded; the auth context
-    # hash computed above is kept either way, since it is a fixed-size digest and it is precisely
-    # the useful field for a run_as attempt that failed.
-    if not authenticated:
+    # Only a caller the security handler accepted gets its payload recorded. The auth context hash
+    # computed above is kept either way: it is a fixed-size digest, and it is precisely the useful
+    # field for a run_as attempt that failed. A 403 on a login endpoint is a blocked IP, refused
+    # before any credential was checked; a 403 anywhere else is an authenticated caller being
+    # denied by RBAC, whose body is worth auditing.
+    if response.status_code in PRE_AUTHENTICATION_STATUS_CODES or \
+            (response.status_code == 403 and path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT}):
         body = {}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
