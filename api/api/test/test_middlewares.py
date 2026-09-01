@@ -529,34 +529,6 @@ async def test_wazuh_access_logger_middleware():
         assert resp == response
 
 
-@pytest.mark.asyncio
-async def test_wazuh_access_logger_middleware_recursion_error():
-    mock_req = AsyncMock()
-    mock_req.headers = {'content-length': '10'}
-    mock_req.body = AsyncMock(return_value=b'{"a": "b"}')
-    mock_req.json = AsyncMock(side_effect=RecursionError)
-
-    dispatch_mock = AsyncMock()
-    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
-
-    mock_conn_resp = MagicMock()
-    mock_conn_resp.body = b'error'
-    mock_conn_resp.status_code = 400
-    mock_conn_resp.content_type = "application/json"
-
-    with patch('api.middlewares.build_recursion_error_response', return_value=mock_conn_resp), \
-         patch('api.middlewares.access_log') as mock_access_log:
-
-        resp = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-
-        dispatch_mock.assert_not_called()
-        mock_access_log.assert_not_called()
-
-        assert resp.status_code == 400
-        assert resp.body == b'error'
-        assert resp.media_type == "application/json"
-
-
 @pytest.mark.parametrize('content_length, expected', [
     ('1024', 1024),
     ('0', 0),
@@ -658,13 +630,19 @@ async def test_wazuh_access_logger_middleware_reads_loggable_body():
          patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
         assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
 
-    assert request._json == {'a': 'b'}
+    # Cached for `access_log` to report, but not deserialised: nothing has authenticated the caller
+    # at this point, so the object graph is not built here.
+    assert request._body == body
+    assert not hasattr(request, '_json')
 
 
+@pytest.mark.parametrize('body', [
+    b'{"a": ',                          # unparsable
+    b'[' * 4000 + b']' * 4000,          # nested past the interpreter's recursion limit
+])
 @pytest.mark.asyncio
-async def test_wazuh_access_logger_middleware_invalid_body():
-    """Check that an unparsable body is left for the endpoint to reject."""
-    body = b'{"a": '
+async def test_wazuh_access_logger_middleware_does_not_parse(body):
+    """Check that the middleware buffers a body without ever deserialising it."""
     response = MagicMock()
     response.status_code = 400
     dispatch_mock = AsyncMock(return_value=response)
@@ -773,6 +751,67 @@ async def test_access_log_omits_unauthenticated_body(status_code, path, expected
                          prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
 
     assert mock_custom_logging.call_args.args[5] == expected_body
+
+
+@pytest.mark.parametrize('status_code, path, should_parse', [
+    # Reached the endpoint: the body is logged, so it has to be parsed.
+    (200, '/agents', True),
+    # Never authenticated: nothing will use the body, so it is not deserialised at all. This is
+    # what keeps an unauthenticated caller from paying for `json.loads` on a payload nobody
+    # vouched for.
+    (401, '/agents', False),
+    (429, '/agents', False),
+    # A failed run_as is still hashed into an auth context identifier, which needs the parse.
+    (401, RUN_AS_LOGIN_ENDPOINT, True),
+])
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_only_parses_the_body_it_uses(status_code, path, should_parse, mock_req):
+    """Check that the body is deserialised only where the result is actually used."""
+    response = MagicMock()
+    response.status_code = status_code
+    mock_req._body = b'{"field": "value"}'
+    mock_req.json = AsyncMock(return_value={'field': 'value'})
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {}
+    mock_req.scope = {'path': path}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging'), \
+         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+               side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_req.json.await_count == (1 if should_parse else 0)
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_survives_an_unparsable_body(mock_req):
+    """Check that a body that will not parse does not turn a served response into a 500.
+
+    `access_log` runs after the response has been produced, and now owns the deserialisation, so a
+    payload the endpoint already rejected must not raise here.
+    """
+    response = MagicMock()
+    response.status_code = 200
+    mock_req._body = b'[' * 4000
+    mock_req.json = AsyncMock(side_effect=RecursionError)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+               side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == {}
 
 
 @pytest.mark.asyncio

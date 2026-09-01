@@ -29,7 +29,6 @@ from api import configuration
 from api.alogging import MAX_LOGGED_BODY_SIZE, custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
-from api.controllers.util import build_recursion_error_response
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
@@ -41,7 +40,9 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
-# Allowed upper bound for auth_context payload
+# Allowed upper bound for auth_context payload. Must not exceed MAX_LOGGED_BODY_SIZE: the access
+# logger only caches a body up to that size, and a run_as attempt whose body was never cached is
+# logged without its auth context hash.
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
 # Status codes the API can answer with before the security handler has accepted the caller: routing
@@ -148,11 +149,27 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     host = request.client.host if hasattr(request, 'client') else ''
     method = request.method if hasattr(request, 'method') else ''
     query = dict(request.query_params) if hasattr(request, 'query_params') else {}
-    # If the request content is valid, the _json attribute is set when the
-    # first time the json function is awaited. This check avoids raising an
-    # exception when the request json content is invalid.
-    body = await request.json() if hasattr(request, '_json') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
+
+    # Only a caller the security handler accepted gets its payload recorded. A 403 on a login
+    # endpoint is a blocked IP, refused before any credential was checked; a 403 anywhere else is an
+    # authenticated caller denied by RBAC, whose body is worth auditing.
+    log_body = not (response.status_code in PRE_AUTHENTICATION_STATUS_CODES or
+                    (response.status_code == 403 and path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT}))
+
+    # The body is deserialised here, after the response, and no longer in the middleware before the
+    # request was dispatched: nothing should build an object graph out of a payload for a caller
+    # nobody has authenticated yet. It is parsed only where the result is used -- written to the
+    # logs, or hashed into a run_as auth context identifier -- and only from bytes the middleware
+    # already cached, never by reading the stream again. This runs after the response has been
+    # produced, so a payload that will not parse degrades to an empty body rather than turning a
+    # served response into a 500.
+    body = {}
+    if hasattr(request, '_body') and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
+        try:
+            body = await request.json()
+        except RecursionError:
+            body = {}
 
     if 'password' in query:
         query['password'] = '****'
@@ -198,13 +215,9 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
 
-    # Only a caller the security handler accepted gets its payload recorded. The auth context hash
-    # computed above is kept either way: it is a fixed-size digest, and it is precisely the useful
-    # field for a run_as attempt that failed. A 403 on a login endpoint is a blocked IP, refused
-    # before any credential was checked; a 403 anywhere else is an authenticated caller being
-    # denied by RBAC, whose body is worth auditing.
-    if response.status_code in PRE_AUTHENTICATION_STATUS_CODES or \
-            (response.status_code == 403 and path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT}):
+    # The auth context hash computed above is kept even when the body is not logged: it is a
+    # fixed-size digest, and it is precisely the useful field for a run_as attempt that failed.
+    if not log_body:
         body = {}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
@@ -415,24 +428,19 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
 
         # This is the outermost middleware, so reading every body here handed an unauthenticated
         # caller a max_upload_size buffer plus the object graph deserialised from it, once per
-        # request, before the security handler had been asked who was calling. The body is read only
-        # when it is small enough to be worth logging, which is the only reason this middleware ever
-        # needed it. The declared length bounds the read, since the ASGI server never delivers more
-        # body than the request declares; a request that declares none is left for the endpoint to
-        # read, and its body does not reach the log.
+        # request, before the security handler had been asked who was calling.
+        #
+        # Only the bytes are buffered, and only when they are small enough to be worth logging.
+        # `access_log` runs after the response, when the stream is gone, so they have to be cached
+        # here for it to report them; the deserialisation is deferred to `access_log`, which by then
+        # knows whether the result is needed at all. Reading is bounded by the declared length, since
+        # the ASGI server never delivers more body than the request declares; a request that declares
+        # none, or declares more than is worth logging, is left for the endpoint to read and its body
+        # does not reach the log.
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
-            try:
-                # Load the request body to the _json field before calling the controller so it's cached before the stream
-                # is consumed. If there's a json error we skip it so it's handled later.
-                # Related to https://github.com/wazuh/wazuh/issues/24060.
-                _ = await request.json()
-            except json.decoder.JSONDecodeError:
-                pass
-            except RecursionError:
-                conn_resp = build_recursion_error_response(pretty=False)
-                return Response(content=conn_resp.body, status_code=conn_resp.status_code,
-                            media_type=conn_resp.content_type)
+            # Related to https://github.com/wazuh/wazuh/issues/24060.
+            await request.body()
 
         response = await call_next(request)
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
