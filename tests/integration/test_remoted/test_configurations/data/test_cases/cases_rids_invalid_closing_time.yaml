@@ -18,3 +18,6 @@
   metadata:
     port: '1514'
     rids_closing_time: '4S'
+    # The schema's duration pattern is lowercase-only ('4S' was accepted case-insensitively by the old
+    # reader): the strict loader rejects it with 1244 before remoted starts.
+    fatal_1244: ".*ERROR: \\(1244\\): Invalid configuration at '.*': /remote/legacy/rids_closing_time: .*pattern.*"

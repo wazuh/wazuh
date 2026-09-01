@@ -23,6 +23,7 @@
 #include "http_op.h"
 #include "legacy_task_delivery.h"
 #include "config.h"
+#include "mconf-config.h"
 #include "authd-config.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
@@ -346,7 +347,11 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
     authd_config_t authd_cfg;
     memset(&authd_cfg, 0, sizeof(authd_cfg));
 
-    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+    // authd's section of the effective document RemotedConfig() already loaded: same file as
+    // remoted's own settings, so a `-c` override reaches the enrollment policy too.
+    cJSON *auth_section = w_mconf_section("auth");
+
+    if (auth_section != NULL && Read_Authd_JSON(auth_section, &authd_cfg) == 0) {
         // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
         // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
         // enrollment chapter of remoted_module/README.md for the verified analysis.
@@ -363,6 +368,7 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
         rm_config->enrollment_enabled = false;
     }
 
+    cJSON_Delete(auth_section);
     os_free(authd_cfg.ciphers);
     os_free(authd_cfg.agent_ca);
     os_free(authd_cfg.manager_cert);

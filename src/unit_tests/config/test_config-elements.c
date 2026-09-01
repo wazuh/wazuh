@@ -16,7 +16,9 @@
 #include "shared.h"
 #include "os_xml.h"
 #include "config.h"
+#include "global-config.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../external/cJSON/cJSON.h"
 
 static const char *TEST_CONF_PATH = "test_config-elements.conf";
 
@@ -204,6 +206,31 @@ static void test_active_response_pair_is_symmetric(void **state) {
     assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
+/* Read_Global_JSON(): the `global` section of the effective document (manager only). */
+static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
+    _Config config = { .agents_disconnection_time = 900, .agents_disconnection_alert_time = 0 };
+    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":\"15m\",\"agents_disconnection_alert_time\":30}");
+    assert_non_null(global);
+
+    assert_int_equal(Read_Global_JSON(global, &config), 0);
+    assert_int_equal(config.agents_disconnection_time, 900);
+    assert_int_equal(config.agents_disconnection_alert_time, 30);
+
+    cJSON_Delete(global);
+}
+
+static void test_Read_Global_JSON_rejects_zero_disconnection_time(void **state) {
+    _Config config = { .agents_disconnection_time = 900, .agents_disconnection_alert_time = 0 };
+    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":0}");
+    assert_non_null(global);
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'agents_disconnection_time': 0.");
+    assert_int_equal(Read_Global_JSON(global, &config), OS_INVALID);
+    assert_int_equal(config.agents_disconnection_time, 900);
+
+    cJSON_Delete(global);
+}
+
 #endif
 
 int main(void) {
@@ -218,6 +245,8 @@ int main(void) {
 #else
         cmocka_unit_test_teardown(test_active_response_is_obsolete_on_manager, teardown_conf_file),
         cmocka_unit_test_teardown(test_active_response_pair_is_symmetric, teardown_conf_file),
+        cmocka_unit_test(test_Read_Global_JSON_accepts_int_and_duration),
+        cmocka_unit_test(test_Read_Global_JSON_rejects_zero_disconnection_time),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

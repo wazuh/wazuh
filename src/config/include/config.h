@@ -45,6 +45,14 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+#ifndef CLIENT
+/* Readers of the effective document (etc/wazuh-manager.conf, see mconf-config.h): the cJSON
+ * argument is the section returned by w_mconf_section(); NULL/absent keys keep the caller defaults.
+ * File-scope forward declaration: a `struct` first named inside a prototype would have prototype scope. */
+struct cJSON;
+int Read_Global_JSON(const struct cJSON *global, void *configp);
+int Read_Remote_JSON(const struct cJSON *remote, void *d1);
+#endif
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
@@ -83,6 +91,9 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 #ifndef WIN32
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+#ifndef CLIENT
+int Read_Authd_JSON(const struct cJSON *auth, void *d1);
+#endif
 #endif
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
 int Read_Vulnerability_Detection(const OS_XML *xml, XML_NODE nodes, void *d1, const bool old_vd);

@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_utils_wrappers.h"
+#include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
 
 int w_remoted_get_net_protocol(const char * content);
@@ -30,25 +31,29 @@ int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
 
 int w_remoted_parse_https(XML_NODE node, remoted * logr);
 
-/* Lets a test simulate the real ReadConfig(CREMOTE, ...) side effect of parsing
- * <queue_size> out of ossec.conf into cfg->queue_size, which this file's blanket
- * __wrap_ReadConfig otherwise leaves untouched (RemotedConfig() itself only ever
- * hardcodes cfg->queue_size = 131072 before calling ReadConfig -- see config.c --
- * so without this override there is no way to drive queue_size above/below the
- * post-ReadConfig validation thresholds through the public RemotedConfig() entry
- * point). -1 means "no override", preserving every other test's existing
- * behavior; set right before a RemotedConfig() call, consumed (reset to -1) the
- * first time __wrap_ReadConfig sees modules == CREMOTE. */
-static long s_read_config_queue_size_override = -1;
+int Read_Remote_JSON(const cJSON *remote, void *d1);
 
-int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
-    check_expected(modules);
-    check_expected(cfgfile);
-    if (modules == CREMOTE && s_read_config_queue_size_override >= 0) {
-        ((remoted *)d1)->queue_size = s_read_config_queue_size_override;
-        s_read_config_queue_size_override = -1;
+/* Queue size the mocked `remote` section carries into RemotedConfig(): -1 = omit the key (the reader
+ * then keeps the 131072 RemotedConfig() pre-sets), otherwise the value the post-load validation sees. */
+static long s_mconf_queue_size = -1;
+
+/* The `remote` section w_mconf_section() returns for a default installation. No local_ip, so the
+ * OS_IsValidIP wrap is not involved and the reader fills 127.0.0.1 itself. */
+static cJSON *mock_remote_section(void) {
+    char json[256];
+
+    if (s_mconf_queue_size >= 0) {
+        snprintf(json, sizeof(json),
+                 "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"queue_size\":%ld},"
+                 "\"https\":{},\"agents\":{\"allow_higher_versions\":false}}", s_mconf_queue_size);
+        s_mconf_queue_size = -1;
+    } else {
+        snprintf(json, sizeof(json),
+                 "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"]},"
+                 "\"https\":{},\"agents\":{\"allow_higher_versions\":false}}");
     }
-    return mock();
+
+    return cJSON_Parse(json);
 }
 
 typedef struct test_state {
@@ -307,7 +312,7 @@ static void test_w_remoted_parse_agents_invalid_element(void **state) {
  * call site still passes min=300/max=86400/default=900). Shared by the main
  * prime-number test and the dedicated legacy_task_polling_interval boundary
  * test so the latter doesn't have to duplicate ~40 unrelated will_return calls. */
-static void mock_remoted_internal_options(int legacy_value) {
+static void mock_remoted_internal_option_values(int legacy_value) {
     // FIM limits
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
@@ -365,15 +370,27 @@ static void mock_remoted_internal_options(int legacy_value) {
     expect_value(__wrap_getDefine_Int_default, max, 86400);
     expect_value(__wrap_getDefine_Int_default, default_val, 900);
     will_return(__wrap_getDefine_Int_default, legacy_value); // legacy_task_polling_interval
+}
 
-    // Mock ReadConfig calls
-    expect_value(__wrap_ReadConfig, modules, CREMOTE);
-    expect_string(__wrap_ReadConfig, cfgfile, "test_ossec.conf");
-    will_return(__wrap_ReadConfig, 0);
+/* RemotedConfig() fills the global logr; the default local_ip is heap-allocated, so every test that
+ * drives it releases the previous state first (LeakSanitizer runs on this binary). */
+static void reset_global_logr(void) {
+    os_free(logr.lip);
+    memset(&logr, 0, sizeof(logr));
+}
 
-    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
-    expect_string(__wrap_ReadConfig, cfgfile, "test_ossec.conf");
-    will_return(__wrap_ReadConfig, 0);
+/* Internal options plus the document RemotedConfig() loads (one w_mconf_load, then the
+ * `remote` and `global` sections) and the cluster getters. */
+static void mock_remoted_internal_options(int legacy_value) {
+    mock_remoted_internal_option_values(legacy_value);
+
+    expect_string(__wrap_w_mconf_load, cfgfile, "test_ossec.conf");
+    will_return(__wrap_w_mconf_load, 0);
+    expect_string(__wrap_w_mconf_section, section, "remote");
+    will_return(__wrap_w_mconf_section, mock_remote_section());
+    expect_string(__wrap_w_mconf_section, section, "global");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"agents_disconnection_time\":900,\"agents_disconnection_alert_time\":0}"));
 
     // Mock get_node_name and get_cluster_name calls
     will_return(__wrap_get_node_name, NULL);
@@ -382,6 +399,7 @@ static void mock_remoted_internal_options(int legacy_value) {
 
 static void test_remoted_internal_options_config(void **state) {
     (void) state;
+    reset_global_logr();
 
     // Set internal options with prime numbers using mocked getDefine_Int
     mock_remoted_internal_options(131); // legacy_task_polling_interval
@@ -438,6 +456,7 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 131);
 
     cJSON_Delete(json);
+    os_free(logr.lip);
 }
 
 /* Verifies config.c wires the 300/86400/900 (min/max/default) triple and that
@@ -446,6 +465,7 @@ static void test_remoted_internal_options_config(void **state) {
  * existing coverage anywhere in the repo. */
 static void test_remoted_legacy_task_polling_interval_bounds(void **state) {
     (void) state;
+    reset_global_logr();
 
     mock_remoted_internal_options(300); // legacy_task_polling_interval floor
 
@@ -464,17 +484,18 @@ static void test_remoted_legacy_task_polling_interval_bounds(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 300);
 
     cJSON_Delete(json);
+    os_free(logr.lip);
 }
 
 /* docs/ref/modules/remoted/configuration.md documents that <queue_size> above
  * 262144 logs a warning (confirmed in config.c: `if (cfg->queue_size > 262144)`),
- * which had no test anywhere in this file. s_read_config_queue_size_override
- * stands in for ReadConfig() having just parsed a queue_size that high out of
- * <queue_size>, since ReadConfig itself is fully mocked out here. */
+ * which had no test anywhere in this file. s_mconf_queue_size puts that value in the
+ * mocked `remote` section, since the loader itself is mocked out here. */
 static void test_remoted_queue_size_above_threshold_warns(void **state) {
     (void) state;
+    reset_global_logr();
 
-    s_read_config_queue_size_override = 262145; // one above the threshold
+    s_mconf_queue_size = 262145; // one above the threshold
 
     mock_remoted_internal_options(1);
     expect_string(__wrap__mwarn, formatted_msg, "Queue size is very high. The application may run out of memory.");
@@ -485,6 +506,7 @@ static void test_remoted_queue_size_above_threshold_warns(void **state) {
     // queue_size < 1 (a separate, unrelated check), so this must still succeed.
     assert_int_equal(ret, 1);
     assert_int_equal(logr.queue_size, 262145);
+    os_free(logr.lip);
 }
 
 /* Boundary check for the same guard: exactly 262144 must NOT warn (config.c's
@@ -493,8 +515,9 @@ static void test_remoted_queue_size_above_threshold_warns(void **state) {
  * expectation queued. */
 static void test_remoted_queue_size_at_threshold_does_not_warn(void **state) {
     (void) state;
+    reset_global_logr();
 
-    s_read_config_queue_size_override = 262144; // exactly at the threshold
+    s_mconf_queue_size = 262144; // exactly at the threshold
 
     mock_remoted_internal_options(1);
 
@@ -502,6 +525,7 @@ static void test_remoted_queue_size_at_threshold_does_not_warn(void **state) {
 
     assert_int_equal(ret, 1);
     assert_int_equal(logr.queue_size, 262144);
+    os_free(logr.lip);
 }
 
 // Test w_remoted_parse_legacy
@@ -1375,174 +1399,242 @@ static void test_read_remote_local_ip_not_defaulted_for_ipv6(void **state) {
  * connection object, plus a "connection":"secure" key for an option that no longer exists -- and
  * omitted the whole <https> block, so the manager's actual agent-facing listener was invisible to
  * the API. */
-static void teardown_global_logr(void) {
-    memset(&logr, 0, sizeof(logr));
+/* Read_Remote_JSON(): the effective `remote` section of etc/wazuh-manager.conf (defaults applied by the
+ * loader) poured into the same struct the XML reader fills. */
+
+static cJSON *json_or_fail(const char *text) {
+    cJSON *json = cJSON_Parse(text);
+    assert_non_null(json);
+    return json;
 }
 
-/* The report's single `remote` array element. `root` stays owned by the caller, which must
- * cJSON_Delete() it; the returned pointer is borrowed from it. */
-static cJSON *remote_entry(cJSON *root) {
-    assert_non_null(root);
-    cJSON *array = cJSON_GetObjectItem(root, "remote");
-    assert_non_null(array);
-    assert_int_equal(cJSON_GetArraySize(array), 1);
-    cJSON *entry = cJSON_GetArrayItem(array, 0);
-    assert_non_null(entry);
-    return entry;
+static void expect_valid_ip(const char *ip) {
+    expect_string(__wrap_OS_IsValidIP, ip_address, ip);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
 }
 
-static void assert_string_field(const cJSON *object, const char *name, const char *expected) {
-    cJSON *item = cJSON_GetObjectItem((cJSON *)object, name);
-    assert_non_null(item);
-    assert_true(cJSON_IsString(item));
-    assert_string_equal(cJSON_GetStringValue(item), expected);
+static void test_Read_Remote_JSON_effective_defaults(void **state) {
+    test_state *ts = *state;
+    /* What the loader returns for tests/vectors/valid/generated-manager.conf (E1a) */
+    cJSON *remote = json_or_fail(
+        "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,\"local_ip\":\"127.0.0.1\","
+        "\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
+        "\"https\":{\"port\":1517,\"bind_addr\":\"127.0.0.1\",\"global_prefix\":\"/wazuh-manager/\","
+        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\"},"
+        "\"agents\":{\"allow_higher_versions\":false}}");
+
+    expect_valid_ip("127.0.0.1"); // legacy.local_ip
+    expect_valid_ip("127.0.0.1"); // https.bind_addr
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+
+    assert_true(ts->logr->legacy_enabled);
+    assert_int_equal(ts->logr->port, 1514);
+    assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_TCP);
+    assert_int_equal(ts->logr->ipv6, 0);
+    assert_string_equal(ts->logr->lip, "127.0.0.1");
+    assert_int_equal(ts->logr->queue_size, 131072);
+    assert_int_equal(ts->logr->rids_closing_time, 300);
+    assert_int_equal(ts->logr->connection_overtake_time, 60);
+    assert_int_equal(ts->logr->https.port, 1517);
+    assert_string_equal(ts->logr->https.bind_addr, "127.0.0.1");
+    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
+    assert_string_equal(ts->logr->https.certificate, "etc/certs/remoted.pem");
+    assert_string_equal(ts->logr->https.key, "etc/certs/remoted-key.pem");
+    assert_null(ts->logr->https.ca);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
+    assert_null(ts->logr->https.ciphers);
+    assert_int_equal(ts->logr->https.max_body_size, 0);
+    assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
+    assert_false(ts->logr->allow_higher_versions);
+
+    cJSON_Delete(remote);
 }
 
-static void test_getRemoteConfig_reports_https_block(void **state) {
-    (void)state;
-    memset(&logr, 0, sizeof(logr));
+static void test_Read_Remote_JSON_legacy_disabled_clears_listener(void **state) {
+    test_state *ts = *state;
+    cJSON *remote = json_or_fail(
+        "{\"legacy\":{\"enabled\":false,\"port\":1514,\"protocol\":[\"tcp\"],\"local_ip\":\"127.0.0.1\"},\"https\":{},\"agents\":{}}");
 
-    logr.https.port = 1517;
-    logr.https.bind_addr = "0.0.0.0";
-    logr.https.global_prefix = "/wazuh-manager";
-    logr.https.certificate = "etc/certs/remoted.pem";
-    logr.https.key = "etc/certs/remoted-key.pem";
-    logr.https.ca = "etc/certs/root-ca.pem";
-    logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
-    logr.https.ciphers = "TLS_AES_256_GCM_SHA384";
-    logr.https.max_body_size = 20971520;
-    logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+    expect_valid_ip("127.0.0.1");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_false(ts->logr->legacy_enabled);
+    assert_int_equal(ts->logr->port, 0);
+    assert_int_equal(ts->logr->proto, 0);
+    assert_null(ts->logr->lip);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip(void **state) {
+    test_state *ts = *state;
+    /* No local_ip and an IPv6 listener: the reader must not fall back to 127.0.0.1 (P61) */
+    cJSON *remote = json_or_fail("{\"legacy\":{\"enabled\":true,\"protocol\":[\"tcp\",\"udp\"],\"ipv6\":true}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_TCP | REMOTED_NET_PROTOCOL_UDP);
+    assert_int_equal(ts->logr->ipv6, 1);
+    assert_null(ts->logr->lip);
+    assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_durations_and_sizes_int_or_string(void **state) {
+    test_state *ts = *state;
+    cJSON *as_strings = json_or_fail(
+        "{\"legacy\":{\"enabled\":true,\"rids_closing_time\":\"10m\",\"connection_overtake_time\":120},"
+        "\"https\":{\"max_body_size\":\"2M\"}}");
+    cJSON *as_numbers = json_or_fail("{\"legacy\":{\"enabled\":true,\"rids_closing_time\":600},\"https\":{\"max_body_size\":4096}}");
+
+    assert_int_equal(Read_Remote_JSON(as_strings, ts->logr), 0);
+    assert_int_equal(ts->logr->rids_closing_time, 600);
+    assert_int_equal(ts->logr->connection_overtake_time, 120);
+    assert_int_equal(ts->logr->https.max_body_size, 2L * 1024 * 1024);
+
+    assert_int_equal(Read_Remote_JSON(as_numbers, ts->logr), 0);
+    assert_int_equal(ts->logr->rids_closing_time, 600);
+    assert_int_equal(ts->logr->https.max_body_size, 4096);
+
+    cJSON_Delete(as_strings);
+    cJSON_Delete(as_numbers);
+}
+
+static void test_Read_Remote_JSON_ca_infers_certificate_mode(void **state) {
+    test_state *ts = *state;
+    cJSON *remote = json_or_fail("{\"https\":{\"certificate\":\"c.pem\",\"key\":\"k.pem\",\"ca\":\"ca.pem\"}}");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The '<remote><https><ca>' option is configured but '<verification_mode>' is not; "
+                  "defaulting '<verification_mode>' to 'certificate'.");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_string_equal(ts->logr->https.ca, "ca.pem");
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
+    test_state *ts = *state;
+    cJSON *full = json_or_fail("{\"https\":{\"bind_addr\":\"::\",\"verification_mode\":\"full\",\"dual_stack\":true}}");
+    cJSON *off = json_or_fail("{\"https\":{\"dual_stack\":false}}");
+
+    expect_valid_ip("::");
+
+    assert_int_equal(Read_Remote_JSON(full, ts->logr), 0);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+    assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
+
+    /* bind_addr stays "::" from the first document, so no "only applies to IPv6" warning */
+    assert_int_equal(Read_Remote_JSON(off, ts->logr), 0);
+    assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_NO);
+
+    cJSON_Delete(full);
+    cJSON_Delete(off);
+}
+
+static void test_Read_Remote_JSON_https_string_too_long(void **state) {
+    test_state *ts = *state;
+    char address[REMOTED_HTTPS_BIND_ADDR_MAX_LEN + 2];
+    char json[REMOTED_HTTPS_BIND_ADDR_MAX_LEN + 64];
+
+    memset(address, 'a', sizeof(address) - 1);
+    address[sizeof(address) - 1] = '\0';
+    snprintf(json, sizeof(json), "{\"https\":{\"bind_addr\":\"%s\"}}", address);
+    cJSON *remote = json_or_fail(json);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for '<remote><https><bind_addr>' exceeds the maximum length of 255 characters.");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), OS_INVALID);
+
+    cJSON_Delete(remote);
+}
+
+/* RemotedConfig() over the mocked document */
+
+static void test_RemotedConfig_loads_sections_from_mconf(void **state) {
+    (void) state;
+    reset_global_logr();
+
+    mock_remoted_internal_options(1);
+
+    assert_int_equal(RemotedConfig("test_ossec.conf", &logr), 1);
+    assert_true(logr.legacy_enabled);
+    assert_int_equal(logr.port, 1514);
+    assert_int_equal(logr.proto, REMOTED_NET_PROTOCOL_TCP);
+    assert_string_equal(logr.lip, REMOTED_LEGACY_LOCAL_IP_DEFAULT);
+    assert_int_equal(logr.queue_size, 131072);
+    assert_int_equal(logr.global.agents_disconnection_time, 900);
+    assert_int_equal(logr.global.agents_disconnection_alert_time, 0);
+
+    os_free(logr.lip);
+}
+
+static void test_RemotedConfig_fails_when_mconf_load_fails(void **state) {
+    (void) state;
+    reset_global_logr();
+
+    mock_remoted_internal_option_values(1);
+    expect_string(__wrap_w_mconf_load, cfgfile, "bad.conf");
+    will_return(__wrap_w_mconf_load, -1); // the helper already logged CONFIG_INVALID
+
+    assert_int_equal(RemotedConfig("bad.conf", &logr), OS_INVALID);
+}
+
+/* getconfig: the effective sections, not a hand-built view of the struct */
+
+static void test_getRemoteConfig_returns_effective_section(void **state) {
+    (void) state;
+
+    expect_string(__wrap_w_mconf_section, section, "remote");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"https\":{\"port\":1517,\"ca\":\"\",\"max_body_size\":\"2M\"},\"legacy\":{\"enabled\":true}}"));
 
     cJSON *root = getRemoteConfig();
-    cJSON *entry = remote_entry(root);
-    cJSON *https = cJSON_GetObjectItem(entry, "https");
-    assert_non_null(https);
+    cJSON *remote = cJSON_GetObjectItem(root, "remote");
+    assert_true(cJSON_IsObject(remote));
 
-    assert_string_field(https, "port", "1517");
-    assert_string_field(https, "bind_addr", "0.0.0.0");
-    assert_string_field(https, "global_prefix", "/wazuh-manager");
-    assert_string_field(https, "certificate", "etc/certs/remoted.pem");
-    assert_string_field(https, "key", "etc/certs/remoted-key.pem");
-    assert_string_field(https, "ca", "etc/certs/root-ca.pem");
-    assert_string_field(https, "verification_mode", "certificate");
-    assert_string_field(https, "ciphers", "TLS_AES_256_GCM_SHA384");
-    assert_string_field(https, "max_body_size", "20971520");
-    assert_string_field(https, "dual_stack", "yes");
-
-    /* The removed <connection> option must never reappear in the report. */
-    assert_null(cJSON_GetObjectItem(entry, "connection"));
+    cJSON *https = cJSON_GetObjectItem(remote, "https");
+    assert_int_equal(cJSON_GetObjectItem(https, "port")->valueint, 1517);
+    assert_non_null(cJSON_GetObjectItem(https, "ca"));
+    assert_string_equal(cJSON_GetObjectItem(https, "max_body_size")->valuestring, "2M");
+    assert_true(cJSON_IsTrue(cJSON_GetObjectItem(cJSON_GetObjectItem(remote, "legacy"), "enabled")));
 
     cJSON_Delete(root);
-    teardown_global_logr();
 }
 
-static void test_getRemoteConfig_nests_legacy_options(void **state) {
-    (void)state;
-    memset(&logr, 0, sizeof(logr));
+static void test_getRemoteConfig_without_document_is_empty(void **state) {
+    (void) state;
 
-    logr.legacy_enabled = true;
-    logr.port = 1514;
-    logr.proto = REMOTED_NET_PROTOCOL_TCP;
-    logr.ipv6 = 0;
-    logr.lip = "127.0.0.1";
-    logr.queue_size = 131072;
-    logr.rids_closing_time = 300;
-    logr.connection_overtake_time = 60;
+    expect_string(__wrap_w_mconf_section, section, "remote");
+    will_return(__wrap_w_mconf_section, NULL);
 
     cJSON *root = getRemoteConfig();
-    cJSON *entry = remote_entry(root);
-    cJSON *legacy = cJSON_GetObjectItem(entry, "legacy");
-    assert_non_null(legacy);
-
-    assert_string_field(legacy, "enabled", "yes");
-    assert_string_field(legacy, "port", "1514");
-    assert_string_field(legacy, "ipv6", "no");
-    assert_string_field(legacy, "local_ip", "127.0.0.1");
-    assert_string_field(legacy, "queue_size", "131072");
-    assert_string_field(legacy, "rids_closing_time", "300");
-    assert_string_field(legacy, "connection_overtake_time", "60");
-
-    cJSON *proto = cJSON_GetObjectItem(legacy, "protocol");
-    assert_non_null(proto);
-    assert_int_equal(cJSON_GetArraySize(proto), 1);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetArrayItem(proto, 0)), REMOTED_NET_PROTOCOL_TCP_STR);
-
-    /* None of these may appear at the top level any more: that was the flat 4.x shape. */
-    assert_null(cJSON_GetObjectItem(entry, "port"));
-    assert_null(cJSON_GetObjectItem(entry, "queue_size"));
-    assert_null(cJSON_GetObjectItem(entry, "protocol"));
-    assert_null(cJSON_GetObjectItem(entry, "local_ip"));
+    cJSON *remote = cJSON_GetObjectItem(root, "remote");
+    assert_true(cJSON_IsObject(remote));
+    assert_null(remote->child);
 
     cJSON_Delete(root);
-    teardown_global_logr();
 }
 
-static void test_getRemoteConfig_reports_legacy_disabled(void **state) {
-    (void)state;
-    memset(&logr, 0, sizeof(logr));
+static void test_getRemoteGlobalConfig_returns_effective_section(void **state) {
+    (void) state;
 
-    logr.legacy_enabled = false;
+    expect_string(__wrap_w_mconf_section, section, "global");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"agents_disconnection_time\":900,\"agents_disconnection_alert_time\":0}"));
 
-    cJSON *root = getRemoteConfig();
-    cJSON *entry = remote_entry(root);
-    cJSON *legacy = cJSON_GetObjectItem(entry, "legacy");
-    assert_non_null(legacy);
-
-    /* Reported as disabled rather than omitted, so "the listener is off" is distinguishable from
-     * "this manager is too old to report the block at all". No listener options alongside it. */
-    assert_string_field(legacy, "enabled", "no");
-    assert_null(cJSON_GetObjectItem(legacy, "port"));
-    assert_null(cJSON_GetObjectItem(legacy, "protocol"));
+    cJSON *root = getRemoteGlobalConfig();
+    cJSON *global = cJSON_GetObjectItem(root, "global");
+    assert_true(cJSON_IsObject(global));
+    assert_int_equal(cJSON_GetObjectItem(global, "agents_disconnection_time")->valueint, 900);
+    assert_null(cJSON_GetObjectItem(global, "remoted"));
 
     cJSON_Delete(root);
-    teardown_global_logr();
-}
-
-static void test_getRemoteConfig_reports_agents_without_queue_size(void **state) {
-    (void)state;
-    memset(&logr, 0, sizeof(logr));
-
-    /* allow_higher_versions used to be emitted only when queue_size was non-zero -- an unrelated
-     * legacy option -- so it went unreported on any manager that had not set one. It is a sibling
-     * of the listener blocks, not part of either. */
-    logr.legacy_enabled = false;
-    logr.queue_size = 0;
-    logr.allow_higher_versions = true;
-
-    cJSON *root = getRemoteConfig();
-    cJSON *entry = remote_entry(root);
-    cJSON *agents = cJSON_GetObjectItem(entry, "agents");
-    assert_non_null(agents);
-    assert_string_field(agents, "allow_higher_versions", "yes");
-
-    cJSON_Delete(root);
-    teardown_global_logr();
-}
-
-static void test_getRemoteConfig_omits_unset_verification_mode(void **state) {
-    (void)state;
-    memset(&logr, 0, sizeof(logr));
-
-    /* UNSET means "the operator never configured this", which must not be flattened into an
-     * explicit "none" -- those resolve differently once the module applies its own defaults. */
-    logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-
-    cJSON *root = getRemoteConfig();
-    cJSON *entry = remote_entry(root);
-    cJSON *https = cJSON_GetObjectItem(entry, "https");
-    assert_non_null(https);
-    assert_null(cJSON_GetObjectItem(https, "verification_mode"));
-
-    /* Same for every other option the operator did not set: absent, not invented. An unset
-     * global_prefix in particular must not be reported as "/": the module's default is its own,
-     * and "/" is also a value the operator can set explicitly. */
-    assert_null(cJSON_GetObjectItem(https, "port"));
-    assert_null(cJSON_GetObjectItem(https, "bind_addr"));
-    assert_null(cJSON_GetObjectItem(https, "global_prefix"));
-    assert_null(cJSON_GetObjectItem(https, "dual_stack"));
-
-    cJSON_Delete(root);
-    teardown_global_logr();
 }
 
 int main(void)
@@ -1614,12 +1706,21 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_read_remote_explicit_values_cleared_when_disabled, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
 
-        /* getRemoteConfig() -- these drive the global logr, so they take no setup/teardown fixture. */
-        cmocka_unit_test(test_getRemoteConfig_reports_https_block),
-        cmocka_unit_test(test_getRemoteConfig_nests_legacy_options),
-        cmocka_unit_test(test_getRemoteConfig_reports_legacy_disabled),
-        cmocka_unit_test(test_getRemoteConfig_reports_agents_without_queue_size),
-        cmocka_unit_test(test_getRemoteConfig_omits_unset_verification_mode),
+        /* Read_Remote_JSON() -- the effective `remote` section of etc/wazuh-manager.conf */
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_effective_defaults, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_legacy_disabled_clears_listener, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_durations_and_sizes_int_or_string, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_infers_certificate_mode, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_enum_and_dual_stack, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_string_too_long, setup, teardown),
+
+        /* RemotedConfig() and getconfig over the mocked document (global logr, no fixture) */
+        cmocka_unit_test(test_RemotedConfig_loads_sections_from_mconf),
+        cmocka_unit_test(test_RemotedConfig_fails_when_mconf_load_fails),
+        cmocka_unit_test(test_getRemoteConfig_returns_effective_section),
+        cmocka_unit_test(test_getRemoteConfig_without_document_is_empty),
+        cmocka_unit_test(test_getRemoteGlobalConfig_returns_effective_section),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

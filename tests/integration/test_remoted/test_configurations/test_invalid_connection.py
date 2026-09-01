@@ -17,7 +17,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR, INVALID_ELEMENT_IN_CONFIGURATION
+from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR
 
 
 # Set pytest marks.
@@ -69,11 +69,11 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
 
-    log_monitor.start(callback=generate_callback(INVALID_ELEMENT_IN_CONFIGURATION))
-    assert test_metadata['element_type'] in log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": conf_path}))
+    # The strict loader reports the unknown option with its JSON pointer (1244) and remoted
+    # exits with CRITICAL (1202); there is no ERROR-severity 1202 line any more.
+    log_monitor.start(callback=generate_callback(test_metadata['invalid']))
     assert log_monitor.callback_result
+    assert test_metadata['element_type'] in log_monitor.callback_result
 
     log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', conf_path)))
     assert log_monitor.callback_result

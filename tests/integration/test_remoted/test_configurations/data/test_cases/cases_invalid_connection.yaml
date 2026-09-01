@@ -5,5 +5,5 @@
     PROTOCOL: 'TCP'
     CONNECTION: 'Testing'
   metadata:
-    invalid: ".*ERROR: \\(\\d+\\): Invalid element in the configuration: 'connection'.*"
+    invalid: ".*ERROR: \\(1244\\): Invalid configuration at '.*': /remote/connection: unknown option.*"
     element_type: connection
