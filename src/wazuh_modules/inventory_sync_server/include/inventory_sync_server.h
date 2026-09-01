@@ -307,6 +307,18 @@ extern "C"
         int indexer_monitoring_interval_seconds; ///< Seconds between health-check rounds of the shared
                                                  ///< session's monitor. -> `monitoring_interval_seconds`.
                                                  ///< Range 1..3600. <=0 -> 10 s.
+
+        /* ---- Retry budget of the SYNC indexer connector -- APPENDED, same ABI rule as above.
+         *      Bounds every retry loop of one operation by attempts and by wall-clock time;
+         *      without it a persistent 429 or an unreachable indexer blocks the flushing worker
+         *      -- and the shard behind it -- forever. The connector accepts 0 (no bound), but
+         *      that is the unbounded-blocking bug this option exists to prevent, so it is not
+         *      reachable from here: minimum 1 and <=0 means "use the connector default". ---- */
+        int indexer_sync_max_retry_attempts;         ///< Failed attempts before one operation gives
+                                                     ///< up. -> `max_retry_attempts`. <=0 -> 5.
+        int indexer_sync_max_retry_duration_seconds; ///< Wall-clock deadline, seconds, for one
+                                                     ///< operation's retries.
+                                                     ///< -> `max_retry_duration_seconds`. <=0 -> 15 s.
     } inventory_sync_server_config_t;
 
     /**

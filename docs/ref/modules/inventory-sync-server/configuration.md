@@ -424,6 +424,40 @@ wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
   exists to prevent — so `0` is rejected here rather than forwarded. A timed-out bulk request is
   retried with backoff, not discarded.
 
+#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts
+
+Forwarded as `max_retry_attempts`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
+```
+
+- **Default value:** `5`
+- **Allowed values:** 1 to 1000
+- **Note:** Failed attempts allowed to one connector operation (a bulk flush, a split chunk, a
+  delete-by-query, an update-by-query, a search) before it gives up and the session fails. Together
+  with `max_retry_duration_seconds` below — whichever is spent first — this bounds the retry loops
+  that would otherwise let a persistent `429` or an unreachable indexer block the flushing worker,
+  and the shard behind it, forever. The connector reads `0` as "no bound", so `0` is rejected here
+  rather than forwarded.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
+
+Forwarded as `max_retry_duration_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
+```
+
+- **Default value:** `15`
+- **Allowed values:** 1 to 3600
+- **Note:** Wall-clock deadline, in seconds, for one connector operation's retries: no retry sleep is
+  started that would cross it. The default stays below `remoted.downstream_stateful_response_timeout`
+  (default 20 s) so a flush fails while its caller is still listening, instead of finishing work the
+  agent already gave up on. One in-flight request can still overshoot the deadline by up to
+  `request_timeout_seconds`. The connector reads `0` as "no bound", so `0` is rejected here rather
+  than forwarded.
+
 #### Asynchronous connector
 
 #### wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes

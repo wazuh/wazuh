@@ -85,11 +85,13 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
      * same way they are in the configuration: their key names are NOT interchangeable. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
-             "request_timeout_seconds=%d",
+             "request_timeout_seconds=%d, max_retry_attempts=%d, max_retry_duration_seconds=%d",
              config->indexer_sync_max_bulk_size,
              config->indexer_sync_flush_interval_seconds,
              config->indexer_sync_max_retry_delay_seconds,
-             config->indexer_sync_request_timeout_seconds);
+             config->indexer_sync_request_timeout_seconds,
+             config->indexer_sync_max_retry_attempts,
+             config->indexer_sync_max_retry_duration_seconds);
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
              "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d, request_timeout_seconds=%d",
@@ -326,6 +328,23 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         1,
         3600,
         10);
+
+    /* Retry budget of the sync connector. Minimum 1 on both: the connector reads 0 as "no bound",
+     * which is the unbounded-blocking bug these options exist to prevent, so 0 is rejected here
+     * rather than forwarded. The duration default stays below remoted's downstream response
+     * window (20 s), so a flush fails while its caller is still listening. */
+    config->indexer_sync_max_retry_attempts =
+        getDefine_Int_default("wazuh_modules",
+                              "inventory_sync_server_indexer_sync_max_retry_attempts", /* -> max_retry_attempts */
+                              1,
+                              1000,
+                              5);
+    config->indexer_sync_max_retry_duration_seconds = getDefine_Int_default(
+        "wazuh_modules",
+        "inventory_sync_server_indexer_sync_max_retry_duration_seconds", /* -> max_retry_duration_seconds */
+        1,
+        3600,
+        15);
 }
 
 void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
@@ -510,6 +529,10 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
         config, "indexer_async_request_timeout_seconds", data->config->indexer_async_request_timeout_seconds);
     cJSON_AddNumberToObject(
         config, "indexer_monitoring_interval_seconds", data->config->indexer_monitoring_interval_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_max_retry_attempts", data->config->indexer_sync_max_retry_attempts);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_max_retry_duration_seconds", data->config->indexer_sync_max_retry_duration_seconds);
 
     cJSON_AddItemToObject(root, "inventory_sync_server", config);
     return root;

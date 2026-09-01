@@ -338,6 +338,16 @@ class IndexerConnectorSyncImpl final
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallbacks for the retry budget ('max_retry_attempts' / 'max_retry_duration_seconds';
+    /// 0 disables the corresponding bound). Every retry loop is bounded by both: without a
+    /// budget, a persistent 429 or an unreachable indexer blocks the flushing worker -- and the
+    /// shard behind it -- forever, long after the caller's response window closed. Sized to fail
+    /// a flush before that window (remoted's downstream response timeout, default 20 s) closes;
+    /// the cross-team sizing of the whole timeout chain is decided elsewhere.
+    static constexpr size_t DEFAULT_MAX_RETRY_ATTEMPTS {5};
+    static constexpr size_t DEFAULT_MAX_RETRY_DURATION_SECONDS {15};
+    size_t m_maxRetryAttempts {DEFAULT_MAX_RETRY_ATTEMPTS};
+    std::chrono::milliseconds m_maxRetryDuration {std::chrono::seconds {DEFAULT_MAX_RETRY_DURATION_SECONDS}};
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
     /// Upper bound in milliseconds for one data request against the indexer
@@ -465,6 +475,7 @@ class IndexerConnectorSyncImpl final
             {
                 IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                         std::chrono::seconds {m_maxRetryDelay}};
+                IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
                 do
                 {
                     if (m_stopping.load())
@@ -485,6 +496,10 @@ class IndexerConnectorSyncImpl final
                     if (deleteByQueryNeedsRetry)
                     {
                         const auto retryDelay = retryBackoff.nextDelay();
+                        if (retryBudget.exhausted(retryDelay))
+                        {
+                            throw IndexerConnectorException("deleteByQuery retry budget exhausted");
+                        }
                         LOGFN_DEBUG2(
                             m_logFn, "Retrying deleteByQuery in %lld ms.", static_cast<long long>(retryDelay.count()));
                         std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -580,6 +595,7 @@ class IndexerConnectorSyncImpl final
         {
             IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                     std::chrono::seconds {m_maxRetryDelay}};
+            IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
             do
             {
                 if (m_stopping.load())
@@ -611,6 +627,13 @@ class IndexerConnectorSyncImpl final
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
+                    if (retryBudget.exhausted(retryDelay))
+                    {
+                        m_bulkData.clear();
+                        m_boundaries.clear();
+                        m_lastBulkTime = std::chrono::steady_clock::now();
+                        throw IndexerConnectorException("Bulk retry budget exhausted");
+                    }
                     LOGFN_DEBUG2(
                         m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
                     std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -774,6 +797,7 @@ class IndexerConnectorSyncImpl final
         };
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -802,6 +826,10 @@ class IndexerConnectorSyncImpl final
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Bulk chunk retry budget exhausted");
+                }
                 LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -913,6 +941,26 @@ public:
         {
             throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
+
+        const auto maxRetryAttempts =
+            config.contains("max_retry_attempts") && config.at("max_retry_attempts").is_number_integer()
+                ? config.at("max_retry_attempts").get<long>()
+                : static_cast<long>(DEFAULT_MAX_RETRY_ATTEMPTS);
+        if (maxRetryAttempts < 0)
+        {
+            throw IndexerConnectorException("max_retry_attempts must be >= 0 (0 disables the bound)");
+        }
+        m_maxRetryAttempts = static_cast<size_t>(maxRetryAttempts);
+
+        const auto maxRetryDurationSeconds =
+            config.contains("max_retry_duration_seconds") && config.at("max_retry_duration_seconds").is_number_integer()
+                ? config.at("max_retry_duration_seconds").get<long>()
+                : static_cast<long>(DEFAULT_MAX_RETRY_DURATION_SECONDS);
+        if (maxRetryDurationSeconds < 0)
+        {
+            throw IndexerConnectorException("max_retry_duration_seconds must be >= 0 (0 disables the bound)");
+        }
+        m_maxRetryDuration = std::chrono::seconds {maxRetryDurationSeconds};
 
         m_lastBulkTime = std::chrono::steady_clock::now();
 
@@ -1148,6 +1196,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1180,6 +1229,11 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    m_notify.clear();
+                    throw IndexerConnectorException("Update by query retry budget exhausted");
+                }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1232,6 +1286,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1258,6 +1313,10 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Search query retry budget exhausted");
+                }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -1537,6 +1596,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1558,6 +1618,10 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Search request retry budget exhausted");
+                }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying search request in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);

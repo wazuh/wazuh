@@ -53,6 +53,8 @@ namespace invsync::indexer
         setIfPositive(result, "flush_interval_seconds", config.indexer_sync_flush_interval_seconds);
         setIfPositive(result, "max_retry_delay_seconds", config.indexer_sync_max_retry_delay_seconds);
         setIfPositive(result, "request_timeout_seconds", config.indexer_sync_request_timeout_seconds);
+        setIfPositive(result, "max_retry_attempts", config.indexer_sync_max_retry_attempts);
+        setIfPositive(result, "max_retry_duration_seconds", config.indexer_sync_max_retry_duration_seconds);
 
         return result;
     }

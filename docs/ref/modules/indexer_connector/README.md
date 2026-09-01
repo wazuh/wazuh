@@ -76,6 +76,16 @@ Example with the defaults (base = 1s, max = 15s):
 | 4th | random between 4s and 8s |
 | 5th and beyond | random between 8s and 15s (capped) |
 
+**Retries are bounded (sync).** Every sync retry loop carries a budget: at most `max_retry_attempts`
+failed attempts (default 5) and a wall-clock deadline of `max_retry_duration_seconds` (default 15s)
+per operation, whichever is spent first. On exhaustion the operation throws instead of retrying —
+the batch is dropped and the caller retries by re-staging, the same contract as any other terminal
+failure. `0` disables the corresponding bound. Without the budget, a persistent 429 or an
+unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
+long after the caller's response window closed. The deadline only gates the sleeps: one in-flight
+request can still overshoot it by up to `request_timeout_seconds`. The indexer's `Retry-After`
+header is not honored — the transport does not expose response headers.
+
 ### Delete-by-query
 
 `IndexerConnectorSync` also exposes the operation the manager's whole-agent deletion is built on. It

@@ -40,11 +40,17 @@ namespace
         config.indexer_sync_request_timeout_seconds = 1111;
         config.indexer_async_request_timeout_seconds = 2222;
         config.indexer_monitoring_interval_seconds = 3333;
+        config.indexer_sync_max_retry_attempts = 4444;
+        config.indexer_sync_max_retry_duration_seconds = 5555;
         return config;
     }
 
-    const std::vector<std::string> SYNC_KEYS {
-        "max_bulk_size", "flush_interval_seconds", "max_retry_delay_seconds", "request_timeout_seconds"};
+    const std::vector<std::string> SYNC_KEYS {"max_bulk_size",
+                                              "flush_interval_seconds",
+                                              "max_retry_delay_seconds",
+                                              "request_timeout_seconds",
+                                              "max_retry_attempts",
+                                              "max_retry_duration_seconds"};
 
     const std::vector<std::string> ASYNC_KEYS {"bulk_max_bytes",
                                                "flush_interval_seconds",
@@ -79,6 +85,8 @@ TEST(IndexerConnectorConfigTest, SyncOverlayEmitsOnlyTheSyncKeyNames)
     EXPECT_EQ(222U, result.at("flush_interval_seconds").get<std::size_t>());
     EXPECT_EQ(333U, result.at("max_retry_delay_seconds").get<std::size_t>());
     EXPECT_EQ(1111U, result.at("request_timeout_seconds").get<std::size_t>());
+    EXPECT_EQ(4444U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(5555U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
@@ -201,6 +209,8 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_sync_request_timeout_seconds = 0;
     config.indexer_async_request_timeout_seconds = -4;
     config.indexer_monitoring_interval_seconds = -5;
+    config.indexer_sync_max_retry_attempts = -6;
+    config.indexer_sync_max_retry_duration_seconds = 0;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)
