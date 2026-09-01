@@ -18,7 +18,12 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_CI_REFERENCES = "references";
-static const char *XML_CI_LOCAL = "local";
+
+// The three reference entry types of the module. The grammar is fixed here once, so a
+// source that is implemented later adds behaviour without changing the configuration.
+static const char *XML_CI_REF = "ref";           // Remote registry reference.
+static const char *XML_CI_ARCHIVE = "archive";   // Saved image archive or OCI image layout on disk.
+static const char *XML_CI_LOCAL = "local";       // Image in the local container engine store.
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -46,16 +51,21 @@ static int parse_bool(const char *element, const char *content, unsigned int *ta
     return 0;
 }
 
-// Append a local source path to the module configuration.
-static void add_local_path(wm_container_images_t *container_images, const char *path) {
-    os_realloc(container_images->local_paths, (container_images->local_paths_count + 1) * sizeof(char *), container_images->local_paths);
-    os_strdup(path, container_images->local_paths[container_images->local_paths_count]);
-    container_images->local_paths_count++;
+// Append one configured reference to the module configuration.
+static void add_reference(wm_container_images_t *container_images, const char *type, const char *value) {
+    os_realloc(container_images->references, (container_images->references_count + 1) * sizeof(wm_container_images_reference_t), container_images->references);
+    os_strdup(type, container_images->references[container_images->references_count].type);
+    os_strdup(value, container_images->references[container_images->references_count].value);
+    container_images->references_count++;
 }
 
-// Parse the <references> block: each <local> element holds a local image path.
-// Other reference types (remote registries, engine-backed local, ...) are not
-// supported yet and are reported and skipped.
+// Parse the <references> block. Every entry type of the grammar is accepted here, and
+// the module reports the ones it cannot read yet: keeping them out of the parser would
+// mean changing the configuration grammar again when they are implemented.
+//
+// An entry that cannot be used costs that entry only: an unrecognised type and an empty
+// value are both reported and skipped, so the remaining references are still configured
+// and the module still starts.
 static int parse_references(const OS_XML *xml, xml_node *references_node, wm_container_images_t *container_images) {
     xml_node **children = OS_GetElementsbyNode(xml, references_node);
     int retval = 0;
@@ -69,17 +79,24 @@ static int parse_references(const OS_XML *xml, xml_node *references_node, wm_con
             merror(XML_ELEMNULL);
             retval = OS_INVALID;
             break;
-        } else if (!strcmp(children[j]->element, XML_CI_LOCAL)) {
-            if (!children[j]->content || !strlen(children[j]->content)) {
-                merror("Empty '%s' reference at module '%s'.", XML_CI_LOCAL, WM_CONTAINER_IMAGES_CONTEXT.name);
-                retval = OS_INVALID;
-                break;
-            }
-
-            add_local_path(container_images, children[j]->content);
-        } else {
-            mwarn("Reference type '%s' is not supported yet at module '%s', ignoring it.", children[j]->element, WM_CONTAINER_IMAGES_CONTEXT.name);
         }
+
+        if (strcmp(children[j]->element, XML_CI_REF) && strcmp(children[j]->element, XML_CI_ARCHIVE) &&
+            strcmp(children[j]->element, XML_CI_LOCAL)) {
+            mwarn("No such reference type '%s' at module '%s', ignoring it.", children[j]->element, WM_CONTAINER_IMAGES_CONTEXT.name);
+            continue;
+        }
+
+        // Skipped rather than rejected, like an unrecognised entry type above. Rejecting
+        // made the whole module configuration invalid, which stops wazuh-modulesd from
+        // starting, and the control script tests every daemon before starting any of them,
+        // so one empty entry left the agent with no daemon running at all.
+        if (!children[j]->content || !strlen(children[j]->content)) {
+            mwarn("Empty '%s' reference at module '%s', ignoring it.", children[j]->element, WM_CONTAINER_IMAGES_CONTEXT.name);
+            continue;
+        }
+
+        add_reference(container_images, children[j]->element, children[j]->content);
     }
 
     OS_ClearNode(children);
@@ -95,8 +112,8 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
         container_images->enabled = 1;
         container_images->scan_on_start = 1;
         container_images->interval = WM_CONTAINER_IMAGES_DEFAULT_INTERVAL;
-        container_images->local_paths = NULL;
-        container_images->local_paths_count = 0;
+        container_images->references = NULL;
+        container_images->references_count = 0;
 
         module->context = &WM_CONTAINER_IMAGES_CONTEXT;
         os_strdup(module->context->name, module->tag);

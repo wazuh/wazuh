@@ -2,7 +2,7 @@
 
 The **Container Images** module uses the same C and C++ split used by other Wazuh modules. The C layer lives inside `wazuh-modulesd` and handles configuration, lifecycle, dynamic loading, and logging. The C++ shared library contains the scan loop and image reader implementation.
 
-> **Note:** This first development stage covers module startup, local OCI image layout discovery, metadata reading, and logging. Package extraction, persistence, event generation, and synchronization are not part of this stage.
+> **Note:** This development stage covers module startup, image discovery from saved archives and OCI image layouts, package extraction for the `dpkg` and `apk` formats, logging, and local persistence of the inventory. RPM extraction, event generation, and synchronization are not part of this stage.
 
 ---
 
@@ -17,7 +17,9 @@ The parser handles:
 - `enabled`
 - `scan_on_start`
 - `interval`
-- `references/local`
+- `references/archive`, `references/ref` and `references/local`
+
+The three entry types are all accepted, and each is stored with its type, so the module reports the ones it cannot read yet instead of the configuration rejecting them.
 
 The parser sets default values when the block is created:
 
@@ -26,7 +28,7 @@ The parser sets default values when the block is created:
 | `enabled` | `yes` |
 | `scan_on_start` | `yes` |
 | `interval` | `1h` |
-| `local_paths` | empty |
+| `references` | empty |
 
 ### **Module Lifecycle (`wm_container_images`)**
 
@@ -51,26 +53,53 @@ The `libcontainer_images.so` library exposes a small C ABI and forwards calls to
 | `ContainerImages` | Singleton facade between the C ABI and C++ implementation. |
 | `ContainerImagesImpl` | Scan loop, stop handling, and reader creation. |
 | `IImageReader` | Source-specific discovery interface. |
-| `LocalImageReader` | Local OCI image layout reader. |
+| `ArchiveImageReader` | Reads saved image archives and OCI image layout directories. |
+| `IByteStream` | Sequential byte source: a file, a member of an archive, and later a remote blob. |
+| `LayerByteStream` | Decompresses a layer blob, or passes it through when it is a plain tar. |
+| `LayerReader` | Streams the tar entries of one layer. |
+| `LayerComposer` | Composes the layers of an image into the final state of its package databases. |
+| `IPackageDbParser` | Package database format interface, implemented by `DpkgParser` and `ApkParser`. |
 
 ### **Reader Interface**
 
 The `IImageReader` interface isolates source-specific discovery from the module orchestration logic. A reader returns discovered `ImageReferenceRecord` entries and identifies its source type.
 
-The current implementation uses `LocalImageReader`. Future source types can be added by implementing the same interface.
+The current implementation uses `ArchiveImageReader`. Future source types are added by implementing the same interface, and the reference type they serve is already part of the configuration grammar.
 
-### **Local OCI Reader**
+### **Archive Reader**
 
-The local reader inspects a configured directory and identifies the local image format. OCI image layouts are read, while unsupported formats are logged and skipped.
+The reader identifies the input and reads its metadata. An OCI image layout is read from `index.json`; a saved image archive holds either that layout or the older `manifest.json` one.
 
-For OCI layouts, the reader:
+For each image found, the reader:
 
-1. Reads `index.json`.
-2. Resolves the manifest blob for each manifest entry.
-3. Reads the image configuration blob referenced by the manifest.
-4. Extracts the tag, config digest, manifest digest, and platform fields.
+1. Reads the index and resolves the manifest, following an image index for a multi-platform image. Entries whose platform is `unknown`/`unknown` (the convention buildx and containerd use for an attestation or provenance manifest) are skipped. Because the references table holds one row per reference (see [Data model](persistence.md#data-model)), an index or a saved archive naming more than one image after that filtering keeps the first deterministically and logs the rest as skipped; each image should be configured as its own `<archive>` reference to be inventoried.
+2. Reads the image configuration blob and takes the platform fields from it.
+3. Streams the layers in manifest order and keeps the package databases they carry.
+4. Composes them and parses the result into package records.
 
-Digest values read from local JSON files are validated before being used as path components.
+Digest values and member names read from image metadata are validated before being used as path components, since both come from the image being scanned.
+
+A saved archive is read twice: a tar is sequential, while the layer order comes from the metadata inside it. The first pass collects the metadata documents, the second reads the layers those documents named.
+
+### **Layer Reader and Composition**
+
+The layer reader consumes an `IByteStream` rather than a path, so the same code reads a layer from a file, from inside an archive, and later from a remote blob. `LayerByteStream` decides the compression from the blob's own first bytes rather than from the media type the image declares, which is metadata the image itself supplies. It decompresses the gzip and zstd layers the OCI image specification defines, and passes a plain tar through unchanged.
+
+A blob compressed with something else that can be recognized from its signature, `xz`, `bzip2` or `lz4`, yields no bytes at all. That is deliberate: handing the compressed bytes to the tar reader would fail its header checksum and report a well-formed layer as malformed, so the stream stays empty and the reader reports the compression by name instead.
+
+The reader parses the tar inline and supports the `ustar` prefix field, pax extended headers and GNU long names. Each entry is reported with a stream bounded to its content, and whatever the caller does not read is skipped, so an image costs the size of its package databases and nothing more.
+
+Composition follows the OverlayFS rules, applied per layer in manifest order:
+
+1. An opaque directory marker (`.wh..wh..opq`) hides what the earlier layers put under its directory.
+2. A per-file marker (`.wh.<name>`) removes that path, and everything under it when it is a directory.
+3. The files the layer itself carries override the earlier layers.
+
+Only the tracked package database paths are kept: the image filesystem is never reconstructed.
+
+### **Package Database Parsers**
+
+Each format implements `IPackageDbParser` and registers the paths it owns, so a new format is added without changing the reader or the existing parsers. `dpkg` reports the stanzas whose status is `ok installed`; `apk` is read from both of its locations. The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
 
 ---
 
@@ -103,13 +132,32 @@ flowchart TD
     F -- yes --> G[Return from start]
 ```
 
-During `scanOnce()`, the module processes each configured local path:
+During `scanOnce()`, the module processes each configured reference:
 
-1. Create a reader for the path.
-2. Detect the local image format.
-3. Discover OCI image references when supported.
-4. Log each discovered reference.
-5. Log the total number of discovered references.
+1. Read back what is stored for the reference, and create a reader for it, or report the reference type as unimplemented.
+2. Identify the input and read its image metadata.
+3. Stop there when the image still reports the configuration digest already stored: its contents cannot have changed, so its layers are not read and the stored inventory is kept.
+4. Otherwise stream the layers of each image and compose its package databases.
+5. Parse the databases into package records.
+6. Store the references and their packages, reporting what changed since the previous scan.
+7. Log the reference count and the package count.
+
+### Reads that did not happen
+
+A reader reports the outcome of its read, not just its result, because an empty result and a
+failed read mean opposite things: the first says the reference holds nothing, the second says
+nothing is known about it this time. The inventory is stored as one set covering every
+reference, so a reference left out of that set is reported as deleted.
+
+| Outcome | What the scan stores for that reference |
+|---------|------------------------------------------|
+| Read, holds images | What was read |
+| Read, holds nothing | Nothing, so its records are reported as deleted |
+| Could not be read | What is already stored, unchanged, with a warning |
+| Still holds the stored digest | What is already stored, unchanged |
+
+A scan cut short by a stop is abandoned rather than stored, for the same reason: it describes
+only the references it reached.
 
 ---
 
@@ -128,7 +176,7 @@ This stage does not generate inventory events.
 | Event type | Status | Notes |
 |------------|--------|-------|
 | Stateless alerts | Not implemented | Planned for later inventory changes. |
-| Stateful events | Not implemented | Requires persistence and synchronization support. |
+| Stateful events | Not implemented | Inventory is persisted locally; requires synchronization support. |
 | Data clean notifications | Not implemented | Requires synchronization support. |
 
 The current observable output is logging from the module scan flow.
@@ -141,17 +189,17 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 
 | Field | Description |
 |-------|-------------|
-| `source.sourceType` | Source type, such as `local`. |
+| `source.sourceType` | Reference type, `archive` at this stage. |
 | `source.location` | Source location, such as the configured path. |
-| `tag` | Reference name from the OCI annotation, when present. |
+| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. |
 | `configDigest` | Image configuration blob digest. |
 | `manifestDigest` | Manifest digest. |
 | `os` | Operating system from the image configuration. |
 | `architecture` | Architecture from the image configuration. |
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
-
-Package and layer data are not stored in this stage.
+| `tags` | Every tag the image is known by, when the source lists more than one. |
+| `packages` | The packages found in the image layers. |
 
 ---
 
@@ -168,5 +216,5 @@ Package and layer data are not stored in this stage.
 
 The implementation includes:
 
-- C++ tests for reader discovery, local format handling, scan behavior, injected reader factories, no-source scans, and disabled-module behavior.
-- C tests for configuration parsing, defaults, multiple local paths, invalid values, and unsupported reference types.
+- C++ tests for the byte streams, the tar variants, the composition rules, both package parsers, the supported inputs end to end, reader discovery, scan behavior, injected reader factories, no-source scans, and disabled-module behavior. The image inputs are built on disk by the tests.
+- C tests for configuration parsing, defaults, every reference entry type, multiple references, invalid values, and unknown entry names.

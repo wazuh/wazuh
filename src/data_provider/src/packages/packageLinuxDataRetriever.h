@@ -26,6 +26,19 @@
 void getRpmInfo(std::function<void(nlohmann::json&)> callback);
 
 /**
+ * @brief Fills a JSON object with the rpm packages of a database at a given location
+ *
+ * Reads the sqlite and ndb database formats, which is what the current rpm based
+ * distributions ship. The host package collection is unaffected: it keeps using
+ * getRpmInfo, which resolves the host database on its own.
+ *
+ * @param dbPath   Directory holding the rpm database
+ * @param callback Callback to be called for every single element being found
+ * @return True when a supported database was found and read at the location
+ */
+bool getRpmInfoFromLocation(const std::string& dbPath, std::function<void(nlohmann::json&)> callback);
+
+/**
  * @brief Get all python packages installed by rpm
  * @param pythonPackages Set to be filled with all python packages found
  */

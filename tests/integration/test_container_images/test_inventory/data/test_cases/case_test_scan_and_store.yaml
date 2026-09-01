@@ -1,0 +1,8 @@
+- name: scan_on_start_stores_inventory
+  description: A scan on start discovers the configured local image and stores it in the database
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    scan_on_start: 'yes'

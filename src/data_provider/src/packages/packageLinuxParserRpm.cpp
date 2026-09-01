@@ -15,6 +15,9 @@
 #include "sharedDefs.h"
 #include "packageLinuxRpmParserHelper.h"
 #include "packageLinuxRpmParserHelperLegacy.h"
+#include "rpmDbNdbReader.hpp"
+#include "rpmDbSqliteReader.hpp"
+#include "rpmHeaderBlobParser.hpp"
 #include "stringHelper.h"
 #include "rpmlib.h"
 
@@ -93,6 +96,38 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
             rpmDefaultQuery(callback);
         }
     }
+}
+
+bool getRpmInfoFromLocation(const std::string& dbPath, std::function<void(nlohmann::json&)> callback)
+{
+    // The database file names rpm uses for each of the two formats read here. Berkeley DB
+    // is deliberately absent: it is the format the host path above already covers, and
+    // reading it needs libdb pointed at a whole directory.
+    const auto SQLITE_DATABASE { "rpmdb.sqlite" };
+    const auto NDB_DATABASE { "Packages.db" };
+
+    const auto directory { dbPath.empty() || dbPath.back() == '/' ? dbPath : dbPath + "/" };
+
+    const auto emit
+    {
+        [&callback](const uint8_t* blob, std::size_t size)
+        {
+            const auto header { RpmHeaderBlob::parse(blob, size) };
+
+            if (header.valid)
+            {
+                auto package { PackageLinuxHelper::parseRpm(RpmHeaderBlob::toRow(header)) };
+
+                if (!package.empty())
+                {
+                    callback(package);
+                }
+            }
+        }
+    };
+
+    return RpmDbSqlite::readFromLocation(directory + SQLITE_DATABASE, emit) ||
+           RpmDbNdb::readFromLocation(directory + NDB_DATABASE, emit);
 }
 
 void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)

@@ -25,9 +25,12 @@ add_subdirectory(container_images_impl)
 
 include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
+include_directories(${SRC_FOLDER}/external/zlib/)
+include_directories(${SRC_FOLDER}/external/zstd/lib/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/container_images_impl/include)
@@ -60,4 +63,13 @@ elseif(UNIX AND NOT APPLE)
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(container_images PRIVATE ContainerImagesImpl wazuhext)
+find_library(
+  DBSYNC_LIB dbsync
+  HINTS ${CMAKE_BINARY_DIR}/lib
+  NO_DEFAULT_PATH)
+if(NOT DBSYNC_LIB)
+  set(DBSYNC_LIB dbsync)
+endif()
+
+target_link_libraries(container_images PRIVATE ContainerImagesImpl ${DBSYNC_LIB} wazuhext
+                                             ext_zstd)
