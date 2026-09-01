@@ -354,6 +354,31 @@ else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 fi
 
+# The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
+# posture the new agent boots under is exactly what's on disk now (#38684). A
+# verifying mode with no readable CA can never connect -- mirrors
+# w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
+# is gone, rather than leaving a freshly-upgraded host silently offline.
+SSL_VERIFICATION_MODE=$(xml_value agent ssl verification_mode)
+SSL_CA=$(xml_value agent ssl certificate_authorities)
+
+if [ -z "${SSL_VERIFICATION_MODE}" ]; then
+    if [ -n "${SSL_CA}" ]; then
+        SSL_VERIFICATION_MODE="certificate"
+    else
+        SSL_VERIFICATION_MODE="system"
+    fi
+fi
+
+case "${SSL_VERIFICATION_MODE}" in
+    full|certificate)
+        if [ -z "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+        ;;
+esac
+
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then

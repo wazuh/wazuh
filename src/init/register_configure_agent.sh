@@ -295,6 +295,66 @@ set_agent_option() {
 
 }
 
+# Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities> (#38684).
+# The <enrollment><server_ca_path> tag set_auto_enrollment_tag_value below still
+# writes is parsed-but-ignored by the 5.x agent -- enrollment now reuses
+# <agent><ssl> instead of its own CA -- so without this an operator who supplies a
+# CA at install time still ends up with it silently unused.
+set_agent_ssl_ca() {
+
+    ca_path="$1"
+
+    if [ -z "${ca_path}" ]; then
+        return
+    fi
+
+    if agent_option_is_set "certificate_authorities"; then
+        edit_value_tag "certificate_authorities" "${ca_path}"
+        return
+    fi
+
+    if agent_option_is_set "ssl"; then
+        # <ssl> already exists (e.g. hand-configured) but without a CA yet: insert
+        # the tag right after the opening <ssl>, same technique
+        # insert_into_agent_block uses for <agent>.
+        echo "      <certificate_authorities>${ca_path}</certificate_authorities>" > "${TMP_SERVER}"
+        awk -v payload_file="${TMP_SERVER}" '
+            BEGIN {
+                while ((getline line < payload_file) > 0) {
+                    payload = payload line "\n"
+                }
+                close(payload_file)
+            }
+            in_comment {
+                if ($0 ~ /-->/) { in_comment = 0 }
+                print
+                next
+            }
+            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
+                print
+                printf "%s", payload
+                inserted = 1
+                next
+            }
+            {
+                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+                print
+            }
+        ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+        rm -f "${TMP_INSERT}" "${TMP_SERVER}"
+        return
+    fi
+
+    {
+        echo "    <ssl>"
+        echo "      <certificate_authorities>${ca_path}</certificate_authorities>"
+        echo "    </ssl>"
+    } > "${TMP_SERVER}"
+    insert_into_agent_block "${TMP_SERVER}"
+    rm -f "${TMP_SERVER}"
+
+}
+
 delete_auto_enrollment_tag() {
 
     # Delete the configuration tag if its value is empty
@@ -620,6 +680,7 @@ main () {
         set_auto_enrollment_tag_value "manager_address" "${WAZUH_REGISTRATION_SERVER}"
         set_auto_enrollment_tag_value "port" "${WAZUH_REGISTRATION_PORT}"
         set_auto_enrollment_tag_value "server_ca_path" "${WAZUH_REGISTRATION_CA}"
+        set_agent_ssl_ca "${WAZUH_REGISTRATION_CA}"
         set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
         set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
         set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"

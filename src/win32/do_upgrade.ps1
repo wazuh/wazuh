@@ -542,6 +542,29 @@ if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
     }
 }
 
+# The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
+# posture the new agent boots under is exactly what's on disk now (#38684). A
+# verifying mode with no readable CA can never connect -- mirrors
+# w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
+# is gone, rather than leaving a freshly-upgraded host silently offline.
+$ssl_verification_mode = get_conf_value "agent" "ssl" "verification_mode"
+$ssl_ca = get_conf_value "agent" "ssl" "certificate_authorities"
+
+if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
+    if ([string]::IsNullOrEmpty($ssl_ca)) {
+        $ssl_verification_mode = "system"
+    } else {
+        $ssl_verification_mode = "certificate"
+    }
+}
+
+if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificate") {
+    if ([string]::IsNullOrEmpty($ssl_ca) -or -Not (Test-Path -PathType Leaf $ssl_ca)) {
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)' but <certificate_authorities> ('$($ssl_ca)') is missing or unreadable, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+}
+
 # Ensure no other instance of msiexec is running by stopping them
 try {
     $proc = Get-Process -Name "msiexec" -ErrorAction Stop
