@@ -30,6 +30,7 @@ target_include_directories(
     $<INSTALL_INTERFACE:include>
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${SRC_FOLDER}/external/libbpf-bootstrap/build/libbpf
     ${SRC_FOLDER}/external/libbpf-bootstrap/build/libbpf/include
     ${SRC_FOLDER}/shared/include
     ${SRC_FOLDER}/shared_modules/utils
