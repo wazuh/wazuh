@@ -43,6 +43,12 @@
 /// Deadline on one authd round trip. Only the receive side; the send side is authd's own 5 seconds.
 #define WM_MANAGER_TASK_AUTHD_TIMEOUT 10
 
+/* Agents the disconnection sweep names individually per run, and how long it may spend doing so.
+ * The count is the operator-facing bound; the elapsed budget is the backstop for a wazuh-db that is
+ * answering slowly rather than not at all. */
+#define WM_MANAGER_TASK_DEFAULT_DISCONNECT_LOG_MAX 200
+#define WM_MANAGER_TASK_SWEEP_LOG_BUDGET 30
+
 /* Watchdog budgets, in seconds. See wm_manager_task_local_watchdog_budget() for what each one is
  * measuring and why none of them is a deadline. */
 #define WM_MANAGER_TASK_DELETE_OLD_SLACK 60
@@ -134,6 +140,9 @@ void wm_manager_task_local_init(void) {
         getDefine_Int_default("wazuh_modules", "manager_task_log_daily_rotations", 1, 256,
                               WM_MANAGER_TASK_DEFAULT_DAILY_ROTATIONS);
 
+    manager_task_local_config.disconnect_log_max =
+        getDefine_Int_default("wazuh_modules", "manager_task_disconnect_log_max", 0, 1000000,
+                              WM_MANAGER_TASK_DEFAULT_DISCONNECT_LOG_MAX);
     manager_task_local_config.delete_old_batch =
         getDefine_Int_default("wazuh_modules", "manager_task_delete_old_batch", 1, 100000,
                               WM_MANAGER_TASK_DEFAULT_DELETE_OLD_BATCH);
@@ -280,7 +289,10 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
                                                                      char *error,
                                                                      size_t error_len) {
     int *disconnected = NULL;
+    time_t started = time(NULL);
     int count = 0;
+    int logged = 0;
+    int dropped = 0;
 
     w_mutex_lock(&manager_task_local_wdb_mutex);
 
@@ -305,6 +317,19 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
         return WM_MANAGER_TASK_RETRYABLE;
     }
 
+    /* THE TRANSITION IS ALREADY COMPLETE -- it was one query, and it is the part that matters. What
+     * follows is diagnostics: one wazuh-db round trip per agent, to turn an id into a name.
+     *
+     * THAT LOOP IS BOUNDED, because it is the only unbounded work a local handler would otherwise
+     * do. A partition, or a manager that was down long enough for a fleet to age out, transitions
+     * tens of thousands of agents in one sweep; at one round trip each, on the depth-1 lane this
+     * handler shares with size-based rotation, that is minutes of occupancy for log lines nobody
+     * reads individually at that volume.
+     *
+     * IT DROPS THE REMAINDER RATHER THAN RETURNING `incomplete`, which would be the wrong shape
+     * here: the ids exist only in this call's return value, so a later attempt would re-run the
+     * transition -- finding nothing left to transition -- and have no list to resume from. The
+     * count is reported instead, so a mass disconnection is never silent. */
     for (int i = 0; disconnected[i] != -1; i++) {
         cJSON *info = NULL;
         const cJSON *name = NULL;
@@ -318,11 +343,18 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
             continue;
         }
 
+        if (logged >= manager_task_local_config.disconnect_log_max ||
+            (long long)(time(NULL) - started) >= WM_MANAGER_TASK_SWEEP_LOG_BUDGET || wm_shutdown_requested) {
+            dropped++;
+            continue;
+        }
+
         /* One lookup per NEWLY DISCONNECTED agent, once per sweep. The name is the only reason for
          * the lookup -- the id is already in hand -- and OS_AG_DISCON carries both. */
         if (info = wdb_get_agent_info(disconnected[i], &manager_task_local_wdb_sock), !info) {
             mtdebug2(WM_TASK_MANAGER_LOGTAG, "Cannot read agent '%d' data; its disconnection is not logged by name.",
                      disconnected[i]);
+            logged++;
             continue;
         }
 
@@ -333,6 +365,8 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
             mtdebug1(WM_TASK_MANAGER_LOGTAG, OS_AG_DISCON, disconnected[i], name->valuestring);
         }
 
+        logged++;
+
         cJSON_Delete(info);
     }
 
@@ -342,6 +376,14 @@ wm_manager_task_result wm_manager_task_handler_agent_disconnect_sweep(__attribut
 
     if (count > 0) {
         mtinfo(WM_TASK_MANAGER_LOGTAG, "Agent disconnection sweep transitioned %d agent(s) to disconnected.", count);
+    }
+
+    if (dropped > 0) {
+        // Said out loud, at INFO: every one of these agents WAS transitioned, and only its
+        // individual log line was skipped. Silence here would read as a smaller outage than it was.
+        mtinfo(WM_TASK_MANAGER_LOGTAG,
+               "%d of them were not logged individually; the per-agent lookup is bounded to %d per sweep.", dropped,
+               manager_task_local_config.disconnect_log_max);
     }
 
     return WM_MANAGER_TASK_OK;
@@ -440,11 +482,16 @@ wm_manager_task_result wm_manager_task_handler_agent_delete_old(__attribute__((u
         return WM_MANAGER_TASK_RETRYABLE;
     }
 
-    /* The whole candidate list, every attempt. It is a single indexed column walk that wazuh-db
-     * already pages internally, so re-reading it is cheap next to one wdb_get_agent_info() per
-     * candidate -- and re-reading is what keeps the cursor honest, because agents removed by the
-     * previous attempt are simply no longer in it. */
-    candidates = wdb_get_agents_by_connection_status("disconnected", &manager_task_local_wdb_sock);
+    /* RESUMED IN THE QUERY, not by skipping rows here. The candidate list is ordered by agent id and
+     * the underlying query is `WHERE id > ?`, so handing it the cursor costs nothing and saves
+     * re-reading every agent this run has already examined. Skipping client-side instead would make
+     * a full walk quadratic in the number of disconnected agents -- at a hundred thousand of them,
+     * tens of millions of rows paged across the socket to delete the tail of the list.
+     *
+     * Re-reading from the cursor each attempt, rather than caching the list, is still what keeps
+     * the cursor honest: agents removed by the previous attempt are simply no longer in it. */
+    candidates = wdb_get_agents_by_connection_status_from(manager_task_delete_old_cursor, "disconnected",
+                                                          &manager_task_local_wdb_sock);
 
     if (!candidates) {
         wdbc_close(&manager_task_local_wdb_sock);
@@ -457,12 +504,6 @@ wm_manager_task_result wm_manager_task_handler_agent_delete_old(__attribute__((u
         cJSON *info = NULL;
         const cJSON *last_keepalive = NULL;
         const cJSON *name = NULL;
-
-        // Resume. The list is ordered by agent id, which is what makes a single integer a valid
-        // cursor over it.
-        if (candidates[i] <= manager_task_delete_old_cursor) {
-            continue;
-        }
 
         if (examined >= manager_task_local_config.delete_old_batch ||
             (long long)(time(NULL) - started) >= manager_task_local_config.delete_old_budget) {

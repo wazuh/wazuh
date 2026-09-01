@@ -74,6 +74,17 @@ CREATE INDEX IF NOT EXISTS idx_manager_tasks_type_status
 CREATE INDEX IF NOT EXISTS idx_manager_tasks_claimed
     ON MANAGER_TASKS (OWNER) WHERE STATUS = 'claimed';
 
+/* Retention. Without this, retiring terminal rows is a full table scan on every cleanup pass --
+   measured at ~10 ms per pass on a table at the 100k row ceiling, WITH NOTHING TO DELETE, and held
+   under the one per-database mutex every other tasks.db command serialises on.
+
+   Not partial, unlike the two above, because it serves both age rules: the three-status IN list and
+   the dead-letter sweep. It costs about 1.6 us per task lifecycle on the claim-and-complete path,
+   so it pays for itself below roughly twenty manager tasks per second sustained -- orders of
+   magnitude above what deletions and feed-driven scans produce. */
+CREATE INDEX IF NOT EXISTS idx_manager_tasks_status_end
+    ON MANAGER_TASKS (STATUS, END_TIME);
+
 /* There is deliberately no unique index coalescing pending rows per (AGENT_ID, TASK_TYPE): every
    path returning a claimed row to pending would then fail with SQLITE_CONSTRAINT whenever a newer
    pending row exists, which the design creates on purpose. Coalescing is done by the create

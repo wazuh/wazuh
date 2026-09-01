@@ -41,6 +41,7 @@ typedef struct _wm_manager_task_local_config {
     int disconnection_time; ///< <global><agents_disconnection_time>, seconds.
     int delete_old_agents;  ///< Retention window in minutes. 0 disables the retention sweep.
     int monitor_agents;     ///< 0 disables the retention sweep and silences the disconnection log.
+    int disconnect_log_max; ///< Agents the disconnection sweep names individually per run.
     int rotate_log;         ///< Whether either kind of log rotation happens at all.
     int compress;           ///< Whether rotated logs are gzipped.
     int keep_log_days;      ///< How long rotated logs are kept.

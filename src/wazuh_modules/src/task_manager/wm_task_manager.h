@@ -27,6 +27,15 @@ typedef enum _wm_task_type {
 // Defaults
 #define WM_TASK_DEFAULT_TTL 3600 // 1 hour
 #define WM_TASK_DEFAULT_CLEANUP_INTERVAL 300 // 5 minutes
+
+/* Manager task retention, applied by the same cleanup thread. Only TERMINAL rows are ever removed:
+ * a pending manager task is never expired by age, which is the opposite of what the TTL above does
+ * to agent tasks and is deliberate -- ageing out pending rows would destroy the long-outage work
+ * this queue exists to survive. */
+#define WM_TASK_DEFAULT_RETENTION_DAYS 7
+#define WM_TASK_DEFAULT_DEAD_LETTER_RETENTION_DAYS 30
+#define WM_TASK_DEFAULT_HISTORY_PER_SCHEDULE 20
+#define WM_TASK_DEFAULT_MAX_ROWS 100000
 #define WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES 1048576 // 1 MB
 #define WM_TASK_DEFAULT_MAX_TASKS_PER_POLL 100 // Maximum tasks returned per poll
 

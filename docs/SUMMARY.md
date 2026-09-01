@@ -182,6 +182,7 @@
     - [Configuration](ref/modules/client/configuration.md)
   - [Task Manager](ref/modules/task_manager/README.md)
     - [Configuration](ref/modules/task_manager/configuration.md)
+    - [Manager tasks](ref/modules/task_manager/manager-tasks.md)
     - [Recurring manager tasks](ref/modules/task_manager/schedules.md)
   - [Keystore](ref/modules/keystore/README.md)
 - [Upgrade](ref/upgrade.md)

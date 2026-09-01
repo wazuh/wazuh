@@ -26,9 +26,6 @@
 
 #include "shared.h"
 
-/// Longest schedule id, which is also its wire form and its primary key.
-#define WM_MANAGER_TASK_SCHEDULE_ID_LEN 64
-
 /**
  * @brief Which nodes of a cluster may spawn a schedule's instances.
  *

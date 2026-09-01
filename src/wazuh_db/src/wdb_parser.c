@@ -48,7 +48,6 @@ static const manager_task_command_t MANAGER_TASK_COMMANDS[] = {
     {"fail_manager_tasks_by_type", wdb_parse_manager_task_fail_type, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
     {"manager_task_retention", wdb_parse_manager_task_retention, w_inc_task_manager_task_result, w_inc_task_manager_task_result_time},
     {"upsert_manager_task_schedule", wdb_parse_manager_task_schedule_upsert, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
-    {"get_manager_task_schedule", wdb_parse_manager_task_schedule_get, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
     {"set_manager_task_schedule_next_run", wdb_parse_manager_task_schedule_set_next_run, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
     {"get_due_manager_task_schedules", wdb_parse_manager_task_schedule_list_due, w_inc_task_manager_task_poll, w_inc_task_manager_task_poll_time},
     {"manager_task_schedule_has_active", wdb_parse_manager_task_schedule_has_active, w_inc_task_manager_task_list, w_inc_task_manager_task_list_time},
@@ -2623,29 +2622,6 @@ int wdb_parse_manager_task_schedule_upsert(wdb_t *wdb, const cJSON *parameters, 
     return wdb_manager_task_respond(OS_SUCCESS, response, output);
 }
 
-int wdb_parse_manager_task_schedule_get(wdb_t *wdb, const cJSON *parameters, char *output) {
-    cJSON *response = NULL;
-    cJSON *schedule = NULL;
-    const char *schedule_id = NULL;
-
-    schedule_id = wdb_manager_task_opt_string(parameters, "schedule_id");
-    if (!schedule_id) {
-        snprintf(output, OS_MAXSTR + 1, "err Error get manager task schedule: 'parsing schedule_id error'");
-        return OS_INVALID;
-    }
-
-    if (wdb_manager_task_schedule_get(wdb, schedule_id, &schedule) == OS_INVALID) {
-        return wdb_manager_task_respond(OS_INVALID, NULL, output);
-    }
-
-    response = cJSON_CreateObject();
-
-    if (schedule) {
-        cJSON_AddItemToObject(response, "schedule", schedule);
-    }
-
-    return wdb_manager_task_respond(OS_SUCCESS, response, output);
-}
 
 int wdb_parse_manager_task_schedule_set_next_run(wdb_t *wdb, const cJSON *parameters, char *output) {
     const char *schedule_id = NULL;

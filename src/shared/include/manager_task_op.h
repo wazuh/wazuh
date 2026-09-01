@@ -27,11 +27,14 @@
  * lane and needs the claim, requeue and sweep commands a producer has no business issuing.
  */
 
-/* The task types a producer outside the Task Manager may create. Spelled here rather than taken
- * from the registry for the same linkage reason; the registry remains the authority on everything
- * ELSE about a type (lane, timeouts, retry policy), and a producer needs none of that. */
+/* The task type authd creates. Spelled here rather than taken from the registry for the same
+ * linkage reason; the registry remains the authority on everything ELSE about a type (lane,
+ * timeouts, retry policy), and a producer needs none of that.
+ *
+ * The vulnerability scanner names its own type instead of using a constant here: it reaches the
+ * queue through a callback supplied by modulesd rather than through this client, so it never links
+ * this file. */
 #define MANAGER_TASK_TYPE_AGENT_DELETE "agent_delete_indexer"
-#define MANAGER_TASK_TYPE_VD_SCAN      "vd_scan"
 
 /* The statuses a producer needs to name. The full set lives in the schema's CHECK constraint. */
 #define MANAGER_TASK_STATUS_PENDING "pending"

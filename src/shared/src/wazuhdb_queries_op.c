@@ -814,9 +814,12 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock) {
 }
 
 int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock) {
+    return wdb_get_agents_by_connection_status_from(0, connection_status, sock);
+}
+
+int* wdb_get_agents_by_connection_status_from(int last_id, const char* connection_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = 0;
     int *array = NULL;
     int len = 0;
     wdbc_result status = WDBC_DUE;

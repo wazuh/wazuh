@@ -214,6 +214,7 @@ lane for the whole sweep.
 | --- | --- | --- | --- |
 | `wazuh_modules.manager_task_delete_old_batch` | 200 | 1–100000 | agents examined per attempt |
 | `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds of lane occupancy per attempt |
+| `wazuh_modules.manager_task_disconnect_log_max` | 200 | 0–1000000 | agents the disconnection sweep names individually per run |
 
 The time bound is the one that binds in practice: the send timeout on the connection to
 `wazuh-authd` is a fixed five seconds, so 200 agents against a wedged `wazuh-authd` would otherwise
@@ -223,10 +224,23 @@ counting seconds bounds the occupancy.
 Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the
 lane re-claims the row and resumes where it stopped.
 
+### The option the disconnection sweep adds
+
+`manager_task_disconnect_log_max` bounds a different thing: not the work, but the *diagnostics*. The
+sweep's database transition is a single query and always completes for every agent. Turning each of
+those ids into a name for the log line is one round trip per agent, and a partition — or a manager
+that was down long enough for a fleet to age out — can transition tens of thousands at once.
+
+Past the bound, agents are still transitioned; they are just not named individually, and the run
+reports how many were skipped. Set it to `0` to transition silently. Unlike the retention sweep this
+does not return `incomplete` and resume: the ids exist only within one call, so a later attempt would
+have no list to resume from.
+
 ---
 
 ## See Also
 
+- [Manager tasks](manager-tasks.md) — the queue's own options, states and operator lookup
 - [Recurring manager tasks](schedules.md) — the three schedules and how they fire
 - [Task Manager Module](README.md) — Module overview and architecture
 - [Agent Upgrade Configuration](../agent_upgrade/configuration.md) — main producer of `remote_upgrade` tasks

@@ -1821,7 +1821,6 @@ int wdb_parse_manager_task_pending_types(wdb_t *wdb, const cJSON *parameters, ch
 int wdb_parse_manager_task_fail_type(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_retention(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_schedule_upsert(wdb_t *wdb, const cJSON *parameters, char *output);
-int wdb_parse_manager_task_schedule_get(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_schedule_set_next_run(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_schedule_list_due(wdb_t *wdb, const cJSON *parameters, char *output);
 int wdb_parse_manager_task_schedule_has_active(wdb_t *wdb, const cJSON *parameters, char *output);

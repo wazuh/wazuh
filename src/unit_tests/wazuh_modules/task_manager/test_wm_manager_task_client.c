@@ -313,6 +313,172 @@ void test_claimed_without_an_owner_is_the_startup_form(void **state) {
     cJSON_Delete(tasks);
 }
 
+/* wm_manager_task_client_spawn */
+
+void test_spawn_stamps_the_slot_and_dates_the_row_from_it(void **state) {
+    wm_manager_task_client *client = *state;
+    char *outcome = NULL;
+
+    will_return(__wrap_time, 9000);
+
+    /* next_attempt_at is the SLOT, not `now`. They are the same on a punctual spawn and differ after
+     * downtime, where the slot is in the past -- and the slot is the honest answer, or a catch-up
+     * run would look punctual in the history the SCHEDULED_RUN_AT index exists to serve.
+     *
+     * No coalesce and no max_pending: overlap-skip already guarantees at most one pending instance
+     * per schedule, so a second bound would enforce what the first one does. */
+    expect_wdb_call("task create_manager_task "
+                    "{\"task_id\":\"sched-id\",\"task_type\":\"log_rotate_daily\","
+                    "\"payload\":\"{\\\"schedule_id\\\":\\\"log_rotate_daily\\\",\\\"scheduled_run_at\\\":8000}\","
+                    "\"create_time\":9000,\"schedule_id\":\"log_rotate_daily\",\"scheduled_run_at\":8000,"
+                    "\"next_attempt_at\":8000}",
+                    "ok {\"error\":0,\"result\":\"created\",\"task_id\":\"sched-id\"}", 0);
+
+    assert_int_equal(wm_manager_task_client_spawn(client, wm_manager_task_registry_get("log_rotate_daily"),
+                                                  "sched-id", "log_rotate_daily", 8000, &outcome),
+                     0);
+    assert_string_equal(outcome, "created");
+
+    os_free(outcome);
+}
+
+void test_spawn_reports_a_collision_rather_than_failing(void **state) {
+    wm_manager_task_client *client = *state;
+    char *outcome = NULL;
+
+    will_return(__wrap_time, 9000);
+
+    // The retry after a crash between the insert and the slot advance: the id is derived from the
+    // slot, so it re-derives the same one and collides. That is the design working, not an error.
+    expect_wdb_call("task create_manager_task "
+                    "{\"task_id\":\"sched-id\",\"task_type\":\"log_rotate_daily\","
+                    "\"payload\":\"{\\\"schedule_id\\\":\\\"log_rotate_daily\\\",\\\"scheduled_run_at\\\":8000}\","
+                    "\"create_time\":9000,\"schedule_id\":\"log_rotate_daily\",\"scheduled_run_at\":8000,"
+                    "\"next_attempt_at\":8000}",
+                    "ok {\"error\":0,\"result\":\"collided\",\"task_id\":\"sched-id\"}", 0);
+
+    assert_int_equal(wm_manager_task_client_spawn(client, wm_manager_task_registry_get("log_rotate_daily"),
+                                                  "sched-id", "log_rotate_daily", 8000, &outcome),
+                     0);
+    assert_string_equal(outcome, "collided");
+
+    os_free(outcome);
+}
+
+void test_spawn_rejects_missing_arguments(void **state) {
+    wm_manager_task_client *client = *state;
+
+    assert_int_equal(wm_manager_task_client_spawn(client, NULL, "id", "sched", 1, NULL), -1);
+    assert_int_equal(wm_manager_task_client_spawn(client, wm_manager_task_registry_get("log_rotate_daily"), NULL,
+                                                  "sched", 1, NULL),
+                     -1);
+    assert_int_equal(wm_manager_task_client_spawn(client, wm_manager_task_registry_get("log_rotate_daily"), "id", NULL,
+                                                  1, NULL),
+                     -1);
+}
+
+/* The schedule wrappers */
+
+void test_schedule_upsert_returns_the_previous_row(void **state) {
+    wm_manager_task_client *client = *state;
+    cJSON *previous = NULL;
+
+    expect_wdb_call("task upsert_manager_task_schedule "
+                    "{\"schedule_id\":\"agent_delete_old\",\"next_run_at\":1900,\"enabled\":true}",
+                    "ok {\"error\":0,\"previous\":{\"next_run_at\":500,\"enabled\":0}}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_upsert(client, "agent_delete_old", 1900, true, &previous), 0);
+
+    // The previous ENABLED is the whole reason this round trip returns anything: a
+    // disabled-to-enabled transition can straddle a restart, and nothing else makes it observable.
+    assert_non_null(previous);
+    assert_int_equal(cJSON_GetObjectItem(previous, "enabled")->valueint, 0);
+
+    cJSON_Delete(previous);
+}
+
+void test_schedule_upsert_reports_a_new_schedule_as_having_no_previous(void **state) {
+    wm_manager_task_client *client = *state;
+    cJSON *previous = NULL;
+
+    expect_wdb_call("task upsert_manager_task_schedule "
+                    "{\"schedule_id\":\"agent_delete_old\",\"next_run_at\":1900,\"enabled\":false}",
+                    "ok {\"error\":0}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_upsert(client, "agent_delete_old", 1900, false, &previous), 0);
+
+    // Absent, not empty: a schedule with no row cannot be undergoing a transition.
+    assert_null(previous);
+}
+
+void test_schedule_advance_writes_the_new_slot(void **state) {
+    wm_manager_task_client *client = *state;
+
+    expect_wdb_call("task set_manager_task_schedule_next_run "
+                    "{\"schedule_id\":\"agent_disconnect_sweep\",\"next_run_at\":2800}",
+                    "ok {\"error\":0}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_advance(client, "agent_disconnect_sweep", 2800), 0);
+}
+
+void test_schedule_due_returns_the_list(void **state) {
+    wm_manager_task_client *client = *state;
+    cJSON *schedules = NULL;
+
+    expect_wdb_call("task get_due_manager_task_schedules {\"now\":5000}",
+                    "ok {\"error\":0,\"schedules\":[{\"schedule_id\":\"log_rotate_daily\",\"next_run_at\":4000}]}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_due(client, 5000, &schedules), 0);
+    assert_int_equal(cJSON_GetArraySize(schedules), 1);
+
+    cJSON_Delete(schedules);
+}
+
+void test_schedule_due_treats_a_missing_list_as_a_failure(void **state) {
+    wm_manager_task_client *client = *state;
+    cJSON *schedules = NULL;
+
+    // An answer without the field is a protocol break, not an empty result: an empty due set comes
+    // back as an empty array. Reading it as "nothing due" would hide it forever.
+    expect_wdb_call("task get_due_manager_task_schedules {\"now\":5000}", "ok {\"error\":0}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_due(client, 5000, &schedules), -1);
+    assert_null(schedules);
+}
+
+void test_schedule_active_reads_the_overlap_flag(void **state) {
+    wm_manager_task_client *client = *state;
+    bool active = false;
+
+    expect_wdb_call("task manager_task_schedule_has_active {\"schedule_id\":\"agent_delete_old\"}",
+                    "ok {\"error\":0,\"active\":true}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_active(client, "agent_delete_old", &active), 0);
+    assert_true(active);
+}
+
+void test_schedule_active_defaults_to_not_active(void **state) {
+    wm_manager_task_client *client = *state;
+    bool active = true;
+
+    expect_wdb_call("task manager_task_schedule_has_active {\"schedule_id\":\"agent_delete_old\"}",
+                    "ok {\"error\":0,\"active\":false}", 0);
+
+    assert_int_equal(wm_manager_task_client_schedule_active(client, "agent_delete_old", &active), 0);
+    assert_false(active);
+}
+
+void test_schedule_wrappers_reject_missing_arguments(void **state) {
+    wm_manager_task_client *client = *state;
+    bool active = false;
+
+    assert_int_equal(wm_manager_task_client_schedule_upsert(client, NULL, 1, true, NULL), -1);
+    assert_int_equal(wm_manager_task_client_schedule_advance(client, NULL, 1), -1);
+    assert_int_equal(wm_manager_task_client_schedule_due(client, 1, NULL), -1);
+    assert_int_equal(wm_manager_task_client_schedule_active(client, NULL, &active), -1);
+    assert_int_equal(wm_manager_task_client_schedule_active(client, "agent_delete_old", NULL), -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_manager_task_client_call
@@ -338,6 +504,22 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_poll_returns_the_type_list, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_claimed_pages_from_a_cursor, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_claimed_without_an_owner_is_the_startup_form, test_setup, test_teardown),
+        // wm_manager_task_client_spawn
+        cmocka_unit_test_setup_teardown(test_spawn_stamps_the_slot_and_dates_the_row_from_it, test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_spawn_reports_a_collision_rather_than_failing, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_spawn_rejects_missing_arguments, test_setup, test_teardown),
+        // The schedule wrappers
+        cmocka_unit_test_setup_teardown(test_schedule_upsert_returns_the_previous_row, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_upsert_reports_a_new_schedule_as_having_no_previous, test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_advance_writes_the_new_slot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_due_returns_the_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_due_treats_a_missing_list_as_a_failure, test_setup,
+                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_active_reads_the_overlap_flag, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_active_defaults_to_not_active, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_schedule_wrappers_reject_missing_arguments, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

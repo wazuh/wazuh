@@ -193,6 +193,7 @@ records its outcome.
 
 ## See Also
 
+- [Manager tasks](manager-tasks.md) — the queue these run on: states, retry, retention, operator lookup
 - [Task Manager Configuration Reference](configuration.md)
 - [Task Manager](README.md)
 - [Authd](../authd/README.md) — executes the removals `agent_delete_old` requests

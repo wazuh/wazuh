@@ -42,6 +42,20 @@ void* wm_task_manager_clean_tasks(void *arg) {
     int cleanup_interval = (config->cleanup_interval > 0) ? config->cleanup_interval : WM_TASK_DEFAULT_CLEANUP_INTERVAL;
     int task_ttl = (config->task_ttl > 0) ? config->task_ttl : WM_TASK_DEFAULT_TTL;
 
+    /* Manager task retention. Read once, like every other bound this thread applies, so a run
+     * cannot straddle a configuration change. Dead letters outlive ordinary terminal rows because
+     * they are the only record of work that was given up on; the row ceiling is the backstop for a
+     * fleet that produces terminal rows faster than the age rules retire them. */
+    int retention_days = getDefine_Int_default("wazuh_modules", "manager_task_retention_days", 1, 3650,
+                                               WM_TASK_DEFAULT_RETENTION_DAYS);
+    int dead_letter_retention_days = getDefine_Int_default("wazuh_modules",
+                                                           "manager_task_dead_letter_retention_days", 1, 3650,
+                                                           WM_TASK_DEFAULT_DEAD_LETTER_RETENTION_DAYS);
+    int history_per_schedule = getDefine_Int_default("wazuh_modules", "manager_task_history_per_schedule", 1, 100000,
+                                                     WM_TASK_DEFAULT_HISTORY_PER_SCHEDULE);
+    int max_rows = getDefine_Int_default("wazuh_modules", "manager_task_max_rows", 1, 100000000,
+                                         WM_TASK_DEFAULT_MAX_ROWS);
+
     while (!wm_shutdown_requested) {
         time_t now = time(0);
         time_t sleep_time = 0;
@@ -63,6 +77,52 @@ void* wm_task_manager_clean_tasks(void *arg) {
             cJSON_AddNumberToObject(parameters, "timestamp", (now - 86400));
 
             if (wdb_response = wm_task_manager_send_message_to_wdb("delete_old", parameters, &error_code), wdb_response) {
+                cJSON_Delete(wdb_response);
+            }
+
+            cJSON_Delete(parameters);
+
+            /* MANAGER_TASKS is retired on the same tick, by the same thread, because it lives in
+             * the same database and nothing else prunes it. Without this every completed,
+             * superseded and dead-lettered manager task accumulates forever, and the indexes
+             * authd's pending-purge check seeks on grow with them.
+             *
+             * Its rules are not the ones above: a manager task is retired by the time it REACHED a
+             * terminal state, never by age since creation, and a pending row is never expired at
+             * all -- ageing one out would destroy exactly the long-outage work the queue exists to
+             * survive. Hence a separate command rather than another `ttl`. */
+            parameters = cJSON_CreateObject();
+            cJSON_AddNumberToObject(parameters, "terminal_before", (double)(now - ((time_t)retention_days * 86400)));
+            cJSON_AddNumberToObject(parameters, "dead_letter_before",
+                                    (double)(now - ((time_t)dead_letter_retention_days * 86400)));
+            cJSON_AddNumberToObject(parameters, "history_per_schedule", history_per_schedule);
+            cJSON_AddNumberToObject(parameters, "max_rows", max_rows);
+
+            if (wdb_response = wm_task_manager_send_message_to_wdb("manager_task_retention", parameters, &error_code),
+                wdb_response) {
+                /* The answer is read rather than discarded, for one case: the ceiling being reached
+                 * and NOT met. Every rule above removes only terminal rows, so a table still over
+                 * the ceiling afterwards is one whose remainder is pending, claimed or dead-lettered
+                 * -- a backlog that is not draining, or dead letters nobody has looked at. Silence
+                 * there would let the table grow past its bound with nothing to show for it. */
+                const cJSON *remaining = cJSON_GetObjectItem(wdb_response, "remaining");
+                const cJSON *by_age = cJSON_GetObjectItem(wdb_response, "by_age");
+                const cJSON *by_schedule = cJSON_GetObjectItem(wdb_response, "by_schedule");
+                const cJSON *by_ceiling = cJSON_GetObjectItem(wdb_response, "by_ceiling");
+
+                if (remaining && cJSON_IsNumber(remaining) && remaining->valueint > max_rows) {
+                    mtwarn(WM_TASK_MANAGER_LOGTAG,
+                           "Manager tasks still hold %d rows after retention, above the %d row ceiling: the excess is "
+                           "work that has not finished or dead letters that have not been retired.",
+                           remaining->valueint, max_rows);
+                } else if (by_age && by_schedule && by_ceiling && cJSON_IsNumber(by_age) &&
+                           cJSON_IsNumber(by_schedule) && cJSON_IsNumber(by_ceiling) &&
+                           (by_age->valueint || by_schedule->valueint || by_ceiling->valueint)) {
+                    mtdebug2(WM_TASK_MANAGER_LOGTAG,
+                             "Manager task retention removed %d row(s) by age, %d by schedule history, %d by ceiling.",
+                             by_age->valueint, by_schedule->valueint, by_ceiling->valueint);
+                }
+
                 cJSON_Delete(wdb_response);
             }
 
