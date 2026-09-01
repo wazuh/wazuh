@@ -775,7 +775,8 @@ private:
                 wazuh::uds_http::Method::Get,
                 "/",
                 [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
                     responder->send(
                         wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok","module":"remoted_module"})"));
                 },

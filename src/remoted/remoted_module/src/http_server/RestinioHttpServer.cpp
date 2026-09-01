@@ -485,7 +485,8 @@ namespace
                         std::equal(g.name.begin(),
                                    g.name.end(),
                                    field.name().begin(),
-                                   [](char a, char b) {
+                                   [](char a, char b)
+                                   {
                                        return std::tolower(static_cast<unsigned char>(a)) ==
                                               std::tolower(static_cast<unsigned char>(b));
                                    }))
