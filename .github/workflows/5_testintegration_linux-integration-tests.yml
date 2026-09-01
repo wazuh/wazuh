@@ -134,10 +134,12 @@ jobs:
           # opt-out in their own templates -- see qa-integration-framework#835). RemotedSimulator
           # became lenient (qa-integration-framework#840): it now accepts the default prefix too,
           # so this opt-out is no longer required for correctness, only left in place because
-          # dropping it here would change the default for suites (sca, syscollector, github,
-          # office365, and any other that inherits the package's ossec.conf) that were not
-          # individually verified against the real default prefix -- widen that verification
-          # before changing this value.
+          # dropping it here would change the default for suites (github, office365, and any
+          # other that inherits the package's ossec.conf without its own <endpoint> override
+          # -- sca and syscollector are not among them: this same PR gave every one of their
+          # templates an explicit default-prefix <endpoint>) that were not individually
+          # verified against the real default prefix -- widen that verification before
+          # changing this value.
           sudo WAZUH_MANAGER_ENDPOINT="127.0.0.1:1517/" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
 
           sudo awk '
