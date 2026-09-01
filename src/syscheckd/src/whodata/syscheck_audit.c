@@ -254,6 +254,24 @@ end:
     return retval;
 }
 
+void audit_remove_plugin_config(void) {
+    const char *plugin_dirs[] = { PLUGINS_DIR_AUDIT, PLUGINS_OLD_DIR_AUDISP };
+    char plugin_path[PATH_MAX] = {'\0'};
+
+    for (size_t i = 0; i < sizeof(plugin_dirs) / sizeof(plugin_dirs[0]); i++) {
+        if (snprintf(plugin_path, sizeof(plugin_path), "%s/%s", plugin_dirs[i], AUDIT_CONF_LINK) >=
+            (int)sizeof(plugin_path)) {
+            continue; // LCOV_EXCL_LINE
+        }
+
+        if (unlink(plugin_path) == 0) {
+            minfo(FIM_AUDIT_PLUGIN_REMOVED, plugin_path);
+        } else if (errno != ENOENT) {
+            merror(UNLINK_ERROR, plugin_path, errno, strerror(errno));
+        }
+    }
+}
+
 
 // Init Audit events socket
 int init_auditd_socket(void) {
