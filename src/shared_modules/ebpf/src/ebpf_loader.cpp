@@ -216,6 +216,7 @@ int EbpfLoader::onRingSample(void* ctx, void* data, size_t size) {
     event.identity.comm = toString(raw->comm, sizeof(raw->comm));
     event.identity.parent_comm = toString(raw->parent_name, sizeof(raw->parent_name));
     event.identity.cwd = toString(raw->cwd, sizeof(raw->cwd));
+    event.identity.parent_cwd = toString(raw->parent_cwd, sizeof(raw->parent_cwd));
     event.inode = raw->inode;
     event.dev = raw->dev;
     event.path = toString(raw->filename, sizeof(raw->filename));

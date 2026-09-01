@@ -79,6 +79,7 @@ struct ProcessIdentity {
     std::string comm;
     std::string parent_comm;
     std::string cwd;
+    std::string parent_cwd;
 };
 
 /**
