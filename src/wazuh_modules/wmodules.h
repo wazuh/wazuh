@@ -163,6 +163,11 @@ long int wm_read_http_size(char *header);
 // Reads an HTTP header and extracts an element from a regex
 char* wm_read_http_header_element(char *header, char *regex);
 
+/* Check that a URL is HTTPS and, when host is not NULL, that it points to that host.
+ * Returns true if the URL is allowed, false otherwise.
+ */
+bool wm_url_is_allowed(const char *url, const char *host);
+
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE
  * Returns 0 if success, or 1 if fail.
