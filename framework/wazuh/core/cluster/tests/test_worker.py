@@ -1322,21 +1322,21 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
         {'shared': {'etc/shared/agent.conf': {'merged': False, 'cluster_item_key': 'nonexistent/'}},
          'missing': {}, 'extra': {}},
         '/tmp', sec_cluster_items)
-    assert any("Invalid cluster_item_key: nonexistent/" in e for e in result['error']['shared'])
+    assert any("3061" in e and "nonexistent/" in e for e in result['error']['shared'])
 
     # Non-merged: path outside declared cluster_item_key directory
     result = worker_handler.update_master_files_in_worker(
         {'shared': {'active-response/bin/evil.sh': {'merged': False, 'cluster_item_key': 'etc/shared/'}},
          'missing': {}, 'extra': {}},
         '/tmp', sec_cluster_items)
-    assert any("outside allowed directory" in e for e in result['error']['shared'])
+    assert any("3062" in e and "outside allowed directory" in e for e in result['error']['shared'])
 
     # Extra: invalid cluster_item_key (must not crash on directories_to_check generator)
     result = worker_handler.update_master_files_in_worker(
         {'shared': {}, 'missing': {},
          'extra': {'etc/shared/agent.conf': {'cluster_item_key': 'nonexistent/'}}},
         '/tmp', sec_cluster_items)
-    assert any("Invalid cluster_item_key: nonexistent/" in e
+    assert any("3061" in e and "nonexistent/" in e
                for e in result['debug2']['etc/shared/agent.conf'])
 
     # Extra: path outside declared cluster_item_key directory
@@ -1344,7 +1344,7 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
         {'shared': {}, 'missing': {},
          'extra': {'active-response/bin/evil.sh': {'cluster_item_key': 'etc/shared/'}}},
         '/tmp', sec_cluster_items)
-    assert any("outside allowed directory" in e
+    assert any("3062" in e and "outside allowed directory" in e
                for e in result['debug2']['active-response/bin/evil.sh'])
 
 

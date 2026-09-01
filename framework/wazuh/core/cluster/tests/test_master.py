@@ -1949,7 +1949,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
         timeout=0
     )
     assert len(result['errors_per_folder']['queue/testing/']) > 0
-    assert any('outside allowed directory' in str(e) or '3022' in str(e)
+    assert any('3062' in str(e) and 'outside allowed directory' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
 
     basename_mock.return_value = "excluded.txt"
@@ -1964,7 +1964,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
         timeout=0
     )
     assert len(result['errors_per_folder']['queue/testing/']) > 0
-    assert any('excluded list' in str(e) or '3022' in str(e)
+    assert any('3062' in str(e) and 'excluded list' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
 
 
@@ -1994,7 +1994,7 @@ def test_master_handler_process_files_from_worker_rejects_non_extra_valid_item(s
     )
 
     safe_move_mock.assert_not_called()
-    assert any('not allowed to be synced' in str(e) or '3022' in str(e) for e in result['generic_errors'])
+    assert any('3062' in str(e) and 'not allowed to be synced' in str(e) for e in result['generic_errors'])
 
 
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
@@ -2027,4 +2027,4 @@ def test_master_handler_process_files_from_worker_normalizes_path_before_exclude
 
     safe_move_mock.assert_not_called()
     assert len(result['errors_per_folder']['etc/']) > 0
-    assert any('excluded list' in str(e) or '3022' in str(e) for e in result['errors_per_folder']['etc/'])
+    assert any('3062' in str(e) and 'excluded list' in str(e) for e in result['errors_per_folder']['etc/'])
