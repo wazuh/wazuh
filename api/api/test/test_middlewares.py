@@ -8,6 +8,7 @@ import binascii
 import jwt
 import pytest
 
+from starlette.requests import Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
@@ -17,9 +18,73 @@ from connexion.exceptions import ProblemException, OAuthProblem
 from freezegun import freeze_time
 
 from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_attempt, UNKNOWN_USER_STRING, \
-    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
-from api.api_exception import ExpectFailedException
+    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, \
+    CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
+    CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body
+from api.alogging import MAX_LOGGED_BODY_SIZE
+from api.api_exception import ExpectFailedException, PayloadTooLargeException
+
+def build_request(path='/agents', method='POST', content_length=None, receive=None):
+    """Build a real starlette request, so what the middlewares read from the socket is observable.
+
+    Parameters
+    ----------
+    path : str
+        Request path.
+    method : str
+        HTTP method.
+    content_length : int
+        Value of the `Content-Length` header. Omitted when None, as a chunked request would.
+    receive : Callable
+        ASGI receive channel.
+
+    Returns
+    -------
+    Request
+        HTTP request.
+    """
+    headers = [(b'content-type', b'application/json')]
+    if content_length is not None:
+        headers.append((b'content-length', str(content_length).encode()))
+
+    return Request(
+        {
+            'type': 'http',
+            'http_version': '1.1',
+            'method': method,
+            'scheme': 'https',
+            'server': ('localhost', 55000),
+            'client': ('ip', 1234),
+            'root_path': '',
+            'path': path,
+            'raw_path': path.encode(),
+            'query_string': b'',
+            'headers': headers,
+        },
+        receive or AsyncMock(side_effect=AssertionError('the request body was read')),
+    )
+
+
+def chunked_receive(chunk, chunks):
+    """Build an ASGI receive channel that streams `chunk` `chunks` times.
+
+    Parameters
+    ----------
+    chunk : bytes
+        Body chunk to deliver on every call.
+    chunks : int
+        Number of chunks the body is split into.
+
+    Returns
+    -------
+    AsyncMock
+        ASGI receive channel.
+    """
+    return AsyncMock(side_effect=[
+        {'type': 'http.request', 'body': chunk, 'more_body': index < chunks - 1}
+        for index in range(chunks)
+    ])
+
 
 @pytest.fixture
 def mock_req():
@@ -463,6 +528,7 @@ async def test_wazuh_access_logger_middleware():
 @pytest.mark.asyncio
 async def test_wazuh_access_logger_middleware_recursion_error():
     mock_req = AsyncMock()
+    mock_req.headers = {'content-length': '10'}
     mock_req.body = AsyncMock(return_value=b'{"a": "b"}')
     mock_req.json = AsyncMock(side_effect=RecursionError)
 
@@ -485,6 +551,213 @@ async def test_wazuh_access_logger_middleware_recursion_error():
         assert resp.status_code == 400
         assert resp.body == b'error'
         assert resp.media_type == "application/json"
+
+
+@pytest.mark.parametrize('content_length, expected', [
+    ('1024', 1024),
+    ('0', 0),
+    (None, None),
+    ('not-a-number', None),
+])
+def test_get_declared_content_length(content_length, expected):
+    """Check that the declared body length is read from the header and malformed values ignored."""
+    request = MagicMock()
+    request.headers = {'content-length': content_length} if content_length is not None else {}
+
+    assert get_declared_content_length(request) == expected
+
+
+@pytest.mark.asyncio
+async def test_read_capped_body():
+    """Check that a body within the limit is read in full and cached for the rest of the stack."""
+    request = build_request(receive=chunked_receive(b'a' * 16, 4))
+
+    assert await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, 'too large') == b'a' * 64
+    # Cached the way `Request.body()` caches it, so the body is still replayed downstream.
+    assert request._body == b'a' * 64
+    # Reading it again does not touch the socket.
+    assert await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, 'too large') == b'a' * 64
+
+
+@pytest.mark.asyncio
+async def test_read_capped_body_ko():
+    """Check that `read_capped_body` abandons the stream instead of buffering the whole body."""
+    # Ten times the limit, in chunks of an eighth of it.
+    chunk_size = AUTH_CONTEXT_MAX_PAYLOAD_SIZE // 8
+    receive = chunked_receive(b'a' * chunk_size, 80)
+    request = build_request(receive=receive)
+
+    with pytest.raises(PayloadTooLargeException) as exc_info:
+        await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, 'too large')
+
+    assert exc_info.value.status == 413
+    assert exc_info.value.detail == 'too large'
+    # It stopped on the chunk that crossed the limit, not at the end of the body.
+    assert receive.await_count == 9
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_does_not_read_oversized_body():
+    """Check that the access logger does not read a body too large to be logged.
+
+    This is the root cause of the memory footprint an unauthenticated caller used to be able to
+    set: the middleware is the outermost one, so a body buffered and deserialised here is paid for
+    before the security handler has been consulted. `build_request` fails the read, so the
+    assertion is that nothing is pulled from the socket at all.
+    """
+    response = MagicMock()
+    response.status_code = 401
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(content_length=9 * 1024 * 1024)
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log') as mock_access_log, \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert not hasattr(request, '_body')
+    assert not hasattr(request, '_json')
+    mock_access_log.assert_called_once()
+
+
+@pytest.mark.parametrize('content_length', [
+    None,  # A chunked request declares no length, so there is no bound on what reading would cost.
+    0,
+])
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_does_not_read_undeclared_body(content_length):
+    """Check that the access logger only reads a body whose size the request declares."""
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(content_length=content_length)
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert not hasattr(request, '_json')
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_reads_loggable_body():
+    """Check that a body small enough to be logged is still parsed before the stream is consumed."""
+    body = b'{"a": "b"}'
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(content_length=len(body), receive=chunked_receive(body, 1))
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert request._json == {'a': 'b'}
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_invalid_body():
+    """Check that an unparsable body is left for the endpoint to reject."""
+    body = b'{"a": '
+    response = MagicMock()
+    response.status_code = 400
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(content_length=len(body), receive=chunked_receive(body, 1))
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert not hasattr(request, '_json')
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_rejects_declared_length():
+    """Check that an oversized auth context is refused at the header, before it is read."""
+    dispatch_mock = AsyncMock()
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=9 * 1024 * 1024)
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with pytest.raises(PayloadTooLargeException) as exc_info:
+        await middleware.dispatch(request=request, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 413
+    assert exc_info.value.detail == f'Auth context payload exceeds the maximum allowed size of ' \
+                                   f'{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.'
+    dispatch_mock.assert_not_awaited()
+    assert not hasattr(request, '_body')
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_caps_undeclared_length():
+    """Check that an auth context declaring no length is capped as it is read, not afterwards."""
+    chunk_size = AUTH_CONTEXT_MAX_PAYLOAD_SIZE // 8
+    receive = chunked_receive(b'a' * chunk_size, 80)
+    dispatch_mock = AsyncMock()
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, receive=receive)
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with pytest.raises(PayloadTooLargeException) as exc_info:
+        await middleware.dispatch(request=request, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 413
+    dispatch_mock.assert_not_awaited()
+    assert receive.await_count == 9
+
+
+@pytest.mark.parametrize('path, content_length, receive_chunks', [
+    # An auth context within the limit: nothing to read when the length is declared, capped read
+    # when it is not.
+    (RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, 0),
+    (RUN_AS_LOGIN_ENDPOINT, None, 1),
+    # Every other endpoint is left alone, whatever it declares.
+    ('/agents', 9 * 1024 * 1024, 0),
+    ('/agents', None, 0),
+])
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_allowed(path, content_length, receive_chunks):
+    """Check that the auth context limit does not stand in the way of the requests it does not own."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    receive = chunked_receive(b'{"a": "b"}', 1) if receive_chunks else None
+    request = build_request(path=path, content_length=content_length, receive=receive)
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+    assert (receive.await_count if receive else 0) == receive_chunks
+
+
+@pytest.mark.parametrize('context, expected_body', [
+    ({'user': 'wazuh', 'token_info': {}}, {'field': 'value'}),
+    ({'token_info': {'rbac_policies': {}}}, {'field': 'value'}),
+    # Nobody vouched for this payload, so it must not reach api.log or api.json.
+    ({}, {}),
+])
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_omits_unauthenticated_body(context, expected_body, mock_req):
+    """Check that the body of a request that never authenticated is not logged."""
+    response = MagicMock()
+    response.status_code = 200
+    mock_req._json = MagicMock()
+    mock_req.json = AsyncMock(return_value={'field': 'value'})
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = context
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+               return_value=('basic', 'wazuh:pwd')), \
+         patch('api.middlewares.base64.b64decode', return_value=b'wazuh:pwd'):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == expected_body
 
 
 @pytest.mark.asyncio

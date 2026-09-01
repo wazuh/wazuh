@@ -156,7 +156,16 @@ def start(params: dict):
                 validate_responses=False
                 )
 
-    # Maximum body size that the API can accept (bytes)
+    # Maximum body size that the API can accept (bytes). This middleware caps the bodies read
+    # below it, by wrapping the ASGI receive channel, so it has to sit outside everything that reads
+    # one: at its default position it ended up second-innermost, and request validation consumed the
+    # whole payload before the ceiling was ever consulted. It is registered first among the
+    # BEFORE_SECURITY middlewares so its wrapper encloses all of them, and that position is still
+    # inside the exception middleware, so ContentSizeExceeded is still formatted as a 413.
+    if api_conf['max_upload_size']:
+        app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_SECURITY,
+                           max_content_size=api_conf['max_upload_size'])
+        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckExpectHeaderMiddleware)
@@ -164,9 +173,6 @@ def start(params: dict):
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-    if api_conf['max_upload_size']:
-        app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
-        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
 
     # Enable CORS
     if api_conf['cors']['enabled']:

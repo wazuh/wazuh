@@ -11,6 +11,8 @@ import base64
 import jwt
 import asyncio
 
+from typing import Optional
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -24,7 +26,7 @@ from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
-from api.alogging import custom_logging
+from api.alogging import MAX_LOGGED_BODY_SIZE, custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 from api.controllers.util import build_recursion_error_response
@@ -58,12 +60,84 @@ general_request_counter = 0
 general_current_time = None
 
 
+def get_declared_content_length(request: Request) -> Optional[int]:
+    """Get the body size the request declares in its `Content-Length` header.
+
+    The header is readable before a single byte of the body is consumed, and the ASGI server never
+    delivers more body than the request declares, so it is a sound upper bound on what reading the
+    body would cost. Requests that declare no length at all, i.e. chunked transfer encoding, have to
+    be capped while they are read instead.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    Optional[int]
+        Declared body length, or None when the header is absent or not a valid integer.
+    """
+    try:
+        return int(request.headers.get('content-length'))
+    except (TypeError, ValueError):
+        return None
+
+
+async def read_capped_body(request: Request, limit: int, detail: str) -> bytes:
+    """Read the request body, abandoning the stream as soon as `limit` bytes are exceeded.
+
+    `Request.body()` materialises the whole payload and leaves the caller to measure it afterwards,
+    so an oversized body has already been paid for by the time it is refused. This pulls the stream
+    chunk by chunk and stops reading from the socket at the limit instead.
+
+    A body that fits is cached in the request the same way `Request.body()` caches it, so it is
+    still replayed to the rest of the middleware stack.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    limit : int
+        Maximum body size allowed, in bytes.
+    detail : str
+        Detail reported in the exception when the body is too large.
+
+    Returns
+    -------
+    bytes
+        Request body.
+
+    Raises
+    ------
+    PayloadTooLargeException
+        If the body exceeds `limit` bytes.
+    """
+    if not hasattr(request, '_body'):
+        chunks = []
+        read = 0
+        async for chunk in request.stream():
+            read += len(chunk)
+            if read > limit:
+                raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
+            chunks.append(chunk)
+        request._body = b''.join(chunks)
+
+    if len(request._body) > limit:
+        raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
+
+    return request._body
+
+
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
 
     time_diff = time.time() - prev_time
 
     context = request.context if hasattr(request, 'context') else {}
+    # connexion populates the context with the caller's identity only once the security handler has
+    # accepted the request, so an empty context means the request never authenticated.
+    authenticated = bool(context.get('user', None) or context.get('token_info', None))
     headers = request.headers if hasattr(request, 'headers') else {}
     path = request.scope.get('path', '') if hasattr(request, 'scope') else ''
     host = request.client.host if hasattr(request, 'client') else ''
@@ -118,6 +192,13 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
+
+    # A request body is caller-controlled content, and it is written to both api.log and api.json.
+    # Only a caller that got past the security handler gets its payload recorded; the auth context
+    # hash computed above is kept either way, since it is a fixed-size digest and it is precisely
+    # the useful field for a run_as attempt that failed.
+    if not authenticated:
+        body = {}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
@@ -264,14 +345,33 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
     """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Refuse an oversized auth context without paying for it first.
+
+        The declared `Content-Length` is checked before the body is touched, so a payload a
+        thousand times the endpoint's limit is refused at the header. A request that declares no
+        length is read with a cap and abandoned at the limit, rather than materialised in full and
+        measured afterwards.
+
+        Parameters
+        ----------
+        request : Request
+            HTTP Request received.
+        call_next :  RequestResponseEndpoint
+            Endpoint callable to be executed.
+
+        Returns
+        -------
+        Response
+            Returned response.
+        """
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
-            body = await request.body()
-            if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
-                raise PayloadTooLargeException(
-                    title="Request Entity Too Large",
-                    detail=f"Auth context payload exceeds the maximum allowed size of "
-                           f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
-                )
+            detail = f"Auth context payload exceeds the maximum allowed size of " \
+                     f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes."
+            declared_length = get_declared_content_length(request)
+            if declared_length is None:
+                await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, detail)
+            elif declared_length > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+                raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
         return await call_next(request)
 
 
@@ -306,11 +406,15 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         """
         prev_time = time.time()
 
-        body = await request.body()
-
-        # Don't allow heavy bodies when trying to authenticate. Necessary because this middleware is executed before
-        # CheckAuthContextSizeMiddleware can be executed
-        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
+        # This is the outermost middleware, so reading every body here handed an unauthenticated
+        # caller a max_upload_size buffer plus the object graph deserialised from it, once per
+        # request, before the security handler had been asked who was calling. The body is read only
+        # when it is small enough to be worth logging, which is the only reason this middleware ever
+        # needed it. The declared length bounds the read, since the ASGI server never delivers more
+        # body than the request declares; a request that declares none is left for the endpoint to
+        # read, and its body does not reach the log.
+        content_length = get_declared_content_length(request)
+        if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
             try:
                 # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.
