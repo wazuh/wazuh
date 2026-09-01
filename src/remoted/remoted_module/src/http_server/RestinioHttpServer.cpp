@@ -1338,7 +1338,10 @@ namespace remoted::http
             // Bound simultaneous connections so the read-phase peak (bodies still being
             // received, before they reach the in-flight budget) can't grow unbounded.
             .max_parallel_connections(config.maxParallelConnections)
-            .separate_accept_and_create_connect(true)
+            // Left at RESTinio's default (false): with it on, a connection accepted right as
+            // the module stops can be torn down mid-setup, freeing the acceptor before that
+            // connection's cleanup runs -- a use-after-free (#38741).
+            .separate_accept_and_create_connect(false)
             .incoming_http_msg_limits(restinio::incoming_http_msg_limits_t {}
                                           .max_url_size(config.maxUrlSize)
                                           .max_field_name_size(config.maxHeaderNameSize)
