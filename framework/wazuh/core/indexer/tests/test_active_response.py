@@ -174,6 +174,46 @@ class TestActiveResponseBookmarkFile:
 
         mock_save.assert_not_called()
 
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_caps_a_future_dated_cursor(self, _, mock_save):
+        """A cursor written by the code that advanced it once per delivered response can hold a
+        future `@timestamp`. Left as read, search_after asks for documents sorting after an instant
+        the query's own `lte: now` ceiling excludes, so every cycle reads zero hits until
+        wall-clock time catches up and the only recovery is deleting the file."""
+        future_ms = int(datetime.now(timezone.utc).timestamp() * 1000) + 3_600_000
+
+        with patch("builtins.open", new_callable=mock_open, read_data=f'{{"sort":[{future_ms},"doc-1"]}}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort[0] < future_ms
+        assert bf.sort[1] == "doc-1"
+        # Persisted, or a cycle that reads no hits writes no cursor and leaves the bad value on
+        # disk for the next restart to load again.
+        mock_save.assert_called_once()
+
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_leaves_a_past_cursor_alone(self, _, mock_save):
+        """The cap must not touch a healthy cursor: rewriting it would move the stream."""
+        past_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - 3_600_000
+
+        with patch("builtins.open", new_callable=mock_open, read_data=f'{{"sort":[{past_ms},"doc-1"]}}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort == [past_ms, "doc-1"]
+        mock_save.assert_not_called()
+
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_leaves_a_cursor_that_does_not_lead_with_a_timestamp(self, _, mock_save):
+        """Nothing validates the file, so the comparison has to survive whatever is in it."""
+        with patch("builtins.open", new_callable=mock_open, read_data='{"sort":["nope","doc-1"]}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort == ["nope", "doc-1"]
+        mock_save.assert_not_called()
+
 
 class TestActiveResponse:
     """Tests for ActiveResponse.target_agents."""
@@ -735,13 +775,13 @@ class TestActiveResponseBuilder:
             assert result is builder
 
         @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_handles_socket_error(self, mock_socket):
-            """Test error handling when Task Manager socket fails."""
-            from wazuh.core.exception import WazuhError
+        def test_dispatch_holds_the_page_on_a_failed_send(self, mock_socket):
+            """WazuhSocketJSON raises a bare WazuhException(1014) when the send fails. That says
+            nothing about this response, so the page must be held rather than cleared."""
+            from wazuh.core.exception import WazuhException
 
-            # Mock socket to raise error
             mock_sock_instance = MagicMock()
-            mock_sock_instance.send.side_effect = WazuhError(1001)
+            mock_sock_instance.send.side_effect = WazuhException(1014)
             mock_socket.return_value.__enter__.return_value = mock_sock_instance
 
             ar = ActiveResponse(
@@ -777,17 +817,16 @@ class TestActiveResponseBuilder:
 
             builder.dispatch()
 
-            # Error should be logged
             logger.error.assert_called_once()
-            # Bookmark should still be updated (move past failed AR)
-            bookmark_file.update.assert_called_once_with([1])
+            bookmark_file.update.assert_not_called()
 
         @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_survives_an_unreachable_task_manager(self, mock_socket):
-            """A dead Task Manager socket raises WazuhInternalError, which is a sibling of
-            WazuhError under WazuhException, not a subclass. Catching only WazuhError let it escape
-            the loop and skip the once-per-page cursor write, so the page was re-read every cycle
-            for as long as the socket stayed down."""
+        def test_dispatch_holds_the_page_when_task_manager_is_unreachable(self, mock_socket):
+            """A dead Task Manager socket raises WazuhInternalError, a sibling of WazuhError under
+            WazuhException rather than a subclass, so catching only WazuhError let it escape the
+            loop and abort the cycle from that response on. Caught here instead, and the page is
+            held: clearing it would drop every response on it over a transient outage, turning
+            at-least-once delivery into at-most-once."""
             from wazuh.core.exception import WazuhInternalError
 
             mock_socket.return_value.__enter__.side_effect = WazuhInternalError(1013)
@@ -824,7 +863,7 @@ class TestActiveResponseBuilder:
             builder.dispatch()
 
             logger.error.assert_called_once()
-            bookmark_file.update.assert_called_once_with([1])
+            bookmark_file.update.assert_not_called()
 
         def test_dispatch_advances_the_cursor_on_a_page_that_dispatched_nothing(self):
             """Every document of the page was discarded before dispatch (invalid schema, unusable
@@ -885,7 +924,9 @@ class TestActiveResponseBuilder:
 
         @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
         def test_dispatch_handles_task_manager_error_response(self, mock_socket):
-            """Test handling when Task Manager returns error response."""
+            """Task Manager answering with an error is a decision about this task, not a transport
+            failure (receive(raw=True) returns it instead of raising), so the page still clears.
+            This is the contrast with the two hold cases above."""
             # Mock socket to return error response
             mock_sock_instance = MagicMock()
             mock_sock_instance.receive.return_value = {

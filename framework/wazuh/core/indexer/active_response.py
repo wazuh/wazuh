@@ -178,7 +178,35 @@ class ActiveResponseBookmarkFile(ActiveResponseBookmark):
                     self.sort_fields = data.get("sort_fields", self.sort_fields)
                     self.only_events_after = data.get("only_events_after")
         except (json.JSONDecodeError, IOError):
-            pass
+            return
+
+        self._clamp_sort_to_present()
+
+    def _clamp_sort_to_present(self) -> None:
+        """Cap the loaded cursor's `@timestamp` at the present instant and persist the cap."""
+        # A cursor written by a version that advanced it once per delivered response can hold a
+        # future `@timestamp`: nothing upstream validates the field, and clock skew on the node
+        # that stamped the document is enough to produce one. search_after would then ask for
+        # documents sorting after an instant the query's own `lte: now` ceiling excludes, so every
+        # cycle reads zero hits until wall-clock time catches up and the only recovery is deleting
+        # this file by hand. Capping unfreezes the stream; it does not recover the responses that
+        # cursor already skipped. Persisted right here, because a cycle that reads no hits writes
+        # no cursor, which would leave the bad value on disk for the next restart to load again.
+        if not self.sort or isinstance(self.sort[0], bool) or not isinstance(self.sort[0], (int, float)):
+            return
+
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        if self.sort[0] <= now_ms:
+            return
+
+        ActiveResponseHelpers.logger.warning(
+            f"Active response bookmark `{self.path}` points at {self.sort[0]}, ahead of the "
+            f"present instant. Capping it at {now_ms}; delivery would otherwise stay frozen until "
+            f"wall-clock time reached it. Responses stamped before that point were already skipped."
+        )
+        self.sort = [now_ms, *self.sort[1:]]
+        self._save()
 
     def _save(self) -> None:
         """Persist current bookmark data to the JSON file."""
@@ -561,6 +589,10 @@ class ActiveResponseBuilder:
             if age is not None and 0 <= age < EVENT_VISIBILITY_GRACE_SECONDS:
                 if not holding:
                     holding = True
+                    # One high-water mark cannot both hold here and clear the terminal documents
+                    # earlier on this page, so those are read again every cycle the hold lasts and
+                    # their discard is reported again with them. Bounded by the grace window, and
+                    # the alternative is the per-document state this cursor exists to avoid.
                     self._bookmark_file.page_end_sort = resolved_through
                 self.logger.debug(
                     f"Expected event `{event_id}` (`{index_id}`) is not visible yet. "
@@ -591,6 +623,9 @@ class ActiveResponseBuilder:
             The builder instance.
         """
         msgs_sent = 0
+        # Set by the WazuhException handler below, and the reason the cursor write at the end is
+        # conditional: a Task Manager that cannot be reached is transient and page-wide.
+        transport_failed = False
 
         for ar in self._ars:
             # Extract timestamp from AR document (for deterministic task ID)
@@ -658,9 +693,18 @@ class ActiveResponseBuilder:
                 # WazuhException, not WazuhError: WazuhSocketJSON raises WazuhInternalError when
                 # it cannot connect and plain WazuhException on a failed send or receive, and both
                 # are siblings of WazuhError under WazuhException. Catching the narrow one let a
-                # dead Task Manager socket escape the whole loop, which skipped the cursor write
-                # below and left the page to be re-read every cycle for as long as it was down.
+                # dead Task Manager socket escape the whole loop, which aborted the cycle from
+                # that response on.
+                #
+                # Everything caught here is transport, never a rejected task: receive(raw=True)
+                # skips the cmd_error raise in WazuhSocketJSON, so Task Manager answering with an
+                # error arrives as `status != "ok"` above. What lands here is 1013 (cannot
+                # connect), 1121 and 1014 (failed send or receive) -- conditions that say nothing
+                # about this response and will resolve on their own, so the page is held instead
+                # of cleared. Handling them without escaping is what keeps a terminal discard
+                # elsewhere on the page from being re-read forever.
                 except WazuhException as e:
+                    transport_failed = True
                     self.logger.error(
                         f"Failed to create task for agent `{agent_id}`: {e}"
                     )
@@ -675,8 +719,11 @@ class ActiveResponseBuilder:
         #
         #  - Advancing per delivered response skipped the rest of the stream whenever the cursor
         #    could jump (a document stamped in the future). The read is bounded at the present
-        #    instant now, so a failed delivery loses exactly that document, reported by the ERROR
-        #    the Task Manager branch above writes.
+        #    instant now, so a task Task Manager rejects loses exactly that document, reported by
+        #    the ERROR that branch writes. A Task Manager that cannot be reached at all is not
+        #    that case: nothing was decided about any response on this page, so the page is held
+        #    and read again, and the repeated create_task calls are absorbed by the same
+        #    deterministic task id that makes one write per page safe.
         #  - Never advancing for a document that did not reach this loop (invalid schema, unusable
         #    event reference, unparseable @timestamp) froze the cursor on its page, which was then
         #    re-read every polling cycle for as long as the document existed. Those three are
@@ -693,7 +740,12 @@ class ActiveResponseBuilder:
         # A crash between the page and this write re-reads the page: the duplicate create_task
         # calls are absorbed by the deterministic task id, which is what makes one write per page
         # safe (and saves one fsync per response).
-        if self._bookmark_file.page_end_sort is not None:
+        if transport_failed:
+            self.logger.warning(
+                "Task Manager was unreachable for at least one active response. Holding the "
+                "cursor so this page is read again on the next cycle."
+            )
+        elif self._bookmark_file.page_end_sort is not None:
             self._bookmark_file.update(self._bookmark_file.page_end_sort)
 
         return self
