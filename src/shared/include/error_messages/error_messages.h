@@ -104,6 +104,7 @@
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
 #define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer: %s (%d)"
+#define CONFIG_INVALID  "(1244): Invalid configuration at '%s': %s."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
