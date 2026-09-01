@@ -9,8 +9,10 @@ on:
       - src/shared_modules/indexer_connector/**
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
+      - src/shared_modules/metrics/**
       - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/vulnerability_scanner/**
+      - src/remoted/remoted_module/**
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
 
@@ -95,6 +97,28 @@ jobs:
           path: src/shared_modules/utils
           id: utils
 
+      # Metrics
+      - name: Metrics - Coding style
+        id: metrics_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/metrics
+          id: metrics
+
+      # Remoted module
+      - name: Remoted module - Coding style
+        id: remoted_module_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/remoted/remoted_module
+          id: remoted_module
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -118,6 +142,14 @@ jobs:
 
           if [ "${{ steps.utils_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS Utils"
+          fi
+
+          if [ "${{ steps.metrics_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Metrics"
+          fi
+
+          if [ "${{ steps.remoted_module_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS RemotedModule"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then
