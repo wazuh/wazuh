@@ -368,8 +368,6 @@ class IndexerConnectorSyncImpl final
             throw IndexerConnectorException("No data to process");
         }
 
-        auto serverUrl = m_selector->getNext();
-
         // No success callback below may throw: THttpRequest::post() invokes them inside its own
         // try block and remaps anything thrown there to onError(statusCode = -1), which the error
         // handlers read as a transport outage to retry -- resending a buffer that no longer
@@ -465,12 +463,6 @@ class IndexerConnectorSyncImpl final
 
         for (const auto& [index, query] : m_deleteByQuery)
         {
-            std::string url;
-            url += serverUrl;
-            url += "/";
-            url += index;
-            url += "/_delete_by_query";
-            LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
             try
             {
                 IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
@@ -484,6 +476,15 @@ class IndexerConnectorSyncImpl final
                         return;
                     }
                     deleteByQueryNeedsRetry = false;
+                    // Resolved per attempt, like every other request in this file: a host is
+                    // consumed only by the request actually sent to it, and a retry rotates to
+                    // the next healthy host.
+                    std::string url;
+                    url += m_selector->getNext();
+                    url += "/";
+                    url += index;
+                    url += "/_delete_by_query";
+                    LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
                     m_httpRequest->post(
                         RequestParameters {
                             .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},

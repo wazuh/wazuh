@@ -6246,3 +6246,58 @@ TEST_F(IndexerConnectorSyncTest, BudgetExhaustionUnderConcurrentStagingLeavesCon
     EXPECT_NO_THROW(connector.flush());
     EXPECT_EQ(recorder.deliveredIds().count("sentinel"), 1u);
 }
+
+// ============================================================================
+// Host selection discipline (R-09)
+//
+// A host is consumed from the round-robin only by the request actually sent to
+// it: no pre-selection before knowing what the flush contains, and each request
+// of a mixed flush (deletes, then bulk) picks its own host.
+// ============================================================================
+
+TEST_F(IndexerConnectorSyncTest, BulkOnlyFlushConsumesExactlyOneHostSelection)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).Times(1).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("id1", "index1", R"({"field":"value"})");
+    connector.flush();
+
+    EXPECT_EQ(callCount.load(), 1);
+}
+
+TEST_F(IndexerConnectorSyncTest, EachRequestOfAMixedFlushUsesItsOwnSelectedHost)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext())
+        .Times(3)
+        .WillOnce(Return("host-a:9200"))
+        .WillOnce(Return("host-b:9200"))
+        .WillOnce(Return("host-c:9200"));
+
+    std::vector<std::string> urls;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &urls](auto requestParams, auto postParams, auto configParams)
+            {
+                std::string url;
+                std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
+                urls.push_back(url);
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("index-a", "agent-1");
+    connector.deleteByQuery("index-b", "agent-1");
+    connector.bulkIndex("id1", "index-a", R"({"field":"value"})");
+    connector.flush();
+
+    ASSERT_EQ(urls.size(), 3U);
+    EXPECT_THAT(urls[0], HasSubstr("host-a"));
+    EXPECT_THAT(urls[0], HasSubstr("index-a/_delete_by_query"));
+    EXPECT_THAT(urls[1], HasSubstr("host-b"));
+    EXPECT_THAT(urls[1], HasSubstr("index-b/_delete_by_query"));
+    EXPECT_THAT(urls[2], HasSubstr("host-c"));
+    EXPECT_THAT(urls[2], HasSubstr("/_bulk"));
+}

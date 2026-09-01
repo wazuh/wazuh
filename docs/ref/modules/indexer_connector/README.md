@@ -26,7 +26,7 @@ The library provides two classes depending on the use case:
 1. The caller instantiates a connector with a JSON configuration (derived from the `<indexer>` XML block).
 2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
 3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
-4. A server-selector performs round-robin load balancing across available nodes.
+4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
 ### Sync flush behavior
