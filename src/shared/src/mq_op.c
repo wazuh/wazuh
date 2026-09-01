@@ -212,10 +212,19 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
     char tmpstr[OS_MAXSTR + 1] = {0};
     char loc_buff[OS_SIZE_8192 + 1] = {0};
     static int reported = 0;
+    char *sanitized = NULL;
+    size_t header_length;
+    size_t message_length;
+    bool secure = false;
 
     tmpstr[OS_MAXSTR] = '\0';
 
     if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return (0);
+    }
+
+    if (message == NULL) {
         merror(FORMAT_ERROR);
         return (0);
     }
@@ -234,10 +243,47 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
             return (0);
         }
 
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, loc_buff, message);
-    } else {
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
+        secure = true;
     }
+
+    /* The engine puts this message in a JSON document, and Json::str() aborts
+     * the whole document on any invalid byte, so the event and the alert it
+     * would have raised are both lost. Filtering here covers every producer
+     * that sends an event, on every platform, instead of one reader at a time.
+     * The framing bytes above are already past, so only the payload is touched. */
+    if (!w_utf8_valid(message)) {
+        static int utf8_reported = 0;
+
+        sanitized = w_utf8_filter(message, true);
+        message = sanitized;
+
+        if (!utf8_reported) {
+            mwarn("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
+            utf8_reported = 1;
+        } else {
+            mdebug2("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
+        }
+    }
+
+    /* The snprintf below cuts at a byte offset, which can split a multi-byte
+     * character, including an EF BF BD just written above. The header is the
+     * only thing standing between the payload and OS_MAXSTR, and its real
+     * length is the escaped location, up to OS_SIZE_8192, not OS_LOG_HEADER.
+     * Measure it and hand snprintf a length that keeps every character whole. */
+    header_length = strlen(loc_buff) + (secure ? 4 : 3); /* "%c:" + loc_buff + "->" or ":" */
+    message_length = w_utf8_truncate_len(message, OS_MAXSTR - 1 - header_length);
+
+    if (message[message_length] != '\0') {
+        mdebug2("Message from '%s' cut to %zu bytes to fit the queue.", locmsg, message_length);
+    }
+
+    if (secure) {
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%.*s", loc, loc_buff, (int)message_length, message);
+    } else {
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%.*s", loc, loc_buff, (int)message_length, message);
+    }
+
+    os_free(sanitized);
 
     /* Queue not available */
     if (queue < 0) {
