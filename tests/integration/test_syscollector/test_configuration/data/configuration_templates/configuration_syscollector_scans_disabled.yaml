@@ -3,11 +3,6 @@
       elements:
         - manager:
             elements:
-                # RemotedSimulator now understands the manager's default /wazuh-manager/
-                # reverse-proxy prefix (qa-integration-framework#835), so this no longer
-                # needs to opt out of it. This section replaces the installer's own
-                # opt-out (WAZUH_MANAGER_ENDPOINT="127.0.0.1:1517/") entirely with this
-                # suite's own explicit default-prefix endpoint.
                 - endpoint:
                     value: '127.0.0.1:1517'
     - section: wodle

@@ -12,8 +12,6 @@
               # SERVER_ADDRESS must stay a BARE placeholder: expand_placeholders()
               # substitutes whole values only, never substrings, so 'SERVER_ADDRESS:1517'
               # would reach ossec.conf verbatim. Each case therefore supplies the complete
-              # endpoint. RemotedSimulator understands the manager's default
-              # /wazuh-manager/ prefix (qa-integration-framework#835), so cases no longer
-              # need to opt out of it with a trailing '/'.
+              # endpoint.
               - endpoint:
                   value: SERVER_ADDRESS

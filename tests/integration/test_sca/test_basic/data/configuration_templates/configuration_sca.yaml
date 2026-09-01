@@ -41,9 +41,5 @@
       elements:
         - manager:
             elements:
-              # RemotedSimulator now understands the manager's default /wazuh-manager/
-              # reverse-proxy prefix (qa-integration-framework#835), so the agent no
-              # longer needs to opt out of it to reach the simulator -- this exercises
-              # the same default path a real deployment takes.
               - endpoint:
                   value: '127.0.0.1:1517'

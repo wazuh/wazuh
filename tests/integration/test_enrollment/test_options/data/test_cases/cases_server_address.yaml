@@ -1,8 +1,6 @@
 # SERVER_ADDRESS now carries the COMPLETE endpoint (#38624): host and port. The template
 # substitutes it as a whole value, and metadata.server_address stays the bare address the
-# assertions match on. RemotedSimulator understands the manager's default /wazuh-manager/
-# prefix (qa-integration-framework#835), so a successful connection now goes through it
-# instead of opting out with a trailing '/'.
+# assertions match on.
 - name: Invalid server address
   description: Invalid server address
   configuration_parameters:
