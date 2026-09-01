@@ -61,18 +61,34 @@ INDEXER_ENGINE_EXECUTABLE = "/usr/share/wazuh-indexer/engine/bin/wazuh-engine"
 DASHBOARD_EXECUTABLE = "/usr/share/wazuh-dashboard/bin/opensearch-dashboards"
 DASHBOARD_NODE_EXECUTABLE = "/usr/share/wazuh-dashboard/node/bin/node"
 
+# queue/inventory_sync is deliberately absent: it belonged to the retired
+# inventory_sync module. inventory_sync_server keeps no local store at all (it
+# streams straight to the indexer), so whatever is left at that path is frozen
+# residue and would only plot a flat line. queue/vd stays — the vulnerability
+# scanner's RocksDB is live and does grow.
 DEFAULT_DISK_PATHS = [
-    "/var/wazuh-manager/queue/inventory_sync",
     "/var/wazuh-manager/queue/vd",
     "/var/wazuh-manager/",
 ]
 
-DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
+DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote.sock"
 REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
-DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
+DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
+INVSYNC_STATS_CSV = "stats-api-inventory-sync.csv"
+INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+
+# remoted's C++ module publishes its own metrics on a manager-local admin socket, served by
+# the same shared HTTP-over-UDS transport inventory_sync_server uses. This is ADDITIVE to the
+# legacy framed `getstats` above: that one carries remoted's C statistics, which stay where
+# they are. The C++ module's counters exist nowhere else.
+DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remote-admin-http.sock"
+REMOTED_MODULE_STATS_CSV = "stats-api-remoted-module.csv"
+REMOTED_MODULE_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+
+DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/engine-api-http.sock"
 ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
 ANALYSISD_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 ANALYSISD_HEADER = [
@@ -100,6 +116,236 @@ ANALYSISD_HEADER = [
     "raw_response_json",
 ]
 
+# inventory_sync_server exposes GET /metrics on its own UDS socket. The route is
+# budget-exempt on purpose, so it keeps answering while the module sheds real
+# traffic -- which is exactly when these numbers matter.
+#
+# The per-shard gauges (sync.shard.<i>.{depth,bytes}) are aggregated rather than
+# given a column each: the shard count follows the configured worker count, so a
+# per-shard header would differ between machines and make two runs
+# incomparable. depth_max against depth_sum still shows imbalance, and the full
+# per-shard detail survives verbatim in raw_response_json.
+_INVSYNC_HISTOGRAMS: tuple[tuple[str, str], ...] = (
+    ("sync.session.duration.bulk", "session_duration_bulk"),
+    ("sync.session.duration.immediate", "session_duration_immediate"),
+    ("vd.lane.time", "vd_lane_time"),
+    ("vd.scan.duration", "vd_scan_duration"),
+)
+# Histogram values are microseconds (see the module's metricNames.hpp).
+_INVSYNC_HIST_FIELDS: tuple[str, ...] = ("count", "p50", "p90", "p99", "max")
+
+# metric name in the dump -> CSV column
+_INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
+    ("sync.requests.total.200", "requests_200"),
+    ("sync.requests.total.400", "requests_400"),
+    ("sync.requests.total.403", "requests_403"),
+    ("sync.requests.total.409", "requests_409"),
+    ("sync.requests.total.500", "requests_500"),
+    ("sync.requests.total.503", "requests_503"),
+    ("sync.requests.total.other", "requests_other"),
+    ("sync.docs.indexed", "docs_indexed"),
+    ("sync.docs.skipped", "docs_skipped"),
+    ("sync.bytes.ingested", "bytes_ingested"),
+    ("sync.pipeline.shed.total", "pipeline_shed_total"),
+    ("sync.bulk.flushes", "bulk_flushes"),
+    ("sync.bulk.sessions.total", "bulk_sessions_total"),
+    ("sync.bulk.bytes.total", "bulk_bytes_total"),
+    ("vd.lane.depth", "vd_lane_depth"),
+    ("vd.scans.ok", "vd_scans_ok"),
+    ("vd.scans.failed", "vd_scans_failed"),
+    ("vd.scans.skipped", "vd_scans_skipped"),
+    ("vd.capacity.503.total", "vd_capacity_503_total"),
+    ("vd.retry_after.total", "vd_retry_after_total"),
+    ("vd.offset_mismatch.total", "vd_offset_mismatch_total"),
+    # Transport diagnostics of the shared UDS server itself: a snapshot of the in-flight byte
+    # budget and of how many connections each route class is holding. These are the numbers
+    # that say WHY a session was shed -- budget exhausted vs a class at its cap -- and they
+    # are instantaneous levels (dump type string: "pull"), not counters, so read them as
+    # levels rather than as growth.
+    ("server.budget.available.bytes", "server_budget_available_bytes"),
+    ("server.budget.inflight.bytes", "server_budget_inflight_bytes"),
+    ("server.budget.inflight.requests", "server_budget_inflight_requests"),
+    ("server.sessions.live", "server_sessions_live"),
+    ("server.sessions.data", "server_sessions_data"),
+    ("server.sessions.control", "server_sessions_control"),
+    ("server.sessions.liveness", "server_sessions_liveness"),
+)
+
+# remoted_module's registry, served by GET /metrics on the admin socket. Cumulative counters
+# unless a comment says otherwise (the *.server.* transport blocks and the level-style pulls
+# are instantaneous gauges -- read them as levels, not growth).
+#
+# The scanvd family is admission-only: remoted is a synchronous passthrough of VD's admission,
+# so a request either came back 200 (accepted = VD queued it and WILL run it) or an honest 503
+# (queue_full = VD's lane at capacity, indexer_unavailable = VD reports no healthy indexer
+# host, vd_error = anything else). What became of an accepted
+# scan is VD's to report -- the sender's scan_200/scan_503 columns now mean the same thing this
+# family does, which is the whole point of the redesign.
+#
+# The http_<endpoint>_responses_* blocks share one closed status vocabulary across the four
+# forwarded endpoints so their columns line up; some cells are structurally zero for a given
+# endpoint (e.g. /stateless never answers 409) -- kept for symmetry, like the admin lanes.
+# Budget sheds never reach those cells (they are refused before any route runs); they are
+# server_budget_rejected_total's alone. A deferred-limiter shed counts BOTH as the endpoint's
+# 503 and in forwarder_deferred_rejected_total.
+_REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
+    ("remoted.control.startup", "control_startup"),
+    ("remoted.control.notify", "control_notify"),
+    ("remoted.control.shutdown", "control_shutdown"),
+    ("remoted.control.wdb_error", "control_wdb_error"),
+    ("remoted.control.task_fetch", "control_task_fetch"),
+    ("remoted.control.task_fetch_error", "control_task_fetch_error"),
+    ("remoted.control.rejected", "control_rejected"),
+    ("remoted.control.registry.agents", "control_registry_agents"),  # level
+    ("remoted.scanvd.requests.total", "scanvd_requests_total"),
+    ("remoted.scanvd.accepted", "scanvd_accepted"),
+    ("remoted.scanvd.queue_full", "scanvd_queue_full"),
+    ("remoted.scanvd.version_mismatch", "scanvd_version_mismatch"),
+    ("remoted.scanvd.invalid_agent", "scanvd_invalid_agent"),
+    ("remoted.scanvd.vd_error", "scanvd_vd_error"),
+    ("remoted.scanvd.indexer_unavailable", "scanvd_indexer_unavailable"),
+    # Auth-gateway rejection taxonomy: the PRE-collapse cause of every client-visible auth
+    # rejection (the wire response deliberately folds the credential failures into one 401).
+    ("remoted.auth.reject.unknown_agent", "auth_reject_unknown_agent"),
+    ("remoted.auth.reject.invalid_signature", "auth_reject_invalid_signature"),
+    ("remoted.auth.reject.bad_token", "auth_reject_bad_token"),
+    ("remoted.auth.reject.identity_mismatch", "auth_reject_identity_mismatch"),
+    ("remoted.auth.reject.clock_skew", "auth_reject_clock_skew"),
+    ("remoted.auth.reject.unusable_key", "auth_reject_unusable_key"),
+    ("remoted.auth.reject.address_not_allowed", "auth_reject_address_not_allowed"),
+    ("remoted.auth.reject.enrollment_key_unavailable", "auth_reject_enrollment_key_unavailable"),
+    ("remoted.auth.reject.payload_mismatch", "auth_reject_payload_mismatch"),
+    ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
+    ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
+    ("remoted.auth.reject.malformed", "auth_reject_malformed"),
+    # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
+    ("remoted.auth.keystore.agents", "keystore_agents"),
+    ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
+    ("remoted.auth.keystore.reloads.total", "keystore_reloads_total"),
+    ("remoted.auth.keystore.reload_failures.total", "keystore_reload_failures_total"),
+    # Per-endpoint response outcomes ("what the agent got"), one closed set x four endpoints.
+    ("remoted.http.stateless.responses.2xx", "http_stateless_responses_2xx"),
+    ("remoted.http.stateless.responses.400", "http_stateless_responses_400"),
+    ("remoted.http.stateless.responses.403", "http_stateless_responses_403"),
+    ("remoted.http.stateless.responses.409", "http_stateless_responses_409"),
+    ("remoted.http.stateless.responses.413", "http_stateless_responses_413"),
+    ("remoted.http.stateless.responses.500", "http_stateless_responses_500"),
+    ("remoted.http.stateless.responses.503", "http_stateless_responses_503"),
+    ("remoted.http.stateless.responses.other", "http_stateless_responses_other"),
+    ("remoted.http.stateful.responses.2xx", "http_stateful_responses_2xx"),
+    ("remoted.http.stateful.responses.400", "http_stateful_responses_400"),
+    ("remoted.http.stateful.responses.403", "http_stateful_responses_403"),
+    ("remoted.http.stateful.responses.409", "http_stateful_responses_409"),
+    ("remoted.http.stateful.responses.413", "http_stateful_responses_413"),
+    ("remoted.http.stateful.responses.500", "http_stateful_responses_500"),
+    ("remoted.http.stateful.responses.503", "http_stateful_responses_503"),
+    ("remoted.http.stateful.responses.other", "http_stateful_responses_other"),
+    ("remoted.http.stats.responses.2xx", "http_stats_responses_2xx"),
+    ("remoted.http.stats.responses.400", "http_stats_responses_400"),
+    ("remoted.http.stats.responses.403", "http_stats_responses_403"),
+    ("remoted.http.stats.responses.409", "http_stats_responses_409"),
+    ("remoted.http.stats.responses.413", "http_stats_responses_413"),
+    ("remoted.http.stats.responses.500", "http_stats_responses_500"),
+    ("remoted.http.stats.responses.503", "http_stats_responses_503"),
+    ("remoted.http.stats.responses.other", "http_stats_responses_other"),
+    ("remoted.http.config.responses.2xx", "http_config_responses_2xx"),
+    ("remoted.http.config.responses.400", "http_config_responses_400"),
+    ("remoted.http.config.responses.403", "http_config_responses_403"),
+    ("remoted.http.config.responses.409", "http_config_responses_409"),
+    ("remoted.http.config.responses.413", "http_config_responses_413"),
+    ("remoted.http.config.responses.500", "http_config_responses_500"),
+    ("remoted.http.config.responses.503", "http_config_responses_503"),
+    ("remoted.http.config.responses.other", "http_config_responses_other"),
+    # POST /enroll: same closed set as the four above. Not forwarded (its downstream is authd),
+    # so these are counted by the handler's MeteredResponder wrapper.
+    ("remoted.http.enroll.responses.2xx", "http_enroll_responses_2xx"),
+    ("remoted.http.enroll.responses.400", "http_enroll_responses_400"),
+    ("remoted.http.enroll.responses.403", "http_enroll_responses_403"),
+    ("remoted.http.enroll.responses.409", "http_enroll_responses_409"),
+    ("remoted.http.enroll.responses.413", "http_enroll_responses_413"),
+    ("remoted.http.enroll.responses.500", "http_enroll_responses_500"),
+    ("remoted.http.enroll.responses.503", "http_enroll_responses_503"),
+    ("remoted.http.enroll.responses.other", "http_enroll_responses_other"),
+    # Enrollment outcomes ("why"), the companion of the status cells above. The queue trio is
+    # what separates a saturated authd queue from an unreachable authd inside authd_unavailable.
+    ("remoted.enroll.accepted", "enroll_accepted"),
+    ("remoted.enroll.rejected_auth", "enroll_rejected_auth"),
+    ("remoted.enroll.rejected_validation", "enroll_rejected_validation"),
+    ("remoted.enroll.disabled", "enroll_disabled"),
+    ("remoted.enroll.authd_error", "enroll_authd_error"),
+    ("remoted.enroll.authd_unavailable", "enroll_authd_unavailable"),
+    ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
+    ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
+    ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
+    # Downstream failure taxonomy ("why the 503s"): aggregate across services -- the per-endpoint
+    # 503 columns above already say which path is failing.
+    ("remoted.forwarder.error.connect", "forwarder_error_connect"),
+    ("remoted.forwarder.error.connect_timeout", "forwarder_error_connect_timeout"),
+    ("remoted.forwarder.error.write_timeout", "forwarder_error_write_timeout"),
+    ("remoted.forwarder.error.response_timeout", "forwarder_error_response_timeout"),
+    ("remoted.forwarder.error.transport", "forwarder_error_transport"),
+    ("remoted.forwarder.error.protocol", "forwarder_error_protocol"),
+    ("remoted.forwarder.error.response_too_large", "forwarder_error_response_too_large"),
+    ("remoted.forwarder.downstream_5xx", "forwarder_downstream_5xx"),
+    ("remoted.forwarder.route_mismatch", "forwarder_route_mismatch"),
+    # /download admission outcomes + started transfers (bytes counted once at start).
+    ("remoted.download.rejected", "download_rejected"),
+    ("remoted.download.not_found", "download_not_found"),
+    ("remoted.download.open_error", "download_open_error"),
+    ("remoted.download.started", "download_started"),
+    ("remoted.download.bytes.total", "download_bytes_total"),
+    # Backpressure of the PUBLIC transport: the byte budget (levels + a cumulative shed total)
+    # and the deferred-work limiter. These are the numbers that size 'max_inflight_bytes' and
+    # 'max_deferred_requests'.
+    ("remoted.server.budget.available.bytes", "server_budget_available_bytes"),
+    ("remoted.server.budget.inflight.bytes", "server_budget_inflight_bytes"),
+    ("remoted.server.budget.inflight.requests", "server_budget_inflight_requests"),
+    ("remoted.server.budget.rejected.total", "server_budget_rejected_total"),
+    ("remoted.forwarder.deferred.inflight", "forwarder_deferred_inflight"),
+    ("remoted.forwarder.deferred.capacity", "forwarder_deferred_capacity"),
+    ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
+    # The admin server dogfooding its own transport. Both its routes are liveness-class, so
+    # the budget and the data/control lanes are structurally zero -- only sessions.live and
+    # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.
+    ("remoted.admin.server.budget.available.bytes", "admin_budget_available_bytes"),
+    ("remoted.admin.server.budget.inflight.bytes", "admin_budget_inflight_bytes"),
+    ("remoted.admin.server.budget.inflight.requests", "admin_budget_inflight_requests"),
+    ("remoted.admin.server.sessions.live", "admin_sessions_live"),
+    ("remoted.admin.server.sessions.data", "admin_sessions_data"),
+    ("remoted.admin.server.sessions.control", "admin_sessions_control"),
+    ("remoted.admin.server.sessions.liveness", "admin_sessions_liveness"),
+)
+
+# End-to-end latency histograms (microseconds, gateway receipt -> response delivery), only on
+# the endpoints whose latency answers a tuning question, plus the wazuh-db round trip. Same
+# {count,p50,p90,p99,max} expansion as inventory sync's block.
+_REMOTED_MODULE_HISTOGRAMS: tuple[tuple[str, str], ...] = (
+    ("remoted.http.stateless.latency", "http_stateless_latency"),
+    ("remoted.http.stateful.latency", "http_stateful_latency"),
+    ("remoted.http.enroll.latency", "http_enroll_latency"),
+    ("remoted.control.wdb.latency", "control_wdb_latency"),
+)
+
+REMOTED_MODULE_HEADER = (
+    ["timestamp", "elapsed_s", "query_ok", "query_error"]
+    + [col for _, col in _REMOTED_MODULE_SCALARS]
+    + [f"{prefix}_{field}"
+       for _, prefix in _REMOTED_MODULE_HISTOGRAMS
+       for field in _INVSYNC_HIST_FIELDS]
+    + ["raw_response_json"]
+)
+
+INVSYNC_HEADER = (
+    ["timestamp", "elapsed_s", "query_ok", "query_error"]
+    + [col for _, col in _INVSYNC_SCALARS]
+    + ["shard_count", "shard_depth_max", "shard_depth_sum",
+       "shard_bytes_max", "shard_bytes_sum"]
+    + [f"{prefix}_{field}"
+       for _, prefix in _INVSYNC_HISTOGRAMS
+       for field in _INVSYNC_HIST_FIELDS]
+    + ["raw_response_json"]
+)
+
 REMOTED_HEADER = [
     "timestamp",
     "elapsed_s",
@@ -119,16 +365,13 @@ REMOTED_HEADER = [
     "messages_received_breakdown_events",
     "messages_received_breakdown_events_failed",
     "messages_received_breakdown_ping",
-    "messages_received_breakdown_states",
     "messages_received_breakdown_unknown",
     "messages_received_breakdown_control_breakdown_keepalive",
     "messages_received_breakdown_control_breakdown_request",
     "messages_received_breakdown_control_breakdown_shutdown",
     "messages_received_breakdown_control_breakdown_startup",
     "messages_sent_breakdown_ack",
-    "messages_sent_breakdown_ar",
     "messages_sent_breakdown_discarded",
-    "messages_sent_breakdown_request",
     "messages_sent_breakdown_shared",
     "queues_received_size",
     "queues_received_usage",
@@ -375,7 +618,7 @@ BASE_CSV_HEADER = [
 def disk_col_name(path: str) -> str:
     """Stable CSV column name derived from a directory path.
 
-    Example: /var/wazuh-manager/queue/inventory_sync/  ->  dir_inventory_sync_mb
+    Example: /var/wazuh-manager/queue/vd/  ->  dir_vd_mb
     """
     basename = os.path.basename(os.path.normpath(path)) or "root"
     safe = re.sub(r"[^A-Za-z0-9_]", "_", basename)
@@ -646,7 +889,6 @@ def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: fl
             row["messages_received_breakdown_events"] = _as_int(recv_breakdown.get("events"))
             row["messages_received_breakdown_events_failed"] = _as_int(recv_breakdown.get("events_failed"))
             row["messages_received_breakdown_ping"] = _as_int(recv_breakdown.get("ping"))
-            row["messages_received_breakdown_states"] = _as_int(recv_breakdown.get("states"))
             row["messages_received_breakdown_unknown"] = _as_int(recv_breakdown.get("unknown"))
 
             ctrl_breakdown = recv_breakdown.get("control_breakdown")
@@ -659,9 +901,7 @@ def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: fl
         sent_breakdown = messages.get("sent_breakdown")
         if isinstance(sent_breakdown, dict):
             row["messages_sent_breakdown_ack"] = _as_int(sent_breakdown.get("ack"))
-            row["messages_sent_breakdown_ar"] = _as_int(sent_breakdown.get("ar"))
             row["messages_sent_breakdown_discarded"] = _as_int(sent_breakdown.get("discarded"))
-            row["messages_sent_breakdown_request"] = _as_int(sent_breakdown.get("request"))
             row["messages_sent_breakdown_shared"] = _as_int(sent_breakdown.get("shared"))
 
     queues = metrics.get("queues")
@@ -704,11 +944,10 @@ def remoted_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                 raw = _query_remoted_stats(socket_path)
                 row = _flatten_remoted_stats(raw, ts_now, elapsed_s)
                 logger.info(
-                    "[remoted-api] usage=%.3f recv_discarded=%d recv_events=%d recv_states=%d sent_discarded=%d tcp_sessions=%d",
+                    "[remoted-api] usage=%.3f recv_discarded=%d recv_events=%d sent_discarded=%d tcp_sessions=%d",
                     _as_float(row.get("queues_received_usage")),
                     _as_int(row.get("messages_received_breakdown_discarded")),
                     _as_int(row.get("messages_received_breakdown_events")),
-                    _as_int(row.get("messages_received_breakdown_states")),
                     _as_int(row.get("messages_sent_breakdown_discarded")),
                     _as_int(row.get("tcp_sessions")),
                 )
@@ -871,6 +1110,263 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
     logger.info("Analysisd API monitor finished. CSV written to %s", csv_path)
 
 
+# ---------------------------------------------------------------------------
+# wazuh_metrics dumps over HTTP-over-UDS (inventory_sync_server, remoted_module)
+# ---------------------------------------------------------------------------
+# Every module built on wazuh_metrics answers the same envelope on GET /metrics:
+#   {"name": <daemon>, "timestamp": <ISO8601>, "metrics": [ {name, type, value, ...}, ... ]}
+# There is no server-side filtering: the dump carries that manager's whole registry, so the
+# scope of a scrape is decided by WHICH SOCKET is polled. The helpers below are shared by
+# every such scraper; only the metric->column catalog differs per module.
+def _query_uds_metrics(socket_path: str, max_size: int, timeout: float = 5.0) -> dict[str, object]:
+    """GET /metrics over a module's HTTP-over-UDS socket."""
+    conn = _UnixSocketHTTPConnection(socket_path, timeout=timeout)
+    try:
+        conn.request("GET", "/metrics", headers={"Host": "localhost"})
+        resp = conn.getresponse()
+        raw_bytes = resp.read(max_size)
+        if resp.status != 200:
+            raise ValueError(f"/metrics answered {resp.status}: {raw_bytes[:200]!r}")
+    finally:
+        conn.close()
+
+    data = json.loads(raw_bytes.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{socket_path} /metrics response is not a JSON object")
+    return data
+
+
+def _index_metrics_by_name(raw: dict[str, object]) -> dict[str, dict]:
+    """Index a dump's "metrics" array by metric name for O(1) lookup."""
+    by_name: dict[str, dict] = {}
+    for item in raw.get("metrics") or []:
+        if isinstance(item, dict) and "name" in item:
+            by_name[item["name"]] = item
+    return by_name
+
+
+def _scalars_into_row(row: dict[str, object], by_name: dict[str, dict],
+                      spec: tuple[tuple[str, str], ...]) -> None:
+    """Copy the spec'd metrics into their CSV columns, 0 when one is absent.
+
+    Absence is normal: a metric registered lazily (the transport diagnostics only exist once
+    the server started) simply has not appeared yet. Values go through _as_int because pull
+    metrics arrive as JSON doubles -- wazuh::metrics::dumpJson writes uint64 pulls through
+    writer.Double(), so `3` is on the wire as `3.0`.
+    """
+    for metric_name, column in spec:
+        item = by_name.get(metric_name)
+        row[column] = _as_int(item.get("value")) if item else 0
+
+
+def _empty_metrics_row(header: list[str], timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row: dict[str, object] = {k: "" for k in header}
+    row["timestamp"] = timestamp
+    row["elapsed_s"] = elapsed_s
+    return row
+
+
+def _query_invsync_stats(socket_path: str, timeout: float = 5.0) -> dict[str, object]:
+    return _query_uds_metrics(socket_path, INVSYNC_MAX_RESPONSE_SIZE, timeout)
+
+
+def _empty_invsync_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    return _empty_metrics_row(INVSYNC_HEADER, timestamp, elapsed_s)
+
+
+def _flatten_invsync_stats(raw: dict[str, object], timestamp: str,
+                           elapsed_s: float) -> dict[str, object]:
+    """Map the metrics dump onto the flat CSV row.
+
+    The dump is a list of {name, type, value, summary?} objects; a histogram
+    carries its distribution in "summary" and only its observation count in
+    "value" (see wazuh::metrics::dumpJson).
+    """
+    row = _empty_invsync_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+
+    by_name = _index_metrics_by_name(raw)
+    _scalars_into_row(row, by_name, _INVSYNC_SCALARS)
+
+    # Per-shard gauges: aggregate, since how many there are follows the
+    # configured worker count and must not leak into the header.
+    depths: list[int] = []
+    sizes: list[int] = []
+    for name, item in by_name.items():
+        if not name.startswith("sync.shard."):
+            continue
+        if name.endswith(".depth"):
+            depths.append(_as_int(item.get("value")))
+        elif name.endswith(".bytes"):
+            sizes.append(_as_int(item.get("value")))
+    row["shard_count"] = len(depths)
+    row["shard_depth_max"] = max(depths) if depths else 0
+    row["shard_depth_sum"] = sum(depths)
+    row["shard_bytes_max"] = max(sizes) if sizes else 0
+    row["shard_bytes_sum"] = sum(sizes)
+
+    for metric_name, prefix in _INVSYNC_HISTOGRAMS:
+        summary = (by_name.get(metric_name) or {}).get("summary")
+        for field in _INVSYNC_HIST_FIELDS:
+            value = summary.get(field) if isinstance(summary, dict) else None
+            row[f"{prefix}_{field}"] = _as_int(value)
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def invsync_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                             stop_event: threading.Event | None = None) -> None:
+    """Poll inventory_sync_server's GET /metrics and write per-second CSV."""
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=INVSYNC_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Inventory sync API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Inventory sync API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_invsync_stats(socket_path)
+                row = _flatten_invsync_stats(raw, ts_now, elapsed_s)
+                logger.info(
+                    "[invsync-api] 200=%d 503=%d 500=%d docs=%d shed=%d "
+                    "shard_depth(max/sum)=%d/%d vd_lane=%d vd_503=%d "
+                    "session_p99=%dus vd_lane_p99=%dus",
+                    _as_int(row.get("requests_200")),
+                    _as_int(row.get("requests_503")),
+                    _as_int(row.get("requests_500")),
+                    _as_int(row.get("docs_indexed")),
+                    _as_int(row.get("pipeline_shed_total")),
+                    _as_int(row.get("shard_depth_max")),
+                    _as_int(row.get("shard_depth_sum")),
+                    _as_int(row.get("vd_lane_depth")),
+                    _as_int(row.get("vd_capacity_503_total")),
+                    _as_int(row.get("session_duration_bulk_p99")),
+                    _as_int(row.get("vd_lane_time_p99")),
+                )
+            except Exception as exc:
+                row = _empty_invsync_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Inventory sync API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Inventory sync API monitor finished. CSV written to %s", csv_path)
+
+
+# ---------------------------------------------------------------------------
+# remoted_module metrics monitor (admin socket)
+# ---------------------------------------------------------------------------
+def _empty_remoted_module_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    return _empty_metrics_row(REMOTED_MODULE_HEADER, timestamp, elapsed_s)
+
+
+def _flatten_remoted_module_stats(raw: dict[str, object], timestamp: str,
+                                  elapsed_s: float) -> dict[str, object]:
+    """Map remoted_module's metrics dump onto the flat CSV row.
+
+    Scalars plus the latency histograms (expanded exactly like inventory sync's block); no
+    per-shard family, so there is nothing to aggregate.
+    """
+    row = _empty_remoted_module_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+
+    by_name = _index_metrics_by_name(raw)
+    _scalars_into_row(row, by_name, _REMOTED_MODULE_SCALARS)
+
+    for metric_name, prefix in _REMOTED_MODULE_HISTOGRAMS:
+        summary = (by_name.get(metric_name) or {}).get("summary")
+        for field in _INVSYNC_HIST_FIELDS:
+            value = summary.get(field) if isinstance(summary, dict) else None
+            row[f"{prefix}_{field}"] = _as_int(value)
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                                    stop_event: threading.Event | None = None) -> None:
+    """Poll remoted_module's GET /metrics on its admin socket and write per-second CSV.
+
+    The socket is optional by design: remoted only warns if the admin server cannot bind, so
+    an absent socket must degrade to query_ok=0 rows rather than take the monitor down. Those
+    rows are themselves the evidence that the plane was not observable during the run.
+    """
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=REMOTED_MODULE_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Remoted module API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Remoted module API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_uds_metrics(socket_path, REMOTED_MODULE_MAX_RESPONSE_SIZE)
+                row = _flatten_remoted_module_stats(raw, ts_now, elapsed_s)
+                # The admission split, in the order a saturation run is read: what arrived,
+                # what VD queued (and will run), and what was shed -- by capacity or otherwise --
+                # plus the data-plane hot path (stateless) and the two shed totals that name the
+                # bottleneck (byte budget vs deferred-work slots).
+                logger.info(
+                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d idx_unavail=%d vd_err=%d "
+                    "mismatch=%d | control notify=%d wdb_err=%d | stateless 2xx=%d 503=%d p99=%dus | "
+                    "shed budget=%d deferred=%d | admin sessions=%d",
+                    _as_int(row.get("scanvd_requests_total")),
+                    _as_int(row.get("scanvd_accepted")),
+                    _as_int(row.get("scanvd_queue_full")),
+                    _as_int(row.get("scanvd_indexer_unavailable")),
+                    _as_int(row.get("scanvd_vd_error")),
+                    _as_int(row.get("scanvd_version_mismatch")),
+                    _as_int(row.get("control_notify")),
+                    _as_int(row.get("control_wdb_error")),
+                    _as_int(row.get("http_stateless_responses_2xx")),
+                    _as_int(row.get("http_stateless_responses_503")),
+                    _as_int(row.get("http_stateless_latency_p99")),
+                    _as_int(row.get("server_budget_rejected_total")),
+                    _as_int(row.get("forwarder_deferred_rejected_total")),
+                    _as_int(row.get("admin_sessions_live")),
+                )
+            except Exception as exc:
+                row = _empty_remoted_module_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Remoted module API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Remoted module API monitor finished. CSV written to %s", csv_path)
+
+
 # Friendly CSV filename overrides for processes whose basename is generic.
 # e.g. wazuh-indexer runs as "java" - we want wazuh-indexer.csv instead.
 _EXE_CSV_ALIAS: dict[str, str] = {
@@ -908,7 +1404,7 @@ OPTIONAL_PROCESS_TARGETS = [
 
 def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
-    """Spawn process, disk and remoted API monitoring threads."""
+    """Spawn the process, disk and per-daemon API monitoring threads."""
     os.makedirs(output_dir, exist_ok=True)
     logger.info("Output directory: %s", output_dir)
 
@@ -916,6 +1412,8 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     disk_stop = threading.Event()
     remoted_stop = threading.Event()
     analysisd_stop = threading.Event()
+    invsync_stop = threading.Event()
+    remoted_module_stop = threading.Event()
 
     # Per-process resource threads
     for target, proc in processes.items():
@@ -959,12 +1457,30 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
         daemon=True,
     )
 
+    invsync_csv = os.path.join(output_dir, INVSYNC_STATS_CSV)
+    invsync_thread = threading.Thread(
+        target=invsync_api_monitor_loop,
+        args=(invsync_csv, interval, DEFAULT_INVSYNC_SOCKET, invsync_stop),
+        name="mon-invsync-api",
+        daemon=True,
+    )
+
+    remoted_module_csv = os.path.join(output_dir, REMOTED_MODULE_STATS_CSV)
+    remoted_module_thread = threading.Thread(
+        target=remoted_module_api_monitor_loop,
+        args=(remoted_module_csv, interval, DEFAULT_REMOTED_MODULE_SOCKET, remoted_module_stop),
+        name="mon-remoted-module-api",
+        daemon=True,
+    )
+
     for t in proc_threads:
         t.start()
     if disk_thread:
         disk_thread.start()
     remoted_thread.start()
     analysisd_thread.start()
+    invsync_thread.start()
+    remoted_module_thread.start()
 
     # Wait for all process threads to finish.
     while _running and any(t.is_alive() for t in proc_threads):
@@ -975,12 +1491,18 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     disk_stop.set()
     remoted_stop.set()
     analysisd_stop.set()
+    invsync_stop.set()
+    remoted_module_stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
     if remoted_thread.is_alive():
         remoted_thread.join(timeout=5.0)
     if analysisd_thread.is_alive():
         analysisd_thread.join(timeout=5.0)
+    if invsync_thread.is_alive():
+        invsync_thread.join(timeout=5.0)
+    if remoted_module_thread.is_alive():
+        remoted_module_thread.join(timeout=5.0)
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
 
@@ -1038,7 +1560,7 @@ def parse_args() -> argparse.Namespace:
         "--log-path",
         type=str,
         default=WAZUH_LOG_PATH,
-        help="Manager log path used for final InventorySync log extraction "
+        help="Manager log path used for the final log-event extraction "
              f"(default: {WAZUH_LOG_PATH})",
     )
     p.add_argument("-d", "--debug", action="store_true", help="Debug logging")
@@ -1091,276 +1613,187 @@ def main() -> None:
     monitor_start_time = datetime.now()
     monitor_multi(processes, output_dir, args.interval, disk_paths)
 
-    # Post-processing: extract InventorySync stats from wazuh-manager.log
-    extract_invsync_logs(output_dir, log_path=args.log_path, start_time=monitor_start_time)
+    # Post-processing: count the manager-log events that have no metric.
+    extract_manager_log_events(output_dir, log_path=args.log_path, start_time=monitor_start_time)
 
 
 # ---------------------------------------------------------------------------
-# InventorySync log extraction & event counting
+# Manager log event counting
 # ---------------------------------------------------------------------------
+# Everything the retired inventory_sync module used to log ("InventorySync queue
+# stats:", session stats, the RocksDB gauges) is gone: that module is no longer
+# built or registered, so those lines can never appear again. What remains here
+# counts what the CURRENT modules actually emit, and exists mainly for one gap:
+# the UDS transport's accept/parse/timeout failures have no metric counterpart,
+# so a log line is the only way to see them. Everything else below has a metric
+# in GET /metrics too, and is counted here only because a spike is easier to
+# spot against the same timeline as the rest of logs.csv.
 WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
 
-_RE_QUEUE_STATS = re.compile(
-    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync queue stats: (.+)$"
-)
-_RE_SESSION_STATS = re.compile(
-    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync session stats: (.+)$"
-)
-
-# Event counter patterns — matches error/warning events in the manager log.
-# Each match increments a per-second counter in logs.csv.
-_EVENT_PATTERNS: dict[str, re.Pattern] = {
-    "session_limit_reached":        re.compile(r"Session limit reached \(\d+/\d+ active sessions\)"),
-    "data_value_quota_exhausted":   re.compile(r"DataValue quota exhausted"),
-    "zombie_cleaned":               re.compile(r"Cleaning up zombie session \d+ for agent"),
-    "session_timeout":              re.compile(r"Session \d+ has timed out"),
-    "vdsync_timeout":               re.compile(r"Feed update scan timeout waiting for VDSync"),
-    "parse_error":                  re.compile(r"Failed to parse JSON message"),
-    "module_check_failed":          re.compile(r"ModuleCheck failed"),
-    "inventory_sync_error":         re.compile(r"InventorySyncFacade::start: (?!(Session not found|DataValue quota exhausted))"),
-    "indexer_error":                re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
-                                        re.IGNORECASE),
+# Rejections are logged THROTTLED, carrying their own count for the window:
+#   "Rejected 1234 request(s) with 503 in the last 90 s: ..."
+# Counting occurrences would undercount by orders of magnitude, so these
+# patterns capture the number and the counter sums it instead.
+_THROTTLED_EVENTS: dict[str, re.Pattern] = {
+    "session_rejected_403": re.compile(
+        r"Rejected (\d+) request\(s\) with 403 .*identity does not match"),
+    # inventory_sync_server's OWN scan lane. The vulnerability scanner's dispatcher is a
+    # different queue with its own counter below; the two are kept apart by wording ("scan
+    # lane queue" vs "scan dispatch queue") because one column mixing both would be useless.
+    "vd_lane_full_503": re.compile(
+        r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
+    # --- bounded lanes behind vd-http.sock ----------------------------------------------------
+    "vd_scan_dispatch_full_503": re.compile(
+        r"Rejected (\d+) scan request\(s\) with 503 .*scan dispatch queue is full"),
+    # remoted's relay leg failing for NON-capacity reasons (VD unreachable / not ready):
+    # capacity 503s are VD's own line above, this one is the passthrough's.
+    "scanvd_relay_503": re.compile(
+        r"Answered (\d+) scan request\(s\) with 503 .*VD did not queue them"),
+    "ondemand_lane_full_503": re.compile(
+        r"Rejected (\d+) on-demand update\(s\) with 503 .*on-demand lane is full"),
+    # Not a failure: concurrent triggers for one topic coalesce into a single update.
+    "ondemand_in_progress_409": re.compile(
+        r"Answered (\d+) on-demand request\(s\) with 409"),
+    "ondemand_unknown_topic_404": re.compile(
+        r"Rejected (\d+) on-demand request\(s\) with 404"),
+    # The noun varies by endpoint: sessions on /stateful, "stats document(s)" on /stats and
+    # "config document(s)" on /config -- all three now charge the same pipeline.
+    "indexer_unhealthy_503": re.compile(
+        r"Rejected (\d+) (?:\w+ )?(?:session|document)\(s\) with 503 "
+        r".*no configured indexer host is currently healthy"),
+    "pipeline_full_503": re.compile(
+        r"Rejected (\d+) session\(s\) with 503 .*sync pipeline queue is full"),
+    # --- shared UDS transport (inventory sync, vulnerability detector, remoted admin) -----
+    # These are capacity conditions of the transport itself rather than of a module's
+    # pipeline, and they are what a saturation run needs: they say whether load was shed at
+    # the door and by which mechanism. All of them are throttled with an embedded count.
+    #
+    # None of the messages name their server -- only the log tag does -- so a single column
+    # per condition mixes the three daemons on purpose: the per-server split lives in each
+    # module's own metrics CSV, and here what matters is the timeline.
+    "transport_connection_cap_503": re.compile(
+        # Note the verb: connections are REFUSED at accept time, requests are REJECTED after
+        # the head is read. Anchoring this one on "Rejected" would silently never match.
+        r"Refused (\d+) connection\(s\) with 503 .*connection limit is reached"),
+    "transport_class_session_cap_503": re.compile(
+        r"Rejected (\d+) request\(s\) with 503 .*-class session limit"),
+    "transport_body_cap_413": re.compile(
+        r"Rejected (\d+) request\(s\) with 413 .*-class cap"),
+    "transport_budget_503": re.compile(
+        r"Rejected (\d+) request\(s\) with 503 .*in-flight payload budget is exhausted"),
+    "transport_no_route": re.compile(
+        r"Answered (\d+) request\(s\) .*no route for"),
+    "transport_response_timeout_504": re.compile(
+        r"(\d+) request\(s\) in the last \d+ s were not answered within"),
+    "transport_abandoned_503": re.compile(
+        r"(\d+) request\(s\) in the last \d+ s were dropped by their handler"),
+    "transport_malformed_400": re.compile(
+        r"Rejected (\d+) malformed HTTP request\(s\)"),
+    "transport_accept_error": re.compile(
+        r"Failed to accept (\d+) .*connection\(s\)"),
 }
 
-# Gauge metrics captured from "InventorySync queue stats:" lines.
-_GAUGE_PATTERN = re.compile(
-    r"InventorySync queue stats:\s+"
-    r"workers_q=(?P<workers_q>\d+)\s+"
-    r"indexer_q=(?P<indexer_q>\d+)\s+"
-    r"sessions=(?P<sessions>\d+)\s+"
-    r"blocked_agents=(?P<blocked_agents>\d+)\s+"
-    r"active_vdfirst=(?P<active_vdfirst>\d+)\s+"
-    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+|\?)\s+"
-    r"indexer_notify=(?P<indexer_notify>\d+|\?)\s+"
-    r"indexer_delbyq=(?P<indexer_delbyq>\d+|\?)\s+"
-    r"rocksdb_dir_bytes=(?P<rocksdb_dir_bytes>\d+)"
-    r"(?:\s+workers_q_limit=(?P<workers_q_limit>\d+)"
-    r"\s+workers_q_used_pct=(?P<workers_q_used_pct>\d+(?:\.\d+)?)"
-    r"\s+session_limit=(?P<session_limit>\d+)"
-    r"\s+session_used_pct=(?P<session_used_pct>\d+(?:\.\d+)?)"
-    r"\s+data_value_quota_total=(?P<data_value_quota_total>\d+)"
-    r"\s+data_value_quota_remaining=(?P<data_value_quota_remaining>\d+)"
-    r"\s+data_value_quota_reserved=(?P<data_value_quota_reserved>\d+)"
-    r"\s+data_value_quota_used_pct=(?P<data_value_quota_used_pct>\d+(?:\.\d+)?)"
-    r"\s+data_value_quota_rejections=(?P<data_value_quota_rejections>\d+))?"
-)
+# One line, one occurrence.
+_EVENT_PATTERNS: dict[str, re.Pattern] = {
+    "bulk_flush_failed":   re.compile(r"A bulk flush of \d+ session\(s\) failed"),
+    "scan_failed":         re.compile(r"The vulnerability scan for agent .* failed"),
+    "indexer_unreachable": re.compile(r"No configured indexer host is currently reachable"),
+    # Shutdown summaries from the bounded lanes (one line per stop, not per request): accepted
+    # work that was shed because the module went down mid-flight. The scan lane DROPS its queue
+    # (the peers were answered at admission), the on-demand lane still answers 503s (deferred).
+    "lane_shutdown_shed": re.compile(
+        r"queued (?:scan request|update)\(s\) were (?:answered 503|dropped)"),
+    # Deliberately a count of LINES, not of events: every transport message is throttled and
+    # carries its own count, so one line here means "a 90 s throttle window fired", and the
+    # events inside it are counted by the specific _THROTTLED_EVENTS patterns above. A
+    # catch-all with a capture group would be fragile (the count sits in a different position
+    # per message) and would double-count what those already sum.
+    #
+    # The tag alternation covers the three servers that now share the transport; the tag is a
+    # line PREFIX and precedes the level, so tag-then-level is the right order here.
+    "transport_error":     re.compile(
+        r"(?:inventory-sync-server:server|vulnerability-scanner:server|remoted-module:admin)"
+        r".*(ERROR|WARNING)", re.IGNORECASE),
+}
 
-_GAUGE_NAMES: tuple[str, ...] = (
-    "workers_q", "indexer_q", "sessions", "blocked_agents", "active_vdfirst",
-    "indexer_bulk_bytes", "indexer_notify", "indexer_delbyq", "rocksdb_dir_bytes",
-    "workers_q_limit", "workers_q_used_pct", "session_limit", "session_used_pct",
-    "data_value_quota_total", "data_value_quota_remaining", "data_value_quota_reserved",
-    "data_value_quota_used_pct", "data_value_quota_rejections",
-)
-
-_LOGS_CSV_HEADER = (
-    ["timestamp", "elapsed_s"]
-    + list(_EVENT_PATTERNS.keys())
-    + list(_GAUGE_NAMES)
-)
+_COUNTER_NAMES: tuple[str, ...] = tuple(_THROTTLED_EVENTS) + tuple(_EVENT_PATTERNS)
+_LOGS_CSV_HEADER = ["timestamp", "elapsed_s"] + list(_COUNTER_NAMES)
 
 _RE_LOG_TIMESTAMP = re.compile(r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})")
 _LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
 
 
-def _parse_gauge_number(value: str | None) -> int | float | None:
-    if value in (None, "", "?"):
-        return None
-    return float(value) if "." in value else int(value)
+def extract_manager_log_events(output_dir: str,
+                               log_path: str = WAZUH_LOG_PATH,
+                               start_time: datetime | None = None) -> None:
+    """Parse wazuh-manager.log into ``logs.csv``: per-second event counters.
 
-
-def _parse_flat_kv(text: str) -> dict[str, str]:
-    """Parse 'key=value key2=value2 key3={a=1 b=2}' into a flat dict.
-
-    Nested braces like  raw_bytes={total=587568 avg=693 max=744 min_nonzero=672}
-    are flattened as   raw_bytes_total=587568  raw_bytes_avg=693  ...
-    """
-    result: dict[str, str] = {}
-    i = 0
-    while i < len(text):
-        # skip whitespace
-        while i < len(text) and text[i] == " ":
-            i += 1
-        if i >= len(text):
-            break
-        # read key
-        eq = text.index("=", i)
-        key = text[i:eq]
-        i = eq + 1
-        if i < len(text) and text[i] == "{":
-            # nested block
-            close = text.index("}", i)
-            inner = text[i + 1:close]
-            for sub_kv in inner.split():
-                sk, sv = sub_kv.split("=", 1)
-                result[f"{key}_{sk}"] = sv
-            i = close + 1
-        else:
-            # simple value — runs until next space or end
-            end = text.find(" ", i)
-            if end == -1:
-                end = len(text)
-            result[key] = text[i:end]
-            i = end
-    return result
-
-
-def extract_invsync_logs(output_dir: str,
-                         log_path: str = WAZUH_LOG_PATH,
-                         start_time: datetime | None = None) -> None:
-    """Parse wazuh-manager.log and produce three CSV outputs:
-
-    1. ``logs.csv`` — per-second event counters + gauge values (replaces
-       the former standalone log_parser.py).
-    2. ``invsync_queue_stats.csv`` — one row per raw queue-stats log line.
-    3. ``invsync_session_stats.csv`` — one row per session-stats log line.
-
-    Only log lines with a timestamp >= *start_time* are included so that
-    data from previous runs is not mixed in.
+    Only lines at or after *start_time* are counted, so a previous run's noise
+    is not mixed in. Throttled rejection lines contribute the count they carry
+    rather than 1, which is the difference between reading "4 rejections" and
+    the 40 000 they actually represent.
     """
     if not os.path.isfile(log_path):
         logger.info("Log file %s not found — skipping log extraction.", log_path)
         return
 
-    queue_rows: list[dict[str, str]] = []
-    session_rows: list[dict[str, str]] = []
-
-    # For logs.csv: bucket events and gauges into 1-second intervals.
-    # Key = integer elapsed second, value = {counter_name: count, ...}
+    # elapsed second -> {counter: total}
     buckets: dict[int, dict[str, int]] = {}
-    # Gauge values carry forward — last seen value persists until updated.
-    gauges: dict[str, int | float] = {}
-    # Track per-bucket gauge snapshots separately so carry-forward works.
-    bucket_gauges: dict[int, dict[str, int | float]] = {}
 
-    logger.info("Extracting InventorySync logs from %s (since %s) ...",
+    def bump(second: int, name: str, amount: int) -> None:
+        bucket = buckets.setdefault(second, {k: 0 for k in _COUNTER_NAMES})
+        bucket[name] += amount
+
+    logger.info("Extracting manager log events from %s (since %s) ...",
                 log_path,
                 start_time.strftime(_LOG_TS_FMT) if start_time else "beginning")
 
     with open(log_path, "r", errors="replace") as fh:
         for line in fh:
-            # Extract timestamp from log line
             ts_match = _RE_LOG_TIMESTAMP.match(line)
             if not ts_match:
                 continue
-            ts_str = ts_match.group(1)
             try:
-                line_dt = datetime.strptime(ts_str, _LOG_TS_FMT)
+                line_dt = datetime.strptime(ts_match.group(1), _LOG_TS_FMT)
             except ValueError:
                 continue
             if start_time and line_dt < start_time:
                 continue
 
-            # Compute elapsed second for this line
             elapsed_s = int((line_dt - start_time).total_seconds()) if start_time else 0
 
-            # --- Queue stats (raw CSV + gauge extraction) ---
-            m = _RE_QUEUE_STATS.match(line)
-            if m:
-                row = {"timestamp": ts_str}
-                row.update(_parse_flat_kv(m.group(2)))
-                queue_rows.append(row)
-                # Update gauges from this line
-                gauge_match = _GAUGE_PATTERN.search(line)
-                if gauge_match:
-                    for name in _GAUGE_NAMES:
-                        parsed = _parse_gauge_number(gauge_match.group(name))
-                        if parsed is not None:
-                            gauges[name] = parsed
-                    bucket_gauges[elapsed_s] = dict(gauges)
-                continue
+            for name, regex in _THROTTLED_EVENTS.items():
+                m = regex.search(line)
+                if m:
+                    bump(elapsed_s, name, _as_int(m.group(1), 1))
 
-            # --- Session stats (raw CSV) ---
-            m = _RE_SESSION_STATS.match(line)
-            if m:
-                row = {"timestamp": ts_str}
-                row.update(_parse_flat_kv(m.group(2)))
-                session_rows.append(row)
-                continue
-
-            # --- Event patterns (counters for logs.csv) ---
-            for key, regex in _EVENT_PATTERNS.items():
+            for name, regex in _EVENT_PATTERNS.items():
                 if regex.search(line):
-                    if elapsed_s not in buckets:
-                        buckets[elapsed_s] = {k: 0 for k in _EVENT_PATTERNS}
-                    buckets[elapsed_s][key] += 1
+                    bump(elapsed_s, name, 1)
 
-            # Also check for gauge in non-queue-stats lines (shouldn't happen
-            # but be safe)
-            gauge_match = _GAUGE_PATTERN.search(line)
-            if gauge_match:
-                for name in _GAUGE_NAMES:
-                    gauges[name] = int(gauge_match.group(name))
-                bucket_gauges[elapsed_s] = dict(gauges)
+    if not buckets:
+        logger.info("No matching log events found — logs.csv not written.")
+        return
 
-    # --- Write logs.csv (per-second counters + carry-forward gauges) ---
-    if buckets or bucket_gauges:
-        max_sec = max(
-            max(buckets.keys()) if buckets else 0,
-            max(bucket_gauges.keys()) if bucket_gauges else 0,
-        )
-        logs_rows: list[dict] = []
-        # Initialise all gauge metrics to 0 so that every second from the
-        # monitor start has a real value: before the first queue-stats log
-        # line the benchmark hasn't started yet and all session/queue counts
-        # are 0.  This makes the chart show a clean rise from 0 rather than
-        # the sessions line appearing blank (NaN) for the pre-benchmark window.
-        carried_gauges: dict[str, int | float] = {name: 0 for name in _GAUGE_NAMES}
-        for sec in range(0, max_sec + 1):
-            # Update carried gauges if this second has a snapshot
-            if sec in bucket_gauges:
-                carried_gauges.update(bucket_gauges[sec])
-            counters = buckets.get(sec, {k: 0 for k in _EVENT_PATTERNS})
-            row: dict[str, object] = {
-                "timestamp": (start_time + timedelta(seconds=sec)).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ") if start_time else "",
-                "elapsed_s": sec,
-            }
-            for k in _EVENT_PATTERNS:
-                row[k] = counters.get(k, 0)
-            for name in _GAUGE_NAMES:
-                row[name] = carried_gauges.get(name, "")
-            logs_rows.append(row)
+    max_sec = max(buckets)
+    rows: list[dict[str, object]] = []
+    for sec in range(0, max_sec + 1):
+        counters = buckets.get(sec, {})
+        row: dict[str, object] = {
+            "timestamp": (start_time + timedelta(seconds=sec)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if start_time else "",
+            "elapsed_s": sec,
+        }
+        for name in _COUNTER_NAMES:
+            row[name] = counters.get(name, 0)
+        rows.append(row)
 
-        logs_path = os.path.join(output_dir, "logs.csv")
-        with open(logs_path, "w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=_LOGS_CSV_HEADER)
-            writer.writeheader()
-            writer.writerows(logs_rows)
-        logger.info("Wrote %d rows -> %s", len(logs_rows), logs_path)
-    else:
-        logger.info("No event/gauge data found — logs.csv not written.")
-
-    # --- Write invsync_queue_stats.csv ---
-    if queue_rows:
-        path = os.path.join(output_dir, "invsync_queue_stats.csv")
-        _write_csv(path, queue_rows)
-        logger.info("Wrote %d queue-stats rows -> %s", len(queue_rows), path)
-    else:
-        logger.info("No InventorySync queue stats found in log.")
-
-    # --- Write invsync_session_stats.csv ---
-    if session_rows:
-        path = os.path.join(output_dir, "invsync_session_stats.csv")
-        _write_csv(path, session_rows)
-        logger.info("Wrote %d session-stats rows -> %s", len(session_rows), path)
-    else:
-        logger.info("No InventorySync session stats found in log.")
-
-
-def _write_csv(path: str, rows: list[dict[str, str]]) -> None:
-    """Write a list of dicts to CSV, deriving the header from all keys."""
-    all_keys: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        for k in row:
-            if k not in seen:
-                all_keys.append(k)
-                seen.add(k)
-    with open(path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=all_keys)
+    logs_path = os.path.join(output_dir, "logs.csv")
+    with open(logs_path, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=_LOGS_CSV_HEADER)
         writer.writeheader()
         writer.writerows(rows)
+    logger.info("Wrote %d rows -> %s", len(rows), logs_path)
 
 
 if __name__ == "__main__":

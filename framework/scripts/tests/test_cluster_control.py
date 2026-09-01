@@ -50,15 +50,12 @@ def test_print_table(print_mock, map_mock):
 async def test_print_agents(local_client_mock, get_agents_mock, print_table_mock, itemgetter_mock, map_mock):
     """Test if the function is properly printing the requested agents' information."""
     filter_status = 'active'
-    filter_node = 'wazuh_worker'
-    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
-               'node_name': 'Node name'}
+    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version'}
 
-    await cluster_control.print_agents(filter_status=filter_status, filter_node=filter_node)
+    await cluster_control.print_agents(filter_status=filter_status)
 
     local_client_mock.assert_called_once_with()
-    get_agents_mock.assert_called_once_with(local_client_mock.return_value, filter_node=filter_node,
-                                            filter_status=filter_status)
+    get_agents_mock.assert_called_once_with(local_client_mock.return_value, filter_status=filter_status)
     print_table_mock.assert_called_once_with(map_mock.return_value, list(headers.values()), True)
     map_mock.assert_called_once_with(itemgetter_mock.return_value, get_agents_mock.return_value['items'])
     itemgetter_mock.assert_called_once_with(*headers.keys())
@@ -90,7 +87,7 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
 @patch('scripts.cluster_control.control.get_health',
        return_value={'n_connected_nodes': '1',
                      'nodes': {'wazuh_worker2': {
-                         'info': {'ip': '0.0.0.0', 'version': '1.0', 'type': 'worker', 'n_active_agents': '0'},
+                         'info': {'ip': '0.0.0.0', 'version': '1.0', 'type': 'worker'},
                          'status': {'last_keep_alive': '11/02/1998',
                                     'last_check_integrity': {'date_start_master': 'n/a',
                                                              'date_end_master': 'n/a'},
@@ -135,8 +132,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
                                           f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
                                      call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
                                           f"Version: {worker_info['version']}\n        "
-                                          f"Type: {worker_info['type']}\n       "
-                                          f" Active agents: {worker_info['n_active_agents']}\n        "
+                                          f"Type: {worker_info['type']}\n        "
                                           f"Status:\n           "
                                           f" Last keep Alive:\n                Last received: "
                                           f"{worker_status['last_keep_alive']}.\n            "
@@ -218,9 +214,7 @@ def test_usage(basename_mock, print_mock):
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
-    \t-a -fn <node_name>                    # Check which agents are reporting to certain nodes
     \t-a -fs <agent_status>                 # List agents with certain status
-    \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
 

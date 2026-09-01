@@ -18,8 +18,10 @@ Usage:
         -o ./comparison_charts
 
 Expected files in each results directory:
-    bench.csv     ->  timestamp, elapsed_s, messages_sent, sessions_started,
-                      sessions_completed, sessions_failed, messages_dropped
+    bench.csv     ->  the sender's per-second CUMULATIVE counters
+                      (sessions_sent, sessions_ok, sessions_503, documents_sent,
+                      session_latency_ms_p50/p99, ...) - see
+                      tools/manager_benchmark/tool_simulator/docu/09-metrics-and-output.md
     monitor.csv   ->  timestamp, elapsed_s, cpu_pct, rss_mb, vms_mb,
                       fds, threads, read_bytes, write_bytes
 """
@@ -96,30 +98,41 @@ def load_monitor(path: str) -> pd.DataFrame:
     return _keep_last_run(df)
 
 
-def load_remoted_stats(path: str) -> pd.DataFrame:
+# Columns every daemon-stats CSV carries as text; everything else is coerced to numbers so a
+# failed scrape (empty cells) plots as a gap instead of poisoning the column's dtype.
+_STATS_TEXT_COLS = ("timestamp", "query_error", "raw_response_json")
+
+
+def _load_stats_csv(path: str, text_cols: tuple[str, ...] = _STATS_TEXT_COLS) -> pd.DataFrame:
+    """Load one of the per-daemon stats CSVs written by monitor.py."""
     df = pd.read_csv(path)
     if "elapsed_s" not in df.columns:
         df["elapsed_s"] = range(len(df))
     df = _keep_last_run(df)
     for col in df.columns:
-        if col in (
-            "timestamp", "query_error", "message", "data_name", "raw_response_json",
-        ):
+        if col in text_cols:
             continue
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
+
+def load_remoted_stats(path: str) -> pd.DataFrame:
+    """Load stats-api-remoted.csv (remoted's C statistics over the framed socket)."""
+    return _load_stats_csv(path, _STATS_TEXT_COLS + ("message", "data_name"))
+
+
+def load_invsync_stats(path: str) -> pd.DataFrame:
+    """Load stats-api-inventory-sync.csv (the module's GET /metrics scrape)."""
+    return _load_stats_csv(path)
+
+
+def load_remoted_module_stats(path: str) -> pd.DataFrame:
+    """Load stats-api-remoted-module.csv (the C++ module's GET /metrics scrape)."""
+    return _load_stats_csv(path)
 
 
 def load_analysisd_stats(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    if "elapsed_s" not in df.columns:
-        df["elapsed_s"] = range(len(df))
-    df = _keep_last_run(df)
-    for col in df.columns:
-        if col in ("timestamp", "query_error", "raw_response_json"):
-            continue
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+    return _load_stats_csv(path)
 
 
 def parse_result_arg(arg: str) -> tuple[str, str]:
@@ -327,12 +340,185 @@ MONITOR_METRICS = [
     ("write_bytes", "Cumulative Bytes Written",  "Bytes"),
 ]
 
+# The sender's bench.csv (docu/09-metrics-and-output.md). Every count column is
+# CUMULATIVE, so these plot as rising curves and a run's total is the LAST value,
+# never the sum of the column.
 BENCH_METRICS = [
-    ("messages_sent",       "Messages Sent / s",       "Count"),
-    ("sessions_started",    "Sessions Started / s",     "Count"),
-    ("sessions_completed",  "Sessions Completed / s",   "Count"),
-    ("sessions_failed",     "Sessions Failed / s",      "Count"),
-    ("messages_dropped",    "Messages Dropped / s",     "Count"),
+    ("agents_active",         "Agents Active",                    "Agents"),
+    ("sessions_sent",         "Sessions Sent (cumulative)",       "Count"),
+    ("sessions_ok",           "Sessions 200 (cumulative)",        "Count"),
+    ("sessions_503",          "Sessions 503 (cumulative)",        "Count"),
+    ("sessions_500",          "Sessions 500 (cumulative)",        "Count"),
+    ("sessions_400",          "Sessions 400 (cumulative)",        "Count"),
+    ("sessions_403",          "Sessions 403 (cumulative)",        "Count"),
+    ("sessions_401",          "Sessions 401 (cumulative)",        "Count"),
+    ("documents_sent",        "Documents Sent (cumulative)",      "Count"),
+    ("bytes_sent",            "Bytes Sent (cumulative)",          "Bytes"),
+    ("transport_errors",      "Transport Errors (cumulative)",    "Count"),
+    ("retries_feed",          "Feed Retries (cumulative)",        "Count"),
+    ("stateless_sent",        "Engine Batches Sent (cumulative)", "Count"),
+    ("events_sent",           "Engine Events Sent (cumulative)",  "Count"),
+    ("control_notify_ok",     "Control Notify OK (cumulative)",   "Count"),
+    # POST /scan/vd (feed-update re-scan). scan_200 is "queued", not "scanned":
+    # the manager answers at admission and scans afterward, one agent at a time.
+    ("scan_sent",             "VD Re-scan Requests Sent (cumulative)",     "Count"),
+    ("scan_200",              "VD Re-scan Requests Queued (cumulative)",   "Count"),
+    ("scan_409",              "VD Re-scan version_mismatch (cumulative)",  "Count"),
+    ("scan_503",              "VD Re-scan scan_queue_full (cumulative)",   "Count"),
+    ("session_latency_ms_p50", "Session Latency p50",             "ms"),
+    ("session_latency_ms_p99", "Session Latency p99",             "ms"),
+    ("scan_latency_ms_p99",   "VD Re-scan Admission Latency p99",  "ms"),
+]
+
+# inventory_sync_server. Counters are cumulative for the module's lifetime, so
+# these read as ever-rising lines; the gauges (shard/lane depth) are the ones
+# that show instantaneous pressure. Histogram columns are MICROSECONDS.
+INVSYNC_METRICS = [
+    ("requests_200",            "Sessions Answered 200",             "Count"),
+    ("requests_503",            "Sessions Shed (503)",               "Count"),
+    ("requests_500",            "Sessions Failed (500)",             "Count"),
+    ("requests_400",            "Sessions Rejected (400)",           "Count"),
+    ("requests_403",            "Sessions Rejected (403)",           "Count"),
+    ("requests_409",            "Sessions Rejected (409)",           "Count"),
+    ("requests_other",          "Sessions Answered Off-contract (other)", "Count"),
+    ("docs_indexed",            "Documents Indexed",                 "Count"),
+    ("docs_skipped",            "Documents Skipped",                 "Count"),
+    ("bytes_ingested",          "Bytes Ingested",                    "Bytes"),
+    ("pipeline_shed_total",     "Pipeline Shed (queue full)",        "Count"),
+    ("bulk_flushes",            "Group-commit Flushes",              "Count"),
+    ("bulk_bytes_total",        "Bytes Flushed in Group Commits",    "Bytes"),
+    ("bulk_sessions_total",     "Sessions Answered by Group Commits", "Count"),
+    ("shard_depth_sum",         "Sharded Queue Depth (all shards)",  "Items"),
+    ("shard_depth_max",         "Sharded Queue Depth (hottest)",     "Items"),
+    ("shard_bytes_sum",         "Sharded Queue Bytes (all shards)",  "Bytes"),
+    ("shard_bytes_max",         "Sharded Queue Bytes (hottest)",     "Bytes"),
+    ("vd_lane_depth",           "VD Scan Lane Depth",                "Sessions"),
+    ("vd_capacity_503_total",   "VD Sessions Shed (lane full)",      "Count"),
+    ("vd_scans_ok",             "VD Scans Completed",                "Count"),
+    ("vd_scans_failed",         "VD Scans Failed",                   "Count"),
+    ("vd_scans_skipped",        "VD Scans Skipped (legitimately)",   "Count"),
+    ("vd_retry_after_total",    "VD 503s with Retry-After (feed not ready)", "Count"),
+    ("vd_offset_mismatch_total", "VD Sessions Rejected (feed-offset mismatch)", "Count"),
+    ("session_duration_bulk_p99",      "Session Duration p99 (bulk)",      "microseconds"),
+    ("session_duration_immediate_p99", "Session Duration p99 (immediate)", "microseconds"),
+    ("vd_lane_time_p99",        "VD Lane Time p99 (all outcomes)",   "microseconds"),
+    ("vd_scan_duration_p99",    "VD Scan Duration p99 (scanner only)", "microseconds"),
+    # Transport of the shared UDS server. All gauges: instantaneous levels, not growth.
+    ("server_budget_available_bytes",   "Transport — In-flight Budget Available", "Bytes"),
+    ("server_budget_inflight_bytes",    "Transport — In-flight Bytes Resident",   "Bytes"),
+    ("server_budget_inflight_requests", "Transport — In-flight Requests",         "Requests"),
+    ("server_sessions_live",     "Transport — Live Connections",            "Connections"),
+    ("server_sessions_data",     "Transport — Data-class Connections",      "Connections"),
+    ("server_sessions_control",  "Transport — Control-class Connections",   "Connections"),
+    ("server_sessions_liveness", "Transport — Liveness-class Connections",  "Connections"),
+]
+
+# remoted_module's own registry (admin socket). Counters are cumulative for the module's
+# lifetime; the admin.* block is the transport gauges of the admin server itself.
+REMOTED_MODULE_METRICS = [
+    ("scanvd_requests_total",     "VD Scan Requests Received",            "Count"),
+    ("scanvd_accepted",           "VD Scan Requests Queued by VD",        "Count"),
+    ("scanvd_queue_full",         "VD Scan Requests Shed (lane full)",    "Count"),
+    ("scanvd_indexer_unavailable", "VD Scan Requests Shed (indexer unavailable)", "Count"),
+    ("scanvd_vd_error",           "VD Scan Relay Failures (VD unreachable/not ready)", "Count"),
+    ("scanvd_version_mismatch",   "VD Scan Requests Rejected (offset mismatch)", "Count"),
+    ("control_notify",            "Control — Keepalive Requests",         "Count"),
+    ("control_startup",           "Control — Startup Requests",           "Count"),
+    ("control_shutdown",          "Control — Shutdown Requests",          "Count"),
+    ("control_rejected",          "Control — Malformed Requests Rejected (400)", "Count"),
+    ("control_wdb_error",         "Control — wazuh-db Failures",          "Count"),
+    ("control_wdb_latency_p99",   "Control — wazuh-db Round-trip p99 (successful)", "microseconds"),
+    ("control_task_fetch",        "Control — Task Fetches",               "Count"),
+    ("control_task_fetch_error",  "Control — Task Fetch Failures",        "Count"),
+    ("control_registry_agents",   "Control — Agents Tracked",             "Agents"),
+    ("keystore_agents",           "Keystore — Agents with a Usable Key",  "Agents"),
+    ("keystore_entries_skipped",   "Keystore — Unusable client.keys Lines", "Entries"),
+    ("keystore_reload_failures_total", "Keystore — client.keys Load Failures", "Count"),
+    ("http_stateless_responses_2xx", "POST /stateless — Accepted (2xx)",  "Count"),
+    ("http_stateless_responses_503", "POST /stateless — Shed/Failed (503)", "Count"),
+    ("http_stateless_latency_p99",   "POST /stateless — End-to-end p99",  "microseconds"),
+    ("http_stateful_responses_2xx",  "POST /stateful — Accepted (2xx)",   "Count"),
+    ("http_stateful_responses_503",  "POST /stateful — Shed/Failed (503)", "Count"),
+    ("http_stateful_latency_p99",    "POST /stateful — End-to-end p99",   "microseconds"),
+    ("server_budget_available_bytes", "Public Transport — In-flight Budget Available", "Bytes"),
+    ("server_budget_inflight_bytes",  "Public Transport — In-flight Bytes Resident",   "Bytes"),
+    ("server_budget_rejected_total",  "Public Transport — Requests Shed by the Budget", "Count"),
+    ("forwarder_deferred_inflight",   "Forwarder — Deferred Requests In Flight", "Requests"),
+    ("forwarder_deferred_rejected_total", "Forwarder — Requests Shed (slots full)", "Count"),
+    ("forwarder_downstream_5xx",      "Forwarder — Downstream 5xx Answers",   "Count"),
+    ("forwarder_error_response_timeout", "Forwarder — Downstream Response Timeouts", "Count"),
+    ("forwarder_route_mismatch",      "Forwarder — Downstream Route Mismatches (404/405)", "Count"),
+    ("download_started",              "POST /download — Transfers Started",   "Count"),
+    ("download_bytes_total",          "POST /download — Bytes Offered",       "Bytes"),
+    ("download_not_found",            "POST /download — Unknown Group/WPK (404)", "Count"),
+    ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
+]
+
+# WHY agents fail authentication, pre-collapse (the wire folds credential failures into one
+# generic 401, so only these counters keep the causes apart). Read together: one cause
+# dominating names the fix (NTP, re-enrollment, a scanner hammering the listener...).
+# Enrollment outcomes read together: one dominating line names the fix (authd down vs a full
+# queue vs a validation problem on the agent side).
+_ENROLL_OUTCOME_FUNNEL_COLS = [
+    "enroll_accepted",
+    "enroll_rejected_auth",
+    "enroll_rejected_validation",
+    "enroll_disabled",
+    "enroll_authd_error",
+    "enroll_authd_unavailable",
+    "enroll_authd_queue_rejected_total",
+]
+
+# Depth against its own cap: the pair that says whether authd_max_queue_size is sized right.
+_ENROLL_QUEUE_COLS = ["enroll_authd_queue_depth", "enroll_authd_queue_capacity"]
+
+_AUTH_REJECT_FUNNEL_COLS = [
+    "auth_reject_unknown_agent",
+    "auth_reject_invalid_signature",
+    "auth_reject_bad_token",
+    "auth_reject_identity_mismatch",
+    "auth_reject_clock_skew",
+    "auth_reject_unusable_key",
+    "auth_reject_address_not_allowed",
+    "auth_reject_enrollment_key_unavailable",
+    "auth_reject_payload_mismatch",
+    "auth_reject_body_too_large",
+    "auth_reject_bad_encoding",
+    "auth_reject_malformed",
+]
+
+# WHY forwarded requests fail, one line per cause. The per-endpoint responses funnels say WHICH
+# path is failing; this says which timeout/knob (or which downstream) to look at.
+_FWD_ERROR_FUNNEL_COLS = [
+    "forwarder_error_connect",
+    "forwarder_error_connect_timeout",
+    "forwarder_error_write_timeout",
+    "forwarder_error_response_timeout",
+    "forwarder_error_transport",
+    "forwarder_error_protocol",
+    "forwarder_error_response_too_large",
+    "forwarder_downstream_5xx",
+    "forwarder_route_mismatch",
+]
+
+# One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
+# structurally zero for a given endpoint (kept for a uniform vocabulary).
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
+_HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
+
+# The admission split: everything that arrived lands in exactly one of these. remoted is a
+# synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
+# and every rejection was VISIBLE to the agent (a 503 its next notify retries) -- a healthy
+# saturated run shows accepted at the lane's capacity and queue_full absorbing the excess,
+# with vd_error flat. An indexer outage moves the shed to indexer_unavailable (VD's own
+# reported cause, like queue_full) while VD holds what it already queued.
+_SCANVD_FUNNEL_COLS = [
+    "scanvd_requests_total",
+    "scanvd_accepted",
+    "scanvd_queue_full",
+    "scanvd_indexer_unavailable",
+    "scanvd_vd_error",
+    "scanvd_version_mismatch",
 ]
 
 REMOTED_METRICS = [
@@ -350,11 +536,6 @@ REMOTED_METRICS = [
     (
         "messages_received_breakdown_events_failed",
         "Remoted Messages Received Events Failed",
-        "Count",
-    ),
-    (
-        "messages_received_breakdown_states",
-        "Remoted Messages Received States",
         "Count",
     ),
     (
@@ -384,6 +565,19 @@ AGENT_CACHE_METRICS = [
     ("agent_cache_evictions",  "Agent Cache — Evictions (cumulative)",    "Count"),
 ]
 
+# CSVs in a results dir that are NOT per-process samples. Process discovery walks the
+# directory and treats every other .csv as "<process>.csv", so a daemon-stats file missing
+# from this set gets plotted as if it were a monitored process. One list, used everywhere the
+# directory is walked, so adding a scraper is a one-line change here.
+STATS_CSV_NAMES = frozenset({
+    "disk_usage.csv",
+    "logs.csv",
+    "stats-api-remoted.csv",
+    "stats-api-remoted-module.csv",
+    "stats-api-analysisd.csv",
+    "stats-api-inventory-sync.csv",
+})
+
 EXTRA_PROCESS_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
@@ -393,6 +587,13 @@ SIMPLE_MONITOR_EXTRA_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
 )
+
+# Memory is the one axis the indexer JVM cannot share: it sits around 6 GB while every manager
+# process stays under ~600 MB, so including it pins the axis and collapses the whole manager
+# into an unreadable band at the bottom. Its memory is not lost -- monitor_rss_total_with_indexer
+# is the combined view. The indexer-owned engine stays: it runs in the manager's range.
+_MEMORY_METRICS = frozenset({"rss_mb", "vms_mb"})
+_SCALE_BREAKING_COMPONENTS = frozenset({"wazuh-indexer"})
 TOTAL_MONITOR_EXTRA_COMPONENTS = EXTRA_PROCESS_COMPONENTS
 
 
@@ -411,6 +612,8 @@ def generate_charts(
     disk_dfs: dict[str, pd.DataFrame] = {}
     remoted_dfs: dict[str, pd.DataFrame] = {}
     analysisd_dfs: dict[str, pd.DataFrame] = {}
+    invsync_dfs: dict[str, pd.DataFrame] = {}
+    remoted_module_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
     # Optional all-in-one components. Kept separate so manager-only charts
@@ -444,6 +647,15 @@ def generate_charts(
         if not os.path.isfile(analysisd_stats_path):
             analysisd_stats_path = os.path.join(path, "stats-api-analysisd.csv")
 
+        invsync_stats_path = os.path.join(path, "monitor", "stats-api-inventory-sync.csv")
+        if not os.path.isfile(invsync_stats_path):
+            invsync_stats_path = os.path.join(path, "stats-api-inventory-sync.csv")
+
+        # remoted_module stats: prefer monitor/ subdir, fall back to root
+        remoted_module_stats_path = os.path.join(monitor_dir, "stats-api-remoted-module.csv")
+        if not os.path.isfile(remoted_module_stats_path):
+            remoted_module_stats_path = os.path.join(path, "stats-api-remoted-module.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
@@ -463,6 +675,16 @@ def generate_charts(
                 analysisd_dfs[label] = load_analysisd_stats(analysisd_stats_path)
             except Exception as exc:
                 print(f"  warning: could not load {analysisd_stats_path}: {exc}")
+        if os.path.isfile(invsync_stats_path):
+            try:
+                invsync_dfs[label] = load_invsync_stats(invsync_stats_path)
+            except Exception as exc:
+                print(f"  warning: could not load {invsync_stats_path}: {exc}")
+        if os.path.isfile(remoted_module_stats_path):
+            try:
+                remoted_module_dfs[label] = load_remoted_module_stats(remoted_module_stats_path)
+            except Exception as exc:
+                print(f"  warning: could not load {remoted_module_stats_path}: {exc}")
 
         # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
         # then auto-discover per-process CSVs in root.
@@ -470,9 +692,7 @@ def generate_charts(
             for fname in sorted(os.listdir(monitor_dir)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("disk_usage.csv", "logs.csv",
-                             "invsync_queue_stats.csv", "invsync_session_stats.csv",
-                             "stats-api-remoted.csv", "stats-api-analysisd.csv"):
+                if fname in STATS_CSV_NAMES:
                     continue
                 fpath = os.path.join(monitor_dir, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -494,9 +714,7 @@ def generate_charts(
             for fname in sorted(os.listdir(path)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("bench.csv", "disk_usage.csv", "logs.csv",
-                             "invsync_queue_stats.csv", "invsync_session_stats.csv",
-                             "stats-api-remoted.csv", "stats-api-analysisd.csv"):
+                if fname == "bench.csv" or fname in STATS_CSV_NAMES:
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -513,7 +731,8 @@ def generate_charts(
 
     has_extra_procs = any(extra_proc_dfs.values())
     if (not monitors and not benches and not disk_dfs and not remoted_dfs
-            and not analysisd_dfs and not has_extra_procs):
+            and not analysisd_dfs and not invsync_dfs and not remoted_module_dfs
+            and not logs and not has_extra_procs):
         print("No data files found — nothing to generate.")
         return
 
@@ -523,6 +742,9 @@ def generate_charts(
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
     analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
+    invsync_dfs = {k: v for k, v in invsync_dfs.items() if len(v) > 0}
+    remoted_module_dfs = {k: v for k, v in remoted_module_dfs.items() if len(v) > 0}
+    logs = {k: v for k, v in logs.items() if len(v) > 0}
     extra_proc_dfs = {
         name: {lbl: df for lbl, df in datasets.items() if len(df) > 0}
         for name, datasets in extra_proc_dfs.items()
@@ -530,7 +752,8 @@ def generate_charts(
     has_extra_procs = any(extra_proc_dfs.values())
 
     if (not monitors and not benches and not disk_dfs and not remoted_dfs
-            and not analysisd_dfs and not has_extra_procs):
+            and not analysisd_dfs and not invsync_dfs and not remoted_module_dfs
+            and not logs and not has_extra_procs):
         print("All CSV files are empty — nothing to generate.")
         return
 
@@ -554,12 +777,16 @@ def generate_charts(
                 monitors_with_simple_extras[key] = df
 
         for col, title_suffix, ylabel in MONITOR_METRICS:
+            datasets = monitors_with_simple_extras
+            title = f"Wazuh Manager — {title_suffix}"
+            if col in _MEMORY_METRICS:
+                datasets = {
+                    key: df for key, df in datasets.items()
+                    if key.split("/")[-1] not in _SCALE_BREAKING_COMPONENTS
+                }
+                title += " (manager processes)"
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
-            plot_timeseries(
-                monitors_with_simple_extras, col,
-                f"Wazuh Manager — {title_suffix}",
-                ylabel, out,
-            )
+            plot_timeseries(datasets, col, title, ylabel, out)
 
         if monitors:
             # manager-only: per-process lines + manager total (no indexer,
@@ -627,6 +854,8 @@ def generate_charts(
     # -- Bench time-series ---------------------------------------------------
     if benches:
         for col, title_suffix, ylabel in BENCH_METRICS:
+            if not any(col in df.columns for df in benches.values()):
+                continue
             out = os.path.join(out_dir, f"bench_{col}.{fmt}")
             plot_timeseries(
                 benches, col,
@@ -634,16 +863,17 @@ def generate_charts(
                 ylabel, out,
             )
 
-        # Sent vs completed per run — stacked subplots, smoothed sessions/s
-        plot_stacked_timeseries(
-            benches,
-            "messages_sent", "sessions_completed",
-            "Messages sent / s", "Sessions completed / s",
-            "Messages / s", "Sessions / s",
-            "Messages Sent vs Sessions Completed",
-            os.path.join(out_dir, f"bench_sent_vs_completed.{fmt}"),
-            smooth_b_window=5,
-        )
+        # Sent vs accepted per run. Both cumulative, so the gap between the two
+        # curves is what did not get a 200.
+        if any("sessions_sent" in df.columns for df in benches.values()):
+            plot_stacked_timeseries(
+                benches,
+                "sessions_sent", "sessions_ok",
+                "Sessions sent (cumulative)", "Sessions answered 200 (cumulative)",
+                "Count", "Count",
+                "Sessions Sent vs Answered 200",
+                os.path.join(out_dir, f"bench_sent_vs_ok.{fmt}"),
+            )
 
     # -- Remoted API time-series --------------------------------------------
     if remoted_dfs:
@@ -740,6 +970,187 @@ def generate_charts(
                     os.path.join(out_dir, f"analysisd_agent_cache_overview_{safe_label}.{fmt}"),
                 )
 
+    # -- inventory_sync_server -----------------------------------------------
+    if invsync_dfs:
+        for col, title_suffix, ylabel in INVSYNC_METRICS:
+            if not any(col in df.columns for df in invsync_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"invsync_{col}.{fmt}")
+            plot_timeseries(
+                invsync_dfs,
+                col,
+                f"Inventory Sync Server \u2014 {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # Sharded ingest queue: total depth against the hottest single shard.
+        # Two evenly-loaded shards and one hot shard look identical in the sum,
+        # so the pair is what shows imbalance.
+        if any("shard_depth_sum" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "shard_depth_sum", "shard_depth_max",
+                "Queued items (all shards)", "Queued items (hottest shard)",
+                "Items", "Items",
+                "Inventory Sync Server \u2014 Sharded Ingest Queue",
+                os.path.join(out_dir, f"invsync_shard_queue.{fmt}"),
+            )
+
+        # VD lane: how deep the queue gets vs how long a session spends in it.
+        if any("vd_lane_depth" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "vd_lane_depth", "vd_lane_time_p99",
+                "VD Lane Depth", "VD Lane Time p99",
+                "Sessions", "microseconds",
+                "Inventory Sync Server \u2014 Vulnerability Scan Lane",
+                os.path.join(out_dir, f"invsync_vd_lane.{fmt}"),
+            )
+
+        # Backpressure: what was shed against what got through.
+        if any("requests_503" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "requests_200", "requests_503",
+                "Sessions Answered 200", "Sessions Shed (503)",
+                "Count", "Count",
+                "Inventory Sync Server \u2014 Accepted vs Shed",
+                os.path.join(out_dir, f"invsync_accepted_vs_shed.{fmt}"),
+            )
+
+        # QoS: the reserve exists so control traffic keeps a lane while the data plane
+        # saturates. Control staying served with data pinned at its cap is the whole point.
+        if any("server_sessions_data" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "server_sessions_data", "server_sessions_control",
+                "Data-class connections", "Control-class connections",
+                "Connections", "Connections",
+                "Inventory Sync Server \u2014 Connections by Route Class",
+                os.path.join(out_dir, f"invsync_qos_sessions.{fmt}"),
+            )
+
+        # Budget pressure: bytes still admissible against what is resident in flight.
+        if any("server_budget_available_bytes" in df.columns for df in invsync_dfs.values()):
+            plot_stacked_timeseries(
+                invsync_dfs,
+                "server_budget_available_bytes", "server_budget_inflight_bytes",
+                "Budget available", "Bytes in flight",
+                "Bytes", "Bytes",
+                "Inventory Sync Server \u2014 In-flight Byte Budget",
+                os.path.join(out_dir, f"invsync_budget.{fmt}"),
+            )
+
+    # -- remoted_module (admin socket) ---------------------------------------
+    if remoted_module_dfs:
+        for col, title_suffix, ylabel in REMOTED_MODULE_METRICS:
+            if not any(col in df.columns for df in remoted_module_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"remoted_module_{col}.{fmt}")
+            plot_timeseries(
+                remoted_module_dfs,
+                col,
+                f"Remoted Module \u2014 {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # The chart a saturation run is judged on: requests split into queued-and-will-run vs
+        # honestly-shed, with vd_error as the failure line that must stay flat. One per run,
+        # since the series only make sense read against each other.
+        for label, df in remoted_module_dfs.items():
+            if not any(col in df.columns for col in _SCANVD_FUNNEL_COLS):
+                continue
+            safe_label = label.replace(" ", "_")
+            plot_multiline_timeseries(
+                df, _SCANVD_FUNNEL_COLS,
+                f"Remoted Module \u2014 VD Scan Funnel ({label})",
+                "Count (cumulative)",
+                os.path.join(out_dir, f"remoted_module_scanvd_funnel_{safe_label}.{fmt}"),
+                y_min=0,
+            )
+
+        # WHY agents fail auth (pre-collapse causes) and WHY forwarded requests fail: same
+        # read-together rationale as the scanvd funnel \u2014 one dominating line names the fix.
+        for label, df in remoted_module_dfs.items():
+            safe_label = label.replace(" ", "_")
+            if any(col in df.columns for col in _AUTH_REJECT_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _AUTH_REJECT_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Auth Rejections by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_auth_reject_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_OUTCOME_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_OUTCOME_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Enrollment Outcomes ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_enroll_outcome_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_QUEUE_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_QUEUE_COLS,
+                    f"Remoted Module \u2014 authd Queue Depth vs Capacity ({label})",
+                    "Requests",
+                    os.path.join(out_dir, f"remoted_module_enroll_authd_queue_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _FWD_ERROR_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _FWD_ERROR_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Downstream Failures by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_fwd_error_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            # WHAT each forwarded endpoint answered its agents, one funnel per endpoint.
+            for endpoint in _HTTP_RESPONSE_ENDPOINTS:
+                cols = [f"http_{endpoint}_responses_{code}" for code in _HTTP_RESPONSE_CODES]
+                if not any(col in df.columns for col in cols):
+                    continue
+                plot_multiline_timeseries(
+                    df, cols,
+                    f"Remoted Module \u2014 POST /{endpoint} Responses ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_http_{endpoint}_responses_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+
+        # Backpressure pairs, mirroring the inventory-sync transport charts: budget occupancy
+        # (levels) and the deferred-work lane (occupancy vs its configured cap).
+        if any("server_budget_available_bytes" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "server_budget_available_bytes", "server_budget_inflight_bytes",
+                "Budget available", "Bytes in flight",
+                "Bytes", "Bytes",
+                "Remoted Module \u2014 In-flight Byte Budget",
+                os.path.join(out_dir, f"remoted_module_budget.{fmt}"),
+            )
+        if any("forwarder_deferred_inflight" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "forwarder_deferred_inflight", "forwarder_deferred_capacity",
+                "Deferred requests in flight", "Configured slot cap",
+                "Requests", "Requests",
+                "Remoted Module \u2014 Deferred-work Occupancy",
+                os.path.join(out_dir, f"remoted_module_deferred.{fmt}"),
+            )
+
+    # -- Manager log events --------------------------------------------------
+    # logs.csv counts what only the log can tell: throttled transport rejections (each line
+    # carries the count for its 90 s window) and the failures with no metric behind them.
+    for label, df in logs.items():
+        safe_label = label.replace(" ", "_")
+        _plot_log_events(
+            df, label,
+            os.path.join(out_dir, f"logs_events_{safe_label}.{fmt}"),
+        )
+
     # -- Summary bar charts --------------------------------------------------
     if monitors:
         labels = list(monitors.keys())
@@ -783,428 +1194,62 @@ def generate_charts(
         labels = list(benches.keys())
         colors = [run_color(i) for i in range(len(labels))]
 
-        # Total sessions completed
-        total_completed = [
-            int(df["sessions_completed"].sum()) for df in benches.values()
-        ]
-        plot_bar(labels, total_completed, colors,
-                 "Total Sessions Completed", "Sessions",
-                 os.path.join(out_dir, f"summary_sessions_completed.{fmt}"))
+        # bench.csv counters are CUMULATIVE, so a run's total is the last row --
+        # summing the column would add every intermediate reading and inflate the
+        # number by roughly the row count.
+        def bench_total(df: pd.DataFrame, col: str) -> int:
+            if col not in df.columns:
+                return 0
+            series = pd.to_numeric(df[col], errors="coerce").dropna()
+            return int(series.iloc[-1]) if len(series) else 0
 
-        # Total messages sent
-        total_sent = [int(df["messages_sent"].sum()) for df in benches.values()]
-        plot_bar(labels, total_sent, colors,
-                 "Total Messages Sent", "Messages",
-                 os.path.join(out_dir, f"summary_messages_sent.{fmt}"))
-
-        # Total dropped
-        total_dropped = [
-            int(df["messages_dropped"].sum()) for df in benches.values()
-        ]
-        if any(d > 0 for d in total_dropped):
-            plot_bar(labels, total_dropped, colors,
-                     "Total Messages Dropped", "Messages",
-                     os.path.join(out_dir, f"summary_messages_dropped.{fmt}"))
+        for col, title, ylabel, only_if_nonzero in (
+            ("sessions_sent",    "Total Sessions Sent",        "Sessions", False),
+            ("sessions_ok",      "Total Sessions Answered 200", "Sessions", False),
+            ("documents_sent",   "Total Documents Sent",       "Documents", False),
+            ("sessions_503",     "Total Sessions Shed (503)",  "Sessions", True),
+            ("sessions_500",     "Total Sessions Failed (500)", "Sessions", True),
+            ("transport_errors", "Total Transport Errors",     "Errors", True),
+            ("events_sent",      "Total Engine Events Sent",   "Events", True),
+        ):
+            totals = [bench_total(df, col) for df in benches.values()]
+            if only_if_nonzero and not any(t > 0 for t in totals):
+                continue
+            if not any(t > 0 for t in totals):
+                continue
+            plot_bar(labels, totals, colors, title, ylabel,
+                     os.path.join(out_dir, f"summary_{col}.{fmt}"))
 
     # -- Combined overlay: RSS + sessions on dual y-axis ---------------------
-    if monitors and benches:
-        for label in monitors:
-            if label in benches:
+    # Keyed off modulesd_dfs, not monitors: in the per-process layout `monitors`
+    # is keyed "<label>/<process>" while `benches` is keyed "<label>", so pairing
+    # them by label never matched and this chart silently never appeared.
+    if modulesd_dfs and benches:
+        for label in modulesd_dfs:
+            if label in benches and "sessions_ok" in benches[label].columns:
                 out = os.path.join(
                     out_dir,
                     f"combined_rss_sessions_{label.replace(' ', '_')}.{fmt}",
                 )
-                _plot_combined(monitors[label], benches[label], label, out)
+                _plot_combined(modulesd_dfs[label], benches[label], label, out)
 
-    # -- Combined overlay: RSS + manager-side queue depth --------------------
-    # Reads queue stats from logs.csv (workers_q, indexer_q, sessions) and
-    # overlays them with RSS to show cause-effect: queue grows → RSS grows.
-    if modulesd_dfs and logs:
+    # -- Combined overlay: RSS + inventory_sync_server queue depth -----------
+    # Overlays the module's own queue gauges with modulesd RSS to show
+    # cause-effect: the queue grows → RSS grows.
+    if modulesd_dfs and invsync_dfs:
         for label in modulesd_dfs:
-            if label in logs:
-                df = logs[label]
-                if "workers_q" in df.columns and df["workers_q"].notna().any():
+            if label in invsync_dfs:
+                df = invsync_dfs[label]
+                if "shard_depth_sum" in df.columns and df["shard_depth_sum"].notna().any():
                     out = os.path.join(
                         out_dir,
                         f"combined_rss_queues_{label.replace(' ', '_')}.{fmt}",
                     )
                     _plot_rss_vs_queues(modulesd_dfs[label], df, label, out)
 
-    # -- InventorySync log charts --------------------------------------------
-    _generate_invsync_charts(result_dirs, out_dir, fmt, modulesd_dfs)
 
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
 
-
-# ---------------------------------------------------------------------------
-# InventorySync log charts
-# ---------------------------------------------------------------------------
-INVSYNC_QUEUE_METRICS = [
-    ("workers_q",         "Workers Queue Depth",     "Count"),
-    ("indexer_q",         "Indexer Queue Depth",      "Count"),
-    ("sessions",          "Active Sessions",          "Count"),
-    ("blocked_agents",    "Blocked Agents",           "Count"),
-    ("active_vdfirst",    "Active VD-First",          "Count"),
-    ("indexer_bulk_bytes", "Indexer Bulk Bytes",       "Bytes"),
-    ("indexer_notify",    "Indexer Notify Count",      "Count"),
-    ("indexer_delbyq",    "Indexer Delete-by-Query",   "Count"),
-    ("rocksdb_dir_bytes", "RocksDB Directory Size",    "Bytes"),
-    ("workers_q_used_pct", "Workers Queue Saturation",  "Percent"),
-    ("session_used_pct",  "Session Limit Saturation",  "Percent"),
-    ("data_value_quota_remaining", "DataValue Quota Remaining", "DataValues"),
-    ("data_value_quota_reserved",  "DataValue Quota Reserved",  "DataValues"),
-    ("data_value_quota_used_pct",  "DataValue Quota Saturation", "Percent"),
-    ("data_value_quota_rejections", "DataValue Quota Rejections", "Count"),
-]
-
-INVSYNC_SESSION_TIMING = [
-    ("timing_ms_start_to_processing", "Start → Processing", "ms"),
-    ("timing_ms_start_to_end",        "Start → End",        "ms"),
-]
-
-
-def _generate_invsync_charts(
-    result_dirs: list[tuple[str, str]],
-    out_dir: str,
-    fmt: str,
-    modulesd_dfs: dict[str, pd.DataFrame] | None = None,
-) -> None:
-    """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv."""
-    queue_dfs: dict[str, pd.DataFrame] = {}
-    session_dfs: dict[str, pd.DataFrame] = {}
-
-    for path, label in result_dirs:
-        monitor_dir = os.path.join(path, "monitor")
-        # Prefer monitor/ subdir, fall back to root
-        qpath = os.path.join(monitor_dir, "invsync_queue_stats.csv")
-        if not os.path.isfile(qpath):
-            qpath = os.path.join(path, "invsync_queue_stats.csv")
-        spath = os.path.join(monitor_dir, "invsync_session_stats.csv")
-        if not os.path.isfile(spath):
-            spath = os.path.join(path, "invsync_session_stats.csv")
-        if os.path.isfile(qpath):
-            df = pd.read_csv(qpath)
-            if len(df) > 0:
-                # Compute elapsed_s from real wall-clock timestamps so that
-                # invsync queue charts align with the per-process monitor CSVs.
-                # invsync_queue_stats timestamps are "YYYY/MM/DD HH:MM:SS".
-                # Reference t=0 is the monitor start time, taken from the
-                # modulesd process CSV when available; without it we fall back
-                # to the first queue-stats log line as the local t=0.
-                # queue_stats timestamps are tz-naive ("%Y/%m/%d %H:%M:%S").
-                # modulesd timestamps are written as "…Z" → pandas parses
-                # them tz-aware UTC. Normalise the reference to tz-naive so
-                # the subtraction never mixes aware and naive datetimes.
-                queue_ts = pd.to_datetime(
-                    df["timestamp"], format="%Y/%m/%d %H:%M:%S", errors="coerce"
-                )
-                ref_t0 = queue_ts.dropna().min()  # fallback: first log line
-                if modulesd_dfs and label in modulesd_dfs:
-                    mdf = modulesd_dfs[label]
-                    if "timestamp" in mdf.columns:
-                        mdf_ts = mdf["timestamp"]
-                        if not pd.api.types.is_datetime64_any_dtype(mdf_ts):
-                            mdf_ts = pd.to_datetime(mdf_ts, errors="coerce")
-                        cand = mdf_ts.dropna().min()
-                        if pd.notna(cand):
-                            # Strip tz-info (UTC) so subtraction from the
-                            # tz-naive queue_ts Series doesn't raise TypeError.
-                            ref_t0 = cand.tz_localize(None) if cand.tzinfo is None else cand.tz_convert(None)
-                if pd.notna(ref_t0):
-                    df["elapsed_s"] = (
-                        queue_ts - ref_t0
-                    ).dt.total_seconds().clip(lower=0)
-                else:
-                    df["elapsed_s"] = [i * 0.5 for i in range(len(df))]
-                # Coerce numeric columns (including the freshly computed elapsed_s).
-                for c in df.columns:
-                    if c not in ("timestamp",):
-                        df[c] = pd.to_numeric(df[c], errors="coerce")
-                # Prepend a synthetic zero row at t=0 so gauge metrics show a
-                # clean rise from 0 rather than appearing already-high at the
-                # first logged data point.  Before the benchmark starts, all
-                # session/queue/quota counts are 0.
-                first_elapsed = float(df["elapsed_s"].iloc[0]) if len(df) > 0 else 0.0
-                if first_elapsed > 1.0:
-                    zero_row = {
-                        c: (0 if df[c].dtype.kind in ("i", "f") else "")
-                        for c in df.columns
-                    }
-                    zero_row["elapsed_s"] = 0.0
-                    df = pd.concat(
-                        [pd.DataFrame([zero_row]), df], ignore_index=True
-                    )
-                queue_dfs[label] = df
-        if os.path.isfile(spath):
-            df = pd.read_csv(spath)
-            if len(df) > 0:
-                for c in df.columns:
-                    if c not in ("timestamp", "agent", "module", "sessionId", "reason"):
-                        df[c] = pd.to_numeric(df[c], errors="coerce")
-                session_dfs[label] = df
-
-    if not queue_dfs and not session_dfs:
-        return
-
-    # -- Queue stats time-series ---------------------------------------------
-    for col, title_suffix, ylabel in INVSYNC_QUEUE_METRICS:
-        if not any(col in df.columns for df in queue_dfs.values()):
-            continue
-        out = os.path.join(out_dir, f"invsync_queue_{col}.{fmt}")
-        plot_timeseries(
-            queue_dfs, col,
-            f"InventorySync — {title_suffix}",
-            ylabel, out,
-        )
-
-    # -- Session stats: timing bar charts per module -------------------------
-    for label, df in session_dfs.items():
-        if "module" not in df.columns:
-            continue
-        for col, title_suffix, ylabel in INVSYNC_SESSION_TIMING:
-            if col not in df.columns:
-                continue
-            # Group by module, compute mean
-            grouped = df.groupby("module")[col].mean()
-            if grouped.empty:
-                continue
-            modules = list(grouped.index)
-            values = [round(v, 1) for v in grouped.values]
-            colors = [run_color(i) for i in range(len(modules))]
-            suffix = f" ({label})" if len(session_dfs) > 1 else ""
-            out = os.path.join(out_dir,
-                               f"invsync_session_{col}_{label.replace(' ', '_')}.{fmt}")
-            plot_bar(
-                modules, values, colors,
-                f"InventorySync Session — Avg {title_suffix}{suffix}",
-                ylabel, out,
-            )
-
-        # Session lifecycle Gantt: per-agent timeline showing when each
-        # session was Start → Processing → End. Lets you eyeball whether
-        # sessions chain back-to-back (the design we want from the sender)
-        # vs sitting idle, AND whether time is being spent on the agent→
-        # manager link (start→processing) or inside the manager
-        # (processing→end).
-        if {"timing_ms_start_to_end", "timing_ms_start_to_processing",
-            "agent", "timestamp"}.issubset(df.columns):
-            _plot_session_lifecycle(
-                df, label,
-                os.path.join(out_dir,
-                             f"invsync_session_lifecycle_{label.replace(' ', '_')}.{fmt}"),
-            )
-            _plot_session_gaps(
-                df, label,
-                os.path.join(out_dir,
-                             f"invsync_session_gaps_{label.replace(' ', '_')}.{fmt}"),
-            )
-
-        # Sessions completed per module
-        if "reason" in df.columns:
-            completed = df[df["reason"] == "completed"]
-            if not completed.empty and "module" in completed.columns:
-                counts = completed.groupby("module").size()
-                modules = list(counts.index)
-                values = list(counts.values)
-                colors = [run_color(i) for i in range(len(modules))]
-                suffix = f" ({label})" if len(session_dfs) > 1 else ""
-                out = os.path.join(out_dir,
-                                   f"invsync_session_completed_{label.replace(' ', '_')}.{fmt}")
-                plot_bar(
-                    modules, values, colors,
-                    f"InventorySync — Sessions Completed by Module{suffix}",
-                    "Count", out,
-                )
-
-    # -- Combined: sessions + modulesd RSS + rocksdb dir size ----------------
-    if modulesd_dfs and queue_dfs:
-        for label in queue_dfs:
-            if label in (modulesd_dfs or {}):
-                out = os.path.join(
-                    out_dir,
-                    f"invsync_combined_sessions_rss_rocksdb_{label.replace(' ', '_')}.{fmt}",
-                )
-                _plot_sessions_rss_rocksdb(
-                    queue_dfs[label], modulesd_dfs[label], label, out)
-
-
-def _session_timeline_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """Reconstruct per-session (start, processing, end) wall-clock instants
-    from invsync_session_stats rows. Each row records the END of a session
-    plus durations relative to its start, so the start/processing instants
-    are derived by subtraction.
-
-    Returns a copy of df with extra columns:
-      ts_end, ts_start, ts_processing   (datetime)
-      start_s, proc_s, end_s            (float seconds since the earliest
-                                         session start in the frame)
-    Rows without numeric timings are dropped.
-    """
-    out = df.copy()
-    out["timing_ms_start_to_end"] = pd.to_numeric(
-        out.get("timing_ms_start_to_end"), errors="coerce")
-    out["timing_ms_start_to_processing"] = pd.to_numeric(
-        out.get("timing_ms_start_to_processing"), errors="coerce")
-    out = out.dropna(subset=["timing_ms_start_to_end",
-                             "timing_ms_start_to_processing"])
-    if out.empty:
-        return out
-
-    # invsync_session_stats.csv timestamps look like "2026/05/21 03:27:59"
-    # (1-second granularity). dur/proc are millisecond precision so the
-    # derived start/processing instants are accurate even though the
-    # recorded end is rounded to the second.
-    out["ts_end"] = pd.to_datetime(out["timestamp"], errors="coerce")
-    out = out.dropna(subset=["ts_end"])
-    if out.empty:
-        return out
-
-    out["ts_start"] = out["ts_end"] - pd.to_timedelta(
-        out["timing_ms_start_to_end"], unit="ms")
-    out["ts_processing"] = out["ts_start"] + pd.to_timedelta(
-        out["timing_ms_start_to_processing"], unit="ms")
-
-    t0 = out["ts_start"].min()
-    out["start_s"] = (out["ts_start"]      - t0).dt.total_seconds()
-    out["proc_s"]  = (out["ts_processing"] - t0).dt.total_seconds()
-    out["end_s"]   = (out["ts_end"]        - t0).dt.total_seconds()
-    return out
-
-
-def _plot_session_lifecycle(
-    df: pd.DataFrame,
-    label: str,
-    out_path: str,
-):
-    """Gantt-style chart of every session in the run, one lane per agent.
-
-    Each session draws two stacked segments:
-      - light segment: Start → Processing (agent→manager latency, manager
-        acceptance + StartAck, mostly network + queue admission)
-      - dark segment:  Processing → End (manager bulk-index + EndAck latency)
-
-    The gaps between bars on the same lane are the idle windows between
-    iterations of an agent — i.e. sender-side reconnect overhead +
-    handshake. If you see consistent narrow gaps, sessions chain
-    back-to-back; if you see large white blocks, the sender is sitting
-    idle and you should look at the reconnect path in agent_loop.
-    """
-    frame = _session_timeline_frame(df)
-    if frame.empty or "agent" not in frame.columns:
-        return
-
-    # One lane per agent. Sort by first-session time so the lanes are
-    # ordered the same way they started.
-    lane_order: list[str] = (
-        frame.sort_values("start_s")["agent"].drop_duplicates().tolist()
-    )
-    lane_y = {a: i for i, a in enumerate(lane_order)}
-
-    height = max(3.5, 0.55 * len(lane_order) + 2.0)
-    fig, ax = plt.subplots(figsize=(14, height))
-
-    # Color segments via the existing palette: start→processing in COLORS[0]
-    # (lighter accent), processing→end in COLORS[2] (where the time is
-    # actually spent in practice).
-    for _, row in frame.iterrows():
-        y = lane_y[row["agent"]]
-        pre  = max(0.0, row["proc_s"] - row["start_s"])
-        post = max(0.0, row["end_s"]  - row["proc_s"])
-        if pre > 0:
-            ax.barh(y, pre, left=row["start_s"], height=0.7,
-                    color=COLORS[0], alpha=0.55,
-                    edgecolor="white", linewidth=0.4)
-        if post > 0:
-            ax.barh(y, post, left=row["proc_s"], height=0.7,
-                    color=COLORS[2], alpha=0.85,
-                    edgecolor="white", linewidth=0.4)
-
-    ax.set_yticks(list(lane_y.values()))
-    ax.set_yticklabels(lane_order, fontsize=8)
-    ax.invert_yaxis()
-    ax.set_xlabel("Elapsed time (s) — t0 = first session start")
-    ax.set_title(f"InventorySync — Session Lifecycle ({label})",
-                 fontsize=14, fontweight="bold")
-    ax.grid(True, axis="x", alpha=0.3)
-    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-
-    # Custom legend so the colors map to phases regardless of which agent
-    # we drew first.
-    from matplotlib.patches import Patch
-    legend_handles = [
-        Patch(color=COLORS[0], alpha=0.55, label="Start → Processing"),
-        Patch(color=COLORS[2], alpha=0.85, label="Processing → End"),
-    ]
-    ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
-
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  -> {out_path}")
-
-
-def _plot_session_gaps(
-    df: pd.DataFrame,
-    label: str,
-    out_path: str,
-):
-    """Histogram + per-agent strip of idle gaps between consecutive sessions.
-
-    Used to answer "are sessions of an agent running back-to-back?". A
-    narrow histogram clustered near 0 means yes; a long tail or multimodal
-    distribution means the sender (or manager) is inserting unexpected
-    waits between iterations.
-    """
-    frame = _session_timeline_frame(df)
-    if frame.empty or "agent" not in frame.columns:
-        return
-
-    # Per-agent gaps: gap = next.start_s − this.end_s
-    gap_records: list[tuple[str, float]] = []
-    for agent_id, sub in frame.groupby("agent"):
-        sub = sub.sort_values("start_s")
-        prev_end = sub["end_s"].shift(1)
-        gaps = (sub["start_s"] - prev_end).dropna()
-        for g in gaps:
-            gap_records.append((agent_id, float(g)))
-
-    if not gap_records:
-        return
-
-    agents = sorted({a for a, _ in gap_records})
-    agent_lane = {a: i for i, a in enumerate(agents)}
-    values = [g for _, g in gap_records]
-
-    fig, (ax1, ax2) = plt.subplots(
-        2, 1, figsize=(12, max(5, 0.4 * len(agents) + 4)),
-        gridspec_kw={"height_ratios": [1, max(1, len(agents) / 4)]},
-    )
-
-    # Top: histogram of all gaps.
-    ax1.hist(values, bins=20, color=COLORS[2], edgecolor="white", alpha=0.85)
-    ax1.set_title(f"Inter-session idle gaps ({label})",
-                  fontsize=13, fontweight="bold")
-    ax1.set_xlabel("Gap between end-of-session N and start-of-session N+1 (s)")
-    ax1.set_ylabel("Count")
-    ax1.grid(True, alpha=0.3)
-    median = float(np.median(values))
-    ax1.axvline(median, color=COLORS[3], linestyle="--", linewidth=1.4,
-                label=f"median = {median:.2f} s")
-    ax1.legend(loc="upper right", fontsize=9)
-
-    # Bottom: strip plot per agent (each dot = one gap).
-    for agent_id, g in gap_records:
-        ax2.scatter(g, agent_lane[agent_id], color=COLORS[0], alpha=0.8, s=30)
-    ax2.set_yticks(list(agent_lane.values()))
-    ax2.set_yticklabels(agents, fontsize=8)
-    ax2.invert_yaxis()
-    ax2.set_xlabel("Gap (s)")
-    ax2.grid(True, axis="x", alpha=0.3)
-
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  -> {out_path}")
 
 
 def _plot_with_total(
@@ -1389,92 +1434,22 @@ def _plot_grouped_disk_growth(
     print(f"  -> {out_path}")
 
 
-def _plot_sessions_rss_rocksdb(
-    queue_df: pd.DataFrame,
-    modulesd_df: pd.DataFrame,
-    title: str,
-    out_path: str,
-):
-    """Three stacked panels sharing X (elapsed_s):
-      - Top:    Active sessions (from invsync_queue_stats).
-      - Middle: RSS of modulesd (MB).
-      - Bottom: RocksDB directory size (converted to MB).
-    """
-    fig, (ax1, ax2, ax3) = plt.subplots(
-        3, 1,
-        figsize=(14, 10),
-        sharex=True,
-        gridspec_kw={"height_ratios": [1, 1, 1]},
-    )
-
-    # Panel 1 — Sessions
-    if "sessions" in queue_df.columns:
-        ax1.plot(queue_df["elapsed_s"], queue_df["sessions"],
-                 color=COLORS[0], linewidth=1.5, alpha=0.9, label="Active Sessions")
-        ax1.fill_between(queue_df["elapsed_s"], queue_df["sessions"],
-                         alpha=0.15, color=COLORS[0])
-    ax1.set_ylabel("Sessions")
-    ax1.set_ylim(0, None)
-    ax1.set_title(f"InventorySync — Sessions + RSS + RocksDB ({title})",
-                  fontsize=14, fontweight="bold")
-    ax1.legend(loc="upper left", fontsize=9)
-    ax1.grid(True, alpha=0.3)
-
-    # Panel 2 — RSS (modulesd)
-    if "rss_mb" in modulesd_df.columns:
-        ax2.plot(modulesd_df["elapsed_s"], modulesd_df["rss_mb"],
-                 color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS modulesd (MB)")
-        ax2.fill_between(modulesd_df["elapsed_s"], modulesd_df["rss_mb"],
-                         alpha=0.15, color=COLORS[3])
-    ax2.set_ylabel("MB")
-    ax2.set_ylim(0, None)
-    ax2.legend(loc="upper left", fontsize=9)
-    ax2.grid(True, alpha=0.3)
-
-    # Panel 3 — RocksDB dir size (bytes -> MB)
-    if "rocksdb_dir_bytes" in queue_df.columns:
-        rocksdb_mb = queue_df["rocksdb_dir_bytes"] / (1024 * 1024)
-        ax3.plot(queue_df["elapsed_s"], rocksdb_mb,
-                 color=COLORS[2], linewidth=1.5, alpha=0.9, label="RocksDB dir (MB)")
-        ax3.fill_between(queue_df["elapsed_s"], rocksdb_mb,
-                         alpha=0.15, color=COLORS[2])
-    ax3.set_ylabel("MB")
-    ax3.set_ylim(0, None)
-    ax3.set_xlabel("Elapsed time (s)")
-    ax3.legend(loc="upper left", fontsize=9)
-    ax3.grid(True, alpha=0.3)
-    ax3.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-
-    # Clip X to the benchmark window.  After the elapsed-alignment fix,
-    # queue_df["elapsed_s"].iloc[0] is the monitor-relative time of the first
-    # queue-stats log line (i.e. when the benchmark started).  Show 30 s of
-    # RSS/RocksDB context before that so the rise from 0 is visible.
-    if not queue_df.empty and "elapsed_s" in queue_df.columns:
-        x_start = max(0.0, float(queue_df["elapsed_s"].iloc[0]) - 30.0)
-        if x_start > 0:
-            for _ax in (ax1, ax2, ax3):
-                _ax.set_xlim(left=x_start)
-
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  -> {out_path}")
-
 
 def _plot_rss_vs_queues(
     monitor_df: pd.DataFrame,
-    logs_df: pd.DataFrame,
+    invsync_df: pd.DataFrame,
     title: str,
     out_path: str,
 ):
     """Two stacked panels sharing X (elapsed_s):
-      - Top:    RSS (MB) from the engine monitor.
-      - Bottom: workers_q + indexer_q + sessions from logs.csv (queue stats
-                emitted by the manager).
+      - Top:    modulesd RSS (MB), from the process monitor.
+      - Bottom: queue depth inside inventory_sync_server -- the sharded ingest
+                queue (max and total across shards) and the VD scan lane.
 
-    This is the chart that visualises the hotspot mechanism directly: when
-    workers_q climbs and sessions stay near the cap, you can read the RSS
-    rise off the top panel for the same x position.
+    This is the chart that shows the hotspot mechanism directly: when the shard
+    depth climbs and the VD lane backs up, the RSS rise is readable at the same
+    x position. shard_depth_max against shard_depth_sum also exposes imbalance,
+    since one hot shard and evenly spread load look identical in the total.
     """
     fig, (ax1, ax2) = plt.subplots(
         2, 1,
@@ -1483,13 +1458,13 @@ def _plot_rss_vs_queues(
         gridspec_kw={"height_ratios": [1, 1]},
     )
 
-    # Panel 1 — RSS
+    # Panel 1 - RSS
     ax1.plot(monitor_df["elapsed_s"], monitor_df["rss_mb"],
              color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS (MB)")
     ax1.fill_between(monitor_df["elapsed_s"], monitor_df["rss_mb"],
                      alpha=0.15, color=COLORS[3])
     ax1.set_ylabel("RSS (MB)")
-    ax1.set_title(f"Memory vs Manager Queue Depth — {title}",
+    ax1.set_title(f"Memory vs Inventory Sync Queue Depth - {title}",
                   fontsize=14, fontweight="bold")
     ax1.legend(loc="upper left", fontsize=9)
     ax1.grid(True, alpha=0.3)
@@ -1497,29 +1472,29 @@ def _plot_rss_vs_queues(
     pad = max(rss_max * 0.05, 0.5)
     ax1.set_ylim(0, rss_max + pad)
 
-    # Panel 2 — workers_q (left axis) + sessions (right axis).
-    x = logs_df["elapsed_s"]
-    workers = pd.to_numeric(logs_df["workers_q"], errors="coerce")
-    indexer = pd.to_numeric(logs_df.get("indexer_q", pd.Series()), errors="coerce")
-    sessions = pd.to_numeric(logs_df.get("sessions", pd.Series()), errors="coerce")
+    # Panel 2 - sharded ingest queue (left axis) + VD lane (right axis).
+    x = invsync_df["elapsed_s"]
+    depth_sum = pd.to_numeric(invsync_df["shard_depth_sum"], errors="coerce")
+    depth_max = pd.to_numeric(invsync_df.get("shard_depth_max", pd.Series()), errors="coerce")
+    vd_lane = pd.to_numeric(invsync_df.get("vd_lane_depth", pd.Series()), errors="coerce")
 
-    ax2.plot(x, workers, color=COLORS[2], linewidth=1.8,
-             label="workers_q (m_workersQueue depth)")
-    ax2.fill_between(x, workers, alpha=0.15, color=COLORS[2])
-    if indexer.notna().any() and indexer.max() > 0:
-        ax2.plot(x, indexer, color=COLORS[0], linewidth=1.2, alpha=0.8,
-                 label="indexer_q (m_indexerQueue depth)")
+    ax2.plot(x, depth_sum, color=COLORS[2], linewidth=1.8,
+             label="shard_depth_sum (all shards)")
+    ax2.fill_between(x, depth_sum, alpha=0.15, color=COLORS[2])
+    if depth_max.notna().any() and depth_max.max() > 0:
+        ax2.plot(x, depth_max, color=COLORS[0], linewidth=1.2, alpha=0.8,
+                 label="shard_depth_max (hottest shard)")
     ax2.set_xlabel("Elapsed time (s)")
-    ax2.set_ylabel("Queue depth (messages)")
+    ax2.set_ylabel("Queued items")
     ax2.set_ylim(0, None)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-    if sessions.notna().any():
+    if vd_lane.notna().any() and vd_lane.max() > 0:
         ax2b = ax2.twinx()
-        ax2b.plot(x, sessions, color=COLORS[1], linewidth=1.2,
-                  linestyle="--", alpha=0.8, label="sessions (active)")
-        ax2b.set_ylabel("Active sessions", color=COLORS[1])
+        ax2b.plot(x, vd_lane, color=COLORS[1], linewidth=1.2,
+                  linestyle="--", alpha=0.8, label="vd_lane_depth")
+        ax2b.set_ylabel("VD lane depth", color=COLORS[1])
         ax2b.tick_params(axis="y", labelcolor=COLORS[1])
         lines1, labels1 = ax2.get_legend_handles_labels()
         lines2, labels2 = ax2b.get_legend_handles_labels()
@@ -1527,17 +1502,6 @@ def _plot_rss_vs_queues(
                    loc="upper left", fontsize=9)
     else:
         ax2.legend(loc="upper left", fontsize=9)
-
-    # Clip the shared X axis to start from the benchmark window: 30 s before
-    # the first non-NaN sessions value so the pre-benchmark dead zone (where
-    # the monitor was running but the benchmark hadn't started yet) is removed.
-    if sessions.notna().any():
-        first_valid_loc = sessions.first_valid_index()
-        if first_valid_loc is not None:
-            x_start = max(0.0, float(x.loc[first_valid_loc]) - 30.0)
-            if x_start > 0:
-                ax1.set_xlim(left=x_start)
-                ax2.set_xlim(left=x_start)
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
@@ -1581,25 +1545,70 @@ def _plot_combined(
     pad = max((rss_max - rss_min) * 0.1, 0.5)
     ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
 
-    # Panel 2 — Sessions completed per second, with 5s rolling mean overlay.
-    raw  = bench_df["sessions_completed"]
+    # Panel 2 — Sessions per second. bench.csv counts are cumulative, so the rate
+    # is their first difference; plotting the counter itself here would just draw
+    # a rising line and say nothing about throughput over time.
+    cumulative = pd.to_numeric(bench_df["sessions_ok"], errors="coerce")
+    raw = cumulative.diff().fillna(cumulative.iloc[0] if len(cumulative) else 0)
+    raw = raw.clip(lower=0)  # a counter never decreases; guard against a reset
     smooth_window = 5
     avg  = _rolling(raw, smooth_window)
 
     ax2.plot(bench_df["elapsed_s"], raw,
              color=COLORS[2], linewidth=0.8, alpha=0.30,
-             label="Sessions completed / s (raw)")
+             label="Sessions 200 / s (raw)")
     ax2.plot(bench_df["elapsed_s"], avg,
              color=COLORS[2], linewidth=1.8, alpha=1.0,
-             label=f"Sessions completed / s (rolling avg, w={smooth_window})")
+             label=f"Sessions 200 / s (rolling avg, w={smooth_window})")
     ax2.fill_between(bench_df["elapsed_s"], avg,
                      alpha=0.15, color=COLORS[2])
     ax2.set_xlabel("Elapsed time (s)")
-    ax2.set_ylabel("Sessions completed / s")
+    ax2.set_ylabel("Sessions 200 / s")
     ax2.legend(loc="upper right", fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_log_events(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+    figsize=(14, 6),
+):
+    """Cumulative timeline of the manager-log event counters (logs.csv).
+
+    Only counters that actually fired in this run are drawn: the catalog covers every
+    condition monitor.py knows how to recognise, and a normal run trips a handful of them, so
+    plotting all of them would bury the signal under flat zero lines.
+
+    Cumulative rather than per-second on purpose -- the underlying rows are per-second buckets
+    of a THROTTLED log (one line every 90 s carrying its window's count), so the raw series is
+    a sparse comb of spikes. The running total is what reads as "how much was shed by now".
+    """
+    counters = [c for c in df.columns if c not in ("timestamp", "elapsed_s")]
+    active = [c for c in counters
+              if pd.to_numeric(df[c], errors="coerce").fillna(0).sum() > 0]
+    if not active:
+        return
+
+    fig, ax = plt.subplots(figsize=figsize)
+    for idx, col in enumerate(active):
+        series = pd.to_numeric(df[col], errors="coerce").fillna(0).cumsum()
+        ax.plot(df["elapsed_s"], series,
+                label=col.replace("_", "-"), color=run_color(idx),
+                linewidth=1.4, alpha=0.85)
+
+    ax.set_title(f"Manager Log Events — {label}", fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel("Events (cumulative)")
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)

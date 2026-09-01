@@ -333,7 +333,13 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
-                for role in user_roles:
+                # Always validate the user and run_as blacklists, even when the token carries no roles.
+                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as):
+                    return {'valid': False}
+                # Validate every role carried by the token, not only the statically-linked ones.
+                # run_as users have their roles assigned dynamically, so those roles travel in the
+                # token (roles) instead of being returned by get_all_roles_from_user (user_roles).
+                for role in set(user_roles) | set(roles):
                     if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time),
                                              run_as=run_as):
                         return {'valid': False}

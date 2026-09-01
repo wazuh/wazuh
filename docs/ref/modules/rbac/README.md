@@ -134,5 +134,9 @@ The following RBAC actions control agent operations:
 | `agent:restart` | `agent:id`, `agent:group` | Restart agents (requires agent v5.0.0+) |
 | `agent:reload` | `agent:id`, `agent:group` | Reload agent configuration without restart (requires agent v5.0.0+) |
 | `agent:upgrade` | `agent:id`, `agent:group` | Upgrade agents |
+| `agent:uninstall` | `*` | Check permission to uninstall agents |
+| `agent:scan_vulnerability` | `agent:id`, `agent:group` | Request an on-demand vulnerability scan |
 
-The `agent:reload` action was introduced in v5.0.0 alongside the new control channel mechanism, replacing the previous Active Response-based restart approach.
+The `agent:reload` action was introduced in v5.0.0 alongside a task-based restart/reload dispatch mechanism (agents are grouped into chunks and reloaded via `create_reload_tasks`), replacing the previous Active Response-based restart approach.
+
+The `agent:scan_vulnerability` action was introduced in v5.0.0 alongside `PUT /agents/scan/vulnerability`, the operator-facing endpoint to trigger an on-demand Vulnerability Detection scan, complementing the previous agent-initiated-only scan trigger.

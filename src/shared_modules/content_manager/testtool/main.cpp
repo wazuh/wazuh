@@ -1,6 +1,5 @@
-#include "HTTPRequest.hpp"
-#include "UNIXSocketRequest.hpp"
 #include "contentManager.hpp"
+#include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
 #include "defs.h"
 #include <chrono>
@@ -123,27 +122,26 @@ namespace Log
  *
  * @param topicName Name of the topic.
  */
+/**
+ * @brief Console responder for the in-process on-demand entry point.
+ *
+ * Since the vd-http.sock unification the on-demand HTTP route lives on the vulnerability scanner's
+ * server; a standalone content_manager has no HTTP surface, so this tool drives the same seam
+ * the route dispatches into (content_manager::dispatchOnDemand) and prints what the peer would
+ * have received.
+ */
+class ConsoleResponder final : public wazuh::uds_http::IHttpResponder
+{
+public:
+    void send(wazuh::uds_http::HttpResponse response) override
+    {
+        std::cout << "on-demand response: " << response.status << " " << response.body << std::endl;
+    }
+};
+
 void runOffsetUpdate(const std::string& topicName)
 {
-    nlohmann::json data;
-    data["offset"] = OFFSET_UPDATE_VALUE;
-    data["topicName"] = topicName;
-    const auto putUrl {"http://localhost/offset"};
-
-    const auto onSuccess = [](const std::string& msg)
-    {
-        std::cout << msg << std::endl;
-    };
-
-    const auto onError = [](const std::string& msg, const long responseCode, const std::string& /*responseBody*/)
-    {
-        std::cout << msg << ": " << responseCode << std::endl;
-    };
-
-    UNIXSocketRequest::instance().put(
-        RequestParametersJson {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = data},
-        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-        ConfigurationParameters {});
+    content_manager::dispatchOnDemand(topicName, OFFSET_UPDATE_VALUE, std::make_shared<ConsoleResponder>());
 }
 
 int main()
@@ -168,23 +166,8 @@ int main()
             runOffsetUpdate(topic_name);
         }
 
-        const auto onSuccess = [](const std::string& msg)
-        {
-            std::cout << msg << std::endl;
-        };
-
-        const auto onError = [](const std::string& msg, const long responseCode, const std::string& responseBody)
-        {
-            std::cout << msg << ": " << responseCode << std::endl;
-            std::cerr << "Response body: " << responseBody << "\n";
-        };
-
-        const std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
-
-        // OnDemand request
-        UNIXSocketRequest::instance().get(RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, url)},
-                                          PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                          ConfigurationParameters {});
+        // OnDemand request, through the same seam the vd-http.sock route dispatches into.
+        content_manager::dispatchOnDemand(topic_name, -1, std::make_shared<ConsoleResponder>());
 
         std::this_thread::sleep_for(std::chrono::seconds(60));
     }

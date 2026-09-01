@@ -52,34 +52,6 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
 }
 
 #ifndef WIN32
-/*
- * These values ​​were taken from how libcurl looks for the paths at compilation time,
- * here it is modified to be able to support the precompiled deps.
- *
- * https://github.com/curl/curl/blob/5930cb1c465ef5f0de6f1b91a843bb6f0bed1f23/acinclude.m4#L2182
- */
-const char* certs_list[] = {
-    "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
-    "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
-    "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
-    "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
-    "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
-    NULL
-};
-
-char const * find_cert_list() {
-    char const * ret_val = NULL;
-
-    for (size_t i = 0; NULL != certs_list[i]; ++i) {
-        if (-1 != FileSize(certs_list[i])) {
-            ret_val = certs_list[i];
-            break;
-        }
-    }
-
-    return ret_val;
-}
-
 int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout) {
     CURL *curl;
     FILE *fp;
@@ -90,7 +62,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     int old_mask;
 
     if (curl) {
-        char const *cert = find_cert_list();
+        char const *cert = os_find_ca_bundle(NULL);
 
         old_mask = umask(0006);
         fp = wfopen(dest, "wb");
@@ -239,7 +211,7 @@ char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
     chunk.max_size_error = false;
 
     if (curl) {
-        char const *cert = find_cert_list();
+        char const *cert = os_find_ca_bundle(NULL);
 
         res = curl_easy_setopt(curl, CURLOPT_URL, url);
         res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
@@ -336,6 +308,31 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
+/*
+ * Point libcurl at the CA certificates this host trusts. HTTPS URLs only; a
+ * plain HTTP request needs no trust anchors.
+ *
+ * On Windows the agent's libcurl is built against our own OpenSSL rather than
+ * Schannel (src/external/CMakeLists.txt), and that build carries no CA bundle,
+ * so the Windows certificate stores have to be asked for explicitly — Schannel
+ * used to consult them on its own. Elsewhere the bundle path libcurl was
+ * compiled with may not exist on this host (the dependency is precompiled), so
+ * the file is looked up at run time instead.
+ */
+static CURLcode wurl_set_trust_anchors(CURL *curl, const char *url) {
+    if (strncmp(url, "https", 5) != 0) {
+        return CURLE_OK;
+    }
+
+#ifdef WIN32
+    return curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, (long)CURLSSLOPT_NATIVE_CA);
+#else
+    char const *cert = os_find_ca_bundle(NULL);
+
+    return cert ? curl_easy_setopt(curl, CURLOPT_CAINFO, cert) : CURLE_OK;
+#endif
+}
+
 curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout, const char *userpass, bool ssl_verify) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
@@ -358,17 +355,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     }
 
     res = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-
-#ifndef WIN32
-    char const *cert = find_cert_list();
-
-    // Enable SSL check if url is HTTPS
-    if (!strncmp(url, "https", 5)) {
-        if (NULL != cert) {
-            res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
-        }
-    }
-#endif
+    res += wurl_set_trust_anchors(curl, url);
 
     // Ignore SSL verification
     if (!ssl_verify) {

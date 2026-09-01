@@ -4,9 +4,9 @@ Complete configuration reference for the Database Sync module.
 
 The Database Sync module handles agent status, groups, and connection state synchronization between manager and the global database. It is configured exclusively through internal options, with no XML or YAML configuration sections.
 
-- **Module:** Manager-only (part of wazuh-db)
+- **Module:** Manager-only (part of `wazuh-manager-modulesd`)
 - **Configuration method:** Internal options only
-- **Daemon:** `wazuh-db`
+- **Daemon:** `wazuh-manager-modulesd`
 
 For module overview, see [Database Sync Module](index.html).
 
@@ -70,16 +70,16 @@ wazuh_database.interval=60
 
 ### wazuh_database.max_queued_events
 
-Maximum number of agent events to queue before forcing a synchronization.
+Maximum number of events held in the Database Sync module's internal queue.
 
 ```ini
 wazuh_database.max_queued_events=10000
 ```
 
-- **Default value:** `10000` events
-- **Allowed values:** Positive integer (100-1000000)
+- **Default value:** `0` (use the internal default of `16384` entries)
+- **Allowed values:** `0` or a positive integer
 
-When the queue reaches this limit, a synchronization is triggered even if the interval hasn't elapsed.
+This option no longer changes the kernel's `fs.inotify.max_queued_events` setting. If the configured value exceeds the kernel limit, the module logs a warning and the system limit must be adjusted separately by an administrator.
 
 ---
 
@@ -185,7 +185,7 @@ echo 'global sql SELECT id,name,connection_status,sync_status FROM agent' | \
 
 ### View Queue Statistics
 
-Monitor wazuh-db logs for queue warnings:
+Monitor `wazuh-manager-modulesd` logs for queue warnings (this module logs under the `database` tag):
 
 ```bash
 grep "queued_events" /var/wazuh-manager/logs/wazuh-manager.log
@@ -196,7 +196,7 @@ grep "queued_events" /var/wazuh-manager/logs/wazuh-manager.log
 Check database writes:
 
 ```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-db"
+tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-manager-modulesd:database"
 ```
 
 ---
@@ -209,7 +209,7 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-db"
 
 **Solution:**
 1. Verify `wazuh_database.sync_agents=1`
-2. Check wazuh-db is running: `ps aux | grep wazuh-db`
+2. Check wazuh-manager-modulesd is running: `ps aux | grep wazuh-manager-modulesd`
 3. Review logs for database errors
 
 ### High Database CPU Usage

@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <signal.h>
 #include <stdlib.h>
 #include "wmodules_def.h"
 #include "syscollector.h"
@@ -48,11 +49,6 @@ static void wm_sys_stop(wm_sys_t* sys);         // Module stopper
 const char* WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON* wm_sys_dump(const wm_sys_t* sys);
 int wm_sync_message(const char* command, size_t command_len);
-static pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool need_shutdown_wait = false;
-static pthread_t sys_main_thread;
-static bool sys_main_thread_initialized = false;
 #ifndef WIN32
 static pthread_t sync_worker_thread;
 #else
@@ -60,7 +56,14 @@ static HANDLE sync_worker_thread = NULL;
 #endif
 static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
-bool shutdown_process_started = false;
+// volatile sig_atomic_t, not a plain bool: this is written from wm_sys_stop(), which on
+// POSIX runs inside the SIGTERM handler (wm_handler, wazuh_modules/src/main.c), and read
+// from the module thread's polling loops below. sig_atomic_t is what a signal handler is
+// allowed to write, and volatile is what stops the compiler from hoisting the reads out of
+// those loops -- is_shutdown_process_started() is static and trivially inlinable, so the
+// function call is no barrier. Same idiom as wm_shutdown_requested (wmodules.h) and as
+// sync_module_running above.
+volatile sig_atomic_t shutdown_process_started = 0;
 
 static size_t wm_sys_query_handler(void* data, char* query, char** output); // Query handler
 
@@ -120,9 +123,6 @@ syscollector_set_agentd_query_func_ptr syscollector_set_agentd_query_func_setter
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
-uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
-long sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
 uint32_t integrity_interval = 86400;         // Integrity check interval in seconds (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)
@@ -130,8 +130,7 @@ int queue_fd = 0;                        // Output queue file descriptor
 
 static bool is_shutdown_process_started()
 {
-    bool ret_val = shutdown_process_started;
-    return ret_val;
+    return shutdown_process_started != 0;
 }
 
 bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
@@ -448,16 +447,6 @@ static void wm_sys_log_config(wm_sys_t* sys)
     }
 }
 
-static int wm_sys_startmq(const char* key, short type, short attempts)
-{
-    return StartMQPredicated(key, type, attempts, &is_shutdown_process_started);
-}
-
-static int wm_sys_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
-{
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
-}
-
 static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
 {
 
@@ -505,12 +494,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.browser_extensions,
                               sys->flags.notify_first_scan);
 
-        MQ_Functions mq_funcs =
-        {
-            .start = wm_sys_startmq,
-            .send_binary = wm_sys_send_binary_msg
-        };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
                                    integrity_interval);
 
         if (syscollector_notify_data_clean_ptr && syscollector_delete_database_ptr)
@@ -583,11 +567,6 @@ void* wm_sys_main(wm_sys_t* sys)
 
     sys->flags.running = true;
 
-    w_mutex_lock(&sys_stop_mutex);
-    sys_main_thread = pthread_self();
-    sys_main_thread_initialized = true;
-    w_mutex_unlock(&sys_stop_mutex);
-
     if (!sys->flags.enabled)
     {
         wm_handle_sys_disabled_and_notify_data_clean(sys);
@@ -642,21 +621,22 @@ void* wm_sys_main(wm_sys_t* sys)
         pthread_exit(NULL);
     }
 
-    if (syscollector_init_ptr && syscollector_start_ptr)
+    if (is_shutdown_process_started())
+    {
+        // A stop arrived while this thread was still getting here. Do not initialise:
+        // that would open the databases and clear m_stopping, and the teardown below
+        // would then have to race wm_sys_stop()'s quiesce() to put them back. Nothing
+        // was opened, so that teardown is a no-op on this path.
+        mtinfo(WM_SYS_LOGTAG, "Shutdown requested before Syscollector started; skipping startup.");
+    }
+    else if (syscollector_init_ptr && syscollector_start_ptr)
     {
         mtdebug1(WM_SYS_LOGTAG, "Starting module.");
-        w_mutex_lock(&sys_stop_mutex);
-        need_shutdown_wait = true;
-        w_mutex_unlock(&sys_stop_mutex);
-
         enable_synchronization = sys->sync.enable_synchronization;
 
         if (enable_synchronization)
         {
             sync_interval = sys->sync.sync_interval;
-            sync_end_delay = sys->sync.sync_end_delay;
-            sync_response_timeout = sys->sync.sync_response_timeout;
-            sync_max_eps = sys->sync.sync_max_eps;
             integrity_interval = sys->sync.integrity_interval;
         }
 
@@ -705,12 +685,7 @@ void* wm_sys_main(wm_sys_t* sys)
         // Initialize sync protocol AFTER init (so logger is available)
         if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr)
         {
-            MQ_Functions mq_funcs =
-            {
-                .start = wm_sys_startmq,
-                .send_binary = wm_sys_send_binary_msg
-            };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
                                        integrity_interval);
 #ifndef WIN32
             // Launch inventory synchronization thread as joinable so we can wait for it
@@ -742,6 +717,14 @@ void* wm_sys_main(wm_sys_t* sys)
             mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         }
 
+        // No second check here, deliberately. A stop landing *during* initialisation is
+        // still lost (init() cleared m_stopping), but skipping the scan at this point
+        // would send this thread straight into releaseResources() while wm_sys_stop() is
+        // inside quiesce(), which reads m_spSyncProtocol/m_spSyncProtocolVD without
+        // m_resourcesMutex -- with the databases already open, so there is something to
+        // pull from under it. Closing that window needs quiesce() and releaseResources()
+        // serialized first; until then, running the scan and letting it notice m_stopping
+        // is the safer of the two failure modes.
         mtinfo(WM_SYS_LOGTAG, STARTUP_MSG, (int)getpid());
         syscollector_start_ptr();
     }
@@ -784,17 +767,16 @@ void* wm_sys_main(wm_sys_t* sys)
 #endif
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
-    w_mutex_lock(&sys_stop_mutex);
-    need_shutdown_wait = false;
-    sys_main_thread_initialized = false;
-    // Safe to release resources now that the sync worker has exited.
+
+    // Safe to release resources now that the sync worker has exited. This runs on
+    // the module thread and before it returns, so whoever joins this thread is
+    // guaranteed the teardown already completed -- wm_sys_stop() does not need to
+    // wait for it a second time.
     if (syscollector_release_resources_ptr)
     {
         syscollector_release_resources_ptr();
         syscollector_release_resources_ptr = NULL;
     }
-    w_cond_signal(&sys_stop_condition);
-    w_mutex_unlock(&sys_stop_mutex);
 
     return 0;
 }
@@ -806,6 +788,15 @@ void wm_sys_destroy(wm_sys_t* data)
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
 {
+    // Record the stop before anything else, including the early return below. The
+    // shutdown loop signals every module before joining any of them, so this can
+    // arrive while wm_sys_main() is still starting up -- and both Syscollector::init()
+    // and Syscollector::start() clear m_stopping, so a stop delivered in that window
+    // would be erased and the module would scan on through the shutdown, burning the
+    // shared join budget and leaving its database locked for the successor process.
+    // wm_sys_main() checks this flag before initialising and before starting the scan.
+    shutdown_process_started = 1;
+
     if (!data->flags.running)
     {
         // Already stopped
@@ -819,40 +810,22 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
 
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
 
-    if (syscollector_stop_ptr)
+    // Read the pointer once: the module thread clears syscollector_stop_ptr on its way
+    // out (see wm_sys_main), so testing the global and then calling through it can land
+    // on a NULL between the two. The worst case with a local copy is that this call
+    // arrives after the module already tore itself down, which is harmless.
+    const syscollector_stop_func stop_fn = syscollector_stop_ptr;
+
+    if (stop_fn)
     {
-        shutdown_process_started = true;
-        syscollector_stop_ptr();
+        stop_fn();
     }
 
-    w_mutex_lock(&sys_stop_mutex);
-    const bool called_from_sys_main_thread = sys_main_thread_initialized && pthread_equal(pthread_self(), sys_main_thread);
-
-    if (called_from_sys_main_thread)
-    {
-        mtdebug1(WM_SYS_LOGTAG, "Stop called from syscollector worker thread. Skipping synchronous shutdown wait.");
-    }
-
-    if (need_shutdown_wait && !called_from_sys_main_thread)
-    {
-        const time_t SHUTDOWN_WAIT_SECONDS = 10;  // max wait for the run loop to finish teardown
-        struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += SHUTDOWN_WAIT_SECONDS;
-
-        while (need_shutdown_wait)
-        {
-            if (pthread_cond_timedwait(&sys_stop_condition, &sys_stop_mutex, &ts) == ETIMEDOUT)
-            {
-                mtinfo(WM_SYS_LOGTAG,
-                       "Syscollector did not confirm shutdown within %ld seconds; releasing resources and continuing.",
-                       (long)SHUTDOWN_WAIT_SECONDS);
-                break;
-            }
-        }
-    }
-
-    w_mutex_unlock(&sys_stop_mutex);
+    // Signal only. The module thread runs its own teardown (releaseResources())
+    // before returning, so the caller's join of that thread already guarantees it
+    // finished; waiting here as well only stacked a second per-module timeout on
+    // top of that guarantee and delayed the stop signal to the modules after this
+    // one in the shutdown loop.
 }
 
 cJSON* wm_sys_dump(const wm_sys_t* sys)
@@ -918,7 +891,6 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     cJSON_AddStringToObject(synchronization, "enabled", sys->sync.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", sys->sync.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
-    cJSON_AddNumberToObject(synchronization, "response_timeout", sys->sync.sync_response_timeout);
     cJSON_AddNumberToObject(synchronization, "sync_end_delay", sys->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "integrity_interval", sys->sync.integrity_interval);
 
@@ -931,7 +903,7 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
 
 int wm_sync_message(const char* command, size_t command_len)
 {
-    if (shutdown_process_started)
+    if (is_shutdown_process_started())
     {
         mtdebug1(WM_SYS_LOGTAG, "Sync message received during shutdown, ignoring");
         return 0;
@@ -1003,6 +975,10 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void* args)
 #else
 void* wm_sync_module(__attribute__((unused)) void* args)
 {
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 #endif
     bool first_sync_completed = false;
     bool wait_before_sync = true;

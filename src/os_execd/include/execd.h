@@ -21,9 +21,6 @@
 #define CONTINUE_ENTRY     "continue"
 #define ABORT_ENTRY        "abort"
 
-/* Maximum number of active responses active */
-#define MAX_AR      64
-
 /* Maximum number of command arguments */
 #define MAX_ARGS    32
 
@@ -64,6 +61,14 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
 size_t wcom_dispatch(char *command, char **output);
 size_t lock_restart(int timeout);
 size_t wcom_getconfig(const char * section, char ** output);
+
+/**
+ * @brief Build this daemon's entry for the agent's /config document.
+ *
+ * @param output Receives the allocated "ok <json>" reply.
+ * @return Length of *output.
+ */
+size_t wcom_getallconfig(char ** output);
 size_t wcom_check_manager_config(char **output);
 
 #ifndef WIN32

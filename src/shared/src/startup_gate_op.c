@@ -106,7 +106,12 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
 }
 #endif
 
-void startup_gate_wait_for_ready(const char *module_name) {
+// Defined in wazuh_modules/src/wmodules.c. Declared here directly (instead of
+// pulling in wmodules.h) to avoid a layering dependency from shared/ onto
+// wazuh_modules/ - the type must match the original declaration exactly.
+extern volatile sig_atomic_t wm_shutdown_requested;
+
+startup_gate_wait_result_t startup_gate_wait_for_ready(const char *module_name) {
 #if defined(CLIENT)
     bool waiting_logged = false;
     unsigned int waiting_loops = 0;
@@ -119,12 +124,21 @@ void startup_gate_wait_for_ready(const char *module_name) {
         bool should_log = false;
         char reason[OS_SIZE_128] = {0};
 
+        if (wm_shutdown_requested) {
+            mdebug1("Startup hash gate: shutdown requested, aborting startup for '%s' without waiting for handshake.", name);
+            return STARTUP_GATE_SHUTDOWN_REQUESTED;
+        }
+
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
         if (got_status && ready) {
-            if (waiting_logged) {
-                mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
-            }
-            return;
+            /* Log unconditionally, not just when a prior "blocking" line was
+             * logged: a hash-match release can beat this module's very first
+             * poll, in which case waiting_logged is still false here even
+             * though the module was genuinely gated an instant earlier -- the
+             * gate release itself is real either way, only the audit trail
+             * for it was missing. */
+            mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
+            return STARTUP_GATE_READY;
         }
 
         should_log = !waiting_logged || (waiting_loops % STARTUP_GATE_LOG_INTERVAL == 0);
@@ -148,5 +162,6 @@ void startup_gate_wait_for_ready(const char *module_name) {
     }
 #else
     (void)module_name;
+    return STARTUP_GATE_READY;
 #endif
 }

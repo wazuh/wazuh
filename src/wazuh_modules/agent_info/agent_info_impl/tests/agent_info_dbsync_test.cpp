@@ -27,6 +27,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
             m_logOutput.clear();
             m_reportedEvents.clear();
             m_persistedEvents.clear();
+            m_logMessages.clear();
 
             m_mockDBSync = std::make_shared<MockDBSync>();
 
@@ -54,8 +55,9 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
                 m_persistedEvents.push_back(persistedEvent);
             };
 
-            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
+                m_logMessages.push_back({level, msg});
                 m_logOutput += msg + "\n";
             };
 
@@ -87,6 +89,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
         std::vector<std::string> m_reportedEvents;
         std::vector<nlohmann::json> m_persistedEvents;
         std::string m_logOutput;
+        std::vector<std::pair<modules_log_level_t, std::string>> m_logMessages;
 };
 
 TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
@@ -138,31 +141,17 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
 }
 
-TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
-{
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
-    // Set sync parameters
-    EXPECT_NO_THROW(m_agentInfo->setSyncParameters(1, 60, 5, 1000));
-
-    // Verify the log message contains the parameters
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync parameters set"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("timeout=60"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("retries=5"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("maxEps=1000"));
-}
 
 TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
-    MQ_Functions mq_funcs = {nullptr, nullptr};
-
     // Clear previous logs
     m_logOutput.clear();
 
     // Initialize sync protocol
-    EXPECT_NO_THROW(m_agentInfo->initSyncProtocol("test_module", mq_funcs));
+    EXPECT_NO_THROW(m_agentInfo->initSyncProtocol("test_module"));
 
     // Verify initialization log
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent-info sync protocol initialized"));
@@ -176,8 +165,12 @@ TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsWithException)
     EXPECT_CALL(*throwingDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
 
+    // WillRepeatedly, not WillOnce: start() also calls getVdFeedState() (a second,
+    // unrelated selectRows on vd_feed_state) within the same run -- both paths are
+    // expected to independently catch a throwing DBSync and log their own failure,
+    // so both calls must see the same behavior, not just the first one.
     EXPECT_CALL(*throwingDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .WillRepeatedly(::testing::Throw(std::runtime_error("Database error")));
 
     m_logOutput.clear();
     m_agentInfo = std::make_shared<AgentInfoImpl>(
@@ -229,4 +222,123 @@ TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsCallbackWithData)
 
     // Verify that the callback was executed (which means selectRows was called)
     EXPECT_TRUE(callbackExecuted);
+}
+
+// Durable /control task_id dedup guard, backed by the `tasks` table in this same
+// DBSync-managed agent_info.db. See AgentInfoImpl::checkAndRecordTask/cleanupExpiredTasks.
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskNewTaskInsertsAndReturnsTrue)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json & query, ResultCallbackData)
+    {
+        // No callback invocation: simulates "not found".
+        EXPECT_EQ("tasks", query.at("table").get<std::string>());
+        EXPECT_EQ("WHERE task_id = ?", query.at("query").at("row_filter").get<std::string>());
+    }));
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json & jsInsert)
+    {
+        EXPECT_EQ("tasks", jsInsert.at("table").get<std::string>());
+        ASSERT_EQ(1u, jsInsert.at("data").size());
+        EXPECT_EQ("task-abc", jsInsert.at("data")[0].at("task_id").get<std::string>());
+        EXPECT_TRUE(jsInsert.at("data")[0].contains("recorded_at"));
+    }));
+
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("task-abc"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskDuplicateReturnsFalseWithoutInserting)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json&, ResultCallbackData callback)
+    {
+        nlohmann::json row;
+        row["task_id"] = "task-abc";
+        callback(SELECTED, row);
+    }));
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_)).Times(0);
+
+    m_logOutput.clear();
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("already recorded"));
+}
+
+// A checkAndRecordTask() call landing after DBSync is dropped logs at WARNING when
+// unexpected, and at DEBUG once a shutdown is in progress (verified in the next test).
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskFailsClosedWithoutDBSync)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, no shutdown signaled.
+
+    m_logMessages.clear();
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_WARNING, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot check/record task task-abc: DBSync not available"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskWithoutDBSyncLogsDebugDuringShutdown)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->stop(); // Signals a real shutdown is in progress (isShutdownInProgress() == true).
+    m_agentInfo->releaseResources(); // Drops the DBSync connection, same as the real shutdown path.
+
+    m_logMessages.clear();
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+
+    ASSERT_EQ(1u, m_logMessages.size());
+    EXPECT_EQ(LOG_DEBUG, m_logMessages[0].first);
+    EXPECT_THAT(m_logMessages[0].second, ::testing::HasSubstr("Cannot check/record task task-abc: DBSync not available"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIssuesTtlThenCapDeletes)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    std::vector<std::string> filtersSeen;
+    EXPECT_CALL(*m_mockDBSync, deleteRows(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Invoke([&filtersSeen](const nlohmann::json & jsDelete)
+    {
+        EXPECT_EQ("tasks", jsDelete.at("table").get<std::string>());
+        filtersSeen.push_back(jsDelete.at("query").at("where_filter_opt").get<std::string>());
+    }));
+
+    m_agentInfo->cleanupExpiredTasks(/*ttlSeconds=*/86400, /*maxEntries=*/4096);
+
+    ASSERT_EQ(2u, filtersSeen.size());
+    EXPECT_THAT(filtersSeen[0], ::testing::HasSubstr("recorded_at <"));
+    EXPECT_THAT(filtersSeen[1], ::testing::HasSubstr("NOT IN"));
+    EXPECT_THAT(filtersSeen[1], ::testing::HasSubstr("LIMIT 4096"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIsNoOpWithoutDBSync)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->releaseResources();
+
+    EXPECT_NO_THROW(m_agentInfo->cleanupExpiredTasks(86400, 4096));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CountTasksReturnsSelectedCount)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json&, ResultCallbackData callback)
+    {
+        nlohmann::json row;
+        row["count"] = 5;
+        callback(SELECTED, row);
+    }));
+
+    EXPECT_EQ(5u, m_agentInfo->countTasks());
 }

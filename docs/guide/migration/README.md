@@ -7,6 +7,7 @@ This section contains migration guides for changes that require manual review wh
 | Guide | Description |
 |-------|-------------|
 | [Manager configuration migration](manager-configuration-migration.md) | How to migrate `ossec.conf`, `internal_options.conf`, `api.yaml`, and `cluster.json` from 4.x to 5.x |
+| [Agent-manager protocol migration](agent-manager-protocol.md) | The move from the AES TCP/UDP protocol on 1514 to the HTTPS agent API on 1517: ports, message mapping, authentication, and retiring the legacy channel |
 | [Agent groups migration](agent-groups-migration.md) | How to transfer group configurations and re-enroll agents under 5.0 |
 | [CIS-CAT/OpenSCAP to SCA](ciscat-openscap-to-sca.md) | Replacing CIS-CAT and OpenSCAP wodles with the native SCA module |
 | [SCA policies 4.x to 5.x](sca-policies-4x-to-5x.md) | Custom SCA policy format changes |
@@ -17,5 +18,4 @@ This section contains migration guides for changes that require manual review wh
 | [Vulnerability Detection to CTI-based feeds](vulnerability-detection-cti-feeds.md) | Removal of offline feeds and the new CTI/Indexer content distribution model |
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
 | [CDB to KVDB migration](cdb-to-kvdb-migration.md) | Migrating CDB files to KVDB files |
-| [Coordinator migration](manager-coordinator-migration.md) | How to migrate HAProxy from 4.x to 5.x |
 | [XML decoders to YAML decoders](xml-decoders-migration.md) | How to migrate decoders from XML to YAML |

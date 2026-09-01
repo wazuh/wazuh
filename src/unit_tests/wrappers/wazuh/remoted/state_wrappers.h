@@ -20,36 +20,32 @@ void __wrap_rem_inc_tcp();
 
 void __wrap_rem_dec_tcp();
 
-void __wrap_rem_inc_recv_events(const char *agent_id);
+void __wrap_rem_inc_recv_events();
 
-void __wrap_rem_inc_recv_ctrl(const char *agent_id);
+void __wrap_rem_inc_recv_ctrl();
 
-void __wrap_rem_inc_recv_states(const char *agent_id);
-
-void __wrap_rem_inc_recv_upgrade_ack(const char *agent_id);
+void __wrap_rem_inc_recv_upgrade_ack();
 
 void __wrap_rem_inc_recv_discarded();
 
 void __wrap_rem_inc_recv_events_failed();
 
-void __wrap_rem_inc_recv_ctrl_request(const char *agent_id);
+void __wrap_rem_inc_recv_ctrl_request();
 
-void __wrap_rem_inc_recv_ctrl_startup(const char *agent_id);
+void __wrap_rem_inc_recv_ctrl_startup();
 
-void __wrap_rem_inc_recv_ctrl_shutdown(const char *agent_id);
+void __wrap_rem_inc_recv_ctrl_shutdown();
 
-void __wrap_rem_inc_recv_ctrl_keepalive(const char *agent_id);
+void __wrap_rem_inc_recv_ctrl_keepalive();
 
 void __wrap_rem_inc_recv_unknown();
 
 void __wrap_rem_add_send(unsigned long bytes);
 
-void __wrap_rem_inc_send_ack(const char *agent_id);
+void __wrap_rem_inc_send_ack();
 
-void __wrap_rem_inc_send_discarded(const char *agent_id);
+void __wrap_rem_inc_send_discarded();
 
 cJSON* __wrap_rem_create_state_json();
-
-cJSON* __wrap_rem_create_agents_state_json(int *agents_ids);
 
 #endif /* REM_STATE_WRAPPERS_H */

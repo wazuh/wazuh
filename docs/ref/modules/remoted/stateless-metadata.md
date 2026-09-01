@@ -2,7 +2,7 @@
 
 ## Overview
 
-Wazuh 5.0+ enriches every event with agent metadata (identity, OS, groups) before forwarding to analysisd. This eliminates the need for analysisd to maintain agent state, improving scalability and reliability.
+Wazuh 5.0+ enriches every event with agent metadata (identity, OS, groups) before forwarding to the engine. This eliminates the need for the engine to maintain agent state, improving scalability and reliability.
 
 ## How It Works
 
@@ -10,7 +10,7 @@ Wazuh 5.0+ enriches every event with agent metadata (identity, OS, groups) befor
 2. Remoted caches metadata in thread-safe hash table
 3. Agent sends events
 4. Remoted enriches events with cached metadata header
-5. Forward to analysisd via x-wev1 protocol
+5. Forward to the engine via the x-wev1 protocol
 
 See [Event Protocol](event-protocol.md) for wire format details.
 
@@ -34,7 +34,7 @@ Group changes propagate automatically:
 
 No configuration required - enabled by default.
 
-For tuning: `remoted.control_msg_queue_size` and `remoted.batch_events_capacity` in `/var/wazuh-manager/etc/internal_options.conf`.
+For tuning: `remoted.control_msg_queue_size` and `remoted.batch_events_capacity` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
 
 See [Configuration Guide](configuration.md) for details.
 

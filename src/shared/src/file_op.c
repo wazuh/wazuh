@@ -2085,7 +2085,13 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     char buffer[4096];
     int status = 0;
 
-    fp_src = wfopen(src, "r");
+    /* 'b': exact binary copy -- wfopen() defaults to _O_TEXT on Windows unless
+     * 'b' is in the mode string, which silently rewrites every bare '\n' as
+     * '\r\n' on write (and the reverse on read). A caller copying content
+     * whose exact bytes matter downstream (e.g. a hash computed over it) must
+     * request binary mode explicitly; text mode and binary mode are
+     * equivalent on non-Windows, so this only changes Windows behavior. */
+    fp_src = wfopen(src, mode == 'b' ? "rb" : "r");
 
     if (!fp_src) {
         if(!silent) {
@@ -2097,6 +2103,9 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     /* Append to file */
     if (mode == 'a') {
         fp_dst = wfopen(dst, "a");
+    }
+    else if (mode == 'b') {
+        fp_dst = wfopen(dst, "wb");
     }
     else {
         fp_dst = wfopen(dst, "w");
@@ -2258,6 +2267,28 @@ int w_ref_parent_folder(const char * path) {
     }
 
     return 0;
+}
+
+
+int w_is_bare_filename(const char * filename) {
+
+    // "." is not caught by w_ref_parent_folder(), which only rejects references to a parent folder.
+    if (!filename || !*filename || strcmp(filename, ".") == 0) {
+        return 0;
+    }
+
+    if (strchr(filename, '/')) {
+        return 0;
+    }
+
+#ifdef WIN32
+    // Windows accepts both separators, so a name holding either one is not a bare file name.
+    if (strchr(filename, '\\')) {
+        return 0;
+    }
+#endif
+
+    return w_ref_parent_folder(filename) ? 0 : 1;
 }
 
 
@@ -2446,6 +2477,298 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #else
     return fopen(pathname, mode);
+#endif
+}
+
+
+#ifdef WIN32
+/**
+ * Translate a Win32 error into an errno value. Assigning GetLastError() straight into errno, as the
+ * older helpers in this file do, is wrong twice over: the numbering spaces are unrelated, so strerror()
+ * prints something misleading, and a raw Win32 code can collide with an errno that callers test for --
+ * ERROR_INVALID_TARGET_HANDLE is 114, which is mingw's ELOOP, the very value w_fopen_nofollow() uses to
+ * report a rejected symlink.
+ */
+static int w_win32_to_errno(DWORD error) {
+    switch (error) {
+    case ERROR_FILE_NOT_FOUND:
+    case ERROR_PATH_NOT_FOUND:
+    case ERROR_INVALID_DRIVE:
+        return ENOENT;
+    case ERROR_ACCESS_DENIED:
+    case ERROR_NETWORK_ACCESS_DENIED:
+        return EACCES;
+    case ERROR_SHARING_VIOLATION:
+    case ERROR_LOCK_VIOLATION:
+        return EBUSY;
+    case ERROR_FILE_EXISTS:
+    case ERROR_ALREADY_EXISTS:
+        return EEXIST;
+    case ERROR_DISK_FULL:
+        return ENOSPC;
+    case ERROR_INVALID_NAME:
+    case ERROR_BAD_PATHNAME:
+        return EINVAL;
+    case ERROR_TOO_MANY_OPEN_FILES:
+        return EMFILE;
+    default:
+        return EIO;
+    }
+}
+#endif
+
+
+#ifdef WIN32
+/**
+ * Opens @p filename inside @p basedir on Windows without following symlinks or junctions, and vets the
+ * resulting handle as a lone regular file — rejecting reparse points, directories, and NTFS hard links
+ * (which need no privilege to create and carry neither attribute above) — before handing it back.
+ * Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be applied
+ * once instead of needing to be kept in sync across both.
+ *
+ * @param basedir Base directory holding the file.
+ * @param filename Bare file name inside @p basedir.
+ * @param access GENERIC_READ or GENERIC_WRITE.
+ * @param disposition OPEN_EXISTING for reading, or OPEN_ALWAYS for writing. OPEN_ALWAYS never truncates
+ *                     by itself: the caller must only truncate after the handle has been vetted here,
+ *                     since truncating up front would destroy the target of a hard link before it could
+ *                     be told apart from a regular file.
+ * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
+ */
+static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * filename, DWORD access, DWORD disposition) {
+    char final_path[PATH_MAX + 1];
+    BY_HANDLE_FILE_INFORMATION file_info;
+    HANDLE hFile;
+
+    if (snprintf(final_path, sizeof(final_path), "%s\\%s", basedir, filename) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // FILE_FLAG_OPEN_REPARSE_POINT makes the handle refer to a symlink or junction itself instead of to
+    // its target, so the target is never opened nor modified.
+    hFile = wCreateFile(final_path, access, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL, disposition, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = w_win32_to_errno(GetLastError());
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (!GetFileInformationByHandle(hFile, &file_info)) {
+        errno = w_win32_to_errno(GetLastError());
+        CloseHandle(hFile);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        CloseHandle(hFile);
+        errno = ELOOP;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        CloseHandle(hFile);
+        errno = EISDIR;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (file_info.nNumberOfLinks != 1) {
+        CloseHandle(hFile);
+        errno = EMLINK;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    return hFile;
+}
+#else
+/**
+ * Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor as
+ * a lone regular file — rejecting hard links, FIFOs, devices, and directories — before handing it back.
+ * Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be applied
+ * once instead of needing to be kept in sync across both.
+ *
+ * @param basedir Base directory holding the file.
+ * @param filename Bare file name inside @p basedir.
+ * @param oflags open()/openat() flags; must include O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK (the latter to
+ *               keep a FIFO from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the
+ *               caller needs. Deliberately never includes O_TRUNC: truncating at open time would destroy
+ *               the target before anything about it can be checked, which is precisely how a hard link
+ *               slips through — it is a regular file, so no file type test can tell it apart. A caller
+ *               that needs the file truncated must do so only after this returns a vetted descriptor.
+ * @param mode Permission bits, used only when oflags includes O_CREAT.
+ * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
+ */
+static int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
+    struct stat statbuf;
+    int dirfd;
+    int fd;
+    int saved_errno;
+    int flags;
+
+    if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+        return -1;
+    }
+
+    fd = openat(dirfd, filename, oflags, mode);
+    saved_errno = errno;
+    close(dirfd);
+
+    if (fd < 0) {
+        errno = saved_errno;
+        return -1;
+    }
+
+    // Rules out anything O_NOFOLLOW does not, such as a block or character device.
+    if (fstat(fd, &statbuf) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -1;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        close(fd);
+        errno = EINVAL;
+        return -1;
+    }
+
+    // A hard link is a regular file by every other measure; the link count is what gives it away.
+    if (statbuf.st_nlink != 1) {
+        close(fd);
+        errno = EMLINK;
+        return -1;
+    }
+
+    // O_NONBLOCK only mattered while checking for a FIFO above; clear it so reads/writes behave normally.
+    if (flags = fcntl(fd, F_GETFL), flags != -1) {
+        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    }
+
+    return fd;
+}
+#endif
+
+
+FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    int flags = strchr(mode, 'b') ? 0 : _O_TEXT;
+    int fd;
+    FILE * fp;
+
+    // OPEN_ALWAYS rather than CREATE_ALWAYS: the file must not be truncated before the handle has been
+    // confirmed to be a regular file.
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_WRITE, OPEN_ALWAYS);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    // The file pointer sits at the beginning of the file, so this truncates it. Safe now: the handle is
+    // known to refer to a lone regular file, so this can no longer destroy a hard link's target early.
+    if (!SetEndOfFile(hFile)) {
+        errno = w_win32_to_errno(GetLastError());
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // _open_osfhandle() and _fdopen() are CRT calls: they set errno and leave the Win32 last error
+    // alone, so errno is left exactly as they reported it.
+    if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
+    // CloseHandle() would release the handle while leaving the descriptor allocated forever.
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        const int fdopen_errno = errno;
+        _close(fd);
+        errno = fdopen_errno;
+        return NULL;
+    }
+
+    return fp;
+#else
+    FILE * fp;
+    int saved_errno;
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    // Safe now: the descriptor is known to point at a lone regular file. Mirrors what the Windows branch
+    // does with OPEN_ALWAYS plus SetEndOfFile() — the file is truncated only once vetted, not at open time.
+    if (ftruncate(fd, 0) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
+#endif
+}
+
+
+gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (!basedir || !mode || (strcmp(mode, "r") && strcmp(mode, "rb")) || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    int fd;
+    gzFile gzfp;
+
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_READ, OPEN_EXISTING);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle: closing it through zlib/CRT is enough, CloseHandle()
+    // would release the handle while leaving the descriptor allocated forever.
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        _close(fd);
+        return NULL;
+    }
+
+    return gzfp;
+#else
+    gzFile gzfp;
+    int saved_errno;
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    return gzfp;
 #endif
 }
 

@@ -162,7 +162,7 @@ def test_is_safe_path():
         ("7d", "timeframe"),
         ("1s", "timeframe"),
         ("7m", "timeframe"),
-        ("asdfASD0101", "wazuh_key"),
+        ("abcdef0123", "wazuh_key"),
         ("2019-02-26", "date"),
         ("2020-06-24T17:02:53Z", "date-time"),
         ("group_name.test", "group_names"),
@@ -195,6 +195,9 @@ def test_validation_json_ok(value, format):
         ("7a", "timeframe"),
         ("s1", "timeframe"),
         ("asdfASD0101!", "wazuh_key"),
+        # alphanumeric but not hex (#38582 follow-up: keys accepted by the API must decode as hex)
+        ("asdfASD0101", "wazuh_key"),
+        ("g" * 64, "wazuh_key"),
         ("2019-02-26-test", "date"),
         ("2020-06-24 17:02:53.034374", "date-time"),
         ("group_name.test ", "group_names"),

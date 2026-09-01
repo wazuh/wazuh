@@ -1,3 +1,8 @@
+# Needed by test_win_utils.c/test_win_agent.c's #include "os_win.h" -- this
+# directory is otherwise absent from the standalone unit_tests project's
+# include path (unlike the main build's src/CMakeLists.txt).
+include_directories(${SRC_FOLDER}/win32)
+
 # Generate win32 library
 file(GLOB win32_files
     ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/*.obj)
@@ -25,14 +30,22 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate win32 tests
 list(APPEND win32_names "test_win_utils")
-list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize -Wl,--wrap,send_msg \
+list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
                         -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time \
                         -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
                         -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \ -Wl,--wrap=is_fim_shutdown \
                         -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
                         -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
-                        -Wl,--wrap,fim_db_init -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,fim_db_init -Wl,--wrap,w_query_agentd \
+                        -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,startup_gate_wait_for_ready \
+                        -Wl,--wrap,wm_config -Wl,--wrap,wm_check \
+                        ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND win32_names "test_win_agent")
+list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                        -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                        -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH win32_names count)
 math(EXPR count "${count} - 1")

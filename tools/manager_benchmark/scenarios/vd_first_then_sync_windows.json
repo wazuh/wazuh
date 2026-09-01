@@ -1,0 +1,23 @@
+{
+  "name": "vd_first_then_sync_windows",
+  "description": "Windows fleet running the vulnerability-detection first-scan (VDFirst) followed by a steady VDSync delta stream. Windows twin of vd_first_then_sync_debian. Same -vd-feed-offset caveat applies: uds mode has no /control to learn the offset from, so pass it explicitly against a target whose feed offset is not 0.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "VDFirst",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "vd": [
+      { "kind": "delta", "module": "syscollector", "option": "VDFirst", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 300, "size_bytes": 256 } },
+      { "kind": "delta", "module": "syscollector", "option": "VDSync", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 30 }, "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 8, "first_id": 20000, "lanes": ["vd"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+}

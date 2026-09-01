@@ -23,13 +23,20 @@
 // External function declarations from syscheck.c
 extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation);
 extern void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
-extern void process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern int process_pending_sync_updates(char* table_name, OSList *pending_items);
 extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
 extern int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs);
 
 // Stand-in directory_t pointer for "config exists" signal in tests
 // (real __wrap_fim_configuration_directory lives in create_db_wrappers.c)
 static directory_t mock_drop_directory_config = {0};
+
+#ifdef WIN32
+// Stand-in registry_t pointer for "config exists" signal in the registry drop tests
+static registry_t mock_drop_registry_config = {0};
+
+registry_t* __wrap_fim_registry_configuration(const char* key, int arch);
+#endif
 
 // Local wrapper declarations (defined per-test-file like test_recovery.c)
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
@@ -107,6 +114,12 @@ cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* 
     check_expected(document_version);
     check_expected(arch);
     return mock_ptr_type(cJSON*);
+}
+
+registry_t* __wrap_fim_registry_configuration(const char* key, int arch) {
+    check_expected(key);
+    check_expected(arch);
+    return mock_ptr_type(registry_t*);
 }
 #endif
 
@@ -527,11 +540,12 @@ static void test_process_pending_sync_updates_files(void **state) {
     expect_value(__wrap_fim_db_set_sync_flag, sync_value, 1);
     will_return(__wrap_fim_db_set_sync_flag, 0);
 
-    // Process updates
+    // Process updates. process_pending_sync_updates() no longer logs a summary itself (callers
+    // that run once per scan do that from the returned count instead) — assert on the count.
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test1.txt");
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test2.txt");
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 2 pending sync flag updates");
-    process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending);
+    int processed = process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending);
+    assert_int_equal(processed, 2);
 
     // Clean up
     cJSON_Delete(item1);
@@ -549,9 +563,9 @@ static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
     cJSON_AddItemToArray(docs, create_file_doc("/etc/hosts", "def456", 1));
 
-    expect_string(__wrap_fim_configuration_directory, path, "/etc/hosts");
-    will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
     expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
+    will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/hosts");
     will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
@@ -570,12 +584,12 @@ static void test_drop_orphaned_promoted_documents_some_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/orphan.txt", "ghi789", 2));
 
-    // Helper walks the array from the tail down; tail item is "/home/vagrant/orphan.txt".
-    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
-    will_return(__wrap_fim_configuration_directory, NULL);
-
+    // Helper walks the array from the head; head item is "/etc/passwd".
     expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
     will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
+
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): /home/vagrant/orphan.txt");
@@ -598,15 +612,15 @@ static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/a.txt", "a", 1));
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/b.txt", "b", 1));
 
-    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/b.txt");
-    will_return(__wrap_fim_configuration_directory, NULL);
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/a.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/b.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg,
-                  "Skipping promotion of orphaned path (no active configuration): /home/vagrant/b.txt");
-    expect_string(__wrap__mdebug2, formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): /home/vagrant/a.txt");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): /home/vagrant/b.txt");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
 
@@ -616,16 +630,115 @@ static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
     cJSON_Delete(docs);
 }
 
-// Registry tables go through a different config model and must be left untouched.
-static void test_drop_orphaned_promoted_documents_registry_noop(void **state) {
+// Tables the helper does not know about must be left untouched.
+static void test_drop_orphaned_promoted_documents_unknown_table_noop(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
+
+    // No lookup expectation: the helper must short-circuit before calling any config resolver.
+    int dropped = drop_orphaned_promoted_documents("unknown_table", docs);
+
+    assert_int_equal(dropped, 0);
+    assert_int_equal(cJSON_GetArraySize(docs), 1);
+
+    cJSON_Delete(docs);
+}
+
+#ifdef WIN32
+/* Tests for the registry side of drop_orphaned_promoted_documents() */
+
+// A registry key whose path is no longer under any configured entry is dropped; the one still
+// covered survives, and each row is resolved with its own architecture.
+static void test_drop_orphaned_promoted_documents_registry_key_orphan(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest",
+                                                       "abc123", 1, "[x64]"));
+    cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Security", "def456", 1, "[x32]"));
+
+    // Helper walks the array from the head; head item is the still-covered [x64] one.
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_64BIT);
+    will_return(__wrap_fim_registry_configuration, &mock_drop_registry_config);
+
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
+    will_return(__wrap_fim_registry_configuration, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): HKEY_LOCAL_MACHINE\\Security");
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
+
+    assert_int_equal(dropped, 1);
+    assert_int_equal(cJSON_GetArraySize(docs), 1);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetArrayItem(docs, 0), "path")),
+                        "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+
+    cJSON_Delete(docs);
+}
+
+// The registry value table is filtered the same way as the key table.
+static void test_drop_orphaned_promoted_documents_registry_value_orphan(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_registry_value_doc("HKEY_LOCAL_MACHINE\\Security", "TestValue",
+                                                         "abc123", 1, "[x64]"));
+
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_64BIT);
+    will_return(__wrap_fim_registry_configuration, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): HKEY_LOCAL_MACHINE\\Security");
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_VALUE_TABLENAME, docs);
+
+    assert_int_equal(dropped, 1);
+    assert_int_equal(cJSON_GetArraySize(docs), 0);
+
+    cJSON_Delete(docs);
+}
+
+// A registry row without "architecture" cannot be resolved, so it is dropped without a lookup.
+static void test_drop_orphaned_promoted_documents_registry_missing_architecture(void **state) {
     (void) state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON* doc = cJSON_CreateObject();
-    cJSON_AddStringToObject(doc, "path", "HKEY_LOCAL_MACHINE\\Software\\Test");
+    cJSON_AddStringToObject(doc, "path", "HKEY_LOCAL_MACHINE\\Security");
+    cJSON_AddStringToObject(doc, "checksum", "abc123");
+    cJSON_AddNumberToObject(doc, "version", 1);
     cJSON_AddItemToArray(docs, doc);
 
-    // No fim_configuration_directory expectation: the helper must short-circuit before calling it.
+    // No fim_registry_configuration expectation: the row is dropped before the lookup.
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of registry document without architecture: HKEY_LOCAL_MACHINE\\Security");
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
+
+    assert_int_equal(dropped, 1);
+    assert_int_equal(cJSON_GetArraySize(docs), 0);
+
+    cJSON_Delete(docs);
+}
+
+// Registry rows still covered by the configuration are promoted untouched.
+static void test_drop_orphaned_promoted_documents_registry_no_orphans(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest",
+                                                       "abc123", 1, "[x32]"));
+
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
+    will_return(__wrap_fim_registry_configuration, &mock_drop_registry_config);
+
     int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
 
     assert_int_equal(dropped, 0);
@@ -633,6 +746,7 @@ static void test_drop_orphaned_promoted_documents_registry_noop(void **state) {
 
     cJSON_Delete(docs);
 }
+#endif
 
 // NULL/empty/non-array inputs must be tolerated without crashing.
 static void test_drop_orphaned_promoted_documents_null_and_invalid_inputs(void **state) {
@@ -677,8 +791,15 @@ int main(void) {
         cmocka_unit_test(test_drop_orphaned_promoted_documents_no_orphans),
         cmocka_unit_test(test_drop_orphaned_promoted_documents_some_orphans),
         cmocka_unit_test(test_drop_orphaned_promoted_documents_all_orphans),
-        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_noop),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_unknown_table_noop),
         cmocka_unit_test(test_drop_orphaned_promoted_documents_null_and_invalid_inputs),
+#ifdef WIN32
+        // registry side of drop_orphaned_promoted_documents
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_key_orphan),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_value_orphan),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_missing_architecture),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_no_orphans),
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

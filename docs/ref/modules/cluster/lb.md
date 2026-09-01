@@ -2,9 +2,26 @@
 
 A load balancer distributes workloads across multiple resources. In a Wazuh server cluster, it distributes Wazuh agents among worker nodes to improve scalability, availability, and performance.
 
+> **Note:** The `<cluster>` XML section referenced throughout the cluster
+> docs is not parsed or validated by the shared C configuration library — it
+> is recognized but otherwise ignored at that layer, with all parsing and
+> validation performed later in Python. See
+> [Cluster Configuration](configuration.md) for details.
+
 ## Overview
 
 Load balancers allow agents to enroll and report to different Wazuh server nodes transparently. If a node becomes unavailable, agents reconnect to another available node.
+
+> **For 5.x agents, see the Remoted load-balancer guides instead.** A 5.x agent enrolls and reports
+> over the HTTPS agent API on port `1517`, not the ports below. Balancing HTTPS has its own
+> requirements — TLS 1.3 on the backend, body-size and timeout alignment, no PROXY protocol, retry
+> safety, and no URL path prefix — covered in
+> [Remoted load balancers](../remoted/load-balancers/README.md), with worked configurations for
+> [NGINX](../remoted/load-balancers/nginx.md) and [HAProxy](../remoted/load-balancers/haproxy.md).
+>
+> The examples on this page balance the **legacy** channel: agent traffic on `1514` and legacy
+> enrollment on `1515`. They apply only to a cluster still serving 4.x agents, with
+> `<remote><legacy>` and `<auth><legacy_enrollment>` enabled.
 
 This document covers two commonly used load balancers:
 
@@ -109,55 +126,4 @@ Start the service:
 
 ```bash
 service haproxy start
-```
-
----
-
-## HAProxy helper
-
-The HAProxy helper automatically updates HAProxy backend servers based on cluster status.
-
-### Dataplane API configuration
-
-Create a Dataplane API configuration file:
-
-```yaml
-dataplaneapi:
-  host: 0.0.0.0
-  port: 5555
-  user:
-    - name: <USER>
-      password: <PASSWORD>
-      insecure: true
-
-haproxy:
-  config_file: /etc/haproxy/haproxy.cfg
-  haproxy_bin: /usr/sbin/haproxy
-  reload:
-    reload_cmd: service haproxy reload
-```
-
-### Enable helper in Wazuh master
-
-Add the following section to `wazuh-manager.conf`:
-
-```xml
-<haproxy_helper>
-  <haproxy_disabled>no</haproxy_disabled>
-  <haproxy_address><HAPROXY_ADDRESS></haproxy_address>
-  <haproxy_user><USER></haproxy_user>
-  <haproxy_password><PASSWORD></haproxy_password>
-</haproxy_helper>
-```
-
-Restart the manager:
-
-```bash
-systemctl restart wazuh-manager
-```
-
-Verify logs:
-
-```bash
-tail /var/wazuh-manager/logs/cluster.log
 ```

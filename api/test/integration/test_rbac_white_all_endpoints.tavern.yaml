@@ -91,35 +91,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-  - name: Try to get daemon stats from agent 001
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-
----
-test_name: GET /agents/{agent_id}/config/{component}/{configuration}
-
-stages:
-  - name: Try to get client configuration from agent component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: DELETE /agents/{agent_id}/group
 
 stages:
@@ -216,7 +187,7 @@ stages:
       params:
         agents_list: 008
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -246,33 +217,7 @@ stages:
         agents_list: 008
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/upgrade_result
-
-stages:
-  - name: Try to get all upgrade results (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
       <<: *empty_response
-
-  - name: Try to get agent 007 upgrade result (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '007'
-    response:
-      <<: *permission_denied
 
 ---
 test_name: DELETE /agents/group
@@ -336,7 +281,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       <<: *permission_denied
 
@@ -371,20 +316,6 @@ stages:
       <<: *empty_response
 
 ---
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-  - name: Try to restart all agents belonging to a node (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/outdated
 
 stages:
@@ -397,32 +328,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
-
----
-test_name: PUT /agents/reconnect
-
-stages:
-  - name: Try to reconnect all agents (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to reconnect agent 001 (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      params:
-        agents_list: '001'
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
 
 ---
 test_name: PUT /agents/restart
@@ -448,7 +353,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: GET /agents/stats/distinct
@@ -525,10 +430,6 @@ stages:
             disconnected: 0
             never_connected: 0
             pending: 0
-            total: 0
-          configuration:
-            synced: 0
-            not_synced: 0
             total: 0
 
 ---
@@ -956,7 +857,6 @@ stages:
     response:
       json:
         data:
-          nodes: []
           groups: []
           agent_os: []
           agent_status:
@@ -966,10 +866,6 @@ stages:
               never_connected: 0
               pending: 0
               total: 0
-            configuration:
-              synced: 0
-              total: 0
-              not_synced: 0
           agent_version: []
           last_registered_agent: []
         error: 0
@@ -1025,7 +921,7 @@ stages:
       method: POST
       json:
         username: newUser
-        password: stringA1!
+        password: stringA1!extra
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1085,7 +981,7 @@ stages:
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
       method: PUT
       json:
-        password: stringB1!
+        password: stringB1!extra
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1543,20 +1439,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /tasks/status
-
-stages:
-  - name: Try to get tasks status
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
-      method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

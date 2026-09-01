@@ -82,7 +82,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
     const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
-    const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
     const char *XML_DB_SYNC_INTEGRITY_INTERVAL = "integrity_interval";
 
@@ -111,14 +110,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
             } else {
                 sca->sync.sync_end_delay = (uint32_t) sync_end_delay;
             }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
-            long response_timeout = w_parse_time(node[i]->content);
-
-            if (response_timeout < 0 || (unsigned long)response_timeout > UINT32_MAX) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_response_timeout = (uint32_t) response_timeout;
-            }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0) {
             char * end;
             const long value = strtol(node[i]->content, &end, 10);
@@ -143,10 +134,17 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
 }
 
 // Reading function
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int skip_ruleset_load)
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_cfg)
 {
     unsigned int i;
     wm_sca_t *sca;
+
+    /* On the manager, agent.conf parsing must not activate the local ruleset. */
+    #ifdef CLIENT
+    const int skip_ruleset_load = 0;
+    #else
+    const int skip_ruleset_load = agent_cfg;
+    #endif
 
     if(!module->data) {
         os_calloc(1, sizeof(wm_sca_t), sca);
@@ -164,7 +162,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int skip_ru
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
         sca->sync.sync_end_delay = 1;
-        sca->sync.sync_response_timeout = 60;
         sca->sync.sync_max_eps = 75;
         sca->sync.integrity_interval = 86400;
     }
@@ -172,6 +169,17 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int skip_ru
     sca = module->data;
 
     /* By default, load all every ruleset present */
+
+    char ruleset_realpath[PATH_MAX] = {0};
+    #ifdef WIN32
+    if (!GetFullPathName(SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, PATH_MAX, ruleset_realpath, NULL)) {
+        ruleset_realpath[0] = '\0';
+    }
+    #else
+    if (!realpath(SECURITY_CONFIGURATION_ASSESSMENT_DIR, ruleset_realpath)) {
+        ruleset_realpath[0] = '\0';
+    }
+    #endif
 
     if (!skip_ruleset_load) {
         char ruleset_path[PATH_MAX] = {0};
@@ -410,11 +418,18 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int skip_ru
                         os_calloc(1,sizeof(wm_sca_policy_t), policy);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
-                        #ifdef WIN32
-                        policy->remote = strstr(realpath_buffer, "shared\\") != NULL;
-                        #else
-                        policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
-                        #endif
+                        {
+                            size_t ruleset_len = strlen(ruleset_realpath);
+                            #ifdef WIN32
+                            const char ruleset_sep = '\\';
+                            #else
+                            const char ruleset_sep = '/';
+                            #endif
+                            /* Only a path actually anchored at the resolved ruleset directory counts as local. */
+                            int under_ruleset = ruleset_len && !strncmp(realpath_buffer, ruleset_realpath, ruleset_len) &&
+                                                (realpath_buffer[ruleset_len] == ruleset_sep || realpath_buffer[ruleset_len] == '\0');
+                            policy->remote = agent_cfg && !under_ruleset;
+                        }
                         os_strdup(realpath_buffer, policy->policy_path);
                         sca->policies[policies_count] = policy;
                         sca->policies[policies_count + 1] = NULL;

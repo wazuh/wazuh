@@ -88,7 +88,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Notify the manager */
-#define NOTIFY_TIME    20 // ... every 20 seconds
+#define NOTIFY_TIME    10 // ... every 10 seconds
 #define RECONNECT_TIME 60 // Time to reconnect
 
 /* User Configuration */
@@ -120,36 +120,46 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
 
+/* Stateful sync-session intake (HTTPS agent): a STREAM socket separate from
+ * the DGRAM DEFAULTQUEUE, so whole sync sessions bypass the 64 KB cap. */
+#define SYNCQUEUE "queue/sockets/queue-sync"
+
 // Authd local socket
-#define AUTH_LOCAL_SOCK "queue/sockets/auth"
+#define AUTH_LOCAL_SOCK "queue/sockets/auth.sock"
 
 // Local requests socket
 #define COM_LOCAL_SOCK     "queue/sockets/com"
 #define AG_LOCAL_SOCK      "queue/sockets/agent"
 #define LC_LOCAL_SOCK      "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK     "queue/sockets/syscheck"
-#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
-#define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
-#define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
-#define ANLSYS_ENRICH_SOCK "queue/sockets/queue-http.sock"
-#define MON_LOCAL_SOCK     "queue/sockets/monitor"
-#define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
-#define CONTROL_SOCK       "queue/sockets/control"
+#define REMOTE_LOCAL_SOCK  "queue/sockets/remote.sock"
+#define ANLSYS_LOCAL_SOCK  "queue/sockets/engine-api-http.sock"
+#define ANLSYS_ENRICH_SOCK "queue/sockets/engine-ingest-http.sock"
+#define INV_SYNC_SOCK      "queue/sockets/inventory-sync-http.sock"
+#define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
+#define CLUSTER_SOCK       "queue/sockets/cluster-internal.sock"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
-// Tasks socket
-#define TASK_QUEUE "queue/tasks/task"
+// Both products create these two from this same code. The manager carries the
+// standardized names; the agent keeps the legacy ones until the agent sockets are
+// renamed as a whole. Delete this fork then.
+#ifdef CLIENT
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
+#define CONTROL_SOCK       "queue/sockets/control"
+#else
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules.sock"
+#define CONTROL_SOCK       "queue/sockets/control.sock"
+#endif
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS 10
 
 // Database socket
-#define WDB_LOCAL_SOCK "queue/db/wdb"
+#define WDB_LOCAL_SOCK "queue/sockets/wdb.sock"
 
-// Tasks socket
-#define WM_UPGRADE_SOCK "queue/tasks/upgrade"
-
-#define WM_TASK_MODULE_SOCK "queue/tasks/task"
+// Tasks sockets
+#define WM_UPGRADE_SOCK "queue/sockets/task-upgrade.sock"
+#define WM_TASK_MODULE_SOCK "queue/sockets/task.sock"
 
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"
@@ -163,9 +173,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Exec queue */
 #define EXECQUEUE "queue/sockets/execq"
-
-/* Active Response queue */
-#define ARQUEUE "queue/sockets/ar"
 
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
@@ -268,6 +275,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Timestamp file */
 #define TIMESTAMP_FILE "queue/agents-timestamp"
 
+/* authd's own durable state: the agent deletions whose indexer purge it still owes. Kept out of
+ * client.keys on purpose -- that file is read by other daemons and its format is a contract. */
+#define AUTHD_QUEUE_DIR     "queue/authd"
+#define PENDING_PURGES_FILE "queue/authd/pending-purges"
+
 /* Shared config directory */
 #ifndef WIN32
 #define SHAREDCFG_DIR "etc/shared"
@@ -339,8 +351,21 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_REMOTE_PORT 1514 /* Default encrypted */
 #endif
 
+#ifndef DEFAULT_HTTPS_REMOTE_PORT
+#define DEFAULT_HTTPS_REMOTE_PORT 1517 /* Default agent HTTPS control port */
+#endif
+
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
+#endif
+
+/* Not every agent platform this tree still builds for (AIX, Solaris 10, HP-UX) is guaranteed to define
+ * O_DIRECTORY. Falling back to 0 only loses an early "this must be a directory" check: openat() on a
+ * descriptor that is not a directory fails with ENOTDIR anyway. Note that O_NOFOLLOW deliberately gets
+ * no such fallback -- defining it to 0 would silently disable a security check instead of failing the
+ * build, which is the outcome we want to hear about. */
+#ifndef O_DIRECTORY
+#define O_DIRECTORY 0
 #endif
 
 /* XML global elements */

@@ -64,7 +64,13 @@ case "$1" in
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
+        # The redirection truncates the target before the generator runs: a rejected
+        # variable would otherwise leave an empty file that a retry treats as pre-existing.
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf; then
+            rm -f ${DIR}/etc/wazuh-manager.conf
+            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
+            exit 1
+        fi
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -79,9 +85,15 @@ case "$1" in
             fi
         fi
     else
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
-        chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
-        chmod 660 ${DIR}/etc/wazuh-manager.conf.new
+        # A reference file for the administrator, not the active configuration: a rejected
+        # variable must not abort the upgrade.
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new; then
+            rm -f ${DIR}/etc/wazuh-manager.conf.new
+            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.conf.new. The current configuration is unchanged." >&2
+        else
+            chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
+            chmod 660 ${DIR}/etc/wazuh-manager.conf.new
+        fi
     fi
 
     # Remove/relocate existing SQLite databases
@@ -118,12 +130,44 @@ case "$1" in
     # Remove Vuln-detector database
     rm -f ${DIR}/queue/vulnerabilities/cve.db || true
 
-    # Generation auto-signed certificate if not exists
-    if [ ! -f "${DIR}/etc/sslmanager.key" ] && [ ! -f "${DIR}/etc/sslmanager.cert" ]; then
-        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
+    # Unified certificate directory: root-owned and sticky. The server daemons self-generate
+    # their certificates here and read them after dropping privileges to ${USER}; the sticky
+    # bit keeps them from replacing the root-owned indexer trust material that shares the dir.
+    mkdir -p ${DIR}/etc/certs
+
+    # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
+    # exists. Skipped when the admin supplied their own certificate/key paths through the
+    # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables. This is
+    # the manager's ONLY self-signed cert/key pair: authd no longer generates its own (its
+    # <ssl_manager_cert>/<ssl_manager_key> point here too), so both listeners present the same
+    # manager identity -- required now that /enroll's mTLS mode treats this certificate as the
+    # enrollment credential.
+    if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
+        if [ ! -f "${DIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${DIR}/etc/certs/remoted.pem" ]; then
+            ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/certs/remoted-key.pem -X ${DIR}/etc/certs/remoted.pem 2>/dev/null
+        fi
     fi
 
-    chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
+    # The server certificates each daemon self-generates are owned by ${USER} (the daemon must
+    # write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
+    for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown ${USER}:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+            chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        fi
+    done
+
+    # The indexer trust material is provisioned externally and only read by the manager, so it
+    # is owned root and group ${GROUP} (read-only for the service).
+    for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown root:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+            chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        fi
+    done
+
+    chown root:${GROUP} ${DIR}/etc/certs > /dev/null 2>&1 || true
+    chmod 1770 ${DIR}/etc/certs > /dev/null 2>&1 || true
 
     if [ -z "$2" ]; then
         # For the etc dir
@@ -142,11 +186,15 @@ case "$1" in
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
-        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-db \
+        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \
         wazuh-manager-keystore wazuh-manager-modulesd \
         wazuh-manager-monitord wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             case "${BIN}" in
+                wazuh-manager-service-control)
+                    chown root:${GROUP} "${DIR}/bin/${BIN}"
+                    chmod 4750 "${DIR}/bin/${BIN}"
+                    ;;
                 agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd)
                     chown root:${GROUP} "${DIR}/bin/${BIN}"
                     ;;
@@ -197,6 +245,17 @@ case "$1" in
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
+
+    # The engine (wazuh-manager-analysisd) now drops privileges to wazuh-manager:
+    # runtime data created by root in previous versions must be reassigned.
+    # restore-permissions.sh only covers paths present in the package tree.
+    chown -R ${USER}:${GROUP} ${DIR}/data/ruleset > /dev/null 2>&1 || true
+    chown -R ${USER}:${GROUP} ${DIR}/data/kvdb-ioc > /dev/null 2>&1 || true
+    for YEAR_DIR in ${DIR}/logs/[0-9][0-9][0-9][0-9]; do
+        if [ -d "${YEAR_DIR}" ]; then
+            chown -R ${USER}:${GROUP} "${YEAR_DIR}" > /dev/null 2>&1 || true
+        fi
+    done
 
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then

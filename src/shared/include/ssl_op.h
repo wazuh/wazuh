@@ -30,9 +30,16 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#define KEYFILE             "etc/sslmanager.key"
-#define CERTFILE            "etc/sslmanager.cert"
-#define DEFAULT_CIPHERS     "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+/* Manager's unified TLS identity: authd and remoted_module's HTTPS server (/enroll's mTLS mode)
+ * present the same certificate, generated once by wazuh-manager-remoted. Only used as the -h
+ * help-text default in os_auth/src/main-server.c -- manager-only, no separate agent-side authd
+ * binary exists. Keep in sync with config/src/authd-config.c's Read_Authd(), which hardcodes the
+ * same path as the actual <ssl_manager_cert>/<ssl_manager_key> default (a separate literal, not
+ * sourced from these macros). */
+#define KEYFILE             "etc/certs/remoted-key.pem"
+#define CERTFILE            "etc/certs/remoted.pem"
+/* TLS 1.3 ciphersuite names (SSL_CTX_set_ciphersuites), not a legacy OpenSSL cipher list */
+#define DEFAULT_CIPHERS     "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #define MAX_SSL_PACKET_SIZE 16384
 
 SSL_CTX* os_ssl_keys(int is_server,
@@ -40,9 +47,8 @@ SSL_CTX* os_ssl_keys(int is_server,
                      const char* ciphers,
                      const char* cert,
                      const char* key,
-                     const char* ca_cert,
-                     int auto_method);
-SSL_CTX* get_ssl_context(const char* ciphers, int auto_method);
+                     const char* ca_cert);
+SSL_CTX* get_ssl_context(const char* ciphers);
 int load_cert_and_key(SSL_CTX* ctx, const char* cert, const char* key);
 int load_ca_cert(SSL_CTX* ctx, const char* ca_cert);
 int verify_callback(int ok, X509_STORE_CTX* store);

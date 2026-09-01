@@ -1,0 +1,49 @@
+{
+  "name": "real_first_connect",
+  "description": "The agent-mode twin of real_first_connect_uds: a freshly connected Windows agent and Linux agent enrolling, then replaying their own REAL first-connection dumps at FULL fidelity over remoted's HTTPS relay with /control keepalives. Compression rides the schema default (zstd in agent mode, like a real 5.x agent): the Windows FIM first sync is ~26 MB in one session, past remoted's 10 MiB auth_max_body_size uncompressed - this payload is the use case remoted's zstd support exists for (~3 MB on the wire). Running it with --compression none demonstrates the cap rejection.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "fim_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_fim_first_sync.json.zst" }
+    ],
+    "syscollector_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_syscollector_sync.json.zst" }
+    ],
+    "sca_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_sca_full.json.zst" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/windows_vd_first.json.zst" }
+    ],
+    "fim_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_fim_first_sync.json.zst" }
+    ],
+    "syscollector_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/debian_syscollector_sync.json.zst" }
+    ],
+    "sca_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_sca_full.json.zst" }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/debian_vd_first.json.zst" }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 1, "first_id": 46200,
+      "lanes": ["fim_windows", "syscollector_windows", "sca_windows", "vd_windows"],
+      "start": { "osname": "Microsoft Windows 11 Enterprise Evaluation", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.26200", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 1, "first_id": 46300,
+      "lanes": ["fim_linux", "syscollector_linux", "sca_linux", "vd_linux"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "120s" },
+  "expected": {
+    "sessions": { "ok": { "eq": 14 }, "s5xx": { "eq": 0 }, "documents_sent": { "eq": 31950 } },
+    "control": { "startup_err": { "eq": 0 } },
+    "transport_errors": { "eq": 0 }
+  }
+}

@@ -251,6 +251,16 @@ add_dependencies(ext_libyaml libyaml_external)
 # ------------------------------------------------------------------------------
 
 if(IS_WINDOWS)
+  # OpenSSL, not Schannel. Schannel cannot negotiate TLS 1.3 before Windows 11
+  # / Server 2022, and it does not advertise SSLSUPP_TLS13_CIPHERSUITES, so
+  # CURLOPT_TLS13_CIPHERS comes back CURLE_NOT_BUILT_IN. The manager's HTTPS
+  # listener pins a hardcoded TLS 1.3 floor, so a Schannel agent cannot reach
+  # it at all on those Windows versions. The rest of the agent (ssl_op.c,
+  # enrollment, authd) already links the mingw OpenSSL built above, so pointing
+  # curl at the same tree costs no extra dependency. Callers must set
+  # CURLSSLOPT_NATIVE_CA to keep validating against the Windows certificate
+  # store, which Schannel used to give us for free.
+  #
   # _WIN32_WINNT=0x0600 (Vista) is the rest of the project's target — see
   # src/syscheckd/CMakeLists.txt, src/wazuh_modules/CMakeLists.txt, etc.
   # Curl ≥ 8.x's configure refuses to build for anything older. MinGW 12+
@@ -258,18 +268,27 @@ if(IS_WINDOWS)
   # implicitly, but the compile_windows_agent image (ubuntu:22.04) ships
   # MinGW 10, which still defaults to 0x0501 (XP). Set it explicitly so the
   # build is portable across MinGW versions.
+  #
+  # --with-openssl=DIR searches DIR/lib, but our OpenSSL builds in-source, so
+  # the archives sit at DIR/ — hence the explicit -L, same as the Linux and
+  # Darwin arms. LIBS is what configure's own OpenSSL probe needs to link:
+  # libcrypto's Windows engine calls into the certificate store (crypt32) and
+  # its socket BIO into winsock (ws2_32), and without both, `HMAC_Update in
+  # -lcrypto` fails and configure aborts with "OpenSSL could not be detected".
   set(CURL_CONFIGURE_CMD
       ${CMAKE_COMMAND}
       -E
       env
       "CFLAGS=-fPIC -D_WIN32_WINNT=0x0600"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "LIBS=-lcrypt32 -lws2_32"
       CC=${MINGW_CC}
       ${EXTERNAL_DIR}/curl/configure
       --host=${MINGW_HOST}
       PREFIX=${MINGW_PREFIX}
       --enable-static=yes
       --disable-shared
-      --with-schannel
+      --with-openssl=${EXTERNAL_DIR}/openssl
       --disable-ldap
       --without-libidn2
       --without-libpsl
@@ -310,6 +329,7 @@ else() # Darwin
       "LIBS=-lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
+      --with-apple-sectrust
       --disable-ldap
       --without-libidn2
       --without-brotli
@@ -1001,7 +1021,136 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   set_target_properties(ext_fmt PROPERTIES IMPORTED_LOCATION
                                            ${EXTERNAL_DIR}/fmt/build/libfmt.a)
   add_dependencies(ext_fmt fmt_external)
+  target_include_directories(ext_fmt INTERFACE ${EXTERNAL_DIR}/fmt/include)
 endif()
+
+# ------------------------------------------------------------------------------
+# llhttp (Linux server only)
+# ------------------------------------------------------------------------------
+
+if(IS_LINUX AND NOT IS_AGENT)
+  if(EXISTS ${EXTERNAL_DIR}/llhttp/build/libllhttp.a)
+    message(STATUS "Using precompiled llhttp library")
+    add_library(ext_llhttp STATIC IMPORTED GLOBAL)
+    set_target_properties(
+      ext_llhttp PROPERTIES IMPORTED_LOCATION
+                            ${EXTERNAL_DIR}/llhttp/build/libllhttp.a)
+    target_include_directories(ext_llhttp INTERFACE
+                               ${EXTERNAL_DIR}/llhttp/include)
+  else()
+    add_library(
+      ext_llhttp STATIC
+      ${EXTERNAL_DIR}/llhttp/src/llhttp.c ${EXTERNAL_DIR}/llhttp/src/http.c
+      ${EXTERNAL_DIR}/llhttp/src/api.c)
+    set_target_properties(
+      ext_llhttp PROPERTIES POSITION_INDEPENDENT_CODE ON
+                            C_STANDARD 99
+                            OUTPUT_NAME llhttp
+                            ARCHIVE_OUTPUT_DIRECTORY
+                            ${EXTERNAL_DIR}/llhttp/build)
+    target_include_directories(ext_llhttp PUBLIC ${EXTERNAL_DIR}/llhttp/include)
+  endif()
+endif()
+
+# ------------------------------------------------------------------------------
+# RESTinio (Linux server only)
+# ------------------------------------------------------------------------------
+
+if(IS_LINUX AND NOT IS_AGENT)
+  add_library(ext_asio INTERFACE)
+  target_include_directories(ext_asio SYSTEM INTERFACE ${EXTERNAL_DIR}/asio/include)
+
+  add_library(ext_expected_lite INTERFACE)
+  target_include_directories(ext_expected_lite SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/expected-lite/include)
+
+  add_library(ext_restinio INTERFACE)
+  target_include_directories(ext_restinio SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/restinio/dev)
+  target_link_libraries(ext_restinio INTERFACE ext_asio ext_llhttp ext_fmt
+                                              ext_expected_lite pthread ssl crypto)
+endif()
+
+# ------------------------------------------------------------------------------
+# zstd (manager + agent, all platforms incl. winagent)
+# ------------------------------------------------------------------------------
+#
+# Upstream ships its CMake project under build/cmake (not at the repo root),
+# so SOURCE_DIR points there. BINARY_DIR is kept out of that tree (as
+# build/cmake-build, or build/cmake-build-win when cross-compiling for
+# Windows) to avoid colliding with the vendored build/{cmake,meson,VS2010,
+# single_file_libs} directories. The Windows BINARY_DIR is intentionally
+# distinct from the non-Windows one -- a Linux/macOS libzstd.a already built
+# on disk must never satisfy the Windows precompiled-artifact fast path
+# below (or vice versa); each platform gets its own EXISTS check. The static
+# archive lands under <BINARY_DIR>/lib/libzstd.a because upstream's
+# lib/CMakeLists.txt is pulled in via add_subdirectory(lib).
+#
+# Windows (winagent) cross-compiles via a nested ExternalProject_Add whose
+# own CMAKE_ARGS re-declare CMAKE_SYSTEM_NAME=Windows and forward the
+# already-cross-compiling top-level CMAKE_C_COMPILER/CMAKE_CXX_COMPILER/
+# CMAKE_AR/CMAKE_RANLIB (mirrors the GoogleTest Windows block below) instead
+# of re-deriving a MinGW prefix independently -- this file's own
+# MINGW_PREFIX is a second, non-synchronized source of truth vs.
+# src/Makefile's MING_BASE, so forwarding what the top-level configure
+# already resolved avoids adding to that split.
+#
+# CMAKE_CXX_COMPILER is required even though zstd's own library is C-only:
+# CMake's project() call, with no explicit LANGUAGES restriction, enables
+# CXX by default, so the nested configure's own compiler sanity-check tries
+# to find a C++ compiler regardless. Without forwarding it, that check falls
+# back to the HOST's /usr/bin/c++ (not the MinGW cross compiler), which
+# fails immediately on a MinGW-only linker flag -- confirmed empirically,
+# not just theorized.
+if(IS_WINDOWS)
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build-win)
+  find_program(FULL_RANLIB ${CMAKE_RANLIB} REQUIRED)
+  set(ZSTD_CMAKE_ARGS
+      -DCMAKE_SYSTEM_NAME=Windows
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DCMAKE_AR=${CMAKE_AR}
+      -DCMAKE_RANLIB=${FULL_RANLIB}
+      -DZSTD_MULTITHREAD_SUPPORT=OFF)
+else()
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build)
+  set(ZSTD_CMAKE_ARGS "")
+endif()
+
+if(EXISTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+  message(STATUS "Using precompiled zstd library")
+  add_custom_target(zstd_external)
+else()
+  ExternalProject_Add(
+    zstd_external
+    SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
+    BINARY_DIR ${ZSTD_BINARY_DIR}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+               -DBUILD_SHARED_LIBS=OFF
+               -DZSTD_BUILD_STATIC=ON
+               -DZSTD_BUILD_SHARED=OFF
+               -DZSTD_BUILD_PROGRAMS=OFF
+               -DZSTD_BUILD_TESTS=OFF
+               -DZSTD_LEGACY_SUPPORT=OFF
+               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+               ${ZSTD_CMAKE_ARGS}
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+
+  if(IS_WINDOWS)
+    ExternalProject_Add_Step(
+      zstd_external ranlib_libs
+      COMMAND ${FULL_RANLIB} ${ZSTD_BINARY_DIR}/lib/libzstd.a
+      DEPENDEES build
+      COMMENT "Running ranlib on zstd library")
+  endif()
+endif()
+
+add_library(ext_zstd STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ext_zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+add_dependencies(ext_zstd zstd_external)
+target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
 
 # ------------------------------------------------------------------------------
 # popt (Linux agent only)
@@ -1141,6 +1290,17 @@ if((UNIT_TEST OR WAZUH_ENGINE_TEST) AND NOT IS_AGENT)
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
   endif()
+
+  add_library(benchmark STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    benchmark PROPERTIES IMPORTED_LOCATION
+                         ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
+  add_dependencies(benchmark benchmark_external)
+  target_include_directories(benchmark
+                             INTERFACE ${EXTERNAL_DIR}/benchmark/include)
+
+  # Create the benchmark::benchmark alias that benchmark tests expect
+  add_library(benchmark::benchmark ALIAS benchmark)
 endif()
 
 # ==============================================================================
@@ -1261,15 +1421,37 @@ add_library(ext_httplib INTERFACE)
 target_include_directories(ext_httplib SYSTEM
                            INTERFACE ${EXTERNAL_DIR}/cpp-httplib)
 
+# jwt-cpp (header-only; in the base EXTERNAL_RES list so agent, winagent and manager all get it).
+# ${EXTERNAL_DIR} is on the include path because traits/nlohmann-json/traits.h does
+# #include "nlohmann/json.hpp" and this tree vendors json.hpp directly under external/nlohmann/.
+# picojson is not vendored, so its default traits are disabled. HS256 needs libcrypto (EVP HMAC).
+if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
+  add_library(ext_jwt_cpp INTERFACE)
+  target_include_directories(ext_jwt_cpp SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/jwt-cpp/include
+                                       ${EXTERNAL_DIR})
+  target_compile_definitions(ext_jwt_cpp INTERFACE JWT_DISABLE_PICOJSON)
+  target_link_libraries(ext_jwt_cpp INTERFACE crypto)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    # `crypto` is the static libcrypto.a: on MinGW its winstore/bio_sock objects import
+    # crypt32 (Cert*) and ws2_32 (WSA*, sockets), so any consumer that resolves OpenSSL
+    # from this archive rather than from the wazuhext DLL (e.g. https_client_unit_test.exe)
+    # needs both -- same pairing as every other winagent target that links `crypto`.
+    target_link_libraries(ext_jwt_cpp INTERFACE crypt32 ws2_32)
+  endif()
+endif()
+
+# rapidjson (header-only; in the base EXTERNAL_RES list since #38582: the shared wazuh-agent+jwt
+# verifier in shared_modules/utils/jwt/ parses tokens with its SAX reader, and the agent's
+# component tests run that verifier as their fake manager).
+if(EXISTS ${EXTERNAL_DIR}/rapidjson)
+  add_library(ext_rapidjson INTERFACE)
+  target_include_directories(ext_rapidjson SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
+endif()
+
 # Header-only libs that are only downloaded for server builds
 if(NOT IS_AGENT)
-  # rapidjson
-  if(EXISTS ${EXTERNAL_DIR}/rapidjson)
-    add_library(ext_rapidjson INTERFACE)
-    target_include_directories(ext_rapidjson SYSTEM
-                               INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
-  endif()
-
   # RxCpp
   if(EXISTS ${EXTERNAL_DIR}/RxCpp)
     add_library(ext_rxcpp INTERFACE)
@@ -1371,10 +1553,15 @@ if(IS_DARWIN)
                BUILD_WITH_INSTALL_RPATH TRUE
                INSTALL_NAME_DIR "@rpath"
                MACOSX_RPATH TRUE)
+  # -framework CoreServices: required by curl's --with-apple-sectrust (enabled
+  # above) alongside CoreFoundation/Security -- see m4/curl-apple-sectrust.m4's
+  # APPLE_SECTRUST_LDFLAGS. A static libcurl.a doesn't drag its own configure-time
+  # LDFLAGS into whatever finally links it, so this has to be declared here too.
   target_link_libraries(
     wazuhext
     PRIVATE "-Wl,-all_load" ${WAZUHEXT_WHOLE_LIBS} "-framework Security"
-            "-framework CoreFoundation" "-framework SystemConfiguration")
+            "-framework CoreFoundation" "-framework CoreServices"
+            "-framework SystemConfiguration")
 
 elseif(IS_WINDOWS)
   # Windows (MinGW cross-compile): DLL + delay-import lib

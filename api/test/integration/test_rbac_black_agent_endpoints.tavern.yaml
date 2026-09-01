@@ -126,31 +126,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}/config/{component}/{configuration}
-
-stages:
-
-  - name: Try to get client configuration from agent component for agent 004 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Get client configuration from agent component for agent 003 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
 test_name: GET /agents/{agent_id}/key
 
 stages:
@@ -182,70 +157,6 @@ stages:
          failed_items: []
          total_affected_items: 1
          total_failed_items: 0
-
----
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-
-  - name: Get daemons stats from agent 001 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - timestamp: !anystr
-              name: wazuh-manager-remoted
-              agents:
-                - id: 1
-                  uptime: !anystr
-                  metrics: !anything
-          failed_items:
-            - id: [ wazuh-manager-analysisd ]
-          total_affected_items: 1
-          total_failed_items: 1
-
-  - name: Try to get daemon stats from agent 002 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/{agent_id}/stats/{component}
-
-stages:
-
- - name: Try to get logcollector stats from agent 002 (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/stats/logcollector"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
-
- - name: Try to get logcollector stats from agent 003 (Allowed)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/stats/logcollector"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
 
 ---
 test_name: GET /groups
@@ -607,10 +518,6 @@ stages:
            never_connected: 1
            pending: 0
            total: 6
-         configuration:
-           synced: 4
-           not_synced: 2
-           total: 6
 
 ---
 test_name: GET /agents/summary/os
@@ -636,28 +543,11 @@ stages:
          failed_items: []
 
 ---
-test_name: GET /agents/upgrade_result
-
-stages:
-
- - name: Try to get upgrade results from agents 003 and 004 (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-     params:
-       agents_list: "003,004"
-   response:
-     <<: *permission_denied
-
----
 test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 stages:
 
-  - name: Try to remove agent 004 from group2 (Denied group)
+  - name: Try to remove agent 004 from group2 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/group/group2"
@@ -1138,7 +1028,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       <<: *permission_denied
 
@@ -1333,142 +1223,6 @@ stages:
           total_failed_items: 1
 
 ---
-test_name: PUT /agents/reconnect
-
-stages:
-
-  - name: Try to reconnect agent 001 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001"
-    response:
-      <<: *permission_denied
-
-  - name: Try to reconnect a list of agents (Partially allowed, user aware)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001,002,005"
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - '005'
-          failed_items:
-            - error:
-                code: 4000
-              id:
-                - '001'
-                - '002'
-          total_affected_items: 1
-          total_failed_items: 2
-    delay_after: !float "{reconnect_delay}"
-
-  - name: Try to reconnect all agents (Partially allowed, user agnostic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - '003'
-            - '005'
-            - '007'
-          failed_items: []
-          total_affected_items: 3
-          total_failed_items: 0
-    delay_after: !float "{reconnect_delay}"
-
----
-test_name: PUT /agents/restart
-
-stages:
-
-  - name: Try to restart agent 001 (Denied)default,group1,group3,pepito
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001"
-    response:
-      <<: *permission_denied
-
-  - name: Try to restart a list of agents (Partially allowed, user aware)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001,002,005"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          failed_items:
-            - error:
-                code: 1761
-              id:
-                - '005'
-            - error:
-                code: 4000
-              id:
-                - '001'
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 3
-
-  - name: Try to restart all agents (Partially allowed, user agnostic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["003"]
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - '003'
-          failed_items:
-            - error:
-                code: 1761
-              id:
-                - '005'
-                - '007'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 2
-
----
 test_name: PUT /agents/{agent_id}/group/{group_id}
 
 stages:
@@ -1564,8 +1318,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "003,004"
-    response:
-      <<: *permission_denied
+    response: &empty_response
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -1583,7 +1344,7 @@ stages:
         agents_list: "003,004"
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: GET /agents (allow cluster:read)
@@ -1606,59 +1367,6 @@ stages:
         dapi_errors:
           master-node: # We have permission to see node name
             error: !anystr
-
----
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-
-  - name: Restart all agents belonging to master-node (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-
-  - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-
-  - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker2/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
 
 ---
 test_name: GET /agents/uninstall

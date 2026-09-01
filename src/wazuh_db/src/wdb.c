@@ -39,17 +39,15 @@ static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "INSERT INTO metadat
 static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
-static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ?, connection_status = ?, last_keepalive = STRFTIME('%s', 'NOW'), disconnection_time = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
-    [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_FIND_AGENT] = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_FIND_GROUP] = "SELECT id FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH] = "UPDATE agent SET group_hash = ? WHERE id = ?;",
@@ -62,7 +60,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
-    [WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, merged_sum, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, last_keepalive, connection_status, disconnection_time, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET] = "SELECT id, last_keepalive, connection_status, disconnection_time, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq_status' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET] = "SELECT id, last_keepalive FROM agent WHERE id > ? AND sync_status = 'syncreq_keepalive' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_GET] = "SELECT sync_status FROM agent WHERE id = ?;",
@@ -77,27 +75,24 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE id > 0 AND group_hash IS NOT NULL ORDER BY id;",
     [WDB_STMT_GLOBAL_GROUP_HASH_SET] = "UPDATE agent SET 'group' = ?, group_hash = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET ip = :ip, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_type = :os_type, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET ip = :ip, name = :name, os_arch = :os_arch, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_type = :os_type, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP] = "SELECT id, `group` FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT] =
         "SELECT id, version, name, ip, os_arch AS architecture, name AS hostname, os_name, os_platform, "
-        "os_version, `group`, node_name, connection_status FROM agent;",
+        "os_version, `group`, connection_status FROM agent;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
-    [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? AND node_name = ? ORDER BY id LIMIT ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', status_code = ?, sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected';",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
-    [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
-    [WDB_STMT_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ?;",
-    [WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
-    [WDB_STMT_TASK_UPDATE_TASK_STATUS] = "UPDATE TASKS SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM TASKS WHERE STATUS = ?;",
-    [WDB_STMT_TASK_DELETE_OLD_TASKS] = "DELETE FROM TASKS WHERE CREATE_TIME <= ?;",
-    [WDB_STMT_TASK_DELETE_TASK] = "DELETE FROM TASKS WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
+    // Generic task commands
+    [WDB_STMT_TASK_CREATE] = "INSERT INTO TASKS (TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, STATUS) VALUES (?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_TASK_GET_PENDING] = "SELECT TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS WHERE AGENT_ID = ? AND STATUS = 'pending' ORDER BY CREATE_TIME ASC LIMIT ?;",
+    [WDB_STMT_TASK_MARK_DELIVERED] = "UPDATE TASKS SET STATUS = 'delivered', DELIVERY_TIME = ? WHERE TASK_ID = ?;",
+    [WDB_STMT_TASK_CLEANUP_EXPIRED] = "UPDATE TASKS SET STATUS = 'expired' WHERE STATUS = 'pending' AND CREATE_TIME < ?;",
+    [WDB_STMT_TASK_DELETE_OLD] = "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
@@ -301,12 +296,6 @@ int wdb_commit(wdb_t * wdb) {
 int wdb_commit2(wdb_t * wdb) {
     return wdb_write_state_transaction(wdb, 0, wdb_commit);
 }
-
-/* Rollback transaction */
-int wdb_rollback(wdb_t * wdb) {
-    return wdb_any_transaction(wdb, SQL_ROLLBACK);
-}
-
 
 /* Create global database */
 int wdb_create_global(const char *path) {
@@ -523,7 +512,6 @@ STATIC int wdb_select_from_temp_table(wdb_t * wdb) {
 
     return result;
 }
-
 
 wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
@@ -1086,7 +1074,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-
 int wdb_enable_foreign_keys(sqlite3 *db) {
     char *sql_error = NULL;
 
@@ -1113,60 +1100,6 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t * wdb, wdb_stmt statement_index) {
     }
 
     return wdb->stmt[statement_index];
-}
-
-sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
-    sqlite3_stmt * ret_val = NULL;
-    if (NULL != wdb && NULL != query) {
-        struct stmt_cache_list *node_stmt = NULL;
-        for (node_stmt = wdb->cache_list; node_stmt ; node_stmt=node_stmt->next) {
-            if (node_stmt->value.query) {
-                if (strcmp(node_stmt->value.query, query) == 0)
-                {
-                    if (sqlite3_reset(node_stmt->value.stmt) != SQLITE_OK || sqlite3_clear_bindings(node_stmt->value.stmt) != SQLITE_OK) {
-                        mdebug1("DB(%s) sqlite3_reset() stmt(%s): %s", wdb->id, sqlite3_sql(node_stmt->value.stmt), sqlite3_errmsg(wdb->db));
-                    }
-                    ret_val = node_stmt->value.stmt;
-                    break;
-                }
-            }
-        }
-        bool is_first_element = true;
-        if (NULL == ret_val) {
-            struct stmt_cache_list *new_item = NULL;
-            if (NULL == wdb->cache_list) {
-                os_malloc(sizeof(struct stmt_cache_list), wdb->cache_list);
-                new_item = wdb->cache_list;
-            } else {
-                node_stmt = wdb->cache_list;
-                while (node_stmt->next) {
-                    node_stmt = node_stmt->next;
-                }
-                is_first_element = false;
-                os_malloc(sizeof(struct stmt_cache_list), node_stmt->next);
-                //Add element in the end list
-                new_item = node_stmt->next;
-            }
-            new_item->next = NULL;
-            os_malloc(strlen(query) + 1, new_item->value.query);
-            strcpy(new_item->value.query, query);
-
-            if (sqlite3_prepare_v2(wdb->db, new_item->value.query, -1, &new_item->value.stmt, NULL) != SQLITE_OK) {
-                merror("DB(%s) sqlite3_prepare_v2() : %s", wdb->id, sqlite3_errmsg(wdb->db));
-                os_free(new_item->value.query);
-                if (is_first_element) {
-                    os_free(wdb->cache_list);
-                    wdb->cache_list = NULL;
-                } else {
-                    os_free(node_stmt->next);
-                    node_stmt->next = NULL;
-                }
-            } else {
-                ret_val = new_item->value.stmt;
-            }
-        }
-    }
-    return ret_val;
 }
 
 cJSON* wdb_get_internal_config() {

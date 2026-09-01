@@ -11,8 +11,12 @@
 
 #include "mocks/MockHTTPRequest.hpp"
 #include "monitoring.hpp"
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mutex>
 #include <thread>
 
 // Healt check interval for the servers
@@ -500,4 +504,228 @@ TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
 
     // Should be true because green server is still available
     EXPECT_TRUE(monitoring->isAvailable(greenServer));
+}
+
+namespace
+{
+    /// One-shot gate: lets a test hold a health check open for as long as it wants.
+    class HealthCheckGate final
+    {
+    public:
+        /// Called from the monitor thread, inside the mocked HTTP request.
+        void blockUntilReleased()
+        {
+            m_entered.store(true);
+            std::unique_lock lock {m_mutex};
+            m_condition.wait(lock, [this] { return m_released; });
+        }
+
+        void waitUntilEntered() const
+        {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+            while (!m_entered.load() && std::chrono::steady_clock::now() < deadline)
+            {
+                std::this_thread::yield();
+            }
+        }
+
+        bool entered() const
+        {
+            return m_entered.load();
+        }
+
+        void release()
+        {
+            {
+                std::scoped_lock lock {m_mutex};
+                m_released = true;
+            }
+            m_condition.notify_all();
+        }
+
+        /**
+         * @brief Answers the FIRST health check green, then blocks every later one.
+         *
+         * The first one must succeed: TMonitoring's constructor runs a synchronous round on the
+         * CALLING thread, so blocking that one just hangs the test inside make_shared, with the
+         * monitor thread not yet in existence. Letting it through means the constructor returns and
+         * everything that blocks afterwards is the monitor thread -- which is what these tests are
+         * about. It also leaves a known-good value published for a reader to find.
+         */
+        void answerFirstThenBlock(const auto& postParams)
+        {
+            answerThroughRoundThenBlock(postParams, 1);
+        }
+
+        /**
+         * @brief Answers the first \p greenAnswers health checks green, then blocks every later one.
+         *
+         * The generalization of answerFirstThenBlock() for tests that monitor several hosts: the
+         * constructor's synchronous round makes one call PER HOST on the calling thread, and every
+         * one of them must be answered for the constructor to return and the monitor thread to
+         * exist.
+         */
+        void answerThroughRoundThenBlock(const auto& postParams, std::size_t greenAnswers)
+        {
+            if (static_cast<std::size_t>(m_calls.fetch_add(1)) < greenAnswers)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"([{"status":"green"}])");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"([{"status":"green"}])");
+                }
+                return;
+            }
+            blockUntilReleased();
+        }
+
+        /// Total get() calls seen so far, green and blocked alike.
+        int calls() const
+        {
+            return m_calls.load();
+        }
+
+    private:
+        mutable std::atomic<bool> m_entered {false};
+        std::atomic<int> m_calls {0};
+        std::mutex m_mutex;
+        std::condition_variable m_condition;
+        bool m_released {false};
+    };
+} // namespace
+
+/**
+ * @brief A reader must not queue behind a health-check round.
+ *
+ * The regression this pins is the one that froze inventory_sync_server's whole HTTP transport: the
+ * monitor held one mutex for an entire round -- up to HEALTH_CHECK_TIMEOUT_MS per host -- and
+ * isAvailable() took that same mutex. Since isAvailable() is on the path of every getNext(), it was on
+ * the path of every bulk and search of every consumer.
+ *
+ * Written as a latency assertion because that is the actual requirement. It cannot be expressed by
+ * inspecting state: the old code returned the same VALUES, it just took seconds to do it.
+ */
+TEST_F(MonitoringTest, AReaderIsNotBlockedByAHealthCheckRoundInProgress)
+{
+    const auto server {"http://localhost:1200"};
+    const std::vector<std::string> servers {server};
+
+    HealthCheckGate gate;
+
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&gate](const auto&, const auto& postParams, const auto&)
+            {
+                // Green once, then block: stands in for a host that accepts the connection and then
+                // never replies.
+                gate.answerFirstThenBlock(postParams);
+            }));
+
+    // Interval 0 so the periodic round starts -- and blocks -- immediately after construction.
+    auto monitoring = std::make_shared<TestMonitoring>(
+        servers, MONITORING_HEALTH_CHECK_INTERVAL_ZERO, SecureCommunication {}, &m_mockHttpRequest);
+
+    gate.waitUntilEntered();
+    ASSERT_TRUE(gate.entered()) << "the monitor never started a blocking health check";
+
+    const auto before = std::chrono::steady_clock::now();
+    const bool available = monitoring->isAvailable(server);
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - before);
+
+    // The value is the one published by the completed first check; the point is that reading it did
+    // not wait for the blocked one.
+    EXPECT_TRUE(available);
+    EXPECT_LT(elapsed, std::chrono::milliseconds {500})
+        << "isAvailable() took " << elapsed.count()
+        << " ms while a health check was in flight; readers are queueing behind the round again";
+
+    // Release before destroying: the destructor joins the monitor thread.
+    gate.release();
+}
+
+/// The destructor must not wait out the round just to ask the monitor to stop. It used to take the
+/// same mutex the round held, which pushed up to 5 s per host into modulesd's shutdown budget.
+TEST_F(MonitoringTest, TheDestructorDoesNotWaitForTheRoundToRequestStop)
+{
+    const auto server {"http://localhost:1201"};
+    const std::vector<std::string> servers {server};
+
+    HealthCheckGate gate;
+    std::atomic<bool> stopRequested {false};
+
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&gate, &stopRequested](const auto&, const auto& postParams, const auto&)
+            {
+                gate.answerFirstThenBlock(postParams);
+                // Only meaningful for the blocked checks: it proves the destructor reached the stop
+                // flag while a check was still in flight, instead of having to wait for it.
+                if (gate.entered())
+                {
+                    EXPECT_TRUE(stopRequested.load());
+                }
+            }));
+
+    auto monitoring = std::make_unique<TestMonitoring>(
+        servers, MONITORING_HEALTH_CHECK_INTERVAL_ZERO, SecureCommunication {}, &m_mockHttpRequest);
+
+    gate.waitUntilEntered();
+    ASSERT_TRUE(gate.entered());
+
+    // Destroy from another thread so this one can time how long it takes to reach the flag.
+    std::thread destroyer {[&monitoring] { monitoring.reset(); }};
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    stopRequested.store(true);
+    gate.release();
+
+    destroyer.join();
+}
+
+/// Once stop is requested, the monitor must abandon the rest of the round: hosts not yet probed must
+/// not be probed at all. The destructor joins the monitor thread, so without this guard a shutdown
+/// landing mid-round paid up to HEALTH_CHECK_TIMEOUT_MS for every remaining host -- which, with
+/// several hosts configured, pushed modulesd and analysisd past wazuh-manager-control's 30 s budget
+/// and into `kill -9`.
+TEST_F(MonitoringTest, TheDestructorDoesNotWaitOutTheRemainingRound)
+{
+    const std::vector<std::string> servers {
+        "http://localhost:1301", "http://localhost:1302", "http://localhost:1303", "http://localhost:1304"};
+
+    HealthCheckGate gate;
+
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&gate, hostCount = servers.size()](const auto&, const auto& postParams, const auto&)
+            {
+                // Green for the constructor's synchronous round, then block: the periodic round's
+                // first check stands in for a host that accepts the connection and never replies.
+                gate.answerThroughRoundThenBlock(postParams, hostCount);
+            }));
+
+    // Interval 0 so the periodic round starts -- and blocks on its first host -- immediately.
+    auto monitoring = std::make_unique<TestMonitoring>(
+        servers, MONITORING_HEALTH_CHECK_INTERVAL_ZERO, SecureCommunication {}, &m_mockHttpRequest);
+
+    gate.waitUntilEntered();
+    ASSERT_TRUE(gate.entered()) << "the monitor never started a blocking health check";
+
+    std::thread destroyer {[&monitoring] { monitoring.reset(); }};
+
+    // Give the destructor time to publish the stop flag (same pattern as the test above), then let
+    // ONLY the in-flight check finish. The gate stays open once released, so a regression cannot
+    // hang the test: the remaining hosts' checks sail straight through it -- and get counted.
+    std::this_thread::sleep_for(std::chrono::milliseconds {500});
+    gate.release();
+    destroyer.join();
+
+    // Constructor round (one call per host) plus the single periodic check that was in flight when
+    // stop was requested. Anything above that means the round kept probing hosts after stop.
+    EXPECT_EQ(gate.calls(), static_cast<int>(servers.size()) + 1)
+        << "the monitor kept probing hosts after stop was requested";
 }

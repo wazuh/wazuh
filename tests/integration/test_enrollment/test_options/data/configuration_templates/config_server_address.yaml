@@ -1,9 +1,18 @@
+  # <agent> is the 5.x name for what 4.x spelled <client> (#38103): the base
+  # install's ossec.conf already has an <agent> section, and set_section_wazuh_conf()
+  # matches by tag name (ElementTree.find()) -- "client" never matches it, so it
+  # was creating a second, inert <client> block alongside the real one instead of
+  # replacing it, leaving every case here running against the package's default
+  # 127.0.0.1:1517 regardless of SERVER_ADDRESS.
   - sections:
-    - section: client
+    - section: agent
       elements:
           - manager:
               elements:
-              - address:
+              # SERVER_ADDRESS must stay a BARE placeholder: expand_placeholders()
+              # substitutes whole values only, never substrings, so 'SERVER_ADDRESS:1517/'
+              # would reach ossec.conf verbatim. Each case therefore supplies the complete
+              # endpoint -- including the trailing '/' that opts out of the prefix, which is
+              # what the <endpoint>'' of the pre-#38624 template meant.
+              - endpoint:
                   value: SERVER_ADDRESS
-              - max_retries:
-                  value: 1

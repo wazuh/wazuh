@@ -11,7 +11,7 @@
 
 Wazuh is a free and open source platform used for threat prevention, detection, and response. It is capable of protecting workloads across on-premises, virtualized, containerized, and cloud-based environments.
 
-Wazuh solution consists of an endpoint security agent, deployed to the monitored systems, and a management server, which collects and analyzes data gathered by the agents. Besides, Wazuh has been fully integrated with the Elastic Stack, providing a search engine and data visualization tool that allows users to navigate through their security alerts.
+Wazuh solution consists of an endpoint security agent, deployed to the monitored systems, and a management server, which collects and analyzes data gathered by the agents. Besides, Wazuh is fully integrated with the Wazuh Indexer, providing a search engine and data visualization tool that allows users to navigate through their security alerts.
 
 ## Wazuh capabilities
 
@@ -142,6 +142,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | [Google Benchmark](https://github.com/google/benchmark)                 | 1.6.1   | Google Inc.                   | Apache 2.0 License                            |  |
 | [GoogleTest](https://github.com/google/googletest)                      | 1.11.0  | Google Inc.                   | 3-Clause "New" BSD License                    |
 | [jemalloc](https://github.com/jemalloc/jemalloc)                        | 5.2.1   | Jason Evans                   | 2-Clause "Simplified" BSD License             |
+| [jwt-cpp](https://github.com/Thalhammer/jwt-cpp)                        | 0.7.2   | Dominik Thalhammer            | MIT License                                   |
 | [libarchive](https://github.com/libarchive/libarchive)                  | 3.8.7   | Tim Kientzle                  | 3-Clause "New" BSD License                    |
 | [libbpf](https://github.com/libbpf/libbpf)                              | 1.7.0   | libbpf                        | GNU Lesser General Public License version 2.1 |
 | [libdb](https://github.com/yasuhirokimura/db18)                         | 18.1.40 | Oracle Corporation            | Affero GPL v3                                 |
@@ -188,6 +189,6 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2023 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) 2015-2026 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.

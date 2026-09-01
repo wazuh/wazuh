@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <cJSON.h>
 #include <dirent.h>
+#include "../../external/zlib/zlib.h"
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -324,7 +325,10 @@ int OS_MoveFile(const char *src, const char *dst);
  *
  * @param src Source path.
  * @param dst Destination path.
- * @param mode Mode: `a` to append, `w` to write.
+ * @param mode Mode: `a` to append (text), `w` to write (text), `b` to write in
+ * binary mode (exact byte copy -- required on Windows whenever the copied
+ * content's exact bytes matter downstream, e.g. a hash computed over it;
+ * text mode there silently rewrites `\n` as `\r\n`).
  * @param message Write message to the destination file.
  * @param silent Do not show errors.
  * @return 0 on success and -1 on error.
@@ -397,6 +401,19 @@ int mkdir_ex(const char * path);
  * @return 0 if the path is safe, 1 otherwise.
  */
 int w_ref_parent_folder(const char * path);
+
+
+/**
+ * @brief Check that a name is a bare file name, safe to join to a base directory.
+ *
+ * Rejects the empty string, "." and "..", any name referring to a parent folder, and any name
+ * containing a path separator, so that joining it to a base directory cannot escape that directory
+ * and so that it can be used as-is in a directory-relative open.
+ *
+ * @param filename Name to be checked.
+ * @return 1 if the name is a bare file name, 0 otherwise.
+ */
+int w_is_bare_filename(const char * filename);
 
 
 /**
@@ -480,6 +497,50 @@ int w_stat(const char * pathname,
  * @return File pointer.
  */
 FILE * wfopen(const char * pathname, const char * mode);
+
+
+/**
+ * @brief Create or truncate a file inside a base directory for writing, without following symlinks.
+ *
+ * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
+ * friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
+ * instead of being written through. @p filename must be a bare file name; it is rejected if it is
+ * empty, "." or "..", if it refers to a parent folder, or if it contains a path separator, so the
+ * resulting open cannot escape @p basedir.
+ *
+ * On both platforms the file is opened without truncating, the descriptor is vetted, and only then is
+ * the file truncated: truncating at open time would destroy the target of a hard link before anything
+ * about it could be checked. On Linux/macOS the open is relative to a descriptor of @p basedir and
+ * uses O_NOFOLLOW; on Windows it skips reparse-point processing. In both cases the descriptor must
+ * turn out to be a regular file with a link count of exactly 1.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @param mode Open mode, either "w" or "wb".
+ * @return File pointer on success, NULL on error (sets errno).
+ */
+FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
+
+
+/**
+ * @brief Open a compressed file inside a base directory for reading, without following symlinks.
+ *
+ * Read-side counterpart of w_fopen_nofollow(): intended for directories that may contain files planted
+ * by another party (var/incoming and friends), where a symlink, hard link, FIFO, device or directory
+ * found at the target path must be rejected instead of read through. @p filename must be a bare file
+ * name; it is rejected if it is empty, "." or "..", if it refers to a parent folder, or if it contains a
+ * path separator, so the resulting open cannot escape @p basedir.
+ *
+ * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; on Windows it
+ * skips reparse-point processing. In both cases the descriptor must turn out to be a regular file with a
+ * link count of exactly 1 before it is handed to zlib.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @param mode Open mode, either "r" or "rb".
+ * @return Compressed file handle on success, NULL on error (sets errno).
+ */
+gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode);
 
 
 /**

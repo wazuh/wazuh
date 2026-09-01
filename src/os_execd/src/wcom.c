@@ -19,6 +19,11 @@
 #include "agentd.h"
 #include "logcollector.h"
 #include "rootcheck.h"
+#include "module_report.h"
+
+/* Name this daemon reports itself under in the /config document. It owns the
+ * active-response, logging and internal sections. */
+#define WCOM_MODULE_NAME "execd"
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 int req_timeout;
@@ -98,6 +103,9 @@ size_t wcom_dispatch(char *command, char ** output) {
         }
         return wcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+        return wcom_getallconfig(output);
+
     } else if (strcmp(rcv_comm, "check-manager-configuration") == 0) {
         return wcom_check_manager_config(output);
 
@@ -147,15 +155,28 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (fsource = gzopen(final_source, "rb"), !fsource) {
-        merror("At WCOM uncompress: Unable to open '%s'", final_source);
+    // Not gzopen(): a symlink left at final_source would be followed, disclosing whatever it points to.
+    if (fsource = w_gzopen_nofollow(INCOMING_DIR, source, "rb"), !fsource) {
+        const int open_errno = errno;
+        if (open_errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link", final_source);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_source);
+        }
         os_strdup("err Unable to open source", *output);
         return strlen(*output);
     }
 
-    if (ftarget = wfopen(final_target, "wb"), !ftarget) {
+    // Not wfopen(): a symlink left under the incoming directory would be followed and its target
+    // overwritten with the decompressed archive contents.
+    if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget) {
+        const int open_errno = errno;
         gzclose(fsource);
-        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        if (open_errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link.", final_target);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        }
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
@@ -181,6 +202,21 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
     gzclose(fsource);
     fclose(ftarget);
     return strlen(*output);
+}
+
+size_t wcom_getallconfig(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+    cJSON *body = cJSON_CreateObject();
+
+    /* No "cluster" section here: it is manager-only and reaching it depends on
+     * a socket an agent never has. */
+    module_report_merge(body, getARConfig());
+    module_report_merge(body, getLoggingConfig());
+    module_report_merge(body, getExecdInternalOptions());
+
+    module_report_add(report, WCOM_MODULE_NAME, body);
+    return module_report_reply(report, output);
 }
 
 size_t wcom_getconfig(const char * section, char ** output) {

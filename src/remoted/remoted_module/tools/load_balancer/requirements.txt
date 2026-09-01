@@ -1,0 +1,4 @@
+# Extra dependency for this lab, on top of ../requirements.txt.
+# The bearer token is minted with the standard library (../wire_jwt.py); this tool only needs
+# zstandard (for the --zstd tests). Listed explicitly so the lab can be used standalone.
+zstandard>=0.21.0

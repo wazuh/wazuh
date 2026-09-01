@@ -9157,6 +9157,19 @@
                 "null"
               ]
             },
+            "diff": {
+              "description": "Module: ecs\nIndexerType: text\n\nUnified diff of file content changes reported by FIM when `report_changes` is enabled. Shows added and removed lines in standard diff format.",
+              "items": {
+                "type": [
+                  "string"
+                ]
+              },
+              "type": [
+                "string",
+                "array",
+                "null"
+              ]
+            },
             "directory": {
               "description": "Module: ecs\nIndexerType: keyword\n\nDirectory where the file is located. It should include the drive letter, when appropriate.",
               "items": {
@@ -11287,6 +11300,19 @@
         },
         "file.device": {
           "description": "Module: ecs\nIndexerType: keyword\n\nDevice that is the source of the file.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "file.diff": {
+          "description": "Module: ecs\nIndexerType: text\n\nUnified diff of file content changes reported by FIM when `report_changes` is enabled. Shows added and removed lines in standard diff format.",
           "items": {
             "type": [
               "string"
@@ -20028,6 +20054,27 @@
                 "null"
               ]
             },
+            "previous": {
+              "additionalProperties": false,
+              "properties": {
+                "installed": {
+                  "description": "Module: ecs\nIndexerType: date\n\nInstallation date before it changed.",
+                  "items": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "type": [
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                }
+              },
+              "type": [
+                "object"
+              ]
+            },
             "reference": {
               "description": "Module: ecs\nIndexerType: keyword\n\nHome page or reference URL of the software in this package, if available.",
               "items": {
@@ -20195,6 +20242,19 @@
         },
         "package.path": {
           "description": "Module: ecs\nIndexerType: keyword\n\nPath where the package is installed.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "package.previous.installed": {
+          "description": "Module: ecs\nIndexerType: date\n\nInstallation date before it changed.",
           "items": {
             "type": [
               "string"
@@ -25616,8 +25676,89 @@
                     "null"
                   ]
                 },
+                "command_line": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "items": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "type": [
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                },
                 "executable": {
                   "description": "Module: ecs\nIndexerType: keyword\n\nAbsolute path to the process executable.",
+                  "items": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "type": [
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nProcess name.\nSometimes called program name or similar.",
+                  "items": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "type": [
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                },
+                "parent": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "pid": {
+                      "description": "Module: ecs\nIndexerType: long\n\nPID of the parent process.",
+                      "items": {
+                        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                        "type": [
+                          "number",
+                          "string"
+                        ]
+                      },
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                      "type": [
+                        "number",
+                        "string",
+                        "array",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object"
+                  ]
+                },
+                "pid": {
+                  "description": "Module: ecs\nIndexerType: long\n\nProcess id.",
+                  "items": {
+                    "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                  "type": [
+                    "number",
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the process, as reported by the collector.",
                   "items": {
                     "type": [
                       "string"
@@ -26392,6 +26533,19 @@
             },
             "start": {
               "description": "Module: ecs\nIndexerType: date\n\nThe time the process started.",
+              "items": {
+                "type": [
+                  "string"
+                ]
+              },
+              "type": [
+                "string",
+                "array",
+                "null"
+              ]
+            },
+            "state": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the process, as reported by the collector.",
               "items": {
                 "type": [
                   "string"
@@ -31483,8 +31637,81 @@
             "null"
           ]
         },
+        "process.previous.command_line": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
         "process.previous.executable": {
           "description": "Module: ecs\nIndexerType: keyword\n\nAbsolute path to the process executable.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "process.previous.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nProcess name.\nSometimes called program name or similar.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "process.previous.parent.pid": {
+          "description": "Module: ecs\nIndexerType: long\n\nPID of the parent process.",
+          "items": {
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "process.previous.pid": {
+          "description": "Module: ecs\nIndexerType: long\n\nProcess id.",
+          "items": {
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "process.previous.state": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the process, as reported by the collector.",
           "items": {
             "type": [
               "string"
@@ -32131,6 +32358,19 @@
         },
         "process.start": {
           "description": "Module: ecs\nIndexerType: date\n\nThe time the process started.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "process.state": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the process, as reported by the collector.",
           "items": {
             "type": [
               "string"
@@ -34882,6 +35122,27 @@
                     "object"
                   ]
                 },
+                "previous": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "state": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
+                      "items": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "type": [
+                        "string",
+                        "array",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object"
+                  ]
+                },
                 "state": {
                   "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the service.",
                   "items": {
@@ -34910,6 +35171,27 @@
                 },
                 "version": {
                   "description": "Module: ecs\nIndexerType: keyword\n\nVersion of the service the data was collected from.\nThis allows to look at a data set only for a specific version of a service.",
+                  "items": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "type": [
+                    "string",
+                    "array",
+                    "null"
+                  ]
+                }
+              },
+              "type": [
+                "object"
+              ]
+            },
+            "previous": {
+              "additionalProperties": false,
+              "properties": {
+                "state": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
                   "items": {
                     "type": [
                       "string"
@@ -35038,6 +35320,27 @@
                     },
                     "roles": {
                       "description": "Module: ecs\nIndexerType: keyword\n\nRoles of a service node.\nThis allows for distinction between different running roles of the same service.\nIn the case of Kibana, the `service.node.role` could be `ui` or `background_tasks` or both.\nIn the case of Elasticsearch, the `service.node.role` could be `master` or `data` or both.\nOther services could use this to distinguish between a `web` and `worker` role running as part of the service.",
+                      "items": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "type": [
+                        "string",
+                        "array",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object"
+                  ]
+                },
+                "previous": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "state": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
                       "items": {
                         "type": [
                           "string"
@@ -35337,6 +35640,19 @@
             "null"
           ]
         },
+        "service.origin.previous.state": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
         "service.origin.state": {
           "description": "Module: ecs\nIndexerType: keyword\n\nCurrent state of the service.",
           "items": {
@@ -35365,6 +35681,19 @@
         },
         "service.origin.version": {
           "description": "Module: ecs\nIndexerType: keyword\n\nVersion of the service the data was collected from.\nThis allows to look at a data set only for a specific version of a service.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "service.previous.state": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
           "items": {
             "type": [
               "string"
@@ -35482,6 +35811,19 @@
         },
         "service.target.node.roles": {
           "description": "Module: ecs\nIndexerType: keyword\n\nRoles of a service node.\nThis allows for distinction between different running roles of the same service.\nIn the case of Kibana, the `service.node.role` could be `ui` or `background_tasks` or both.\nIn the case of Elasticsearch, the `service.node.role` could be `master` or `data` or both.\nOther services could use this to distinguish between a `web` and `worker` role running as part of the service.",
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": [
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "service.target.previous.state": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nService state before it changed, e.g. `RUNNING` before a restart.",
           "items": {
             "type": [
               "string"
@@ -68894,8 +69236,7 @@
       "type": "boolean"
     },
     "id": {
-      "description": "Unique identifier for the decoder in UUIDv4 format",
-      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+      "description": "Unique identifier for the decoder",
       "type": "string"
     },
     "metadata": {

@@ -18,7 +18,6 @@ variables:
   login_endpoint: security/user/authenticate
 
   # delays
-  reconnect_delay: 30
   restart_delay: 90
   restart_delay_cluster: 150
   upgrade_delay: 60
@@ -116,8 +115,11 @@ variables:
       </logging>
 
       <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
+        <legacy>
+          <port>1514</port>
+          <protocol>tcp</protocol>
+          <local_ip>0.0.0.0</local_ip>
+        </legacy>
       </remote>
 
       <syscheck>

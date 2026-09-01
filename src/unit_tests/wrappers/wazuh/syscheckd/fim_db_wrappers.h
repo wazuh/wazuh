@@ -40,10 +40,6 @@ void expect_wrapper_fim_db_init(int storage, int file_limit, int value_limit);
 
 FIMDBErrorCode __wrap_fim_db_remove_path(const char* path);
 
-int __wrap_fim_db_read_line_from_file(fim_tmp_file* file, int storage, int it, char** buffer);
-
-void __wrap_fim_db_clean_file(fim_tmp_file** file, int storage);
-
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_count_file_entry
  */
@@ -55,6 +51,26 @@ void expect_wrapper_fim_db_get_count_file_entry(int ret);
 void expect_fim_db_remove_path(const char* path, int ret_val);
 
 FIMDBErrorCode __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
+
+/**
+ * @brief Make the next call to __wrap_fim_db_file_update() invoke its callback with the given
+ * dbsync result, instead of just returning. One-shot: resets itself after firing once.
+ *
+ * Queue this, then will_return(__wrap_fim_db_file_update, <FIMDBErrorCode>) as usual, then
+ * will_return(__wrap_fim_db_file_update, <ReturnTypeCallback>) and
+ * will_return(__wrap_fim_db_file_update, <cJSON* result>) for the callback invocation itself.
+ */
+void expect_fim_db_file_update_invoking_callback(void);
+
+/**
+ * @brief Undo a pending expect_fim_db_file_update_invoking_callback() that never fired.
+ *
+ * The one-shot flag it sets only clears itself inside __wrap_fim_db_file_update() when the
+ * callback actually runs. If the test aborts earlier (e.g. a failed assert/expectation), the
+ * flag leaks into the next test, which would then try to drive a callback using mock values
+ * that were never queued for it. Call this from a teardown to guarantee it's cleared either way.
+ */
+void reset_fim_db_file_update_invoking_callback(void);
 
 FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
                                                  __attribute__((unused)) callback_context_t callback);
@@ -93,9 +109,6 @@ cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count);
 cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count);
 
 int __wrap_fim_db_count_synced_docs(char* table_name);
-
-int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
-                                   const char* arch, const char* value, int sync_value);
 
 int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
 

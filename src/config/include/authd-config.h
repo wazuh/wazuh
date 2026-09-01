@@ -37,8 +37,10 @@ typedef struct authd_flags_t {
     unsigned short clear_removed:1;
     unsigned short use_password:1;
     unsigned short verify_host:1;
-    unsigned short auto_negotiate:1;
     unsigned short remote_enrollment:1;
+    unsigned short legacy_enrollment:1;  ///< Gates only the legacy TCP/TLS listener (port 1515);
+                                          ///< remote_enrollment is the master switch for all remote
+                                          ///< self-enrollment. Defaults to enabled.
 } authd_flags_t;
 
 typedef struct authd_config_t {
@@ -55,6 +57,9 @@ typedef struct authd_config_t {
     bool ipv6;
     bool allow_higher_versions;
     unsigned int max_agents;
+    /// Seconds a deletion waits before its indexer purge is relayed (internal option
+    /// `authd.purge_delay`). 0 relays immediately, which is only meant for tests.
+    int purge_delay;
 } authd_config_t;
 
 /**
@@ -68,5 +73,14 @@ typedef struct authd_config_t {
  * @retval OS_INVALID in case of error. OS_SUCCES otherways.
  */
 int get_time_interval(char *source, time_t *interval);
+
+/**
+ * @brief Validates that a colon-separated string only contains TLS 1.3 ciphersuite names
+ *        accepted by SSL_CTX_set_ciphersuites().
+ *
+ * @param ciphers Colon-separated list of TLS 1.3 ciphersuite names.
+ * @retval OS_INVALID if any token is not a recognized TLS 1.3 ciphersuite name. 0 otherwise.
+ */
+int w_authd_validate_ciphers(const char *ciphers);
 
 #endif

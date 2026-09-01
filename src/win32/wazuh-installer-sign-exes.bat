@@ -9,6 +9,7 @@ signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "*.
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\sysinfo.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\dbsync.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\libagent_sync_protocol.dll"
+signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\libhttps_client.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\schema_validator.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\libagent_metadata.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\syscollector.dll"

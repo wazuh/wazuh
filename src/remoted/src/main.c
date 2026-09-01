@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "remoted.h"
 #include <openssl/crypto.h>
+#include "generate_cert.h"
 #include <unistd.h>
 
 /* Prototypes */
@@ -21,7 +22,7 @@ static void help_remoted(char *home_path) __attribute__((noreturn));
 static void help_remoted(char *home_path)
 {
     print_header();
-    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -34,6 +35,11 @@ static void help_remoted(char *home_path)
     print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
+    print_out("    -C          Specify the certificate validity in days.");
+    print_out("    -B          Specify the certificate key size in bits.");
+    print_out("    -K          Specify the path to store the certificate key.");
+    print_out("    -X          Specify the path to store the certificate.");
+    print_out("    -S          Specify the certificate subject.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -47,6 +53,14 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
+    char cert_val[OS_SIZE_32 + 1] = "\0";
+    char cert_key_bits[OS_SIZE_32 + 1] = "\0";
+    char cert_key_path[PATH_MAX + 1] = "\0";
+    char cert_path[PATH_MAX + 1] = "\0";
+    char cert_subj[OS_MAXSTR + 1] = "\0";
+    bool generate_certificate = false;
+    unsigned long days_val = 0;
+    unsigned long key_bits = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -58,11 +72,24 @@ int main(int argc, char **argv)
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
 
+    /* Isolated-test override: honor the same environment variable the Engine uses
+     * (WAZUH_MANAGER_FORCE_HOME, see engine/source/base/src/process.cpp getWazuhHome()),
+     * so one variable relocates both daemons into the same sandboxed tree.
+     * Takes precedence over WAZUH_MANAGER_HOME (already resolved by w_homedir());
+     * an explicit -D on the command line below still wins over both. */
+    {
+        const char *forced_home = getenv("WAZUH_MANAGER_FORCE_HOME");
+        if (forced_home && *forced_home) {
+            os_free(home_path);
+            os_strdup(forced_home, home_path);
+        }
+    }
+
     const char *cfg = WAZUHCONF;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
 
-    while ((c = getopt(argc, argv, "Vdthfu:g:c:D:m")) != -1) {
+    while ((c = getopt(argc, argv, "Vdthfu:g:c:D:mC:B:K:X:S:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -108,9 +135,107 @@ int main(int argc, char **argv)
             case 'm':
                 nocmerged = 1;
                 break;
+            case 'C':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                if (w_str_is_number(optarg)) {
+                    generate_certificate = true;
+                    if (snprintf(cert_val, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate validity info truncated", c, OS_SIZE_32);
+                    }
+                }
+                else {
+                    merror_exit("-%c needs a numeric argument", c);
+                }
+                break;
+            case 'B':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                if (w_str_is_number(optarg)) {
+                    generate_certificate = true;
+                    if (snprintf(cert_key_bits, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate key size info truncated", c, OS_SIZE_32);
+                    }
+                }
+                else {
+                    merror_exit("-%c needs a numeric argument", c);
+                }
+                break;
+            case 'K':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                generate_certificate = true;
+                if (snprintf(cert_key_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                    mwarn("-%c argument exceeds %d bytes. Certificate key path info truncated", c, PATH_MAX);
+                }
+                break;
+            case 'X':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                generate_certificate = true;
+                if (snprintf(cert_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                    mwarn("-%c argument exceeds %d bytes. Certificate path info truncated", c, PATH_MAX);
+                }
+                break;
+            case 'S':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                generate_certificate = true;
+                if (snprintf(cert_subj, OS_MAXSTR + 1, "%s", optarg) > OS_MAXSTR) {
+                    mwarn("-%c argument exceeds %d bytes. Certificate subject info truncated", c, OS_MAXSTR);
+                }
+                break;
             default:
                 help_remoted(home_path);
                 break;
+        }
+    }
+
+    if (generate_certificate) {
+        // Sanitize parameters
+        if (strlen(cert_val) == 0) {
+            merror_exit("Certificate expiration time not defined.");
+        }
+
+        if (strlen(cert_key_bits) == 0) {
+            merror_exit("Certificate key size not defined.");
+        }
+
+        if (strlen(cert_key_path) == 0) {
+            merror_exit("Key path not defined.");
+        }
+
+        if (strlen(cert_path) == 0) {
+            merror_exit("Certificate path not defined.");
+        }
+
+        if (strlen(cert_subj) == 0) {
+            merror_exit("Certificate subject not defined.");
+        }
+
+        if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
+            merror_exit("Unable to set certificate validity to 0 days.");
+        }
+
+        if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
+            merror_exit("Unable to set certificate private key size to 0 bits.");
+        }
+
+        if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {
+            mdebug2("Certificates generated successfully.");
+            exit(0);
+        } else {
+            merror_exit("Unable to generate HTTPS server certificates.");
         }
     }
 
@@ -161,6 +286,9 @@ int main(int argc, char **argv)
 
     /* Exit if test_config is set */
     if (test_config) {
+        /* The http_*, downstream_* and control_* options are resolved in secure.c, on the daemon
+         * path only, so without this '-t' accepts every one of them whatever the value. */
+        w_remoted_validate_module_config();
         exit(0);
     }
 

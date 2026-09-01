@@ -100,8 +100,3 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
     }
     return __real_stat(__file, __buf);
 }
-
-mode_t __wrap_umask(mode_t mode) {
-    check_expected(mode);
-    return mock();
-}

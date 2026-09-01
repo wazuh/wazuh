@@ -18,7 +18,7 @@ with patch('wazuh.core.common.getgrnam'):
 
                 from wazuh.core.cluster import utils
                 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
-                    WazuhResourceNotFound, WazuhHAPHelperError
+                    WazuhResourceNotFound
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
@@ -68,97 +68,13 @@ def test_read_cluster_config():
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
 
-
-@pytest.mark.parametrize(
-        'config',
-        (
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test'
-            },
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test',
-                utils.FREQUENCY: '60',
-                utils.AGENT_CHUNK_SIZE: '120',
-                utils.IMBALANCE_TOLERANCE: '0.1'
-            }
-        )
-)
-def test_parse_haproxy_helper_config(config: dict):
-    """Verify that parse_haproxy_helper_config function returns the default configuration."""
-
-    ret_val = utils.parse_haproxy_helper_config(config)
-
-    for key in ((config.keys()) | utils.HELPER_DEFAULTS.keys()):
-        assert key in ret_val
-
-        assert isinstance(ret_val[utils.HAPROXY_DISABLED], bool)
-
-        if key in [
-            utils.FREQUENCY,
-            utils.AGENT_CHUNK_SIZE,
-            utils.AGENT_RECONNECTION_STABILITY_TIME,
-            utils.AGENT_RECONNECTION_TIME,
-            utils.REMOVE_DISCONNECTED_NODE_AFTER,
-            utils.HAPROXY_PORT
-        ]:
-            assert isinstance(ret_val[key], int)
-
-        if key in [utils.IMBALANCE_TOLERANCE]:
-            assert isinstance(ret_val[key], float)
+    # The cached entry aliases default_cluster_config, mutated above. Evict it so the rest of the
+    # session does not read a config with node_type 'client'.
+    utils.read_config.cache_clear()
 
 
-@pytest.mark.parametrize(
-    'config, exception_type, expected_error_code',
-    [
-        (
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test',
-                utils.FREQUENCY: 'bad',
-            },
-            WazuhError,
-            '3004'
-        ),
-        (
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test',
-                utils.IMBALANCE_TOLERANCE: 'bad'
-            },
-            WazuhError,
-            '3004'
-        ),
-        (
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test',
-                utils.HAPROXY_PROTOCOL: 'https'
-            },
-            WazuhHAPHelperError,
-            '3042'
-        )
-    ]
-)
-def test_parse_haproxy_helper_config_ko(config: dict, exception_type: WazuhException, expected_error_code: str):
-    """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
-
-    with pytest.raises(exception_type, match=f'.* {expected_error_code} .*'):
-        utils.parse_haproxy_helper_config(config)
-
-
-def test_get_manager_status():
+@patch('wazuh.core.cluster.utils.read_config', return_value={'node_type': 'master'})
+def test_get_manager_status(mock_read_config):
     """Check that get_manager_status function returns the manager status.
 
     For this test, the status can be stopped or failed.
@@ -207,6 +123,25 @@ def test_get_manager_status():
             status = utils.get_manager_status()
             for value in status.values():
                 assert value == 'running'
+
+
+@pytest.mark.parametrize('node_type, apid_reported', [
+    ('master', True),
+    ('worker', False)
+])
+def test_get_manager_status_apid(node_type, apid_reported):
+    """Check that the API daemon is only reported on master nodes.
+
+    Parameters
+    ----------
+    node_type : str
+        Cluster node type of the reporting node.
+    apid_reported : bool
+        Whether the API daemon is expected in the returned status.
+    """
+    with patch('wazuh.core.cluster.utils.read_config', return_value={'node_type': node_type}):
+        assert ('wazuh-manager-apid' in utils.get_manager_status()) == apid_reported
+
 
 @pytest.mark.parametrize('exc', [
     PermissionError,

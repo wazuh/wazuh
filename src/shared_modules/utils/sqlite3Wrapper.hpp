@@ -22,6 +22,14 @@ constexpr auto DB_DEFAULT_PATH {"temp.db"};
 constexpr auto DB_MEMORY {":memory:"};
 constexpr auto DB_PERMISSIONS {0640};
 
+/// @brief How long a connection waits on a busy/locked database before giving up.
+///
+/// Without this, a transient lock (e.g. a previous process instance whose WAL
+/// handle hasn't been released yet across a fast restart) surfaces as an
+/// immediate SQLITE_BUSY "database is locked" instead of resolving once the
+/// lock clears.
+constexpr int DB_BUSY_TIMEOUT_MS {5000};
+
 namespace SQLite3Wrapper
 {
     class Sqlite3Error : public std::exception
@@ -92,11 +100,13 @@ namespace SQLite3Wrapper
             }
 
 #endif
+            sqlite3_busy_timeout(m_db.get(), DB_BUSY_TIMEOUT_MS);
         }
         explicit Connection(sqlite3* db)
             : m_db {nullptr, &connectionDeleter}
             , m_dbPtr {db}
         {
+            sqlite3_busy_timeout(m_dbPtr, DB_BUSY_TIMEOUT_MS);
         }
 
         void close()

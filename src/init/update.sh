@@ -402,8 +402,13 @@ UpdateOldVersions()
     else
         # New agent config by default
         ./src/init/gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $WAZUH_CONF_FILE
-        # Replace IP
-        ./src/init/replace_manager_ip.sh $WAZUH_CONF_FILE_ORIG $WAZUH_CONF_FILE
+        # Carry the manager target over from the previous configuration. Checked: on
+        # failure the generated file still holds the template's IP placeholder, and an
+        # agent that starts with it resolves nothing.
+        if ! ./src/init/replace_manager_ip.sh $WAZUH_CONF_FILE_ORIG $WAZUH_CONF_FILE; then
+            echo "Error: could not carry the manager address into the new configuration."
+            exit 1
+        fi
         ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $WAZUH_CONF_FILE
     fi
 }

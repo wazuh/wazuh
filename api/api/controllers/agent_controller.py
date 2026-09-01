@@ -4,6 +4,7 @@
 
 import logging
 import mimetypes
+import time
 from typing import Union
 
 from connexion import request
@@ -15,9 +16,7 @@ from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from api.validator import check_component_configuration_pair
-from wazuh import agent, stats
-from wazuh.core.cluster.control import get_system_nodes
+from wazuh import agent, vulnerability_scan
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -27,7 +26,7 @@ logger = logging.getLogger('wazuh-api')
 
 async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                         purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        version: str = None, group: str = None, node_name: str = None,
+                        version: str = None, group: str = None,
                         name: str = None, ip: str = None) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -52,8 +51,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
         Filter by agents version.
     group : str
         Filter by group of agents.
-    node_name : str
-        Filter by node name.
     name : str
         Filter by agent name.
     ip : str
@@ -73,7 +70,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
                     'older_than': older_than,
                     'version': version,
                     'group': group,
-                    'node_name': node_name,
                     'name': name,
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None)
@@ -102,8 +98,8 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
 async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                      offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
                      search: str = None, status: str = None, q: str = None, older_than: str = None,
-                     version: str = None, group: str = None, node_name: str = None, name: str = None, ip: str = None,
-                     group_config_status: str = None, distinct: bool = False) -> ConnexionResponse:
+                     version: str = None, group: str = None, name: str = None, ip: str = None,
+                     distinct: bool = False) -> ConnexionResponse:
     """Get information about all agents or a list of them.
 
     Parameters
@@ -136,14 +132,10 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
         Filter by agents version.
     group : str
         Filter by agent group.
-    node_name : str
-        Filter by node name.
     name : str
         Filter by agent name.
     ip : str
         Filter by agent IP.
-    group_config_status : str
-        Filter by agent groups configuration sync status.
     distinct : bool
         Look for distinct values.
 
@@ -163,11 +155,9 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                     'older_than': older_than,
                     'version': version,
                     'group': group,
-                    'node_name': node_name,
                     'name': name,
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None),
-                    'group_config_status': group_config_status
                 },
                 'q': q,
                 'distinct': distinct
@@ -223,40 +213,6 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     return json_response(data, pretty=pretty)
 
 
-async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False,
-                           agents_list: Union[list, str] = '*') -> ConnexionResponse:
-    """Force reconnect all agents or a list of them.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool
-        Disable timeout response. Default `False`
-    agents_list : list or str
-        List of agent IDs. Default `*`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'agent_list': agents_list}
-
-    dapi = DistributedAPI(f=agent.reconnect_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
-                          logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
                          agents_list: str = '*') -> ConnexionResponse:
     """Restart all agents or a list of them.
@@ -283,7 +239,7 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
+                          broadcasting=True,  # Always broadcast for HTTPS stateless architecture
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -291,48 +247,9 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def restart_agents_by_node(node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> ConnexionResponse:
-    """Restart all agents belonging to a node.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    nodes = raise_if_exc(await get_system_nodes())
-
-    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
-
-    dapi = DistributedAPI(f=agent.restart_agents_by_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                           component: str = None, **kwargs: dict) -> ConnexionResponse:
-    """Get agent active configuration.
-
-    Returns the active configuration the agent is currently using. This can be different from the configuration present
-    in the configuration file, if it has been modified and the agent has not been restarted yet.
+async def scan_agents(pretty: bool = False, wait_for_complete: bool = False,
+                      agents_list: str = '*') -> ConnexionResponse:
+    """Request an on-demand vulnerability scan for all agents or a list of them.
 
     Parameters
     ----------
@@ -340,30 +257,29 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agent_id : str
-        Agent ID.
-    component : str
-        Selected agent's component which configuration is got.
+    agents_list : str
+        List of agents IDs. Default: `*`
 
     Returns
     -------
     ConnexionResponse
-        API response with the agent configuration.
+        API response.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component,
-                'config': kwargs.get('configuration', None)
-                }
+    f_kwargs = {'agent_list': agents_list}
 
-    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
-
-    dapi = DistributedAPI(f=agent.get_agent_config,
+    dapi = DistributedAPI(f=vulnerability_scan.scan_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
+                          # Not is_async: scan_agents() makes one blocking VD HTTP call per
+                          # agent, so it must run off the API server's event loop (in the
+                          # process pool), not inline on it - see CHANGELOG/issue #38553.
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          # No broadcasting: VD reads indexer-synced state, not a live per-node
+                          # agent session, so the scan only needs to run once, on the master.
+                          broadcasting=False,
+                          logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -553,7 +469,7 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
 async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
                              wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
                              force: bool = False, package_type: str = None, q: str = None, version: str = None,
-                             group: str = None, node_name: str = None, name: str = None,
+                             group: str = None, name: str = None,
                              ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a WPK file from an online repository.
 
@@ -581,8 +497,6 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
         Filter by agents version.
     group : str
         Filter by group of agents.
-    node_name : str
-        Filter by node name.
     name : str
         Filter by agent name.
     ip : str
@@ -597,6 +511,9 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
     if 'all' in agents_list:
         agents_list = '*'
 
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    request_time = int(time.time())
+
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': upgrade_version,
@@ -606,12 +523,12 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                 'filters': {
                     'version': version,
                     'group': group,
-                    'node_name': node_name,
                     'name': name,
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None)
                 },
-                'q': q
+                'q': q,
+                'request_time': request_time
                 }
 
     # Add nested fields to kwargs filters
@@ -626,7 +543,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
+                          broadcasting=True  # Always broadcast for HTTPS stateless architecture
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -636,7 +553,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
 async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = False,
                                     wait_for_complete: bool = False, file_path: str = None, installer: str = None,
                                     q: str = None, version: str = None, group: str = None,
-                                    node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
+                                    name: str = None, ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a local WPK file.
 
     Parameters
@@ -657,8 +574,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
         Filter by agents version.
     group : str
         Filter by group of agents.
-    node_name : str
-        Filter by node name.
     name : str
         Filter by agent name.
     ip : str
@@ -673,18 +588,21 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
     if 'all' in agents_list:
         agents_list = '*'
 
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    request_time = int(time.time())
+
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer,
                 'filters': {
                     'version': version,
                     'group': group,
-                    'node_name': node_name,
                     'name': name,
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None)
                 },
-                'q': q
+                'q': q,
+                'request_time': request_time
                 }
 
     # Add nested fields to kwargs filters
@@ -699,140 +617,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                            q: str = None, version: str = None, group: str = None,
-                            node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
-    """Get upgrade results from agents.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agents_list : str
-        List of agent IDs.
-    q : str
-        Query to filter agents by.
-    version : str
-        Filter by agents version.
-    group : str
-        Filter by group of agents.
-    node_name : str
-        Filter by node name.
-    name : str
-        Filter by agent name.
-    ip : str
-        Filter by agent IP.
-
-    Returns
-    -------
-    ConnexionResponse
-        Upgrade message after having upgraded the agents.
-    """
-    f_kwargs = {'agent_list': agents_list,
-                'filters': {
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query_params.get('registerIP', None)
-                },
-                'q': q
-                }
-
-    # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
-    for field in nested:
-        f_kwargs['filters'][field] = request.query_params.get(field, None)
-
-    dapi = DistributedAPI(f=agent.get_upgrade_result,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_daemon_stats(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                           daemons_list: list = None) -> ConnexionResponse:
-    """Get Wazuh statistical information from the specified daemons of a specified agent.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID of the agent from which the statistics are obtained.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    daemons_list : list
-        List of the daemons to get statistical information from.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    daemons_list = daemons_list or []
-    f_kwargs = {'agent_list': [agent_id],
-                'daemons_list': daemons_list}
-
-    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'])
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_component_stats(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                              component: str = None) -> ConnexionResponse:
-    """Get a specified agent's component stats.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID for which the specified component's stats are got.
-    component : str
-        Selected agent's component which stats are got.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the module stats.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component}
-
-    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          broadcasting=True  # Always broadcast for HTTPS stateless architecture
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -1362,44 +1147,8 @@ async def reload_agents(pretty: bool = False, wait_for_complete: bool = False,
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
+                          broadcasting=True,  # Always broadcast for HTTPS stateless architecture
                           logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def reload_agents_by_node(node_id: str, pretty: bool = False,
-                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Reload all agents belonging to a node.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    nodes = raise_if_exc(await get_system_nodes())
-
-    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
-
-    dapi = DistributedAPI(f=agent.reload_agents_by_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

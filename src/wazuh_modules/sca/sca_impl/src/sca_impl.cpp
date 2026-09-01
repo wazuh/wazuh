@@ -65,6 +65,13 @@ constexpr auto METADATA_SQL_STATEMENT
 
 constexpr auto SCA_LAST_INTEGRITY_CHECK_METADATA_KEY {"last_integrity_check"};
 constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
+// Persists across restarts, independent of first_sync_completed: whether SCA
+// has ever completed a full scan. Its absence IS "a scan is still owed" --
+// checked so a scan_on_start scan that got interrupted (issue 38428: the
+// Windows startup/shutdown race, or being paused right at the first
+// opportunity) is retried on the next chance instead of silently waiting a
+// full <interval>.
+constexpr auto SCA_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
@@ -121,7 +128,14 @@ void SecurityConfigurationAssessment::Run()
         return;
     }
 
-    m_keepRunning = true;
+    {
+        // Sharing m_pauseMutex with quiesce()'s own m_keepRunning write closes
+        // a TOCTOU: without it, a quiesce() landing between this reset and the
+        // loop's first check below could still be overwritten back to true by
+        // this line racing it (issue 38428, code-map.md §3 row 2).
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_keepRunning = true;
+    }
 
     // Reset sync protocol stop flag to allow restarting operations
     if (m_spSyncProtocol)
@@ -132,6 +146,7 @@ void SecurityConfigurationAssessment::Run()
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
     refreshFirstSyncCompletedState();
+    refreshFirstScanCompletedState();
 
     if (m_syncManager)
     {
@@ -180,10 +195,31 @@ void SecurityConfigurationAssessment::Run()
         }
     };
 
+    // A scan_on_start scan that gets interrupted before it runs (issue 38428)
+    // must not be silent, and must not just be lost until the next full
+    // <interval> -- log it, once, right where each early exit happens.
+    auto logSkippedFirstScanIfNeeded = [this]()
+    {
+        if (m_scanOnStart && !m_firstScanCompleted.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "SCA module stopped before its scan_on_start scan could run; "
+                                             "will retry automatically on the next opportunity.");
+        }
+    };
+
     while (m_keepRunning)
     {
-        // If scan on start is enabled and this is the first iteration, scan immediately
-        // Otherwise, wait for the scan interval before scanning
+        // Scan immediately if scan_on_start is enabled and no real scan has
+        // completed yet this run -- whether this is the very first iteration,
+        // or a scan_on_start scan is still owed after being interrupted one or
+        // more times by a pause/resume cycle (issue 38428) -- otherwise wait
+        // for the interval before scanning. Deliberately NOT gated on the
+        // persisted m_firstScanCompleted: that marker is write-once for the
+        // installation's whole lifetime, so on any agent already past its
+        // first-ever scan it would make this condition permanently true and
+        // silently swallow the retry for a scan_on_start dropped by a later
+        // interruption, waiting the full interval instead (issue 38428).
         if (!m_scanOnStart || !firstScan)
         {
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -192,6 +228,7 @@ void SecurityConfigurationAssessment::Run()
 
         if (!m_keepRunning)
         {
+            logSkippedFirstScanIfNeeded();
             return;
         }
 
@@ -200,7 +237,20 @@ void SecurityConfigurationAssessment::Run()
         {
             // LCOV_EXCL_START
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
-            firstScan = false;  // Clear first scan flag even when paused
+            // firstScan is deliberately left untouched here: no scan actually ran, so a
+            // scan_on_start attempt interrupted by a pause is still owed once resumed
+            // (issue 38428). It is only cleared below, after policy->Run() actually
+            // completes.
+
+            // Block here instead of looping straight back to the top: the wait above is
+            // skipped whenever a scan_on_start scan is still owed (issue 38428), so a pause
+            // landing in exactly that window would otherwise busy-spin this thread at 100%
+            // CPU -- m_paused and firstScan both stay true, so the loop condition above
+            // never becomes true on its own. resume() only calls
+            // m_cv.notify_one(), so waiting on the same condition variable here is what
+            // actually wakes this back up promptly once coordination clears.
+            std::unique_lock<std::mutex> pauseLock(m_mutex);
+            m_cv.wait(pauseLock, [this] { return !m_paused.load() || !m_keepRunning.load(); });
             continue;
             // LCOV_EXCL_STOP
         }
@@ -257,6 +307,7 @@ void SecurityConfigurationAssessment::Run()
             // LCOV_EXCL_START
             // Mark scan as complete before returning
             setScanInProgress(false);
+            logSkippedFirstScanIfNeeded();
             return;
             // LCOV_EXCL_STOP
         }
@@ -286,6 +337,7 @@ void SecurityConfigurationAssessment::Run()
                 // LCOV_EXCL_START
                 // Mark scan as complete before returning
                 setScanInProgress(false);
+                logSkippedFirstScanIfNeeded();
                 return;
                 // LCOV_EXCL_STOP
             }
@@ -300,6 +352,16 @@ void SecurityConfigurationAssessment::Run()
         // Mark scan as complete
         setScanInProgress(false);
 
+        // A full scan has now genuinely completed at least once: persist that
+        // (once) so a future interrupted scan_on_start attempt knows a first
+        // scan was never lost, and so this one -- if it was the delayed retry
+        // of one -- isn't retried again (issue 38428).
+        if (!m_firstScanCompleted.load())
+        {
+            updateMetadataValue(SCA_FIRST_SCAN_COMPLETED_METADATA_KEY, 1);
+            m_firstScanCompleted.store(true);
+        }
+
         // Signal that a full scan iteration has completed. Only written until the first
         // sync completes — after that the sync thread no longer polls this flag.
         if (!m_firstSyncCompleted.load())
@@ -307,6 +369,8 @@ void SecurityConfigurationAssessment::Run()
             m_scanCompleted.store(Utils::getSecondsFromEpoch());
         }
     }
+
+    logSkippedFirstScanIfNeeded();
 }
 
 void SecurityConfigurationAssessment::Setup(bool enabled,
@@ -376,10 +440,29 @@ void SecurityConfigurationAssessment::releaseResources()
 
     std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
 
+    // Release the sync manager first: it was constructed with a copy of m_dBSync (see the
+    // constructor), so it co-owns the DBSync handle. Resetting m_dBSync alone leaves that copy
+    // alive, ~SQLiteDBEngine never runs, and the standing write transaction on sca.db is never
+    // committed nor the connection closed -- so the file stays locked until the OS tears the
+    // process down and the next agent process fails with "database is locked" (issue #38069).
+    m_syncManager.reset();
+
     // Explicitly release DBSync before static destruction to avoid use-after-free
     // during shutdown when DBSyncImplementation singleton may be destroyed first.
+    // This must drop the last reference, otherwise the database is not closed here: every
+    // member holding a copy of m_dBSync has to be reset above (see releaseResources() in the
+    // header). It cannot be left to ~SecurityConfigurationAssessment, which never runs because
+    // SCA::~SCA releases the impl to avoid teardown races at process exit.
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
+    if (m_dBSync && m_dBSync.use_count() > 1)
+    {
+        LoggingHelper::getInstance().log(
+            LOG_WARNING,
+            "SCA database is still referenced by " + std::to_string(m_dBSync.use_count() - 1) +
+            " other owner(s); it will not be closed until the process exits.");
+    }
+
     m_dBSync.reset();
 
     // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
@@ -389,7 +472,9 @@ void SecurityConfigurationAssessment::releaseResources()
     // thread and the SCA run loop have already exited (see wm_sca_start teardown),
     // mirroring Syscollector::releaseResources(); the entry points still reachable from
     // other threads (wcom queries and sync responses, agent-info's in-process
-    // coordination queries) are excluded by the lock, which they take shared.
+    // coordination queries) are excluded by the lock, which they take shared -- except
+    // setSyncLimit(), which takes no lock because it runs on the module thread before the
+    // run loop starts (its only caller is wm_sca_start).
     m_spSyncProtocol.reset();
 }
 
@@ -453,8 +538,8 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
-void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps, std::chrono::seconds integrityInterval)
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
+                                                       std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -467,7 +552,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
             // Publish under the exclusive lock: wcom queries can arrive while the module
             // is still starting up, and they read the pointer under the shared lock.
             std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
-            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
@@ -573,16 +658,24 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             // Report it as an expected event, not a WARNING.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
         }
-        else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        else if (result.awaitingPrerequisite)
         {
-            // The manager is not ready for this agent yet, mostly right after a restart, and the sync
-            // has not failed enough times in a row to suspect it will not clear. Not a WARNING yet.
+            // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+            // most commonly right after enrollment/restart. Expected to clear on its own.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
+        }
+        else if ((result.managerNotReady || result.localTransportUnavailable) &&
+                 result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        {
+            // Either the manager is not ready for this agent yet, or the local sync intake itself
+            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+            // failed enough times in a row to suspect it will not clear. Not a WARNING yet.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason +
                                              " Will retry next cycle.");
         }
-        else if (result.managerNotReady)
+        else if (result.managerNotReady || result.localTransportUnavailable)
         {
-            // The manager has not been ready for several cycles in a row: this is no longer a restart
+            // Neither condition has cleared for several cycles in a row: this is no longer a restart
             // hiccup, so it must stay visible.
             LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed " +
                                              std::to_string(result.consecutiveFailures) + " times in a row: " +
@@ -838,17 +931,26 @@ int SecurityConfigurationAssessment::executeFlushSync()
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
         return -1;
     }
-    else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    else if (result.awaitingPrerequisite)
     {
-        // The manager is not ready for this agent yet, mostly right after a restart, and the sync
-        // has not failed enough times in a row to suspect it will not clear. Not an error yet.
+        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+        // most commonly right after enrollment/restart. Expected to clear on its own.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
+        return -1;
+    }
+    else if ((result.managerNotReady || result.localTransportUnavailable) &&
+             result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    {
+        // Either the manager is not ready for this agent yet, or the local sync intake itself
+        // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+        // failed enough times in a row to suspect it will not clear. Not an error yet.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
                                          " Will retry next cycle.");
         return -1;
     }
-    else if (result.managerNotReady)
+    else if (result.managerNotReady || result.localTransportUnavailable)
     {
-        // The manager has not been ready for several cycles in a row: this is no longer a restart
+        // Neither condition has cleared for several cycles in a row: this is no longer a restart
         // hiccup, so it must stay visible.
         LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
                                          std::to_string(result.consecutiveFailures) + " times in a row: " +
@@ -1223,7 +1325,16 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             LOG_DEBUG,
             "Retrieved " + std::to_string(checks.size()) + " synced checks from database for SCA " + syncReason);
 
-        m_spSyncProtocol->clearInMemoryData();
+        // Clear the manager's index before resending: a full-replace sync is now a
+        // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
+        // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
+        // payload and could permanently drop whatever didn't fit in that one session).
+        if (!m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}))
+        {
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Failed to clear SCA index before " + syncReason + "; will retry later");
+            return {false, {}};
+        }
 
         for (const auto& check : checks)
         {
@@ -1291,7 +1402,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 const std::vector<unsigned char> hashResult = hash.hash();
                 std::string hashedId = Utils::asciiToHex(hashResult);
 
-                m_spSyncProtocol->persistDifferenceInMemory(
+                m_spSyncProtocol->persistDifference(
                     hashedId,
                     Operation::CREATE,
                     SCA_SYNC_INDEX,
@@ -1304,7 +1415,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
         {
@@ -1372,6 +1483,16 @@ void SecurityConfigurationAssessment::refreshFirstSyncCompletedState()
     if (getMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted))
     {
         m_firstSyncCompleted.store(firstSyncCompleted > 0);
+    }
+}
+
+void SecurityConfigurationAssessment::refreshFirstScanCompletedState()
+{
+    int64_t firstScanCompleted = 0;
+
+    if (getMetadataValue(SCA_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted))
+    {
+        m_firstScanCompleted.store(firstScanCompleted > 0);
     }
 }
 

@@ -37,31 +37,3 @@ w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, vo
     queue->elements++;
     return node;
 }
-
-void * __wrap_linked_queue_pop_ex(w_linked_queue_t * queue) {
-    void * data = NULL;
-
-    int retval = mock();
-
-    check_expected_ptr(queue);
-
-    if (retval != -1) {
-        if (!queue->first) {
-            data = NULL;
-        } else {
-            data = queue->first->data;
-            w_linked_queue_node_t *tmp = queue->first;
-            queue->first = queue->first->next;
-            if (queue->first) {
-                queue->first->prev = NULL;
-            } else {
-                // Also clean last node
-                queue->last = NULL;
-            }
-            queue->elements--;
-            os_free(tmp);
-        }
-    }
-
-    return data;
-}

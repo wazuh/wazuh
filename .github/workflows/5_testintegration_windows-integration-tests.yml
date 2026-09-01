@@ -94,8 +94,7 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    runs-on:
-      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: windows-2025
     timeout-minutes: 240
     name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
     steps:
@@ -146,7 +145,10 @@ jobs:
             Get-ChildItem -Path "C:\wazuh-package" -Recurse | Format-Table Name, FullName
             exit 1
           }
-          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER=`"127.0.0.1`"" -Wait -NoNewWindow
+          # WAZUH_MANAGER_ENDPOINT carries the whole target now (#38624), so it replaces
+          # the separate WAZUH_MANAGER. The trailing slash is the prefix opt-out, which
+          # RemotedSimulator needs: it serves unprefixed endpoints only.
+          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER_ENDPOINT=`"127.0.0.1/`"" -Wait -NoNewWindow
       # ================= QA FRAMEWORK =================
       - name: Download and install qa-integration-framework
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}

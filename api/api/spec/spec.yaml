@@ -133,15 +133,6 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
-    'agent:reconnect':
-      description: "Force reconnect agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: [ 'agent:reconnect' ]
-        resources: [ 'agent:id:050', 'agent:id:049' ]
-        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -158,6 +149,15 @@ x-rbac-catalog:
        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:reload']
+        resources: ['agent:id:050', 'agent:id:049']
+        effect: "deny"
+    'agent:scan_vulnerability':
+      description: "Trigger an on-demand vulnerability scan on agents"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:scan_vulnerability']
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
     'agent:uninstall':
@@ -329,15 +329,6 @@ x-rbac-catalog:
         actions: ['mitre:read']
         resources: ['*:*:*']
         effect: "allow"
-    'task:status':
-      description: "Access task's status information"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['task:status']
-        resources: ['*:*:*']
-        effect: "deny"
-
 components:
   responses:
     ResponseError:
@@ -602,21 +593,6 @@ components:
                   - $ref: '#/components/schemas/WazuhDBStatsItem'
         - $ref: '#/components/schemas/AllItemsResponse'
 
-    AllItemsResponseWazuhDaemonStatsAgents:
-      allOf:
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                oneOf:
-                  - $ref: '#/components/schemas/WazuhRemotedStatsAgentsItem'
-                  - $ref: '#/components/schemas/WazuhAnalysisdStatsAgentsItem'
-        - $ref: '#/components/schemas/AllItemsResponse'
-
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -831,9 +807,6 @@ components:
           description: "List of groups the agent belongs to"
           items:
             type: string
-        mergedSum:
-          type: string
-          description: "MD5 checksum of all group shared files merged in a single one (merged.mg)"
         ip:
           type: string
           description: "IP where the agent communicates with the manager. If the manager can't get this information, it
@@ -841,9 +814,6 @@ components:
         registerIP:
           type: string
           description: "IP used at agent the registration process"
-        node_name:
-          type: string
-          description: "ID of the node the agent is reporting to"
         dateAdd:
           type: string
           description: "Date when the agent was registered"
@@ -875,9 +845,6 @@ components:
           default: 0
           minimum: 0
           maximum: 5
-        group_config_status:
-          type: string
-          description: "Agent groups configuration sync status"
 
     AgentAddBody:
       type: object
@@ -1012,18 +979,6 @@ components:
             pending:
               type: integer
               format: int32
-        configuration:
-          type: object
-          properties:
-            total:
-              type: integer
-              format: int32
-            synced:
-              type: integer
-              format: int32
-            not_synced:
-              type: integer
-              format: int32
 
     AgentDistinct:
       allOf:
@@ -1052,11 +1007,6 @@ components:
       description: "Node ID"
       format: string
 
-    AgentConfiguration:
-      type: object
-      description: "Current agent's configuration. The output varies with requested component and the agent
-      configuration"
-
     AgentInsertForce:
       type: object
       description: "Remove the old agent with the same name, ID or IP if the configuration is matched"
@@ -1082,238 +1032,6 @@ components:
           default: "1h"
           description: "Time the agent must has been registered to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
           format: timeframe
-
-    WazuhRemotedStatsAgentsItem:
-      type: object
-      properties:
-        timestamp:
-          type: string
-          format: date-time
-          description: "Daemon stats request time"
-        name:
-          type: string
-          description: "Daemon name"
-          enum:
-            - wazuh-manager-remoted
-        agents:
-          type: array
-          items:
-            type: object
-            properties:
-              uptime:
-                type: string
-                format: date-time
-                description: "When the count of the metrics started"
-              id:
-                type: integer
-                format: int32
-                description: "Agent ID"
-              metrics:
-                type: object
-                properties:
-                  messages:
-                    type: object
-                    properties:
-                      received_breakdown:
-                        type: object
-                        properties:
-                          control:
-                            type: integer
-                            format: int32
-                            description: "Control messages received from agent"
-                          control_breakdown:
-                            type: object
-                            properties:
-                              keepalive:
-                                type: integer
-                                format: int32
-                                description: "Keepalive messages from agent"
-                              request:
-                                type: integer
-                                format: int32
-                                description: "Request messages (for example, WPK responses) from agent"
-                              shutdown:
-                                type: integer
-                                format: int32
-                                description: "Shutdown messages from agent"
-                              startup:
-                                type: integer
-                                format: int32
-                                description: "Startup messages from agent"
-                          event:
-                            type: integer
-                            format: int32
-                            description: "Event messages (syscheck, syscollector, logcollector, etc.) received from agent"
-                      sent_breakdown:
-                        type: object
-                        properties:
-                          ack:
-                            type: integer
-                            format: int32
-                            description: "ACK messages (response to keepalive, startup and shutdown) sent to agent"
-                          ar:
-                            type: integer
-                            format: int32
-                            description: "Active response messages sent to agent"
-                          discarded:
-                            type: integer
-                            format: int32
-                            description: "Messages discarded because the send queue was full (for this agent)"
-                          request:
-                            type: integer
-                            format: int32
-                            description: "Request messages (for example, WPK chunks) sent to agent"
-                          shared:
-                            type: integer
-                            format: int32
-                            description: "Shared configuration messages (merged.mg) sent to agent"
-
-    WazuhAnalysisdStatsAgentsItem:
-      type: object
-      properties:
-        timestamp:
-          type: string
-          format: date-time
-          description: "Daemon stats request time"
-        name:
-          type: string
-          description: "Daemon name"
-          enum:
-            - wazuh-manager-analysisd
-        agents:
-          type: array
-          items:
-            type: object
-            properties:
-              uptime:
-                type: string
-                format: date-time
-                description: "When the count of the metrics started"
-              id:
-                type: integer
-                format: int32
-                description: "Agent ID"
-              metrics:
-                type: object
-                properties:
-                  events:
-                    type: object
-                    properties:
-                      processed:
-                        type: integer
-                        format: int32
-                        description: "Total processed events (analyzed by rules) from agent"
-                      received_breakdown:
-                        type: object
-                        properties:
-                          decoded_breakdown:
-                            type: object
-                            properties:
-                              agent:
-                                type: integer
-                                format: int32
-                                description: "Events coming from agentd (this agent)"
-                              dbsync:
-                                type: integer
-                                format: int32
-                                description: "Synchronization events (this agent)"
-                              modules_breakdown:
-                                type: object
-                                properties:
-                                  aws:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from AWS module (this agent)"
-                                  azure:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from Azure module (this agent)"
-                                  command:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from command module (this agent)"
-                                  docker:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from Docker module (this agent)"
-                                  gcp:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from GCP module (this agent)"
-                                  github:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from GitHub module (this agent)"
-                                  logcollector_breakdown:
-                                    type: object
-                                    properties:
-                                      eventchannel:
-                                        type: integer
-                                        format: int32
-                                        description: "EventChannel events collected by logcollector (this agent)"
-                                      eventlog:
-                                        type: integer
-                                        format: int32
-                                        description: "EventLog events collected by logcollector (this agent)"
-                                      macos:
-                                        type: integer
-                                        format: int32
-                                        description: "MacOS events collected by logcollector (this agent)"
-                                      others:
-                                        type: integer
-                                        format: int32
-                                        description: "Other events collected by logcollector (this agent)"
-                                  office365:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the Office365 module (this agent)"
-                                  ms-graph:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the ms-graph module (this agent)"
-                                  rootcheck:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the rootcheck (syscheckd) (this agent)"
-                                  sca:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the SCA module (this agent)"
-                                  syscheck:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the syscheckd (this agent)"
-                                  syscollector:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the syscollector module (this agent)"
-                                  upgrade:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the upgrade agent module (this agent)"
-                                  vulnerability:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the vulnerability detector module (this agent)"
-                              monitor:
-                                type: integer
-                                format: int32
-                                description: "Events coming from monitord (this agent)"
-                              remote:
-                                type: integer
-                                format: int32
-                                description: "Events coming from remoted (this agent)"
-                      written_breakdown:
-                        type: object
-                        properties:
-                          alerts:
-                            type: integer
-                            format: int32
-                            description: "Alerts written in alerts log file (this agent)"
-                          archives:
-                            type: integer
-                            format: int32
-                            description: "Alerts written in archives log file (this agent)"
 
     ## Group models
     GroupID:
@@ -1417,15 +1135,7 @@ components:
                 name:
                   $ref: '#/components/schemas/ClusterNodeName'
                 info:
-                  allOf:
-                    - $ref: '#/components/schemas/ClusterNodeBasic'
-                    - type: object
-                      properties:
-                        totalActiveAgents:
-                          type: integer
-                          format: int32
-                          minimum: 0
-                          description: "Number of agents currently reporting to that node"
+                  $ref: '#/components/schemas/ClusterNodeBasic'
             status:
               type: object
               properties:
@@ -1487,12 +1197,6 @@ components:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
-
-    DaemonStatus:
-      type: string
-      enum:
-      - stopped
-      - running
 
     ClusterLocalInfo:
       type: object
@@ -1597,10 +1301,6 @@ components:
       type: string
       format: numbers_or_all
       description: "Security rule ID|all"
-    Task_id:
-      type: string
-      format: numbers
-      description: "Task ID"
     Policy_id:
       type: string
       format: numbers
@@ -2415,9 +2115,6 @@ components:
                                 select-agent-group:
                                   type: integer
                                   format: int32
-                                select-agent-name:
-                                  type: integer
-                                  format: int32
                                 set-agent-groups:
                                   type: integer
                                   format: int32
@@ -2431,9 +2128,6 @@ components:
                                   type: integer
                                   format: int32
                                 update-agent-data:
-                                  type: integer
-                                  format: int32
-                                update-agent-name:
                                   type: integer
                                   format: int32
                                 update-connection-status:
@@ -2575,9 +2269,6 @@ components:
                                 select-agent-group:
                                   type: integer
                                   format: int32
-                                select-agent-name:
-                                  type: integer
-                                  format: int32
                                 set-agent-groups:
                                   type: integer
                                   format: int32
@@ -2591,9 +2282,6 @@ components:
                                   type: integer
                                   format: int32
                                 update-agent-data:
-                                  type: integer
-                                  format: int32
-                                update-agent-name:
                                   type: integer
                                   format: int32
                                 update-connection-status:
@@ -2671,149 +2359,6 @@ components:
                                 upgrade_update_status:
                                   type: integer
                                   format: int32
-
-    NodeDaemonStatus:
-      type: object
-      description: "Per-daemon readiness status reported by a cluster node."
-      properties:
-        ready:
-          type: boolean
-          description: "Whether the daemon is ready to handle requests."
-        running:
-          type: boolean
-          description: "Whether the daemon process is currently running."
-
-    AnalysisdStatus:
-      allOf:
-        - $ref: '#/components/schemas/NodeDaemonStatus'
-        - type: object
-          description: "Extended status for wazuh-manager-analysisd including engine resource states."
-          properties:
-            spaces:
-              type: object
-              description: "Status of content spaces (e.g. standard, custom)."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  enabled:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-            ioc:
-              type: object
-              description: "Status of IOC resource types."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-            geo:
-              type: object
-              description: "Status of GeoIP databases."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-
-    VulnerabilityDetectorStatus:
-      type: object
-      description: "Status of the vulnerability-detector module as reported by the modulesd socket."
-      properties:
-        available:
-          type: boolean
-          description: "Whether the CVE feed has been loaded at least once and is usable for scanning."
-        status:
-          type: string
-          enum: [updating, ready, failed]
-          description: "Current feed lifecycle state."
-        enabled:
-          type: boolean
-          description: "Whether vulnerability detection is enabled in the configuration."
-        offset:
-          type: integer
-          format: int64
-          description: "Feed cursor (content manager offset) of the last completed download cycle."
-        last_successful_update:
-          type: integer
-          format: int64
-          description: "Unix timestamp of the last successful feed completion, or 0 if none."
-
-    ModulesdStatus:
-      allOf:
-        - $ref: '#/components/schemas/NodeDaemonStatus'
-        - type: object
-          description: "Extended status for wazuh-manager-modulesd including sub-module states."
-          properties:
-            modules:
-              type: object
-              description: "Status of manager-exclusive modulesd sub-modules."
-              properties:
-                vulnerability-detector:
-                  $ref: '#/components/schemas/VulnerabilityDetectorStatus'
-                inventory-sync:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-                content-manager:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-                task-manager:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-
-    WazuhDaemonsStatus:
-      type: object
-      description: "Readiness and running status of all Wazuh manager daemons on a cluster node."
-      properties:
-        ready:
-          type: boolean
-          description: "True only when every daemon on the node is ready."
-        wazuh-manager-analysisd:
-          $ref: '#/components/schemas/AnalysisdStatus'
-        wazuh-manager-authd:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-monitord:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-remoted:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-apid:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-clusterd:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-db:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-modulesd:
-          $ref: '#/components/schemas/ModulesdStatus'
 
     WazuhInfo:
       type: object
@@ -3000,20 +2545,7 @@ components:
         - agent_version
         - groups
         - last_registered_agent
-        - nodes
       properties:
-        nodes:
-          type: array
-          description: "Active nodes in the cluster"
-          items:
-            type: object
-            properties:
-              count:
-                type: integer
-                format: int32
-              node_name:
-                type: string
-                format: alphanumeric_symbols
         groups:
           type: array
           description: "Recount of the number of Wazuh agents group by Wazuh groups"
@@ -3091,26 +2623,6 @@ components:
         type: string
         format: names
         maxLength: 128
-    command:
-      in: query
-      name: command
-      description: "Filter by command"
-      schema:
-        type: string
-        format: symbols_alphanumeric_param
-    agent_component:
-      in: path
-      name: component
-      description: "Selected agent's component"
-      required: true
-      schema:
-        type: string
-        enum:
-        - agent
-        - com
-        - logcollector
-        - syscheck
-        - wmodules
     manager_component:
       in: path
       name: component
@@ -3123,93 +2635,6 @@ components:
         - monitor
         - request
         - wazuh-manager-db
-        - wmodules
-    agent_configuration:
-      in: path
-      name: configuration
-      description: |
-        <p>Selected agent's configuration to read. The configuration to read depends on the selected component.
-        The following table shows all available combinations of component and configuration values:</p>
-        <table class="table table-striped table-bordered">
-        <thead>
-        <tr>
-        <th>Component</th>
-        <th>Configuration</th>
-        <th>Tag</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-        <td>agent</td>
-        <td>client</td>
-        <td><code>&lt;client&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agent</td>
-        <td>buffer</td>
-        <td><code>&lt;client_buffer&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agent</td>
-        <td>internal</td>
-        <td><code>&lt;agent&gt;</code>, <code>&lt;monitord&gt;</code>, <code>&lt;remoted&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agent</td>
-        <td>anti_tampering</td>
-        <td><code>&lt;anti_tampering&gt;</code></td>
-        </tr>
-        <tr>
-        <td>logcollector</td>
-        <td>localfile</td>
-        <td><code>&lt;localfile&gt;</code></td>
-        </tr>
-        <tr>
-        <td>logcollector</td>
-        <td>socket</td>
-        <td><code>&lt;socket&gt;</code></td>
-        </tr>
-        <tr>
-        <td>logcollector</td>
-        <td>internal</td>
-        <td><code>&lt;logcollector&gt;</code></td>
-        </tr>
-        <tr>
-        <td>syscheck</td>
-        <td>syscheck</td>
-        <td><code>&lt;syscheck&gt;</code></td>
-        </tr>
-        <tr>
-        <td>syscheck</td>
-        <td>rootcheck</td>
-        <td><code>&lt;rootcheck&gt;</code></td>
-        </tr>
-        <tr>
-        <td>syscheck</td>
-        <td>internal</td>
-        <td><code>&lt;syscheck&gt;</code>, <code>&lt;rootcheck&gt;</code></td>
-        </tr>
-        <tr>
-        <td>wmodules</td>
-        <td>wmodules</td>
-        <td><code>&lt;wodle&gt;</code></td>
-        </tr>
-        </tbody>
-        </table>
-      required: true
-      schema:
-        type: string
-        enum:
-        - client
-        - buffer
-        - internal
-        - anti_tampering
-        - active-response
-        - logging
-        - localfile
-        - socket
-        - syscheck
-        - rootcheck
         - wmodules
     manager_configuration:
       in: path
@@ -3294,17 +2719,6 @@ components:
             - wazuh-manager-analysisd
             - wazuh-manager-remoted
             - wazuh-manager-db
-    daemons_list_agents:
-      in: query
-      name: daemons_list
-      description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - wazuh-manager-analysisd
-            - wazuh-manager-remoted
     fields:
       in: query
       name: fields
@@ -3415,13 +2829,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupIDListAll'
-    node:
-      in: query
-      name: node
-      description: "Show results filtered by node"
-      schema:
-        type: string
-        format: alphanumeric
     nodes_list:
       in: query
       name: nodes_list
@@ -3430,13 +2837,6 @@ components:
         type: array
         items:
           type: string
-    module:
-      in: query
-      name: module
-      description: "Show results filtered by module"
-      schema:
-        type: string
-        format: alphanumeric
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'
@@ -3517,14 +2917,6 @@ components:
       schema:
         type: boolean
         default: false
-    policy_id:
-      in: path
-      name: policy_id
-      description: "Filter by policy id"
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
     policy_id_rbac:
       in: path
       name: policy_id
@@ -3660,14 +3052,6 @@ components:
       schema:
         type: integer
         minimum: 0
-    tasks_list:
-      in: query
-      name: 'tasks_list'
-      description: "List of task IDs (separated by comma)"
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Task_id'
     search:
       in: query
       name: search
@@ -3676,6 +3060,7 @@ components:
       schema:
         type: string
         format: search
+        maxLength: 1024
     select:
       in: query
       name: select
@@ -3696,23 +3081,6 @@ components:
       schema:
         type: string
         format: sort
-    stats_component:
-      in: path
-      name: component
-      description: "Selected component stats"
-      required: true
-      schema:
-        type: string
-        enum:
-          - logcollector
-          - agent
-    status:
-      in: query
-      name: status
-      description: "Filter by status"
-      schema:
-        type: string
-        format: alphanumeric
     statusAgentParam:
       in: query
       name: status
@@ -3743,34 +3111,6 @@ components:
             - never_connected
             - disconnected
         minItems: 1
-    status_resource:
-      in: query
-      name: status
-      description: "Filter by resource status"
-      required: false
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-    statusRLDParam:
-      in: query
-      name: status
-      description: "Filter by list status. Use commas to enter multiple statuses"
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
-        minItems: 1
-    title:
-      in: query
-      name: title
-      description: "Filter by title"
-      schema:
-        type: string
-        format: alphanumeric_symbols
     type_agents:
       in: query
       name: type
@@ -3844,13 +3184,6 @@ components:
       schema:
         type: string
         format: names
-    node_name:
-      in: query
-      name: node_name
-      description: "Filter by node name"
-      schema:
-        type: string
-        format: names
     section:
       in: query
       name: section
@@ -3881,13 +3214,6 @@ components:
       schema:
         type: string
         format: names
-    date:
-      in: query
-      name: date
-      description: "Date to obtain statistical information from. Format YYYY-MM-DD"
-      schema:
-        type: string
-        format: date
     tag:
       in: query
       name: tag
@@ -3989,15 +3315,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    group_config_status:
-      in: query
-      name: group_config_status
-      description: "Agent groups configuration sync status"
-      schema:
-        type: string
-        enum:
-          - "synced"
-          - "not synced"
     force_single_group:
       in: query
       name: force_single_group
@@ -4160,7 +3477,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -4227,11 +3543,9 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
-        - $ref: '#/components/parameters/group_config_status'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
@@ -4264,10 +3578,7 @@ paths:
                       ip: 172.25.0.6
                       name: ac7cb188d538
                       status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: v4.3.0
-                      node_name: worker2
-                      group_config_status: 'synced'
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -4285,10 +3596,7 @@ paths:
                       ip: 172.25.0.11
                       name: 91642a418627
                       status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: v4.3.0
-                      node_name: worker2
-                      group_config_status: 'synced'
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -4306,10 +3614,7 @@ paths:
                       ip: 172.25.0.10
                       name: a442e15bc84e
                       status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: v4.3.0
-                      node_name: worker1
-                      group_config_status: 'not synced'
                       status_code: 0
                   total_affected_items: 3
                   total_failed_items: 0
@@ -4375,67 +3680,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/{agent_id}/config/{component}/{configuration}:
-    get:
-      tags:
-        - Agents
-      summary: "Get active configuration"
-      description: "Return the active configuration the agent is currently using. This can be different from the
-      configuration present in the configuration file, if it has been modified and the agent has not been restarted yet"
-      operationId: api.controllers.agent_controller.get_agent_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/agent_component'
-        - $ref: '#/components/parameters/agent_configuration'
-      responses:
-        '200':
-          description: "Get agent configuration"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentConfiguration'
-              example:
-                data:
-                  client:
-                    config-profile: "ubuntu, ubuntu20, ubuntu20.04"
-                    notify_time: 20
-                    time-reconnect: 60
-                    ip_update_interval: 0
-                    auto_restart: "yes"
-                    remote_conf: "yes"
-                    manager:
-                      - address: "nginx-lb/172.25.0.4"
-                        port: 1514
-                        max_retries: 5
-                        retry_interval: 10
-                        protocol: tcp
-                    enrollment:
-                      - enabled: "yes"
-                        delay_after_enrollment: 20
-                        port: 1515
-                        ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-                        auto_method: "no"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -4707,193 +3951,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/daemons/stats:
-    get:
-      tags:
-        - Agents
-      summary: "Get Wazuh daemon stats from an agent"
-      description: "Return Wazuh statistical information from specified daemons in a specified agent"
-      operationId: api.controllers.agent_controller.get_daemon_stats
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/daemons_list_agents'
-      responses:
-        '200':
-          description: "Wazuh daemon stats"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseWazuhDaemonStatsAgents'
-              example:
-                data:
-                  affected_items:
-                    - timestamp: 2022-07-27T14:09:20+00:00
-                      name: wazuh-manager-remoted
-                      agents:
-                        - uptime: 2022-07-27T14:09:20+00:00
-                          id: 1
-                          metrics:
-                            messages:
-                              received_breakdown:
-                                control: 2
-                                control_breakdown:
-                                  keepalive: 1
-                                  request: 0
-                                  shutdown: 0
-                                  startup: 1
-                                event: 195
-                              sent_breakdown:
-                                ack: 2
-                                ar: 0
-                                discarded: 0
-                                request: 0
-                                shared: 0
-                    - timestamp: 2022-07-27T14:09:20+00:00
-                      name: wazuh-manager-analysisd
-                      agents:
-                        - uptime: 2022-07-27T14:09:20+00:00
-                          id: 1
-                          metrics:
-                            events:
-                              processed: 195
-                              received_breakdown:
-                                decoded_breakdown:
-                                  agent: 0
-                                  dbsync: 0
-                                  modules_breakdown:
-                                    aws: 0
-                                    azure: 0
-                                    command: 0
-                                    docker: 0
-                                    gcp: 0
-                                    github: 0
-                                    logcollector_breakdown:
-                                      eventchannel: 0
-                                      eventlog: 0
-                                      macos: 0
-                                      others: 0
-                                    office365: 0
-                                    ms-graph: 0
-                                    rootcheck: 1
-                                    sca: 194
-                                    syscheck: 0
-                                    syscollector: 0
-                                    upgrade: 0
-                                    vulnerability: 0
-                                  monitor: 0
-                                  remote: 0
-                              written_breakdown:
-                                alerts: 191
-                                archives: 0
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: Statistical information for each daemon was successfully read
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/{agent_id}/stats/{component}:
-    get:
-      tags:
-        - Agents
-      summary: "Get agent's component stats"
-      description: "Return Wazuh's {component} statistical information from agent {agent_id}"
-      operationId: api.controllers.agent_controller.get_component_stats
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/stats_component'
-      responses:
-        '200':
-          description: "Component stats"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - global:
-                        start: '2021-05-27T08:01:38Z'
-                        end: '2021-05-27T08:08:13Z'
-                        files:
-                          - location: df -P
-                            events: 20
-                            bytes: 1784
-                            targets:
-                              - name: agent
-                                drops: 0
-                          - location: /var/log/dpkg.log
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
-                          - location: last -n 20
-                            events: 2
-                            bytes: 132
-                            targets:
-                              - name: agent
-                                drops: 0
-                      interval:
-                        start: '2021-05-27T08:08:08Z'
-                        end: '2021-05-27T08:08:08Z'
-                        files:
-                          - location: df -P
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
-                          - location: /var/log/dpkg.log
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
-                          - location: last -n 20
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Statistical information for each agent was successfully read"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/upgrade:
     put:
       tags:
@@ -4922,7 +3979,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -4936,10 +3992,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent: "001"
-                      task_id: 1
-                    - agent: "002"
-                      task_id: 2
+                    - "001"
+                    - "002"
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -4981,7 +4035,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -4995,76 +4048,12 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent: "005"
-                      task_id: 3
-                    - agent: "006"
-                      task_id: 4
+                    - "005"
+                    - "006"
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
                 message: "All upgrade tasks were created"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/upgrade_result:
-    get:
-      tags:
-        - Agents
-      summary: "Get upgrade results"
-      description: "Return the agents upgrade results"
-      operationId: api.controllers.agent_controller.get_agent_upgrade
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/os.type'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.major'
-        - $ref: '#/components/parameters/os.minor'
-        - $ref: '#/components/parameters/os.arch'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
-      responses:
-        '200':
-          description: "Get agent upgrade results"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - message: "Success"
-                      agent: "001"
-                      task_id: 1
-                      node: "worker1"
-                      module: "upgrade_module"
-                      command: "upgrade"
-                      status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
-                      create_time: "2020-11-03T15:59:32Z"
-                      update_time: "2020-11-03T16:01:55Z"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All upgrade tasks were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5323,8 +4312,11 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using the `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name or the
+      same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
+      an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
+      owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
+      the agent and let its deletion complete before reusing its ID"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -5340,7 +4332,7 @@ paths:
               name: NewHost_2
               ip: 10.0.10.11
               id: "123"
-              key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+              key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               force:
                 enabled: True
                 disconnected_time:
@@ -5455,133 +4447,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - node_name: unknown
-                      ip: 172.16.16.16
+                    - ip: 172.16.16.16
                       id: 009
                       name: test_agent_wazuh
                       status: never_connected
                       dateAdd: 2021-05-27T10:06:13Z
                       registerIP: 172.16.16.16
                       status_code: 0
-                      group_config_status: not synced
-                    - node_name: unknown
-                      ip: 172.16.16.17
+                    - ip: 172.16.16.17
                       id: 010
                       name: test_agent_wazuh2
                       status: never_connected
                       dateAdd: 2021-05-27T10:06:27Z
                       registerIP: 172.16.16.17
                       status_code: 0
-                      group_config_status: not synced
-                    - node_name: unknown
-                      ip: any
+                    - ip: any
                       id: 011
                       name: test_wazuh_quick
                       status: never_connected
                       dateAdd: 2021-05-27T10:07:37Z
                       registerIP: any
                       status_code: 0
-                      group_config_status: not synced
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected agents information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/node/{node_id}/restart:
-    put:
-      tags:
-        - Agents
-      summary: "Restart agents in node"
-      description: "Restart all agents which belong to a specific given node"
-      operationId: api.controllers.agent_controller.restart_agents_by_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/agent:restart'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Agents restarted'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - "002"
-                    - "006"
-                    - "008"
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Restart command was sent to all agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/node/{node_id}/reload:
-    put:
-      tags:
-        - Agents
-      summary: "Reload agents in node"
-      description: "Reload all agents which belong to a specific given node"
-      operationId: api.controllers.agent_controller.reload_agents_by_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/agent:reload'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Agents reloaded'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - "002"
-                    - "006"
-                    - "008"
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Reload command was sent to all agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5643,10 +4533,7 @@ paths:
                       ip: 172.25.0.6
                       name: ac7cb188d538
                       status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: v4.3.0
-                      node_name: worker2
-                      group_config_status: "synced"
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -5664,10 +4551,7 @@ paths:
                       ip: 172.25.0.11
                       name: 91642a418627
                       status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: v4.3.0
-                      node_name: worker2
-                      group_config_status: "synced"
                       status_code: 0
                   total_affected_items: 2
                   total_failed_items: 0
@@ -5725,12 +4609,9 @@ paths:
                     total_failed_items: 3
                     failed_items:
                       - error:
-                          code: 1707
-                          message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
-                           to obtain more information on registering and connecting agents"
+                          code: 1761
+                          message: "Agent version is lower than the minimum required version (v5.0.0)"
+                          remediation: "Please upgrade the agent to v5.0.0 or higher to use this feature"
                         id:
                           - '009'
                           - '010'
@@ -5738,53 +4619,6 @@ paths:
                   message: "Reload command was not sent to some agents"
                   error: 2
 
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/reconnect:
-    put:
-      tags:
-        - Agents
-      summary: "Force reconnect agents"
-      description: "Force reconnect all agents or a list of them"
-      operationId: api.controllers.agent_controller.reconnect_agents
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Agents reconnected"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                example:
-                  data:
-                    affected_items:
-                      - '001'
-                      - '002'
-                      - '003'
-                    total_affected_items: 3
-                    total_failed_items: 0
-                    failed_items: []
-                  message: "Force reconnect command was sent to all agents"
-                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5836,17 +4670,76 @@ paths:
                     total_failed_items: 3
                     failed_items:
                       - error:
-                          code: 1707
-                          message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
-                           to obtain more information on registering and connecting agents"
+                          code: 1761
+                          message: "Agent version is lower than the minimum required version (v5.0.0)"
+                          remediation: "Please upgrade the agent to v5.0.0 or higher to use this feature"
                         id:
                           - '009'
                           - '010'
                           - '011'
                   message: "Restart command was not sent to some agents"
+                  error: 2
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/scan/vulnerability:
+    put:
+      tags:
+        - Agents
+      summary: "Scan agents for vulnerabilities"
+      description: "Request an on-demand vulnerability scan for all agents or a list of them"
+      operationId: api.controllers.agent_controller.scan_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:scan_vulnerability'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agent scan requested"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - '001'
+                      - '003'
+                    total_affected_items: 2
+                    total_failed_items: 3
+                    failed_items:
+                      - error:
+                          code: 1701
+                          message: "Agent does not exist"
+                        id:
+                          - '002'
+                      - error:
+                          code: 8005
+                          message: "Vulnerability scan queue is full, please retry later"
+                        id:
+                          - '004'
+                      - error:
+                          code: 1764
+                          message: "Vulnerability scanning requires agent version 5.0 or higher."
+                        id:
+                          - '005'
+                  message: "Scan was requested for some agents"
                   error: 2
 
         '400':
@@ -6037,10 +4930,6 @@ paths:
                     disconnected: 0
                     never_connected: 3
                     pending: 0
-                    total: 11
-                  configuration:
-                    synced: 8
-                    not_synced: 3
                     total: 11
                 error: 0
         '400':
@@ -6246,8 +5135,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
-                      node_name: worker1
                       ip: 172.20.0.7
                       id: 004
                       group:
@@ -6268,8 +5155,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      node_name: worker1
                       ip: 172.20.0.9
                       id: 005
                       group:
@@ -6290,8 +5175,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      node_name: worker2
                       ip: 172.20.0.10
                       id: 006
                       group:
@@ -6737,7 +5620,7 @@ paths:
         - Cluster
       summary: "Get nodes healthcheck"
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes
-      last keep alive, last synchronization time and number of agents reporting on each node"
+      last keep alive and last synchronization time"
       operationId: api.controllers.cluster_controller.get_healthcheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6765,13 +5648,11 @@ paths:
                         type: master
                         version: 4.4.0
                         ip: wazuh-master
-                        n_active_agents: 5
                     - info:
                         name: worker1
                         type: worker
                         version: 4.4.0
                         ip: 172.21.0.7
-                        n_active_agents: 3
                       status:
                         sync_integrity_free: true
                         last_check_integrity:
@@ -6806,7 +5687,6 @@ paths:
                         type: worker
                         version: 4.4.0
                         ip: 172.21.0.6
-                        n_active_agents: 1
                       status:
                         sync_integrity_free: true
                         last_check_integrity:
@@ -6923,10 +5803,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6961,10 +5841,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6998,10 +5878,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -7218,10 +6098,19 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        port: 1514
-                        protocol:
-                          - tcp
-                        queue_size: 131072
+                        - legacy:
+                            enabled: "yes"
+                            port: "1514"
+                            protocol:
+                              - tcp
+                            local_ip: "127.0.0.1"
+                          https:
+                            port: "1517"
+                            bind_addr: "127.0.0.1"
+                            certificate: "etc/certs/remoted.pem"
+                            key: "etc/certs/remoted-key.pem"
+                          agents:
+                            allow_higher_versions: "no"
                       syscollector:
                         disabled: no
                         interval: "1h"
@@ -7247,9 +6136,9 @@ paths:
                             ca:
                               - /var/wazuh-manager/etc/certs/root-ca.pem
                           certificate:
-                            - /var/wazuh-manager/etc/certs/manager.pem
+                            - /var/wazuh-manager/etc/certs/indexer-connector.pem
                           key:
-                            - /var/wazuh-manager/etc/certs/manager-key.pem
+                            - /var/wazuh-manager/etc/certs/indexer-connector-key.pem
                       command:
                         - name: disable-account
                           executable: disable-account
@@ -7277,11 +6166,10 @@ paths:
                         use_source_ip: "no"
                         purge: "yes"
                         use_password: "no"
-                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+                        ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/sslmanager.cert"
-                        ssl_manager_key: "etc/sslmanager.key"
-                        ssl_auto_negotiate: "no"
+                        ssl_manager_cert: "etc/certs/authd.pem"
+                        ssl_manager_key: "etc/certs/authd-key.pem"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"
@@ -7429,7 +6317,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-
   /cluster/{node_id}/logs:
     get:
       tags:
@@ -7539,13 +6426,6 @@ paths:
                         error: 3
                         warning: 0
                     - wazuh-manager-modulesd:content_manager:
-                        info: 1
-                        all: 1
-                        critical: 0
-                        debug: 0
-                        error: 0
-                        warning: 0
-                    - wazuh-manager-modulesd:router:
                         info: 1
                         all: 1
                         critical: 0
@@ -8452,7 +7332,6 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
-                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:
@@ -9515,7 +8394,6 @@ paths:
                           - "agent:read"
                           - "agent:delete"
                           - "agent:modify_group"
-                          - "agent:reconnect"
                           - "agent:restart"
                           - "agent:upgrade"
                         resources:
@@ -10050,13 +8928,6 @@ paths:
                         $ref: '#/components/schemas/OverviewAgents'
               example:
                 data:
-                  nodes:
-                    - node_name: "worker1"
-                      count: 1
-                    - node_name: "worker2"
-                      count: 1
-                    - node_name: "master-node"
-                      count: 1
                   groups:
                     - name: "default"
                       count: 6
@@ -10086,7 +8957,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: "20.04.02 LTS"
-                      node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
                       status: active
                       ip: "172.18.0.7"
@@ -10096,10 +8966,8 @@ paths:
                       registerIP: "any"
                       dateAdd: "2021-05-31T09:49:28Z"
                       id: "004"
-                      mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
                       version: "v4.3.0"
                       status_code: 0
-                      group_config_status: active
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10215,55 +9083,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /tasks/status:
-    get:
-      tags:
-        - Tasks
-      summary: "List tasks"
-      description: "Returns all available information about the specified tasks"
-      operationId: api.controllers.task_controller.get_tasks_status
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/task:status'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/tasks_list'
-        - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/node'
-        - $ref: '#/components/parameters/module'
-        - $ref: '#/components/parameters/status'
-      responses:
-        '200':
-          description: "Tasks's status"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - message: Success
-                      agent: 2
-                      task_id: 1
-                      node: worker2
-                      module: upgrade_module
-                      command: upgrade
-                      status: In progress
-                      create_time: 2020-11-10T11:55:33Z
-                      update_time: 2020-11-10T11:55:36Z
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified task's status were returned"
-                error: 0
 
 externalDocs:
   description: "Learn more about the Wazuh API"

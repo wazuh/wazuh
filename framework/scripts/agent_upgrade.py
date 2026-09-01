@@ -5,11 +5,23 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import warnings
 from asyncio import run
-from os.path import dirname
+from os.path import abspath, basename, dirname, isfile, join
 from signal import signal, SIGINT
 from sys import exit, path, argv
-from time import sleep
+from time import sleep, time
+
+from starlette.exceptions import StarletteDeprecationWarning
+
+# Importing connexion pulls in `starlette.testclient`, which warns when `httpx2` is not
+# installed. Starlette attributes the warning to the importer, so filter by message, not module.
+warnings.filterwarnings(
+    'ignore', category=StarletteDeprecationWarning,
+    message=r'Using `httpx` with `starlette\.testclient` is deprecated',
+)
+
+from connexion import ProblemException
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -17,15 +29,13 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     import wazuh.agent
-    from wazuh.agent import upgrade_agents, get_upgrade_result, get_agents
+    from wazuh.agent import upgrade_agents
     from wazuh.core import common
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
-
-from connexion import ProblemException
 
 
 # Functions
@@ -51,7 +61,11 @@ def get_script_arguments() -> argparse.Namespace:
                         help="Forces the agents to upgrade, ignoring version validations.")
     parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
+    parser.add_argument("-f", "--file", type=str,
+                        help="Custom WPK file. The file must already be placed in '{0}' (remoted "
+                             "delivers custom WPKs from that directory by filename). A bare "
+                             "filename or a path inside that directory are accepted.".format(
+                                 join(common.WAZUH_PATH, 'var', 'upgrade')))
     parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     parser.add_argument("-x", "--execute", type=str,
                         help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
@@ -73,51 +87,37 @@ def list_outdated():
         print("\nTotal outdated agents: {0}".format(agents.total_affected_items))
 
 
-async def get_agents_versions(agents: list) -> dict:
-    """Get the current versions of the specified agents.
+def resolve_wpk_file(file_arg: str) -> str:
+    """Resolve and validate a custom WPK path before creating any task.
+
+    Remoted delivers custom WPKs by reading '<WAZUH_PATH>/var/upgrade/<basename>' regardless
+    of the path used at validation time, so the file must already live in that directory.
+    Failing here avoids creating a task whose delivery step can only fail later.
 
     Parameters
     ----------
-    agents : list
-        List of agent's IDs.
-
-    Returns
-    -------
-    dict
-        Dictionary with the current version (prev_version).
-    """
-    f_kwargs = {
-        "agent_list": agents,
-        "select": ["version"],
-        "limit": len(agents)
-    }
-    agent_versions = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
-    cluster_utils.raise_if_exc(agent_versions)
-    return {agent['id']: {"prev_version": agent['version'], "new_version": None}
-            for agent in agent_versions.affected_items}
-
-
-async def get_agent_version(agent_id: str) -> str:
-    """Get the given agent's current version.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID.
+    file_arg : str
+        Value of the -f/--file argument: a bare filename or a path inside var/upgrade.
 
     Returns
     -------
     str
-        Agent version.
+        Absolute path of the WPK inside the upgrade directory.
     """
-    f_kwargs = {
-        "agent_list": [agent_id],
-        "select": ["version"],
-        "limit": 1
-    }
-    result = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
-    cluster_utils.raise_if_exc(result)
-    return result.affected_items[0]['version']
+    upgrade_dir = join(common.WAZUH_PATH, 'var', 'upgrade')
+    resolved = join(upgrade_dir, basename(file_arg))
+
+    if dirname(file_arg) and abspath(dirname(file_arg)) != upgrade_dir:
+        print("Error: custom WPK files are delivered from '{0}'. Move the file there and pass "
+              "its filename (got: '{1}').".format(upgrade_dir, file_arg))
+        exit(1)
+
+    if not isfile(resolved):
+        print("Error: WPK file not found: '{0}'. Place the file in '{1}' before launching the "
+              "upgrade.".format(resolved, upgrade_dir))
+        exit(1)
+
+    return resolved
 
 
 def create_command() -> dict:
@@ -128,71 +128,20 @@ def create_command() -> dict:
     dict
         Dictionary with upgrade command.
     """
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    request_time = int(time())
+
     if not args.file and not args.execute:
         f_kwargs = {'agent_list': args.agents, 'wpk_repo': args.repository, 'version': args.version,
-                    'use_http': args.http, 'force': args.force, 'package_type': args.package_type}
+                    'use_http': args.http, 'force': args.force, 'package_type': args.package_type,
+                    'request_time': request_time}
     else:
         # Upgrade custom
-        f_kwargs = {'agent_list': args.agents, 'installer': args.execute, 'file_path': args.file}
+        f_kwargs = {'agent_list': args.agents, 'installer': args.execute,
+                    'file_path': resolve_wpk_file(args.file) if args.file else args.file,
+                    'request_time': request_time}
 
     return f_kwargs
-
-
-def print_result(agents_versions: dict, failed_agents: dict):
-    """Print the operation's result.
-
-    Parameters
-    ----------
-    agents_versions : dict
-        Dictionary with the previous version and the new one.
-    failed_agents : dict
-        Contain the error's information.
-    """
-    len(agents_versions.keys()) > 0 and print('\nUpgraded agents:')
-    for agent_id, versions in agents_versions.items():
-        print(f"\tAgent {agent_id} upgraded: {versions['prev_version']} -> {versions['new_version']}")
-
-    len(failed_agents.keys()) > 0 and print('\nFailed upgrades:')
-    for agent_id, error in failed_agents.items():
-        print(f"\tAgent {agent_id} status: {error}")
-
-
-async def check_status(affected_agents: list, result_dict: dict, failed_agents: dict, silent: bool):
-    """Check the agent's upgrade status.
-
-    Parameters
-    ----------
-    affected_agents : list
-        Result of the upgrade task check.
-    result_dict : dict
-        Dictionary with the previous version and the new one.
-    failed_agents : dict
-        Contain the error's information.
-    silent : bool
-        Whether to show output or not.
-    """
-    affected_agents = set(affected_agents)
-    len(affected_agents) and print('\nUpgrading...')
-
-    while len(affected_agents):
-        task_results = await cluster_utils.forward_function(get_upgrade_result,
-                                                            f_kwargs={'agent_list': list(affected_agents)})
-        cluster_utils.raise_if_exc(task_results)
-
-        for task_result in task_results.affected_items.copy():
-            if task_result['status'] == 'Updated' or 'Legacy upgrade' in task_result['status']:
-                result_dict[task_result['agent']]['new_version'] = args.version if args.version \
-                    else await get_agent_version(task_result['agent'])
-                affected_agents.discard(task_result['agent'])
-            elif 'Error' in task_result['status'] or 'Timeout' in task_result['status'] or \
-                    'cancelled' in task_result['status']:
-                failed_agents[task_result['agent']] = task_result['error_msg'] if 'Error' in task_result['status'] \
-                    else task_result['status']
-                result_dict.pop(task_result['agent'])
-                affected_agents.discard(task_result['agent'])
-        sleep(3)
-
-    not silent and print_result(agents_versions=result_dict, failed_agents=failed_agents)
 
 
 async def main():
@@ -209,20 +158,20 @@ async def main():
             arg_parser.print_help()
             exit(0)
 
-        result = await cluster_utils.forward_function(upgrade_agents, f_kwargs=create_command())
+        result = await cluster_utils.forward_function(upgrade_agents, f_kwargs=create_command(),
+                                                      broadcasting=True)
         cluster_utils.raise_if_exc(result)
 
-        not args.silent and len(result.failed_items.keys()) > 0 and print("Agents that cannot be upgraded:")
+        # Fire-and-forget model: tasks are created but no status tracking in 5.x
         if not args.silent:
-            for agent_result, agent_ids in result.failed_items.items():
-                print(f"\tAgent {', '.join(agent_ids)} upgrade failed. Status: {agent_result}")
+            if len(result.failed_items.keys()) > 0:
+                print("Agents that cannot be upgraded:")
+                for agent_result, agent_ids in result.failed_items.items():
+                    print(f"\tAgent {', '.join(agent_ids)} upgrade failed. Status: {agent_result}")
 
-        result.affected_items = [task["agent"] for task in result.affected_items]
-        agents_versions = await get_agents_versions(agents=result.affected_items)
-
-        failed_agents = {}
-        await check_status(affected_agents=result.affected_items, result_dict=agents_versions,
-                           failed_agents=failed_agents, silent=args.silent)
+            if result.total_affected_items > 0:
+                print(f"\nUpgrade tasks created for {result.total_affected_items} agent(s).")
+                print("Note: Agents will execute upgrades autonomously. Use agent logs to track progress.")
 
     except WazuhError as wazuh_err:
         print(f"Error {wazuh_err.code}: {wazuh_err.message}")

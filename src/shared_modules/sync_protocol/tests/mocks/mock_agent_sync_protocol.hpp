@@ -15,22 +15,13 @@ class MockAgentSyncProtocol : public IAgentSyncProtocol
                     (const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext),
                     (override));
 
-        MOCK_METHOD(void,
-                    persistDifferenceInMemory,
-                    (const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version),
-                    (override));
-
         MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
 
         MOCK_METHOD(bool, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
 
-        MOCK_METHOD(void, clearInMemoryData, (), (override));
-
         MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups, (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
 
         MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>& indices, Option option), (override));
-
-        MOCK_METHOD(bool, sendDataContextMessages, (uint64_t session, const std::vector<PersistedData>& data), (override));
 
         MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
 

@@ -111,8 +111,11 @@ def test_generate_keypair_ko():
     """Verify expected exception is raised when IOError"""
     with patch('builtins.open'):
         with patch('os.chmod'):
-            with patch('os.chown', side_effect=PermissionError):
-                assert generate_keypair()
+            with patch('api.authentication.wazuh_uid', return_value=0):
+                with patch('api.authentication.wazuh_gid', return_value=0):
+                    with patch('os.chown', side_effect=PermissionError):
+                        assert generate_keypair()
+
 
 @patch("api.authentication._write_new_keypair", return_value=("priv", "pub"))
 @patch("os.path.exists", return_value=False)
@@ -207,6 +210,83 @@ def test_check_token(mock_tokenmanager):
     assert result == {'valid': ANY, 'policies': ANY}
 
 
+def _orm_manager_mock(instance):
+    """Return a MagicMock whose context-manager protocol yields `instance`."""
+    manager = MagicMock()
+    manager.return_value.__enter__.return_value = instance
+    return manager
+
+
+@patch('api.authentication.optimize_resources', return_value={})
+def test_check_token_runas_revoked_at_user_level(mock_optimize):
+    """A run_as user with no statically-linked roles must be validated against the token blacklist.
+
+    This covers logout and user-level revocation, whose blacklist entry is keyed on the user and
+    was never consulted when the per-role loop iterated over an empty user_roles list.
+    """
+    am = MagicMock()
+    am.get_user.return_value = {'id': 101, 'username': 'rauser'}
+    am.user_allow_run_as.return_value = True
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = []
+    tm = MagicMock()
+    tm.is_token_valid.return_value = False
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        result = check_token(username='rauser', roles=tuple([1]), token_nbf_time=100,
+                                            run_as=True, origin_node_type='master')
+
+    assert result == {'valid': False}
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=100, run_as=True)
+
+
+@patch('api.authentication.optimize_resources', return_value={})
+def test_check_token_runas_revoked_dynamic_role(mock_optimize):
+    """Revoking a dynamically-granted role must invalidate a run_as token carrying it.
+
+    The role travels in the token (roles) and is absent from user_roles, so the validity check
+    must be driven by the token's roles, not only the statically-linked ones.
+    """
+    am = MagicMock()
+    am.get_user.return_value = {'id': 101, 'username': 'rauser'}
+    am.user_allow_run_as.return_value = True
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = []
+    tm = MagicMock()
+    tm.is_token_valid.side_effect = lambda **kwargs: kwargs.get('role_id') != 1
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        result = check_token(username='rauser', roles=tuple([1]), token_nbf_time=200,
+                                            run_as=True, origin_node_type='master')
+
+    assert result == {'valid': False}
+    tm.is_token_valid.assert_any_call(role_id=1, user_id=101, token_nbf_time=200, run_as=True)
+
+
+@patch('api.authentication.optimize_resources', return_value={'policy': 'test'})
+def test_check_token_runas_valid(mock_optimize):
+    """A run_as user with a non-revoked token remains valid."""
+    am = MagicMock()
+    am.get_user.return_value = {'id': 101, 'username': 'rauser'}
+    am.user_allow_run_as.return_value = True
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = []
+    tm = MagicMock()
+    tm.is_token_valid.return_value = True
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        result = check_token(username='rauser', roles=tuple([1]), token_nbf_time=300,
+                                            run_as=True, origin_node_type='master')
+
+    assert result == {'valid': True, 'policies': {'policy': 'test'}}
+
+
 @pytest.mark.asyncio
 @patch('api.authentication.jwt.decode')
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
@@ -216,7 +296,7 @@ def test_check_token(mock_tokenmanager):
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                       mock_decode):
-    
+
     mock_decode.return_value = deepcopy(original_payload)
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]

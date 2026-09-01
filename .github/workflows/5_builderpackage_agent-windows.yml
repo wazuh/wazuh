@@ -56,7 +56,7 @@ permissions:
 jobs:
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     name: Detect changed Windows test modules
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
@@ -81,7 +81,7 @@ jobs:
       id-token: write
       contents: read
     needs: detect-changes
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -97,8 +97,6 @@ jobs:
           sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
 
       - name: Install a compatible CMake
-        # TODO(codebuild-temp): Remove when CodeBuild base images ship cmake.
-        # The winagent deps build (make -C src deps) builds cmocka with cmake internally.
         uses: ./.github/actions/reinstall_cmake
 
       - name: Set VERSION
@@ -140,8 +138,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-windows-i686
-    runs-on:
-      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: windows-2022
     timeout-minutes: 30
     name: Generate MSI package
     outputs:
@@ -214,11 +211,14 @@ jobs:
           }
 
       - name: Set up Visual C++ Build Tools (cv2pdb PDB writer)
-        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the VC Build Tools.
-        # cv2pdb needs the Microsoft PDB writer (mspdb*.dll) to convert the DWARF debug info into
-        # PDBs. GitHub-hosted Windows images bundle Visual Studio; the CodeBuild image does not,
-        # so install the VC.Tools workload and put the 32-bit mspdb*.dll directory on PATH (the
-        # winagent build is i686, so cv2pdb.exe and mspdb must both be x86).
+        # Required on every runner, not a workaround. cv2pdb needs the Microsoft PDB writer
+        # (mspdb*.dll) to convert the DWARF debug info into PDBs, and the 32-bit one since the
+        # winagent build is i686. MSVC does not put it on PATH by default, so the final
+        # Add-Content to GITHUB_PATH below is this step's actual purpose and runs unconditionally.
+        # Only the install branch is a fallback: on windows-2022 the lookup succeeds and logs
+        # "Using PDB writer from: ...\VC\Tools\MSVC\<ver>\bin\HostX86\x86". Do not delete this
+        # step on the grounds that the install no-ops -- removing it would leave cv2pdb without a
+        # PDB writer, which may degrade the debug symbols rather than fail loudly.
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -259,26 +259,6 @@ jobs:
 
           Write-Host "Using PDB writer from: $mspdbDir"
           Add-Content -Path $env:GITHUB_PATH -Value $mspdbDir
-
-      - name: Set up WiX Toolset (MSI build)
-        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the WiX Toolset.
-        # generate_wazuh_msi.ps1 builds the MSI with candle.exe/light.exe (WiX v3). GitHub-hosted
-        # Windows images bundled WiX; the CodeBuild image does not, so download the WiX v3
-        # binaries and put them on PATH (the script also uses WixUtilExtension/WixUIExtension,
-        # which ship in the same zip).
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
-            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
-          } else {
-            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
-            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
-            $wixDir = 'C:\wix314'
-            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
-            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
-            Write-Host "WiX extracted to $wixDir"
-          }
 
       - name: Generate MSI package (without signing)
         id: build
@@ -350,7 +330,7 @@ jobs:
       id-token: write
       contents: read
     needs: package-windows-i686
-    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: windows-2022
     timeout-minutes: 30
     name: Test MSI package
 
@@ -444,7 +424,7 @@ jobs:
       contents: read
     needs: [package-windows-i686, test-windows-i686]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     name: Upload MSI to S3
 

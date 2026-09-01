@@ -4,7 +4,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Configuration file:** `/var/ossec/etc/ossec.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\ossec.conf` (Windows)
 
-**XML Sections:** `<client>`, `<client_buffer>`, `<anti_tampering>`
+**XML Sections:** `<agent>`, `<anti_tampering>`
 
 **Module:** Agent-only
 
@@ -14,31 +14,63 @@ For module overview and architecture, see [Client Module](index.html).
 
 ---
 
-## Client Configuration (`<client>`)
+## Agent Configuration (`<agent>`)
 
 Configures the agent's connection to the Wazuh manager.
 
-### server
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts: `<client><server><address>` is read and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent><manager>` to keep them all.
 
-Manager server configuration block. Multiple `<server>` blocks can be defined for failover.
+### manager
+
+Manager connection configuration block.
 
 **Sub-options:**
 
+#### endpoint
+
+The complete connection target: the manager's address, optionally a port, and optionally the
+URL path prefix it is served under. This one option replaces the separate `address` and `port`
+tags.
+
+```
+endpoint = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+```
+
+- **Required:** Yes — `host` is the only mandatory part.
+- **Allowed values:** `host` is an IPv4 address, a hostname, or a **bracketed** IPv6 literal
+  (the brackets keep its colons from reading as the port separator, and are dropped from the
+  stored value). A link-local IPv6 address may carry a zone id with `%` percent-encoded as
+  `%25`; an interface name is resolved to its index while the configuration is parsed, so an
+  unknown name is rejected there. `port` defaults to `1517`. An `https://` scheme is accepted
+  and ignored; any other scheme is rejected.
+- **Example:** `192.168.1.100`, `manager.example.com:8443/gateway`,
+  `[2001:db8::1]:1517`, `[fe80::1%25eth0]:1517`
+- **Note on the prefix:** omitting the slash entirely selects the default prefix
+  `wazuh-manager`, matching a manager whose `<remote><https><global_prefix>` is the shipped
+  `/wazuh-manager/`. A **trailing slash with nothing after it** is the explicit opt-out for a
+  manager serving unprefixed endpoints — so `192.168.1.100` and `192.168.1.100/` mean
+  different things. This mirrors the manager, where `<global_prefix>` is `/` to serve no
+  prefix; on both sides an **empty** value is a configuration error, not an opt-out. A prefix
+  mismatch between the two surfaces as `404`.
+
 #### address
 
-Manager IP address or hostname.
+**DEPRECATED:** folded into `endpoint`. Still read so that an agent upgraded in place — an
+upgrade never rewrites `ossec.conf` — keeps connecting: the agent composes the target from
+`address`, `port` (or its `1517` default) and the default prefix, and logs at `INFO` the single
+`<endpoint>` line that replaces them. If `endpoint` is also present it wins, whatever the order,
+and `address`/`port` are ignored with a warning.
 
-- **Required:** Yes (at least one server must be defined)
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 - **Example:** `192.168.1.100`, `manager.example.com`, `::1`
 
 #### port
 
-Manager port number.
+**DEPRECATED:** folded into `endpoint`. See `address`.
 
-- **Default value:** `1514`
+- **Default value:** `1517`
 - **Allowed values:** Valid port number (1-65535)
-- **Example:** `1514`
+- **Note:** A `<port>` inside a legacy `<client><server>` block is not read.
 
 #### protocol
 
@@ -50,27 +82,80 @@ Manager port number.
 
 #### max_retries
 
-Maximum connection retry attempts before failing over to next server.
-
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Note:** Only applicable when multiple servers are configured
+**DEPRECATED:** parsed but ignored. Server rotation and the connection-retry loop were removed
+with the HTTPS transport; the parser accepts the tag so an upgraded configuration does not fail
+and logs that it no longer has any effect.
 
 #### retry_interval
 
-Time in seconds to wait between connection retry attempts.
+**DEPRECATED:** parsed but ignored. See `max_retries`.
 
-- **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
-- **Note:** Applies when retrying connection to the same server
 
-#### interface_index
+### ssl
 
-Network interface index to bind for manager connection.
+TLS configuration for the agent's HTTPS connection to the manager. Controls how the agent
+verifies the manager's certificate and, optionally, presents its own client certificate.
 
-- **Default value:** Auto-select
-- **Allowed values:** Positive integer (interface index number)
-- **Note:** Platform-specific; forces agent to use specific network interface
+**Sub-options:**
+
+#### certificate
+
+Path to an optional client (mTLS) certificate the agent presents to the manager.
+
+- **Default value:** None (no client certificate presented)
+- **Allowed values:** Path to a PEM-encoded certificate file, readable by the agent
+- **Note:** Must be set together with `<key>`; setting only one of the two is rejected.
+
+#### key
+
+Path to the private key matching `<certificate>`.
+
+- **Default value:** None
+- **Allowed values:** Path to a PEM-encoded private key file, readable by the agent
+- **Note:** Must be set together with `<certificate>`; setting only one of the two is rejected.
+
+#### certificate_authorities
+
+Path to the CA bundle used to verify the manager's certificate.
+
+- **Default value:** None
+- **Allowed values:** Path to a PEM-encoded CA bundle file, readable by the agent
+- **Required:** Yes, when `<verification_mode>` is `full` or `certificate` -- the agent fails
+  closed (refuses to start) without a readable CA file in that case.
+- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed if
+  it is, since the OS trust store is used as the anchor instead and a configured CA would go
+  silently unused. Ignored (with a warning if set but unreadable) when `<verification_mode>` is
+  `none`.
+
+#### verification_mode
+
+How strictly the agent verifies the manager's TLS certificate.
+
+- **Default value:** `none`
+- **Allowed values:**
+  - `full` — verify the certificate against `<certificate_authorities>` AND check that it
+    matches the manager's hostname (strictest).
+  - `certificate` — verify the certificate against `<certificate_authorities>`, but do not
+    check the hostname.
+  - `none` — no TLS verification at all. Insecure; intended for quick testing only.
+  - `system` — verify the certificate (and hostname, like `full`) against the operating
+    system's own trusted CA store instead of `<certificate_authorities>`, the way a web
+    browser trusts a public website. Useful when the manager's certificate is issued by a
+    publicly (or OS-) trusted CA, so a CA bundle does not need to be distributed to every
+    agent by hand. On Windows and macOS this uses the native certificate store (Windows
+    Certificate Store / Keychain); on Linux it probes a fixed set of well-known distribution
+    paths (e.g. `/etc/ssl/certs/ca-certificates.crt` on Debian-family systems,
+    `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
+    none is found on the host.
+- **Note:** Any value other than the four above is rejected at config-parse time.
+
+#### ciphers
+
+TLS 1.3 ciphersuite list to offer during the handshake.
+
+- **Default value:** None (libcurl/OpenSSL default TLS 1.3 ciphersuites)
+- **Allowed values:** Colon-separated list of TLS 1.3 ciphersuite names
+- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
 
 ### ip_update_interval
 
@@ -124,7 +209,13 @@ Automatically restart agent when receiving configuration updates from manager.
 
 ### enrollment
 
-Agent auto-enrollment configuration block (optional).
+Agent auto-enrollment configuration block (optional). Since 5.0.0 (#38465),
+enrollment runs over the same HTTPS channel and TLS material as every other
+manager endpoint — it dials `<agent><manager>` and presents `<agent><ssl>`,
+instead of opening a second connection to `authd` on port 1515. There is no
+longer a separate address/port/certificate/key/CA/cipher configuration for
+enrollment: the options that used to duplicate that (see **Removed options**
+below) are gone.
 
 **Sub-options:**
 
@@ -134,20 +225,6 @@ Enable automatic agent enrollment.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-
-#### manager_address
-
-Manager address for enrollment (can differ from data connection).
-
-- **Default value:** Value from `<server><address>`
-- **Allowed values:** Valid IPv4, IPv6 address, or hostname
-
-#### port
-
-Manager enrollment port (authd).
-
-- **Default value:** `1515`
-- **Allowed values:** Valid port number (1-65535)
 
 #### agent_name
 
@@ -169,7 +246,8 @@ Path to file containing enrollment authorization password.
 
 - **Default value:** None
 - **Allowed values:** Valid file path
-- **Note:** Password must match manager's authd password
+- **Note:** Password must match manager's authd password. Re-read on every
+  enrollment attempt, so rotating the file does not require an agent restart.
 
 #### agent_address
 
@@ -177,46 +255,8 @@ Agent's IP address to use for enrollment (overrides auto-detected address).
 
 - **Default value:** Auto-detected
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Useful when agent has multiple network interfaces
-
-#### ssl_cipher
-
-SSL/TLS cipher suite for enrollment connection.
-
-- **Default value:** System default
-- **Allowed values:** Valid OpenSSL cipher string
-- **Example:** `HIGH:!aNULL:!MD5`
-
-#### server_ca_path
-
-Path to CA certificate file for verifying manager certificate during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-- **Note:** Required for SSL verification during enrollment
-
-#### agent_certificate_path
-
-Path to agent's client certificate for mutual TLS authentication during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-
-#### agent_key_path
-
-Path to agent's private key for mutual TLS authentication during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-- **Note:** Must correspond to `agent_certificate_path`
-
-#### auto_method
-
-Automatic enrollment method selection.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agent automatically selects best enrollment method
+- **Note:** Useful when agent has multiple network interfaces. Incompatible
+  with `use_source_ip`.
 
 #### delay_after_enrollment
 
@@ -232,48 +272,26 @@ Use agent's source IP address for enrollment instead of configured address.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** Useful for NAT scenarios
+- **Note:** Useful for NAT scenarios. Incompatible with `agent_address`.
 
-#### interface_index
+#### Removed options
 
-Network interface index to bind for enrollment connection.
-
-- **Default value:** Auto-select
-- **Allowed values:** Positive integer (interface index number)
-- **Note:** Platform-specific; use `ip link` or `ifconfig` to find interface indices
+The following options are **no longer used**: `manager_address`, `port`,
+`interface_index` (superseded by `<agent><manager>`; the interface for a link-local
+IPv6 manager is now the zone id inside `<endpoint>`, e.g.
+`<endpoint>[fe80::1%25eth0]:1517</endpoint>`) and `ssl_cipher`,
+`server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
+`<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
+`ossec.conf`, which an in-place upgrade does not rewrite — still starts the
+agent normally: each is recognized and logged at `INFO`, not rejected.
 
 ---
 
 ## Client Buffer Configuration (`<client_buffer>`)
 
-Configures event buffering when the manager is unreachable.
-
-### disabled
-
-Enable or disable client buffering.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled (`no`), events are buffered during manager disconnections
-
-### queue_size
-
-Maximum number of events to buffer.
-
-- **Default value:** `5000`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Maximum:** System memory dependent
-- **Note:** Events exceeding this limit are dropped
-
-### events_per_second
-
-Maximum events per second to send when reconnecting (rate limiting).
-
-- **Default value:** `500`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Note:** Prevents overwhelming manager during reconnection
+Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
+accumulator, configured under `<agent><batch>`. The section is still accepted
+and ignored, with a warning.
 
 ---
 
@@ -309,9 +327,6 @@ Additional client settings can be configured in the internal options file.
 # Debug level for agentd (0=no debug, 1=basic, 2=verbose)
 agent.debug=0
 
-# Receive timeout in seconds (default: 60)
-agent.recv_timeout=60
-
 # Send timeout in seconds (default: 60)
 agent.send_timeout=60
 
@@ -344,6 +359,70 @@ agent.min_eps=50
 
 # State reporting interval in seconds (default: 5)
 agent.state_interval=5
+```
+
+### HTTPS Connection Timing
+
+These control the agent's half of the HTTPS timing contract with the manager. Each one pairs with
+a manager-side deadline, so they should be changed together with the corresponding
+`remoted.*` option rather than on their own — see
+[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module).
+
+An attempt count is the **total** number of tries, not retries after the first: `1` means "send
+once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;
+authentication failures, permanent errors and version rejections stop immediately. A step's worst
+case is therefore about `attempts × timeout` plus the jittered backoff between tries — check that
+figure against `<global><agents_disconnection_time>` before raising either.
+
+```ini
+# Per-request budget for /control, /stateless, /stats and /config, in
+# milliseconds (default: 10000, range 1000-600000). Covers DNS, TCP, TLS and
+# transfer -- there is no separate connect or handshake timeout.
+agent.https_request_timeout=10000
+
+# Per-request budget for large transfers: /stateful and both POST /download
+# kinds, config and WPK (default: 90000, range 1000-3600000)
+agent.https_stateful_timeout=90000
+
+# Retry backoff, full jitter: the delay before attempt n is uniform in
+# [0, min(cap, base * 2^n)], reset on success, tracked per stream.
+agent.https_backoff_base=1000
+agent.https_backoff_cap=60000
+
+# Retry cadence for Startup after the manager rejects the agent's version,
+# in seconds (default: 60, range 1-86400)
+agent.https_rejected_retry_interval=60
+
+# Largest WPK accepted by a remote_upgrade download, in bytes
+# (default: 209715200 = 200 MiB)
+agent.https_wpk_max_download_bytes=209715200
+
+# Per-stream retry budgets, total tries (range 1-64)
+agent.https_control_attempts=4
+agent.https_stateless_attempts=5
+agent.https_stateful_attempts=5
+agent.https_download_attempts=2
+
+# Consecutive undeliverable /control steps before event producers pause;
+# one deliverable step releases the pause (default: 2, range 1-1000)
+# Undeliverable means unreachable, a rejected key or a rejected version. Answers that
+# clear on their own (5xx, 429, 503, 413, 400) are excluded and reset the streak, so
+# persistent 503s never reach this threshold.
+agent.https_producer_pause_threshold=2
+```
+
+### Enrollment Retry
+
+Not part of the HTTPS request path, but it bounds how long the agent can be held up before it
+next talks to the manager.
+
+```ini
+# Enrollment retry ramp, shared by the initial-enrollment loop and the
+# https_client re-enrollment loop: the delay grows by <delta> seconds after
+# each failed attempt, up to <max>. Both loops read these same two options,
+# so they cannot drift apart.
+agent.enrollment_retry_delta=5
+agent.enrollment_retry_max=60
 ```
 
 ### Buffer Settings
@@ -390,47 +469,18 @@ monitord.rotate_log=1
 Single manager, standard settings:
 
 ```xml
-<client>
-  <server>
+<agent>
+  <manager>
     <address>10.0.0.10</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
   <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
   <crypto_method>aes</crypto_method>
-</client>
-```
-
-### Failover Configuration
-
-Multiple managers for high availability:
-
-```xml
-<client>
-  <server>
-    <address>manager1.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <server>
-    <address>manager2.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <server>
-    <address>manager3.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <notify_time>30</notify_time>
-  <time-reconnect>30</time-reconnect>
-</client>
+</agent>
 ```
 
 ### Auto-Enrollment Configuration
@@ -438,33 +488,36 @@ Multiple managers for high availability:
 Automatic agent registration:
 
 ```xml
-<client>
+<agent>
   <enrollment>
     <enabled>yes</enabled>
-    <manager_address>manager.example.com</manager_address>
-    <port>1515</port>
     <agent_name>web-server-prod-01</agent_name>
     <groups>webservers,production</groups>
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
-  <server>
+  <manager>
     <address>manager.example.com</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
-</client>
+  </manager>
+</agent>
 ```
+
+Enrollment dials the address/port from `<manager>` above (and, if configured,
+presents the TLS material from `<ssl>`) — there is no separate
+`manager_address`/`port` to set under `<enrollment>` any more.
 
 ### Client Buffer Configuration
 
 High-volume environment:
 
 ```xml
-<client_buffer>
-  <disabled>no</disabled>
-  <queue_size>50000</queue_size>
-  <events_per_second>1000</events_per_second>
-</client_buffer>
+<agent>
+  <batch>
+    <size>10MB</size>
+    <interval>5s</interval>
+  </batch>
+</agent>
 ```
 
 ### Anti-Tampering Configuration
@@ -483,19 +536,11 @@ Full example with all sections:
 
 ```xml
 <ossec_config>
-  <client>
-    <server>
+  <agent>
+    <manager>
       <address>manager1.example.com</address>
-      <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
-    </server>
-    <server>
-      <address>manager2.example.com</address>
-      <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
-    </server>
+      <port>1517</port>
+    </manager>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
     <time-reconnect>60</time-reconnect>
@@ -503,17 +548,9 @@ Full example with all sections:
     <crypto_method>aes</crypto_method>
     <enrollment>
       <enabled>yes</enabled>
-      <manager_address>manager1.example.com</manager_address>
-      <port>1515</port>
       <groups>webservers,production</groups>
     </enrollment>
-  </client>
-
-  <client_buffer>
-    <disabled>no</disabled>
-    <queue_size>10000</queue_size>
-    <events_per_second>600</events_per_second>
-  </client_buffer>
+  </agent>
 
   <anti_tampering>
     <package_uninstallation>yes</package_uninstallation>
@@ -531,7 +568,7 @@ Full example with all sections:
 
 ### disable-active-response
 
-**DEPRECATED:** The `<disable-active-response>` tag within `<client>` is parsed but has no effect.
+**DEPRECATED:** The `<disable-active-response>` tag within `<agent>` is parsed but has no effect.
 
 - **Status:** Deprecated silent no-op
 - **Behavior:** Parser accepts the tag but does not use the value

@@ -25,8 +25,8 @@
 #include <thread>
 #include <vector>
 
-// 60 seconds interval for monitoring
-constexpr auto INTERVAL = 60u;
+// Default health-check period, seconds, overridable via `monitoring_interval_seconds`
+constexpr auto DEFAULT_MONITORING_INTERVAL = 10u;
 
 // 5 seconds timeout for health check requests
 constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
@@ -39,18 +39,51 @@ auto constexpr MONITOR_NAME {"monitoring"};
 /**
  * @brief Monitoring class.
  *
+ * ## Why the availability bits are atomics and nothing is locked across a health check
+ *
+ * A round of health checks costs up to HEALTH_CHECK_TIMEOUT_MS **per host**, sequentially, and hosts
+ * that accept a TCP connection and then never answer burn the whole timeout each. This class used to
+ * hold one mutex for the entire round, and `isAvailable()` took that same mutex -- so every reader
+ * queued behind the round.
+ *
+ * That mattered far beyond a slow status query, because `isAvailable()` sits in `TServerSelector`,
+ * which every `getNext()` calls: it was on the path of every bulk, search and PIT of every consumer
+ * (the engine, vulnerability_scanner, inventory_sync and inventory_sync_server). In
+ * inventory_sync_server, whose `/stats` and `/config` handlers call it from an asio I/O thread, a
+ * measured 3 unreachable hosts froze the entire HTTP transport for ~15 s out of every ~25 s.
+ *
+ * So: readers are wait-free, and no lock is ever held across an HTTP call.
+ *
+ * ## The invariant that makes the lock-free reads sound
+ *
+ * `m_servers`'s **structure is frozen** once the constructor returns: keys are inserted only by
+ * `initialize()`, before the monitor thread exists and before this object can be reached by any
+ * reader. Only the atomic values change afterwards. Do NOT insert into `m_servers` after
+ * construction -- concurrent lookups would then race with a rehash/rebalance.
  */
 template<typename THttpRequest>
 class TMonitoring final
 {
-    std::map<std::string, bool, std::less<>> m_servers;
+    /// Host -> availability. Structure frozen after construction; values published by the monitor
+    /// thread with release and read wait-free with acquire. See the class comment.
+    std::map<std::string, std::atomic<bool>, std::less<>> m_servers;
     std::thread m_thread;
-    std::mutex m_mutex;
+    /// Guards ONLY the interval wait of the monitor thread. Deliberately never held across a health
+    /// check: that is the whole point of this class's synchronisation. Named for what it protects so
+    /// nobody widens it back.
+    std::mutex m_sleepMutex;
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
-    uint32_t m_interval {INTERVAL};
+    uint32_t m_interval {DEFAULT_MONITORING_INTERVAL};
     THttpRequest* m_httpRequest;
+    /// Diagnostic strings for the unavailable hosts, read only by getUnavailableServersDetails() --
+    /// the cold "no available server" error path. Guarded by its own mutex, held for a map update or
+    /// a read and NEVER across an HTTP call, so it cannot reintroduce the stall.
+    std::mutex m_reasonsMutex;
     std::map<std::string, std::string, std::less<>> m_unavailableReasonByServer;
+    /// Touched only by the thread running a round (the constructor's, then the monitor's), purely to
+    /// make the "no longer available" / "available again" logging edge-triggered. Needs no
+    /// synchronisation: no reader ever looks at it.
     std::map<std::string, bool, std::less<>> m_previousServerAvailability;
 
     /**
@@ -62,21 +95,32 @@ class TMonitoring final
      * @note The serverStatus is updated to true if the server is green or yellow, otherwise it is updated to false.
      *
      * @param serverAddress Server's address.
+     * @param serverStatus The availability slot to publish into. Passed in rather than looked up so
+     *                     this function can never insert into m_servers (see the class comment).
      * @param authentication Object that provides secure communication.
      */
-    void healthCheck(const std::string& serverAddress, const SecureCommunication& authentication)
+    void healthCheck(const std::string& serverAddress,
+                     std::atomic<bool>& serverStatus,
+                     const SecureCommunication& authentication)
     {
-        auto& serverStatus = m_servers[serverAddress];
         const auto previousAvailability = m_previousServerAvailability.find(serverAddress);
         const bool wasAvailable =
             previousAvailability == m_previousServerAvailability.end() || previousAvailability->second;
         std::string unavailableReason;
 
-        // Set the server status to unavailable by default
-        serverStatus = false;
+        /*
+         * Computed into a local and published ONCE, at the end.
+         *
+         * Writing a pessimistic `false` here and the real answer later would make a healthy host read
+         * as unavailable for the whole duration of its own check -- up to HEALTH_CHECK_TIMEOUT_MS. The
+         * previous implementation did exactly that and got away with it only because it held a lock
+         * that no reader could get past; with wait-free readers the transient becomes observable, and
+         * it would make getNext() skip a healthy host, or answer 503 with one host configured.
+         */
+        bool available {false};
 
         // On success callback
-        const auto onSuccess = [&serverStatus](std::string response)
+        const auto onSuccess = [&available](std::string response)
         {
             // Parse the response without throwing exceptions
             // Response example:
@@ -106,7 +150,7 @@ class TMonitoring final
             if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME))
             {
                 const auto& serverHealth = data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>();
-                serverStatus = serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0;
+                available = serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0;
             }
         };
 
@@ -184,33 +228,40 @@ class TMonitoring final
                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                            ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
 
-        if (!serverStatus && unavailableReason.empty())
+        // The single publish. Everything below reads the local, so the log line, the stored reason and
+        // the value readers see can never disagree.
+        serverStatus.store(available, std::memory_order_release);
+
+        if (!available && unavailableReason.empty())
         {
             unavailableReason = "Cluster reported unhealthy status";
         }
 
-        if (!serverStatus)
         {
-            m_unavailableReasonByServer[serverAddress] = unavailableReason;
-        }
-        else
-        {
-            m_unavailableReasonByServer.erase(serverAddress);
+            std::scoped_lock lock(m_reasonsMutex);
+            if (!available)
+            {
+                m_unavailableReasonByServer[serverAddress] = unavailableReason;
+            }
+            else
+            {
+                m_unavailableReasonByServer.erase(serverAddress);
+            }
         }
 
-        if (wasAvailable && !serverStatus)
+        if (wasAvailable && !available)
         {
             logInfo(MONITOR_NAME,
                     "Indexer node '%s' is no longer available. Reason: %s",
                     serverAddress.c_str(),
                     unavailableReason.c_str());
         }
-        else if (!wasAvailable && serverStatus)
+        else if (!wasAvailable && available)
         {
             logInfo(MONITOR_NAME, "Indexer node '%s' is available again.", serverAddress.c_str());
         }
 
-        m_previousServerAvailability[serverAddress] = serverStatus;
+        m_previousServerAvailability[serverAddress] = available;
     }
 
     /**
@@ -220,9 +271,9 @@ class TMonitoring final
      */
     void initialize(const std::vector<std::string>& serverAddresses, const SecureCommunication& authentication)
     {
-        std::scoped_lock lock(m_mutex);
-
-        // Initialize the status of the servers
+        // No lock: this runs from the constructor, so the monitor thread does not exist yet and no
+        // reader can hold a reference to this object. It is also the ONLY place that inserts into
+        // m_servers, which is what freezes the map's structure for the lock-free reads.
         for (const auto& serverAddress : serverAddresses)
         {
             if (m_stop)
@@ -230,18 +281,26 @@ class TMonitoring final
                 // If the thread is stopped, break the loop.
                 return;
             }
-            healthCheck(serverAddress, authentication);
+            const auto [entry, _] = m_servers.try_emplace(serverAddress, false);
+            healthCheck(entry->first, entry->second, authentication);
         }
     }
 
 public:
     ~TMonitoring()
     {
+        // m_stop is atomic, so asking the monitor to stop needs no lock -- and must not take one.
+        // Taking m_sleepMutex first used to mean the destructor itself waited out however much of the
+        // current round was left (up to 5 s per host) before it could even set the flag, which put
+        // that delay straight into modulesd's bounded shutdown budget.
+        m_stop.store(true, std::memory_order_release);
         {
-            std::scoped_lock lock(m_mutex);
-            m_stop = true;
-            m_condition.notify_one();
+            // Empty critical section on purpose: it closes the window where the monitor has evaluated
+            // its predicate but not yet slept, which would otherwise swallow the notify below.
+            std::scoped_lock lock(m_sleepMutex);
         }
+        m_condition.notify_one();
+
         if (m_thread.joinable())
         {
             m_thread.join();
@@ -257,7 +316,7 @@ public:
      * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
      */
     explicit TMonitoring(const std::vector<std::string>& serverAddresses,
-                         const uint32_t interval = INTERVAL,
+                         const uint32_t interval = DEFAULT_MONITORING_INTERVAL,
                          const SecureCommunication& authentication = {},
                          THttpRequest* httpRequest = nullptr)
         : m_interval(interval)
@@ -271,20 +330,24 @@ public:
         m_thread = std::thread(
             [this, authentication]()
             {
-                std::unique_lock lock(m_mutex);
                 while (!m_stop)
                 {
-                    // Wait for the interval.
-                    m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
+                    // The lock is scoped to the WAIT only. Holding it across the round below is the
+                    // bug this class was rewritten to remove: see the class comment.
+                    {
+                        std::unique_lock lock(m_sleepMutex);
+                        m_condition.wait_for(
+                            lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
+                    }
 
                     // If the thread is not stopped, check the health of the servers.
-                    if (!m_stop)
+                    for (auto& [serverAddress, serverStatus] : m_servers)
                     {
-                        // Check the health of the servers.
-                        for (const auto& [serverAddress, _] : m_servers)
+                        if (m_stop)
                         {
-                            healthCheck(serverAddress, authentication);
+                            break;
                         }
+                        healthCheck(serverAddress, serverStatus, authentication);
                     }
                 }
             });
@@ -299,22 +362,28 @@ public:
      */
     bool isAvailable(std::string_view serverAddress)
     {
-        std::scoped_lock lock(m_mutex);
+        // Wait-free, and on the hot path: TServerSelector::getNext() calls this for every operation
+        // against the indexer. Safe without a lock because the map's structure is frozen after
+        // construction and only the atomic value changes (see the class comment).
         auto it = m_servers.find(serverAddress);
         if (it == m_servers.end())
         {
             throw std::out_of_range("Server not found in monitoring");
         }
-        return it->second;
+        return it->second.load(std::memory_order_acquire);
     }
 
     std::string getUnavailableServersDetails()
     {
-        std::scoped_lock lock(m_mutex);
+        // The reasons lock is taken once, around the map reads only. The availability bits are read
+        // from the atomics, so a host that flipped mid-call can pair with a reason from a moment
+        // earlier; that is a diagnostic string on an error path, and it is worth far more than
+        // blocking this call behind a health-check round to make it perfectly consistent.
         std::string result;
+        std::scoped_lock lock(m_reasonsMutex);
         for (const auto& [serverAddress, available] : m_servers)
         {
-            if (available)
+            if (available.load(std::memory_order_acquire))
             {
                 continue;
             }

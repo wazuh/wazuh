@@ -13,7 +13,6 @@
 #include "os_net.h"
 #include <request_op.h>
 #include "remoted.h"
-#include "state.h"
 #include "wmodules.h"
 
 #define COUNTER_LENGTH 64
@@ -148,8 +147,6 @@ void * req_dispatch(req_node_t * node) {
             merror("Cannot send request to agent '%s'", agentid);
             OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR);
             goto cleanup;
-        } else {
-            rem_inc_send_request(agentid);
         }
 
         // Wait for ACK or response, only in UDP mode
@@ -202,9 +199,7 @@ void * req_dispatch(req_node_t * node) {
         // Example: #!-req 16 ack
         mdebug2("Sending ack (%s).", node->counter);
         snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
-        if (send_msg(agentid, response, -1) >= 0) {
-            rem_inc_send_request(agentid);
-        }
+        send_msg(agentid, response, -1);
     }
 
     // Send response to local peer
@@ -233,6 +228,83 @@ cleanup:
     req_pool_post();
 
     return NULL;
+}
+
+// Send a request to an agent and synchronously wait for its ack/response. See remoted.h.
+int req_send_and_wait(const char * agent_id, const char * payload, size_t length, char ** response, int timeout_sec) {
+    unsigned int counter = (unsigned int)os_random();
+    char counter_s[COUNTER_LENGTH];
+    req_node_t * node;
+    char * full_payload;
+    size_t ploff;
+    int add_result;
+    int retval = -1;
+    struct timespec timeout;
+    struct timeval now = { 0, 0 };
+
+    if (!agent_id || !payload || !response) {
+        return -1;
+    }
+
+    *response = NULL;
+
+    snprintf(counter_s, COUNTER_LENGTH, "%x", counter);
+
+    // No local peer to reply to: sock = -1, req_free() won't try to close it.
+    node = req_create(-1, counter_s, "legacy_task_delivery", payload, length);
+
+    // The outgoing payload has already been handed to send_msg() below; drop it so the buffer
+    // field is free to receive the agent's asynchronous response, exactly like req_dispatch()
+    // does after building its own outgoing frame.
+    os_free(node->buffer);
+    node->buffer = NULL;
+    node->length = 0;
+
+    w_mutex_lock(&mutex_table);
+    add_result = OSHash_Add(req_table, counter_s, node);
+    w_mutex_unlock(&mutex_table);
+
+    if (add_result != 2) {
+        merror("req_send_and_wait(): OSHash_Add() failed for counter '%s'.", counter_s);
+        req_free(node);
+        return -1;
+    }
+
+    ploff = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(counter_s) + 1;
+    os_malloc(ploff + length + 1, full_payload);
+    snprintf(full_payload, ploff + 1, CONTROL_HEADER HC_REQUEST "%s ", counter_s);
+    memcpy(full_payload + ploff, payload, length);
+    full_payload[ploff + length] = '\0';
+
+    w_mutex_lock(&node->mutex);
+
+    if (send_msg(agent_id, full_payload, ploff + length) < 0) {
+        merror("req_send_and_wait(): cannot send request to agent '%s'.", agent_id);
+    } else {
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + timeout_sec;
+        timeout.tv_nsec = now.tv_usec * 1000;
+
+        if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && node->buffer) {
+            os_strdup(node->buffer, *response);
+            retval = 0;
+        } else {
+            mdebug1("req_send_and_wait(): timeout waiting for response from agent '%s' (counter '%s').", agent_id, counter_s);
+        }
+    }
+
+    w_mutex_unlock(&node->mutex);
+
+    w_mutex_lock(&mutex_table);
+    if (!OSHash_Delete(req_table, counter_s)) {
+        merror("req_send_and_wait(): OSHash_Delete(): no such key.");
+    }
+    w_mutex_unlock(&mutex_table);
+
+    req_free(node);
+    os_free(full_payload);
+
+    return retval;
 }
 
 // Save request data (ack or response). Return 0 on success or -1 on error.

@@ -300,11 +300,9 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
     if (agent_data) {
         os_free(agent_data->version);
         os_free(agent_data->merged_sum);
-        os_free(agent_data->node_name);
         os_free(agent_data->agent_ip);
         os_free(agent_data->connection_status);
         os_free(agent_data->sync_status);
-        os_free(agent_data->group_config_status);
         if (agent_data->osd) {
             os_free(agent_data->osd->os_name);
             os_free(agent_data->osd->os_version);

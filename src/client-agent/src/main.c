@@ -14,6 +14,10 @@
 #include "agentd.h"
 #include <getopt.h>
 
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
+
 #ifndef ARGV0
 #define ARGV0 "wazuh-agentd"
 #endif
@@ -61,6 +65,42 @@ int main(int argc, char **argv)
     gid_t gid;
 
     run_foreground = 0;
+
+#if defined(__GLIBC__)
+    /* Cap the number of malloc arenas.
+     *
+     * The HTTPS transport runs several allocating threads, and glibc answers
+     * that by giving each one its own 64 MiB arena. Those arenas are reserved
+     * rather than committed, so most of the cost is address space, and it is
+     * what takes this process past 690 MB of virtual size. But each arena also
+     * carries its own top chunk and bins, which is real resident memory that is
+     * never handed back. Capping the count trades a little allocator contention
+     * for that overhead.
+     *
+     * Set here, before any thread is created: extra arenas are only spawned when
+     * a thread finds every existing one locked, so the limit has to be in place
+     * before the transport's threads start. Allocations already made on this
+     * thread came from the main arena and are unaffected.
+     *
+     * Skipped when an operator has already chosen a limit. glibc applies
+     * MALLOC_ARENA_MAX and the glibc.malloc.arena_max tunable at process start,
+     * and mallopt() overrides either of them silently: with MALLOC_ARENA_MAX=1
+     * in the environment, an unconditional mallopt(2) leaves the process running
+     * two arenas. Honouring the environment keeps the knob usable for tuning and
+     * for diagnosing allocator behaviour in the field.
+     *
+     * The return value is checked rather than discarded, since an unchecked
+     * mallopt() is the pattern Coverity reports. Failing startup over an
+     * allocator hint would be wrong, so a debug line is the right level. */
+    const char *tunables = getenv("GLIBC_TUNABLES");
+
+    if (getenv("MALLOC_ARENA_MAX") == NULL &&
+        (tunables == NULL || strstr(tunables, "glibc.malloc.arena_max") == NULL)) {
+        if (mallopt(M_ARENA_MAX, 2) != 1) {
+            mdebug1("Could not cap the malloc arena count; using the allocator default.");
+        }
+    }
+#endif
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -199,6 +239,14 @@ int main(int argc, char **argv)
 
     if (!Validate_IPv6_Link_Local_Interface(agt->server)){
         merror(AG_INV_INT);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
+    /* Checked here, before daemonizing, so wazuh-client.sh's sequential daemon-start check
+     * (which polls for this process's PID file before starting syscheckd/logcollector/modulesd)
+     * halts the whole start instead of launching the other daemons around a transport that will
+     * never come up. */
+    if (!w_agent_validate_ssl_ca(agt)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 

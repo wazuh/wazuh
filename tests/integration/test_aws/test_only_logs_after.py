@@ -710,7 +710,7 @@ configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
                          ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
         metadata, mark_cases_as_skipped, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
-        load_wazuh_basic_configuration, restart_wazuh_function
+        load_wazuh_basic_configuration, restart_wazuh_function, record_uploaded_key
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -869,12 +869,26 @@ def test_bucket_multiple_calls(
         effective_bucket_type = data_bucket_name.split('-')[1]
     elif bucket_type == 'guardduty' and 'native' in data_bucket_name:
         effective_bucket_type = 'native-guardduty'
-    last_marker_key = get_last_file_key(effective_bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
+    # Upload under the run namespace (metadata['path']) so the module - configured with the same
+    # namespaced <path> - actually finds the file, and it lands inside the prefix this run cleans up.
+    ns_prefix = metadata.get('path') or ''
+    last_marker_key = get_last_file_key(effective_bucket_type, bucket_name, datetime.utcnow(), region,
+                                        s3_client, prefix=ns_prefix)
+    # The run namespace (issue #38194) also holds the copied CloudTrail/ELB seeds under '<run>/AWSLogs/'.
+    # Custom bucket types (kms, macie, waf, ...) keep their data directly under '<run>/<date>/', so
+    # get_last_file_key - which lists the whole namespace - would pick the seed ('AWSLogs/' sorts after
+    # digits) instead of the type's own last file. When the type has data outside AWSLogs/, take that as
+    # the marker so it matches what the module actually processes. No-op locally (no namespace).
+    if ns_prefix:
+        own_keys = [obj.key for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=ns_prefix)
+                    if 'AWSLogs/' not in obj.key]
+        if own_keys:
+            last_marker_key = max(own_keys)
     if bucket_type == VPC_FLOW_TYPE:
         data, key = generate_file(bucket_type=bucket_type,
                                   bucket_name=data_bucket_name,
                                   region=region,
-                                  prefix='',
+                                  prefix=ns_prefix,
                                   suffix='',
                                   date='',
                                   flow_log_id=metadata['flow_log_id'])
@@ -882,10 +896,13 @@ def test_bucket_multiple_calls(
         data, key = generate_file(bucket_type=bucket_type,
                                   bucket_name=data_bucket_name,
                                   region=region,
-                                  prefix='',
+                                  prefix=ns_prefix,
                                   suffix='',
                                   date='')
     metadata['filename'] = key
+
+    # Record the key before uploading so a hard cancel during this test still cleans it up.
+    record_uploaded_key(key)
 
     upload_bucket_file(bucket_name=bucket_name,
                        data=data,

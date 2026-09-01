@@ -25,6 +25,9 @@
 #include "schemaValidator_c.h"
 #include "agentd_query.h"
 #include <limits.h>
+#ifdef WIN32
+#include "registry.h"
+#endif
 
 // Global variables
 syscheck_config syscheck;
@@ -34,6 +37,13 @@ int audit_queue_full_reported = 0;
 int synced_docs_files = 0;
 int synced_docs_registry_keys = 0;
 int synced_docs_registry_values = 0;
+
+// Guards the check-then-increment/decrement on the synced_docs_* counters above: the
+// scheduled scan (fim_file_scan()/fim_registry_scan(), under fim_scan_mutex) and realtime/
+// whodata events (fim_file(), which doesn't take fim_scan_mutex to avoid stalling realtime
+// events for the whole scan) can race on these plain ints otherwise, undercounting synced
+// documents and re-triggering #38522-style drift in file/registry limit enforcement.
+pthread_mutex_t synced_docs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -128,9 +138,9 @@ void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_va
     }
 }
 
-void process_pending_sync_updates(char* table_name, OSList *pending_items) {
+int process_pending_sync_updates(char* table_name, OSList *pending_items) {
     if (pending_items == NULL) {
-        return;
+        return 0;
     }
 
     int count = 0;
@@ -140,47 +150,98 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
         if (item != NULL && item->json != NULL) {
             const cJSON* path = cJSON_GetObjectItem(item->json, "path");
             mdebug2("Setting sync=%d for path: %s", item->sync_value, cJSON_GetStringValue(path));
-            fim_db_set_sync_flag(table_name, item, item->sync_value);
-            count++;
+            if (fim_db_set_sync_flag(table_name, item, item->sync_value) == 0) {
+                count++;
+            }
         }
     }
-    mdebug1("Processed %d pending sync flag updates", count);
+    return count;
 }
 
 /**
  * @brief Drop documents whose path is no longer covered by the current FIM configuration.
  *
- * Run before promoting file_entry rows at startup: if a directory was removed from the
+ * Run before promoting rows at startup: if a monitored path was removed from the
  * configuration since the last run (e.g. an agent group with a realtime FIM rule was
- * unassigned), the persisted rows for files under that path can no longer build a
- * stateful event — build_stateful_event_file would fail and log a spurious ERROR.
+ * unassigned, or the <syscheck> registry entries were replaced by a shared-config push),
+ * the persisted rows under that path can no longer build a stateful event — the
+ * build_stateful_event_* helpers would fail and log a spurious ERROR.
  * The scheduled scan that follows fim_initialize emits the real DELETE for these
  * rows via handle_orphaned_delete, so dropping them here is safe.
  *
- * Only applies to file_entry; registry tables use a different config model.
+ * file_entry rows are resolved against syscheck.directories; on Windows the registry
+ * tables are resolved against syscheck.registry, which is keyed by path *and* architecture.
  *
  * @param table_name Name of the table the documents belong to.
  * @param docs cJSON array of documents about to be promoted. Modified in place.
  * @return Number of documents dropped.
  */
 int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
-    if (!docs || !cJSON_IsArray(docs) || strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0) {
+    if (!docs || !cJSON_IsArray(docs) || table_name == NULL) {
+        return 0;
+    }
+
+    const bool is_file = strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0;
+#ifdef WIN32
+    const bool is_registry = strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
+                             strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0;
+#else
+    const bool is_registry = false;
+#endif
+
+    if (!is_file && !is_registry) {
         return 0;
     }
 
     int dropped = 0;
-    for (int i = cJSON_GetArraySize(docs) - 1; i >= 0; i--) {
-        const cJSON* item = cJSON_GetArrayItem(docs, i);
+
+    // Walk the child list directly instead of indexing: cJSON_GetArrayItem and
+    // cJSON_DeleteItemFromArray both traverse from the head, so an index-based loop is O(n^2).
+    // The registry tables reach tens of thousands of rows and this runs on the startup path.
+    cJSON* item = docs->child;
+
+    while (item != NULL) {
+        // Saved before any detach, which unlinks item from the list.
+        cJSON* next = item->next;
+
         const cJSON* path_json = cJSON_GetObjectItem(item, "path");
         const char* path = cJSON_GetStringValue(path_json);
         if (path == NULL) {
+            item = next;
             continue;
         }
-        if (fim_configuration_directory(path, false, syscheck.directories) == NULL) {
+
+        bool orphaned = false;
+
+        if (is_file) {
+            orphaned = fim_configuration_directory(path, false, syscheck.directories) == NULL;
+        }
+#ifdef WIN32
+        else {
+            // Registry rows are only meaningful together with their architecture: the same path can
+            // be monitored for [x32], [x64] or both. A row without it cannot be resolved at all.
+            const char* arch_str = cJSON_GetStringValue(cJSON_GetObjectItem(item, "architecture"));
+
+            if (arch_str == NULL) {
+                mdebug2("Skipping promotion of registry document without architecture: %s", path);
+                cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
+                dropped++;
+                item = next;
+                continue;
+            }
+
+            const int arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
+            orphaned = fim_registry_configuration(path, arch) == NULL;
+        }
+#endif
+
+        if (orphaned) {
             mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
-            cJSON_DeleteItemFromArray(docs, i);
+            cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
             dropped++;
         }
+
+        item = next;
     }
     return dropped;
 }
@@ -372,18 +433,6 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
     mdebug1("Sent %d %s documents to persistent queue for table %s", count, operation_name, table_name);
 }
 
-static int fim_startmq(const char* key, short type, short attempts) {
-    return StartMQPredicated(key, type, attempts, fim_shutdown_process_on);
-}
-
-static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
-    // returns on shutdown: asp_stop() wakes every wait inside the sync protocol but
-    // cannot interrupt this one, and the shutdown waiter joins the synchronization
-    // thread with no timeout (issue #37334).
-    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, fim_shutdown_process_on);
-}
-
 /**
  * @brief Fetch document sync limits from agentd.
  *
@@ -478,6 +527,11 @@ void fim_initialize() {
     syscheck.registry_value_limit = 0;
     while (!fetch_document_limits_from_agentd())
     {
+        if (fim_shutdown_process_on()) {
+            mdebug1("Stop in progress: aborting the document limits wait.");
+            syscheck.disabled = 1;
+            return;
+        }
         mdebug1("Trying to fetch limits from agentd...");
 #ifdef WIN32
         Sleep(1000);
@@ -486,8 +540,15 @@ void fim_initialize() {
 #endif // WIN32
     }
 
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: aborting FIM sync initialization.");
+        syscheck.disabled = 1;
+        return;
+    }
+
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
+    syscheck_set_directories_lock_ready();
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
@@ -499,15 +560,17 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
-    MQ_Functions mq_funcs = {
-        .start = fim_startmq,
-        .send_binary = fim_send_binary_msg
-    };
-
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
+
+#ifdef WIN32
+    /* Registered here, not where the synchronization thread is launched: fim_sync.db is open from
+     * this point on, and the stop can arrive before start_daemon() gets to the thread (issue
+     * #38212, the install then uninstall window). */
+    fim_sync_register_teardown_hook();
+#endif
 
 // Check for limit changes
 #ifdef WIN32
@@ -570,12 +633,20 @@ void fim_initialize() {
                             if (primary_keys) {
                                 add_pending_sync_item(pending_sync_updates, primary_keys, 1);
                                 cJSON_Delete(primary_keys);
+                                // fim_initialize() runs once at startup before the scan/
+                                // realtime threads exist, so this lock isn't load-bearing
+                                // here — kept only for consistency with the other counter
+                                // updates guarded by synced_docs_mutex.
+                                w_mutex_lock(&synced_docs_mutex);
                                 (*synced_docs_ptr)++;
+                                w_mutex_unlock(&synced_docs_mutex);
                             }
                         }
 
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        // Process pending sync updates. Runs once per table at startup, so log
+                        // the summary here (process_pending_sync_updates() itself doesn't).
+                        int synced_count = process_pending_sync_updates(table_name, pending_sync_updates);
+                        mdebug1("Processed %d pending sync flag updates", synced_count);
                         OSList_Destroy(pending_sync_updates);
                     }
                     cJSON_Delete(docs_to_promote);
@@ -597,11 +668,17 @@ void fim_initialize() {
                         cJSON* item = NULL;
                         cJSON_ArrayForEach(item, docs_to_demote) {
                             add_pending_sync_item(pending_sync_updates, item, 0);
+                            // See the comment on the promote branch above: not load-bearing
+                            // at startup, kept for consistency.
+                            w_mutex_lock(&synced_docs_mutex);
                             (*synced_docs_ptr)--;
+                            w_mutex_unlock(&synced_docs_mutex);
                         }
 
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        // Process pending sync updates. Runs once per table at startup, so log
+                        // the summary here (process_pending_sync_updates() itself doesn't).
+                        int synced_count = process_pending_sync_updates(table_name, pending_sync_updates);
+                        mdebug1("Processed %d pending sync flag updates", synced_count);
                         OSList_Destroy(pending_sync_updates);
                     }
                     cJSON_Delete(docs_to_demote);

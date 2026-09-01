@@ -16,10 +16,11 @@ Its main responsibilities are:
   findings indexed as `wazuh-findings-v5-*`.
 - **Security modules**: orchestration of inventory (Syscollector / IT Hygiene),
   configuration assessment (SCA), file integrity monitoring (FIM), and
-  vulnerability detection fed by the Wazuh CTI service.
+  vulnerability detection fed by CVE/CTI data served from the Wazuh Indexer.
 - **Management plane**: a RESTful Server API (`wazuh-manager-apid`) with RBAC,
-  and a cluster mode (`wazuh-manager-clusterd`) for horizontal scaling and high
-  availability.
+  and mandatory clustering (`wazuh-manager-clusterd`) — every Wazuh Server
+  installation runs as a cluster node, even single-node deployments, providing
+  horizontal scaling and high availability by default.
 
 The manager is a multi-daemon system installed under `/var/wazuh-manager` and
 configured through `etc/wazuh-manager.conf`. See the

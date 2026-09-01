@@ -626,6 +626,19 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     #endif
 }
 
+void test_getSyscheckConfig_lock_not_ready(void **state)
+{
+    (void) state;
+
+    /* Windows reaches this in-process and can beat fim_initialize() to it.
+     * Declining is what keeps it off an rwlock nothing has initialized. */
+    __atomic_store_n(&syscheck_directories_lock_ready, 0, __ATOMIC_RELEASE);
+
+    assert_null(getSyscheckConfig());
+
+    syscheck_set_directories_lock_ready();
+}
+
 void test_getSyscheckInternalOptions(void **state)
 {
     (void) state;
@@ -864,6 +877,10 @@ void test_fim_adjust_path_convert_system32 (void **state) {
 }
 
 int main(void) {
+    /* getSyscheckConfig() declines until fim_initialize() publishes this.
+     * fim_initialize() does this once directories_lock is real. */
+    syscheck_set_directories_lock_ready();
+
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
@@ -872,6 +889,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
+        cmocka_unit_test(test_getSyscheckConfig_lock_not_ready),
         cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_SyscheckConf_DirectoriesWithCommas, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),

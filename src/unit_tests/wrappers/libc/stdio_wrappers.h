@@ -25,10 +25,11 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream);
 FILE* __wrap_fopen(const char* path, const char* mode);
 void expect_fopen(const char* path, const char* mode, FILE *fp);
 
+FILE* __wrap_fdopen(int fd, const char* mode);
+void expect_fdopen(int fd, const char* mode, FILE *fp);
+
 int __wrap_fprintf (FILE *__stream, const char *__format, ...);
 void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
-
-int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...);
 
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream);
 void expect_fread(char *file, int ret);
@@ -43,8 +44,6 @@ size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 int __wrap_remove(const char *filename);
 
 int __wrap_rename(const char *__old, const char *__new);
-
-size_t __wrap_strlen(const char *s);
 
 int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos);
 
@@ -62,8 +61,6 @@ void expect_popen(const char *command, const char *type, FILE *ret);
 void expect_fscanf(FILE *__stream, const char *formatted_msg, int ret);
 
 int __wrap_pclose(FILE *stream);
-
-int __wrap_fputc(char character, FILE *stream);
 
 FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc);
 

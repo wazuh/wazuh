@@ -106,6 +106,10 @@ _reg benchmark          "https://github.com/google/benchmark/archive/refs/tags/v
 _reg libbpf-bootstrap   "https://github.com/libbpf/libbpf-bootstrap/archive/refs/tags/v{version}.tar.gz"                          tar.gz  1  libbpf-bootstrap   true   "https://github.com/libbpf/libbpf-bootstrap"
 _reg dbus               "https://dbus.freedesktop.org/releases/dbus/dbus-{version}.tar.xz"                                        tar.xz  1  dbus               true   "https://gitlab.freedesktop.org/dbus/dbus"
 _reg flatbuffers        "https://github.com/google/flatbuffers/archive/refs/tags/v{version}.tar.gz"                               tar.gz  1  flatbuffers        false  "https://github.com/google/flatbuffers"
+# jwt-cpp is header-only (no build step); the vendored tree is the upstream source archive.
+_reg jwt-cpp            "https://github.com/Thalhammer/jwt-cpp/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  jwt-cpp            false  "https://github.com/Thalhammer/jwt-cpp"
+# rapidjson is header-only too; base list since #38582 (the shared JWT verifier parses tokens with it).
+_reg rapidjson          "https://github.com/Tencent/rapidjson/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  rapidjson          false  "https://github.com/Tencent/rapidjson"
 
 # ---------------------------------------------------------------------------
 # Manager-only additions.
@@ -124,13 +128,23 @@ _reg fmt                "https://github.com/fmtlib/fmt/releases/download/{versio
 _reg abseil-cpp         "https://github.com/abseil/abseil-cpp/archive/refs/tags/{version}.tar.gz"                                 tar.gz  1  abseil-cpp         false  "https://github.com/abseil/abseil-cpp"
 _reg re2                "https://github.com/google/re2/archive/refs/tags/{version}.tar.gz"                                        tar.gz  1  re2                false  "https://github.com/google/re2"
 _reg protobuf           "https://github.com/protocolbuffers/protobuf/releases/download/v{version}/protobuf-{version}.tar.gz"      tar.gz  1  protobuf           false  "https://github.com/protocolbuffers/protobuf"
-_reg rapidjson          "https://github.com/Tencent/rapidjson/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  rapidjson          false  "https://github.com/Tencent/rapidjson"
 _reg taskflow           "https://github.com/taskflow/taskflow/archive/refs/tags/v{version}.tar.gz"                                tar.gz  1  taskflow           false  "https://github.com/taskflow/taskflow"
 _reg RxCpp              "https://github.com/ReactiveX/RxCpp/archive/refs/tags/v{version}.tar.gz"                                  tar.gz  1  RxCpp              false  "https://github.com/ReactiveX/RxCpp"
 _reg concurrentqueue    "https://github.com/cameron314/concurrentqueue/archive/refs/tags/v{version}.tar.gz"                       tar.gz  1  concurrentqueue    false  "https://github.com/cameron314/concurrentqueue"
 _reg fast_float         "https://github.com/fastfloat/fast_float/archive/refs/tags/v{version}.tar.gz"                             tar.gz  1  fast_float         false  "https://github.com/fastfloat/fast_float"
 _reg tzdata             "https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz"                                        tar.gz  0  tzdata             false  "https://data.iana.org/time-zones/"
 _reg geo_db             "TBD"                                                                                                     tar.gz  0  geo_db             false  "https://www.maxmind.com/"
+
+# The manager's HTTPS listener stack: restinio plus the asio, llhttp and
+# expected-lite it is built against, and zstd. asio tags releases with dashes
+# (asio-1-38-2), hence {version_dash}; llhttp puts its tags under a release/
+# prefix; restinio and zstd publish source tarballs as release assets, which is
+# what src/external/ currently vendors.
+_reg asio               "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-{version_dash}.tar.gz"                       tar.gz  1  asio               false  "https://github.com/chriskohlhoff/asio"
+_reg expected-lite      "https://github.com/martinmoene/expected-lite/archive/refs/tags/v{version}.tar.gz"                        tar.gz  1  expected-lite      false  "https://github.com/martinmoene/expected-lite"
+_reg llhttp             "https://github.com/nodejs/llhttp/archive/refs/tags/release/v{version}.tar.gz"                            tar.gz  1  llhttp             false  "https://github.com/nodejs/llhttp"
+_reg restinio           "https://github.com/Stiffstream/restinio/releases/download/v{version}/restinio-{version}.tar.bz2"          tar.bz2 1  restinio           false  "https://github.com/Stiffstream/restinio"
+_reg zstd               "https://github.com/facebook/zstd/releases/download/v{version}/zstd-{version}.tar.gz"                      tar.gz  1  zstd               false  "https://github.com/facebook/zstd"
 
 # Sanity check: warn if any registered name has no corresponding directory in
 # src/external/. The script can decide whether to error or just log; this is

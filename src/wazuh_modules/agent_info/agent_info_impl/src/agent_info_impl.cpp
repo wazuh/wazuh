@@ -26,7 +26,6 @@
 extern "C"
 {
     const char* agent_info_get_cluster_name(void);
-    const char* agent_info_get_cluster_node(void);
     const char* agent_info_get_agent_groups(void);
     void agent_info_clear_agent_groups(void);
 }
@@ -34,6 +33,8 @@ extern "C"
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
+constexpr auto TASKS_TABLE = "tasks";
+constexpr auto VD_FEED_STATE_TABLE = "vd_feed_state";
 
 // Module coordination configuration.
 // FIM is listed first so its async pause-completion probe runs before the other
@@ -92,6 +93,18 @@ static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
         }
     }};
 
+// Indices tagged with agent metadata (cluster_name, groups) that are not owned by
+// any single coordinatable module -- wazuh-agent-config/wazuh-agent-stats are written by the
+// manager's /config and /stats endpoints (inventory_sync_server's configEndpoint/statsEndpoint)
+// from the periodic push in https_client's reporterStream, not by a wodle this module ever pauses.
+// A metadata/groups change must still re-tag them, so they are added unconditionally alongside
+// whatever COORDINATION_MODULES were actually paused this cycle.
+static const std::vector<std::string> AGENT_LEVEL_INDICES
+{
+    "wazuh-agent-config",
+    "wazuh-agent-stats"
+};
+
 const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
                                            "agent_id          TEXT NOT NULL PRIMARY KEY,"
                                            "agent_name        TEXT,"
@@ -102,8 +115,7 @@ const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_met
                                            "host_os_type      TEXT,"
                                            "host_os_platform  TEXT,"
                                            "host_os_version   TEXT,"
-                                           "cluster_name      TEXT,"
-                                           "cluster_node      TEXT);";
+                                           "cluster_name      TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -120,6 +132,23 @@ const char* DB_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS db_metadata 
                                         "last_groups_integrity      INTEGER NOT NULL DEFAULT 0,"
                                         "is_first_run               INTEGER NOT NULL DEFAULT 1,"
                                         "is_first_groups_run        INTEGER NOT NULL DEFAULT 1);";
+
+// Durable /control task_id dedup guard. agent-info is new in 5.0.0, so this table
+// needs no upgrade path -- it is simply part of the schema from day one.
+const char* TASKS_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS tasks ("
+                                  "task_id       TEXT NOT NULL PRIMARY KEY,"
+                                  "recorded_at   INTEGER NOT NULL);";
+
+// Durable VD feed offset + pending-rescan state (see AgentInfoImpl::observeVdFeedOffset/
+// clearVdRescanPending/getVdFeedState). Single-row table (id=1), same shape as db_metadata.
+// has_offset distinguishes "never observed" from "observed 0" (a manager may legitimately
+// report offset 0, e.g. when VD is not enabled on that node).
+const char* VD_FEED_STATE_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS vd_feed_state ("
+                                          "id              INTEGER PRIMARY KEY CHECK (id = 1),"
+                                          "has_offset      INTEGER NOT NULL DEFAULT 0,"
+                                          "last_offset     INTEGER NOT NULL DEFAULT 0,"
+                                          "pending         INTEGER NOT NULL DEFAULT 0,"
+                                          "pending_offset  INTEGER NOT NULL DEFAULT 0);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -158,6 +187,9 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
 AgentInfoImpl::~AgentInfoImpl()
 {
     stop();
+    // Covers the case where start() never ran, so its run loop never reached the
+    // teardown. Idempotent, so it is a no-op when the run loop already did it.
+    releaseResources();
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
@@ -167,16 +199,31 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
                   "AgentInfo module started with interval: " + std::to_string(interval) +
                   " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
-    {
-        std::lock_guard<std::mutex> lock(m_shutdownMutex);
-        m_runLoopActive = true;
-    }
-
     // Load sync flags from database at startup
     loadSyncFlags();
 
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_stopped = false;
+
+    // Do NOT clear a stop that arrived while the module was still starting up. The
+    // shutdown loop signals every module before joining any of them, so a stop can
+    // land before this point; clearing it here would leave the run loop below with no
+    // exit condition at all -- callers pass no shouldContinue -- and the module thread
+    // would never become joinable.
+    //
+    // m_stopped is therefore sticky for the life of the instance. That is fine today --
+    // one start() per process -- but a future hot-restart path must distinguish "stopped"
+    // from "shutting down" (an explicit reset here would bring back the lost stop above).
+    //
+    // The check is isShutdownInProgress() rather than m_stopped alone because
+    // agent_info_stop() null-checks the instance: a stop arriving before this object
+    // exists never reaches stop() at all. The module wrapper does set the global flag
+    // in that case, and the injected predicate is the only way to observe it.
+    if (isShutdownInProgress())
+    {
+        lock.unlock();
+        m_logFunction(LOG_INFO, "AgentInfo start aborted: shutdown already in progress.");
+        return;
+    }
 
     // Reset sync protocol stop flag to allow restarting operations
     if (m_spSyncProtocol)
@@ -188,6 +235,8 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
 
     // Run at least once
+    m_runLoopActive.store(true);
+
     do
     {
         lock.unlock();
@@ -244,29 +293,71 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
             performIntegritySync(AGENT_GROUPS_TABLE);
         }
 
+        // Durable task_id registry cleanup: runs on this same
+        // loop/thread instead of a dedicated cleanup thread, at the same cadence as the
+        // metadata/groups sync cycle above (no separate cleanup_interval). cleanupExpiredTasks()
+        // guards its m_dBSync access with m_dbSyncMutex, the same mutex every other DB access in
+        // this loop already uses -- so it is already safe against a concurrent stop()/destructor
+        // resetting m_dBSync, unlike the old dedicated thread, which touched g_agent_info_impl
+        // (a different object entirely, in agent_info.cpp) with no synchronization at all.
+        cleanupExpiredTasks(m_taskRegistryTtlSeconds, m_taskRegistryMaxEntries);
+
         lock.lock();
 
         // If no shouldContinue function provided, use default behavior (continue until stopped)
         bool shouldLoop = shouldContinue ? shouldContinue() : !m_stopped;
 
-        if (shouldLoop && !m_stopped)
+        if (shouldLoop && !isShutdownInProgress())
         {
             // Wait for the interval or until stop is signaled
             m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped.load(); });
         }
 
     }
-    while (!m_stopped && (shouldContinue ? shouldContinue() : true));
+
+    // Same reason as the guard above: without the global predicate a stop lost to that
+    // null check, or arriving between it and here, would leave this loop with no exit.
+    while (!isShutdownInProgress() && (shouldContinue ? shouldContinue() : true));
+
+    m_runLoopActive.store(false);
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
+}
 
-    // Publish that the run loop has fully exited so stop() can tear down the sync
-    // protocol without racing synchronizeMetadataOrGroups().
+void AgentInfoImpl::releaseResources()
+{
+    // Never free while the run loop may still be using these members. The join that is
+    // supposed to guarantee the loop finished is not authoritative: stop_wmodules() and
+    // wm_handler() only log when the shutdown budget expires and then carry on to
+    // process exit, so the destructor can reach here with the loop still running.
+    // Freeing then is a use-after-free, so skip it and let process teardown reclaim the
+    // handles -- the same trade-off the removed run-loop wait used to make, minus the
+    // blocking wait.
+    if (m_runLoopActive.load())
     {
-        std::lock_guard<std::mutex> shutdownLock(m_shutdownMutex);
-        m_runLoopActive = false;
+        m_logFunction(LOG_WARNING, "AgentInfo run loop still active; skipping database teardown.");
+        return;
     }
-    m_shutdownCv.notify_all();
+
+    // Idempotent: runs from the module thread when the run loop ends, and again from
+    // the destructor for the case where the run loop never started.
+    {
+        std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+        if (m_dBSync)
+        {
+            m_logFunction(LOG_DEBUG, "Closing DBSync connection...");
+            m_dBSync.reset();
+            m_logFunction(LOG_DEBUG, "DBSync connection closed");
+        }
+    }
+
+    // Destroy the sync protocol so its SQLite connection to the persistent-queue db
+    // is closed. Guarded against parseResponseBuffer(), which runs on another thread.
+    {
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+        m_spSyncProtocol.reset();
+    }
 }
 
 void AgentInfoImpl::stop()
@@ -294,50 +385,16 @@ void AgentInfoImpl::stop()
         }
     }
 
-    // Wait for the run loop to exit before freeing shared resources, so we don't
-    // free m_dBSync / the sync protocol while synchronizeMetadataOrGroups() is
-    // still using them. Time-bounded so a stuck loop can't hang shutdown.
-    constexpr auto SHUTDOWN_WAIT_SECONDS = std::chrono::seconds(10);  // max wait for the run loop to finish teardown
-    bool runLoopExited = false;
-    {
-        std::unique_lock<std::mutex> lock(m_shutdownMutex);
-        runLoopExited = m_shutdownCv.wait_for(lock, SHUTDOWN_WAIT_SECONDS, [this] { return !m_runLoopActive; });
-    }
-
-    if (!runLoopExited)
-    {
-        // The run loop is still active. Freeing m_dBSync / the sync protocol now
-        // would be a use-after-free (the loop can still call synchronizeMetadataOrGroups()),
-        // so skip the teardown and let process exit reclaim the handles instead.
-        m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit; skipping database teardown.");
-        m_logFunction(LOG_INFO, "AgentInfo module stopped.");
-        return;
-    }
-
-    // Close the main DB connection.
-    {
-        std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
-
-        if (m_dBSync)
-        {
-            m_logFunction(LOG_DEBUG, "Closing DBSync connection...");
-            m_dBSync.reset();
-            m_logFunction(LOG_DEBUG, "DBSync connection closed");
-        }
-    }
-
-    // Destroy the sync protocol so its SQLite connection to the persistent-queue
-    // db is closed BEFORE stop() returns. Guarded against parseResponseBuffer(),
-    // which runs on another thread.
-    {
-        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
-        m_spSyncProtocol.reset();
-    }
-
+    // Signal only. The teardown of m_dBSync and the sync protocol happens in
+    // releaseResources(), on the module thread, once the run loop has returned --
+    // so joining that thread is what guarantees the handles are closed. Waiting
+    // here instead blocked this callback for up to 10 s, and because the shutdown
+    // loop stops modules one at a time it also withheld the stop signal from the
+    // very modules this run loop can be parked on.
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
-void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs)
+void AgentInfoImpl::initSyncProtocol(const std::string& moduleName)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -348,13 +405,7 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Fun
     {
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName,
                                                                std::nullopt,
-                                                               mqFuncs,
-                                                               logger_func,
-                                                               std::chrono::seconds(m_syncEndDelay),
-                                                               std::chrono::seconds(m_syncResponseTimeout),
-                                                               m_syncRetries,
-                                                               m_syncMaxEps,
-                                                               nullptr);
+                                                               logger_func);
         m_logFunction(LOG_DEBUG, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
@@ -363,19 +414,6 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Fun
         // Re-throw to allow caller to handle
         throw;
     }
-}
-
-void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps)
-{
-    m_syncEndDelay = syncEndDelay;
-    m_syncResponseTimeout = timeout;
-    m_syncRetries = retries;
-    m_syncMaxEps = maxEps;
-
-    m_logFunction(LOG_DEBUG,
-                  "Sync parameters set: syncEndDelay =" + std::to_string(syncEndDelay) +
-                  "s, timeout=" + std::to_string(timeout) + "s, retries=" + std::to_string(retries) +
-                  ", maxEps=" + std::to_string(maxEps));
 }
 
 void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)
@@ -404,6 +442,8 @@ std::string AgentInfoImpl::GetCreateStatement() const
     ret += AGENT_METADATA_SQL_STATEMENT;
     ret += AGENT_GROUPS_SQL_STATEMENT;
     ret += DB_METADATA_SQL_STATEMENT;
+    ret += TASKS_SQL_STATEMENT;
+    ret += VD_FEED_STATE_SQL_STATEMENT;
     return ret;
 }
 
@@ -467,25 +507,21 @@ void AgentInfoImpl::populateAgentMetadata()
     // by agentd on reconnect, but was never re-read here, so it stayed stale until the
     // agent process restarted.
     //
-    // Scoped to cluster_name/cluster_node only. agent_groups is intentionally NOT taken
+    // Scoped to cluster_name only. agent_groups is intentionally NOT taken
     // from this live query (see the groups block below for why) - the callback still
-    // reports it, since agentd's gethandshake returns all three fields together, but the
+    // reports it, since agentd's gethandshake returns both fields together, but the
     // value is discarded here rather than tracked across cycles.
     if (m_handshakeQueryFunction)
     {
         char clusterNameBuf[256] = {0};
-        char clusterNodeBuf[256] = {0};
         char agentGroupsBuf[65536] = {0};
 
         if (m_handshakeQueryFunction(clusterNameBuf,
                                      sizeof(clusterNameBuf),
-                                     clusterNodeBuf,
-                                     sizeof(clusterNodeBuf),
                                      agentGroupsBuf,
                                      sizeof(agentGroupsBuf)))
         {
             m_lastLiveClusterName = clusterNameBuf;
-            m_lastLiveClusterNode = clusterNodeBuf;
             m_hasLiveHandshakeSucceededOnce = true;
         }
         else
@@ -502,23 +538,20 @@ void AgentInfoImpl::populateAgentMetadata()
     // e.g. in unit tests) do we fall back to the C-side cache seeded once at module startup.
     std::string cluster_name =
         m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
-    std::string cluster_node =
-        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterNode : agent_info_get_cluster_node();
 
     agentMetadata["cluster_name"] = cluster_name;
-    agentMetadata["cluster_node"] = cluster_node;
 
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     //
-    // Deliberately out of scope for #37543 (which is about cluster_name/cluster_node
+    // Deliberately out of scope for #37543 (which is about cluster_name
     // staying live): group reassignments are pushed by remoted via merged.mg without
     // necessarily forcing a reconnect, whereas agentd's handshake-sourced group list is
     // only refreshed on (re)connect. Preferring the live handshake groups on every cycle
-    // (as cluster_name/cluster_node now do) would freeze group membership at the last
+    // (as cluster_name now does) would freeze group membership at the last
     // handshake value and ignore merged.mg-driven changes until the next reconnect - a
     // regression from the pre-existing behavior below. So groups keep the original
-    // one-shot-at-startup consumption, independent of the live cluster_name/cluster_node
+    // one-shot-at-startup consumption, independent of the live cluster_name
     // re-query above.
     std::vector<std::string> groups;
 
@@ -550,6 +583,17 @@ void AgentInfoImpl::populateAgentMetadata()
     {
         // Fall back to reading from merged.mg
         groups = readAgentGroups();
+    }
+
+    // Surface the durable VD feed offset (0/absent = not yet received from the manager) so
+    // it reaches agent_sync_protocol's Start message via the metadata provider (D9). Read
+    // fresh every cycle rather than cached in memory, same reasoning as the live handshake
+    // query above: a single source of truth in agent_info.db, no separate cache to go stale.
+    const VdFeedState vdFeedState = getVdFeedState();
+
+    if (vdFeedState.hasOffset)
+    {
+        agentMetadata["vd_feed_offset"] = vdFeedState.offset;
     }
 
     // Update the global metadata provider BEFORE updateChanges
@@ -596,7 +640,6 @@ void AgentInfoImpl::populateAgentMetadata()
 
     // Route sync flags based on what changed:
     // - cluster_name change alone → groups sync path (GROUP_DELTA, version=max)
-    // - cluster_node change → no sync flag (suppressed)
     // - other metadata changes → metadata sync path (METADATA_DELTA, version=max+1)
     // - cluster_name + other metadata → metadata sync path only (metadata subsumes cluster_name)
     if (metadataChanged)
@@ -634,7 +677,11 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
-    copyField(metadata.cluster_node, sizeof(metadata.cluster_node), agentMetadata, "cluster_node");
+
+    if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
+    {
+        metadata.vd_feed_offset = agentMetadata["vd_feed_offset"].get<uint64_t>();
+    }
 
     // Copy groups
     if (!groups.empty())
@@ -854,7 +901,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            logDbSyncUnavailable("DBSync not available for table " + table);
             return false;
         }
 
@@ -1019,10 +1066,6 @@ bool AgentInfoImpl::categorizeMetadataChanges(ReturnTypeCallback result, const n
                 if (key == "cluster_name")
                 {
                     m_clusterNameChanged = true;
-                }
-                else if (key == "cluster_node")
-                {
-                    // No sync flag for cluster_node changes
                 }
                 else
                 {
@@ -1601,6 +1644,55 @@ bool AgentInfoImpl::isModuleFirstSyncCompleted(const std::string& moduleName)
     }
 }
 
+bool AgentInfoImpl::isVDFirstSyncDone()
+{
+    // Same shape as isModuleFirstSyncCompleted, but a distinct query: VDFirst completion is
+    // tracked separately from syscollector's general first_sync_completed marker (see
+    // syscollectorImp.cpp's SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY /
+    // get_vd_first_sync_completed). Reused here rather than reinvented: do not fire a
+    // /scan/vd request before VDFirst has completed, since VDFirst's own full scan already
+    // covers the current feed (Q5).
+    const std::string message = createJsonCommand("get_vd_first_sync_completed");
+    const ModuleResponse response = queryModuleWithRetry(SYSCOLLECTOR_WM_NAME, message);
+
+    try
+    {
+        const nlohmann::json parsed = nlohmann::json::parse(response.response);
+
+        if (parsed.contains("data") && parsed["data"].contains("vd_first_sync_completed"))
+        {
+            const auto& value = parsed["data"]["vd_first_sync_completed"];
+
+            if (value.is_number())
+            {
+                return value.get<int>() != 0;
+            }
+
+            if (value.is_boolean())
+            {
+                return value.get<bool>();
+            }
+        }
+
+        // No vd_first_sync_completed field. An error response with no such field means
+        // VDFirst genuinely has not run/completed yet (still in progress) -- defer.
+        if (parsed.contains("error") && parsed["error"].is_number() && parsed["error"].get<int>() != 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        // No / unparseable response (syscollector unreachable): fail open, same rationale as
+        // isModuleFirstSyncCompleted -- a transient hiccup must not permanently block re-scans.
+        m_logFunction(LOG_DEBUG,
+                      "Could not read vd_first_sync_completed from syscollector: " + std::string(e.what()));
+        return true;
+    }
+}
+
 AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
     for (const auto& module : COORDINATION_MODULES)
@@ -1943,6 +2035,11 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
             }
         }
 
+        // Not owned by any single coordinatable module, so never reached via the loop above --
+        // a metadata/groups change still needs to re-tag them regardless of which modules were
+        // actually paused this cycle.
+        indicesToSync.insert(indicesToSync.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
+
         if (m_spSyncProtocol)
         {
             SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
@@ -1955,18 +2052,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
                     // Not a real failure: the sync was aborted because the module is stopping.
                     m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
                 }
-                else if (syncResult.managerNotReady
+                else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                          && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
                 {
-                    // The manager is not ready for this agent yet, mostly right after a restart, and the
-                    // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-                    // retries this table on the next coordination cycle.
+                    // Either the manager is not ready for this agent yet, or the local sync intake
+                    // itself isn't reachable yet -- both mostly right after a restart -- and the
+                    // sync has not failed enough times in a row to suspect it will not clear.
+                    // Agent-info retries this table on the next coordination cycle.
                     m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
                                   syncResult.failureReason + " Will retry next cycle.");
                 }
-                else if (syncResult.managerNotReady)
+                else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
                 {
-                    // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                    // Neither condition has cleared for several cycles in a row.
                     m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
                                   std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                                   syncResult.failureReason);
@@ -2074,7 +2172,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                logDbSyncUnavailable("Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -2111,7 +2209,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                logDbSyncUnavailable("Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2185,6 +2283,318 @@ void AgentInfoImpl::loadSyncFlags()
         m_isFirstRun = true;
         m_isFirstGroupsRun = true;
     }
+}
+
+bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        logDbSyncUnavailable("Cannot check/record task " + taskId + ": DBSync not available");
+        return false;
+    }
+
+    try
+    {
+        bool alreadyRecorded = false;
+
+        auto existsQuery = SelectQuery::builder()
+                           .table(TASKS_TABLE)
+                           .columnList({"task_id"})
+                           .rowFilter("WHERE task_id = ?")
+                           .rowFilterBindText(taskId)
+                           .countOpt(1)
+                           .build();
+
+        const auto existsCallback = [&alreadyRecorded](ReturnTypeCallback, const nlohmann::json&)
+        {
+            alreadyRecorded = true;
+        };
+
+        m_dBSync->selectRows(existsQuery.query(), existsCallback);
+
+        if (alreadyRecorded)
+        {
+            m_logFunction(LOG_DEBUG, "Dropping /control task " + taskId + ": already recorded in agent_info.db.");
+            return false;
+        }
+
+        nlohmann::json row;
+        row["task_id"] = taskId;
+        row["recorded_at"] = Utils::getSecondsFromEpoch();
+
+        nlohmann::json insertInput;
+        insertInput["table"] = TASKS_TABLE;
+        insertInput["data"] = nlohmann::json::array({row});
+
+        m_dBSync->insertData(insertInput);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to check/record task " + taskId + " in agent_info.db: " + std::string(e.what()));
+        return false;
+    }
+}
+
+void AgentInfoImpl::cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return;
+    }
+
+    const uint32_t effectiveMaxEntries = maxEntries == 0 ? 1 : maxEntries;
+
+    try
+    {
+        const int64_t cutoff = Utils::getSecondsFromEpoch() - static_cast<int64_t>(ttlSeconds);
+
+        auto ttlDeleteQuery = DeleteQuery::builder()
+                              .table(TASKS_TABLE)
+                              .rowFilter("recorded_at < " + std::to_string(cutoff))
+                              .build();
+
+        m_dBSync->deleteRows(ttlDeleteQuery.query());
+
+        auto capDeleteQuery = DeleteQuery::builder()
+                              .table(TASKS_TABLE)
+                              .rowFilter("task_id NOT IN (SELECT task_id FROM " + std::string(TASKS_TABLE) +
+                                         " ORDER BY recorded_at DESC LIMIT " + std::to_string(effectiveMaxEntries) + ")")
+                              .build();
+
+        m_dBSync->deleteRows(capDeleteQuery.query());
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Failed to clean up expired tasks: ") + e.what());
+    }
+}
+
+size_t AgentInfoImpl::countTasks()
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return 0;
+    }
+
+    size_t count = 0;
+
+    try
+    {
+        auto countQuery = SelectQuery::builder()
+                          .table(TASKS_TABLE)
+                          .columnList({"COUNT(*) AS count"})
+                          .build();
+
+        const auto countCallback = [&count](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("count") && data["count"].is_number())
+            {
+                count = data["count"].get<size_t>();
+            }
+        };
+
+        m_dBSync->selectRows(countQuery.query(), countCallback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Failed to count tasks: ") + e.what());
+    }
+
+    return count;
+}
+
+AgentInfoImpl::VdFeedState AgentInfoImpl::readVdFeedStateLocked() const
+{
+    VdFeedState state;
+
+    try
+    {
+        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("has_offset") && data["has_offset"].is_number())
+            {
+                state.hasOffset = (data["has_offset"].get<int>() != 0);
+            }
+
+            if (data.contains("last_offset") && data["last_offset"].is_number())
+            {
+                state.offset = static_cast<uint64_t>(data["last_offset"].get<int64_t>());
+            }
+
+            if (data.contains("pending") && data["pending"].is_number())
+            {
+                state.pending = (data["pending"].get<int>() != 0);
+            }
+
+            if (data.contains("pending_offset") && data["pending_offset"].is_number())
+            {
+                state.pendingOffset = static_cast<uint64_t>(data["pending_offset"].get<int64_t>());
+            }
+        };
+
+        nlohmann::json input;
+        input["table"] = VD_FEED_STATE_TABLE;
+        input["query"]["column_list"] = nlohmann::json::array({"*"});
+        input["query"]["row_filter"] = "";
+        input["query"]["distinct_opt"] = false;
+        input["query"]["order_by_opt"] = "";
+        input["query"]["count_opt"] = 1;
+
+        m_dBSync->selectRows(input, callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_WARNING, "Failed to read vd_feed_state (treating as unset): " + std::string(e.what()));
+    }
+
+    return state;
+}
+
+void AgentInfoImpl::writeVdFeedStateLocked(const VdFeedState& state)
+{
+    try
+    {
+        auto handle = m_dBSync->handle();
+
+        if (!handle)
+        {
+            return;
+        }
+
+        const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn {handle, nlohmann::json {VD_FEED_STATE_TABLE}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["has_offset"] = state.hasOffset ? 1 : 0;
+        rowData["last_offset"] = static_cast<int64_t>(state.offset);
+        rowData["pending"] = state.pending ? 1 : 0;
+        rowData["pending_offset"] = static_cast<int64_t>(state.pendingOffset);
+
+        nlohmann::json input;
+        input["table"] = VD_FEED_STATE_TABLE;
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to persist vd_feed_state: " + std::string(e.what()));
+    }
+}
+
+AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t offset)
+{
+    VdOffsetObserveResult result;
+    VdFeedState state;
+
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync)
+        {
+            logDbSyncUnavailable("Cannot observe VD feed offset: DBSync not available");
+            return result;
+        }
+
+        state = readVdFeedStateLocked();
+
+        if (state.hasOffset && offset <= state.offset)
+        {
+            // Not newer: agents never move the stored offset backward (N3), and an exact
+            // repeat is a no-op too.
+            result.pending = state.pending;
+            result.pendingOffset = state.pendingOffset;
+            return result;
+        }
+
+        state.hasOffset = true;
+        state.offset = offset;
+        writeVdFeedStateLocked(state);
+    }
+
+    result.changed = true;
+
+    // Deliberately outside the lock above: queryModuleWithRetry can block for several
+    // seconds retrying syscollector, and holding m_dbSyncMutex across that would stall
+    // unrelated agent_info.db access (task dedup checks, metadata population) for the
+    // whole window.
+    if (isVDFirstSyncDone())
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (m_dBSync)
+        {
+            VdFeedState current = readVdFeedStateLocked();
+
+            // Only mark pending if no newer offset raced in while waiting on syscollector's
+            // answer -- a newer observeVdFeedOffset() call runs this same check for its own
+            // (newer) offset instead, and marking pending here for a stale offset would send
+            // a /scan/vd request for a feed version the agent has already moved past.
+            if (current.hasOffset && current.offset == offset)
+            {
+                current.pending = true;
+                current.pendingOffset = offset;
+                writeVdFeedStateLocked(current);
+            }
+
+            state = current;
+        }
+    }
+
+    // else: VDFirst has not completed yet. Its own full scan will cover this offset via
+    // Start.feed_offset (D9/Q5), so no re-scan request is needed here -- the offset itself
+    // is already persisted above, so it is not lost.
+
+    result.pending = state.pending;
+    result.pendingOffset = state.pendingOffset;
+    return result;
+}
+
+bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        logDbSyncUnavailable("Cannot clear VD rescan pending: DBSync not available");
+        return false;
+    }
+
+    VdFeedState state = readVdFeedStateLocked();
+
+    if (!state.pending || state.pendingOffset != offset)
+    {
+        // Stale confirmation: either nothing is pending, or a newer offset has since
+        // superseded this one. The pending flag must only ever be cleared by a matching
+        // /scan/vd 200 OK (never a 409 or transport failure), so a mismatch here means the
+        // caller's request no longer corresponds to the current pending re-scan.
+        return false;
+    }
+
+    state.pending = false;
+    writeVdFeedStateLocked(state);
+    return true;
+}
+
+AgentInfoImpl::VdFeedState AgentInfoImpl::getVdFeedState()
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return {};
+    }
+
+    return readVdFeedStateLocked();
 }
 
 void AgentInfoImpl::resetSyncFlag(const std::string& table)
@@ -2291,7 +2701,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                logDbSyncUnavailable("Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2404,6 +2814,8 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             indicesToCheck.insert(indicesToCheck.end(), indices.begin(), indices.end());
         }
 
+        indicesToCheck.insert(indicesToCheck.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
+
         // Perform integrity check - no globalVersion needed for CHECK modes
         SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
@@ -2420,18 +2832,19 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             // Not a real failure: the integrity check was aborted because the module is stopping.
             m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
         }
-        else if (syncResult.managerNotReady
+        else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                  && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
-            // The manager is not ready for this agent yet, mostly right after a restart, and the
-            // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-            // retries this table on the next integrity cycle.
+            // Either the manager is not ready for this agent yet, or the local sync intake itself
+            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+            // failed enough times in a row to suspect it will not clear. Agent-info retries this
+            // table on the next integrity cycle.
             m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
                           syncResult.failureReason + " Will retry next cycle.");
         }
-        else if (syncResult.managerNotReady)
+        else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
         {
-            // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            // Neither condition has cleared for several cycles in a row.
             m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
                           std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                           syncResult.failureReason);

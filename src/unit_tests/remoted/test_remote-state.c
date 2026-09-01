@@ -21,21 +21,8 @@
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 
 #include "../wrappers/common.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/wazuh/shared/cluster_utils_wrappers.h"
-#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
-
-typedef struct test_struct {
-    remoted_agent_state_t *agent_state;
-    OSHashNode *hash_node;
-    cJSON * state_json;
-} test_struct_t;
 
 extern remoted_state_t remoted_state;
-extern OSHash *remoted_agents_state;
-
-remoted_agent_state_t * get_node(const char *agent_id);
-void w_remoted_clean_agents_state(int *sock);
 
 /* setup/teardown */
 
@@ -47,7 +34,6 @@ static int test_setup(void ** state) {
     remoted_state.keys_reload_count = 15;
     remoted_state.recv_breakdown.events_count = 1234;
     remoted_state.recv_breakdown.ctrl_count = 2345;
-    remoted_state.recv_breakdown.states_count = 333;
     remoted_state.recv_breakdown.upgrade_ack_count = 11;
     remoted_state.recv_breakdown.ping_count = 18;
     remoted_state.recv_breakdown.unknown_count = 8;
@@ -60,92 +46,7 @@ static int test_setup(void ** state) {
     remoted_state.recv_breakdown.ctrl_breakdown.request_count = 2;
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
-    remoted_state.sent_breakdown.ar_count = 18;
-    remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
-
-    return 0;
-}
-
-static int test_setup_agent(void ** state) {
-    test_struct_t *test_data = NULL;
-    os_calloc(1, sizeof(test_struct_t),test_data);
-    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
-    os_calloc(1, sizeof(OSHashNode), test_data->hash_node);
-
-    test_mode = 0;
-    will_return(__wrap_time, 123456789);
-    remoted_agents_state = __wrap_OSHash_Create();
-
-    test_data->agent_state->uptime = 123456789;
-    test_data->agent_state->recv_events_count = 12568;
-    test_data->agent_state->recv_ctrl_count = 2568;
-    test_data->agent_state->recv_states_count = 442;
-    test_data->agent_state->recv_upgrade_ack_count = 5;
-    test_data->agent_state->ctrl_breakdown.keepalive_count = 1234;
-    test_data->agent_state->ctrl_breakdown.startup_count = 2345;
-    test_data->agent_state->ctrl_breakdown.shutdown_count = 234;
-    test_data->agent_state->ctrl_breakdown.request_count = 127;
-    test_data->agent_state->sent_breakdown.ack_count = 2346;
-    test_data->agent_state->sent_breakdown.shared_count = 235;
-    test_data->agent_state->sent_breakdown.ar_count = 514;
-    test_data->agent_state->sent_breakdown.request_count = 153;
-    test_data->agent_state->sent_breakdown.discarded_count = 235;
-
-    OSHash_Add_ex(remoted_agents_state, "001", test_data->agent_state);
-    test_mode = 1;
-
-    test_data->hash_node->key = "001";
-    test_data->hash_node->data = test_data->agent_state;
-
-    *state = test_data;
-
-    return 0;
-}
-
-static int test_teardown_agent(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    cJSON_Delete(test_data->state_json);
-
-    if (remoted_agents_state) {
-        OSHash_Free(remoted_agents_state);
-        remoted_agents_state = NULL;
-    }
-
-    os_free(test_data->hash_node);
-    os_free(test_data);
-
-    return 0;
-}
-
-static int test_setup_empty_hash_table(void ** state) {
-    test_struct_t *test_data = NULL;
-    os_calloc(1, sizeof(test_struct_t),test_data);
-    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
-
-    test_data->agent_state->uptime = 123456789;
-
-    test_mode = 0;
-    will_return(__wrap_time, 123456789);
-    remoted_agents_state = __wrap_OSHash_Create();
-    test_mode = 1;
-
-    *state = test_data;
-
-    return 0;
-}
-
-static int test_teardown_empty_hash_table(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    if (remoted_agents_state) {
-        OSHash_Free(remoted_agents_state);
-        remoted_agents_state = NULL;
-    }
-
-    os_free(test_data->agent_state);
-    os_free(test_data);
 
     return 0;
 }
@@ -184,8 +85,7 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(recv, "events")->valueint, 1234);
     assert_non_null(cJSON_GetObjectItem(recv, "control"));
     assert_int_equal(cJSON_GetObjectItem(recv, "control")->valueint, 2345);
-    assert_non_null(cJSON_GetObjectItem(recv, "states"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "states")->valueint, 333);
+    assert_null(cJSON_GetObjectItem(recv, "states"));
     assert_non_null(cJSON_GetObjectItem(recv, "upgrade_ack"));
     assert_int_equal(cJSON_GetObjectItem(recv, "upgrade_ack")->valueint, 11);
     assert_non_null(cJSON_GetObjectItem(recv, "ping"));
@@ -218,12 +118,10 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "ack")->valueint, 1114);
     assert_non_null(cJSON_GetObjectItem(sent, "shared"));
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
-    assert_non_null(cJSON_GetObjectItem(sent, "ar"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "request"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
     assert_int_equal(cJSON_GetObjectItem(sent, "discarded")->valueint, 85);
+    assert_null(cJSON_GetObjectItem(sent, "ar"));
+    assert_null(cJSON_GetObjectItem(sent, "request"));
 
     assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions")->valueint, 5);
@@ -242,250 +140,10 @@ void test_rem_create_state_json(void ** state) {
     cJSON_Delete(state_json);
 }
 
-void test_rem_create_agents_state_json(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-    int *agents_ids = NULL;
-    os_calloc(2, sizeof(int), agents_ids);
-    agents_ids[0] = 1;
-    agents_ids[1] = OS_INVALID;
-    const char *agent_id = "001";
-
-    will_return(__wrap_time, 123456789);
-
-    expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
-    expect_string(__wrap_OSHash_Get_ex, key, agent_id);
-    will_return(__wrap_OSHash_Get_ex, test_data->hash_node->data);
-
-    test_data->state_json = rem_create_agents_state_json(agents_ids);
-
-    assert_non_null(test_data->state_json);
-
-    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "agents"));
-    cJSON* agents = cJSON_GetObjectItem(test_data->state_json, "agents");
-
-    assert_non_null(cJSON_GetArrayItem(agents, 0));
-    cJSON* agent = cJSON_GetArrayItem(agents, 0);
-    assert_int_equal(cJSON_GetObjectItem(agent, "id")->valueint, 1);
-    assert_int_equal(cJSON_GetObjectItem(agent, "uptime")->valueint, 123456789);
-
-    assert_non_null(cJSON_GetObjectItem(agent, "metrics"));
-    cJSON* agent_metrics = cJSON_GetObjectItem(agent, "metrics");
-
-    assert_non_null(cJSON_GetObjectItem(agent_metrics, "messages"));
-    cJSON* messages = cJSON_GetObjectItem(agent_metrics, "messages");
-
-    assert_non_null(cJSON_GetObjectItem(messages, "received_breakdown"));
-    cJSON* messages_received_breakdown = cJSON_GetObjectItem(messages, "received_breakdown");
-
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "events")->valueint, 12568);
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "control")->valueint, 2568);
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "states")->valueint, 442);
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "upgrade_ack")->valueint, 5);
-
-    assert_non_null(cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown"));
-    cJSON* control_breakdown = cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown");
-
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "request")->valueint, 127);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "startup")->valueint, 2345);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "shutdown")->valueint, 234);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "keepalive")->valueint, 1234);
-
-    assert_non_null(cJSON_GetObjectItem(messages, "sent_breakdown"));
-    cJSON* messages_sent_breakdown = cJSON_GetObjectItem(messages, "sent_breakdown");
-
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
-
-    os_free(test_data->agent_state);
-    os_free(agents_ids);
-}
-
-void test_rem_get_node_new_node(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-    const char *agent_id = "001";
-
-    expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
-    expect_string(__wrap_OSHash_Get_ex, key, agent_id);
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    will_return(__wrap_time, 123456789);
-
-    expect_value(__wrap_OSHash_Add_ex, self, remoted_agents_state);
-    expect_string(__wrap_OSHash_Add_ex, key, agent_id);
-    expect_memory(__wrap_OSHash_Add_ex, data, test_data->agent_state, sizeof(test_data->agent_state));
-    will_return(__wrap_OSHash_Add_ex, 2);
-
-    remoted_agent_state_t *agent_state_returned = get_node(agent_id);
-
-    assert_non_null(agent_state_returned);
-
-    os_free(agent_state_returned);
-}
-
-void test_rem_get_node_existing_node(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-    const char *agent_id = "001";
-
-    expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
-    expect_string(__wrap_OSHash_Get_ex, key, agent_id);
-    will_return(__wrap_OSHash_Get_ex, test_data->agent_state);
-
-    remoted_agent_state_t *agent_state_returned = get_node(agent_id);
-
-    assert_non_null(agent_state_returned);
-
-    os_free(test_data->agent_state);
-}
-
-void test_w_remoted_clean_agents_state_empty_table(void ** state) {
-    int *connected_agents = NULL;
-    os_calloc(1, sizeof(int), connected_agents);
-    connected_agents[0] = OS_INVALID;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin_ex, NULL);
-
-    int sock = 1;
-
-    w_remoted_clean_agents_state(&sock);
-}
-
-void test_w_remoted_clean_agents_state_completed(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
-
-    int *connected_agents = NULL;
-    os_calloc(1, sizeof(int), connected_agents);
-    connected_agents[0] = OS_INVALID;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    expect_value(__wrap_OSHash_Delete_ex, self, remoted_agents_state);
-    expect_value(__wrap_OSHash_Delete_ex, key, "001");
-    will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
-
-    int sock = 1;
-
-    w_remoted_clean_agents_state(&sock);
-}
-
-void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
-
-    int *connected_agents = NULL;
-    os_calloc(2, sizeof(int), connected_agents);
-    connected_agents[0] = 1;
-    connected_agents[1] = OS_INVALID;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    int sock = 1;
-
-    w_remoted_clean_agents_state(&sock);
-
-    os_free(test_data->agent_state);
-}
-
-void test_w_remoted_clean_agents_state_bsearch_multiple_active(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    OSHashNode *inactive_node = NULL;
-    remoted_agent_state_t *inactive_state = NULL;
-    os_calloc(1, sizeof(OSHashNode), inactive_node);
-    os_calloc(1, sizeof(remoted_agent_state_t), inactive_state);
-    inactive_node->key = "005";
-    inactive_node->data = inactive_state;
-
-    int *connected_agents = NULL;
-    os_calloc(4, sizeof(int), connected_agents);
-    connected_agents[0] = 7;
-    connected_agents[1] = 1;
-    connected_agents[2] = 3;
-    connected_agents[3] = OS_INVALID;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
-
-    expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Next, inactive_node);
-
-    expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    expect_value(__wrap_OSHash_Delete_ex, self, remoted_agents_state);
-    expect_value(__wrap_OSHash_Delete_ex, key, "005");
-    will_return(__wrap_OSHash_Delete_ex, inactive_state);
-
-    int sock = 1;
-
-    w_remoted_clean_agents_state(&sock);
-
-    os_free(test_data->agent_state);
-    os_free(inactive_node);
-}
-
-void test_w_remoted_clean_agents_state_query_fail(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
-    int *connected_agents = NULL;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    int sock = 1;
-
-    w_remoted_clean_agents_state(&sock);
-
-    os_free(test_data->agent_state);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test rem_create_state_json
         cmocka_unit_test_setup(test_rem_create_state_json, test_setup),
-        // Test rem_create_agents_state_json
-        cmocka_unit_test_setup_teardown(test_rem_create_agents_state_json, test_setup_agent, test_teardown_agent),
-        // Test get_node
-        cmocka_unit_test_setup_teardown(test_rem_get_node_new_node, test_setup_empty_hash_table, test_teardown_empty_hash_table),
-        cmocka_unit_test_setup_teardown(test_rem_get_node_existing_node, test_setup_agent, test_teardown_agent),
-        // Test w_remoted_clean_agents_state
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_empty_table, test_setup_empty_hash_table, test_teardown_empty_hash_table),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed, test_setup_agent, test_teardown_agent),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed_without_delete, test_setup_agent, test_teardown_agent),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_bsearch_multiple_active, test_setup_agent, test_teardown_agent),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_query_fail, test_setup_agent, test_teardown_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -10,7 +10,12 @@
 
 #include <shared.h>
 #include "wmodules.h"
+#include "module_report.h"
 #include "os_net.h"
+
+/* Name modulesd's own internal options are reported under. The wodles it hosts
+ * each get their own entry, named after the wodle. */
+#define WMCOM_MODULE_NAME "wmodules"
 
 
 size_t wmcom_dispatch(char * command, size_t length, char ** output){
@@ -34,6 +39,8 @@ size_t wmcom_dispatch(char * command, size_t length, char ** output){
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
+    } else if (strcmp(command, "getallconfig") == 0) {
+        return wmcom_getallconfig(output);
     } else if (strncmp(command, "query ", 6) == 0) {
         return wm_module_query(command + 6, output);
     } else if (wmcom_sync(command, length) == 0) {
@@ -47,6 +54,42 @@ size_t wmcom_dispatch(char * command, size_t length, char ** output){
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
+}
+
+/**
+ * @brief Turn getModulesConfig()'s array into one report entry per wodle.
+ *
+ * Every wodle dumps itself as a one-key object, so the key names the module and
+ * the value is its body.
+ *
+ * @param report Destination array.
+ * @param modules Result of getModulesConfig(). Left untouched.
+ */
+static void wmcom_report_wodles(cJSON * report, const cJSON * modules) {
+
+    const cJSON *wodles = modules ? cJSON_GetObjectItem(modules, "wmodules") : NULL;
+    const cJSON *wodle = NULL;
+
+    cJSON_ArrayForEach(wodle, wodles) {
+        if (wodle->child) {
+            module_report_add(report, wodle->child->string,
+                                     cJSON_Duplicate(wodle->child, true));
+        }
+    }
+}
+
+size_t wmcom_getallconfig(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+    cJSON *modules = getModulesConfig();
+    cJSON *internal = cJSON_CreateObject();
+
+    wmcom_report_wodles(report, modules);
+    cJSON_Delete(modules);
+
+    module_report_merge(internal, getModulesInternalOptions());
+    module_report_add(report, WMCOM_MODULE_NAME, internal);
+    return module_report_reply(report, output);
 }
 
 size_t wmcom_getconfig(const char * section, char ** output) {

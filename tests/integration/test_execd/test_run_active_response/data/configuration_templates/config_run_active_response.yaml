@@ -1,5 +1,5 @@
 - sections:
-    - section: client
+    - section: agent
       elements:
         - notify_time:
             value: 10
@@ -9,12 +9,13 @@
             value: "yes"
         - manager:
             elements:
-                - address:
-                    value: 127.0.0.1
-                - port:
-                    value: 1514
-                - protocol:
-                    value: tcp
+                # Trailing '/' on purpose (#38624): it is the explicit opt-out from the
+                # endpoint prefix. Without it the agent takes the default /wazuh-manager/
+                # prefix, which RemotedSimulator does not serve -- every request 404s and the
+                # agent never reaches the accepted /startup this suite waits for. This section
+                # replaces the installed one, so the installer's own opt-out does not reach it.
+                - endpoint:
+                    value: '127.0.0.1:1517/'
     - section: active-response
       elements:
         - disabled:

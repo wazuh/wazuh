@@ -12,7 +12,7 @@ from api_communication.proto import engine_pb2 as api_engine
 
 # Engine API socket path
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api-http.sock"
 
 api_client = APIClient(SOCKET_PATH)
 
@@ -306,6 +306,23 @@ def build_policy_json_with_unexists_root_decoder() -> str:
     )
 
 
+def build_policy_json_with_control_char_root_decoder() -> str:
+    return json.dumps(
+        {
+            "metadata": {"title": "bar"},
+            "enabled": True,
+            "hash": "crud-cm-test-hash",
+            "root_decoder": "bad\nid",
+            "integrations": [],
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+        },
+        separators=(",", ":"),
+    )
+
+
 def build_full_valid_policy_json(default_parent: str,
                                  root_decoder: str,
                                  integration_uuid: str) -> str:
@@ -461,6 +478,24 @@ def step_impl(context, rtype, space):
     context.res_error_msg, context.res_response = request_resource_list(space, rtype)
 
 
+@when('I send a request to create a "decoder" resource with id "{uuid}" named "{name}" in namespace "{space}"')
+def step_impl(context, uuid, name, space):
+    payload = build_decoder_json_with_id(name, uuid)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
+
+
+@when('I send a request to create a "decoder" resource with an id containing a control character named "{name}" in namespace "{space}"')
+def step_impl(context, name, space):
+    payload = build_decoder_json_with_id(name, "bad\tid")
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
+
+
+@when('I send a request to create a "decoder" resource with an id of {length:d} characters named "{name}" in namespace "{space}"')
+def step_impl(context, length, name, space):
+    payload = build_decoder_json_with_id(name, "a" * length)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
+
+
 @when('I send a request to create a "decoder" resource named "{name}" in an empty space')
 def step_impl(context, name):
     payload = build_good_decoder_json(name)
@@ -499,6 +534,10 @@ def step_impl(context, uuid):
 @when('I send a request to delete a resource with empty UUID in namespace "{space}"')
 def step_impl(context, space):
     context.res_error_msg, context.res_response = request_resource_delete(space, "")
+
+@when('I send a request to delete a resource with a UUID containing a control character in namespace "{space}"')
+def step_impl(context, space):
+    context.res_error_msg, context.res_response = request_resource_delete(space, "bad\nid")
 
 
 @when('I send a request to delete a resource with UUID "{uuid}" in namespace "{space}"')
@@ -573,6 +612,14 @@ def step_impl(context, name):
     resources = list(context.res_response.resources)
     names = [r.name for r in resources]
     assert name in names, f"Resource named '{name}' not found in names: {names}"
+
+
+@then('the resource list should contain a resource with id "{uuid}" named "{name}"')
+def step_impl(context, uuid, name):
+    resources = list(context.res_response.resources)
+    matches = [r.uuid for r in resources if r.name == name]
+    assert matches, f"Resource named '{name}' not found in {resources}"
+    assert matches[0] == uuid, f"Resource '{name}' has id '{matches[0]}', expected '{uuid}'"
 
 
 @then('the resource list should not contain a resource named "{name}"')
@@ -654,6 +701,12 @@ def step_impl(context, space):
 @when('I send a request to upsert a policy in namespace "{space}" with JSON having an invalid root decoder')
 def step_impl(context, space):
     payload = build_policy_json_with_unexists_root_decoder()
+    context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
+
+
+@when('I send a request to upsert a policy in namespace "{space}" with JSON having a root decoder containing a control character')
+def step_impl(context, space):
+    payload = build_policy_json_with_control_char_root_decoder()
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 

@@ -22,4 +22,5 @@ class MockSysInfo : public ISysInfo
         MOCK_METHOD(nlohmann::json, browserExtensions, (), (override));
         MOCK_METHOD(void, packages, (std::function<void(nlohmann::json&)>), (override));
         MOCK_METHOD(void, processes, (std::function<void(nlohmann::json&)>), (override));
+        MOCK_METHOD(void, releaseThreadResources, (), (override));
 };

@@ -53,11 +53,11 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import AGENTD_REQUESTING_KEY
+from wazuh_testing.modules.agentd.configuration import (AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT,
+                                                        AGENTD_ENROLLMENT_RETRY_DELTA)
+from wazuh_testing.modules.agentd.patterns import AGENTD_ENROLLMENT_RETRY_BACKOFF
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils import callbacks
 
@@ -76,10 +76,10 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
-local_internal_options.update({AGENTD_TIMEOUT: '5'})
+local_internal_options.update({AGENTD_TIMEOUT: '5', AGENTD_ENROLLMENT_RETRY_DELTA: '1'})
 
 daemons_handler_configuration = {'all_daemons': True}
 
@@ -130,7 +130,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     expected_output:
         - r'Requesting a key'
         - r'Valid key received'
-        - r'Connected to the server'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -138,22 +138,17 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         - keys
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 300, accumulations = 4)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_ENROLLMENT_RETRY_BACKOFF), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
-    authd_server = None
     remoted_server = None
     try:
-        # Start Authd simulador
-        authd_server = AuthdSimulator()
-        authd_server.start()
+        # Start Remoted simulador
+        remoted_server = RemotedSimulator()
+        remoted_server.start()
 
         # Wait succesfull enrollment
         wait_enrollment()
-
-        # Start Remoted simulador
-        remoted_server = RemotedSimulator(protocol = 'tcp')
-        remoted_server.start()
 
         # Wait until Agent is connected
         wait_connect()
@@ -161,10 +156,6 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         # Check if no Wazuh module stopped due to Agentd Initialization
         check_module_stop()
     finally:
-        # Reset simulator
-        if authd_server:
-            authd_server.destroy()
-
         # Reset simulator
         if remoted_server:
             remoted_server.destroy()

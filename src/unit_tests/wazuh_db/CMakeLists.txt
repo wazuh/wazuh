@@ -8,7 +8,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,wdb_leave -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_open_global \
                         -Wl,--wrap,wdb_global_agent_exists -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,close -Wl,--wrap,getpid \
                         -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_prepare_v2 \
-                        -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
+                        -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_column_text \
                         -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_int64\
                         -Wl,--wrap,sqlite3_bind_double \
                         -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config -Wl,--wrap,wdb_finalize_all_statements \
@@ -19,9 +19,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
-                             -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_name -Wl,--wrap,wdb_global_update_agent_version \
+                             -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_version \
                              -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
-                             -Wl,--wrap,wdb_global_validate_sync_status -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name -Wl,--wrap,wdb_global_select_agent_group \
+                             -Wl,--wrap,wdb_global_validate_sync_status -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_group \
                              -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups \
@@ -34,14 +34,14 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_get_group_agents -Wl,--wrap,w_inc_queries_total -Wl,--wrap,w_inc_global -Wl,--wrap,gettimeofday \
                              -Wl,--wrap,w_inc_global_sql -Wl,--wrap,w_inc_global_sql_time -Wl,--wrap,w_inc_global_vacuum -Wl,--wrap,w_inc_global_vacuum_time \
                              -Wl,--wrap,w_inc_global_get_fragmentation -Wl,--wrap,w_inc_global_get_fragmentation_time \
-                             -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time -Wl,--wrap,w_inc_global_agent_update_agent_name \
-                             -Wl,--wrap,w_inc_global_agent_update_agent_name_time -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
+                             -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time \
+                             -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive_time \
                              -Wl,--wrap,w_inc_global_agent_update_connection_status -Wl,--wrap,w_inc_global_agent_update_connection_status_time \
                              -Wl,--wrap,w_inc_global_agent_update_status_code -Wl,--wrap,w_inc_global_agent_update_status_code_time \
-                             -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time -Wl,--wrap,w_inc_global_agent_select_agent_name \
-                             -Wl,--wrap,w_inc_global_agent_select_agent_name_time -Wl,--wrap,w_inc_global_agent_select_agent_group \
+                             -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time \
+                             -Wl,--wrap,w_inc_global_agent_select_agent_group \
                              -Wl,--wrap,w_inc_global_agent_select_agent_group_time -Wl,--wrap,w_inc_global_agent_find_agent -Wl,--wrap,w_inc_global_agent_find_agent_time \
                              -Wl,--wrap,w_inc_global_group_find_group -Wl,--wrap,w_inc_global_group_find_group_time -Wl,--wrap,w_inc_global_group_insert_agent_group \
                              -Wl,--wrap,w_inc_global_group_insert_agent_group_time -Wl,--wrap,w_inc_global_belongs_select_group_belong \
@@ -92,13 +92,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_user_version_get \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_task_parser")
-list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task_get_upgrade_task_status -Wl,--wrap,wdb_task_update_upgrade_task_status -Wl,--wrap,wdb_task_get_upgrade_task_by_agent_id \
-                             -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries -Wl,--wrap,wdb_open_tasks \
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_create -Wl,--wrap,wdb_task_get_pending -Wl,--wrap,wdb_task_mark_delivered \
+                             -Wl,--wrap,wdb_task_cleanup_expired -Wl,--wrap,wdb_task_delete_old -Wl,--wrap,wdb_open_tasks \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_task")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
-                             -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
+                             -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")
@@ -133,7 +133,6 @@ foreach(counter RANGE ${count})
         wdb_lib
         wazuh_modulesd_lib
         ${TEST_DEPS}
-        router
     )
 
     if(NOT test_flags STREQUAL " ")
@@ -144,3 +143,35 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Unit tests for the wazuh-db HTTP-over-Unix-socket API endpoints
+# (src/wazuh_db/src/http/), which had zero coverage before this file was added.
+# Those endpoint classes are header-only, templated on DBConnection/DBStatement and
+# defaulting to SQLite3Wrapper::Connection/Statement, but never requiring them --
+# see test_wdb_http_endpoints.cpp for how a hand-fed mock statement is used
+# instead to drive them without a real SQLite database, wdb_lib, or socket.
+# gtest-based (like this directory's other .c tests, this one needs real
+# exceptions -- nlohmann::json::parse_error -- which cmocka's setjmp-based
+# CMUnitTest runner isn't set up to assert on), same shape as client-agent's
+# test_task_registry_ipc_component (see client-agent/CMakeLists.txt).
+enable_language(CXX)
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+add_executable(test_wdb_http_endpoints test_wdb_http_endpoints.cpp)
+target_include_directories(
+    test_wdb_http_endpoints
+    PRIVATE ${SRC_FOLDER}
+            ${SRC_FOLDER}/external/googletest/googletest/include/
+            ${SRC_FOLDER}/shared_modules/utils
+            ${SRC_FOLDER}/shared_modules/uds_http_server/include
+            ${SRC_FOLDER}/wazuh_db/src/http)
+target_link_libraries(
+    test_wdb_http_endpoints
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+    -fprofile-arcs
+    -ftest-coverage)
+add_test(NAME test_wdb_http_endpoints COMMAND test_wdb_http_endpoints)

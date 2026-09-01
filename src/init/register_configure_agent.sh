@@ -12,12 +12,177 @@ INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
+TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
 # Set default sed alias
 sed="sed -ri"
+
+# Defaults substituted for the components WAZUH_MANAGER_ENDPOINT leaves out. The
+# prefix mirrors the manager's own default global_prefix (#38491) and the port
+# DEFAULT_HTTPS_REMOTE_PORT (src/config/include/client-config.h).
+DEFAULT_MANAGER_PORT="1517"
+DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
+
+mep_error() {
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_MANAGER_ENDPOINT '${1}': ${2}" \
+        >> "${INSTALLDIR}/logs/ossec.log"
+    echo "wazuh-agent: invalid WAZUH_MANAGER_ENDPOINT '${1}': ${2}" >&2
+
+}
+
+# Validate WAZUH_MANAGER_ENDPOINT's value against the <endpoint> grammar (#38624):
+#
+#   [https://] host [:port] [/[prefix]]
+#
+# Only the host is mandatory; an omitted port or prefix takes its default at startup.
+# <endpoint> now takes this same language, so the value is written into the config
+# verbatim and this only decides whether to write it at all -- catching a typo during
+# install, with the reason in ossec.log, rather than leaving the agent to fail later.
+# MEP_HOST / MEP_PORT / MEP_ENDPOINT are still set, for callers that want the split.
+#
+# Kept in lockstep with WriteAgent()'s copy in inst-functions.sh and with
+# ParseManagerEndpoint() in src/win32/InstallerScripts.vbs; a change here belongs in
+# all three. Deliberately parameter-expansion only, no grep/sed/awk: this runs from
+# package post-install, before anything guarantees a usable PATH.
+parse_manager_endpoint() {
+
+    mep_raw="$1"
+    mep_rest="$mep_raw"
+    MEP_HOST=""
+    MEP_PORT="${DEFAULT_MANAGER_PORT}"
+    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
+
+    if [ -z "${mep_raw}" ]; then
+        mep_error "${mep_raw}" "a manager address is required."
+        return 1
+    fi
+
+    # Optional scheme. Only treated as one when no '/' precedes the "://", so a
+    # path that happens to contain "://" cannot be mistaken for a scheme.
+    case "${mep_rest}" in
+        *"://"*)
+            mep_scheme="${mep_rest%%://*}"
+            case "${mep_scheme}" in
+                */*) ;;
+                *)
+                    mep_rest="${mep_rest#*://}"
+                    case "${mep_scheme}" in
+                        [Hh][Tt][Tt][Pp][Ss]) ;;
+                        *)
+                            mep_error "${mep_raw}" "unsupported scheme '${mep_scheme}://'; only https is served."
+                            return 1
+                            ;;
+                    esac
+                    ;;
+            esac
+            ;;
+    esac
+
+    # Authority up to the first '/', the prefix after it. Whether that '/' was
+    # there at all is what separates "default prefix" from "opt-out".
+    case "${mep_rest}" in
+        */*)
+            mep_authority="${mep_rest%%/*}"
+            mep_path="${mep_rest#*/}"
+            mep_path_given="yes"
+            ;;
+        *)
+            mep_authority="${mep_rest}"
+            mep_path=""
+            mep_path_given="no"
+            ;;
+    esac
+
+    # Host and optional port. A bracketed IPv6 literal ends at ']'; brackets exist
+    # only to keep its colons apart from the port's and are dropped here, because
+    # <address> wants the bare literal (OS_IsValidIP does not match a bracketed one,
+    # and ModuleConfig::baseUrl re-brackets it for the URL itself).
+    mep_port_given=""
+    case "${mep_authority}" in
+        "["*)
+            case "${mep_authority}" in
+                *"]"*) ;;
+                *)
+                    mep_error "${mep_raw}" "unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'."
+                    return 1
+                    ;;
+            esac
+            MEP_HOST="${mep_authority#[}"
+            MEP_HOST="${MEP_HOST%%]*}"
+            mep_after="${mep_authority#*]}"
+            case "${mep_after}" in
+                "") ;;
+                ":"*) mep_port_given="${mep_after#:}" ;;
+                *)
+                    mep_error "${mep_raw}" "unexpected '${mep_after}' after the bracketed address."
+                    return 1
+                    ;;
+            esac
+            # A zone id (%25<iface>, percent-encoded inside a URL) stays part of the
+            # host: the agent resolves it with if_nametoindex() at startup (#38624).
+            ;;
+        *:*:*)
+            mep_error "${mep_raw}" "an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}."
+            return 1
+            ;;
+        *:*)
+            MEP_HOST="${mep_authority%:*}"
+            mep_port_given="${mep_authority##*:}"
+            ;;
+        *)
+            MEP_HOST="${mep_authority}"
+            ;;
+    esac
+
+    if [ -z "${MEP_HOST}" ]; then
+        mep_error "${mep_raw}" "a manager address is required."
+        return 1
+    fi
+
+    if [ -n "${mep_port_given}" ]; then
+        case "${mep_port_given}" in
+            ''|*[!0-9]*)
+                mep_error "${mep_raw}" "port '${mep_port_given}' is not a number."
+                return 1
+                ;;
+        esac
+        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
+            mep_error "${mep_raw}" "port '${mep_port_given}' is outside 1-65535."
+            return 1
+        fi
+        MEP_PORT="${mep_port_given}"
+    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
+        mep_error "${mep_raw}" "trailing ':' with no port."
+        return 1
+    fi
+
+    if [ "${mep_path_given}" = "yes" ]; then
+        while :; do
+            case "${mep_path}" in
+                /*) mep_path="${mep_path#/}" ;;
+                *) break ;;
+            esac
+        done
+        while :; do
+            case "${mep_path}" in
+                */) mep_path="${mep_path%/}" ;;
+                *) break ;;
+            esac
+        done
+        if [ -z "${mep_path}" ]; then
+            MEP_ENDPOINT=""
+        else
+            MEP_ENDPOINT="/${mep_path}/"
+        fi
+    fi
+
+    return 0
+
+}
 
 # Update the value of a XML tag inside the wazuh configuration file
 edit_value_tag() {
@@ -53,6 +218,83 @@ delete_blank_lines() {
 
 }
 
+# Insert a file's contents inside the agent configuration block, once.
+#
+# The opening tag has to be alone on its own line AND outside any comment to be
+# matched, so a block someone commented out cannot take the insertion -- which is not
+# hypothetical: commenting out the whole <agent> block is how you disable it, and the
+# commented copy comes first in the file. A package upgrade keeps the 4.x file, where
+# the block is still spelled <client>, hence both names.
+#
+# Written back through the existing file rather than moved over it, so the
+# permissions and ownership ossec.conf was installed with survive.
+insert_into_agent_block() {
+
+    awk -v payload_file="$1" '
+        BEGIN {
+            while ((getline line < payload_file) > 0) {
+                payload = payload line "\n"
+            }
+            close(payload_file)
+        }
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            print
+            next
+        }
+        !inserted && /^[[:space:]]*<(agent|client)>[[:space:]]*$/ {
+            print
+            printf "%s", payload
+            inserted = 1
+            next
+        }
+        {
+            if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+            print
+        }
+    ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+
+    rm -f "${TMP_INSERT}"
+
+}
+
+# True when the option is really set, as opposed to appearing inside a comment.
+# Commented-out options are exactly how the shipped files used to show an example,
+# and editing one leaves the setting the caller asked for unwritten.
+agent_option_is_set() {
+
+    awk -v tag="$1" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        $0 ~ "^[[:space:]]*<" tag ">" { found = 1; exit }
+        { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
+        END { exit found ? 0 : 1 }
+    ' "${CONF_FILE}"
+
+}
+
+# Set an option of the agent block, adding it when the shipped configuration does
+# not carry it. Options left at their default are no longer written to ossec.conf,
+# so edit_value_tag alone would find nothing to substitute and quietly do nothing.
+set_agent_option() {
+
+    if [ -z "$2" ]; then
+        return
+    fi
+
+    if agent_option_is_set "$1"; then
+        edit_value_tag "$1" "$2"
+        return
+    fi
+
+    echo "    <$1>$2</$1>" > "${TMP_SERVER}"
+    insert_into_agent_block "${TMP_SERVER}"
+    rm -f "${TMP_SERVER}"
+
+}
+
 delete_auto_enrollment_tag() {
 
     # Delete the configuration tag if its value is empty
@@ -67,21 +309,16 @@ delete_auto_enrollment_tag() {
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
-    # Remove both manager and legacy server configuration blocks
+    # Remove both server and legacy manager configuration blocks
     ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
-    # Write the client configuration block
-    for i in "${!ADDRESSES[@]}";
-    do
-        {
-            echo "    <manager>"
-            echo "      <address>${ADDRESSES[i]}</address>"
-            echo "      <port>1514</port>"
-            echo "    </manager>"
-        } >> "${TMP_SERVER}"
-    done
+    {
+        echo "    <manager>"
+        echo "      <endpoint>${FINAL_ENDPOINT}</endpoint>"
+        echo "    </manager>"
+    } >> "${TMP_SERVER}"
 
-    ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
+    insert_into_agent_block "${TMP_SERVER}"
 
     rm -f "${TMP_SERVER}"
 
@@ -132,6 +369,7 @@ set_vars () {
 
     export WAZUH_MANAGER
     export WAZUH_MANAGER_PORT
+    export WAZUH_MANAGER_ENDPOINT
     export WAZUH_REGISTRATION_SERVER
     export WAZUH_REGISTRATION_PORT
     export WAZUH_REGISTRATION_PASSWORD
@@ -163,7 +401,7 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
@@ -188,16 +426,70 @@ tolower () {
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
 
-    start_config="$(grep -n "<enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
-    end_config="$(grep -n "</enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
-    if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-        start_config=$(( start_config + 1 ))
-        end_config=$(( end_config - 1 ))
-        sed -n "${start_config},${end_config}p" "${INSTALLDIR}/etc/ossec.conf" >> "${TMP_ENROLLMENT}"
+    # Only the children are collected here; concat_conf writes the block around them.
+    # The block is taken out as it is read, because concat_conf puts it back: leaving
+    # the original in place is what used to give two enrollment blocks on a re-run.
+    #
+    # One awk pass rather than grep plus a sed range, because both mishandle a block
+    # written on a single line. `sed "/<enrollment>/,/<\/enrollment>/d"` only starts
+    # looking for the closing pattern on the line AFTER the opening match, so with
+    # both tags on one line the range never closes and the delete runs to the end of
+    # the file -- </agent>, every block below it and </ossec_config> along with it.
+    # The grep line numbers have the mirror problem: start equals end, so the
+    # "children" range is inverted and copies out the wrong line.
+    #
+    # Comments are skipped for the same reason insert_into_agent_block skips them: a
+    # block someone commented out is not the one being configured. A second block is
+    # dropped rather than left behind, so a re-run cannot accumulate them.
+    #
+    # Truncated up front: awk only opens the file when the block has children, so a
+    # leftover from an interrupted run would otherwise be picked up as this one's.
+    : > "${TMP_ENROLLMENT}"
+
+    if awk -v children="${TMP_ENROLLMENT}" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            print
+            next
+        }
+        /<!--/ {
+            if ($0 !~ /-->/) { in_comment = 1 }
+            print
+            next
+        }
+        in_block {
+            if ($0 ~ /<\/enrollment>/) { in_block = 0; next }
+            if (capture) { print > children }
+            next
+        }
+        /<enrollment>/ {
+            capture = !found
+            found = 1
+            if ($0 ~ /<\/enrollment>/) {
+                # Whole block on one line: keep what sits between the tags.
+                inner = $0
+                sub(/^.*<enrollment>/, "", inner)
+                sub(/<\/enrollment>.*$/, "", inner)
+                if (capture && inner ~ /[^[:space:]]/) { print inner > children }
+            } else {
+                in_block = 1
+            }
+            next
+        }
+        { print }
+        # An unterminated block means the file is not what we think it is; report it
+        # as unusable so the copy is discarded and the original is left untouched.
+        # Spelled out rather than with a ternary, which not every awk parses after
+        # exit -- the macOS agent runs this through BSD awk.
+        END {
+            if (found && !in_block) { exit 0 }
+            exit 1
+        }
+    ' "${CONF_FILE}" > "${TMP_INSERT}"; then
+        cat "${TMP_INSERT}" > "${CONF_FILE}"
     else
-        # Write the client configuration block
+        # No block to reuse. Truncating also drops whatever a half-read one left.
         {
-            echo "    <enrollment>"
             echo "      <enabled>yes</enabled>"
             echo "      <manager_address>MANAGER_IP</manager_address>"
             echo "      <port>1515</port>"
@@ -208,16 +500,30 @@ add_auto_enrollment () {
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
             echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
-            echo "    </enrollment>"
-        } >> "${TMP_ENROLLMENT}"
+        } > "${TMP_ENROLLMENT}"
     fi
+
+    rm -f "${TMP_INSERT}"
 
 }
 
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
 
-    ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
+    # Anchored on the block that opens the agent configuration rather than on any
+    # option inside it: the shipped file only carries what an install has to fill
+    # in, so no individual option is guaranteed to be there to anchor on.
+    #
+    # The wrapper goes on here, not when the children are collected, so an option
+    # edit_value_tag had to append lands inside the block rather than after it.
+    {
+        echo "    <enrollment>"
+        cat "${TMP_ENROLLMENT}"
+        echo "    </enrollment>"
+    } > "${TMP_ENROLLMENT}.block"
+    mv "${TMP_ENROLLMENT}.block" "${TMP_ENROLLMENT}"
+
+    insert_into_agent_block "${TMP_ENROLLMENT}"
 
     rm -f "${TMP_ENROLLMENT}"
 
@@ -250,20 +556,64 @@ main () {
 
     get_deprecated_vars
 
-    if [ -n "${WAZUH_MANAGER}" ]; then
+    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and takes
+    # priority over everything else when set. WAZUH_MANAGER and WAZUH_MANAGER_PORT are
+    # kept working: an <endpoint> is synthesized from them, so every existing 4.x-era
+    # install command and dashboard snippet keeps configuring an agent correctly.
+    #
+    # ${VAR+x} rather than -n on the endpoint, so an explicitly empty value is rejected
+    # instead of silently read as unset: "" used to be the prefix opt-out (#38614), and
+    # an operator still passing it deserves the error rather than a default.
+    # WAZUH_MANAGER_PORT only ever qualifies an address, so on its own there is nothing
+    # to attach it to and no <manager> block gets written at all. Say so instead of
+    # accepting the run and leaving the operator to discover the port was ignored.
+    if [ -z "${WAZUH_MANAGER_ENDPOINT+x}" ] && [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_MANAGER_PORT}" ]; then
+        echo "WAZUH_MANAGER_PORT was set without WAZUH_MANAGER or WAZUH_MANAGER_ENDPOINT; it has no effect on its own." >&2
+    fi
+
+    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ] || [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
             touch -f "${INSTALLDIR}/logs/ossec.log"
             chmod 660 "${INSTALLDIR}/logs/ossec.log"
             chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
         fi
 
-        # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        ADDRESSES=( ${WAZUH_MANAGER//,/ } )
+        if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+            # Written through as given: <endpoint> takes the same language this variable
+            # does, so parsing here only validates it and reports why a bad one was
+            # refused. A rejected value writes no <manager> block at all -- leaving the
+            # shipped placeholder makes the agent fail loudly at startup rather than
+            # silently connect somewhere the operator did not ask for.
+            if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
+                FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
+                add_adress_block
+            fi
+        else
+            # Only one <manager> block is supported; if WAZUH_MANAGER carries several
+            # comma-separated addresses, the last one prevails (server rotation was
+            # removed, #37702 restrictions 2/3), matching the client parser.
+            ADDRESSES=( ${WAZUH_MANAGER//,/ } )
+            FINAL_ENDPOINT="${ADDRESSES[$(( ${#ADDRESSES[@]} - 1 ))]}"
 
-        add_adress_block
+            # A bare IPv6 literal has to be bracketed once it shares a value with the
+            # port, or its trailing group reads as one.
+            case "${FINAL_ENDPOINT}" in
+                # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
+                # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
+                # InstallerScripts.vbs.
+                \[*) ;;
+                *:*:*) FINAL_ENDPOINT="[${FINAL_ENDPOINT}]" ;;
+            esac
+
+            # Omitting the port leaves it to the agent's own default, so nothing is
+            # appended -- the resulting value stays the shortest one that means this.
+            if [ -n "${WAZUH_MANAGER_PORT}" ]; then
+                FINAL_ENDPOINT="${FINAL_ENDPOINT}:${WAZUH_MANAGER_PORT}"
+            fi
+
+            add_adress_block
+        fi
     fi
-
-    edit_value_tag "port" "${WAZUH_MANAGER_PORT}"
 
     if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         add_auto_enrollment
@@ -288,7 +638,7 @@ main () {
     fi
 
     # Options to be modified in wazuh configuration file
-    edit_value_tag "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
+    set_agent_option "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
     unset_vars

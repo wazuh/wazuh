@@ -18,19 +18,19 @@ on:
       - "!src/wazuh_db/src/**"
       - "!src/wazuh_db/schemas/**"
       - "!src/shared_modules/content_manager/src/**"
-      - "!src/shared_modules/router/src/**"
       - "!src/wazuh_modules/vulnerability_scanner/src/**"
-      - "!src/wazuh_modules/inventory_sync/src/**"
+      - "!src/wazuh_modules/inventory_sync_server/src/**"
       # Test trees: UNIT_TEST-gated, never built by this workflow
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
+      - "!src/wazuh_modules/inventory_sync_server/test/**"
       - "!src/**/integrationTests/**"
       # qa/ suites run in other workflows; win32/qa stays (executed here)
       - "!src/data_provider/qa/**"
       - "!src/shared_modules/indexer_connector/qa/**"
       - "!src/shared_modules/keystore/qa/**"
-      - "!src/wazuh_modules/inventory_sync/qa/**"
       - "!src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "!src/wazuh_modules/inventory_sync_server/qa/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,7 +43,7 @@ permissions:
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
@@ -53,6 +53,21 @@ jobs:
           sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
       - name: make deps
         run: make -C src deps TARGET=winagent -j2
       - name: make
@@ -80,9 +95,11 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: src/bin_files
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
   check_binaries_details:
-    runs-on:
-      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: windows-2025
     timeout-minutes: 30
     needs: build
     steps:

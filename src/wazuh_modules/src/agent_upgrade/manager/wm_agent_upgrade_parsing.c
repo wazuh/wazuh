@@ -18,7 +18,7 @@
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_parsing.h"
-#include "wm_agent_upgrade_tasks.h"
+#include "wm_agent_upgrade_manager.h"
 #include "shared.h"
 
 /**
@@ -59,14 +59,6 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
  * */
 STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 
-/**
- * Parses upgrade agent status and return an agent status task from the information
- * @param params JSON where the task parameters are
- * @param error_message message in case of error
- * @return upgrade task if there is no error, NULL otherwise
- * */
-STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
-
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
     cJSON *root = NULL;
     int retval = OS_INVALID;
@@ -82,16 +74,16 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
         return retval;
     }
 
-    cJSON *command = cJSON_GetObjectItem(root, task_manager_json_keys[WM_TASK_COMMAND]);
-    cJSON *parameters = cJSON_GetObjectItem(root, task_manager_json_keys[WM_TASK_PARAMETERS]);
+    cJSON *command = cJSON_GetObjectItem(root, upgrade_json_keys[WM_UPGRADE_COMMAND]);
+    cJSON *parameters = cJSON_GetObjectItem(root, upgrade_json_keys[WM_UPGRADE_PARAMETERS]);
 
     if (command && (command->type == cJSON_String) && parameters && (parameters->type == cJSON_Object)) {
 
-        cJSON *agents = cJSON_DetachItemFromObject(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+        cJSON *agents = cJSON_DetachItemFromObject(parameters, upgrade_json_keys[WM_UPGRADE_AGENTS]);
 
         if (agents && (agents->type == cJSON_Array) && cJSON_GetArraySize(agents)) {
 
-            if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE]) == 0) { // Upgrade command
+            if (strcmp(command->valuestring, "upgrade") == 0) {
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
@@ -102,7 +94,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                     }
                 }
 
-            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE_CUSTOM]) == 0) { // Upgrade custom command
+            } else if (strcmp(command->valuestring, "upgrade_custom") == 0) {
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
@@ -111,21 +103,6 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                     if (!error_message) {
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
-                }
-
-            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) { // Upgrade update status command
-                *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
-                if (!error_message) {
-                    *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(parameters, &error_message);
-                    if (!error_message) {
-                        retval = WM_UPGRADE_AGENT_UPDATE_STATUS;
-                    }
-                }
-
-            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_RESULT]) == 0) { // Upgrade result command
-                *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
-                if (!error_message) {
-                    retval = WM_UPGRADE_RESULT;
                 }
 
             } else {
@@ -213,9 +190,18 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if (item->string) {
-            if(strcmp(item->string, "wpk_repo") == 0) {
+            if(strcmp(item->string, "request_time") == 0) {
+                /* request_time - Unix timestamp from API for deterministic task IDs */
+                if (item->type == cJSON_Number) {
+                    task->request_time = (time_t)item->valuedouble;
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, "wpk_repo") == 0) {
                 /* wpk_repo */
                 if (item->type == cJSON_String) {
+                    os_free(task->wpk_repository);
                     os_strdup(item->valuestring, task->wpk_repository);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -224,6 +210,7 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
             } else if(strcmp(item->string, "version") == 0) {
                 /* version */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_version);
                     os_strdup(item->valuestring, task->custom_version);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -253,6 +240,7 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
                 /* package_type */
                 if (item->type == cJSON_String) {
                     if (!strcmp(item->valuestring, "rpm") || !strcmp(item->valuestring, "deb")) {
+                        os_free(task->package_type);
                         os_strdup(item->valuestring, task->package_type);
                     } else {
                         sprintf(output, "Invalid parameter \"%s\", value should be \"rpm\" or \"deb\"", item->string);
@@ -278,6 +266,15 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
         return NULL;
     }
 
+    // Validate required parameter: request_time is mandatory for deterministic task IDs
+    if (task->request_time == 0) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, "Missing required parameter: request_time");
+        wm_agent_upgrade_free_upgrade_task(task);
+        os_strdup("Missing required parameter: request_time", *error_message);
+        os_free(output);
+        return NULL;
+    }
+
     os_free(output);
 
     return task;
@@ -295,9 +292,18 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if (item->string) {
-            if (strcmp(item->string, "file_path") == 0) {
+            if(strcmp(item->string, "request_time") == 0) {
+                /* request_time - Unix timestamp from API for deterministic task IDs */
+                if (item->type == cJSON_Number) {
+                    task->request_time = (time_t)item->valuedouble;
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                    error_flag = 1;
+                }
+            } else if (strcmp(item->string, "file_path") == 0) {
                 /* file_path */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_file_path);
                     os_strdup(item->valuestring, task->custom_file_path);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -306,6 +312,7 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
             } else if(strcmp(item->string, "installer") == 0) {
                 /* installer */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_installer);
                     os_strdup(item->valuestring, task->custom_installer);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -327,56 +334,11 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
         return NULL;
     }
 
-    os_free(output);
-
-    return task;
-}
-
-STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message) {
-    char *output = NULL;
-    int param_index = 0;
-    int error_flag = 0;
-
-    os_calloc(OS_MAXSTR, sizeof(char), output);
-
-    wm_upgrade_agent_status_task *task = wm_agent_upgrade_init_agent_status_task();
-
-    while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
-        cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if (item->string) {
-            if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR]) == 0) {
-                if (item->type == cJSON_Number) {
-                    task->error_code = item->valueint;
-                } else {
-                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
-                    error_flag = 1;
-                }
-            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]) == 0) {
-                if (item->type == cJSON_String) {
-                    os_strdup(item->valuestring, task->message);
-                } else {
-                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                    error_flag = 1;
-                }
-            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
-                if (item->type == cJSON_String) {
-                    os_strdup(item->valuestring, task->status);
-                } else {
-                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                    error_flag = 1;
-                }
-            }
-        } else {
-            sprintf(output, "Invalid JSON type");
-            error_flag = 1;
-        }
-    }
-
-    if (error_flag) {
-        // We will reject this task since the parameters are incorrect
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
-        wm_agent_upgrade_free_agent_status_task(task);
-        os_strdup(output, *error_message);
+    // Validate required parameter: request_time is mandatory for deterministic task IDs
+    if (task->request_time == 0) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, "Missing required parameter: request_time");
+        wm_agent_upgrade_free_upgrade_custom_task(task);
+        os_strdup("Missing required parameter: request_time", *error_message);
         os_free(output);
         return NULL;
     }
@@ -389,12 +351,12 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 cJSON* wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int *agent_id) {
     cJSON *response = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
+    cJSON_AddNumberToObject(response, upgrade_json_keys[WM_UPGRADE_ERROR], error_id);
     if (message) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], message);
+        cJSON_AddStringToObject(response, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE], message);
     }
     if(agent_id) {
-        cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], *agent_id);
+        cJSON_AddNumberToObject(response, upgrade_json_keys[WM_UPGRADE_AGENT_ID], *agent_id);
     }
 
     return response;
@@ -403,110 +365,15 @@ cJSON* wm_agent_upgrade_parse_data_response(int error_id, const char* message, c
 cJSON* wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     cJSON *response = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
+    cJSON_AddNumberToObject(response, upgrade_json_keys[WM_UPGRADE_ERROR], error_id);
     if (data && (data->type == cJSON_Array)) {
-        cJSON_AddItemToObject(response, task_manager_json_keys[WM_TASK_DATA], data);
+        cJSON_AddItemToObject(response, upgrade_json_keys[WM_UPGRADE_DATA], data);
     } else {
         cJSON *data_array = cJSON_CreateArray();
         cJSON_AddItemToArray(data_array, data);
-        cJSON_AddItemToObject(response, task_manager_json_keys[WM_TASK_DATA], data_array);
+        cJSON_AddItemToObject(response, upgrade_json_keys[WM_UPGRADE_DATA], data_array);
     }
-    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], upgrade_error_codes[error_id]);
+    cJSON_AddStringToObject(response, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE], upgrade_error_codes[error_id]);
 
     return response;
-}
-
-cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
-    cJSON *request = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-
-    char* node_name = NULL;
-    OS_XML xml;
-
-    const char *(xml_node[]) = {WAZUHCONFIG, "cluster", "node_name", NULL};
-
-    if (OS_ReadXML(WAZUHCONF, &xml) >= 0) {
-        node_name = OS_GetOneContentforElement(&xml, xml_node);
-    }
-
-    OS_ClearXML(&xml);
-
-    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_NAME], node_name ? node_name : "");
-    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
-    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
-    cJSON_AddStringToObject(request, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
-    if (agents_array) {
-        cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
-    }
-    if (status) {
-        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], status);
-    }
-    if (error) {
-        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
-    }
-    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
-
-    os_free(node_name);
-
-    return request;
-}
-
-int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
-    char *error = NULL;
-    int error_code = OS_INVALID;
-
-    if (agent_response) {
-        if (!strncmp(agent_response, "ok", 2)) {
-            error_code = OS_SUCCESS;
-            if (data && strchr(agent_response, ' ')) {
-                os_strdup(strchr(agent_response, ' ') + 1, *data);
-            }
-        } else {
-            if (!strncmp(agent_response, "err", 3) && strchr(agent_response, ' ')) {
-                error = strchr(agent_response, ' ') + 1;
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
-            }
-        }
-    }
-
-    return error_code;
-}
-
-int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
-    char *error = NULL;
-    int error_code = OS_INVALID;
-
-    cJSON *json_response = cJSON_Parse(agent_response);
-
-    if (json_response) {
-        cJSON *error_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR]);
-        cJSON *data_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
-
-        if (error_obj && (error_obj->type == cJSON_Number)) {
-            error_code = error_obj->valueint;
-        }
-
-        if (data_obj && (data_obj->type == cJSON_String)) {
-            if (data) {
-                os_strdup(data_obj->valuestring, *data);
-            }
-            error = data_obj->valuestring;
-        }
-    }
-
-    if (error_code != OS_SUCCESS) {
-        if (error) {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
-        } else {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR);
-        }
-        if (data) {
-            os_free(*data);
-        }
-    }
-
-    cJSON_Delete(json_response);
-
-    return error_code;
 }

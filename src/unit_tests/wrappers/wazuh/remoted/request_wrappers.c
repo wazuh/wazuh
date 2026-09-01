@@ -12,6 +12,9 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include "request_wrappers.h"
 
 int __wrap_req_save(const char * counter, const char * buffer, size_t length) {
@@ -19,4 +22,21 @@ int __wrap_req_save(const char * counter, const char * buffer, size_t length) {
     check_expected(buffer);
     check_expected(length);
     return mock();
+}
+
+int __wrap_req_send_and_wait(const char * agent_id, const char * payload, size_t length, char ** response, int timeout_sec) {
+    check_expected(agent_id);
+    check_expected(payload);
+    check_expected(length);
+    check_expected(timeout_sec);
+
+    char * mocked_response = mock_ptr_type(char *);
+
+    if (mocked_response) {
+        *response = strdup(mocked_response);
+    } else {
+        *response = NULL;
+    }
+
+    return mock_type(int);
 }

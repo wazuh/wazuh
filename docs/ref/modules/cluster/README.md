@@ -2,6 +2,13 @@
 
 For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Cluster Configuration](configuration.md).
 
+> **Note:** The `<cluster>` XML section is not parsed or validated by the
+> shared C configuration library — it is recognized but otherwise ignored at
+> that layer. All parsing and validation happen later, in Python (lenient
+> parsing via `utils.read_cluster_config`, used generally; strict validation
+> via `cluster.check_cluster_config`, used only at daemon startup / CLI). See
+> [Cluster Configuration](configuration.md) for details.
+
 ## Introduction
 
 The Wazuh server cluster is composed of multiple Wazuh server nodes running in a distributed environment. This deployment strategy provides horizontal scalability and improved performance. In environments with a large number of monitored endpoints, this setup can be combined with a network load balancer to distribute Wazuh agent connections across multiple nodes. This allows the Wazuh platform to manage a high number of agents efficiently while ensuring high availability.

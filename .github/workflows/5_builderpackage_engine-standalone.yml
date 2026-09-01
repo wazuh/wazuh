@@ -47,7 +47,7 @@ env:
 jobs:
   build:
     name: Build Manager (${{ matrix.arch }})
-    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     permissions:
       id-token: write
       contents: read
@@ -88,20 +88,10 @@ jobs:
               ;;
           esac
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+      - name: Prepare build environment
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
+          # Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          # which the older git inside builder Docker images cannot read.
           git config core.repositoryformatversion 0
           # Install pip3
           if ! command -v pip3 >/dev/null 2>&1; then
@@ -132,7 +122,7 @@ jobs:
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     permissions:
       id-token: write
       contents: read
@@ -246,8 +236,8 @@ jobs:
           sleep 2
           echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
 
-          if [ -S sockets/engine-api.sock ] && \
-            curl --silent --fail-with-body --unix-socket sockets/engine-api.sock \
+          if [ -S sockets/engine-api-http.sock ] && \
+            curl --silent --fail-with-body --unix-socket sockets/engine-api-http.sock \
                   -X POST -H "Content-Type: application/json" \
                   -d '{}' \
                   http://localhost/_internal/router/table/get; then

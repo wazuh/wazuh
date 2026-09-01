@@ -18,6 +18,7 @@
 #include "ssl_op.h"
 
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /*************************/
 /* setup/teardown        */
@@ -98,6 +99,32 @@ void test_wrap_SSL_read_multi_record(void **state) {
     assert_int_equal(ret, (3* MAX_SSL_PACKET_SIZE) + 1024);
 }
 
+void test_get_ssl_context_default_min_version_is_tls13(void **state) {
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
+
+    assert_non_null(ctx);
+    assert_int_equal(SSL_CTX_get_min_proto_version(ctx), TLS1_3_VERSION);
+
+    SSL_CTX_free(ctx);
+}
+
+void test_get_ssl_context_accepts_tls13_ciphersuites(void **state) {
+    SSL_CTX *ctx = get_ssl_context("TLS_AES_128_GCM_SHA256");
+
+    assert_non_null(ctx);
+
+    SSL_CTX_free(ctx);
+}
+
+void test_get_ssl_context_rejects_legacy_cipher_list(void **state) {
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid TLS 1.3 cipher suite list: 'HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH'");
+
+    SSL_CTX *ctx = get_ssl_context("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
+
+    assert_null(ctx);
+}
+
 /*************************/
 int main(void) {
 
@@ -106,6 +133,9 @@ int main(void) {
         cmocka_unit_test(test_wrap_SSL_read_success),
         cmocka_unit_test(test_wrap_SSL_read_full_single_record),
         cmocka_unit_test(test_wrap_SSL_read_multi_record),
+        cmocka_unit_test(test_get_ssl_context_default_min_version_is_tls13),
+        cmocka_unit_test(test_get_ssl_context_accepts_tls13_ciphersuites),
+        cmocka_unit_test(test_get_ssl_context_rejects_legacy_cipher_list),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

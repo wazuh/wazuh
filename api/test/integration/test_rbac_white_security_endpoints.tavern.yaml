@@ -410,7 +410,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: stringA1!
+        password: stringA1!extra
     response:
       <<: *permission_denied
 
@@ -422,7 +422,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: stringA1!
+        password: stringA1!extra
     response:
       <<: *permission_denied
 
@@ -982,7 +982,7 @@ stages:
       method: POST
       json:
         username: newUser
-        password: stringA1!
+        password: stringA1!extra
     response:
       <<: *permission_denied
 

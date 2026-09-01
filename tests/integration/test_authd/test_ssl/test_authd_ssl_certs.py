@@ -91,7 +91,7 @@ OUPUT_MESSAGE = "OSSEC K:'"
 # - Valid certificate, Incorrect Host
 # Variables
 
-receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'ssl_tls')]
 
 monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
@@ -164,35 +164,32 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol, open_at_start=False)
     if option != 'NO CERT':
-        SSL_socket.set_ssl_configuration(certificate=SSL_AGENT_CERT, keyfile=SSL_AGENT_PRIVATE_KEY)
+        SSL_socket.set_ssl_configuration(connection_protocol=connection_protocol, certificate=SSL_AGENT_CERT,
+                                          keyfile=SSL_AGENT_PRIVATE_KEY)
+    global AGENT_ID
+    response = ''
     try:
         SSL_socket.open()
-        if option in ['NO CERT', 'INCORRECT CERT']:
-            raise AssertionError(f'Agent was enable to connect without using any certificate or an incorrect one!')
-    except ssl.SSLError as exception:
-        if option in ['NO CERT', 'INCORRECT CERT']:
-            # Expected to happen
-            return
-        else:
-            raise AssertionError(f'Option {option} expected successful socket connection but it failed')
-    global AGENT_ID
-    SSL_socket.send(INPUT_MESSAGE.format(AGENT_NAME, AGENT_ID), size=False)
-    AGENT_ID = AGENT_ID + 1
-    try:
-        response = ''
+        SSL_socket.send(INPUT_MESSAGE.format(AGENT_NAME, AGENT_ID), size=False)
+        AGENT_ID = AGENT_ID + 1
         timeout = time.time() + 10
         while response == '':
             response = SSL_socket.receive().decode()
             if time.time() > timeout:
                 raise ConnectionResetError('Manager did not respond to sent message!')
+        if option in ['NO CERT', 'INCORRECT CERT']:
+            raise AssertionError('Agent was enable to connect without using any certificate or an incorrect one!')
         if option in ['INCORRECT HOST'] and verify_host:
-            raise AssertionError(f'An incorrect host was able to register using the verify_host option')
-    except ConnectionResetError as exception:
-        if option in ['INCORRECT HOST'] and verify_host:
-            # Expected
+            raise AssertionError('An incorrect host was able to register using the verify_host option')
+    except ssl.SSLError:
+        # TLS 1.3 client-cert rejection is a post-handshake event: it can surface during open()
+        # or on the first read/write, depending on buffering.
+        if option in ['NO CERT', 'INCORRECT CERT']:
             return
-        else:
-            raise
+        raise AssertionError(f'Option {option} expected successful socket connection but it failed')
+    except ConnectionResetError:
+        if option in ['INCORRECT HOST'] and verify_host:
+            return
+        raise
     assert response[:len(OUPUT_MESSAGE)] == OUPUT_MESSAGE, (
         f'Option {option} response from manager did not match expected')
-    return

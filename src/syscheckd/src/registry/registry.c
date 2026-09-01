@@ -153,6 +153,15 @@ cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, co
 
 cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *registry_data){
     const registry_t* config = fim_registry_configuration(path, arch);
+
+    // If config is NULL the attributes cannot be translated: fim_registry_key_attributes_json needs it
+    // to know which checks are enabled. Callers replaying rows from the local DB (startup promotion,
+    // recovery resync) may hand us a path that is no longer covered by the current configuration.
+    if (config == NULL) {
+        merror("Failed to get configuration for registry path: %s", path);
+        return NULL;
+    }
+
     cJSON* registry_stateful = fim_registry_key_attributes_json(dbsync_event, registry_data, config);
 
     cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
@@ -168,6 +177,13 @@ cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash
 
 cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data){
     const registry_t* config = fim_registry_configuration(path, arch);
+
+    // Same as build_stateful_event_registry_key: without configuration there is nothing to translate.
+    if (config == NULL) {
+        merror("Failed to get configuration for registry path: %s", path);
+        return NULL;
+    }
+
     cJSON* registry_stateful = fim_registry_value_attributes_json(dbsync_event, registry_data, config);
 
     char *utf8_value = auto_to_utf8(value);
@@ -1173,6 +1189,15 @@ registry_t *fim_registry_configuration(const char *key, int arch) {
     int match;
     registry_t *ret = NULL;
 
+    // syscheck.registry is normally left as REGISTRY_EMPTY by Read_Syscheck_Config, but that fallback
+    // sits after its OS_INVALID returns: an unparseable ossec.conf leaves it NULL, and
+    // Start_win32_Syscheck's dump_syscheck_registry() recovery only runs on the "disabled" branch,
+    // while fim_initialize() runs unconditionally. Guard here so every caller is safe.
+    if (syscheck.registry == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", key);
+        return NULL;
+    }
+
     for (it = 0; syscheck.registry[it].entry; it++) {
         if (arch != syscheck.registry[it].arch) {
             continue;
@@ -1876,6 +1901,14 @@ void fim_open_key(HKEY root_key_handle,
     registry_t *configuration;
     int result_transaction = -1;
 
+    /* Same pruning as fim_checker(): this recursion runs under fim_registry_scan_mutex, which the
+     * shutdown teardown needs to release the registry transaction contexts (issue #38212). The
+     * check belongs here and not only in the caller's loop, because a single top level key takes
+     * minutes on its own. */
+    if (mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
+        return;
+    }
+
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return;
     }
@@ -1996,7 +2029,30 @@ void fim_open_key(HKEY root_key_handle,
     RegCloseKey(current_key_handle);
 }
 
+static void free_failed_registry_key(void *data) {
+    failed_registry_key_t *key = (failed_registry_key_t *)data;
+
+    if (key != NULL) {
+        os_free(key->path);
+        os_free(key);
+    }
+}
+
+static void free_failed_registry_value(void *data) {
+    failed_registry_value_t *value = (failed_registry_value_t *)data;
+
+    if (value != NULL) {
+        os_free(value->path);
+        os_free(value->value);
+        os_free(value);
+    }
+}
+
 void fim_registry_scan() {
+    if (fim_shutdown_process_on()) {
+        return;
+    }
+
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
@@ -2004,6 +2060,10 @@ void fim_registry_scan() {
     // Check if registries are configured - if syscheck.registry is NULL or empty,
     // but we have data in the database, we need to send DataClean for registry indices
     if (syscheck.registry == NULL || syscheck.registry[0].entry == NULL) {
+        if (fim_shutdown_process_on()) {
+            return;
+        }
+
         int registry_keys_count = fim_db_get_count_registry_key();
         int registry_values_count = fim_db_get_count_registry_data();
 
@@ -2011,7 +2071,15 @@ void fim_registry_scan() {
             mdebug1("No registry paths configured but database has %d keys and %d values. Initiating DataClean for registries.",
                     registry_keys_count, registry_values_count);
 
+            // Under the handle read lock, like the file path does: the shutdown destroys the handle
+            // under the write lock, so reading it unlocked is a use-after-free window (issue #38212).
+            bool sync_handle_available = false;
+            bool dataCleanSent = false;
+
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
             if (syscheck.sync_handle) {
+                sync_handle_available = true;
+
                 // Prepare indices vector for data clean notification
                 const char* indices[2] = {NULL, NULL};
                 size_t indices_count = 0;
@@ -2024,7 +2092,11 @@ void fim_registry_scan() {
                 }
 
                 // Send DataClean notification for registry indices
-                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+            if (sync_handle_available) {
                 if (dataCleanSent) {
                     minfo("DataClean notification sent successfully for registry indices (all registry paths removed from configuration).");
                 } else {
@@ -2043,30 +2115,55 @@ void fim_registry_scan() {
 
     // Create lists for deferred deletion of validation failures
     OSList *failed_keys = OSList_Create();
-    OSList *failed_values = OSList_Create();
-    if (!failed_keys || !failed_values) {
-        merror("Failed to create failed registry lists for schema validation cleanup");
-        if (failed_keys) OSList_Destroy(failed_keys);
-        if (failed_values) OSList_Destroy(failed_values);
+    if (!failed_keys) {
+        merror("Failed to create failed_keys list for schema validation cleanup");
         return;
     }
-    // Set free functions that will free the structures AND their string members
-    OSList_SetFreeDataPointer(failed_keys, (void (*)(void *))free);
-    OSList_SetFreeDataPointer(failed_values, (void (*)(void *))free);
+    OSList_SetFreeDataPointer(failed_keys, free_failed_registry_key);
+
+    OSList *failed_values = OSList_Create();
+    if (!failed_values) {
+        merror("Failed to create failed_values list for schema validation cleanup");
+        OSList_Destroy(failed_keys);
+        return;
+    }
+    OSList_SetFreeDataPointer(failed_values, free_failed_registry_value);
 
     // Create lists for pending sync flag updates
     OSList *pending_sync_keys = OSList_Create();
-    OSList *pending_sync_values = OSList_Create();
-    if (!pending_sync_keys || !pending_sync_values) {
-        merror("Failed to create pending sync lists for registry");
-        if (pending_sync_keys) OSList_Destroy(pending_sync_keys);
-        if (pending_sync_values) OSList_Destroy(pending_sync_values);
-        if (failed_keys) OSList_Destroy(failed_keys);
-        if (failed_values) OSList_Destroy(failed_values);
+    if (!pending_sync_keys) {
+        merror("Failed to create pending sync keys list");
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
         return;
     }
     OSList_SetFreeDataPointer(pending_sync_keys, free_pending_sync_item);
+
+    OSList *pending_sync_values = OSList_Create();
+    if (!pending_sync_values) {
+        merror("Failed to create pending sync values list");
+        OSList_Destroy(pending_sync_keys);
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
+        return;
+    }
     OSList_SetFreeDataPointer(pending_sync_values, free_pending_sync_item);
+
+    /* The whole transaction lifecycle stays inside fim_registry_scan_mutex, like the file scan keeps
+     * its own inside fim_scan_mutex: the shutdown teardown takes this mutex to know no registry
+     * transaction is in flight before it releases the database context (issue #38212). */
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+
+    // Re-checked with the mutex held: the teardown may have run while this scan was waiting.
+    if (fim_shutdown_process_on()) {
+        mdebug1("Shutdown in progress: skipping the registry scan.");
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+        OSList_Destroy(pending_sync_keys);
+        OSList_Destroy(pending_sync_values);
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
+        return;
+    }
 
     // Initialize synced docs counters from database before scan
     synced_docs_registry_keys = fim_db_count_synced_docs(FIMDB_REGISTRY_KEY_TABLENAME);
@@ -2080,7 +2177,27 @@ void fim_registry_scan() {
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
                                                              registry_value_transaction_callback, &txn_ctx_regval);
 
-    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+    if (regkey_txn_handler == NULL || regval_txn_handler == NULL) {
+        if (regkey_txn_handler == NULL) {
+            merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_KEY_TXN_TABLE);
+        }
+        if (regval_txn_handler == NULL) {
+            merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_VALUE_TXN_TABLE);
+        }
+        if (regkey_txn_handler != NULL) {
+            fim_db_transaction_close(regkey_txn_handler);
+        }
+        if (regval_txn_handler != NULL) {
+            fim_db_transaction_close(regval_txn_handler);
+        }
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+        OSList_Destroy(pending_sync_keys);
+        OSList_Destroy(pending_sync_values);
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
+        return;
+    }
+
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
     /* Get sub class and a valid registry entry */
@@ -2100,31 +2217,42 @@ void fim_registry_scan() {
             *syscheck.registry[i].entry = '\0';
             continue;
         }
+        if (fim_shutdown_process_on()) {
+            break;
+        }
+
         fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
                      NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval, &txn_ctx_reg);
     }
-    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
     txn_ctx_reg.key = NULL;
     txn_ctx_regval.data = NULL;
-    fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
-    fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
+
+    if (fim_shutdown_process_on()) {
+        mdebug1("Shutdown in progress: closing the registry scan transactions without the deleted rows stage.");
+        fim_db_transaction_close(regval_txn_handler);
+        fim_db_transaction_close(regkey_txn_handler);
+    } else {
+        fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
+        fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
+
+        // Process pending sync flag updates after transaction commit. Runs once per full
+        // registry scan, so log the summary here (process_pending_sync_updates() itself doesn't).
+        int synced_keys = process_pending_sync_updates(FIMDB_REGISTRY_KEY_TABLENAME, pending_sync_keys);
+        mdebug1("Processed %d pending sync flag updates (keys)", synced_keys);
+        int synced_values = process_pending_sync_updates(FIMDB_REGISTRY_VALUE_TABLENAME, pending_sync_values);
+        mdebug1("Processed %d pending sync flag updates (values)", synced_values);
+
+        // Delete registry keys and values that failed schema validation (outside transaction)
+        cleanup_failed_registry_keys(failed_keys);
+        cleanup_failed_registry_values(failed_values);
+    }
     regkey_txn_handler = NULL;
     regval_txn_handler = NULL;
 
-    // Process pending sync flag updates after transaction commit
-    if (pending_sync_keys != NULL) {
-        process_pending_sync_updates(FIMDB_REGISTRY_KEY_TABLENAME, pending_sync_keys);
-        OSList_Destroy(pending_sync_keys);
-    }
-    if (pending_sync_values != NULL) {
-        process_pending_sync_updates(FIMDB_REGISTRY_VALUE_TABLENAME, pending_sync_values);
-        OSList_Destroy(pending_sync_values);
-    }
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
 
-    // Delete registry keys and values that failed schema validation (outside transaction)
-    cleanup_failed_registry_keys(failed_keys);
-    cleanup_failed_registry_values(failed_values);
-
+    OSList_Destroy(pending_sync_keys);
+    OSList_Destroy(pending_sync_values);
     OSList_Destroy(failed_keys);
     OSList_Destroy(failed_values);
 

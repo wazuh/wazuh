@@ -124,15 +124,13 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):
-    """Get list of agents and which node they are connected to.
+async def get_agents(lc: local_client.LocalClient, filter_status=None):
+    """Get list of agents.
 
     Parameters
     ----------
     lc : LocalClient object
         LocalClient with which to send the 'get_nodes' request.
-    filter_node : list
-        Node to return.
     filter_status : list
         Agent connection status to filter by.
 
@@ -142,12 +140,11 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
         Agent's basic information.
     """
     filter_status = ["all"] if not filter_status else filter_status
-    filter_node = ["all"] if not filter_node else filter_node
-    select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version'}
+    select_fields = {'id', 'ip', 'name', 'status', 'version'}
 
     input_json = {'f': Agent.get_agents_overview,
                   'f_kwargs': {
-                      'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
+                      'filters': {'status': ','.join(filter_status)},
                       'limit': None,
                       'select': list(select_fields)
                   },
@@ -181,17 +178,3 @@ async def get_system_nodes():
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
         raise e
-
-async def get_system_nodes_or_none() -> list | None:
-    """Get the list of system nodes or None if an exception occurs.
-
-    Returns
-    -------
-    nodes : list or None
-        List of node names or None if an exception is raised.
-    """
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
-
-    return nodes

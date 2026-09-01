@@ -45,13 +45,12 @@ It **must not** contain business logic.
 | Module | Responsibility | Main Endpoints |
 |--------|----------------|----------------|
 | `agent.py` | Agent lifecycle and queries | `/agents` |
-| `manager.py` | Manager status and configuration | `/manager` |
+| `manager.py` | Manager status and configuration | used by `cluster_controller.py` (no dedicated route) |
 | `cluster.py` | Cluster operations | `/cluster` |
 | `security.py` | Authentication and users | `/security` |
 | `rbac/` | Authorization logic | `/security/*` |
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |
-| `stats.py` | Manager statistics | `/manager/stats` |
-| `task.py` | Async task handling | `/tasks` |
+| `stats.py` | Manager statistics | used by `cluster_controller.py` (no dedicated route) |
 
 ---
 
@@ -68,7 +67,6 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `InputValidator.py` | Regex-based input validation (names, lengths) |
 | `utils.py` | General utilities (caching, process management, helpers) |
 | `wazuh_socket.py` | IPC with Wazuh daemons via Unix sockets |
-| `wazuh_queue.py` | Internal async messaging |
 | `wdb.py` | Async interface to Wazuh DB (length-prefixed Unix socket protocol) |
 | `wdb_http.py` | HTTP-based alternative WDB client (via `aiohttp`) |
 | `configuration.py` | Parse `wazuh-manager.conf` and related files |
@@ -76,7 +74,7 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `wlogging.py` | Custom log rotation with gzip compression |
 | `pyDaemonModule.py` | UNIX daemonization (double-fork pattern) |
 | `stats.py` | Statistics processing logic |
-| `cluster/` | Cluster architecture (master, worker, DAPI, HAProxy helper) |
+| `cluster/` | Cluster architecture (master, worker, DAPI) |
 | `indexer/` | Wazuh Indexer integration (credentials, disconnected agents) |
 
 ---
@@ -111,9 +109,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `agent_controller.py` | Agent CRUD and lifecycle |
 | `cluster_controller.py` | Cluster node operations |
 | `security_controller.py` | Users, roles, policies, RBAC |
-| `active_response_controller.py` | Trigger active response commands |
 | `mitre_controller.py` | MITRE ATT&CK mappings |
-| `task_controller.py` | Async task queries |
 | `overview_controller.py` | Agent overview/summary |
 | `default_controller.py` | Basic API info (version, hostname, timestamp) |
 
@@ -127,7 +123,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `decorators.py` | `expose_resources` decorator that enforces action/resource permissions |
 | `orm.py` | ORM models for roles, policies, and user-role mappings |
 | `preprocessor.py` | Resource preprocessing before permission checks |
-| `default_resources.py` | Built-in default RBAC resource definitions |
+| `default/{roles,policies,rules,relationships,users}.yaml` | Built-in default RBAC data, loaded via `orm.py`'s `insert_default_resources` |
 | `auth_context.py` | Authentication context handling |
 
 ---
@@ -147,9 +143,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `control.py` | Cluster control operations |
 | `cluster.py` | Core cluster logic |
 | `common.py` | Cluster-specific shared utilities |
-| `config.py` | Cluster configuration schema |
 | `utils.py` | Cluster utilities (`get_cluster_items`, etc.) |
-| `hap_helper/` | HAProxy integration for load balancing |
 
 ---
 
@@ -161,7 +155,10 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `indexer.py` | Main Wazuh Indexer client |
 | `credential_manager.py` | Indexer credential management |
 | `disconnected_agents.py` | Handling disconnected agents in the indexer |
-| `max_version_components.py` | Version component handling |
+| `active_response.py` | Active response document indexing |
+| `metrics.py` | Indexer metrics collection |
+| `metrics_snapshot.py` | Cluster-wide metrics snapshot aggregation |
+| `states_components.py` | Component state indexing |
 
 ---
 
@@ -206,7 +203,7 @@ graph LR
     B --> C{"DAPI"}
     C -->|local_master| D["Master Node"]
     C -->|local_any| E["Current Node"]
-    C -->|distributed| F["Worker Node(s)"]
+    C -->|distributed_master| F["Worker Node(s)"]
 ```
 
 ---
@@ -240,12 +237,11 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
 
 | Socket | Daemon | Purpose |
 |--------|--------|---------|
-| `queue/db/wdb` | wazuh-manager-db | Database queries (length-prefixed socket protocol) |
+| `queue/sockets/wdb.sock` | wazuh-manager-db | Database queries (length-prefixed socket protocol) |
 | `queue/sockets/wdb-http.sock` | wazuh-manager-db | HTTP-based database queries (`wdb_http.py`) |
-| `queue/sockets/analysis` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
-| `queue/sockets/auth` | wazuh-manager-authd | Agent registration |
-| `queue/sockets/remote` | wazuh-manager-remoted | Agent communication |
-| `queue/sockets/request` | various | Internal requests |
+| `queue/sockets/engine-api-http.sock` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
+| `queue/sockets/auth.sock` | wazuh-manager-authd | Agent registration |
+| `queue/sockets/remote.sock` | wazuh-manager-remoted | Agent communication |
 
 ---
 

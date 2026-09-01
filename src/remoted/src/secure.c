@@ -16,11 +16,40 @@
 #include "remoted_op.h"
 #include "state.h"
 #include "wazuhdb_queries_op.h"
-#include "router.h"
 #include "sym_load.h"
+#include "remoted_module.h"
 #include "indexed_queue_op.h"
 #include "batch_queue_op.h"
 #include "http_op.h"
+#include "legacy_task_delivery.h"
+#include "config.h"
+#include "authd-config.h"
+
+// REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
+// (remoted_module.h) are two independently-maintained mirrors of the same values, since
+// the config parser and the C++ module don't share a header. rm_config.verification_mode
+// below copies one directly into the other with no translation, so a silent reorder of
+// either enum would misconfigure TLS client-certificate verification without any build
+// failure to catch it -- this is the only place both headers are already included together.
+_Static_assert(REMOTED_HTTPS_VERIFY_UNSET == REMOTED_MODULE_HTTPS_VERIFY_UNSET,
+               "REMOTED_HTTPS_VERIFY_UNSET must match REMOTED_MODULE_HTTPS_VERIFY_UNSET");
+_Static_assert(REMOTED_HTTPS_VERIFY_NONE == REMOTED_MODULE_HTTPS_VERIFY_NONE,
+               "REMOTED_HTTPS_VERIFY_NONE must match REMOTED_MODULE_HTTPS_VERIFY_NONE");
+_Static_assert(REMOTED_HTTPS_VERIFY_CERTIFICATE == REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE,
+               "REMOTED_HTTPS_VERIFY_CERTIFICATE must match REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE");
+_Static_assert(REMOTED_HTTPS_VERIFY_FULL == REMOTED_MODULE_HTTPS_VERIFY_FULL,
+               "REMOTED_HTTPS_VERIFY_FULL must match REMOTED_MODULE_HTTPS_VERIFY_FULL");
+
+// Same reasoning as above, for REMOTED_HTTPS_DUAL_STACK_* / REMOTED_MODULE_HTTPS_DUAL_STACK_*:
+// rm_config.dual_stack copies one directly into the other with no translation, so a silent
+// reorder of either enum would misconfigure the IPV6_V6ONLY socket option without any build
+// failure to catch it.
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_UNSET == REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET,
+               "REMOTED_HTTPS_DUAL_STACK_UNSET must match REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_YES,
+               "REMOTED_HTTPS_DUAL_STACK_YES must match REMOTED_MODULE_HTTPS_DUAL_STACK_YES");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
+               "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -64,15 +93,21 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+
+// Read the remoted.http_* internal options into the C++ module's config struct
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
+
+// Build limits JSON from manager_module_limits (only the limits object, not cluster/groups)
+STATIC char* build_limits_json(const module_limits_t *limits);
+
+// Read control endpoint internal options into the C++ module's config struct
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
 
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
@@ -86,8 +121,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define DBSYNC_HEADER "5:"
 #define DBSYNC_HEADER_SIZE 2
 
-// Router message forwarder - returns true if message was forwarded to router
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
+// Detects (and logs) legacy agent messages the 5.x manager no longer processes.
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -98,6 +133,16 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 /* Handle each message received */
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 
+/**
+ * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
+ *        and the memory-management constants onto the C-ABI struct handed to the C++
+ *        remoted_module
+ *
+ * @param logr remoted configuration structure (source)
+ * @param rm_config destination struct; fully zeroed and populated on return
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config);
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
@@ -105,6 +150,15 @@ int _close_sock(keystore * keys, int sock);
 STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
+
+/* Start every subsystem that only serves 4.x agents (queues, caches, the legacy AES keystore,
+ * and every thread that only reads/writes them). No-op when <remote><legacy> is absent or
+ * disabled. */
+static void start_legacy_subsystems(void);
+
+/* Log remoted's startup line: the classic listener's port/protocol when legacy is enabled,
+ * or a one-line notice that it's disabled. */
+static void log_secure_startup_message(void);
 
 /* Family address reference */
 #define FAMILY_ADDRESS_SIZE 46
@@ -204,25 +258,287 @@ typedef struct {
     w_rr_queue_t      *events_queue;      // round robbin event ring
 } rem_handler_args_t;
 
+/**
+ * @brief Read the C++ module's tunable settings (`remoted.*` internal options: HTTP
+ *        transport, memory-management, downstream client, and auth middleware) into
+ *        the config struct passed to remoted_module_start().
+ */
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
+    // io_threads/http_worker_threads: min+default 0 (not 1) so an unset option flows through as a
+    // real 0 -- the C++ side resolves 0 via cpp_get_nproc() instead of a fixed constant.
+    rm_config->io_threads = getDefine_Int_default("remoted", "http_io_threads", 0, 64, 0);
+    rm_config->http_worker_threads = getDefine_Int_default("remoted", "http_worker_threads", 0, 256, 0);
+    rm_config->http_read_timeout = getDefine_Int_default("remoted", "http_read_timeout", 1, 300, 10);
+    rm_config->http_write_timeout = getDefine_Int_default("remoted", "http_write_timeout", 1, 300, 10);
+    rm_config->http_request_timeout = getDefine_Int_default("remoted", "http_request_timeout", 1, 600, 30);
+    rm_config->http_max_url_size = getDefine_Int_default("remoted", "http_max_url_size", 1, 65536, 2048);
+    rm_config->http_max_header_name_size = getDefine_Int_default("remoted", "http_max_header_name_size", 1, 8192, 256);
+    rm_config->http_max_header_value_size = getDefine_Int_default("remoted", "http_max_header_value_size", 1, 65536, 8192);
+    rm_config->http_max_header_count = getDefine_Int_default("remoted", "http_max_header_count", 1, 1024, 64);
+    rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
+    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
+    rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+    // Bytes per chunk when streaming a response body (POST /download). Bounded at 1 MiB because
+    // this is per IN-FLIGHT TRANSFER: the worst case is roughly this times the number of
+    // simultaneous downloads, so a large value trades memory for fewer read/write round trips.
+    rm_config->http_stream_chunk_size = getDefine_Int_default("remoted", "http_stream_chunk_size", 4096, 1048576, 65536);
+    rm_config->http_content_encoding_enabled =
+        getDefine_Int_default("remoted", "http_content_encoding_enabled", 0, 1, 1);
+
+    // Memory-management (backpressure) tunables. These bound in-memory resource usage rather
+    // than tune the transport itself; the C++ side still clamps max_inflight_bytes up to at
+    // least one max-size request at start(), so a too-small value can't reject everything.
+    // max_inflight_bytes caps the HTTPS server's in-flight (unprocessed) request payload
+    // before it sheds load with 503. NOT logr->queue_size (that is an event COUNT, not bytes).
+    rm_config->max_inflight_bytes =
+        getDefine_Int_default("remoted", "max_inflight_bytes", 1048576, 1073741824, 268435456);
+    // max_parallel_connections caps simultaneous HTTPS connections, bounding the read-phase
+    // memory peak (~ max_parallel_connections * max body size). It is also the ONLY bound on
+    // concurrent streamed responses (POST /download): chunked output rearms http_write_timeout
+    // per chunk, so a client that keeps reading slowly can hold a transfer open indefinitely.
+    // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
+    // bounded only by this value, which is why it is settable rather than fixed.
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
+    // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
+
+    // Downstream (async UDS client to the engine's event ingress) tunables.
+    rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
+    rm_config->downstream_write_timeout = getDefine_Int_default("remoted", "downstream_write_timeout", 1, 300, 5);
+    rm_config->downstream_response_timeout = getDefine_Int_default("remoted", "downstream_response_timeout", 1, 300, 5);
+    // /stateful gets its own (longer) response deadline: a sync session is indexed and flushed
+    // within the request. The default (2+5+20 s) deliberately stays inside http_request_timeout's
+    // default (30 s); raising this past that also requires raising remoted.http_request_timeout
+    // (the module warns at startup otherwise).
+    rm_config->downstream_stateful_response_timeout =
+        getDefine_Int_default("remoted", "downstream_stateful_response_timeout", 1, 3600, 20);
+    rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
+    rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
+    rm_config->downstream_max_response_body_size =
+        getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
+
+    // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
+    // The wazuh-agent+jwt profile's ceiling (12h, jwt_profile::v1::kMaxAgeSec/kMaxClockSkewSec) is the
+    // upper bound: a value above it is a configuration error and keeps remoted from starting, never
+    // silently widens the window. Defaults stay at the profile's original 60 s / 30 s; the ceiling only
+    // exists so a deployment can tolerate manager/agent clock drift larger than that combined 90 s.
+    // A zero skew is a valid setting ("no tolerance"), which a zeroed struct could not express -- hence the
+    // explicit jwt_clock_skew_set flag that tells the module the value is configured, not absent.
+    rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
+    rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
+    rm_config->jwt_clock_skew_set = 1;
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
+}
+
+/**
+ * @brief Read authd's own <auth> config block (NOT logr's <remote> settings) into the
+ *        enrollment fields of the C-ABI struct, plus the `remoted.enroll_*`/`remoted.authd_*`
+ *        internal options for the bridge's operational knobs.
+ *
+ *        Deliberately sources the behavioral flags from authd's config rather than remoted's
+ *        own, so POST /enroll and legacy port 1515 can never disagree on whether password
+ *        auth is required or which agent versions are acceptable.
+ */
+STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
+    authd_config_t authd_cfg;
+    memset(&authd_cfg, 0, sizeof(authd_cfg));
+
+    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+        // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
+        // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
+        // enrollment chapter of remoted_module/README.md for the verified analysis.
+        rm_config->enrollment_enabled = !authd_cfg.flags.disabled && authd_cfg.flags.remote_enrollment;
+        rm_config->enroll_use_password = authd_cfg.flags.use_password;
+        rm_config->enroll_use_source_ip = authd_cfg.flags.use_source_ip;
+        // NOT logr->allow_higher_versions: that is a separate, independently configured
+        // <remote> setting used by /control. /enroll reads authd's own <agents> setting so
+        // it agrees with legacy port 1515 on which agent versions are acceptable.
+        rm_config->enroll_allow_higher_versions = authd_cfg.allow_higher_versions;
+    } else {
+        // authd's <auth> block could not be parsed at all -- fail closed rather than
+        // silently enabling enrollment with unknown password/version requirements.
+        rm_config->enrollment_enabled = false;
+    }
+
+    os_free(authd_cfg.ciphers);
+    os_free(authd_cfg.agent_ca);
+    os_free(authd_cfg.manager_cert);
+    os_free(authd_cfg.manager_key);
+
+    rm_config->enroll_password_refresh_interval =
+        getDefine_Int_default("remoted", "enroll_password_refresh_interval", 1, 3600, 10);
+    rm_config->authd_connect_timeout = getDefine_Int_default("remoted", "authd_connect_timeout", 1, 60, 2);
+    // authd_response_timeout: <=0 here means "worker-aware default", resolved on the C++ side
+    // (short on the master, long enough to outlast authd's own internal worker-to-master
+    // cluster retry budget on a worker) -- not a fixed constant, since the right default
+    // depends on rm_config->worker_node.
+    rm_config->authd_response_timeout = getDefine_Int_default("remoted", "authd_response_timeout", 0, 120, 0);
+    rm_config->authd_max_queue_size = getDefine_Int_default("remoted", "authd_max_queue_size", 1, 65536, 256);
+    // Capped well under authd's own local-socket listen backlog (128, OS_BindUnixDomainWithPerms)
+    // -- a pool larger than the backlog can hold gains nothing and just leaves surplus workers
+    // unable to even connect.
+    rm_config->authd_worker_threads = getDefine_Int_default("remoted", "authd_worker_threads", 1, 32, 8);
+}
+
+/**
+ * @brief Build the config struct passed to remoted_module_start(), combining the
+ *        `remoted.http_*` internal options (see remoted_module_https_config()) with
+ *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
+ *        constants that are deliberately not internal options. Extracted out of
+ *        HandleSecure() so it's unit-testable without starting the module.
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config) {
+    memset(rm_config, 0, sizeof(*rm_config));
+
+    // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
+    // own classic TCP/UDP port, already bound by the time we get here). Populated
+    // from <remote><https> when configured; otherwise left at 0 so the module falls
+    // back to its own default.
+    rm_config->port = logr->https.port;
+    remoted_module_https_config(rm_config);
+    remoted_enrollment_config(rm_config);
+    rm_config->keystore_refresh_interval = keyupdate_interval;
+    rm_config->worker_node = logr->worker_node;
+    rm_config->verification_mode = logr->https.verification_mode;
+    rm_config->http_max_body_size = logr->https.max_body_size;
+    rm_config->dual_stack = logr->https.dual_stack;
+
+    if (logr->https.bind_addr) {
+        snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
+    }
+
+    if (logr->https.global_prefix) {
+        snprintf(rm_config->global_prefix, sizeof(rm_config->global_prefix), "%s", logr->https.global_prefix);
+    }
+
+    if (logr->https.certificate) {
+        snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", logr->https.certificate);
+    }
+
+    if (logr->https.key) {
+        snprintf(rm_config->private_key_path, sizeof(rm_config->private_key_path), "%s", logr->https.key);
+    }
+
+    if (logr->https.ca) {
+        snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
+    }
+
+    if (logr->https.ciphers) {
+        snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
+    }
+}
+
+STATIC char* build_limits_json(const module_limits_t *limits) {
+    if (!limits) {
+        return NULL;
+    }
+
+    cJSON *limits_obj = cJSON_CreateObject();
+    if (!limits_obj) {
+        return NULL;
+    }
+
+    /* FIM limits */
+    cJSON *fim = cJSON_CreateObject();
+    if (fim) {
+        cJSON_AddNumberToObject(fim, "file", limits->fim.file);
+        cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
+        cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
+        cJSON_AddItemToObject(limits_obj, "fim", fim);
+    }
+
+    /* Syscollector limits */
+    cJSON *syscollector = cJSON_CreateObject();
+    if (syscollector) {
+        cJSON_AddNumberToObject(syscollector, "hotfixes", limits->syscollector.hotfixes);
+        cJSON_AddNumberToObject(syscollector, "packages", limits->syscollector.packages);
+        cJSON_AddNumberToObject(syscollector, "processes", limits->syscollector.processes);
+        cJSON_AddNumberToObject(syscollector, "ports", limits->syscollector.ports);
+        cJSON_AddNumberToObject(syscollector, "network_iface", limits->syscollector.network_iface);
+        cJSON_AddNumberToObject(syscollector, "network_protocol", limits->syscollector.network_protocol);
+        cJSON_AddNumberToObject(syscollector, "network_address", limits->syscollector.network_address);
+        cJSON_AddNumberToObject(syscollector, "hardware", limits->syscollector.hardware);
+        cJSON_AddNumberToObject(syscollector, "os_info", limits->syscollector.os_info);
+        cJSON_AddNumberToObject(syscollector, "users", limits->syscollector.users);
+        cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
+        cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
+        cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
+        cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
+    }
+
+    /* SCA limits */
+    cJSON *sca = cJSON_CreateObject();
+    if (sca) {
+        cJSON_AddNumberToObject(sca, "checks", limits->sca.checks);
+        cJSON_AddItemToObject(limits_obj, "sca", sca);
+    }
+
+    char *json_str = cJSON_PrintUnformatted(limits_obj);
+    cJSON_Delete(limits_obj);
+
+    return json_str;
+}
+
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
+    snprintf(rm_config->manager_version, sizeof(rm_config->manager_version), "%s", __wazuh_version);
+    rm_config->allow_higher_versions = logr.allow_higher_versions;
+
+    rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 60);
+    rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
+    rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 2000);
+    rm_config->wdb_max_queue_size = getDefine_Int_default("remoted", "control_wdb_max_queue_size", 100, 1000000, 10000);
+    rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 64, 4);
+    rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
+    rm_config->tm_max_queue_size = getDefine_Int_default("remoted", "control_tm_max_queue_size", 100, 1000000, 10000);
+
+    // Keepalive write throttle: the manager half of the agent/manager timing contract. It bounds
+    // how often a notify reaches wazuh-db, so the wazuh-db write load it produces scales with the
+    // fleet -- it has to be settable before any notify cadence is agreed with the agent, and it
+    // must stay above whatever cadence the agent ships.
+    rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
+
+    // The throttle suppresses the update-keepalive write for its whole window, and monitord marks
+    // any agent whose last_keepalive is older than <agents_disconnection_time>. The staleness the
+    // threshold sees is the throttle PLUS the agent's notify interval, which remoted does not
+    // know, so the guard fires from half: anything at or above it can cross once the agent's
+    // cadence is added, and half is also the safe setting for detection latency, because
+    // monitord's sweep period is the threshold itself and detection lands anywhere in [1x, 2x].
+    if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
+        mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
+              "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+              "are answering normally are marked disconnected. Keep it below half.",
+              rm_config->keepalive_throttle_sec,
+              logr.global.agents_disconnection_time);
+    }
+
+    extern module_limits_t manager_module_limits;
+    extern bool manager_module_limits_enabled;
+
+    if (manager_module_limits_enabled) {
+        char *limits_json = build_limits_json(&manager_module_limits);
+        if (limits_json) {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "%s", limits_json);
+            os_free(limits_json);
+        } else {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+        }
+    } else {
+        snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+    }
+}
+
+void w_remoted_validate_module_config(void) {
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&logr, &rm_config);
+    remoted_module_control_config(&rm_config);
+}
+
 /* Handle secure connections */
 void HandleSecure()
 {
     const int protocol = logr.proto;
     int n_events = 0;
-
-    agent_metadata_init();
-
-    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
-    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
-    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
-
-    events_queue = batch_queue_init(batch_events_capacity);
-    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
-    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
-    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
-
-    uhttp_global_init();
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -230,33 +546,15 @@ void HandleSecure()
     /* Global stats uptime */
     remoted_state.uptime = time(NULL);
 
-    /* Create OSHash for agents statistics */
-    remoted_agents_state = OSHash_Create();
-    if (!remoted_agents_state) {
-        merror_exit(HASH_ERROR);
-    }
-    if (!OSHash_setSize(remoted_agents_state, 2048)) {
-        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
-    }
-
     /* Initialize manager */
     manager_init();
-
-    // Initialize message queue
-    rem_msginit(logr.queue_size);
-    rem_set_input_queue_max_bytes(queue_max_bytes);
 
     /* Initialize the agent key table mutex */
     key_lock_init();
 
-    /* Create current timestamp getter thread */
-    w_create_thread(current_timestamp, NULL);
-
-    /* Create shared file updating thread */
+    /* Create shared file updating thread. Always on: the HTTPS /download endpoint reads
+     * merged.mg/group files from disk regardless of the legacy flag. */
     w_create_thread(update_shared_files, NULL);
-
-    /* Create Active Response forwarder thread */
-    w_create_thread(AR_Forward, NULL);
 
     // Initialize request module
     req_init();
@@ -264,88 +562,30 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Create State writer thread
-    w_create_thread(rem_state_main, NULL);
-
-    /* Create wait_for_msgs threads */
-    {
-        mdebug2("Creating %d sender threads.", sender_pool);
-
-        for (int i = 0; i < sender_pool; i++) {
-            w_create_thread(wait_for_msgs, NULL);
-        }
-    }
-
     // Reset all the agents' connection status in Wazuh DB
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
-    // Router module logging initialization
-    router_initialize(taggedLogFunction, ARGV0);
-
-    // Router providers initialization
-    if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
-        mdebug2("Failed to create router handle for 'upgrade_notifications'.");
-    }
-
-    if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
-        mdebug2("Failed to create router handle for 'inventory synchronization'.");
-    }
-
-    // Create upsert control message thread
-    w_create_thread(save_control_thread, (void *) control_msg_queue);
-
-    // Create dispatch events thread
-    w_create_thread(dispach_events_thread, (void *) events_queue);
-
-    /* Create agent metadata cache cleanup thread (after events_queue is initialized) */
-    w_create_thread(agent_meta_cleanup_thread, events_queue);
-
-    rem_handler_args_t *worker_args;
-    os_malloc(sizeof(*worker_args), worker_args);
-    worker_args->control_msg_queue = control_msg_queue;
-    worker_args->events_queue      = events_queue;
-    // Create message handler thread pool
+    // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
-        // Initialize FD list and counter.
-        global_counter = 0;
-        rem_initList(FD_LIST_INIT_VALUE);
-        for (int i = 0; i < worker_pool; i++) {
-            w_create_thread(rem_handler_main, worker_args);
+        remoted_module_config_t rm_config;
+        w_remoted_build_module_config(&logr, &rm_config);
+        remoted_module_control_config(&rm_config);
+
+        char *rm_cluster_name = get_cluster_name();
+        if (rm_cluster_name) {
+            snprintf(rm_config.cluster_name, sizeof(rm_config.cluster_name), "%s", rm_cluster_name);
+            os_free(rm_cluster_name);
         }
+
+        remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
+        atexit(remoted_module_stop);
     }
 
-    /* Start up message */
-    {
-        char *_protocol = NULL;
-        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
-        }
-        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
-        }
-        minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
-            (int)getpid(),
-            logr.port,
-            _protocol ? _protocol : "unknown");
-        os_free(_protocol);
-    }
+    log_secure_startup_message();
 
-    /* Read authentication keys */
-    mdebug1(ENC_READ);
-
-    key_lock_write();
-    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
-    key_unlock();
-
-    OS_StartCounter(&keys);
-
-    // Key reloader thread
-    w_create_thread(rem_keyupdate_main, NULL);
-
-    // fp closer thread
-    w_create_thread(close_fp_main, &keys);
+    start_legacy_subsystems();
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -354,6 +594,11 @@ void HandleSecure()
     if (notify = wnotify_init(MAX_EVENTS), !notify) {
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
+
+    /* protocol is 0 when <remote><legacy> is absent/disabled -- Read_Remote() resets proto
+     * to 0 in that case even if <protocol> was explicitly set, so neither branch below
+     * adds a socket and the event loop just idles -- no separate legacy_enabled check
+     * needed here. */
 
     /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
     if (protocol & REMOTED_NET_PROTOCOL_TCP) {
@@ -411,6 +656,111 @@ void HandleSecure()
     }
 
     manager_free();
+}
+
+static void start_legacy_subsystems(void) {
+    if (!logr.legacy_enabled) {
+        return;
+    }
+
+    agent_metadata_init();
+    legacy_task_delivery_init();
+
+    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
+    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+    events_queue = batch_queue_init(batch_events_capacity);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
+    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
+
+    uhttp_global_init();
+
+    // Initialize message queue
+    rem_msginit(logr.queue_size);
+    rem_set_input_queue_max_bytes(queue_max_bytes);
+
+    /* Create current timestamp getter thread (only used by the legacy
+     * connection-overtake logic) */
+    w_create_thread(current_timestamp, NULL);
+
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
+
+    /* Create wait_for_msgs threads: legacy push-only merged.mg delivery. 5.x agents
+     * pull it themselves via POST /download. */
+    mdebug2("Creating %d sender threads.", sender_pool);
+
+    for (int i = 0; i < sender_pool; i++) {
+        w_create_thread(wait_for_msgs, NULL);
+    }
+
+    // Create upsert control message thread: control_msg_queue is only ever fed by
+    // legacy text keepalive parsing.
+    w_create_thread(save_control_thread, (void *) control_msg_queue);
+
+    // Create dispatch events thread: events_queue is only fed by the legacy socket
+    // path; 5.x events go straight to downstream via POST /stateless.
+    w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    /* Create agent metadata cache cleanup thread (after events_queue is initialized).
+     * Its cache's only writer is the legacy keepalive parser. */
+    w_create_thread(agent_meta_cleanup_thread, events_queue);
+
+    // Initialize FD list and counter.
+    global_counter = 0;
+    rem_initList(FD_LIST_INIT_VALUE);
+
+    // Create message handler thread pool: processes messages read off the legacy socket.
+    // worker_args is only allocated when it will actually be handed to a thread -- worker_pool
+    // is clamped to >= 1 by config, but nothing here should rely on that to avoid a leak.
+    if (worker_pool > 0) {
+        rem_handler_args_t *worker_args;
+        os_malloc(sizeof(*worker_args), worker_args);
+        worker_args->control_msg_queue = control_msg_queue;
+        worker_args->events_queue      = events_queue;
+
+        for (int i = 0; i < worker_pool; i++) {
+            w_create_thread(rem_handler_main, worker_args);
+        }
+    }
+
+    mdebug1(ENC_READ);
+
+    key_lock_write();
+    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
+    key_unlock();
+
+    OS_StartCounter(&keys);
+
+    w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread: manages fds for legacy TCP connections only. 'keys' is already
+    // loaded by the time this runs.
+    w_create_thread(close_fp_main, &keys);
+}
+
+static void log_secure_startup_message(void) {
+    if (!logr.legacy_enabled) {
+        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+            (int)getpid());
+        return;
+    }
+
+    char *_protocol = NULL;
+    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
+    }
+    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
+    }
+    minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
+        (int)getpid(),
+        logr.port,
+        _protocol ? _protocol : "unknown");
+    os_free(_protocol);
 }
 
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
@@ -911,7 +1261,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 _close_sock(&keys, sock_idle);
             }
 
-            rem_inc_recv_ctrl(key->id);
+            rem_inc_recv_ctrl();
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -923,72 +1273,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     agent_info_data *agent_data;
                     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-                    // Detect JSON format (5.0+ agent) vs text format (4.x agent)
-                    int result;
-                    char **groups = NULL;
-                    size_t groups_count = 0;
-                    char *cluster_name = NULL;
-                    char *cluster_node = NULL;
-
-                    if (tmp_msg[0] == '{') {
-                        // JSON keepalive from 5.0+ agent - extract groups and cluster info during parsing
-                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
-                        if (result == OS_SUCCESS) {
-                            mdebug2("Parsed JSON keepalive from agent %s", key->id);
-                        } else {
-                            mwarn("Failed to parse JSON keepalive from agent %s", key->id);
-                        }
-                    } else {
-                        // Text keepalive from 4.x agent
-                        result = parse_agent_update_msg(tmp_msg, agent_data);
-                    }
+                    // Text keepalive from 4.x agent
+                    int result = parse_agent_update_msg(tmp_msg, agent_data);
 
                     if (OS_SUCCESS == result) {
                         // Build metadata from parsed agent_info_data and upsert in the global map
                         agent_meta_t *fresh = agent_meta_from_agent_info(key->id, key->name, agent_data);
                         if (fresh) {
-                            // Add groups if available (5.0+ agents only)
-                            if (groups) {
-                                fresh->groups = groups;
-                                fresh->groups_count = groups_count;
-                                groups = NULL;  // Transfer ownership to fresh
-                            }
-                            // Add cluster info if available (5.0+ agents only)
-                            if (cluster_name) {
-                                fresh->cluster_name = cluster_name;
-                                cluster_name = NULL;  // Transfer ownership to fresh
-                            }
-                            if (cluster_node) {
-                                fresh->cluster_node = cluster_node;
-                                cluster_node = NULL;  // Transfer ownership to fresh
-                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
                                 mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
-                        } else {
-                            // Free groups if agent_meta creation failed
-                            if (groups) {
-                                for (size_t i = 0; i < groups_count; i++) {
-                                    os_free(groups[i]);
-                                }
-                                os_free(groups);
-                            }
-                            // Free cluster info if agent_meta creation failed
-                            os_free(cluster_name);
-                            os_free(cluster_node);
                         }
-                    } else {
-                        // Free groups if parsing failed
-                        if (groups) {
-                            for (size_t i = 0; i < groups_count; i++) {
-                                os_free(groups[i]);
-                            }
-                            os_free(groups);
-                        }
-                        // Free cluster info if parsing failed
-                        os_free(cluster_name);
-                        os_free(cluster_node);
                     }
 
                     wdb_free_agent_info_data(agent_data);
@@ -998,7 +1294,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
-                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
+                const char * src_msg = cleaned_msg ? cleaned_msg : tmp_msg;
+                memcpy(ctrl_msg_data->message, src_msg, strnlen(src_msg, tmp_msg_length));
 
                 // Store validation results in the control message data structure
                 ctrl_msg_data->is_startup = is_startup;
@@ -1061,157 +1358,63 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
-    // Check if message should be forwarded to router instead of analysisd
-    bool forwarded_to_router = false;
-    if (router_forwarding_disabled != 1) {
-        forwarded_to_router = router_message_forward(tmp_msg, msg_length, agentid_str);
+    // Legacy message types the 5.x manager no longer processes are discarded here, BEFORE the
+    // analysisd enqueue: letting them fall through would inject binary payloads as events.
+    if (discard_legacy_agent_message(tmp_msg, agentid_str)) {
+        os_free(agentid_str);
+        return;
     }
 
-    // Only send to analysisd if not forwarded to router
-    if (!forwarded_to_router) {
-        /* Router-bound messages may be binary; trim only analysisd events. */
-        size_t stripped_nulls = 0;
-        while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
-            msg_length--;
-            stripped_nulls++;
-        }
-        if (stripped_nulls > 0) {
-            mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
-                    stripped_nulls, agentid_str);
-        }
+    /* Trim trailing nulls from analysisd-bound events. */
+    size_t stripped_nulls = 0;
+    while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+        msg_length--;
+        stripped_nulls++;
+    }
+    if (stripped_nulls > 0) {
+        mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                stripped_nulls, agentid_str);
+    }
 
-        evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length + 1, sizeof(char), e->raw);
-        memcpy(e->raw, tmp_msg, msg_length);
-        e->len = msg_length;
+    evt_item_t *e; os_calloc(1, sizeof(*e), e);
+    os_calloc(msg_length + 1, sizeof(char), e->raw);
+    memcpy(e->raw, tmp_msg, msg_length);
+    e->len = msg_length;
 
-        int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
-        if (rc < 0) {
-            dispose_evt_item(e);
-            rem_inc_recv_events_failed();
-            maybe_log_events_queue_drop();
-        } else {
-            rem_inc_recv_events(agentid_str);
-        }
+    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
+    if (rc < 0) {
+        dispose_evt_item(e);
+        rem_inc_recv_events_failed();
+        maybe_log_events_queue_drop();
+    } else {
+        rem_inc_recv_events();
     }
 
     os_free(agentid_str);
 }
 
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) {
 
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
-    int message_header_size = 0;
-    msg_type message_type = MT_INVALID;
-
-    if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        if (!router_sync_handle) {
-            mdebug2("Router handle for 'inventory synchronization' not available.");
-            return false;
-        }
-        router_handle = router_sync_handle;
-        message_header_size = INVENTORY_SYNC_HEADER_SIZE;
-        message_type = MT_INV_SYNC;
-    }
-    else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
-        if (!router_upgrade_ack_handle) {
-            mdebug2("Router handle for 'upgrade_notifications' not available.");
-            return false;
-        }
-        router_handle = router_upgrade_ack_handle;
-        message_header_size = UPGRADE_ACK_HEADER_SIZE;
-        message_type = MT_UPGRADE_ACK;
-    }
-
-    if (!router_handle) {
-        return false;
-    }
-
-    mdebug2("Forwarding message to router");
-
-    char* msg_start = msg + message_header_size;
-    if (message_type == MT_INV_SYNC) {
-        // Validate minimum message length: header + "x:y" (4 chars minimum after header)
-        if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
-            mdebug2("Message too short for expected format.");
-            return false;
-        }
-
-        size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
-
-        // Find colon separator between module and message
-        // Format after header: {module}:{msg}
-        char* colon = (char*)memchr(msg_start, ':', remaining_len);
-        if (!colon || colon == msg_start) {
-            mdebug2("Invalid message format: missing or empty module.");
-            return false;
-        }
-
-        // Calculate module length and validate it's reasonable
-        size_t module_len = colon - msg_start;
-        if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
-            mdebug2("Invalid module length.");
-            return false;
-        }
-
-        // Calculate message payload position
-        char* msg_to_send = colon + 1;
-        size_t payload_offset = msg_to_send - msg;
-
-        if (payload_offset >= msg_length) {
-            mdebug2("Invalid message format: no payload data.");
-            return false;
-        }
-
-        // Calculate safe message size
-        size_t msg_size = msg_length - payload_offset;
-
-        // Send the raw flatbuffer to inventory sync with anti-spoofing validation
-        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id, cluster_name) != 0) {
-            mdebug2("Unable to forward message for agent '%s'.", agent_id);
-            return false;
-        }
-
-        rem_inc_recv_states(agent_id);
+    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
+        // Since 5.x, stateful synchronization only enters through remoted's authenticated
+        // POST /stateful route as a whole FullSession, so the old chunked wire protocol has
+        // nowhere to go. Discarded, not an error: it is a not-yet-updated agent, not an attack.
+        mdebug2("Discarding legacy stateful-sync message from agent '%s' (since 5.x the manager only accepts "
+                "whole sessions over POST /stateful)", agent_id);
         return true;
     }
-    else if (message_type == MT_UPGRADE_ACK) {
 
-        cJSON* upgrade_ack_json;
-        const char *json_err;
-        if (upgrade_ack_json = cJSON_ParseWithOpts(msg_start, &json_err, 0), !upgrade_ack_json) {
-            mwarn("Failed to parse router message JSON: '%s'", json_err);
-            return false;
+    if (strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
+        // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
+        // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
+        // legacy_task_delivery.c). NOT discarded: the ack still falls through to the normal
+        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message, so it
+        // is also counted as a received event, or as a failed one when the enqueue drops it.
+        if (legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE)) {
+            rem_inc_recv_upgrade_ack();
         }
-
-        cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
-
-        if (parameters_obj && cJSON_IsObject(parameters_obj)) {
-            int agent = atoi(agent_id);
-            cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-            cJSON_AddItemToObject(parameters_obj, "agents", agents);
-
-            char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
-            size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
-
-            if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
-                mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
-                cJSON_free(upgrade_message);
-                cJSON_Delete(upgrade_ack_json);
-                return false;
-            }
-
-            // Free the printed message and JSON object
-            cJSON_free(upgrade_message);
-            cJSON_Delete(upgrade_ack_json);
-            rem_inc_recv_upgrade_ack(agent_id);
-            return true;
-        }
-        else {
-            mwarn("Could not get parameters from upgrade message: '%s'", msg_start);
-            cJSON_Delete(upgrade_ack_json);
-            return false;
-        }
+        mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
+        return false;
     }
 
     return false;
@@ -1380,10 +1583,7 @@ static int append_header(dispatch_ctx_t *ctx) {
             has_cluster_info = true;
         }
 
-        if (have_meta && snap.cluster_node && snap.cluster_node[0]) {
-            cJSON_AddStringToObject(cluster, "node", snap.cluster_node);
-            has_cluster_info = true;
-        } else if (node_name && strcmp(node_name, "undefined") != 0) {
+        if (node_name && strcmp(node_name, "undefined") != 0) {
             cJSON_AddStringToObject(cluster, "node", node_name);
             has_cluster_info = true;
         }

@@ -120,7 +120,21 @@ void free_whodata_event(whodata_evt *w_evt) {
     free(w_evt);
 }
 
+/* Valid from program start: getSyscheckConfig() can run on another thread
+ * before fim_initialize() has touched anything (see the declaration in
+ * syscheck-config.h for why it cannot live in the zero-initialized struct). */
+int syscheck_directories_lock_ready = 0;
+
 cJSON *getSyscheckConfig(void) {
+    /* directories_lock is only pthread_rwlock_init'd partway through
+     * Start_Syscheck(). A caller reaching here first -- e.g. the Windows
+     * in-process report dispatch (agent_report.c), which runs on its own
+     * thread with no socket to make it wait its turn -- would otherwise lock
+     * memory nothing has initialized yet. */
+    if (!syscheck_directories_lock_is_ready()) {
+        return NULL;
+    }
+
 #ifndef WIN32
     w_rwlock_rdlock(&syscheck.directories_lock);
     if (OSList_GetFirstNode(syscheck.directories) == NULL) {
@@ -472,7 +486,6 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
-    cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
     cJSON_AddNumberToObject(synchronization, "integrity_interval", syscheck.integrity_interval);
     cJSON_AddNumberToObject(synchronization, "sync_end_delay", syscheck.sync_end_delay);
 

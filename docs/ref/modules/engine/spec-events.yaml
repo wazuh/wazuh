@@ -5,7 +5,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: "http+unix:/var/wazuh-manager/queue/sockets/queue-http.sock"
+  - url: "http+unix:/var/wazuh-manager/queue/sockets/engine-ingest-http.sock"
     description: "Events ingestion socket"
 
 tags:
@@ -26,7 +26,7 @@ paths:
       summary: Ingest enriched events (H/E batch protocol)
       description: |
         Accepts a batch of events using the H/E wire protocol over HTTP via Unix domain socket.
-        Socket path: /var/wazuh-manager/queue/sockets/queue-http.sock
+        Socket path: /var/wazuh-manager/queue/sockets/engine-ingest-http.sock
 
         ## Wire Format
 

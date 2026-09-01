@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(wazuh-db C)
+project(wazuh-db C CXX)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
@@ -8,8 +8,13 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
   include(WazuhRpath)
 endif()
 
+if(NOT DEFINED SHARED_MODULES)
+  get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
+endif()
+
 # Include directories
 include_directories(
+  ${SRC_FOLDER}
   ${SRC_FOLDER}/shared/include/
   ${SRC_FOLDER}/shared/os_net/
   ${SRC_FOLDER}/shared/os_regex/
@@ -33,12 +38,20 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
   ${SRC_FOLDER}/wazuh_modules/src/task_manager/
-  ${SRC_FOLDER}/shared_modules/router/include/
+  ${SHARED_MODULES}/common/
+  ${SHARED_MODULES}/utils/
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT TARGET wazuh_uds_http_server)
+  add_subdirectory(${SHARED_MODULES}/uds_http_server
+                   ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
+endif()
 
 set(WAZUH_RUNTIME_GROUP "wazuh")
 set(WAZUH_RUNTIME_USER "wazuh")
@@ -74,11 +87,12 @@ endforeach()
 
 # Collect source files
 file(GLOB WDB_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+file(GLOB WDB_CXX_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/http/*.cpp")
 
 # Build static library (without main.c) for unit tests
 list(REMOVE_ITEM WDB_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
-add_library(wdb_lib STATIC ${WDB_SRC} ${GENERATED_SQL_SOURCES})
-set_target_properties(wdb_lib PROPERTIES LINKER_LANGUAGE C)
+add_library(wdb_lib STATIC ${WDB_SRC} ${WDB_CXX_SRC} ${GENERATED_SQL_SOURCES})
+set_target_properties(wdb_lib PROPERTIES LINKER_LANGUAGE CXX)
 
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
@@ -86,8 +100,9 @@ if(UNIT_TEST)
   target_compile_options(wdb_lib PRIVATE -O0 -g)
 endif()
 
-target_link_libraries(wdb_lib PUBLIC wazuhext pthread router config
-                                     wazuh_modulesd_lib wazuh)
+target_link_libraries(wdb_lib PUBLIC wazuhext pthread config wazuh_modulesd_lib
+                                     wazuh
+                              PRIVATE wazuh_uds_http_server)
 
 if(UNIX)
   target_link_libraries(wdb_lib PUBLIC dl)
@@ -101,8 +116,8 @@ endif(UNIX)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-db "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-manager-db PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                                  ${SRC_FOLDER}/build/bin)
+    wazuh-manager-db PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
+                                                    ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-db PRIVATE wdb_lib)
   wazuh_link_jemalloc(wazuh-manager-db)
 

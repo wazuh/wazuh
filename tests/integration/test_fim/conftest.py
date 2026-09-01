@@ -111,15 +111,23 @@ def set_agent_config(request: pytest.FixtureRequest):
         return
 
     configurations = getattr(request.module, "test_configuration")
+    # <agent> is the 5.x name for what 4.x spelled <client> (#38103). <endpoint> carries the
+    # whole target -- host, port and path (#38624) -- which is why <address> and <port> are no
+    # longer written here: they are the deprecated spelling and are ignored outright whenever
+    # <endpoint> is present.
     agent_conf = {
-        "section": "client",
+        "section": "agent",
         "elements": [
             {
-                "server": {
+                "manager": {
                     "elements": [
-                        {"address": {"value": "127.0.0.1"}},
-                        {"port": {"value": 1514}},
-                        {"protocol": {"value": "tcp"}},
+                        # Trailing '/' on purpose: it is the explicit opt-out from the default
+                        # /wazuh-manager/ prefix, which RemotedSimulator does not serve. The
+                        # empty <endpoint> that used to spell this opt-out is now rejected while
+                        # the configuration is parsed ("a manager address is required"), so the
+                        # daemons never start and every case here times out waiting for a line
+                        # that is never logged.
+                        {"endpoint": {"value": "127.0.0.1:1517/"}},
                     ]
                 }
             }

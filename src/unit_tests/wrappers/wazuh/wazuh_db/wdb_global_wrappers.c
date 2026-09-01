@@ -32,15 +32,6 @@ int __wrap_wdb_global_insert_agent(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-int __wrap_wdb_global_update_agent_name(__attribute__((unused)) wdb_t *wdb,
-                                        int id,
-                                        char* name) {
-    check_expected(id);
-    check_expected(name);
-
-    return mock();
-}
-
 int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
                                            int id,
                                            const char *os_name,
@@ -51,12 +42,9 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
                                            const char *os_platform,
                                            const char *os_arch,
                                            const char *version,
-                                           const char *merged_sum,
-                                           const char *node_name,
                                            const char *agent_ip,
                                            const char *connection_status,
-                                           const char *sync_status,
-                                           const char *group_config_status) {
+                                           const char *sync_status) {
     check_expected(id);
     check_expected(os_name);
     check_expected(os_version);
@@ -66,12 +54,9 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
     check_expected(os_platform);
     check_expected(os_arch);
     check_expected(version);
-    check_expected(merged_sum);
-    check_expected(node_name);
     check_expected(agent_ip);
     check_expected(connection_status);
     check_expected(sync_status);
-    check_expected(group_config_status);
 
     return mock();
 }
@@ -102,10 +87,12 @@ int __wrap_wdb_global_update_agent_status_code(__attribute__((unused)) wdb_t *wd
                                                    int id,
                                                    int status_code,
                                                    const char *version,
+                                                   const char *connection_status,
                                                    const char *sync_status) {
     check_expected(id);
     check_expected(status_code);
     check_expected(version);
+    check_expected_ptr(connection_status);
     check_expected(sync_status);
     return mock();
 }
@@ -125,12 +112,6 @@ char * __wrap_wdb_global_validate_sync_status(__attribute__((unused)) wdb_t *wdb
     char *str = NULL;
     os_strdup(mock_type(char*), str);
     return str;
-}
-
-cJSON* __wrap_wdb_global_select_agent_name(__attribute__((unused)) wdb_t *wdb,
-                                           int id) {
-    check_expected(id);
-    return mock_ptr_type(cJSON*);
 }
 
 cJSON* __wrap_wdb_global_select_agent_group(__attribute__((unused)) wdb_t *wdb,
@@ -254,16 +235,10 @@ int __wrap_wdb_global_reset_agents_connection(__attribute__((unused)) wdb_t *wdb
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)) wdb_t *wdb,
                                                                int last_agent_id,
                                                                const char* connection_status,
-                                                               const char* node_name,
-                                                               int limit,
                                                                wdbc_result* status) {
     check_expected(last_agent_id);
     check_expected(connection_status);
     *status = mock();
-    if (node_name) {
-        check_expected(node_name);
-        check_expected(limit);
-    }
     return mock_ptr_type(cJSON*);
 }
 
@@ -312,14 +287,6 @@ cJSON* __wrap_wdb_global_get_backups() {
     return mock_ptr_type(cJSON*);
 }
 
-time_t __wrap_wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
-    char *name = NULL;
-    if (name = mock_ptr_type(char*), name) {
-        os_strdup(name, *most_recent_backup_name);
-    }
-    return mock();
-}
-
 int __wrap_wdb_global_create_backup(__attribute__((unused)) wdb_t* wdb,
                                     char* output,
                                     const char* tag) {
@@ -333,12 +300,6 @@ int __wrap_wdb_global_restore_backup(__attribute__((unused)) wdb_t** wdb,
                                      __attribute__((unused)) char* output) {
     if (snapshot) {check_expected(snapshot);}
     check_expected(save_pre_restore_state);
-    return mock();
-}
-
-int __wrap_wdb_remove_group_db(const char *name,
-                               __attribute__((unused)) int *sock) {
-    check_expected(name);
     return mock();
 }
 

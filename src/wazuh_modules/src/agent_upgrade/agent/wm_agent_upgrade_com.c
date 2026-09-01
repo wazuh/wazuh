@@ -22,40 +22,22 @@
 
 #include <shared.h>
 #include "zlib.h"
-#include "sha1_op.h"
 #include "signature.h"
 #include "wmodules.h"
 #include "wm_agent_upgrade_agent.h"
-
-/**
- * Static struct to track opened file
- * */
-STATIC struct {
-    char path[PATH_MAX + 1];
-    FILE * fp;
-} file = {"\0", NULL};
 
 typedef enum _command_error_codes {
     ERROR_OK = 0,
     ERROR_UPGRADES_NOT_ALLOWED,
     ERROR_UNKNOWN_COMMAND,
     ERROR_PARAMETERS_NOT_FOUND,
-    ERROR_UNSOPPORTED_MODE,
     ERROR_INVALID_FILE_NAME,
-    ERROR_FILE_OPEN,
-    ERROR_FILE_NOT_OPENED,
-    ERROR_FILE_NOT_OPENED2,
-    ERROR_TARGET_FILE_NOT_MATCH,
-    ERROR_WRITE_FILE,
-    ERROR_CLOSE,
-    ERROR_GEN_SHA1,
     ERROR_SIGNATURE,
     ERROR_COMPRESS,
     ERROR_CLEAN_DIRECTORY,
     ERROR_UNMERGE,
     ERROR_CHMOD,
-    ERROR_EXEC,
-    ERROR_CLEAR_UPGRADE_FILE
+    ERROR_EXEC
 } command_error_codes;
 
 STATIC const char * error_messages[] = {
@@ -63,22 +45,13 @@ STATIC const char * error_messages[] = {
     [ERROR_UPGRADES_NOT_ALLOWED] = "Upgrade module is disabled or not ready yet",
     [ERROR_UNKNOWN_COMMAND] = "Command not found",
     [ERROR_PARAMETERS_NOT_FOUND] = "Required parameters were not found",
-    [ERROR_UNSOPPORTED_MODE] = "Unsupported file mode",
     [ERROR_INVALID_FILE_NAME] = "Invalid file name",
-    [ERROR_FILE_OPEN] = "File Open Error: %s",
-    [ERROR_FILE_NOT_OPENED] = "File not opened. Agent might have been auto-restarted during upgrade",
-    [ERROR_FILE_NOT_OPENED2] = "No file opened",
-    [ERROR_TARGET_FILE_NOT_MATCH] = "The target file doesn't match the opened file",
-    [ERROR_WRITE_FILE] = "Cannot write file",
-    [ERROR_CLOSE] = "Cannot close file",
-    [ERROR_GEN_SHA1] = "Cannot generate SHA1",
     [ERROR_SIGNATURE] = "Could not verify signature",
     [ERROR_COMPRESS] = "Could not uncompress package",
     [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
     [ERROR_UNMERGE] = "Error unmerging file",
     [ERROR_CHMOD] = "Could not chmod",
-    [ERROR_EXEC] = "Error executing command",
-    [ERROR_CLEAR_UPGRADE_FILE] = "Could not erase upgrade_result file"
+    [ERROR_EXEC] = "Error executing command"
 };
 
 // Variable used to allow new upgrades after confirming the result of the previous upgrade
@@ -99,45 +72,6 @@ bool allow_upgrades = false;
 STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message);
 
 /**
- * Process a command that opens a file
- * @param json_obj expected json format parameters
- * {
- *    "file":    "file_path",
- *    "mode":    "wb|w"
- * }
- * */
-STATIC char* wm_agent_upgrade_com_open(const cJSON* json_object) __attribute__((nonnull));
-
-/**
- * Process a command that writes on an already opened file
- * @param json_obj expected json format
- * {
- *    "file":    "file_path",
- *    "buffer" : "base64_data",
- *    "length" : {data_length}
- * }
- * */
-STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) __attribute__((nonnull));
-
-/**
- * Process a command the close an already opened file
- * @param json_obj expected json format
- * {
- *    "file" : "file_path"
- * }
- * */
-STATIC char * wm_agent_upgrade_com_close(const cJSON* json_object) __attribute__((nonnull));
-
-/**
- * Process a command that calculates the sha1 already opened file
- * @param json_obj expected json format
- * {
- *    "file" : "file_path"
- * }
- * */
-STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) __attribute__((nonnull));
-
-/**
  * Process a command that executes an upgrade script
  * @param json_obj expected json format
  * {
@@ -147,39 +81,25 @@ STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) __attribute__(
  * */
 STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) __attribute__((nonnull));
 
-/**
- * Process a command that clears the upgrade_result file
- * */
-STATIC char * wm_agent_upgrade_com_clear_result();
-
 /* Helpers methods */
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+STATIC const char * _tmpBareName(const char * path);
 
 size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
 
     if (buffer_obj) {
-        cJSON *command_obj = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_COMMAND]);
+        cJSON *command_obj = cJSON_GetObjectItem(buffer_obj, upgrade_json_keys[WM_UPGRADE_COMMAND]);
 
         if (command_obj && (command_obj->type == cJSON_String)) {
             const char* command = command_obj->valuestring;
 
-            if (strcmp(command, "clear_upgrade_result") == 0) {
-                *output = wm_agent_upgrade_com_clear_result();
-            } else if (allow_upgrades) {
-                const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_PARAMETERS]);
+            if (allow_upgrades) {
+                const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, upgrade_json_keys[WM_UPGRADE_PARAMETERS]);
                 if (!parameters) {
                     *output = wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]);
-                } else if (strcmp(command, "open") == 0) {
-                    *output = wm_agent_upgrade_com_open(parameters);
-                } else if (strcmp(command, "write") == 0) {
-                    *output = wm_agent_upgrade_com_write(parameters);
-                } else if (strcmp(command, "close") == 0) {
-                    *output = wm_agent_upgrade_com_close(parameters);
-                } else if (strcmp(command, "sha1") == 0) {
-                    *output = wm_agent_upgrade_com_sha1(parameters);
                 } else if (strcmp(command, "upgrade") == 0) {
                     *output = wm_agent_upgrade_com_upgrade(parameters);
                 }
@@ -200,126 +120,12 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
 
 STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
     cJSON* root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(root, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], message);
-    cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_DATA], cJSON_CreateArray());
+    cJSON_AddNumberToObject(root, upgrade_json_keys[WM_UPGRADE_ERROR], error_code);
+    cJSON_AddStringToObject(root, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE], message);
+    cJSON_AddItemToObject(root, upgrade_json_keys[WM_UPGRADE_DATA], cJSON_CreateArray());
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return msg_string;
-}
-
-STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
-    char final_path[PATH_MAX + 1];
-    const cJSON *mode_obj = cJSON_GetObjectItem(json_object, "mode");
-    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
-
-    if (*file.path) {
-        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPENED, "open", file.path);
-        fclose(file.fp);
-        *file.path = '\0';
-    }
-
-    if (!mode_obj || (mode_obj->type != cJSON_String) || (strcmp(mode_obj->valuestring, "w") && strcmp(mode_obj->valuestring, "wb"))) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSUPPORTED_MODE, "open");
-        return wm_agent_upgrade_command_ack(ERROR_UNSOPPORTED_MODE, error_messages[ERROR_UNSOPPORTED_MODE]);
-    }
-
-    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_FILE_NAME, "open");
-        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
-    }
-
-    if (file.fp = wfopen(final_path, mode_obj->valuestring), file.fp) {
-        snprintf(file.path, sizeof(file.path), "%s", final_path);
-        return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
-    } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, FOPEN_ERROR, file_path_obj->valuestring, errno, strerror(errno));
-        char *output;
-        os_malloc(OS_MAXSTR + 1, output);
-        snprintf(output, OS_MAXSTR + 1, error_messages[ERROR_FILE_OPEN], strerror(errno));
-        char *response = wm_agent_upgrade_command_ack(ERROR_FILE_OPEN, output);
-        os_free(output);
-        return response;
-    }
-}
-
-STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) {
-    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
-    const cJSON *buffer_obj = cJSON_GetObjectItem(json_object, "buffer");
-    const cJSON *value_obj = cJSON_GetObjectItem(json_object, "length");
-    char final_path[PATH_MAX + 1];
-
-    if (!*file.path) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_NOT_OPENED_AUTO, "write");
-        return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED, error_messages[ERROR_FILE_NOT_OPENED]);
-    }
-
-    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_FILE_NAME, "write");
-        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
-    }
-
-    if (strcmp(file.path, final_path) != 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DIFFERENT_FILE, "write", file.path);
-        return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
-    }
-
-    char *base64_string = decode_base64(buffer_obj->valuestring);
-    if (value_obj && (value_obj->type == cJSON_Number) && base64_string && fwrite(base64_string, 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
-        os_free(base64_string);
-        return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
-    } else {
-        os_free(base64_string);
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CANNOT_WRITE, "write", final_path);
-        return wm_agent_upgrade_command_ack(ERROR_WRITE_FILE, error_messages[ERROR_WRITE_FILE]);
-    }
-}
-
-STATIC char * wm_agent_upgrade_com_close(const cJSON* json_object) {
-    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
-    char final_path[PATH_MAX + 1];
-
-    if (!*file.path) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_NOT_OPENED, "close");
-        return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
-    }
-
-    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_FILE_NAME, "close");
-        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
-    }
-
-    if (strcmp(file.path, final_path) != 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DIFFERENT_FILE, "close", file.path);
-        return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
-    }
-
-    *file.path = '\0';
-
-    if (fclose(file.fp)) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_GERENIC_ERROR, "close", strerror(errno));
-        return wm_agent_upgrade_command_ack(ERROR_CLOSE, error_messages[ERROR_CLOSE]);
-    }
-
-    return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
-}
-
-STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
-    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
-    char final_path[PATH_MAX + 1];
-    os_sha1 sha1;
-
-    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_FILE_NAME, "sha1");
-        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
-    }
-
-    if (OS_SHA1_File(final_path, sha1, OS_BINARY) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_GENERATING_SHA1_ERROR, "sha1");
-        return wm_agent_upgrade_command_ack(ERROR_GEN_SHA1, error_messages[ERROR_GEN_SHA1]);
-    }
-
-    return wm_agent_upgrade_command_ack(ERROR_OK, sha1);
 }
 
 STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
@@ -387,17 +193,6 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
 }
 
-STATIC char * wm_agent_upgrade_com_clear_result() {
-    const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
-    if (remove(PATH) == 0) {
-        allow_upgrades = true;
-        return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
-    } else {
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ERASE_FILE_ERROR, "clear_upgrade_result", PATH);
-        return wm_agent_upgrade_command_ack(ERROR_CLEAR_UPGRADE_FILE, error_messages[ERROR_CLEAR_UPGRADE_FILE]);
-    }
-}
-
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
     if (w_ref_parent_folder(filename)) {
@@ -442,12 +237,17 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     int fd;
 
     if (fd = mkstemp(dest), fd >= 0) {
-        close(fd);
-
-        if (chmod(dest, 0640) < 0) {
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
+            close(fd);
             unlink(dest);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "unsign()", dest);
             output = -1;
+        } else {
+            close(fd);
         }
     } else {
 #else
@@ -465,6 +265,25 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     umask(old_mask);
     unlink(source);
     return output;
+}
+
+// _jailfile() always builds its output as TMP_DIR followed by a path separator and a bare filename;
+// this recovers that bare filename instead of blindly skipping strlen(TMP_DIR) + 1 bytes, which would
+// walk past the string's NUL terminator (and hand a garbage pointer to w_gzopen_nofollow/w_fopen_nofollow)
+// for any path that turns out not to actually start with that prefix.
+STATIC const char * _tmpBareName(const char * path) {
+    const size_t prefixLen = strlen(TMP_DIR) + 1;
+#ifndef WIN32
+    const char SEP = '/';
+#else
+    const char SEP = '\\';
+#endif
+
+    if (strlen(path) <= prefixLen || strncmp(path, TMP_DIR, strlen(TMP_DIR)) != 0 || path[strlen(TMP_DIR)] != SEP) {
+        return NULL;
+    }
+
+    return path + prefixLen;
 }
 
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
@@ -489,16 +308,63 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
         memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
     }
 
-    if (fsource = gzopen(source, "rb"), !fsource) {
+    // Not gzopen(): a symlink left at source would be followed, disclosing whatever it points to.
+    const char * sourceBareName = _tmpBareName(source);
+
+    if (!sourceBareName || (fsource = w_gzopen_nofollow(TMP_DIR, sourceBareName, "rb"), !fsource)) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", source);
         return -1;
     }
 
-    if (ftarget = wfopen(dest, "wb"), !ftarget) {
+    // dest still holds the literal template here: unlike _unsign() above, it was never expanded into a
+    // unique name, leaving a predictable path a symlink could be pre-planted at before wfopen() opened
+    // it. Expand it now and, on POSIX, reuse the descriptor mkstemp() already vetted instead of a second,
+    // name-based open that would reintroduce the same race.
+#ifndef WIN32
+    {
+        int fd;
+
+        if (fd = mkstemp(dest), fd < 0) {
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+            return -1;
+        }
+
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "uncompress()", dest);
+            return -1;
+        }
+
+        if (ftarget = fdopen(fd, "wb"), !ftarget) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
+            return -1;
+        }
+    }
+#else
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
+        gzclose(fsource);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+        return -1;
+    }
+
+    const char * destBareName = _tmpBareName(dest);
+
+    if (!destBareName || (ftarget = w_fopen_nofollow(TMP_DIR, destBareName, "wb"), !ftarget)) {
         gzclose(fsource);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;
     }
+#endif
 
     {
         int length;

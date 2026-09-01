@@ -65,13 +65,16 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.agentd.patterns import ENROLLMENT_INVALID_SERVER, ENROLLMENT_RESOLVE_ERROR, ENROLLMENT_CONNECTED
+from wazuh_testing.modules.agentd.patterns import (AGENTD_RECEIVED_VALID_KEY, ENROLLMENT_INVALID_SERVER,
+                                                    ENROLLMENT_RESOLVE_ERROR)
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.utils.network import format_ipv6_long
+
+# Not a wazuh_testing pattern: #38624 rejects a malformed endpoint while parsing the
+# configuration, an error that has no constant in the framework yet.
+ENROLLMENT_INVALID_ENDPOINT = r".*Invalid endpoint '.*': Bad IPv6 address\."
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -100,7 +103,7 @@ daemons_handler_configuration = {'all_daemons': True}
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_agentd_server_address_configuration(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                              truncate_monitored_files, daemons_handler_module, shutdown_agentd,
-                                             configure_socket_listener, restart_agentd):
+                                             set_keys, configure_socket_listener, restart_agentd):
 
     '''
     description: Check the messages produced by the agent when introducing
@@ -121,6 +124,9 @@ def test_agentd_server_address_configuration(test_configuration, test_metadata, 
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - set_keys:
+            type: fixture
+            brief: Clear client.keys before each case so it starts unenrolled.
         - configure_socket_listener:
             type: fixture
             brief: Configure MITM.
@@ -141,26 +147,24 @@ def test_agentd_server_address_configuration(test_configuration, test_metadata, 
 
     manager_address = test_metadata['server_address']
 
-    final_manager_address = ''
-    if 'valid_ip' in test_metadata:
-        final_manager_address = manager_address
-
-    if 'ipv6' in test_metadata:
-        final_manager_address = format_ipv6_long(final_manager_address)
-
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    if manager_address == 'MANAGER_IP':
+    if 'invalid_endpoint' in test_metadata:
+        # The endpoint never parses, so the agent stops at the configuration and never
+        # reaches name resolution.
+        callback=generate_callback(ENROLLMENT_INVALID_ENDPOINT)
+        log_monitor.start(timeout=30, callback=callback)
+        assert log_monitor.callback_result
+    elif manager_address == 'MANAGER_IP':
         callback=generate_callback(ENROLLMENT_INVALID_SERVER, {'server_ip': str(test_metadata['server_address'])})
         log_monitor.start(timeout=30, callback=callback)
         assert log_monitor.callback_result
     else:
         if 'expected_connection' in test_metadata:
-            callback=generate_callback(ENROLLMENT_CONNECTED, {'server_ip': final_manager_address,
-                                                              'port': str(DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)})
+            callback=generate_callback(AGENTD_RECEIVED_VALID_KEY)
             log_monitor.start(timeout=30, callback=callback)
             assert log_monitor.callback_result
         else:
-            callback=generate_callback(ENROLLMENT_RESOLVE_ERROR, {'server_ip': final_manager_address})
+            callback=generate_callback(ENROLLMENT_RESOLVE_ERROR)
             log_monitor.start(timeout=30, callback=callback)
             assert log_monitor.callback_result

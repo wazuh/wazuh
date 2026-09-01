@@ -29,10 +29,6 @@ typedef enum _error_codes {
     ERROR_EMPTY_PARAMATERS,
     ERROR_EMPTY_SECTION,
     ERROR_UNRECOGNIZED_SECTION,
-    ERROR_INVALID_AGENTS,
-    ERROR_EMPTY_AGENTS,
-    ERROR_EMPTY_LASTID,
-    ERROR_TOO_MANY_AGENTS,
     ERROR_EMPTY_AGENT_OR_MD5
 } error_codes;
 
@@ -45,10 +41,6 @@ const char * error_messages[] = {
     [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
     [ERROR_EMPTY_SECTION] = "Empty section",
     [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section",
-    [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
-    [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
-    [ERROR_EMPTY_LASTID] = "Empty last id",
-    [ERROR_TOO_MANY_AGENTS] = "Too many agents",
     [ERROR_EMPTY_AGENT_OR_MD5] = "Invalid agent or md5 parameter"
 };
 
@@ -76,7 +68,6 @@ STATIC size_t remcom_dispatch(char* request, char** output);
  */
 STATIC cJSON* remcom_getconfig(const char* section);
 
-
 STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* data_json) {
     cJSON* root = cJSON_CreateObject();
 
@@ -96,14 +87,9 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *parameters_json = NULL;
     cJSON *section_json = NULL;
     cJSON *config_json = NULL;
-    cJSON *agents_json = NULL;
-    cJSON *last_id_json = NULL;
     cJSON *agent_json = NULL;
     cJSON *md5_json = NULL;
     const char *json_err;
-    int *agents_ids;
-    int count;
-    int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
         *output = remcom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
@@ -113,45 +99,6 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     if (command_json = cJSON_GetObjectItem(request_json, "command"), cJSON_IsString(command_json)) {
         if (strcmp(command_json->valuestring, "getstats") == 0) {
             *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_state_json());
-        } else if (strcmp(command_json->valuestring, "getagentsstats") == 0) {
-            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
-                agents_json = cJSON_GetObjectItem(parameters_json, "agents");
-                if (cJSON_IsArray(agents_json)) {
-                    if (cJSON_GetArraySize(agents_json) <  REM_MAX_NUM_AGENTS_STATS) {
-                        agents_ids = json_parse_agents(agents_json);
-                        if (agents_ids != NULL) {
-                            *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
-                            os_free(agents_ids);
-                        } else {
-                            *output = remcom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
-                        }
-                    } else {
-                        *output = remcom_output_builder(ERROR_TOO_MANY_AGENTS, error_messages[ERROR_TOO_MANY_AGENTS], NULL);
-                    }
-                } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
-                    last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
-                    if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS);
-                        if (agents_ids != NULL) {
-                            for (count = 0; agents_ids[count] != -1; count++);
-                            if (count < REM_MAX_NUM_AGENTS_STATS) {
-                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
-                            } else {
-                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], rem_create_agents_state_json(agents_ids));
-                            }
-                            os_free(agents_ids);
-                        } else {
-                            *output = remcom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
-                        }
-                    } else {
-                        *output = remcom_output_builder(ERROR_EMPTY_LASTID, error_messages[ERROR_EMPTY_LASTID], NULL);
-                    }
-                } else {
-                    *output = remcom_output_builder(ERROR_INVALID_AGENTS, error_messages[ERROR_INVALID_AGENTS], NULL);
-                }
-            } else {
-                *output = remcom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
-            }
         } else if (strcmp(command_json->valuestring, "getconfig") == 0) {
             if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
                 if (section_json = cJSON_GetObjectItem(parameters_json, "section"), cJSON_IsString(section_json)) {
@@ -266,6 +213,12 @@ void * remcom_main(__attribute__((unused)) void * arg) {
                 length = remcom_dispatch(buffer, &response);
                 OS_SendSecureTCP(peer, length, response);
                 os_free(response);
+                close(peer);
+            } else if (!logr.legacy_enabled) {
+                // req_sender()/req_dispatch() only ever forward to an agent over the legacy
+                // AES channel (send_msg()); reject here instead of touching that keystore.
+                static const char *response_disabled = "err Legacy delivery disabled";
+                OS_SendSecureTCP(peer, strlen(response_disabled), response_disabled);
                 close(peer);
             } else {
                 req_sender(peer, buffer, length);

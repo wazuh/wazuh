@@ -14,7 +14,7 @@ from io import StringIO
 from os import path as os_path
 from os import remove
 from types import MappingProxyType
-from typing import List, Optional, Union
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -183,14 +183,12 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
-    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
-        (section_name == 'cluster' and opt_name == 'haproxy_helper'):
+    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')):
         opt_value = {}
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'haproxy_helper' and opt_name == 'excluded_nodes') or \
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
@@ -203,6 +201,27 @@ def _read_option(section_name: str, opt: str) -> tuple:
                                     ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
+    elif section_name == 'remote' and opt_name == 'legacy':
+        # <remote><legacy> nests the classic TCP/UDP options (including <protocol>, a
+        # comma-separated list). The generic branch below would recurse with the
+        # child's own tag as section_name, losing the fact that it's inside 'legacy',
+        # so 'protocol' is special-cased here instead of relying on that recursion.
+        opt_value = {}
+        for child in opt:
+            child_name = child.tag.lower()
+            if child_name == 'protocol':
+                opt_value[child_name] = [elem.strip() for elem in child.text.split(',')]
+            else:
+                _, opt_value[child_name] = _read_option(child_name, child)
+    elif section_name == 'remote' and opt_name == 'https':
+        # <remote><https> only has scalar leaf options (port, bind_addr, certificate,
+        # key, ca, verification_mode, ciphers, max_body_size). The generic branch below
+        # wraps every child value in a list, which is meant for repeatable elements, so
+        # it's bypassed here the same way as <legacy>.
+        opt_value = {}
+        for child in opt:
+            child_name = child.tag.lower()
+            _, opt_value[child_name] = _read_option(child_name, child)
     else:
         if opt.attrib or list(opt):
             opt_value = {}
@@ -582,6 +601,11 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
         raise WazuhResourceNotFound(1710, group_id)
     agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
 
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '')
+    if os_path.commonpath([os_path.realpath(agent_conf), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+        raise WazuhError(1006, agent_conf)
+
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, agent_conf)
 
@@ -635,6 +659,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
         raise WazuhResourceNotFound(1710, group_id)
 
     file_path = os_path.join(common.SHARED_PATH, group_id, filename)
+
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '')
+    if os_path.commonpath([os_path.realpath(file_path), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+        raise WazuhError(1006, file_path)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -904,17 +933,15 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(component: str, configuration: str, agent_id: Optional[str] = None) -> dict:
-    """Get server or agent component active configuration.
+def get_active_configuration(component: str, configuration: str) -> dict:
+    """Get manager component active configuration.
 
     Parameters
     ----------
     component : str
-        Selected agent's component.
+        Selected component.
     configuration : str
         Configuration to get, written on disk.
-    agent_id : Optional[str], default None
-        Agent ID. If None, gets manager configuration.
 
     Raises
     ------
@@ -929,24 +956,25 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
     WazuhInternalError(1118)
         If the socket is not able to receive a response.
     WazuhError(1117)
-        If there's no such file or directory in agent node, or the socket cannot send the request.
+        If there's no such file or directory, or the socket cannot send the request.
     WazuhError(1116)
         If the reply from the node contains an error.
 
     Returns
     -------
     dict
-        The active configuration the agent is currently using.
+        The active configuration the manager is currently using.
     """
-    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
+    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    component_socket_mapping = {'agent': 'engine-api-http.sock', 'analysis': 'engine-api-http.sock', 'auth': 'auth.sock',
                                 'com': 'com', 'integrator': 'integrator',
-                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
-                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb', 'wmodules': 'wmodules'}
+                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor.sock',
+                                'request': 'remote.sock', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb.sock',
+                                'wmodules': 'wmodules.sock'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
                                     'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
-                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'db',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'sockets',
                                     'wmodules': 'sockets'}
 
     if not component or not configuration:
@@ -1021,37 +1049,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
 
             return response['error'], response['data']
 
-    def get_active_configuration_agent():
-        """Get agent active configuration"""
-        # Always communicate with remote socket
-        dest_socket = common.REMOTED_SOCKET
-
-        # Simple socket message
-        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
-
-        # Socket connection
-        try:
-            s = wazuh_socket.WazuhSocket(dest_socket)
-        except WazuhInternalError:
-            raise
-        except Exception as unhandled_exc:
-            raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
-        except ValueError:
-            raise WazuhInternalError(1118, extra_message="Data could not be received")
-        finally:
-            s.close()
-
-        return rec_msg_ok, rec_msg
-
-    rec_error, rec_data = get_active_configuration_agent() if agent_id is not None else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data

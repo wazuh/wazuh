@@ -32,6 +32,7 @@ TCP port on which the enrollment service listens.
 
 - **Default value:** `1515`
 - **Allowed values:** Integer from `1` to `65535`
+- **Note:** Only `0` is rejected by the code; there is no upper-bound check, so values above `65535` are silently truncated rather than validated. Operators should keep the configured value within the valid port range themselves.
 
 ### ipv6
 
@@ -46,11 +47,25 @@ Register agents using their source IP address instead of `any`.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agents can only connect from the IP they enrolled from
+- **Note:** When enabled, agents can only connect from the IP they enrolled from. Both listeners
+  enforce this: the classic one via `OS_IsAllowedDynamicID()`, and the HTTPS one via the `ip` column
+  check described in
+  [Registered address](../remoted/https-events-api.md#registered-address-ip-column).
+- **Note:** Do not enable this when agents reach the manager through a **NAT or a load balancer**. The
+  address recorded at enrollment is the one the manager observes, which is the proxy's rather than the
+  agent's, and it is not necessarily the address the event listener will observe for the same agent if
+  the two are reached over different paths. In proxied deployments, register agents with `any`.
 
 ### purge
 
-Remove all previous keys for an agent when it re-enrolls with the same name.
+Controls whether a deleted or replaced agent's old entry is kept as an audit trail. When an agent
+is removed — including the implicit removal that happens when another agent re-enrolls and forces
+it out (see [Force re-enrollment](index.html#force-re-enrollment)) — the active `client.keys` entry
+is always deleted regardless of this setting. What `purge` decides is whether that deleted entry is
+also retained as a `!`-prefixed placeholder line in `client.keys` (e.g. `001 !oldname 1.2.3.4
+<key>`), which keeps a record of the old ID/name/IP so it is not reused. By default the placeholder
+line is kept; setting `purge` to `yes` suppresses it, so the entry is removed with no trace left
+behind.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
@@ -90,17 +105,40 @@ The agent reads the password from `etc/authd.pass` (relative to its install dire
 
 ### remote_enrollment
 
-Accept enrollment requests over the network (port 1515). Disable to restrict enrollment to the local socket only.
+Master switch for **all** remote (network) self-enrollment — both this daemon's own TCP/TLS
+listener on port 1515 and the HTTPS `POST /enroll` bridge served by `remoted_module` (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Disabling it
+turns off both at once; use [`legacy_enrollment`](#legacy_enrollment) to turn off only port 1515
+while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth.sock`) used by
+`manage_agents`/the API stays available regardless of this setting.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+
+### legacy_enrollment
+
+Narrows `remote_enrollment` further, without affecting it: when `remote_enrollment` is `yes`, this
+flag controls whether port 1515's TCP/TLS listener specifically starts. Set to `no` to retire
+legacy 1515 while keeping `/enroll` — the manager's intended long-term enrollment path — available.
+Has no effect when `remote_enrollment` is `no` (both paths are already off), and no effect on
+`/enroll` at all, which this flag exists specifically to leave alone.
+
+| `disabled` | `remote_enrollment` | `legacy_enrollment`  | Port 1515 | `POST /enroll` |
+| ---------- | -------------------- | --------------------- | --------- | -------------- |
+| `yes`      | –                    | –                     | off       | off            |
+| `no`       | `no`                 | –                     | off       | off            |
+| `no`       | `yes`                | `yes` (default)       | on        | on             |
+| `no`       | `yes`                | `no`                  | off       | **on**         |
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 
 ### ciphers
 
-OpenSSL cipher string applied to the TLS session.
+Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts TLS 1.3 cipher suite names — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) used before TLS 1.3 enforcement are no longer valid and are rejected at startup with a clear error.
 
-- **Default value:** `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`
-- **Allowed values:** Any valid OpenSSL cipher string
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** Colon-separated combination of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`
 
 ### ssl_agent_ca
 
@@ -118,24 +156,19 @@ Verify that the CN of the agent certificate matches the agent's IP address. Requ
 
 ### ssl_manager_cert
 
-Path to the manager's TLS certificate presented to agents during enrollment.
+Path to the manager's TLS certificate presented to agents during enrollment. Shared with the
+HTTPS agent server (`remoted_module`'s `POST /enroll`): both listeners present the same manager
+identity, since `/enroll`'s mTLS mode treats this certificate as the enrollment credential.
 
-- **Default value:** `etc/sslmanager.cert` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/sslmanager.cert`)
+- **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`) -- authd no longer generates or owns a separate certificate of its own
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory)
 
 ### ssl_manager_key
 
 Path to the private key corresponding to `ssl_manager_cert`.
 
-- **Default value:** `etc/sslmanager.key` (resolved relative to the Wazuh install directory)
+- **Default value:** `etc/certs/remoted-key.pem` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
-
-### ssl_auto_negotiate
-
-Allow the TLS handshake to automatically select the highest available protocol version.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
 
 ### force
 
@@ -212,7 +245,35 @@ auth.timeout_microseconds=0
 
 # Maximum number of agents allowed (0 = unlimited)
 authd.max_agents=0
+
+# Seconds a deletion waits before its indexer purge is relayed (0 = immediate)
+authd.purge_delay=120
 ```
+
+### authd.purge_delay
+
+How long an agent's deletion waits before authd asks the Inventory Sync Server to purge that agent's
+documents from the indexer. The deletion itself is never delayed: `client.keys` and wazuh-db are
+updated immediately, and only the indexer purge is held back.
+
+- **Default value:** `120`
+- **Allowed values:** `0` to `3600` (seconds)
+
+The default is chosen from the three intervals the purge has to outlast, because **whatever a purge
+misses survives forever** — the agent is gone, so nothing will overwrite those documents again:
+
+| Interval | Why it matters |
+|---|---|
+| index refresh, ~1 s | a `_delete_by_query` is a *search*: it cannot match documents the indexer has not made searchable yet |
+| cluster integrity sync, 9 s | until a worker node pulls the new `client.keys`, it keeps accepting that agent's data and writing it |
+| keepalive tolerance, 120 s | the longest a worker can be out of touch and still be considered alive, so the longest it can legitimately be behind |
+
+120 seconds covers the widest of the three. **A single-node manager** only faces the first one and can
+lower this to a few seconds safely. `0` relays immediately and exists for tests; raising it beyond a
+couple of minutes only makes documents linger longer.
+
+Pending purges are persisted, so the wait survives a restart: see
+[Agent removal and the indexer](README.md#agent-removal-and-the-indexer).
 
 **Note:** Use `wazuh-manager-internal-options.conf` to preserve settings across upgrades.
 
@@ -249,10 +310,9 @@ Mutual TLS with client certificate verification:
   <use_password>yes</use_password>
   <ssl_agent_ca>/var/wazuh-manager/etc/rootCA.pem</ssl_agent_ca>
   <ssl_verify_host>yes</ssl_verify_host>
-  <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
-  <ssl_auto_negotiate>yes</ssl_auto_negotiate>
-  <ciphers>HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4</ciphers>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
+  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>
     <key_mismatch>yes</key_mismatch>

@@ -89,6 +89,26 @@ void expect_fopen(const char* path, const char* mode, FILE *fp) {
     will_return(__wrap_fopen, fp);
 }
 
+// Weak: __real_fdopen only exists in binaries linked with -Wl,--wrap,fdopen; every other
+// test binary links this file too, and there this whole function is unreachable dead code.
+extern FILE* __real_fdopen(int fd, const char* mode) __attribute__((weak));
+FILE* __wrap_fdopen(int fd, const char* mode) {
+    // Guarded like __wrap_fopen: libgcov flushes coverage through fdopen after the
+    // group finishes, when nothing is queued and test_mode is already cleared.
+    if (test_mode) {
+        check_expected(fd);
+        check_expected(mode);
+        return mock_ptr_type(FILE*);
+    }
+    return __real_fdopen ? __real_fdopen(fd, mode) : NULL;
+}
+
+void expect_fdopen(int fd, const char* mode, FILE *fp) {
+    expect_value(__wrap_fdopen, fd, fd);
+    expect_string(__wrap_fdopen, mode, mode);
+    will_return(__wrap_fdopen, fp);
+}
+
 int __wrap_fprintf(FILE *__stream, const char *__format, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -120,25 +140,6 @@ void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret) {
     expect_string(wrap_fprintf, formatted_msg, formatted_msg);
     will_return(wrap_fprintf, ret);
 #endif
-}
-
-int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...) {
-    if (test_mode) {
-        check_expected_ptr(__maxlen);
-        check_expected_ptr(__format);
-        memset(__s, 0, __maxlen);
-
-        return mock_type(int);
-    } else {
-        va_list args;
-        va_start(args, __format);
-
-        int val = vsnprintf(__s, __maxlen, __format, args);
-
-        va_end(args);
-
-        return val;
-    }
 }
 
 extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
@@ -245,12 +246,6 @@ int __wrap_pclose(FILE *__stream) {
 void expect_pclose(FILE *__stream, int ret) {
     expect_value(__wrap_pclose, __stream, __stream);
     will_return(__wrap_pclose, ret);
-}
-
-int __wrap_fputc(char character, FILE *stream) {
-    check_expected(character);
-    check_expected(stream);
-    return mock();
 }
 
 FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc) {

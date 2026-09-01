@@ -93,6 +93,63 @@ public:
     }
 };
 
+/// Implementation detail, defined only in src/. Declared here for IndexerSession's friend below.
+struct IndexerSessionData;
+
+/**
+ * @brief Shareable indexer session: host health monitoring plus authenticated transport settings.
+ *
+ * Build ONE and hand it to several connectors in the same process so they share a single health
+ * check thread, a single keystore read and a single CA merge, instead of one each. Without it, every
+ * connector runs its own synchronous round of `GET /_cat/health` (5 s timeout per host) inside its
+ * constructor, so a process holding both a sync and an async connector pays that cost twice.
+ *
+ * The constructor performs the SAME synchronous validation a connector's own constructor does --
+ * `hosts` present, referenced CA files exist on disk, keystore credentials readable -- and throws
+ * IndexerConnectorException the same way. A host that is merely UNREACHABLE does NOT throw: it just
+ * stays unavailable until the monitor sees it come up. So a session constructs successfully against
+ * an indexer that is still starting.
+ *
+ * LIFETIME: nothing retains the session. A connector copies the transport settings and takes a
+ * counted reference to the monitor, so the session may be destroyed as soon as the connectors are
+ * built; the monitoring thread lives until the last connector using it is gone.
+ *
+ * @note Every connector built from a session MUST be configured with the same `hosts` list -- see
+ *       the session-taking constructors below.
+ */
+class EXPORTED IndexerSession final
+{
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+
+    friend const IndexerSessionData& sessionData(const IndexerSession& session);
+
+public:
+    /**
+     * @brief Builds the session: validates the configuration, resolves the credentials and starts
+     *        one health monitor for the configured hosts.
+     *
+     * @param config Indexer configuration. `hosts` is required; `ssl.certificate_authorities`,
+     *               `ssl.certificate` and `ssl.key` are optional. `monitoring_interval_seconds`
+     *               (default 10, minimum 1) sets the health monitor's polling period -- in session
+     *               mode this is the only place it can be set, since every connector built from the
+     *               session adopts this monitor.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing or empty, if a configured CA root
+     *         certificate file does not exist, or if `monitoring_interval_seconds` is below 1.
+     */
+    explicit IndexerSession(const nlohmann::json& config, LoggingContext logging = {});
+
+    ~IndexerSession();
+
+    IndexerSession(const IndexerSession&) = delete;
+    IndexerSession& operator=(const IndexerSession&) = delete;
+    IndexerSession(IndexerSession&&) = delete;
+    IndexerSession& operator=(IndexerSession&&) = delete;
+};
+
 /**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
@@ -109,12 +166,37 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
+     *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
+     *               the health monitor this constructor builds.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging = {});
+
+    /**
+     * @brief Class constructor that builds on a SHARED session instead of creating its own health
+     *        monitor and resolving its own credentials.
+     *
+     * Use this when the process holds more than one connector: the session's single monitoring thread
+     * and single startup health-check round are reused, so the second connector costs no extra
+     * network I/O at construction.
+     *
+     * @param config Indexer configuration. Still supplies this connector's own tunables
+     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`,
+     *               `request_timeout_seconds`). `monitoring_interval_seconds` is IGNORED here --
+     *               the shared session's monitor was already built with the session's own value --
+     *               just like the `ssl.*` and credential keys, which the session also supplies. Its
+     *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
+     *               built with, so a foreign host would throw std::out_of_range on the first request.
+     * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing, empty, or does not match the
+     *         session's host list, or if `max_retry_delay_seconds` is below the base retry delay.
+     */
+    IndexerConnectorSync(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging = {});
 
     ~IndexerConnectorSync();
 
@@ -323,12 +405,39 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including servers and SSL settings.
+     *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
+     *               the health monitor this constructor builds.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging = {});
+
+    /**
+     * @brief Class constructor that builds on a SHARED session instead of creating its own health
+     *        monitor and resolving its own credentials.
+     *
+     * Use this when the process holds more than one connector: the session's single monitoring thread
+     * and single startup health-check round are reused, so the second connector costs no extra
+     * network I/O at construction.
+     *
+     * @param config Indexer configuration. Still supplies this connector's own tunables
+     *               (`bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`,
+     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`,
+     *               `request_timeout_seconds`). `monitoring_interval_seconds` is IGNORED here --
+     *               the shared session's monitor was already built with the session's own value --
+     *               just like the `ssl.*` and credential keys, which the session also supplies.
+     *               Its `hosts` list MUST
+     *               equal the session's: the monitor only knows the hosts it was built with, so a
+     *               foreign host would throw std::out_of_range on the first request.
+     * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing, empty, or does not match the
+     *         session's host list, or if `max_retry_delay_seconds` is below the base retry delay.
+     */
+    IndexerConnectorAsync(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging = {});
 
     ~IndexerConnectorAsync();
 
@@ -366,6 +475,26 @@ public:
      * @param data Data.
      */
     void indexDataStream(std::string_view index, std::string_view data);
+
+    /**
+     * @brief Queue the deletion of ONE document by id.
+     *
+     * Enqueued into the SAME queue as index(), which is what this method is for: the queue is FIFO
+     * (and a failed batch is retried from its front), so a deletion queued after an index() of the
+     * same document is always applied after it. A caller that has to remove a document whose own
+     * index() may still be pending here cannot get that ordering from anything else -- a delete
+     * issued through another connector races this queue, and a `_delete_by_query` would not even see
+     * a document that has not been refreshed yet.
+     *
+     * Fire-and-forget like index(), and idempotent: deleting a document that is not there comes back
+     * as a per-item `404 not_found`, which is not an error and is not reported anywhere.
+     *
+     * @param id ID of the document to delete. Must not be empty.
+     * @param index Index name. Must not be empty.
+     *
+     * @throws IndexerConnectorException if @p id or @p index is empty.
+     */
+    void deleteById(std::string_view id, std::string_view index);
 
     /**
      * @brief Check have a server available.

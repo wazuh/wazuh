@@ -19,7 +19,6 @@
 #include "syscheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"
-#include "router.h"
 #include "global-config.h"
 
 #define WDB_MAX_COMMAND_SIZE    512
@@ -68,14 +67,13 @@ typedef enum wdb_global_group_hash_operations_t {
 
 typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
-    WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
@@ -109,19 +107,16 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP,
     WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
-    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
-    WDB_STMT_TASK_INSERT_TASK,
-    WDB_STMT_TASK_GET_LAST_AGENT_TASK,
-    WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
-    WDB_STMT_TASK_UPDATE_TASK_STATUS,
-    WDB_STMT_TASK_GET_TASK_BY_STATUS,
-    WDB_STMT_TASK_DELETE_OLD_TASKS,
-    WDB_STMT_TASK_DELETE_TASK,
-    WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
+    // Generic task statements
+    WDB_STMT_TASK_CREATE,
+    WDB_STMT_TASK_GET_PENDING,
+    WDB_STMT_TASK_MARK_DELIVERED,
+    WDB_STMT_TASK_CLEANUP_EXPIRED,
+    WDB_STMT_TASK_DELETE_OLD,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
@@ -185,7 +180,6 @@ wdb_t * wdb_open_global();
  * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
-
 
 /**
  * @brief Open task database and store in DB poll.
@@ -271,14 +265,6 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
-
-/**
- * @brief Rollback transaction
- * @param[in] wdb Database to query for the table existence.
- * @return 0 when succeed, !=0 otherwise.
-*/
-int wdb_rollback(wdb_t * wdb);
-
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -454,17 +440,6 @@ void wdb_global_post(void *wdb_ctx);
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the update agent name request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the update agent data request.
  *
  * @param [in] wdb The global struct database.
@@ -550,17 +525,6 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent name request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the select agent group request.
@@ -906,7 +870,6 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, os_sha1 hexdig
  */
 wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
-
 /**
  * @brief Enables foreign keys usage into the specified database.
  *
@@ -932,16 +895,6 @@ int wdb_enable_foreign_keys(sqlite3 *db);
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
 
 /**
- * @brief Function to update an agent name.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] name The agent name
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
-
-/**
  * @brief Function to update an agent version data.
  *
  * @param [in] wdb The Global struct database.
@@ -954,12 +907,9 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] os_platform The agent's operating system platform.
  * @param [in] os_arch The agent's operating system architecture.
  * @param [in] version The agent's version.
- * @param [in] merged_sum The agent's merged sum.
- * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
- * @param [in] group_config_status The agent's shared configuration synchronization status.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_version(wdb_t *wdb,
@@ -972,12 +922,9 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *merged_sum,
-                                    const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status,
-                                    const char *group_config_status);
+                                    const char *sync_status);
 
 /**
  * @brief Function to update an agent keepalive and the synchronization status.
@@ -1008,9 +955,12 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
  * @param [in] id The agent ID.
  * @param [in] status_code The status code to be set.
  * @param [in] version The agent version to be set.
+ * @param [in] connection_status The connection status to be set. When not NULL, the last keepalive
+ *                               is stamped and the disconnection time is reset as well.
+ * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *connection_status, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1020,15 +970,6 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_delete_agent(wdb_t *wdb, int id);
-
-/**
- * @brief Function to get the name of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent name on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 /**
  * @brief Function to get the group of a particular agent.
@@ -1057,7 +998,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  * @return JSON with id on success. NULL on error.
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
 
 /**
  * @brief Function to get a group id using the group name.
@@ -1437,13 +1377,11 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] connection_status Connection status of the agents requested.
- * @param [in] node_name Cluster node name
- * @param [in] limit Limits the number of rows returned by the query.
  * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
@@ -1473,77 +1411,54 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_result* status);
 
 /**
- * @brief Function to parse the insert upgrade request.
+ * @brief Function to parse the task create request.
  *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
- * @param command Command to be insert in task
+ * @param [in] wdb The task struct database.
+ * @param parameters JSON with the parameters (task_id, agent_id, task_type, payload)
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
+int wdb_parse_task_create(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the upgrade_get_status request.
+ * @brief Function to parse the task get_pending request.
  *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
+ * @param [in] wdb The task struct database.
+ * @param parameters JSON with the parameters (agent_id)
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_get_pending(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the upgrade_update_status request.
+ * @brief Function to parse the task mark_delivered request.
  *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
+ * @param [in] wdb The task struct database.
+ * @param parameters JSON with the parameters (task_id, delivery_time)
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_mark_delivered(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the upgrade_result request.
+ * @brief Function to parse the task cleanup_expired request.
  *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
+ * @param [in] wdb The task struct database.
+ * @param parameters JSON with the parameters (ttl)
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_cleanup_expired(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the upgrade_cancel_tasks request.
+ * @brief Function to parse the task delete_old request.
  *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the set_timeout request.
- *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the delete_old request.
- *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
+ * @param [in] wdb The task struct database.
+ * @param parameters JSON with the parameters (timestamp)
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
@@ -1551,89 +1466,53 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * Update old tasks with status in progress to status timeout
+ * Create a new generic task in the tasks DB.
  * @param wdb The task struct database
- * @param now Actual time
- * @param timeout Task timeout
- * @param next_timeout Next task in progress timeout
+ * @param task_id Deterministic task ID (UUID format)
+ * @param agent_id Agent identifier (TEXT format, supports non-numeric IDs)
+ * @param task_type Task type (active_response, remote_upgrade, agent_restart, agent_reload)
+ * @param payload Complete JSON payload for agent
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int timeout, time_t *next_timeout);
+int wdb_task_create(wdb_t* wdb, const char *task_id, const char *agent_id, const char *task_type, const char *payload);
 
 /**
- * Delete old tasks from the tasks DB
+ * Get pending tasks for an agent from the tasks DB.
  * @param wdb The task struct database
- * @param timestamp Deletion limit time
+ * @param agent_id Agent identifier
+ * @param max_tasks Maximum number of tasks to return
+ * @param tasks_json Output JSON array with pending tasks
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wdb_task_delete_old_entries(wdb_t* wdb, int timestamp);
+int wdb_task_get_pending(wdb_t* wdb, const char *agent_id, int max_tasks, cJSON **tasks_json);
 
 /**
- * Insert a new task in the tasks DB.
+ * Mark a task as delivered in the tasks DB.
  * @param wdb The task struct database
- * @param agent_id ID of the agent where the task will be executed.
- * @param node Node that executed the command.
- * @param module Name of the module where the message comes from.
- * @param command Command to be executed in the agent.
- * @return ID of the task recently created when succeed, <=0 otherwise.
+ * @param task_id Task identifier
+ * @param delivery_time Unix timestamp when task was delivered
+ * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command);
+int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_time);
 
 /**
- * Get the status of an upgrade task from the tasks DB.
+ * Mark expired tasks in the tasks DB.
  * @param wdb The task struct database
- * @param agent_id ID of the agent where the task is being executed.
- * @param node Node that executed the command.
- * @param status String where the status of the task will be stored.
- * @return 0 when succeed, !=0 otherwise.
+ * @param ttl Time-to-live in seconds
+ * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wdb_task_get_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, char **status);
+int wdb_task_cleanup_expired(wdb_t* wdb, int ttl);
 
 /**
- * Update the status of a upgrade task in the tasks DB.
+ * Delete old expired/delivered tasks from the tasks DB.
  * @param wdb The task struct database
- * @param agent_id ID of the agent where the task is being executed.
- * @param node Node that executed the command.
- * @param status New status of the task.
- * @param error Error string of the task in case of failure.
- * @return 0 when succeed, !=0 otherwise.
+ * @param timestamp Cutoff timestamp (tasks older than this are deleted)
+ * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wdb_task_update_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, const char *status, const char *error);
-
-/**
- * Cancel the upgrade tasks of a given node in the tasks DB.
- * @param wdb The task struct database
- * @param node Node that executed the upgrades.
- * @return 0 when succeed, !=0 otherwise.
- * */
-int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
-
-/**
- * Get task by agent_id and module from the tasks DB.
- * @param wdb The task struct database
- * @param agent_id ID of the agent where the task is being executed.
- * @param node Node that executed the command.
- * @param module Name of the module where the command comes from.
- * @param command String where the command of the task will be stored.
- * @param status String where the status of the task will be stored.
- * @param error String where the error message of the task will be stored.
- * @param create_time Integer where the create_time of the task will be stored.
- * @param last_update_time Integer where the last_update_time of the task will be stored.
- * @return task_id when succeed, < 0 otherwise.
- * */
-int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
+int wdb_task_delete_old(wdb_t* wdb, time_t timestamp);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
-
-/**
- * Get cache stmt cached for specific query.
- * @param wdb The task struct database
- * @param query is the query to be executed.
- * @return Pointer to the statement already cached. NULL On error.
- * */
-
-sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 /**
  * @brief Method to read the internal wazuh-db configuration.
@@ -1656,7 +1535,6 @@ cJSON* wdb_get_config();
  * @param output the response to send
  */
 void wdbcom_dispatch(char* request, char* output);
-
 
 /**
  * @brief Set the synchronous mode of the SQLite database session.

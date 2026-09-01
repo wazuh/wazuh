@@ -30,7 +30,6 @@ typedef struct wm_sca_db_sync_flags_t {
     unsigned int enable_synchronization:1;  // Enable database synchronization
     uint32_t sync_interval;                 // Synchronization interval
     uint32_t sync_end_delay;                // Delay for synchronization end message
-    uint32_t sync_response_timeout;         // Minimum interval for the synchronization process
     long sync_max_eps;                      // Maximum events per second for synchronization messages.
     uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
 } wm_sca_db_sync_flags_t;
@@ -59,6 +58,6 @@ extern const wm_context WM_SCA_CONTEXT;
  *        does not depend on, or report on, filesystem state that is
  *        irrelevant to it.
  */
-int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module, int skip_ruleset_load);
+int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module, int agent_cfg);
 
 #endif // WM_SCA_H

@@ -140,6 +140,20 @@ set(INDEXED_QUEUE_OP_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_u
 list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS}")
 endif()
 
+# http_op.c is server-only (shared/CMakeLists.txt drops it for Windows), so is its test.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_http_op")
+list(APPEND shared_tests_flags " ")
+endif()
+
+list(APPEND shared_tests_names "test_agent_validate_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(APPEND shared_tests_names "test_agent_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid \
@@ -159,28 +173,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,
                                 -Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
 endif()
 
-list(APPEND shared_tests_names "test_enrollment_op")
-set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
-                              -Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \
-                              -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
-                              -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
-                              -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                              -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket,--wrap=wfopen,--wrap=fflush,--wrap=fgetpos \
-                              -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc -Wl,--wrap,popen \
-                              -Wl,--wrap=OS_SetRecvTimeout")
-
-if(${TARGET} STREQUAL "winagent")
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
-                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=fim_db_teardown")
-else()
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname \
-                                    -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
-endif()
-
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_names "test_ssl_op")
-    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new -Wl,--wrap,_merror")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
@@ -195,6 +190,15 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags " ")
+endif()
+
+list(APPEND shared_tests_names "test_startup_gate_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_utf8_op")
@@ -272,7 +276,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,strerror \
                                 -Wl,--wrap,fclose -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
                                 -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
                                 -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
-                                -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
+                                -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
                                 -Wl,--wrap,rbtree_insert -Wl,--wrap,wfopen \
                                 -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 endif()
@@ -354,7 +358,10 @@ list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
-                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,os_find_ca_bundle ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND shared_tests_names "test_os_cert_bundle")
+list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
 
@@ -391,6 +398,25 @@ endif()
 list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+# Not built for winagent. generate_cert() is reachable only from the manager binaries -- remoted
+# and authd call it, nothing on an agent does -- and its hostname lookup cannot be intercepted
+# there: on Windows gethostname() is a dllimport from ws2_32, so the call goes through the import
+# thunk and -Wl,--wrap,gethostname never sees it. The mock is then left unconsumed ("remaining
+# non-returned values") and the runner's real hostname lands in the SAN the assertions compare.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_generate_cert")
+list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
+                                -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
+                                -Wl,--wrap,gethostname -Wl,--wrap,getpid \
+                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
+                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
+                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
+endif()
+
+list(APPEND shared_tests_names "test_module_report")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
@@ -405,6 +431,16 @@ foreach(counter RANGE ${count})
             ${SRC_FOLDER}/shared/src/read-alert.c
             ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/debug_op_wrappers.c
         )
+    endif()
+
+    # startup_gate_wait_for_ready()'s real logic only exists under #if
+    # defined(CLIENT) (shared/src/startup_gate_op.c) -- CLIENT isn't defined
+    # globally in this standalone unit_tests project the way it is in the
+    # main build (src/CMakeLists.txt), so it must be added here explicitly
+    # for agent/winagent, matching how the real agent/winagent build compiles
+    # this file. Left undefined for manager, exercising the no-op fallback.
+    if("${test_name}" STREQUAL "test_startup_gate_op" AND NOT ${TARGET} STREQUAL "manager")
+        target_compile_definitions(${test_name} PRIVATE CLIENT)
     endif()
 
     if(${TARGET} STREQUAL "manager")

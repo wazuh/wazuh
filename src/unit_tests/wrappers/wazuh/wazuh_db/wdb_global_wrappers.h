@@ -15,8 +15,6 @@
 int __wrap_wdb_global_insert_agent(
     wdb_t* wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
 
-int __wrap_wdb_global_update_agent_name(wdb_t* wdb, int id, char* name);
-
 int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            int id,
                                            const char* os_name,
@@ -27,12 +25,9 @@ int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            const char* os_platform,
                                            const char* os_arch,
                                            const char* version,
-                                           const char* merged_sum,
-                                           const char* node_name,
                                            const char* agent_ip,
                                            const char* connection_status,
-                                           const char* sync_status,
-                                           const char* group_config_status);
+                                           const char* sync_status);
 
 int __wrap_wdb_global_update_agent_keepalive(wdb_t* wdb, int id, char* connection_status, char* status);
 
@@ -40,13 +35,11 @@ int __wrap_wdb_global_update_agent_connection_status(
     wdb_t* wdb, int id, char* connection_status, char* sync_status, int status_code);
 
 int __wrap_wdb_global_update_agent_status_code(
-    wdb_t* wdb, int id, int status_code, const char* version, const char* sync_status);
+    wdb_t* wdb, int id, int status_code, const char* version, const char* connection_status, const char* sync_status);
 
 int __wrap_wdb_global_delete_agent(wdb_t* wdb, int id);
 
 char* __wrap_wdb_global_validate_sync_status(wdb_t* wdb, int id, const char* requested_sync_status);
-
-cJSON* __wrap_wdb_global_select_agent_name(wdb_t* wdb, int id);
 
 cJSON* __wrap_wdb_global_select_agent_group(wdb_t* wdb, int id);
 
@@ -88,8 +81,6 @@ int __wrap_wdb_global_reset_agents_connection(wdb_t* wdb, const char* sync_statu
 cJSON* __wrap_wdb_global_get_agents_by_connection_status(wdb_t* wdb,
                                                          int last_agent_id,
                                                          const char* connection_status,
-                                                         const char* node_name,
-                                                         int limit,
                                                          wdbc_result* status);
 
 wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_t* wdb,
@@ -109,13 +100,9 @@ int __wrap_wdb_global_agent_exists(wdb_t* wdb, int agent_id);
 
 cJSON* __wrap_wdb_global_get_backups();
 
-time_t __wrap_wdb_global_get_most_recent_backup(char** most_recent_backup_name);
-
 int __wrap_wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
 
 int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
-
-int __wrap_wdb_remove_group_db(const char* name, int* sock);
 
 cJSON*
 __wrap_wdb_global_get_distinct_agent_groups(__attribute__((unused)) wdb_t* wdb, char* group_hash, wdbc_result* status);

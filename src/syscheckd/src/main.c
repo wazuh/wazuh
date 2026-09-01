@@ -13,6 +13,9 @@
  */
 #include "rootcheck.h"
 #include "agent_sync_protocol_c_interface.h"
+#ifdef CLIENT
+#include "client-config.h"
+#endif
 #include "db.h"
 #include "shared.h"
 #include "syscheck.h"
@@ -24,11 +27,6 @@
 
 #define Q(x) #x
 #define QUOTE(x) Q(x)
-
-/* Milliseconds fim_shutdown_waiter() waits for the synchronization thread to report its
- * exit before giving up on the teardown; wazuh-control escalates to SIGKILL after ~30
- * seconds (MAX_KILL_TRIES in init/wazuh-client.sh), so stay well under that. */
-#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
 
 // LCOV_EXCL_START
 
@@ -49,7 +47,6 @@ __attribute__((noreturn)) static void help_syscheckd()
     exit(1);
 }
 
-extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
 extern pthread_t fim_sync_thread;
 extern bool fim_sync_thread_initialized;
@@ -122,7 +119,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
          * (stop-aware waits, predicated sends, 1-second sleeps), so it reports its exit
          * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
          * join and the teardown below — destroying the handle under a live thread is the
-         * use-after-free this waiter exists to prevent — and let HandleSIG() exit. */
+         * use-after-free this waiter exists to prevent — and proceed to _exit(). */
         struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
         int poll_ret;
 
@@ -155,15 +152,8 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-        /* fim.db itself runs journal_mode=truncate (no -wal/-shm files): this teardown
-         * releases the DBSync context in a controlled order before exit(), it is not WAL
-         * cleanup. FIMDB's internal guards turn the event/query paths into graceful
-         * no-ops after it, but the scan transaction path (fim_db_transaction_*) is not
-         * covered by them. The scan transaction lives entirely inside fim_scan_mutex, so
-         * tear down only when no scan is in flight and keep the mutex so a new scan
-         * cannot start a transaction against the released context; otherwise skip it —
-         * exiting with fim.db open is safe (the truncate journal recovers on the next
-         * start), closing it under a live transaction is not. */
+        fim_syscom_cleanup_pause();
+
         if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0)
         {
             fim_db_teardown();
@@ -174,7 +164,14 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
     }
 
-    HandleSIG((int)fim_shutdown_sig);
+    /* Not HandleSIG(): its exit() would run the static destructors and the atexit handlers
+     * while the threads this waiter could not join are still using them (issue #37993). */
+    minfo(SIGNAL_RECV, (int)fim_shutdown_sig, strsignal((int)fim_shutdown_sig));
+#ifdef ENABLE_AUDIT
+    clean_rules();
+#endif
+    DeletePID(ARGV0);
+    _exit(1);
 
     return NULL;
 }
@@ -275,6 +272,20 @@ int main(int argc, char **argv)
         merror_exit(NO_CONFIG, cfg);
     }
 
+#ifdef CLIENT
+    /* The sync protocol bounds one session by <agent><batch><size>, the same limit
+     * that bounds a /stateless request. The block belongs to the agent rather than
+     * to this daemon, and the protocol reads no configuration of its own, so it is
+     * read here and handed down before fim_initialize() builds the instance. */
+    agent_batch batch = { .size = 0, .interval = 0 };
+    w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
+    asp_set_session_max_bytes((uint64_t)batch.size);
+
+    if (batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
+    }
+#endif
+
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
         mwarn(RCONFIG_ERROR, SYSCHECK, cfg);
@@ -345,7 +356,10 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    startup_gate_wait_for_ready(ARGV0);
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+        mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
+        exit(0);
+    }
 
     // Rootcheck initialization is deferred until after the startup hash
     // gate releases. rootcheck_init() emits STARTUP_MSG ("wazuh-rootcheck:

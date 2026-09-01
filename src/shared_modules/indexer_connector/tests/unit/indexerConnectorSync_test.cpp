@@ -363,6 +363,79 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
     EXPECT_GE(callCount, 2);
 }
 
+TEST_F(IndexerConnectorSyncTest, TransportFailureRetriesWithoutDataLoss)
+{
+    int errorCallCount = 0;
+
+    // Create and configure mock selector
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke(
+            [this, &errorCallCount](auto requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+
+                // Extract data from variant
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
+                this->receivedData.push_back(data);
+
+                if (errorCallCount == 0)
+                {
+                    errorCallCount++;
+                    // Transport-level failure: no HTTP response at all (timeout, connection
+                    // refused, TLS failure). The transport reports these with a negative status.
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Timeout was reached", -1, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Timeout was reached", -1, "");
+                    }
+                }
+                else
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Stage one document and flush explicitly: the timed-out batch must be retried, not discarded.
+    EXPECT_NO_THROW({
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+        connector.flush();
+    });
+
+    // The batch survives the transport failure: the retried request carries the exact
+    // payload the failed one did.
+    ASSERT_GE(receivedData.size(), 2u);
+    EXPECT_EQ(receivedData.front(), receivedData.back());
+    EXPECT_THAT(receivedData.back(), HasSubstr(R"("_id":"id1")"));
+}
+
 TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
 {
     // Create and configure mock selector
@@ -1291,6 +1364,69 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
 }
 
+/// A _delete_by_query answers 200 even when it deleted nothing it was asked to. These pin the two
+/// ways that happens, because reporting either as success is how documents outlive a deletion
+/// everyone upstream believes worked -- and for a whole-agent deletion nothing ever overwrites them.
+class IndexerConnectorSyncDeleteByQueryOutcomeTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<std::string, bool>>
+{
+};
+
+TEST_P(IndexerConnectorSyncDeleteByQueryOutcomeTest, ADeleteByQueryReportsWhatItLeftBehind)
+{
+    const auto& [responseBody, shouldThrow] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [body = responseBody](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    if (shouldThrow)
+    {
+        EXPECT_THROW(connector.flush(), IndexerConnectorException) << "response: " << responseBody;
+    }
+    else
+    {
+        EXPECT_NO_THROW(connector.flush()) << "response: " << responseBody;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DeleteByQueryOutcomes,
+    IndexerConnectorSyncDeleteByQueryOutcomeTest,
+    ::testing::Values(
+        // Everything the query matched was deleted: the only response that may pass silently.
+        std::make_pair(std::string(R"({"took":5,"deleted":10,"version_conflicts":0,"failures":[]})"), false),
+        // A response that predates these fields must still pass (the connector serves other callers).
+        std::make_pair(std::string(R"({"took":5,"deleted":10})"), false),
+        // Per-shard error inside a 200.
+        std::make_pair(std::string(R"({"took":5,"deleted":4,"failures":[{"index":"wazuh-states-inventory-packages",)"
+                                   R"("shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
+                       true),
+        // `conflicts: "proceed"` tallies skipped documents HERE, not in `failures` -- the path the
+        // shard-failure check alone misses.
+        std::make_pair(std::string(R"({"took":5,"deleted":9,"version_conflicts":3,"failures":[]})"), true),
+        // Both at once.
+        std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
+                                   R"("failures":[{"shard":1,"status":503}]})"),
+                       true)));
+
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
     // This test verifies the fix for DataClean: when there's only deleteByQuery (no bulk data),
@@ -2013,7 +2149,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
-    // Build a sample update query (simulating what inventory_sync would build)
+    // Build a sample update query (simulating what inventory_sync_server would build)
     nlohmann::json updateQuery;
     updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = "agent-001";
     updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
@@ -4298,7 +4434,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AllUnsafe_FiresPendingNoti
 TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AcceptsAnyValidNameRegardlessOfPrefix)
 {
     // The connector no longer enforces the "wazuh-states-" prefix — that domain
-    // rule belongs to the inventory_sync caller. The connector only refuses
+    // rule belongs to the inventory_sync_server caller. The connector only refuses
     // injection-unsafe characters. Therefore an arbitrary safe name like
     // "wazuh-other-foo" must be forwarded to the indexer.
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

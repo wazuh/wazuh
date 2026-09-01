@@ -105,23 +105,6 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
                 assert nested_key[0] in main_keys
 
 
-def test_select_key_affected_items_with_agent_id(response, select_key):
-    """
-    :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
-    """
-    if '.' in select_key:
-        expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
-        expected_keys_level1 = {select_key.split('.')[1]}
-        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
-        assert set(
-            response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
-    else:
-        expected_keys = {'agent_id', select_key}
-        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
-
-
 def test_sort_response(response, key=None, reverse=False):
     """Check that the response's affected items are sorted by the specified key or keys.
 
@@ -214,14 +197,6 @@ def test_validate_data_dict_field(response, fields_dict):
                 assert isinstance(element['count'], int)
 
 
-def test_count_elements(response, n_expected_items):
-    """
-    :param response: Request response
-    :param n_expected_items: Expected number of elements in affected_items
-    """
-    assert len(response.json()['data']['affected_items']) == n_expected_items
-
-
 def test_expected_value(response, key, expected_values, empty_response_possible=False):
     """Iterate all items in the response and check that <key> value is within <expected_values>.
 
@@ -261,10 +236,6 @@ def test_save_token_raw_format(response):
     return Box({'login_token': response.text})
 
 
-def test_save_response_data(response):
-    return Box({'response_data': response.json()['data']})
-
-
 def test_save_response_data_mitre(response, fields):
     response = response.json()['data']
     fields_response = list()
@@ -282,37 +253,6 @@ def test_validate_mitre(response, data, index=0):
             if isinstance(v, str):
                 v = v.replace('\\"', '"')  # Remove \\ characters used to escape "
             assert v == response.json()['data']['affected_items'][index][k]
-
-
-def test_validate_restart_by_node(response, node_connected_agents_response , non_restartable_agents : list = None):
-
-    non_restartable_agents = non_restartable_agents or []
-
-    node_connected_agents_response = json.loads(node_connected_agents_response.replace("'", '"'))
-
-    expected_affected_items = list()
-    for item in node_connected_agents_response['affected_items']:
-        if item['status'] == 'active' and item['id'] not in non_restartable_agents:
-            expected_affected_items.append(item['id'])
-
-    assert response.json()['data']['affected_items'] == expected_affected_items
-
-    healthcheck_agent_restart(response, expected_affected_items)
-
-
-def test_validate_restart_by_node_rbac(response, permitted_agents):
-    data = response.json().get('data', None)
-    if data:
-        if data['affected_items']:
-            healthcheck_agent_restart(response, data['affected_items'])
-            for agent in data['affected_items']:
-                assert agent in permitted_agents
-        else:
-            assert data['total_affected_items'] == 0
-    else:
-        assert response.status_code == 403
-        assert response.json()['error'] == 4000
-        assert 'agent:id' in response.json()['detail']
 
 
 def test_validate_auth_context(response, expected_roles=None):
@@ -356,20 +296,6 @@ def test_validate_search(response, search_param):
 
 def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
-
-
-def test_validate_vd_scans(response, first_node_name, first_node_count, second_node_name, second_node_count,
-                           third_node_name, third_node_count):
-    nodes = []
-    if first_node_count > 0:
-        nodes.append(first_node_name)
-    if second_node_count > 0:
-        nodes.append(second_node_name)
-    if third_node_count > 0:
-        nodes.append(third_node_name)
-
-    # All the names in nodes must be in the response
-    assert all(node in response.json()["data"]["affected_items"] for node in nodes)
 
 
 def check_agentd_started(response, agents_list, restarted=True):

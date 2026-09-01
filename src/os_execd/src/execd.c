@@ -662,7 +662,9 @@ int WinExecdStart()
 
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
-    startup_gate_wait_for_ready("wazuh-execd");
+    if (startup_gate_wait_for_ready("wazuh-execd") != STARTUP_GATE_READY) {
+        return 0;
+    }
 
     while(1) {
         char* exec_msg = queue_pop_ex(winexec_queue);

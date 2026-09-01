@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 from jsonschema import ValidationError, validate
 
 from wazuh.core import common
-from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.indexer.indexer import get_indexer_client
+from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.stats import get_daemons_stats, get_engine_metrics
 
 # Mapping from OpenSearch field types to JSON Schema type definitions.
@@ -159,14 +159,9 @@ class MetricsSnapshotTasks:
             except Exception:
                 self.logger.exception("Metrics snapshot failed - skipping cycle")
 
-    def _get_agents_sync(self):
-        query = WazuhDBQueryAgents(limit=None)
-        return query.run()["items"]
-
     async def _collect_agents(self, timestamp: str):
-        loop = asyncio.get_running_loop()
-
-        agents_data = await loop.run_in_executor(None, self._get_agents_sync)
+        async with get_wdb_http_client() as wdb_client:
+            agents_data = await wdb_client.get_all_agents()
         node_name = self.server.configuration.get("node_name", "unknown")
         cluster_name = self.server.configuration.get("name", None)
 
@@ -190,7 +185,7 @@ class MetricsSnapshotTasks:
         Returns
         -------
         list of dict
-            Documents ready for bulk indexing into ``wazuh-metrics-comms``.
+            Documents ready for bulk indexing into ``wazuh-metrics-comms-v4``.
             Each document contains the remoted stats fields plus the metadata
             fields ``@timestamp``, ``wazuh.cluster.node``, and
             ``wazuh.cluster.name``.
@@ -313,26 +308,46 @@ class MetricsSnapshotTasks:
         Parameters
         ----------
         doc : dict
-            Raw agent document from WazuhDBQueryAgents.
+            Raw agent document from HTTP endpoint or WazuhDBQueryAgents.
+            Supports both flat fields (os.name, os.version) and nested (os: {name: ...}).
 
         Returns
         -------
         dict
             Normalized document ready for indexing into ``wazuh-metrics-agents``.
         """
+        # Support both nested os dict and flat os.* fields
         os_fields = doc.get("os", {})
+        if not os_fields:
+            # Extract from flat os.* fields (HTTP endpoint format)
+            os_fields = {
+                "name": doc.get("os.name"),
+                "version": doc.get("os.version"),
+                "platform": doc.get("os.platform"),
+                "type": doc.get("os.type"),
+                "arch": doc.get("os.arch"),
+                "major": doc.get("os.major"),
+                "minor": doc.get("os.minor"),
+            }
+
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
 
         register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
-        group_config_status = doc.get("group_config_status", "")
+
+        # Agent ids are conventionally zero-padded to 3 digits everywhere else in the
+        # framework (see wazuh.core.agent). The /agents/all HTTP endpoint returns a raw
+        # int64, so pad it here to keep this index's `wazuh.agent.id` correlatable with
+        # every other Wazuh index (alerts, vulnerabilities, agent API).
+        raw_id = doc.get("id")
+        agent_id = str(raw_id).zfill(3) if raw_id is not None else None
 
         return MetricsSnapshotTasks._drop_none(
             {
                 "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
                 "wazuh": {
                     "agent": {
-                        "id": doc.get("id"),
+                        "id": agent_id,
                         "name": doc.get("name"),
                         "version": doc.get("version"),
                         "groups": doc.get("group", []),
@@ -360,10 +375,6 @@ class MetricsSnapshotTasks:
                         },
                         "config": {
                             "hash": {"md5": doc.get("configSum")},
-                            "group": {
-                                "synced": group_config_status == "synced",
-                                "hash": {"md5": doc.get("mergedSum")},
-                            },
                         },
                     },
                     "cluster": {
@@ -388,7 +399,7 @@ class MetricsSnapshotTasks:
         Returns
         -------
         dict
-            Normalized document ready for indexing into ``wazuh-metrics-comms``.
+            Normalized document ready for indexing into ``wazuh-metrics-comms-v4``.
         """
         # v5.0 nests stats under "metrics"; fall back to flat keys for compat
         m = doc.get("metrics", {})
@@ -407,7 +418,6 @@ class MetricsSnapshotTasks:
         raw_tcp_sessions = m.get("tcp_sessions")
         raw_evt_total = msgs_recv.get("events")
         raw_evt_failed = msgs_recv.get("events_failed")
-        raw_states = msgs_recv.get("states")
         raw_upgrade_ack = msgs_recv.get("upgrade_ack")
         raw_discarded = msgs_recv.get("discarded")
         raw_sent_bytes = bytes_info.get("sent")
@@ -497,7 +507,6 @@ class MetricsSnapshotTasks:
                             else doc.get("ctrl_msg_processed")
                         },
                     },
-                    "states": {"total": raw_states},
                     "upgrades": {"total": raw_upgrade_ack},
                 },
             }
@@ -648,7 +657,7 @@ class MetricsSnapshotTasks:
             )
         if comms_schema:
             comms_docs = self._validate_documents(
-                comms_docs, comms_schema, "wazuh-metrics-comms"
+                comms_docs, comms_schema, "wazuh-metrics-comms-v4"
             )
         if normalization_schema:
             normalization_docs = self._validate_documents(
@@ -661,7 +670,7 @@ class MetricsSnapshotTasks:
                     "wazuh-metrics-agents", agent_docs, self.bulk_size
                 ),
                 indexer.metrics.bulk_index(
-                    "wazuh-metrics-comms", comms_docs, self.bulk_size
+                    "wazuh-metrics-comms-v4", comms_docs, self.bulk_size
                 ),
                 indexer.metrics.bulk_index(
                     "wazuh-metrics-normalization", normalization_docs, self.bulk_size

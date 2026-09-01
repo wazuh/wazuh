@@ -150,10 +150,6 @@ MAX_GROUPS_PER_MULTIGROUP = 128
 # ============================================= Wazuh constants - Version ==============================================
 # Agent upgrading variables.
 WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
-# Agent component stats required version.
-AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
-# Version variables (legacy, required, etc).
-ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
 # ================================================ Wazuh path - Config =================================================
@@ -178,18 +174,17 @@ INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
 
 
 # ================================================ Wazuh path - Sockets ================================================
-ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
-MODULESD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'modulesd')
-AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'ar')
-AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
-CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control')
-UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
-REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
-TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
-WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
-WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
-KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
-CLUSTERD_SOCKET = os.path.join(CLUSTERD_WORKINGDIR, 'c-internal.sock')
+ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'engine-api-http.sock')
+VD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'vd-http.sock')
+AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth.sock')
+CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control.sock')
+UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task-upgrade.sock')
+REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote.sock')
+TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task.sock')
+WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb.sock')
+WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http.sock')
+KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore.sock')
+CLUSTERD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'cluster-internal.sock')
 
 # ================================================ Wazuh misc files ====================================================
 

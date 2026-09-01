@@ -12,11 +12,18 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "agentd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/url_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "agentd.h"
 
 #ifdef TEST_AGENT
+
+/* agentd.c calls w_https_client_start()/w_https_client_stop(), which would drag
+ * https_client_bridge.o (and its hc_* module references) into this test binary.
+ * test_agentd does not exercise the client, so stub the two entry points. */
+void __wrap_w_https_client_start(void) {}
+void __wrap_w_https_client_stop(void) {}
 
 static int setup_group(void **state) {
     curl_response *response;
@@ -349,6 +356,87 @@ void test_read_configuration_invalid(void** state) {
     assert_false(atc->package_uninstallation);
 }
 
+// ----------------------------------------------------------------------------------------------------------------------------------------------
+// ClientConf: <config_report> default posture
+
+static int setup_client_conf(void** state)
+{
+    (void)state;
+    os_calloc(1, sizeof(agent), agt);
+    os_calloc(1, sizeof(anti_tampering), atc);
+
+    return 0;
+}
+
+static int teardown_client_conf(void** state)
+{
+    (void)state;
+    /* agt->enrollment is a by-value struct (#38465); Free_Agent() now frees
+     * its heap fields directly, unlike the old malloc'd enrollment context
+     * this teardown used to have to tear down by hand. */
+    Free_Agent(agt);
+
+    os_free(agt);
+    os_free(atc);
+
+    return 0;
+}
+
+static void expect_valid_server_ip(void)
+{
+    expect_string(__wrap_OS_IsValidIP, ip_address, "10.0.0.1");
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    /* #38624: every config_report fixture still spells the manager as the deprecated
+     * <address>/<port> pair, so ClientConf() also logs the single <endpoint> that
+     * replaces it. Asserting the text here pins the suggestion these fixtures produce. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
+}
+
+/* <config_report> absent -> ClientConf() must leave it enabled, with the
+ * effective intervals (not zero) visible directly on agt: the manager still
+ * needs the periodic /config snapshot from a config nobody touched, and
+ * anything reading agt directly (e.g. the /config JSON dump) should see the
+ * real cadence instead of the transport module's zero-means-unset sentinel. */
+static void test_config_report_enabled_when_absent(void** state)
+{
+    (void)state;
+    expect_valid_server_ip();
+    will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+
+    assert_int_equal(ClientConf("test_config_report_default.conf"), 1);
+    assert_int_equal(agt->config_report.enabled, 1);
+    assert_int_equal(agt->config_report.interval, 3600);
+    assert_int_equal(agt->stats_report.interval, 60);
+}
+
+/* An explicit <enabled>no</enabled> must still be able to turn it off. */
+static void test_config_report_explicit_no_is_respected(void** state)
+{
+    (void)state;
+    expect_valid_server_ip();
+    will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+
+    assert_int_equal(ClientConf("test_config_report_disabled.conf"), 1);
+    assert_int_equal(agt->config_report.enabled, 0);
+    assert_int_equal(agt->config_report.interval, 3600); // Default untouched: no <interval> tag in this fixture.
+}
+
+/* An explicit <interval> must still override the default ClientConf() seeds. */
+static void test_config_report_custom_interval_is_respected(void** state)
+{
+    (void)state;
+    expect_valid_server_ip();
+    will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+
+    assert_int_equal(ClientConf("test_config_report_custom_interval.conf"), 1);
+    assert_int_equal(agt->config_report.enabled, 1);     // No <enabled> tag: stays on the default.
+    assert_int_equal(agt->config_report.interval, 1800); // 30m, overriding the 3600s default.
+}
+
 #endif // TEST_AGENT
 
 int main(void) {
@@ -376,6 +464,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_configuration_yes, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_no, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_invalid, setup_config, teardown_config),
+
+        // ClientConf: <config_report> default posture
+        cmocka_unit_test_setup_teardown(
+            test_config_report_enabled_when_absent, setup_client_conf, teardown_client_conf),
+        cmocka_unit_test_setup_teardown(
+            test_config_report_explicit_no_is_respected, setup_client_conf, teardown_client_conf),
+        cmocka_unit_test_setup_teardown(
+            test_config_report_custom_interval_is_respected, setup_client_conf, teardown_client_conf),
 
 #endif // TEST_AGENT
     };

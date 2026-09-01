@@ -12,6 +12,7 @@
 #include "HTTPRequest.hpp"
 #include "indexerConnector.hpp"
 #include "indexerConnectorAsyncImpl.hpp"
+#include "indexerSession.hpp"
 #include "loggerHelper.h"
 #include "serverSelector.hpp"
 
@@ -25,6 +26,18 @@ private:
 public:
     Impl(const nlohmann::json& config, LoggingContext logging)
         : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
+    {
+    }
+
+    /// Shared-session overload: adopts the session's monitor and transport settings, so this
+    /// connector performs no health check and no keystore read of its own.
+    Impl(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging)
+        : m_impl(config,
+                 std::move(logging.second),
+                 nullptr,
+                 makeSharedSelector(config, session),
+                 std::move(logging.first),
+                 sessionData(session).m_secureCommunication)
     {
     }
 
@@ -46,6 +59,11 @@ public:
     void indexDataStream(std::string_view index, std::string_view data)
     {
         m_impl.bulkIndexDataStream(index, data);
+    }
+
+    void deleteById(std::string_view id, std::string_view index)
+    {
+        m_impl.bulkDelete(id, index);
     }
 
     bool isAvailable() const
@@ -99,6 +117,13 @@ IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config, Loggi
 {
 }
 
+IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config,
+                                             const IndexerSession& session,
+                                             LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, session, std::move(logging)))
+{
+}
+
 IndexerConnectorAsync::~IndexerConnectorAsync() = default;
 
 void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data)
@@ -122,6 +147,11 @@ void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_view data)
 {
     m_impl->indexDataStream(index, data);
+}
+
+void IndexerConnectorAsync::deleteById(std::string_view id, std::string_view index)
+{
+    m_impl->deleteById(id, index);
 }
 
 bool IndexerConnectorAsync::isAvailable() const

@@ -11,10 +11,16 @@
 
 #ifndef _DB_HPP
 #define _DB_HPP
-#include "db.h"
+#include "commonDefs.h"
+#include "logging_helper.h"
+#include <cstdint>
+#include <exception>
 #include <functional>
 #include <json.hpp>
-#include <string.h>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <vector>
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -46,7 +52,7 @@ using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::s
 class no_entry_found : public std::exception
 {
     public:
-        __attribute__((__returns_nonnull__)) const char* what() const noexcept override
+        [[nodiscard]] const char* what() const noexcept override
         {
             return m_error.what();
         }
@@ -78,17 +84,17 @@ class EXPORTED DB final
          * @param fileLimit File limit.
          * @param valueLimit Registry value limit.
          */
-        void init(int storage,
-                  std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
-                  int fileLimit,
-                  int valueLimit);
+        static void init(int storage,
+                         std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
+                         int fileLimit,
+                         int valueLimit);
 
         /**
          * @brief DBSyncHandle return the dbsync handle, for operations with the database.
          *
          * @return dbsync handle.
          */
-        DBSYNC_HANDLE DBSyncHandle();
+        static DBSYNC_HANDLE DBSyncHandle();
 
         /**
          * @brief removeFile Remove a file from the database.
@@ -112,7 +118,7 @@ class EXPORTED DB final
          * @param selectType Type of count.
          * @return Number of files.
          */
-        int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
+        static int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
 
         /**
          * @brief maxVersion Get the maximum version from a table.
@@ -120,7 +126,7 @@ class EXPORTED DB final
          * @param tableName Table name.
          * @return Maximum version value, 0 if no entries exist.
          */
-        int maxVersion(const std::string& tableName);
+        static int maxVersion(const std::string& tableName);
 
         /**
          * @brief updateVersion Update the version column for all entries in a table.
@@ -129,7 +135,7 @@ class EXPORTED DB final
          * @param version New version value to set.
          * @return 0 on success, -1 on error.
          */
-        int updateVersion(const std::string& tableName, int version);
+        static int updateVersion(const std::string& tableName, int version);
 
         /**
          * @brief updateFile Update/insert a file in the database.
@@ -150,12 +156,12 @@ class EXPORTED DB final
         /**
          * @brief teardown Close the fimdb instances.
          */
-        void teardown();
+        static void teardown();
 
         /**
          * @brief closeAndDeleteDatabase Closes the database connection and deletes the database file.
          */
-        void closeAndDeleteDatabase();
+        static void closeAndDeleteDatabase();
 
         /**
          * @brief Update the last_sync_time for a given table.
@@ -163,7 +169,7 @@ class EXPORTED DB final
          * @param tableName Name of the table to update.
          * @param timestamp The sync timestamp to set (UNIX format).
          */
-        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+        static void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
 
         /**
          * @brief Get the last_sync_time for a given table.
@@ -171,18 +177,21 @@ class EXPORTED DB final
          * @param tableName Name of the table to query.
          * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
          */
-        int64_t getLastSyncTime(const std::string& tableName);
+        static int64_t getLastSyncTime(const std::string& tableName);
 
-        int countSyncedDocs(const std::string& tableName);
+        static int countSyncedDocs(const std::string& tableName);
 
-        std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName, int numberOfDocumentsToPromote);
+        static std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName,
+                                                                 int numberOfDocumentsToPromote);
 
-        std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName, int numberOfDocumentsToDemote);
+        static std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName,
+                                                                int numberOfDocumentsToDemote);
+        DB(const DB&) = delete;
+        DB& operator=(const DB&) = delete;
+
     private:
         DB() = default;
         ~DB() = default;
-        DB(const DB&) = delete;
-        DB& operator=(const DB&) = delete;
 };
 
 #endif //_IFIMDB_HPP

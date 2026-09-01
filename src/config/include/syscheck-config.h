@@ -421,7 +421,6 @@ typedef struct _config {
 
     uint32_t sync_interval;                            /* Synchronization interval */
     uint32_t sync_end_delay;                           /* Delay for synchronization end message in seconds */
-    uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     uint32_t integrity_interval;                       /* Integrity check interval */
     int max_eps;                                       /* Maximum events per second. */
@@ -468,6 +467,51 @@ typedef struct _config {
     int registry_key_limit;
     int registry_value_limit;
 } syscheck_config;
+
+/**
+ * @brief Whether directories_lock has been pthread_rwlock_init'd yet.
+ *
+ * Deliberately NOT a syscheck_config member. Windows dispatches the /config
+ * report in-process (agent_report.c), so getSyscheckConfig() can be reached
+ * from another thread before fim_initialize() has run at all -- and the whole
+ * `syscheck` struct is zero-initialized until then. On winpthreads
+ * PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel, so an atomic_int_t here
+ * would need its OWN mutex initialized to be read -- trading the uninitialized
+ * rwlock for an uninitialized mutex. A bare int needs nothing initialized,
+ * which is the only property that holds this early.
+ *
+ * Access it only through the two accessors below, never directly: the flag
+ * carries the rwlock's initialization to the reader, so it needs real
+ * release/acquire ordering and not just `volatile`, which orders nothing
+ * between threads. Without the pairing a weakly-ordered CPU may show a reader
+ * the flag set while pthread_rwlock_init()'s own writes are still invisible,
+ * which is the exact crash this flag exists to prevent. The __atomic builtins
+ * are lock-free for an int on every toolchain that builds the agent, need no
+ * initialization, and are not the <stdatomic.h> generics mingw lacks.
+ */
+extern int syscheck_directories_lock_ready;
+
+/**
+ * @brief Publish that directories_lock is initialized and safe to take.
+ *
+ * Release: everything fim_initialize() wrote beforehand, the rwlock included,
+ * is visible to any thread that then observes the flag set.
+ */
+static inline void syscheck_set_directories_lock_ready(void)
+{
+    __atomic_store_n(&syscheck_directories_lock_ready, 1, __ATOMIC_RELEASE);
+}
+
+/**
+ * @brief Whether directories_lock may be taken yet.
+ *
+ * Acquire: pairs with the release above, so a true answer means the rwlock's
+ * initialization is visible to this thread too.
+ */
+static inline int syscheck_directories_lock_is_ready(void)
+{
+    return __atomic_load_n(&syscheck_directories_lock_ready, __ATOMIC_ACQUIRE);
+}
 
 
 /**

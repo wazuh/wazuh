@@ -14,24 +14,16 @@
 #include "external/nlohmann/json.hpp"
 #include "indexerBulkQueue.hpp"
 #include "indexerConnector.hpp"
-#include "keyStore.hpp"
+#include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
-#include "shared_modules/utils/certHelper.hpp"
 #include "simdjson.h"
-#include <filesystem>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-
-static std::mutex G_CREDENTIAL_MUTEX;
-
-constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
-constexpr auto INDEXER_COLUMN {"indexer"};
-constexpr auto USER_KEY {"username"};
-constexpr auto PASSWORD_KEY {"password"};
 
 /**
  * @brief Appends an ID to bulkData, escaping special characters if necessary
@@ -134,6 +126,15 @@ class IndexerConnectorAsyncImpl final
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound).
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
+    /// Fallback for 'monitoring_interval_seconds' when the configuration has no opinion. Kept
+    /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
+    /// template deliberately does not include.
+    static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
@@ -186,7 +187,8 @@ public:
             logFunction,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string callerName = "")
+        std::string callerName = "",
+        std::optional<SecureCommunication> secureCommunication = std::nullopt)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_logFn {}
     {
@@ -200,70 +202,41 @@ public:
             Log::assignLogFunction(logFunction);
         }
 
-        std::string caRootCertificate;
-        std::string sslCertificate;
-        std::string sslKey;
-        if (config.contains("ssl"))
-        {
-            if (config.at("ssl").contains("certificate_authorities") &&
-                !config.at("ssl").at("certificate_authorities").empty())
-            {
-                std::vector<std::string> filePaths =
-                    config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
-                if (filePaths.size() > 1)
-                {
-                    Utils::CertHelper::mergeCaRootCertificates(filePaths, caRootCertificate, DEFAULT_PATH);
-                }
-                else
-                {
-                    if (std::filesystem::exists(filePaths.front()))
-                    {
-                        caRootCertificate = filePaths.front();
-                    }
-                    else
-                    {
-                        throw IndexerConnectorException("The CA root certificate file: '" + filePaths.front() +
-                                                        "' does not exist.");
-                    }
-                }
-            }
-            if (config.at("ssl").contains("certificate"))
-            {
-                sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
-            }
-            if (config.at("ssl").contains("key"))
-            {
-                sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
-            }
-        }
-
+        // `hosts` FIRST. Deliberately reordered: it used to be checked between the ssl block and the
+        // keystore read. It is the cheapest check and the most common one to fail, and doing it first
+        // means a config with no hosts never opens `queue/keystore` (RocksDB) on its way to throwing.
+        // Only observable change: with BOTH a nonexistent CA file and no hosts, the reported error is
+        // now the hosts one.
         if (!config.contains("hosts") || config.at("hosts").empty())
         {
             throw IndexerConnectorException("No hosts found in the configuration");
         }
 
-        std::lock_guard lock(G_CREDENTIAL_MUTEX);
-        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
-        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
-        if (username.empty() && password.empty())
-        {
-            username = "wazuh-manager";
-            password = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username and password found in the keystore, using default values.");
-        }
-        if (username.empty())
-        {
-            username = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username found in the keystore, using default value.");
-        }
-        m_secureCommunication = SecureCommunication::builder();
-        m_secureCommunication.basicAuth(username + ":" + password)
-            .sslCertificate(sslCertificate)
-            .sslKey(sslKey)
-            .caRootCertificate(caRootCertificate);
+        // Supplied by an IndexerSession when several connectors share one; built here otherwise.
+        // Either way this connector keeps its own copy: the selector is only one of six consumers,
+        // every bulk/search request below uses it too.
+        m_secureCommunication =
+            secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
-        m_selector =
-            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+        if (selector)
+        {
+            m_selector = std::move(selector);
+        }
+        else
+        {
+            // Health-monitor polling period, read only by whoever builds the monitor.
+            const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                    config.at("monitoring_interval_seconds").is_number_integer()
+                                                ? config.at("monitoring_interval_seconds").get<long>()
+                                                : DEFAULT_MONITORING_INTERVAL_SECONDS;
+            if (monitoringInterval < 1)
+            {
+                throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+            }
+
+            m_selector = std::make_unique<TSelector>(
+                config.at("hosts"), static_cast<uint32_t>(monitoringInterval), m_secureCommunication);
+        }
 
         // Read max queue size (in bytes) from config, default to unlimited if not specified
         m_maxQueueBytes = config.contains("max_queue_bytes") && config.at("max_queue_bytes").is_number_unsigned()
@@ -288,6 +261,15 @@ public:
         if (m_maxRetryDelay < RetryDelay)
         {
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
         // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
@@ -358,9 +340,10 @@ public:
                 size_t clusterBlockedCount = 0;
                 for (const auto& item : itemsArray)
                 {
-                    // Try to find the operation element (could be "index", "create")
+                    // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
+                    bool isDelete = false;
 
                     if (item["index"].get(operationElement) == simdjson::SUCCESS)
                     {
@@ -369,6 +352,11 @@ public:
                     else if (item["create"].get(operationElement) == simdjson::SUCCESS)
                     {
                         foundOperation = true;
+                    }
+                    else if (item["delete"].get(operationElement) == simdjson::SUCCESS)
+                    {
+                        foundOperation = true;
+                        isDelete = true;
                     }
 
                     if (!foundOperation)
@@ -438,8 +426,9 @@ public:
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                   "Error %s document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
                                    "Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
@@ -454,7 +443,8 @@ public:
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   "Error %s document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   isDelete ? "deleting" : "indexing",
                                    static_cast<int>(errorType.size()),
                                    errorType.data(),
                                    static_cast<int>(errorReason.size()),
@@ -597,6 +587,17 @@ public:
                         LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
+                    else if (statusCode <= 0)
+                    {
+                        // No HTTP response at all (timeout, connection refused, TLS failure):
+                        // Discarding here would turn every transient outage into silent data loss.
+                        LOGFN_DEBUG2(m_logFn,
+                                     "Transport-level failure, no HTTP status received (code %ld): %s. "
+                                     "Requeueing the batch for retry.",
+                                     statusCode,
+                                     error.c_str());
+                        throw IndexerConnectorException(error);
+                    }
                     else
                     {
                         LOGFN_WARN(m_logFn,
@@ -615,7 +616,7 @@ public:
                                                        .data = bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
             },
             m_maxQueueBytes,
             m_bulkMaxBytes,
@@ -697,6 +698,55 @@ public:
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
+        bulkData.append("\n");
+        m_queue->push(std::move(bulkData));
+    }
+
+    /**
+     * @brief Queue a delete of ONE document by id, into the same bulk queue as bulkIndex().
+     *
+     * The queue is the point. It is FIFO, and a batch that fails is pushed back to its FRONT, so a
+     * delete queued after an index of the same document is applied after it -- in the same bulk or
+     * a later one, never before. A caller that has to remove a document whose own earlier index()
+     * may still be sitting in this queue cannot get that ordering any other way: a delete issued
+     * through a different connector races the queue, and a `_delete_by_query` would not even see an
+     * unrefreshed document.
+     *
+     * Deleting a document that is not there is not an error: the item comes back `404`
+     * ("result": "not_found") with no `error` element, and the response handler above only inspects
+     * `index`/`create` items, so it is ignored. That makes repeating a delete free.
+     */
+    void bulkDelete(std::string_view id, std::string_view index)
+    {
+        constexpr auto FORMATTED_SIZE {24}; // {"delete":{"_index":"","_id":""}} + newline
+        constexpr auto ID_SIZE {64};
+
+        if (index.empty())
+        {
+            LOGFN_ERROR(
+                m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            throw IndexerConnectorException("Index name cannot be empty");
+        }
+
+        if (id.empty())
+        {
+            // A delete action without an `_id` is not a no-op, it is a malformed bulk item that
+            // would fail the whole request. There is no by-query form here on purpose.
+            LOGFN_ERROR(m_logFn,
+                        "Document id cannot be empty for a delete in index %.*s",
+                        static_cast<int>(index.size()),
+                        index.data());
+            throw IndexerConnectorException("Document id cannot be empty for a delete");
+        }
+
+        std::string bulkData;
+        bulkData.reserve(index.size() + ID_SIZE + FORMATTED_SIZE);
+
+        bulkData.append(R"({"delete":{"_index":")");
+        bulkData.append(index);
+        bulkData.append(R"(","_id":")");
+        appendEscapedId(bulkData, id);
+        bulkData.append(R"("}})");
         bulkData.append("\n");
         m_queue->push(std::move(bulkData));
     }
@@ -844,7 +894,7 @@ public:
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -890,7 +940,7 @@ public:
                                                       .data = deleteBody.dump(),
                                                       .secureCommunication = m_secureCommunication},
                                    PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                   {});
+                                   ConfigurationParameters {.timeout = m_requestTimeoutMs});
         }
         catch (const std::exception& e)
         {
@@ -981,7 +1031,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1065,7 +1115,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {

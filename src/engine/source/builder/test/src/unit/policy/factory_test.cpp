@@ -1920,4 +1920,156 @@ INSTANTIATE_TEST_SUITE_P(
                              return OrderCheck {RT::DECODER, "decoder/root/0", {"decoder/X/0", "decoder/Z/0"}};
                          }}))));
 
+TEST(BuildAssetsRootDecoder, DisabledRootDecoderIsReportedExplicitly)
+{
+    const std::string integUUID = "550e8400-e29b-41d4-a716-446655440501";
+    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440599";
+
+    auto policy = dataType::Policy(
+        "test_policy", true, rootUUID, {integUUID}, {}, {}, {}, "UNDEFINED", "", false, false, true);
+
+    auto reader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<PassthroughAssetBuilder>();
+
+    dataType::Integration integration(
+        integUUID, "test_integration", true, "system-activity", std::nullopt, {}, {rootUUID}, false);
+
+    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/live-proof-1394/0", RT::DECODER)));
+    EXPECT_CALL(*reader, getIntegrationByUUID(integUUID)).WillOnce(testing::Return(integration));
+    EXPECT_CALL(*reader, getAssetByUUID(rootUUID))
+        .WillOnce(testing::Return(mkAssetJson("decoder/live-proof-1394/0", /*enabled=*/false)));
+
+    EXPECT_THROW(
+        {
+            try
+            {
+                (void)factory::buildAssets(policy, reader, assetBuilder, /*isTestMode=*/true);
+            }
+            catch (const std::runtime_error& e)
+            {
+                EXPECT_THAT(e.what(), testing::HasSubstr("root decoder"));
+                EXPECT_THAT(e.what(), testing::HasSubstr("decoder/live-proof-1394/0"));
+                EXPECT_THAT(e.what(), testing::HasSubstr(rootUUID));
+                EXPECT_THAT(e.what(), testing::HasSubstr("disabled"));
+                EXPECT_THAT(e.what(), testing::Not(testing::HasSubstr("Policy must have at least")));
+                throw;
+            }
+        },
+        std::runtime_error);
+}
+
+TEST(BuildAssetsRootDecoder, EnabledRootDecoderAlsoReferencedByDisabledIntegrationStillBuilds)
+{
+    const std::string disabledIntegUUID = "550e8400-e29b-41d4-a716-446655440601";
+    const std::string enabledIntegUUID = "550e8400-e29b-41d4-a716-446655440602";
+    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440699";
+
+    auto policy = dataType::Policy("test_policy",
+                                   true,
+                                   rootUUID,
+                                   {disabledIntegUUID, enabledIntegUUID},
+                                   {},
+                                   {},
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false,
+                                   true);
+
+    auto reader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<PassthroughAssetBuilder>();
+
+    dataType::Integration disabledInteg(
+        disabledIntegUUID, "disabled_integration", false, "system-activity", std::nullopt, {}, {rootUUID}, false);
+    dataType::Integration enabledInteg(
+        enabledIntegUUID, "enabled_integration", true, "system-activity", std::nullopt, {}, {rootUUID}, false);
+
+    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/live-proof-1394/0", RT::DECODER)));
+    EXPECT_CALL(*reader, getIntegrationByUUID(disabledIntegUUID)).WillOnce(testing::Return(disabledInteg));
+    EXPECT_CALL(*reader, getIntegrationByUUID(enabledIntegUUID)).WillOnce(testing::Return(enabledInteg));
+    EXPECT_CALL(*reader, getAssetByUUID(rootUUID))
+        .WillOnce(testing::Return(mkAssetJson("decoder/live-proof-1394/0", /*enabled=*/true)));
+
+    factory::BuiltAssets built;
+    ASSERT_NO_THROW(built = factory::buildAssets(policy, reader, assetBuilder, /*isTestMode=*/true));
+
+    const auto& decoders = built.at(factory::AssetPipelineStage::DECODERS_TREE);
+    EXPECT_EQ(decoders.assets.count(base::Name("decoder/live-proof-1394/0")), 1u);
+}
+
+TEST(BuildAssetsRootDecoder, RootDecoderReachableOnlyThroughDisabledIntegrationIsReportedExplicitly)
+{
+    const std::string disabledIntegUUID = "550e8400-e29b-41d4-a716-446655440701";
+    const std::string enabledIntegUUID = "550e8400-e29b-41d4-a716-446655440702";
+    const std::string childUUID = "550e8400-e29b-41d4-a716-446655440703";
+    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440799";
+
+    auto policy = dataType::Policy("test_policy",
+                                   true,
+                                   rootUUID,
+                                   {disabledIntegUUID, enabledIntegUUID},
+                                   {},
+                                   {},
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false,
+                                   true);
+
+    auto reader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<PassthroughAssetBuilder>();
+
+    // The root decoder is listed only by a disabled integration, so the per-decoder guard never sees it.
+    dataType::Integration disabledInteg(
+        disabledIntegUUID, "disabled_integration", false, "system-activity", std::nullopt, {}, {rootUUID}, false);
+    dataType::Integration enabledInteg(
+        enabledIntegUUID, "enabled_integration", true, "system-activity", std::nullopt, {}, {childUUID}, false);
+
+    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/live-proof-1394/0", RT::DECODER)));
+    EXPECT_CALL(*reader, getIntegrationByUUID(disabledIntegUUID)).WillOnce(testing::Return(disabledInteg));
+    EXPECT_CALL(*reader, getIntegrationByUUID(enabledIntegUUID)).WillOnce(testing::Return(enabledInteg));
+    // The disabled integration is skipped wholesale, so the root decoder asset is never fetched.
+    EXPECT_CALL(*reader, getAssetByUUID(rootUUID)).Times(0);
+    EXPECT_CALL(*reader, getAssetByUUID(childUUID))
+        .WillOnce(testing::Return(mkAssetJson("decoder/child/0", /*enabled=*/true)));
+
+    EXPECT_THROW(
+        {
+            try
+            {
+                (void)factory::buildAssets(policy, reader, assetBuilder, /*isTestMode=*/true);
+            }
+            catch (const std::runtime_error& e)
+            {
+                EXPECT_THAT(e.what(), testing::HasSubstr("root decoder"));
+                EXPECT_THAT(e.what(), testing::HasSubstr("decoder/live-proof-1394/0"));
+                EXPECT_THAT(e.what(), testing::HasSubstr(rootUUID));
+                EXPECT_THAT(e.what(), testing::Not(testing::HasSubstr("Policy must have at least")));
+                EXPECT_THAT(e.what(), testing::Not(testing::HasSubstr("does not exist, required by")));
+                throw;
+            }
+        },
+        std::runtime_error);
+}
+
 } // namespace buildassetsordertest

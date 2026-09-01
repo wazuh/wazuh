@@ -53,14 +53,12 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: !anystr
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 2
@@ -84,20 +82,17 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
             - info:
                 name: 'worker1'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: 'worker2'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 3
@@ -676,7 +671,6 @@ stages:
                 force: !anything
                 port: !anyint
                 purge: !anystr
-                ssl_auto_negotiate: !anystr
                 ssl_manager_cert: !anystr
                 ssl_manager_key: !anystr
                 use_password: !anystr
@@ -723,12 +717,16 @@ stages:
       json:
         error: 0
         data:
+          # Asserts the SHAPE of the report -- the three sibling blocks of <remote> -- not the
+          # options inside them: which legacy keys are present depends on whether this node has a
+          # <legacy> block at all (with none, only `enabled: no` is reported), and the <https>
+          # options are only reported when an operator set them.
           affected_items:
             - remote:
-              - ipv6: !anystr
-                port: !anystr
-                protocol: !anylist
-                queue_size: !anystr
+              - legacy: !anything
+                https: !anything
+                agents:
+                  allow_higher_versions: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1407,7 +1405,7 @@ stages:
       method: GET
       params:
         section: "remote"
-        field: "port"
+        field: "legacy"
     response:
       status_code: 200
       json:
@@ -1415,7 +1413,10 @@ stages:
         data:
           affected_items:
             - remote:
-                - port: '1514'
+                - legacy:
+                    port: '1514'
+                    protocol:
+                      - tcp
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

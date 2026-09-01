@@ -22,10 +22,6 @@
 #define HOST_NAME_MAX 64
 #endif
 
-/* Default cluster name and node name when not configured */
-#define DEFAULT_CLUSTER_NAME "undefined"
-#define DEFAULT_NODE_NAME "undefined"
-
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
   #define STATIC
@@ -211,7 +207,6 @@ static int poll_interval_time = 0;
 
 /* This variable is used to prevent flooding when group files exceed the maximum size */
 static int reported_path_size_exceeded = 0;
-static bool handshake_groups_ready = false;
 
 /* Hash table for agent data */
 OSHash *agent_data_hash;
@@ -230,150 +225,6 @@ void free_file_time(void *data) {
     }
 }
 
-/**
- * @brief Resolve merged sum for an agent group or multigroup name.
- * @param group_name Agent group string (single group or CSV multigroup)
- * @param merged_sum Buffer to store resolved merged sum
- * @return true when merged sum was resolved, false otherwise
- */
-STATIC bool get_group_merged_sum(const char *group_name, os_md5 merged_sum) {
-    group_t *group_data = NULL;
-
-    if (!group_name || !group_name[0] || !merged_sum) {
-        return false;
-    }
-
-    if (!handshake_groups_ready || !groups || !multi_groups) {
-        return false;
-    }
-
-    w_mutex_lock(&files_mutex);
-
-    if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
-        group_data = OSHash_Get_ex(multi_groups, group_name);
-    } else {
-        group_data = OSHash_Get_ex(groups, group_name);
-    }
-
-    if (group_data && group_data->merged_sum[0]) {
-        snprintf(merged_sum, sizeof(os_md5), "%s", group_data->merged_sum);
-        w_mutex_unlock(&files_mutex);
-        return true;
-    }
-
-    w_mutex_unlock(&files_mutex);
-    return false;
-}
-
-/**
- * @brief Build JSON payload for handshake ACK response
- * @param limits Pointer to module limits structure
- * @param agent_id Agent ID string for fetching groups (can be NULL)
- * @return Allocated JSON string (caller must free) or NULL on error
- */
-STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
-    char *json_str = NULL;
-    char *agent_groups_csv = NULL;
-    const char *handshake_groups_csv = NULL;
-    os_md5 merged_sum = {0};
-
-    if (!limits) {
-        return NULL;
-    }
-
-    cJSON *root = cJSON_CreateObject();
-    if (!root) {
-        return NULL;
-    }
-
-    /* Build limits object */
-    cJSON *limits_obj = cJSON_CreateObject();
-    if (!limits_obj) {
-        cJSON_Delete(root);
-        return NULL;
-    }
-
-    /* FIM limits */
-    cJSON *fim = cJSON_CreateObject();
-    if (fim) {
-        cJSON_AddNumberToObject(fim, "file", limits->fim.file);
-        cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
-        cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
-        cJSON_AddItemToObject(limits_obj, "fim", fim);
-    }
-
-    /* Syscollector limits */
-    cJSON *syscollector = cJSON_CreateObject();
-    if (syscollector) {
-        cJSON_AddNumberToObject(syscollector, "hotfixes", limits->syscollector.hotfixes);
-        cJSON_AddNumberToObject(syscollector, "packages", limits->syscollector.packages);
-        cJSON_AddNumberToObject(syscollector, "processes", limits->syscollector.processes);
-        cJSON_AddNumberToObject(syscollector, "ports", limits->syscollector.ports);
-        cJSON_AddNumberToObject(syscollector, "network_iface", limits->syscollector.network_iface);
-        cJSON_AddNumberToObject(syscollector, "network_protocol", limits->syscollector.network_protocol);
-        cJSON_AddNumberToObject(syscollector, "network_address", limits->syscollector.network_address);
-        cJSON_AddNumberToObject(syscollector, "hardware", limits->syscollector.hardware);
-        cJSON_AddNumberToObject(syscollector, "os_info", limits->syscollector.os_info);
-        cJSON_AddNumberToObject(syscollector, "users", limits->syscollector.users);
-        cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
-        cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
-        cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
-        cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
-    }
-
-    /* SCA limits */
-    cJSON *sca = cJSON_CreateObject();
-    if (sca) {
-        cJSON_AddNumberToObject(sca, "checks", limits->sca.checks);
-        cJSON_AddItemToObject(limits_obj, "sca", sca);
-    }
-
-    cJSON_AddItemToObject(root, "limits", limits_obj);
-
-    if (cluster_name) {
-        cJSON_AddStringToObject(root, "cluster_name", cluster_name);
-    } else {
-        cJSON_AddStringToObject(root, "cluster_name", DEFAULT_CLUSTER_NAME);
-    }
-
-    if (node_name) {
-        cJSON_AddStringToObject(root, "cluster_node", node_name);
-    } else {
-        cJSON_AddStringToObject(root, "cluster_node", DEFAULT_NODE_NAME);
-    }
-
-    /* Add agent_groups */
-    cJSON *groups_array = cJSON_CreateArray();
-    if (groups_array) {
-        if (agent_id) {
-            agent_groups_csv = wdb_get_agent_group(atoi(agent_id), NULL);
-            handshake_groups_csv = (agent_groups_csv && agent_groups_csv[0] != '\0') ? agent_groups_csv : DEFAULT_GROUP;
-
-            char *groups_copy = strdup(handshake_groups_csv);
-            if (groups_copy) {
-                char *saveptr = NULL;
-                char *group = strtok_r(groups_copy, ",", &saveptr);
-                while (group) {
-                    cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
-                    group = strtok_r(NULL, ",", &saveptr);
-                }
-                os_free(groups_copy);
-            }
-
-            if (get_group_merged_sum(handshake_groups_csv, merged_sum)) {
-                cJSON_AddStringToObject(root, "merged_sum", merged_sum);
-            }
-            os_free(agent_groups_csv);
-        }
-        cJSON_AddItemToObject(root, "agent_groups", groups_array);
-    }
-
-    json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-
-    return json_str;
-}
-
 /* Pre process control message and return whether it should be queued for wdb processing
  * Returns: 1 if message should be queued, 0 if not, -1 on error
  */
@@ -381,7 +232,6 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
 {
     char *end = NULL;
     char msg_ack[OS_SIZE_1024 + 1] = "";
-    char agent_version[64] = {0};
 
     *is_startup = 0;
     *is_shutdown = 0;
@@ -401,7 +251,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         *(payload++) = '\0';
 
         req_save(counter, payload, msg_length - (payload - r_msg));
-        rem_inc_recv_ctrl_request(key->id);
+        rem_inc_recv_ctrl_request();
         return 0;  // Don't queue HC_REQUEST messages
     }
 
@@ -427,8 +277,6 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             if (agent_info = cJSON_Parse(strchr(clean, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    // Capture agent version for module limits check
-                    strncpy(agent_version, version->valuestring, sizeof(agent_version) - 1);
                     // Update agent data to keep context of events to forward
                     OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
@@ -437,69 +285,50 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                         // For version errors, we need database access, so queue the message
                         cJSON_Delete(agent_info);
                         *is_startup = 1;
-                        rem_inc_recv_ctrl_startup(key->id);
+                        rem_inc_recv_ctrl_startup();
                         return 1;
                     }
                 } else {
                     // For version errors, we need database access, so queue the message
                     cJSON_Delete(agent_info);
                     *is_startup = 1;
-                    rem_inc_recv_ctrl_startup(key->id);
+                    rem_inc_recv_ctrl_startup();
                     return 1;
                 }
                 cJSON_Delete(agent_info);
             }
             *is_startup = 1;
-            rem_inc_recv_ctrl_startup(key->id);
+            rem_inc_recv_ctrl_startup();
         } else {
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             *is_shutdown = 1;
-            rem_inc_recv_ctrl_shutdown(key->id);
+            rem_inc_recv_ctrl_shutdown();
             void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
             os_free(deleted);
 
             /* Log agent shutdown event to ossec.log */
-            minfo(OS_AG_STOPPED, atoi(key->id), key->name);
+            mdebug1(OS_AG_STOPPED, atoi(key->id), key->name);
         }
     } else {
         /* Clean msg and shared files (remove random string) */
-        if (clean[0] == '{') {
-            mdebug2("Received JSON keepalive from agent '%s'", key->name);
+        if ((clean = strchr(clean, '\n'))) {
+            /* Forward to random string (pass shared files) */
+            for (clean++; (end = strchr(clean, '\n')); clean = end + 1);
+            *clean = '\0';
         } else {
-            if ((clean = strchr(clean, '\n'))) {
-                /* Forward to random string (pass shared files) */
-                for (clean++; (end = strchr(clean, '\n')); clean = end + 1);
-                *clean = '\0';
-            } else {
-                mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-                return -1;
-            }
+            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+            return -1;
         }
 
-        rem_inc_recv_ctrl_keepalive(key->id);
+        rem_inc_recv_ctrl_keepalive();
     }
 
     /* Send ACK for non-shutdown messages */
     if (*is_shutdown == 0) {
-        if (manager_module_limits_enabled &&
-            agent_version[0] != '\0' &&
-            compare_wazuh_versions(agent_version, MIN_VERSION_MODULE_LIMITS, true) >= 0) {
-
-            char *handshake_json = build_handshake_json(&manager_module_limits, key->id);
-            if (handshake_json) {
-                snprintf(msg_ack, OS_SIZE_1024, "%s%s%s", CONTROL_HEADER, HC_ACK, handshake_json);
-                os_free(handshake_json);
-                mdebug1("Sending module limits to agent %s", key->id);
-            } else {
-                snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
-                mwarn("Failed to build handshake JSON for agent %s", key->id);
-            }
-        } else {
-            snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
-        }
+        snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
 
         if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
-            rem_inc_send_ack(key->id);
+            rem_inc_send_ack();
         }
     }
 
@@ -552,17 +381,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
         /* Clean msg and shared files (remove random string) for keepalive messages */
         msg = r_msg;
 
-        if (r_msg[0] == '{') {
-            mdebug2("Processing JSON keepalive from agent '%s'", key->id);
+        if ((r_msg = strchr(r_msg, '\n'))) {
+            /* Forward to random string (pass shared files) */
+            for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
+            *r_msg = '\0';
         } else {
-            if ((r_msg = strchr(r_msg, '\n'))) {
-                /* Forward to random string (pass shared files) */
-                for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
-                *r_msg = '\0';
-            } else {
-                mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-                return;
-            }
+            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+            return;
         }
     }
 
@@ -572,14 +397,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        // Only set syncreq if keepalive is complete (has full metadata)
-        bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
-        char *sync_status = logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced";
+        char *sync_status = logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced";
 
-        // Only clear post_startup flag if keepalive is complete
-        if (is_complete) {
-            *post_startup = false;
-        }
+        *post_startup = false;
 
         agent_id = atoi(key->id);
 
@@ -663,14 +483,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             /* Parsing msg */
             os_calloc(1, sizeof(agent_info_data), agent_data);
 
-            // Detect JSON format (5.0+ agent) vs text format (4.x agent)
-            if (msg[0] == '{') {
-                // JSON keepalive from 5.0+ agent (groups and cluster not needed here, only for cache)
-                result = parse_json_keepalive(msg, agent_data, NULL, NULL, NULL, NULL);
-            } else {
-                // Text keepalive from 4.x agent
-                result = parse_agent_update_msg(msg, agent_data);
-            }
+            // Text keepalive from 4.x agent
+            result = parse_agent_update_msg(msg, agent_data);
 
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
@@ -685,16 +499,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 }
             }
 
-            if (node_name) {
-                os_strdup(node_name, agent_data->node_name);
-            }
-
             /* Detect a change in the merged_sum reported by the agent versus the
              * previous keepalive. After a hot reload the agent does not send
              * #!-agent startup, so on worker nodes the cluster sync would only
-             * propagate {id, last_keepalive} (syncreq_keepalive) and the master DB
-             * would keep the stale merged_sum. Escalating to syncreq triggers a
-             * full sync that includes merged_sum and group_config_status. */
+             * propagate {id, last_keepalive} (syncreq_keepalive). Escalating to
+             * syncreq triggers a full sync that includes agent metadata. */
             bool agent_merged_sum_changed = agent_data->merged_sum &&
                                             agent_data->merged_sum[0] &&
                                             prev_reported_merged_sum[0] &&
@@ -703,17 +512,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
 
-            // Only set syncreq if keepalive is complete (has full metadata)
-            bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
-            if (!is_complete && (*post_startup || agent_merged_sum_changed)) {
-                mdebug1("Agent '%s' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received", key->id);
-            }
-            os_strdup(logr.worker_node ? (((*post_startup || agent_merged_sum_changed) && is_complete) ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? ((*post_startup || agent_merged_sum_changed) ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            // Only clear post_startup flag if keepalive is complete
-            if (is_complete) {
-                *post_startup = false;
-            }
+            *post_startup = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -731,9 +532,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
                     data->changed = 1;
                 }
-                os_strdup("not synced", agent_data->group_config_status);
-            } else {
-                os_strdup("synced", agent_data->group_config_status);
             }
 
             w_mutex_unlock(&lastmsg_mutex);
@@ -1558,7 +1356,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 
     snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
     if (send_msg(agent_id, msg_err, -1) >= 0) {
-        rem_inc_send_ack(agent_id);
+        rem_inc_send_ack();
     }
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
@@ -1587,43 +1385,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         mdebug2("Agent '%s' group is '%s'", agent_id, group);
         *r_group = group;
         return OS_SUCCESS;
-    }
-
-    // JSON keepalive format (5.0+ agents)
-    if (msg[0] == '{') {
-        cJSON *json_msg = cJSON_Parse(msg);
-        if (json_msg) {
-            cJSON *agent_obj = cJSON_GetObjectItem(json_msg, "agent");
-            if (agent_obj) {
-                cJSON *merged_sum = cJSON_GetObjectItem(agent_obj, "merged_sum");
-                if (cJSON_IsString(merged_sum) && merged_sum->valuestring) {
-                    cJSON *group_json = NULL;
-                    cJSON *value = NULL;
-
-                    if (!logr.worker_node) {
-                        group_json = assign_group_to_agent(agent_id, merged_sum->valuestring);
-                    } else {
-                        group_json = assign_group_to_agent_worker(agent_id, merged_sum->valuestring);
-                    }
-
-                    value = cJSON_GetObjectItem(group_json, "group");
-                    if (cJSON_IsString(value) && value->valuestring != NULL) {
-                        os_strdup(value->valuestring, *r_group);
-                        cJSON_Delete(group_json);
-                        cJSON_Delete(json_msg);
-                        return OS_SUCCESS;
-                    } else {
-                        merror("Agent '%s' invalid or empty group assigned.", agent_id);
-                        cJSON_Delete(group_json);
-                        cJSON_Delete(json_msg);
-                        return OS_INVALID;
-                    }
-                }
-            }
-            cJSON_Delete(json_msg);
-        }
-        merror("Unable to parse JSON keepalive or missing agent.merged_sum from agent ID '%s'", agent_id);
-        return OS_INVALID;
     }
 
     // Text format keepalive (legacy)
@@ -1735,7 +1496,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared(agent_id);
+        rem_inc_send_shared();
     }
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
@@ -1756,7 +1517,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
             fclose(fp);
             return OS_INVALID;
         } else {
-            rem_inc_send_shared(agent_id);
+            rem_inc_send_shared();
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_NET_PROTOCOL_UDP) {
@@ -1776,7 +1537,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared(agent_id);
+        rem_inc_send_shared();
     }
 
     fclose(fp);
@@ -1902,7 +1663,6 @@ void manager_init()
     }
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
-    handshake_groups_ready = true;
 }
 
 /**

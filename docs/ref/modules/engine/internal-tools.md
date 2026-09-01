@@ -19,9 +19,6 @@ These tools simplify the management of assets, policies, integrations, and other
 providing a centralized and efficient workflow.
 
 ### Key Tools in `engine-suite`:
-- **engine-clear**: Clears specific configurations or data from the engine.
-- **engine-integration**: Handles integrations with external systems.
-- **engine-policy**: Manages policies within the Wazuh engine.
 - **engine-private**: Hosts internal-only operations for namespace management, content-manager CRUD, geo, and raw-event tooling.
 - **engine-public**: Hosts public-facing validation, IOC, and logtest cleanup commands.
 - **engine-router**: Provides internal route management and event ingestion tooling.
@@ -62,4 +59,40 @@ The `engine-integration-test` tool is designed to test the integration of the Wa
 It verifies the correct operation of integrations and ensures that data is correctly processed and forwarded to the
 engine.
 
-For more details, refer to the README on src/engine/test/integration_test/README.md.
+For more details, refer to the README on src/engine/test/integration_tests/README.md.
+
+---
+
+## Engine Metrics
+
+A real-time metrics dashboard and CLI for the Wazuh engine. It polls the engine's metrics API over its Unix domain
+socket and renders live, auto-refreshing charts for global and per-space metrics in a browser.
+
+For more details, refer to the README on src/engine/tools/engine-metrics/README.md
+
+---
+
+## Engine Schema
+
+A standalone tool that generates the engine's schema and associated decoder/field configuration files from the
+Wazuh Common Schema (WCS) YAML definitions.
+
+For more details, refer to the README on src/engine/tools/engine-schema/README.md
+
+---
+
+## Engine Bench
+
+A benchmarking tool that runs the Wazuh engine executable under `perf` and produces flame graphs to visualize
+performance bottlenecks and hotspots.
+
+For more details, refer to the README on src/engine/tools/engine-bench/README.md
+
+---
+
+## evtx2xml
+
+A Python tool that converts Windows Event Log (EVTX) files to XML, used when preparing Windows event samples for
+engine testing and decoder development.
+
+For more details, refer to the README on src/engine/tools/evtx2xml/README.md

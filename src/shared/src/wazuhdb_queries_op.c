@@ -18,7 +18,6 @@
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
-    [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
@@ -26,7 +25,6 @@ static const char *global_db_commands[] = {
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
-    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
@@ -35,7 +33,6 @@ static const char *global_db_commands[] = {
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
     [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s"
 };
@@ -143,55 +140,6 @@ int wdb_insert_group(const char *name, int *sock) {
     return result;
 }
 
-int wdb_update_agent_name(int id, const char *name, int *sock) {
-    int result = 0;
-    cJSON *data_in = NULL;
-    char* data_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddStringToObject(data_in, "name", name);
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], data_in_str);
-    os_free(data_in_str);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
-    }
-
-    return result;
-}
-
 int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
@@ -215,12 +163,9 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
 
     cJSON_AddNumberToObject(data_in, "id", agent_data->id);
     cJSON_AddStringToObject(data_in, "version", agent_data->version);
-    cJSON_AddStringToObject(data_in, "merged_sum", agent_data->merged_sum);
-    cJSON_AddStringToObject(data_in, "node_name", agent_data->node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_data->agent_ip);
     cJSON_AddStringToObject(data_in, "connection_status", agent_data->connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", agent_data->sync_status);
-    cJSON_AddStringToObject(data_in, "group_config_status", agent_data->group_config_status);
 
     if (agent_data->osd) {
         cJSON_AddStringToObject(data_in, "os_name", agent_data->osd->os_name);
@@ -553,37 +498,6 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
     }
 
     return root;
-}
-
-char* wdb_get_agent_name(int id, int *sock) {
-    char *output = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *root = NULL;
-    cJSON *json_name = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_NAME], id);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the agent's %d name.", id);
-        return NULL;
-    }
-
-    json_name = cJSON_GetObjectItem(root->child,"name");
-    if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
-        os_strdup(json_name->valuestring, output);
-    } else {
-        os_strdup("", output);
-    }
-
-    cJSON_Delete(root);
-    return output;
 }
 
 char* wdb_get_agent_group(int id, int *sock) {
@@ -1119,39 +1033,6 @@ time_t get_agent_date_added(int agent_id) {
 
     fclose(fp);
     return 0;
-}
-
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit) {
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    int *array = NULL;
-    int len = 0;
-    wdbc_result status = WDBC_DUE;
-    char *node_name = NULL;
-    int aux_sock = -1;
-
-    node_name = get_node_name();
-    while (status == WDBC_DUE) {
-        // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, node_name, limit);
-        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
-        }
-        else {
-            status = WDBC_ERROR;
-        }
-    }
-    os_free(node_name);
-
-    if (status == WDBC_ERROR) {
-        os_free(array);
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    return array;
 }
 
 wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char *item, char **last_item_value) {

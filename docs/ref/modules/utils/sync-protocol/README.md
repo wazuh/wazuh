@@ -1,17 +1,27 @@
 # Agent Sync Protocol
 
+> **Scope note:** This is agent-side infrastructure — despite being documented alongside other
+> shared/manager modules, `sync_protocol` has no manager-side usage; it is linked only by agent
+> build targets (FIM, SCA, Syscollector, agent_info, the HTTPS client).
+
 ## Introduction
 
 The **Agent Sync Protocol** is a shared module that provides a standardized interface for internal Wazuh modules (FIM, SCA, Inventory) to synchronize data with the Wazuh Manager. It implements a reliable, session-based synchronization mechanism that ensures data consistency and handles errors gracefully.
 
-The protocol supports both **full** and **delta synchronization modes**, enabling efficient data transfer while maintaining state consistency. It uses a persistent queue backed by SQLite for durability and implements retry mechanisms with timeout controls to handle failures.
+The protocol supports both **full** and **delta synchronization modes**, enabling efficient data transfer
+while maintaining state consistency. It uses a persistent queue backed by SQLite for durability.
+Timeout and retry behaviour for the HTTP layer are owned exclusively by the HTTPS transport module;
+the sync protocol itself waits indefinitely for the transport callback and relies on the module's own
+periodic cycle to retry after failures.
 
 ## Key Features
 
 - **Unified API**: Single interface for all modules to interact with the synchronization protocol
 - **Persistent Storage**: SQLite-based queue ensures data durability across agent restarts
-- **Session Management**: Unique session IDs track synchronization state between agent and manager
-- **Retry Mechanism**: Configurable retry attempts with exponential backoff for network resilience
+- **Session Management**: Unique session IDs track synchronization state and guard against stale responses
+- **Transport-Owned Retry**: HTTP-level retries and per-request timeouts are managed by the HTTPS
+  transport layer (`STATEFUL_MAX_ATTEMPTS`, `statefulTimeoutMs`); the protocol layer does not impose
+  a separate response-wait timeout
 - **EPS Control**: Rate limiting to prevent overwhelming the manager with data
 - **Multiple Sync Modes**: Support for full, delta, integrity check, metadata, and groups synchronization
 
@@ -21,27 +31,33 @@ Each internal module maintains its own instance of the Agent Sync Protocol with 
 
 ```
 ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│     FIM     │   │     SCA     │   │  Inventory  │
+│     FIM     │   │     SCA     │   │ Syscollector│
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │ Agent Sync  │   │ Agent Sync  │   │ Agent Sync  │
 │ Protocol    │   │ Protocol    │   │ Protocol    │
-│ (FIM)       │   │ (SCA)       │   │ (Inventory) │
+│ (FIM)       │   │ (SCA)       │   │(Syscollector│
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │   SQLite    │   │   SQLite    │   │   SQLite    │
-│ fim_sync.db │   │ sca_sync.db │   │ inv_sync.db │
+│ fim_sync.db │   │ sca_sync.db │   │ sys_sync.db │
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
        └────────────┬────┴─────────────────┘
+                    │  one FullSession message per session
+                    ▼
+        ┌───────────────────────┐
+        │   queue-sync socket   │  (local AF_UNIX STREAM,
+        │  (SyncSocketTransport)│   no size bound)
+        └───────────┬───────────┘
                     │
-           ┌────────▼────────┐
-           │  Message Queue  │
-           │    (MQueue)     │
-           └────────┬────────┘
-                    │
+                    ▼
+        ┌───────────────────────┐
+        │  agentd / https_client │
+        └───────────┬───────────┘
+                    │  HTTPS POST /stateful
                     ▼
              Wazuh Manager
 ```
@@ -70,9 +86,7 @@ To integrate the Agent Sync Protocol in your module:
 
 2. Create a protocol instance with your module name and database path
 
-3. Persist differences using:
-   - `persistDifference()` / `asp_persist_diff()` for database storage
-   - `persistDifferenceInMemory()` / `asp_persist_diff_in_memory()` for in-memory recovery
+3. Persist differences using `persistDifference()` / `asp_persist_diff()`
 
 4. Process manager responses with `parseResponseBuffer()` or `asp_parse_response_buffer()`
 
@@ -83,7 +97,9 @@ To integrate the Agent Sync Protocol in your module:
    - `synchronizeModule()` / `asp_sync_module()` for module data
    - `synchronizeMetadataOrGroups()` / `asp_sync_metadata_or_groups()` for metadata/groups
 
-7. Clean up in-memory data (if used):
-   - `clearInMemoryData()` / `asp_clear_in_memory_data()` before recovery
+7. For a full-replace resync (e.g. after a checksum mismatch), call `notifyDataClean()` /
+   `asp_notify_data_clean()` on the affected indices first, then re-persist the fresh snapshot
+   and synchronize with `Mode::DELTA` — there is no in-memory recovery API or `Mode::FULL`
+   anymore (see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta)).
 
 See the [Integration Guide](integration-guide.md) for detailed examples.

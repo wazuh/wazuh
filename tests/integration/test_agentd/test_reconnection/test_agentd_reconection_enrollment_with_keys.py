@@ -53,7 +53,6 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -72,7 +71,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -125,7 +124,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
 
     expected_output:
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -133,9 +132,10 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         - keys
     '''
 
+    remoted_server = None
     try:
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -144,13 +144,13 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        # Start rejecting Agent: a 401 on every /control request is what actually
+        # drives re-enrollment (AuthGate.reportAuthFailure(), armed only by a
+        # rejected credential -- a dropped connection alone is just retried with
+        # backoff and never triggers it). The same instance still serves /enroll
+        # normally, so the agent's re-enrollment attempt below succeeds.
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
-
-        # Start AuthdSimulator
-        authd_server = AuthdSimulator()
-        authd_server.start()
 
         # Wait until Agent asks a new key to enrollment
         wait_enrollment_try()
@@ -159,12 +159,12 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         remoted_server.destroy()
 
         # Start responding Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
         wait_connect()
     finally:
         # Reset simulator
-        remoted_server.destroy()
-        authd_server.destroy()
+        if remoted_server:
+            remoted_server.destroy()

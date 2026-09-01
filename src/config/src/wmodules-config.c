@@ -210,9 +210,6 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;
     int agent_cfg = d2 ? *(int *)d2 : 0;
-#ifdef CLIENT
-    (void)agent_cfg;
-#endif
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
@@ -256,7 +253,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     //Policy Monitoring Module
     if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
 #ifdef CLIENT
-        if (wm_sca_read(xml,children, cur_wmodule, 0) < 0) {
+        if (wm_sca_read(xml,children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

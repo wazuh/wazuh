@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "remoted.h"
 #include "../../remoted/src/state.h"
@@ -33,6 +34,7 @@ size_t remcom_dispatch(char * command, char ** output);
 static int test_teardown(void ** state) {
     char* string = *state;
     os_free(string);
+
     return 0;
 }
 
@@ -137,178 +139,6 @@ void test_remcom_dispatch_getconfig_empty_parameters(void ** state) {
     assert_int_equal(size, strlen(response));
 }
 
-void test_remcom_dispatch_getagentsstats_empty_parameters(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\"}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":5,\"message\":\"Empty parameters\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_invalid_agents(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"agents\"}}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":8,\"message\":\"Invalid agents parameter\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_empty_last_id(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\"}}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":10,\"message\":\"Empty last id\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_too_many_agents(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": [1,2,3,4,5,6,7,8,9,10,11, \
-                        12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47, \
-                        48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83, \
-                        84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114, \
-                        115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141, \
-                        142,143,144,145,146,147,148,149,150,151]}}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":11,\"message\":\"Too many agents\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_all_empty_agents(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
-    char *response = NULL;
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, NULL);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":9,\"message\":\"Error getting agents from DB\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_all_due(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
-    char *response = NULL;
-    cJSON* data_json = cJSON_CreateObject();
-
-    int *connected_agents;
-    os_calloc(151, sizeof(int), connected_agents);
-    for (size_t i = 0; i < 150; i++) {
-        connected_agents[i] = i+1;
-    }
-    connected_agents[150] = OS_INVALID;
-
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_rem_create_agents_state_json, agents_ids, connected_agents);
-    will_return(__wrap_rem_create_agents_state_json, data_json);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":1,\"message\":\"due\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_all_ok(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
-    char *response = NULL;
-    cJSON* data_json = cJSON_CreateObject();
-
-    int *connected_agents;
-    os_calloc(2, sizeof(int), connected_agents);
-    connected_agents[0] = 1;
-    connected_agents[1] = OS_INVALID;
-
-
-    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
-    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
-    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
-
-    expect_value(__wrap_rem_create_agents_state_json, agents_ids, connected_agents);
-    will_return(__wrap_rem_create_agents_state_json, data_json);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_array_empty_agents(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": []}}";
-    char *response = NULL;
-
-    will_return(__wrap_json_parse_agents, NULL);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":9,\"message\":\"Error getting agents from DB\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_getagentsstats_array_ok(void ** state) {
-    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": [1]}}";
-    char *response = NULL;
-    cJSON* data_json = cJSON_CreateObject();
-
-    int *connected_agents;
-    os_calloc(2, sizeof(int), connected_agents);
-    connected_agents[0] = 1;
-    connected_agents[1] = OS_INVALID;
-
-    will_return(__wrap_json_parse_agents, connected_agents);
-
-    expect_value(__wrap_rem_create_agents_state_json, agents_ids, connected_agents);
-    will_return(__wrap_rem_create_agents_state_json, data_json);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
 void test_remcom_dispatch_assigngroup(void ** state) {
     char* request = "{\"command\":\"assigngroup\", \"parameters\": {\"agent\": \"001\", \"md5\": \"1234567890abcdef\"}}";
     char *response = NULL;
@@ -338,7 +168,7 @@ void test_remcom_dispatch_assigngroup_invalid_parameters(void ** state) {
     *state = response;
 
     assert_non_null(response);
-    assert_string_equal(response, "{\"error\":12,\"message\":\"Invalid agent or md5 parameter\",\"data\":{}}");
+    assert_string_equal(response, "{\"error\":8,\"message\":\"Invalid agent or md5 parameter\",\"data\":{}}");
     assert_int_equal(size, strlen(response));
 }
 
@@ -698,7 +528,7 @@ void test_remcom_main_bind_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to bind to socket 'queue/sockets/remote': (0) 'Success'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to bind to socket 'queue/sockets/remote.sock': (0) 'Success'");
 
     remcom_main(NULL);
 }
@@ -713,15 +543,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_unknown_section, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_empty_section, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_empty_parameters, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_empty_parameters, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_invalid_agents, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_empty_last_id, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_too_many_agents, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_empty_agents, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_due, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_ok, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_empty_agents, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_ok, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup_invalid_parameters, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup_empty_parameters, test_teardown),

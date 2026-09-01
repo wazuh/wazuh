@@ -37,6 +37,8 @@ constexpr std::string_view INDEXER_FLUSH_INTERVAL = "analysisd.indexer_flush_int
 constexpr std::string_view INDEXER_LOGGER_QUEUE_SIZE = "analysisd.indexer_logger_queue_size";
 constexpr std::string_view INDEXER_LOGGER_THREADS = "analysisd.indexer_logger_threads";
 constexpr std::string_view INDEXER_MAX_RETRY_DELAY = "analysisd.indexer_max_retry_delay";
+constexpr std::string_view INDEXER_REQUEST_TIMEOUT = "analysisd.indexer_request_timeout";
+constexpr std::string_view INDEXER_MONITORING_INTERVAL = "analysisd.indexer_monitoring_interval";
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
@@ -89,8 +91,7 @@ constexpr std::string_view STREAMLOG_MAX_ACCUMULATED_SIZE = "analysisd.streamlog
 constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
-constexpr std::string_view SKIP_GROUP_CHANGE = "analysisd.owner_group_change_skip";
-constexpr std::string_view GROUP = "analysisd.owner_group";
+constexpr std::string_view DROP_PRIVILEGES = "analysisd.drop_privileges";
 
 constexpr std::string_view API_RESOURCE_PAYLOAD_MAX_BYTES = "analysisd.api_resource_payload_max_bytes";
 constexpr std::string_view API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES = "analysisd.api_resource_kvdb_payload_max_bytes";

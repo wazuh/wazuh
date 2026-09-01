@@ -11,12 +11,7 @@
 #include "wmodules.h"
 #include "wm_agent_upgrade_manager.h"
 #include "wm_agent_upgrade_parsing.h"
-#include "wm_agent_upgrade_tasks.h"
-#include "wm_agent_upgrade_upgrades.h"
 #include "os_net.h"
-#include "router.h"
-#include "sym_load.h"
-#include "router.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -24,6 +19,13 @@
 #else
 #define STATIC static
 #endif
+
+/**
+ * Start listening loop, exits only on error
+ * @param manager_configs manager configuration parameters
+ * @return only on errors, socket will be closed
+ * */
+STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SUCCESS] = "Success",
@@ -33,10 +35,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Task manager communication error",
     [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
     [WM_UPGRADE_GLOBAL_DB_FAILURE] = "Agent information not found in database",
-    [WM_UPGRADE_INVALID_ACTION_FOR_MANAGER] = "Action not available for Manager",
-    [WM_UPGRADE_AGENT_IS_NOT_ACTIVE] = "Agent is not active",
     [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available",
-    [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
     [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version",
     [WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED] = "Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first",
     [WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT] = "Current agent version is greater or equal",
@@ -45,42 +44,139 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST] = "The version of the WPK does not exist in the repository",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid",
-    [WM_UPGRADE_SEND_LOCK_RESTART_ERROR] = "Send lock restart error",
-    [WM_UPGRADE_SEND_OPEN_ERROR] = "Send open file error",
-    [WM_UPGRADE_SEND_WRITE_ERROR] = "Send write file error",
-    [WM_UPGRADE_SEND_CLOSE_ERROR] = "Send close file error",
-    [WM_UPGRADE_SEND_SHA1_ERROR] = "Send verify sha1 error",
-    [WM_UPGRADE_SEND_UPGRADE_ERROR] = "Send upgrade command error",
-    [WM_UPGRADE_UPGRADE_ERROR] = "Upgrade procedure exited with error code",
-    [WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE] = "Upgrade procedure exited with error code, missing dependency in agent",
-    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start"
+    [WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE] = "The manager's HTTPS verification_mode is not 'none'; a just-upgraded agent may be unable to reconnect. Use the force option to proceed anyway.",
+    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start",
+    [WM_UPGRADE_LEGACY_DELIVERY_DISABLED] = "The agent is below v5.0.0 and the manager's '<remote><legacy>' delivery is disabled; the upgrade task could never be delivered."
 };
 
-/**
- * Start listening loop, exits only on error
- * @param manager_configs manager configuration parameters
- * @return only on errors, socket will be closed
- * */
-STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
+wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
+    wm_upgrade_task *task;
+    os_calloc(1, sizeof(wm_upgrade_task), task);
+    return task;
+}
 
-void* router_module_ptr = NULL;
+wm_upgrade_custom_task* wm_agent_upgrade_init_upgrade_custom_task() {
+    wm_upgrade_custom_task *task;
+    os_calloc(1, sizeof(wm_upgrade_custom_task), task);
+    return task;
+}
 
-router_subscriber_create_func router_subscriber_create_ptr = NULL;
-router_subscriber_subscribe_func router_subscriber_subscribe_ptr = NULL;
-router_subscriber_unsubscribe_func router_subscriber_unsubscribe_ptr = NULL;
-router_subscriber_destroy_func router_subscriber_destroy_ptr = NULL;
+wm_task_info* wm_agent_upgrade_init_task_info() {
+    wm_task_info *task_info = NULL;
+    os_calloc(1, sizeof(wm_task_info), task_info);
+    return task_info;
+}
 
-/**
- * Router subscriber thread that listens for router signals and forwards them to upgrade socket
- * @return thread function
- * */
-STATIC void* wm_agent_upgrade_router_subscriber_thread(void) __attribute__((nonnull));
+wm_agent_info* wm_agent_upgrade_init_agent_info() {
+    wm_agent_info *agent_info = NULL;
+    os_calloc(1, sizeof(wm_agent_info), agent_info);
+    return agent_info;
+}
 
-/**
- * Callback function for router subscriber to handle incoming messages
- * @param message received message
- * */
-STATIC void wm_agent_upgrade_router_callback(const char* message);
+wm_agent_task* wm_agent_upgrade_init_agent_task() {
+    wm_agent_task *agent_task = NULL;
+    os_calloc(1, sizeof(wm_agent_task), agent_task);
+    return agent_task;
+}
+
+void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
+    if (upgrade_task) {
+        os_free(upgrade_task->custom_version);
+        os_free(upgrade_task->wpk_repository);
+        os_free(upgrade_task->wpk_version);
+        os_free(upgrade_task->wpk_file);
+        os_free(upgrade_task->wpk_sha1);
+        os_free(upgrade_task->package_type);
+        os_free(upgrade_task);
+    }
+}
+
+void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_custom_task) {
+    if (upgrade_custom_task) {
+        os_free(upgrade_custom_task->custom_file_path);
+        os_free(upgrade_custom_task->custom_installer);
+        os_free(upgrade_custom_task->wpk_sha1);
+        os_free(upgrade_custom_task);
+    }
+}
+
+void wm_agent_upgrade_free_task_info(wm_task_info* task_info) {
+    if (task_info) {
+        if (task_info->task) {
+            if (WM_UPGRADE_UPGRADE == task_info->command) {
+                wm_agent_upgrade_free_upgrade_task((wm_upgrade_task*)task_info->task);
+            } else if (WM_UPGRADE_UPGRADE_CUSTOM == task_info->command) {
+                wm_agent_upgrade_free_upgrade_custom_task((wm_upgrade_custom_task*)task_info->task);
+            }
+        }
+        os_free(task_info);
+    }
+}
+
+void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
+    if (agent_info) {
+        os_free(agent_info->platform);
+        os_free(agent_info->major_version);
+        os_free(agent_info->minor_version);
+        os_free(agent_info->architecture);
+        os_free(agent_info->wazuh_version);
+        os_free(agent_info->package_type);
+        os_free(agent_info);
+    }
+}
+
+void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
+    if (agent_task) {
+        if (agent_task->agent_info) {
+            wm_agent_upgrade_free_agent_info(agent_task->agent_info);
+        }
+        if (agent_task->task_info) {
+            wm_agent_upgrade_free_task_info(agent_task->task_info);
+        }
+        os_free(agent_task);
+    }
+}
+
+cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
+    cJSON* response = NULL;
+
+    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock == OS_SOCKTERR) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK);
+    } else {
+        char *buffer = NULL;
+        int length;
+        char *message = cJSON_PrintUnformatted(message_object);
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
+
+        OS_SendSecureTCP(sock, strlen(message), message);
+        os_free(message);
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+
+        switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
+            case OS_SOCKTERR:
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
+                break;
+            case -1:
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
+                break;
+            default:
+                response = cJSON_Parse(buffer);
+                if (!response) {
+                    mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+                } else {
+                    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, buffer);
+                }
+                break;
+        }
+        os_free(buffer);
+
+        close(sock);
+    }
+
+    return response;
+}
 
 void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
 
@@ -92,20 +188,8 @@ void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_con
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, STARTUP_MSG, (int)getpid());
 
-    // Initialize task hashmap
-    wm_agent_upgrade_init_task_map();
-
-    // Initialize upgrade queue (also initializes the dispatcher semaphore)
-    wm_agent_upgrade_init_upgrade_queue(manager_configs->max_threads);
-
     // Start listener
     wm_agent_upgrade_listen_messages(manager_configs);
-
-    // Destroy task hashmap
-    wm_agent_upgrade_destroy_task_map();
-
-    // Destroy upgrade queue
-    wm_agent_upgrade_destroy_upgrade_queue();
 }
 
 STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
@@ -123,15 +207,6 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
         close(sock);
         return;
     }
-
-    // Cancel pending upgrade tasks since they were lost
-    wm_agent_upgrade_cancel_pending_upgrades();
-
-    // Start dispatch upgrades thread
-    w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
-
-    // Start router subscriber thread
-    w_create_thread(wm_agent_upgrade_router_subscriber_thread, NULL);
 
     while (!wm_shutdown_requested) {
         // listen - wait connection
@@ -188,7 +263,7 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
             case WM_UPGRADE_UPGRADE:
                 // Upgrade command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task);
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs->wpk_repository);
                 }
                 wm_agent_upgrade_free_upgrade_task(task);
                 break;
@@ -198,17 +273,6 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
                     message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task);
                 }
                 wm_agent_upgrade_free_upgrade_custom_task(task);
-                break;
-            case WM_UPGRADE_AGENT_UPDATE_STATUS:
-                if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_agent_result_command(agent_ids, (wm_upgrade_agent_status_task *)task);
-                }
-                wm_agent_upgrade_free_agent_status_task(task);
-                break;
-            case WM_UPGRADE_RESULT:
-                if (agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_result_command(agent_ids);
-                }
                 break;
             default:
                 // Parsing error
@@ -237,89 +301,4 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     }
 
     close(sock);
-}
-
-STATIC void wm_agent_upgrade_router_callback(const char* message) {
-
-    if (!message) {
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Empty router message received");
-        return;
-    }
-
-    // Connect to upgrade socket
-    int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
-
-    if (sock == OS_SOCKTERR) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
-    } else {
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Sending router-triggered upgrade message: '%s'", message);
-
-        OS_SendSecureTCP(sock, strlen(message), message);
-        close(sock);
-    }
-}
-
-STATIC bool initialize_router_functions(void) {
-
-    if (router_module_ptr = so_get_module_handle("router"), router_module_ptr)
-    {
-        router_subscriber_create_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_create");
-        router_subscriber_subscribe_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_subscribe");
-        router_subscriber_unsubscribe_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_unsubscribe");
-        router_subscriber_destroy_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_destroy");
-
-    }
-    else
-    {
-        mtwarn(WM_ROUTER_LOGTAG, "Unable to load router module.");
-        return false;
-    }
-    return true;
-}
-
-STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
-    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
-
-    if (!initialize_router_functions()) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to initialize router functions");
-        return NULL;
-    }
-
-    // Create router subscriber handle
-    const char* topic_name = "upgrade_notifications";
-    const char* subscriber_id = "ack_upgrade";
-    bool is_local = false;
-
-    ROUTER_SUBSCRIBER_HANDLE subscriber_handle = router_subscriber_create_ptr(topic_name, subscriber_id, is_local);
-
-    if (!subscriber_handle) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to create router subscriber for topic '%s'", topic_name);
-        return NULL;
-    }
-
-    // Subscribe to messages with our callback
-    if (router_subscriber_subscribe_ptr(subscriber_handle, wm_agent_upgrade_router_callback) != 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to subscribe to router topic '%s'", topic_name);
-        router_subscriber_destroy_ptr(subscriber_handle);
-        return NULL;
-    }
-
-    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
-
-    // Register cleanup handlers for thread cancellation/exit
-    pthread_cleanup_push((void(*)(void*))router_subscriber_destroy_ptr, subscriber_handle);
-    pthread_cleanup_push((void(*)(void*))router_subscriber_unsubscribe_ptr, subscriber_handle);
-
-    while (FOREVER()) {
-        sleep(1);
-        pthread_testcancel();
-    }
-
-    // Cleanup
-    // These will be called automatically via pthread_cleanup_push if thread is cancelled
-    pthread_cleanup_pop(1); // calls router_subscriber_unsubscribe_ptr
-    pthread_cleanup_pop(1); // calls router_subscriber_destroy_ptr
-
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Router subscriber thread stopped");
-    return NULL;
 }

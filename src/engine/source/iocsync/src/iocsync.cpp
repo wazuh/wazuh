@@ -17,6 +17,7 @@
 #include <base/utils/generator.hpp>
 #include <base/utils/metaHelpers.hpp>
 #include <base/utils/stringUtils.hpp>
+#include <base/utils/vectorHelpers.hpp>
 #include <iockvdb/helpers.hpp>
 
 #include <iocsync/iocsync.hpp>
@@ -296,15 +297,14 @@ void IocSync::removeIOCTypeFromSync(std::string_view iocType)
 {
     std::unique_lock lock(m_mutex);
 
-    auto it = std::remove_if(m_databasesState.begin(),
-                             m_databasesState.end(),
-                             [iocType](const SyncedIOCDatabase& syncedDB) { return syncedDB.getIocType() == iocType; });
-    if (it == m_databasesState.end())
+    // addIOCTypeToSync() rejects duplicates, so at most one element can match here. Element order in
+    // m_databasesState is not semantically observed, so this is removed in O(1) via swap-with-back.
+    const auto erased = base::utils::eraseFirstBySwap(
+        m_databasesState, [iocType](const SyncedIOCDatabase& syncedDB) { return syncedDB.getIocType() == iocType; });
+    if (!erased)
     {
         throw std::runtime_error(fmt::format("IOC type '{}' is not in the sync list", iocType));
     }
-
-    m_databasesState.erase(it, m_databasesState.end());
 
     LOG_INFO("[IOC::Sync] Removed IOC type '{}' from the sync list", iocType);
 

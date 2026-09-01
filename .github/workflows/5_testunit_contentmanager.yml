@@ -39,9 +39,23 @@ jobs:
         with:
           submodules: recursive
 
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
       - name: Project dependencies
         uses: ./.github/actions/build_external_deps
-
       - name: Content manager - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
@@ -55,6 +69,26 @@ jobs:
           valgrind: "true"
           target: "content_manager_utest"
 
+      # The component suite runs here too, purely so its coverage counts. It exercises the
+      # module's orchestration layer (contentModule, contentModuleFacade, actionOrchestrator,
+      # action, contentProvider) that no unit test reaches, and CI already runs it in
+      # 5_testcomponent_contentmanager.yml -- but that workflow has no coverage step, so those
+      # lines were being reported as untested. Its fake server is cpp-httplib on localhost, so
+      # nothing external is required. No valgrind: 5_testcomponent_contentmanager.yml already
+      # covers that dimension, and repeating it here would only double the job's runtime.
+      - name: Content manager - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "content_manager_ctest"
+          test: "true"
+          asan: "false"
+
+      - name: Content manager - Run component tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "content_manager_ctest"
+
       - name: Content manager - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
@@ -63,6 +97,9 @@ jobs:
           path: src/shared_modules/content_manager
           id: content_manager
           threshold: "65"
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
 
   contentmanager-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -74,9 +111,23 @@ jobs:
         with:
           submodules: recursive
 
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
       - name: Project dependencies
         uses: ./.github/actions/build_external_deps
-
       - name: Content manager - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
@@ -89,3 +140,6 @@ jobs:
         with:
           target: "content_manager_utest"
           valgrind: "false"
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

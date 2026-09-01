@@ -1,0 +1,4 @@
+requests>=2.31.0
+# Both bearer profiles (agent wazuh-agent+jwt and enroll wazuh-enroll+jwt, wire_jwt.py) are pure
+# stdlib: no cryptography/PyJWT dependency.
+zstandard>=0.21.0

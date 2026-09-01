@@ -26,6 +26,8 @@ enum class SyncResult
     END_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the End message
     PROTOCOL_ERROR,       ///< Manager sent an unexpected or invalid response
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
+    PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
+    ///< budget (HTTP 413); the session must be split and resent smaller.
 };
 
 struct SyncModuleResult
@@ -46,4 +48,22 @@ struct SyncModuleResult
     /// Reset to zero on the first success. A single failure that recovers on the next cycle is an
     /// expected hiccup; a growing count means the condition is not clearing and deserves a WARNING.
     unsigned int consecutiveFailures{0};
+    /// @brief True when the sync was aborted because a prerequisite the manager has to supply
+    /// first (the assigned groups) has not arrived yet. Same
+    /// intent as @ref stopped: lets the calling module demote this from WARNING to INFO/DEBUG,
+    /// since it is expected and normally clears within the next cycle or two (e.g. right after
+    /// an agent restart, before the first /control round trip completes).
+    bool awaitingPrerequisite{false};
+    /// @brief True when the local sync intake itself could not be reached (wazuh-agentd's
+    /// https_client not done starting yet). Deliberately distinct from @ref managerNotReady: this
+    /// never got far enough to hear anything from the manager, so it must not be described as a
+    /// manager-side condition. Same idea as managerNotReady otherwise -- use it together with
+    /// @ref consecutiveFailures to tell a restart hiccup from a lasting local problem.
+    bool localTransportUnavailable{false};
+    /// @brief True when this call ran no session at all because another synchronization was
+    /// already in flight on the same instance (the periodic cycle and a flush colliding, for
+    /// example). Reported as a success -- the in-flight sync is draining the same queue -- but
+    /// a caller that records something about the session that was sent must not do so for a
+    /// call that sent nothing.
+    bool sessionSkipped{false};
 };

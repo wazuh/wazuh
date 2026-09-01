@@ -28,8 +28,6 @@
     - ssl_verify_host:
         value: 'no'
     - ssl_manager_cert:
-        value: '/var/wazuh-manager/etc/sslmanager.cert'
+        value: '/var/wazuh-manager/etc/certs/remoted.pem'
     - ssl_manager_key:
-        value: '/var/wazuh-manager/etc/sslmanager.key'
-    - ssl_auto_negotiate:
-        value: SSL_AUTO_NEGOTIATE
+        value: '/var/wazuh-manager/etc/certs/remoted-key.pem'

@@ -129,31 +129,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}/config/{component}/{configuration}
-
-stages:
-
-  - name: Try to get client configuration from agent component for agent 003 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Get client configuration from agent component for agent 002 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
 test_name: GET /agents/{agent_id}/key
 
 stages:
@@ -185,70 +160,6 @@ stages:
          failed_items: []
          total_affected_items: 1
          total_failed_items: 0
-
----
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-
-  - name: Try to get daemon stats from agent 001 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Get all daemons' stats from agent 002 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - timestamp: !anystr
-              name: wazuh-manager-remoted
-              agents:
-                - id: 2
-                  uptime: !anystr
-                  metrics: !anything
-          failed_items:
-            - id: [ wazuh-manager-analysisd ]
-          total_affected_items: 1
-          total_failed_items: 1
-
----
-test_name: GET /agents/{agent_id}/stats/{component}
-
-stages:
-
- - name: Try to get logcollector stats from agent 002 (Allowed)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/stats/logcollector"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-
- - name: Try to get logcollector stats from agent 003 (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/stats/logcollector"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
 
 ---
 test_name: GET /groups
@@ -612,10 +523,6 @@ stages:
            disconnected: 1
            never_connected: 1
            pending: 0
-           total: 6
-         configuration:
-           synced: 4
-           not_synced: 2
            total: 6
 
 ---
@@ -1163,7 +1070,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       <<: *permission_denied
 
@@ -1350,11 +1257,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
-          restarted: False
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -1374,95 +1277,6 @@ stages:
         message: !anystr
 
 ---
-test_name: PUT /agents/reconnect
-
-stages:
-
-  - name: Try to reconnect non existing agent (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "997"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1701
-              id:
-                - '997'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Try to reconnect agent 010 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "010"
-    response:
-      <<: *permission_denied
-
-  - name: Try to reconnect a list of agents (Partially allowed, user aware)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001,002,004"
-        wait_for_complete: true  # Prevent error code 500
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - '004'
-          failed_items:
-            - error:
-                code: 1701
-              id:
-                - '001'
-            - error:
-                code: 4000
-              id:
-                - '002'
-          total_affected_items: 1
-          total_failed_items: 2
-    delay_after: !float "{reconnect_delay}"
-
-  - name: Try to reconnect all agents (Partially allowed, user agnostic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - '004'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-    delay_after: !float "{reconnect_delay}"
-
----
 test_name: PUT /agents/restart
 
 stages:
@@ -1476,19 +1290,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "997"
-    response:
+    response: &empty_response
       status_code: 200
       json:
-        error: 1
+        error: 0
         data:
           affected_items: []
-          failed_items:
-            - error:
-                code: 1701
-              id:
-                - '997'
+          failed_items: []
           total_affected_items: 0
-          total_failed_items: 1
+          total_failed_items: 0
 
   - name: Try to restart agent 010 (Denied)
     request:
@@ -1500,7 +1310,7 @@ stages:
       params:
         agents_list: "010"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
   - name: Try to restart a list of agents (Partially allowed, user aware)
     request:
@@ -1513,41 +1323,7 @@ stages:
         agents_list: "001,002,004"
         wait_for_complete: true  # Prevent error code 500
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
-          restarted: True
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - '004'
-          failed_items:
-            - error:
-                code: 1701
-              id:
-                - '001'
-            - error:
-                code: 4000
-              id:
-                - '002'
-          total_affected_items: 1
-          total_failed_items: 2
-
-  - name: Try to restart all agents (Partially allowed, user agnostic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 0
@@ -1557,6 +1333,29 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  - name: Try to restart all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '004'
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - '012'
+          total_affected_items: 1
+          total_failed_items: 1
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1708,10 +1507,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 0
@@ -1750,7 +1546,7 @@ stages:
       params:
         agents_list: "003,004"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -1768,7 +1564,11 @@ stages:
         agents_list: "007,008"
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 200
+      status_code: 400
+      json:
+        error: 1824
+        title: !anystr
+        detail: !anystr
 
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
@@ -1781,36 +1581,7 @@ stages:
         agents_list: "003,004"
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/upgrade_result
-
-stages:
-
-  - name: Get upgrade result from agents list (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "005,006,007,008"
-    response:
-      status_code: 200
-
-  - name: Try get upgrade result agents 003 and 004 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "003,004"
-    response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: GET /agents (deny cluster:read)
@@ -1826,21 +1597,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '001'
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-
-  - name: Restart all agents belonging to master-node (Deny node_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
 

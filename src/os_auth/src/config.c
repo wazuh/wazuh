@@ -39,6 +39,18 @@ int authd_read_config(const char *path) {
     config.timeout_sec = getDefine_Int_default("auth", "timeout_seconds", 0, INT_MAX, 1);
     config.timeout_usec = getDefine_Int_default("auth", "timeout_microseconds", 0, 999999, 0);
     config.max_agents = (unsigned int)getDefine_Int_default("authd", "max_agents", 0, INT_MAX, 0);
+    /* How long a deletion waits before its indexer purge is relayed. The default is picked from the
+     * three intervals it has to outlast, not guessed:
+     *   - the index refresh (~1 s): a delete-by-query is a SEARCH, so it cannot match documents the
+     *     indexer has not made searchable yet;
+     *   - the cluster integrity sync (9 s): until a worker pulls the new client.keys it keeps
+     *     accepting that agent's data and writing it;
+     *   - the master's keepalive tolerance (120 s): the longest a worker can be out of touch and
+     *     still be considered alive, so the longest it can legitimately be behind.
+     * Whatever the purge misses survives forever -- with the agent gone, nothing overwrites it --
+     * so the default covers the widest of the three. A single-node manager only needs the first and
+     * can lower this a lot; 0 (immediate) exists for tests. */
+    config.purge_delay = getDefine_Int_default("authd", "purge_delay", 0, 3600, 120);
 
     return 0;
 }
@@ -53,12 +65,13 @@ cJSON *getAuthdConfig(void) {
     cJSON_AddNumberToObject(auth,"port",config.port);
     if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
     if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
+    if (config.flags.legacy_enrollment) cJSON_AddStringToObject(auth,"legacy_enrollment","yes"); else cJSON_AddStringToObject(auth,"legacy_enrollment","no");
     if (config.ipv6) cJSON_AddStringToObject(auth,"ipv6","yes"); else cJSON_AddStringToObject(auth,"ipv6","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
+    cJSON_AddNumberToObject(auth, "purge_delay", config.purge_delay);
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
     if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");
-    if (config.flags.auto_negotiate) cJSON_AddStringToObject(auth,"ssl_auto_negotiate","yes"); else cJSON_AddStringToObject(auth,"ssl_auto_negotiate","no");
     if (config.ciphers) cJSON_AddStringToObject(auth,"ciphers",config.ciphers);
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);

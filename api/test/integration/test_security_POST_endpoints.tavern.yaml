@@ -804,7 +804,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "new_user"
-        password: "new_user1A!"
+        password: "new_user1A!extra"
       method: POST
     response:
       status_code: 200
@@ -841,7 +841,7 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user"
-        password: "new_user1B!"
+        password: "new_user1B!extra"
     response:
       status_code: 200
       json:
@@ -951,7 +951,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "new_user1"
-        password: "new_user1A!"
+        password: "new_user1A!extra"
       method: POST
     response:
       status_code: 200

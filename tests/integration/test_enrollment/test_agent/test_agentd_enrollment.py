@@ -38,18 +38,19 @@ tags:
     - enrollment
 '''
 
+import json
 import sys
+import time
 import pytest
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.tools.simulators.remoted_simulator import ENROLL_ENDPOINT
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import make_callback
-from wazuh_testing.utils.services import get_version
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -104,10 +105,11 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
             brief: Write the password file.
         - configure_socket_listener:
             type: fixture
-            brief: Configure MITM.
-            - restart_agentd:
-                type: fixture
-                brief: Restart Agentd and control if it is expected to fail or not.
+            brief: Configure the manager-side listener the agent enrolls against, rejecting
+                   it first to force re-enrollment when it starts with a pre-existent key.
+        - restart_agentd:
+            type: fixture
+            brief: Restart Agentd and control if it is expected to fail or not.
 
     assertions:
         - The enrollment message is sent when the configuration is valid
@@ -119,7 +121,7 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
         different available enrollment-related configurations.
 
     expected_output:
-        - Enrollment request message on Authd socket
+        - Enrollment request sent to POST /enroll
         - Error logs related to the wrong configuration block
     """
 
@@ -144,17 +146,24 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
                 raise error
 
     else:
-        test_expected = test_metadata['message']['expected'].format(agent_version=get_version()).encode()
-        test_response = test_metadata['message']['response'].encode()
+        expected_fields = test_metadata['message']['expected']
 
-        # Monitor MITM queue
-        socket_monitor = queue_monitor.QueueMonitor(socket_listener.queue)
-        event = (test_expected, test_response)
+        # Polls socket_listener's own request store (cleared fresh per case by
+        # configure_socket_listener) rather than waiting on an ossec.log line: the log
+        # isn't truncated between parametrized cases in this module, so a message logged
+        # once early (e.g. "Valid key received") would otherwise satisfy every later
+        # case's wait instantly, before that case's own /enroll request has even arrived.
+        deadline = time.time() + (60 if sys.platform == WINDOWS else 20)
+        enroll_request = None
+        while time.time() < deadline:
+            enroll_request = socket_listener.last_request(ENROLL_ENDPOINT)
+            if enroll_request is not None:
+                break
+            time.sleep(0.1)
 
-        try:
-            # Start socket monitoring
-            socket_monitor.start(timeout=60 if sys.platform == WINDOWS else 20, accumulations=2, callback=lambda received_event: received_event.encode() in event)
+        assert enroll_request is not None, 'No /enroll request was captured'
+        body = json.loads(enroll_request['body'])
 
-            assert socket_monitor.matches == 2
-        except Exception as error:
-            raise error
+        for field, value in expected_fields.items():
+            assert body.get(field) == value, (
+                f"Expected {field}={value!r} in the /enroll request, got {body.get(field)!r}")

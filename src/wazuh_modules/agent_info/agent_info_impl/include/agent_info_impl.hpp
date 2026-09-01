@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -26,11 +27,10 @@
 using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
 
 // Type definition for the handshake query callback function.
-// Queries agentd for fresh cluster_name/cluster_node/agent_groups into the given buffers.
+// Queries agentd for fresh cluster_name/agent_groups into the given buffers.
 // Returns true if the query succeeded (buffers may still be empty if legitimately unset).
 using handshake_query_callback_t =
     std::function<bool(char* cluster_name, size_t cluster_name_size,
-                       char* cluster_node, size_t cluster_node_size,
                        char* agent_groups, size_t agent_groups_size)>;
 
 class AgentInfoImpl
@@ -43,6 +43,26 @@ class AgentInfoImpl
             std::string response;      ///< Raw response string
             int errorCode;             ///< Parsed error code (0 if success)
             bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+        };
+
+        /// @brief Durable VD feed offset + pending-rescan state, backed by the `vd_feed_state`
+        /// table in agent_info.db. `hasOffset` distinguishes "never observed" from "observed 0"
+        /// (a manager legitimately reporting offset 0 -- e.g. VD not enabled -- must not be
+        /// treated as unset).
+        struct VdFeedState
+        {
+            bool hasOffset{false};
+            uint64_t offset{0};
+            bool pending{false};
+            uint64_t pendingOffset{0};
+        };
+
+        /// @brief Result of observeVdFeedOffset().
+        struct VdOffsetObserveResult
+        {
+            bool changed{false};       ///< True if offset advanced (was newer than the stored value)
+            bool pending{false};       ///< True if a /scan/vd request is now outstanding for pendingOffset
+            uint64_t pendingOffset{0}; ///< Valid when pending is true
         };
 
         /// @brief Constructor
@@ -69,6 +89,15 @@ class AgentInfoImpl
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
 
+        /**
+         * @brief Closes the DBSync connection and the sync protocol.
+         *
+         * Runs on the module thread once start()'s run loop has returned, so a caller
+         * that joins that thread is guaranteed the handles are closed. Idempotent, so
+         * the destructor can also call it for the case where start() never ran.
+         */
+        void releaseResources();
+
         /// @brief Override the flush poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
         /// Negative values are clamped to 0.
         void setFlushPollDelayMs(int delayMs)
@@ -85,15 +114,7 @@ class AgentInfoImpl
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
-        /// @param mqFuncs Message queue functions
-        void initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs);
-
-        /// @brief Set synchronization parameters
-        /// @param syncEndDelay Delay for synchronization end message in seconds
-        /// @param timeout Response timeout in seconds
-        /// @param retries Number of retries
-        /// @param maxEps Maximum events per second
-        void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
+        void initSyncProtocol(const std::string& moduleName);
 
         /// @brief Set the predicate used to detect that a shutdown is in progress.
         /// It complements the module's own stop flag so that failures caused by the global agent
@@ -119,6 +140,61 @@ class AgentInfoImpl
         /// @param table Table name
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
+
+        /// @brief Durable /control task_id dedup guard, backed by the `tasks` table in
+        /// this same agent_info.db (rather than a private flat file), keyed by task_id.
+        /// Atomically checks whether taskId was already recorded and, if not, records it.
+        /// @param taskId The task_id to check and record
+        /// @return true when taskId was new and is now recorded (dispatch it); false when it is
+        ///         a duplicate, or when the check/insert itself failed (fail closed -- callers
+        ///         must not dispatch a task whose durability could not be confirmed).
+        bool checkAndRecordTask(const std::string& taskId);
+
+        /// @brief Prune the `tasks` table: entries older than ttlSeconds, then (if still over
+        /// maxEntries) the oldest surplus entries. Safe to call periodically.
+        /// @param ttlSeconds Entries last recorded more than this many seconds ago are deleted.
+        /// @param maxEntries Entries beyond this count (oldest first) are deleted; 0 is treated as 1.
+        void cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries);
+
+        /// @brief Current number of remembered task_ids in the `tasks` table. For tests and
+        /// .state metrics.
+        size_t countTasks();
+
+        /// @brief Configure the bounds cleanupExpiredTasks() enforces on its own periodic call
+        /// from within start()'s loop. Runs on that loop rather than a dedicated cleanup thread,
+        /// which would otherwise race with this instance's destruction since nothing
+        /// synchronizes the two.
+        /// @param ttlSeconds Entries older than this are pruned.
+        /// @param maxEntries Entries beyond this count (oldest first) are pruned.
+        void setTaskRegistryLimits(uint32_t ttlSeconds, uint32_t maxEntries)
+        {
+            m_taskRegistryTtlSeconds = ttlSeconds;
+            m_taskRegistryMaxEntries = maxEntries == 0 ? 1 : maxEntries;
+        }
+
+        /// @brief Observe a VD feed offset reported by the manager (via /control notify).
+        /// Monotonic: a value not newer than the currently stored offset is a no-op. When the
+        /// offset advances, it is persisted immediately; a re-scan is marked pending only if
+        /// syscollector's VDFirst has already completed (queried live via
+        /// get_vd_first_sync_completed) -- otherwise VDFirst's own full scan will cover the new
+        /// offset (see Start.feed_offset), so no /scan/vd request is needed.
+        /// @param offset The offset value received from the manager.
+        /// @return changed=true if the offset advanced; pending/pendingOffset reflect the
+        ///         resulting state regardless of whether this call itself changed anything.
+        VdOffsetObserveResult observeVdFeedOffset(uint64_t offset);
+
+        /// @brief Clear the pending re-scan flag, but only if it is still pending for exactly
+        /// this offset. A stale confirmation (nothing pending, or a newer offset has since
+        /// superseded this one) is a no-op -- the pending flag must only ever be cleared by a
+        /// matching /scan/vd 200 OK, never by a 409 or transport failure.
+        /// @param offset The offset the caller's /scan/vd request succeeded for.
+        /// @return true if the pending flag was actually cleared.
+        bool clearVdRescanPending(uint64_t offset);
+
+        /// @brief Current durable VD feed state. Used both to answer an IPC recovery query
+        /// (agentd resuming a pending re-scan after its own restart) and internally by
+        /// populateAgentMetadata() to feed Start.feed_offset.
+        VdFeedState getVdFeedState();
 
     private:
         /// @brief Determine if a stateless event should be generated based on changed fields
@@ -252,6 +328,22 @@ class AgentInfoImpl
         ///         did not answer at all), so coordination is never wedged on a module that will not sync.
         bool isModuleFirstSyncCompleted(const std::string& moduleName);
 
+        /// @brief Query syscollector for whether its VD (Vulnerability Detection) VDFirst
+        /// synchronization has completed. Mirrors isModuleFirstSyncCompleted's fail-open
+        /// contract: an unreachable/unparseable response is treated as "done" so a syscollector
+        /// hiccup cannot permanently wedge re-scan requests.
+        /// @return false only when syscollector explicitly reports VDFirst not yet completed.
+        bool isVDFirstSyncDone();
+
+        /// @brief Read the single-row `vd_feed_state` table. Caller must hold m_dbSyncMutex and
+        /// have already verified m_dBSync is non-null. Returns a default-constructed (all-unset)
+        /// state if the row does not exist yet (fresh database).
+        VdFeedState readVdFeedStateLocked() const;
+
+        /// @brief Upsert the single-row `vd_feed_state` table. Caller must hold m_dbSyncMutex and
+        /// have already verified m_dBSync is non-null.
+        void writeVdFeedStateLocked(const VdFeedState& state);
+
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
         /// @return true if all flushes completed successfully, false otherwise.
@@ -297,9 +389,9 @@ class AgentInfoImpl
         /// @brief Function to query other modules
         module_query_callback_t m_queryModuleFunction;
 
-        /// @brief Function to query agentd for fresh handshake data (cluster_name, cluster_node,
+        /// @brief Function to query agentd for fresh handshake data (cluster_name,
         /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy.
-        /// Only cluster_name/cluster_node are tracked from it - see populateAgentMetadata() for why
+        /// Only cluster_name is tracked from it - see populateAgentMetadata() for why
         /// agent_groups deliberately keeps its own, separate one-shot-at-startup handling.
         handshake_query_callback_t m_handshakeQueryFunction;
 
@@ -309,29 +401,23 @@ class AgentInfoImpl
         /// of reverting all the way back to the (possibly long-stale) startup cache.
         bool m_hasLiveHandshakeSucceededOnce = false;
 
-        /// @brief Last successfully live-queried cluster_name/cluster_node
+        /// @brief Last successfully live-queried cluster_name
         std::string m_lastLiveClusterName;
-        std::string m_lastLiveClusterNode;
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
-
-        /// @brief Sync configuration: delay for synchronization end message in seconds
-        uint32_t m_syncEndDelay = 1;
-
-        /// @brief Sync configuration: response timeout in seconds
-        uint32_t m_syncResponseTimeout = 30;
-
-        /// @brief Sync configuration: number of retries
-        uint32_t m_syncRetries = 5;
-
-        /// @brief Sync configuration: maximum events per second
-        long m_syncMaxEps = 10;
 
         /// @brief Flag to track if module has been stopped.
         /// Atomic so the poll loops can read it without holding m_mutex while
         /// stop() writes it from another thread (avoids a data race).
         std::atomic<bool> m_stopped{false};
+
+        /// @brief True only while start()'s run loop is executing.
+        /// Read by releaseResources() to refuse tearing down members the loop may still
+        /// be using. The join in stop_wmodules() / wm_handler() is not authoritative --
+        /// both only log when the budget expires and then continue to process exit -- so
+        /// the destructor can be reached with this loop still running.
+        std::atomic<bool> m_runLoopActive{false};
 
         /// @brief Predicate reporting whether a shutdown is in progress (may be null).
         /// Injected from the module wrapper; reports the *global* agent shutdown, which is
@@ -343,6 +429,14 @@ class AgentInfoImpl
         bool isShutdownInProgress() const
         {
             return m_stopped || (m_isShuttingDown && m_isShuttingDown());
+        }
+
+        /// @brief Logs a "DBSync not available" style message, demoted to DEBUG during shutdown.
+        /// Centralizes the isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING demotion used at
+        /// every !m_dBSync guard so the rule only needs to change in one place.
+        void logDbSyncUnavailable(const std::string& message)
+        {
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, message);
         }
 
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
@@ -393,16 +487,17 @@ class AgentInfoImpl
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
 
-        /// @brief Serializes destruction of m_spSyncProtocol in stop()
+        /// @brief Serializes destruction of m_spSyncProtocol in releaseResources()
+        /// against the readers that run on other threads (parseResponseBuffer()).
         std::mutex m_syncProtocolMutex;
-
-        /// @brief Clean-stop handshake: stop() blocks until the run loop (start()) has
-        /// exited, so the sync-protocol connection can be closed with no other thread
-        /// using it.
-        std::mutex m_shutdownMutex;
-        std::condition_variable m_shutdownCv;
-        bool m_runLoopActive = false;
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;
+
+        /// @brief Task registry cleanup bounds (see setTaskRegistryLimits()), read once per
+        /// start()'s loop iteration. Defaults match the internal_options.conf defaults
+        /// (agent_info.ttl / agent_info.max_entries) so a call to start() before
+        /// setTaskRegistryLimits() still behaves sanely rather than pruning everything.
+        uint32_t m_taskRegistryTtlSeconds = 86400;
+        uint32_t m_taskRegistryMaxEntries = 4096;
 };

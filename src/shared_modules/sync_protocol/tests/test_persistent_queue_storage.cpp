@@ -11,8 +11,11 @@
 #include <gmock/gmock.h>
 #include "persistent_queue_storage.hpp"
 #include "mock_filesystem_wrapper.hpp"
+#include "sqlite3Wrapper.hpp"
 #include <memory>
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 struct QueueScenario
 {
@@ -386,6 +389,108 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
     EXPECT_EQ(remainingItems[0].index, "index2");
 }
 
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetSelectsPrefixOnly)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::CREATE, 1});
+
+    const auto firstBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(firstBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(firstBlock[0].id, "id1");
+
+    storage->removeAllSynced();
+
+    const auto secondBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(secondBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(secondBlock[0].id, "id2");
+}
+
+// An oversized single item (bigger than the byte cap) must still be returned so
+// the queue does not get stuck, BUT the implementation must emit a LOG_WARNING
+// rather than silently swallowing the violation.
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtLeastOneItem)
+{
+    // Use a fresh storage instance with a capturing logger.
+    bool warnEmitted = false;
+    LoggerFunc capturingLogger = [&warnEmitted](modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING && msg.find("exceeds") != std::string::npos)
+        {
+            warnEmitted = true;
+        }
+    };
+    auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
+
+    capStorage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+
+    // Budget of 1 byte � the item is far larger than that.
+    const auto block = capStorage->fetchAndMarkForSync(1);
+    ASSERT_EQ(block.size(), static_cast<size_t>(1));
+    EXPECT_EQ(block[0].id, "id1");
+    EXPECT_TRUE(warnEmitted) << "Expected LOG_WARNING when a single item exceeds the byte cap";
+}
+
+// A single item that keeps exceeding the byte cap across consecutive cycles (e.g.
+// the manager keeps rejecting it with a real 413) must not block the queue behind
+// it forever: past MAX_OVERSIZED_ATTEMPTS (5) cycles it is dropped instead of
+// resent, freeing up whatever was stuck behind it.
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncDropsPersistentlyOversizedItemAfterMaxAttempts)
+{
+    int errorCount = 0;
+    LoggerFunc capturingLogger = [&errorCount](modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_ERROR && msg.find("Dropping") != std::string::npos)
+        {
+            ++errorCount;
+        }
+    };
+    auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
+
+    capStorage->submitOrCoalesce(PersistedData{0, "stuck_id", "index1", "payload1", Operation::CREATE, 1});
+    capStorage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+
+    // Simulate consecutive failed sync cycles: each one selects the oversized item
+    // alone, then the caller resets it back to PENDING (as agent_sync_protocol does
+    // on a rejected/failed session) so it is reselected next cycle.
+    for (int cycle = 0; cycle < 5; ++cycle)
+    {
+        const auto block = capStorage->fetchAndMarkForSync(1);
+        ASSERT_EQ(block.size(), static_cast<size_t>(1));
+        EXPECT_EQ(block[0].id, "stuck_id");
+        capStorage->resetAllSyncing();
+    }
+
+    EXPECT_EQ(errorCount, 0) << "Should not drop before exceeding MAX_OVERSIZED_ATTEMPTS";
+
+    // One more cycle crosses the threshold: the item is dropped, and the second
+    // item (previously starved behind it) is now free to be selected.
+    const auto finalBlock = capStorage->fetchAndMarkForSync(1);
+    EXPECT_GE(errorCount, 1) << "Expected LOG_ERROR when the item is finally dropped";
+    ASSERT_EQ(finalBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(finalBlock[0].id, "id2");
+
+    capStorage->resetAllSyncing();
+
+    // stuck_id must be gone for good; only id2 remains pending.
+    const auto afterDrop = capStorage->fetchAndMarkForSync(1000);
+    ASSERT_EQ(afterDrop.size(), static_cast<size_t>(1));
+    EXPECT_EQ(afterDrop[0].id, "id2");
+}
+
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAllPendingRows)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::DELETE_, 1});
+
+    const auto rows = storage->fetchAndMarkForSync(0);
+    ASSERT_EQ(rows.size(), static_cast<size_t>(3));
+    EXPECT_EQ(rows[0].id, "id1");
+    EXPECT_EQ(rows[1].id, "id2");
+    EXPECT_EQ(rows[2].id, "id3");
+}
+
 // Test class for testing deleteDatabase method with mock filesystem wrapper
 class PersistentQueueStorageDeleteDatabaseTest : public ::testing::Test
 {
@@ -509,4 +614,56 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionI
 
     // Call deleteDatabase
     EXPECT_NO_THROW(storage->deleteDatabase());
+}
+
+/// @brief A stale writer lock left by another connection must resolve once it clears, not fail immediately.
+class PersistentQueueStorageBusyLockTest : public ::testing::Test
+{
+    protected:
+        std::string dbPath;
+        LoggerFunc testLogger;
+
+        void SetUp() override
+        {
+            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_busy_lock_test.db").string();
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+        }
+};
+
+TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockInsteadOfFailingImmediately)
+{
+    // Create the schema first, then hold a real write lock on it.
+    PersistentQueueStorage firstInstanceStorage(dbPath, testLogger);
+
+    SQLite3Wrapper::Connection lockHolderConnection(dbPath);
+    lockHolderConnection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    // A second instance opening the same db while the lock is held.
+    PersistentQueueStorage secondInstanceStorage(dbPath, testLogger);
+
+    // Release the lock from another thread after a short delay.
+    std::thread lockReleaser(
+        [&lockHolderConnection]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        lockHolderConnection.execute("COMMIT;");
+    });
+
+    // Without busy_timeout this throws immediately; with it, it waits out the 300ms lock.
+    EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
+
+    lockReleaser.join();
 }
