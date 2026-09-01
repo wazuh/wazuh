@@ -274,6 +274,46 @@ TEST(SyncPipelineTest, AFailedFlushFailsTheWholeBatch)
     EXPECT_EQ(500, third->get().status);
 }
 
+/**
+ * R-07 observability: a failed group commit is counted by its cause, and the sessions it punished
+ * are counted as blast radius -- the amplification that was previously visible only as a log line.
+ */
+TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    auto events = std::make_shared<ConnectorEvents>();
+    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+    SyncPipeline pipeline {SyncPipelineConfig {}, std::move(connectors), CLUSTER, nullptr, metrics};
+
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowOn = "flush";
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::RetryExhausted;
+    }
+    auto first = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), first)));
+    EXPECT_EQ(500, first->get().status);
+
+    // An untyped connector failure lands in the "other" bucket.
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowCause.reset();
+    }
+    auto second = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-2"), second)));
+    EXPECT_EQ(500, second->get().status);
+
+    const auto counter = [&metrics](const std::string& name)
+    {
+        return metrics->getOrCreateCounter(name, "", "count")->get();
+    };
+    EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "exhausted"));
+    EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "other"));
+    EXPECT_EQ(0U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "documents"));
+    EXPECT_EQ(2U, counter(invsync::metrics::BULK_SESSIONS_FAILED));
+}
+
 TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
 {
     PipelineUnderTest fixture;

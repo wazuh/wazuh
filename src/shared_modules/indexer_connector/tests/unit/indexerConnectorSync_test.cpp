@@ -5167,17 +5167,16 @@ namespace
         std::vector<std::string> m_bodies;
     };
 
-    void respondBulkSuccess(const PostRequestParametersVariant& postParams)
+    void respondBulkSuccess(const PostRequestParametersVariant& postParams,
+                            const std::string& body = R"({"took":1,"errors":false,"items":[]})")
     {
         if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
         {
-            std::get<TPostRequestParameters<const std::string&>>(postParams)
-                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
         }
         else
         {
-            std::get<TPostRequestParameters<std::string&&>>(postParams)
-                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string {body});
         }
     }
 
@@ -6365,4 +6364,110 @@ TEST_F(IndexerConnectorSyncTest, BulkRequestStatsIncludeSplitChunks)
     const auto stats = connector.takeBulkRequestStats();
     EXPECT_EQ(stats.requests, 3U) << "the rejected full frame and both chunks are all real requests";
     EXPECT_EQ(stats.bytes, postedBytes.load());
+}
+
+// ============================================================================
+// Failure categories and the idempotency contract (R-07 / R-11)
+// ============================================================================
+
+TEST_F(IndexerConnectorSyncTest, FlushFailuresCarryTheirCause)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<long> statusToReturn {429};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&statusToReturn](auto, auto postParams, auto)
+            {
+                if (statusToReturn.load() == 200)
+                {
+                    // A 200 whose items report a real (non-conflict) failure.
+                    respondBulkSuccess(postParams,
+                                       R"({"took":1,"errors":true,"items":[{"index":{"_id":"id1","status":400,)"
+                                       R"("error":{"type":"mapper_parsing_exception","reason":"bad field"}}}]})");
+                }
+                else
+                {
+                    respondBulkError(postParams, "Too many requests", statusToReturn.load());
+                }
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "index1", R"({"f":"a"})");
+    try
+    {
+        connector.flush();
+        FAIL() << "a permanently rate-limited flush must throw";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    }
+
+    statusToReturn.store(200);
+    connector.bulkIndex("id1", "index1", R"({"f":"a"})");
+    try
+    {
+        connector.flush();
+        FAIL() << "rejected documents must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+/**
+ * R-11, idempotency as a contract: replaying a session the indexer already applied -- the exact
+ * recovery this module's 500/503-then-re-POST design leans on -- must stage byte-identical
+ * operations and be confirmed by the indexer's version conflicts, never duplicated and never
+ * reported as a failure.
+ */
+TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> bodies;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&bodies](auto requestParams, auto postParams, auto)
+            {
+                bodies.push_back(extractBulkBody(requestParams));
+                if (bodies.size() == 1)
+                {
+                    respondBulkSuccess(postParams);
+                    return;
+                }
+                // The replay: every document already exists at this version.
+                respondBulkSuccess(
+                    postParams,
+                    R"({"took":1,"errors":true,"items":[)"
+                    R"({"index":{"_id":"cluster_agent1_doc1","status":409,)"
+                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}},)"
+                    R"({"delete":{"_id":"cluster_agent1_doc2","status":409,)"
+                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}}]})");
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const auto stageSession = [&connector]()
+    {
+        connector.bulkIndex("cluster_agent1_doc1", "index1", R"({"f":"a"})", "7");
+        connector.bulkDelete("cluster_agent1_doc2", "index1");
+    };
+
+    stageSession();
+    EXPECT_NO_THROW(connector.flush());
+
+    stageSession();
+    EXPECT_NO_THROW(connector.flush()) << "a full replay must be confirmed, not failed";
+
+    ASSERT_EQ(bodies.size(), 2U);
+    EXPECT_EQ(bodies[0], bodies[1]) << "deterministic ids and versions: the replay is byte-identical";
 }

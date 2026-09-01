@@ -499,14 +499,16 @@ class IndexerConnectorSyncImpl final
                         ConfigurationParameters {.timeout = m_requestTimeoutMs});
                     if (deleteByQueryLeftDocuments)
                     {
-                        throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+                        throw IndexerConnectorException("deleteByQuery did not delete every matching document",
+                                                        IndexerConnectorException::Category::DocumentRejected);
                     }
                     if (deleteByQueryNeedsRetry)
                     {
                         const auto retryDelay = retryBackoff.nextDelay();
                         if (retryBudget.exhausted(retryDelay))
                         {
-                            throw IndexerConnectorException("deleteByQuery retry budget exhausted");
+                            throw IndexerConnectorException("deleteByQuery retry budget exhausted",
+                                                            IndexerConnectorException::Category::RetryExhausted);
                         }
                         LOGFN_DEBUG2(
                             m_logFn, "Retrying deleteByQuery in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -632,7 +634,8 @@ class IndexerConnectorSyncImpl final
                     m_bulkData.clear();
                     m_boundaries.clear();
                     m_lastBulkTime = std::chrono::steady_clock::now();
-                    throw IndexerConnectorException("Bulk operation had indexing failures");
+                    throw IndexerConnectorException("Bulk operation had indexing failures",
+                                                    IndexerConnectorException::Category::DocumentRejected);
                 }
                 if (needToRetry)
                 {
@@ -642,7 +645,8 @@ class IndexerConnectorSyncImpl final
                         m_bulkData.clear();
                         m_boundaries.clear();
                         m_lastBulkTime = std::chrono::steady_clock::now();
-                        throw IndexerConnectorException("Bulk retry budget exhausted");
+                        throw IndexerConnectorException("Bulk retry budget exhausted",
+                                                        IndexerConnectorException::Category::RetryExhausted);
                     }
                     LOGFN_DEBUG2(
                         m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -833,14 +837,16 @@ class IndexerConnectorSyncImpl final
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
             if (indexingFailures)
             {
-                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures",
+                                                IndexerConnectorException::Category::DocumentRejected);
             }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
                 if (retryBudget.exhausted(retryDelay))
                 {
-                    throw IndexerConnectorException("Bulk chunk retry budget exhausted");
+                    throw IndexerConnectorException("Bulk chunk retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1236,7 +1242,8 @@ public:
             if (updateByQueryFailed)
             {
                 m_notify.clear();
-                throw IndexerConnectorException("Update by query did not confirm every requested update");
+                throw IndexerConnectorException("Update by query did not confirm every requested update",
+                                                IndexerConnectorException::Category::DocumentRejected);
             }
             if (needToRetry)
             {
@@ -1244,7 +1251,8 @@ public:
                 if (retryBudget.exhausted(retryDelay))
                 {
                     m_notify.clear();
-                    throw IndexerConnectorException("Update by query retry budget exhausted");
+                    throw IndexerConnectorException("Update by query retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
                 }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -1327,7 +1335,8 @@ public:
                 const auto retryDelay = retryBackoff.nextDelay();
                 if (retryBudget.exhausted(retryDelay))
                 {
-                    throw IndexerConnectorException("Search query retry budget exhausted");
+                    throw IndexerConnectorException("Search query retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1632,7 +1641,8 @@ public:
                 const auto retryDelay = retryBackoff.nextDelay();
                 if (retryBudget.exhausted(retryDelay))
                 {
-                    throw IndexerConnectorException("Search request retry budget exhausted");
+                    throw IndexerConnectorException("Search request retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
                 }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying search request in %lld ms.", static_cast<long long>(retryDelay.count()));

@@ -100,7 +100,14 @@ namespace invsync::indexer
 
         void flush() override
         {
-            m_inner.flush();
+            try
+            {
+                m_inner.flush();
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                throw ConnectorError {e.what(), causeOf(e.category())};
+            }
         }
 
         BulkRequestStats takeBulkRequestStats() override
@@ -110,6 +117,18 @@ namespace invsync::indexer
         }
 
     private:
+        static ConnectorError::Cause causeOf(IndexerConnectorException::Category category)
+        {
+            switch (category)
+            {
+                case IndexerConnectorException::Category::DocumentRejected:
+                    return ConnectorError::Cause::DocumentRejected;
+                case IndexerConnectorException::Category::RetryExhausted: return ConnectorError::Cause::RetryExhausted;
+                case IndexerConnectorException::Category::Other: break;
+            }
+            return ConnectorError::Cause::Other;
+        }
+
         IndexerConnectorSync m_inner;
     };
     // LCOV_EXCL_STOP

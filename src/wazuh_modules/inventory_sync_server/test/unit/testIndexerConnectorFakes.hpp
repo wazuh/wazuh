@@ -29,6 +29,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -173,9 +174,18 @@ namespace invsync::test
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_syncThrowOn == op)
             {
+                if (m_syncThrowCause)
+                {
+                    throw invsync::indexer::ConnectorError {std::string {"injected failure in "} + op,
+                                                            *m_syncThrowCause};
+                }
                 throw std::runtime_error {std::string {"injected failure in "} + op};
             }
         }
+
+        /// When set, throwIfInjected() throws the seam's typed ConnectorError with this cause
+        /// instead of a plain runtime_error. Guarded by m_mutex.
+        std::optional<invsync::indexer::ConnectorError::Cause> m_syncThrowCause;
 
         void closeFlushGate()
         {

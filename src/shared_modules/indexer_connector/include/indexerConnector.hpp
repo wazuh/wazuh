@@ -620,18 +620,39 @@ public:
 
 class IndexerConnectorException : public std::exception
 {
+public:
+    /**
+     * @brief Coarse failure cause, for callers that aggregate failures into metrics. It changes
+     *        what the operator should look at, not what the caller does: every category is still
+     *        a failed operation whose recovery is the caller re-staging.
+     */
+    enum class Category
+    {
+        Other,            ///< Hard rejection or unexpected state (non-retryable status, bad split).
+        DocumentRejected, ///< The indexer answered but rejected documents, left them undeleted, or
+                          ///< returned a body that confirms nothing.
+        RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+    };
+
 private:
     std::string m_message;
+    Category m_category {Category::Other};
 
 public:
-    explicit IndexerConnectorException(std::string message)
+    explicit IndexerConnectorException(std::string message, Category category = Category::Other)
         : m_message(std::move(message))
+        , m_category(category)
     {
     }
 
     const char* what() const noexcept override
     {
         return m_message.c_str();
+    }
+
+    Category category() const noexcept
+    {
+        return m_category;
     }
 };
 

@@ -15,12 +15,47 @@
 #include <json.hpp>
 
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace invsync::indexer
 {
+
+    /**
+     * @brief A connector failure with its coarse cause attached, for metrics.
+     *
+     * The seam's own mirror of the real connector's exception category, so the pipeline can count
+     * WHY group commits fail without depending on the connector library's exception type. The
+     * adapter translates; fakes can throw it directly. Callers that do not care still catch it as
+     * std::exception -- the cause changes what the operator should look at, never what the caller
+     * does (the recovery is always re-staging).
+     */
+    class ConnectorError final : public std::runtime_error
+    {
+    public:
+        enum class Cause
+        {
+            Other,            ///< Hard rejection or unexpected state.
+            DocumentRejected, ///< The indexer answered but rejected documents or confirmed nothing.
+            RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+        };
+
+        ConnectorError(const std::string& what, Cause cause)
+            : std::runtime_error(what)
+            , m_cause(cause)
+        {
+        }
+
+        Cause cause() const noexcept
+        {
+            return m_cause;
+        }
+
+    private:
+        Cause m_cause;
+    };
 
     /**
      * @brief Seam over the real IndexerConnectorSync.

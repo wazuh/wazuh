@@ -115,6 +115,10 @@ group commits; `sync.indexer.bulk.*` counts the real requests those commits prod
 | `sync.bulk.sessions.total` | counter | count | Sessions answered by group-commit flushes | as above |
 | `sync.indexer.bulk.requests` | counter | count | `_bulk` HTTP requests the sync connectors actually sent — attempts, splits and retries included, successful or not | [`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size) |
 | `sync.indexer.bulk.bytes.total` | counter | bytes | Serialized NDJSON payload bytes those `_bulk` requests carried | as above |
+| `sync.bulk.flush.failures.documents` | counter | count | Group-commit flushes that failed because the indexer rejected documents, left deletions unconfirmed, or answered with a body that confirms nothing | — |
+| `sync.bulk.flush.failures.exhausted` | counter | count | Group-commit flushes that failed by an exhausted retry budget (persistent `429` or transport failures) | [`…indexer_sync_max_retry_attempts`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_attempts), [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
+| `sync.bulk.flush.failures.other` | counter | count | Group-commit flushes that failed for any other reason (hard rejections, unexpected state) | — |
+| `sync.bulk.sessions.failed` | counter | count | Sessions answered `500`/`503` by a failed or poisoned group commit — the blast radius: one bad flush punishes every session in its batch. Compare against `sync.bulk.sessions.total` to size the amplification | — |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 

@@ -78,6 +78,21 @@ namespace invsync::sync
                                           "count");
         m_indexerBulkBytes = m_metrics->getOrCreateCounter(
             invsync::metrics::INDEXER_BULK_BYTES, "NDJSON payload bytes those _bulk requests carried", "bytes");
+        const auto failureCounter = [this](const char* cause, const char* description)
+        {
+            return m_metrics->getOrCreateCounter(
+                std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + cause, description, "count");
+        };
+        m_flushFailuresDocuments = failureCounter(
+            "documents", "Group-commit flushes failed because the indexer rejected documents or confirmed nothing");
+        m_flushFailuresExhausted =
+            failureCounter("exhausted", "Group-commit flushes failed by an exhausted retry budget (429, transport)");
+        m_flushFailuresOther = failureCounter("other", "Group-commit flushes failed for any other reason");
+        m_bulkSessionsFailed = m_metrics->getOrCreateCounter(
+            invsync::metrics::BULK_SESSIONS_FAILED,
+            "Sessions answered 500/503 by a failed group commit -- the blast radius: one bad flush "
+            "punishes every session in its batch",
+            "count");
         m_durationBulk = m_metrics->getOrCreateHistogram(
             invsync::metrics::SESSION_DURATION_BULK, "Enqueue-to-response time of bulk sessions", "microseconds");
         m_durationImmediate = m_metrics->getOrCreateHistogram(invsync::metrics::SESSION_DURATION_IMMEDIATE,
@@ -321,6 +336,15 @@ namespace invsync::sync
         {
             LOGFN_WARN(
                 logFn(), "A bulk flush of %zu session(s) failed: %s. The agents will retry.", batch.size(), e.what());
+            const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
+            const auto cause = typed ? typed->cause() : indexer::ConnectorError::Cause::Other;
+            switch (cause)
+            {
+                case indexer::ConnectorError::Cause::DocumentRejected: m_flushFailuresDocuments->add(); break;
+                case indexer::ConnectorError::Cause::RetryExhausted: m_flushFailuresExhausted->add(); break;
+                case indexer::ConnectorError::Cause::Other: m_flushFailuresOther->add(); break;
+            }
+            m_bulkSessionsFailed->add(batch.size());
             respondConnectorFailure(batch, connector);
         }
 
@@ -514,6 +538,7 @@ namespace invsync::sync
                 }
                 batch.clear();
                 batchBytes = 0;
+                m_bulkSessionsFailed->add(failed.size());
                 respondConnectorFailure(failed, connector);
                 try
                 {
