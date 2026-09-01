@@ -49,7 +49,7 @@ agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
-| `GET /status` | `200` — readiness, not bare liveness: whether `client.keys` last reloaded successfully and, when Password-mode enrollment is enabled, whether an enrollment password key is currently available. `{"keystore":{"ready":true,"agents_loaded":12,"entries_skipped":0},"enrollment_password":{"ready":true},"ready":true}` (`enrollment_password` is omitted entirely when Password-mode enrollment is disabled). Both flags reflect the real, current in-memory state — never masked during a worker's post-join sync window — and are what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
+| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when Password-mode enrollment is enabled; it is `true` whenever remoted answers at all if Password-mode is disabled. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}` (`enrollment_password` is omitted entirely when Password-mode enrollment is disabled). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. This is what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
@@ -57,7 +57,17 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
-keeps serving agents without it. The legacy `getstate` control socket is unaffected.
+keeps serving agents without it. The legacy `getstate` control socket is unaffected. When the
+admin socket is unreachable while remoted itself is running, `GET /cluster/{node_id}/status`
+falls back to plain liveness (`ready: true`) with a `reason: "admin socket unreachable"` field,
+rather than reporting the node not ready — the admin plane failing to come up is not the same as
+remoted being unready.
+
+A caller that needs Password-mode enrollment to be usable — not just remoted to be alive — should
+poll `/status` (or `/cluster/{node_id}/status`) until `ready: true` with a bounded timeout before
+proceeding, rather than assuming readiness the moment the process starts. On a joining worker,
+`ready` typically converges within ~10-20 seconds, as the initial `cluster.json` sync lands the
+`etc/` file group (`client.keys`, `authd.pass`).
 
 ## Related Modules
 

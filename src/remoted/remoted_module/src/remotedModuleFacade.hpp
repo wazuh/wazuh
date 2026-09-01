@@ -826,14 +826,15 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
-            // GET /status: readiness, not bare liveness -- whether client.keys last reloaded
-            // successfully and, when Password-mode enrollment is enabled, whether an enrollment
-            // password key is currently available. Both read resident, in-process state (plain
-            // atomics behind lastLoadOk()/agentsLoaded()/entriesSkipped(), a mutex-guarded cached
-            // key copy behind currentKey()) -- no I/O, no KDF, nothing that can block the admin
-            // socket's fixed 2-thread reactor. `ready` always reflects the real current state,
-            // never grace-window masked: the underlying capability genuinely is unavailable
-            // during the reported window, not just noisy about it.
+            // GET /status: readiness, not bare liveness -- whether an enrollment password key is
+            // currently available when Password-mode enrollment is enabled. `client.keys`/keystore
+            // state is reported for information only and never gates `ready`: remoted cannot tell
+            // an empty-but-fine client.keys apart from a stale one still serving the old table, so
+            // gating on it would flap a healthy node. Both reads are resident, in-process state
+            // (plain atomics behind lastLoadOk()/agentsLoaded()/entriesSkipped(), a mutex-guarded
+            // cached key copy behind currentKey()) -- no I/O, no KDF, nothing that can block the
+            // admin socket's fixed 2-thread reactor. `ready` always reflects the real current
+            // state, never grace-window masked.
             m_adminServer->addRoute(
                 wazuh::uds_http::Method::Get,
                 "/status",
@@ -858,23 +859,33 @@ private:
                         passwordSource = m_passwordKeySourceDiagTarget.lock();
                     }
 
-                    const bool keystoreReady = keystore->lastLoadOk();
-                    bool overallReady = keystoreReady;
-
-                    std::ostringstream body;
-                    body << R"({"keystore":{"ready":)" << (keystoreReady ? "true" : "false") << R"(,"agents_loaded":)"
-                         << keystore->agentsLoaded() << R"(,"entries_skipped":)" << keystore->entriesSkipped() << "}";
-
-                    if (passwordSource)
+                    // enrollment_password is the ONLY gating component. With Password-mode disabled
+                    // (passwordSource null), there is nothing to gate on, so `ready` is true
+                    // whenever this handler runs at all.
+                    bool overallReady = true;
+                    bool pwReady = false;
+                    const bool hasPasswordSource = static_cast<bool>(passwordSource);
+                    if (hasPasswordSource)
                     {
                         // .has_value() only -- the key material itself is never touched, copied
                         // into the response, or logged.
-                        const bool pwReady = passwordSource->currentKey().has_value();
-                        overallReady = overallReady && pwReady;
-                        body << R"(,"enrollment_password":{"ready":)" << (pwReady ? "true" : "false") << "}";
+                        pwReady = passwordSource->currentKey().has_value();
+                        overallReady = pwReady;
                     }
 
-                    body << R"(,"ready":)" << (overallReady ? "true" : "false") << "}";
+                    std::ostringstream body;
+                    body << R"({"ready":)" << (overallReady ? "true" : "false");
+                    if (hasPasswordSource)
+                    {
+                        body << R"(,"enrollment_password":{"ready":)" << (pwReady ? "true" : "false") << "}";
+                    }
+                    // keystore is informational ONLY -- never folded into overallReady.
+                    // "readable", not "ready": it can't distinguish an empty-but-fine client.keys
+                    // from a stale one still serving the old table, so it must not read as a
+                    // readiness claim.
+                    body << R"(,"keystore":{"readable":)" << (keystore->lastLoadOk() ? "true" : "false")
+                         << R"(,"agents_loaded":)" << keystore->agentsLoaded() << R"(,"entries_skipped":)"
+                         << keystore->entriesSkipped() << "}}";
 
                     responder->send(wazuh::uds_http::HttpResponse::json(200, body.str()));
                 },

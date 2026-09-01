@@ -306,11 +306,14 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     EXPECT_EQ(wrongVerbStatus->get_header_value("Allow"), "GET");
 }
 
-// GET /status reports client.keys and (when Password-mode enrollment is enabled) enrollment
-// password readiness, read directly from Keystore/PasswordKeySource's resident state -- no I/O
-// in the handler itself. The module starts with an empty (but successfully loaded) client.keys,
-// so keystore.ready is true with agents_loaded:0 -- the exact case lastLoadOk() exists to get
-// right (see keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne).
+// GET /status reports client.keys (informational, under "readable") and, when Password-mode
+// enrollment is enabled, enrollment password readiness (the SOLE gate on top-level "ready"),
+// read directly from Keystore/PasswordKeySource's resident state -- no I/O in the handler
+// itself. The module starts with an empty (but successfully loaded) client.keys, so
+// keystore.readable is true with agents_loaded:0 -- the exact case lastLoadOk() exists to get
+// right (see keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne). No real authd.pass exists
+// on disk in this test, so the enrollment password is unavailable and top-level "ready" must
+// track that alone, regardless of keystore.readable being true.
 TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
 {
     startModule(/*enrollUsePassword=*/true);
@@ -324,12 +327,13 @@ TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
     EXPECT_NE(response->body.find("\"ready\""), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("\"keystore\""), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("\"agents_loaded\""), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find(R"("keystore":{"ready":true)"), std::string::npos) << response->body;
+    // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk), so
+    // enrollment_password.ready is false and top-level ready must be false too -- it is the sole
+    // gate, never re-coupled to keystore.readable (which is true here).
+    EXPECT_NE(response->body.find(R"({"ready":false,"enrollment_password":{"ready":false})"), std::string::npos)
+        << response->body;
+    EXPECT_NE(response->body.find(R"("keystore":{"readable":true)"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find(R"("agents_loaded":0)"), std::string::npos) << response->body;
-    // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk),
-    // but the field itself must still be present -- reachability, not readiness, is what gates
-    // whether the key shows up at all.
-    EXPECT_NE(response->body.find("\"enrollment_password\""), std::string::npos) << response->body;
 }
 
 // Scope decision: Password-mode disabled means `enrollment_password` is OMITTED entirely, not
@@ -342,6 +346,28 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled
     const auto response = client->Get("/status");
     ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
     EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+}
+
+// Requirement #1's "no false negative" case: a failed client.keys load must never drag "ready"
+// down when there is nothing to gate on (Password-mode disabled). "keystore" stays purely
+// informational -- it reports the failure under "readable":false, but "ready" is true because
+// enrollment_password is absent entirely.
+TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordModeDisabled)
+{
+    // Remove the client.keys SetUp() created so the module's initial Keystore load fails
+    // (missing file -> Keystore::kReloadUnreadable -> lastLoadOk() == false).
+    std::error_code ec;
+    std::filesystem::remove("etc/client.keys", ec);
+
+    startModule(/*enrollUsePassword=*/false);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/status");
+    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_NE(response->body.find(R"({"ready":true,"keystore":{"readable":false)"), std::string::npos)
+        << response->body;
     EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
 }
 

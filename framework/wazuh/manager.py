@@ -99,11 +99,12 @@ def _modulesd_status(running: bool) -> dict:
 def _remoted_status(running: bool) -> dict:
     """Build the status entry for remoted from its local admin GET /status endpoint.
 
-    Reports whether the client.keys mirror last reloaded successfully and, when
-    Password-mode enrollment is enabled, whether an enrollment password key is
-    available. Both reflect real current in-memory state, never a grace-window-masked
-    view (deliberate: the underlying capability genuinely fails during that window,
-    not just its logging).
+    `ready` reflects only `enrollment_password` readiness when Password-mode
+    enrollment is enabled (never grace-window masked); `keystore` is always
+    informational, never gating. If the admin socket itself is unreachable while
+    remoted is running, that is not the same as remoted being unready: the admin
+    plane is optional and can fail to come up independently of the daemon, so this
+    falls back to plain liveness and surfaces why, instead of reporting `ready: false`.
     """
     if not running:
         return {'ready': False}
@@ -112,6 +113,13 @@ def _remoted_status(running: bool) -> dict:
     try:
         client = RemotedHTTPClient()
         remoted = client.get_status()
+    except WazuhInternalError as exc:
+        if exc.code == 2031:
+            # ConnectError specifically: the admin socket never came up. Every other
+            # failure (timeout, bad response, malformed JSON, client construction)
+            # keeps today's `ready: false`.
+            return {'ready': running, 'reason': 'admin socket unreachable'}
+        return {'ready': False}
     except WazuhException:
         return {'ready': False}
     finally:
