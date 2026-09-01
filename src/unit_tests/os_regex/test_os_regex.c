@@ -12,6 +12,7 @@
 #include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "../../os_regex/os_regex.h"
 #include "../../os_regex/os_regex_internal.h"
@@ -396,7 +397,11 @@ void test_strbreak(void **state)
         { "X", "testXX1234", "4", "test", "", "1234", NULL},
         { "X", "testX1234", "1", "testX1234", NULL},
         { "X", "testX1234X5678", "2", "test", "1234X5678", NULL},
+        { "X", "aX\\XbXc", "3", "a", "Xb", "c", NULL},
+        { "\\", "a\\\\b", "3", "a", "", "b", NULL},
         { "X", "testX1234", "0", NULL},
+        { "X", "testX1234X5678", "0", NULL},
+        { "X", "aXbXcXdXeXfXgXh", "0", NULL},
         {NULL},
     };
 
@@ -429,6 +434,15 @@ void test_strbreak_null(void **state)
     (void) state;
 
     char **result = OS_StrBreak('X', NULL, 0);
+
+    assert_null(result);
+}
+
+void test_strbreak_size_max(void **state)
+{
+    (void) state;
+
+    char **result = OS_StrBreak('X', "aXb", SIZE_MAX);
 
     assert_null(result);
 }
@@ -829,6 +843,7 @@ int main(void) {
         cmocka_unit_test(test_fail_str_starts_with),
         cmocka_unit_test(test_strbreak),
         cmocka_unit_test(test_strbreak_null),
+        cmocka_unit_test(test_strbreak_size_max),
         cmocka_unit_test(test_regex_extraction),
         cmocka_unit_test(test_hostname_map),
         cmocka_unit_test(test_case_insensitive_char_map),
