@@ -1338,15 +1338,20 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQuerySuccessCallback)
     EXPECT_TRUE(callbackCalled);
 }
 
-TEST_F(IndexerConnectorSyncTest, DeleteByQueryError409DoesNotThrow)
+/// A request-level 409 means the delete was not applied; confirming it anyway is how an agent's
+/// documents outlive its deletion. The staged query is dropped on the way out -- the caller
+/// re-stages, and a kept query would be re-fired by a LATER flush after the retry succeeded.
+TEST_F(IndexerConnectorSyncTest, DeleteByQueryError409ThrowsAndDropsTheStagedQuery)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
+    std::atomic<int> postCount {0};
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
             {
+                ++postCount;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
@@ -1362,35 +1367,54 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryError409DoesNotThrow)
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("test-index", "agent-123");
 
-    // HTTP 409 should not cause exception in deleteByQuery callback
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_EQ(postCount.load(), 1);
+
+    // The failed query was dropped: a second flush is a clean no-op with NO further post.
     EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 1);
 }
 
-TEST_F(IndexerConnectorSyncTest, DeleteByQueryError429DoesNotThrow)
+TEST_F(IndexerConnectorSyncTest, DeleteByQueryError429RetriesUntilSuccess)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
+    std::atomic<int> postCount {0};
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
             {
+                if (++postCount <= 2)
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Too many requests", 429, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too many requests", 429, "");
+                    }
+                    return;
+                }
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Too many requests", 429, "");
+                        .onSuccess(R"({"took":5,"deleted":10})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too many requests", 429, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"took":5,"deleted":10})");
                 }
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("test-index", "agent-123");
 
-    // HTTP 429 should not cause exception in deleteByQuery callback
     EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 3) << "two 429s must be retried, the third attempt succeeds";
 }
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
@@ -1482,7 +1506,11 @@ INSTANTIATE_TEST_SUITE_P(
         // Both at once.
         std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
                                    R"("failures":[{"shard":1,"status":503}]})"),
-                       true)));
+                       true),
+        // A 200 whose body is not JSON (e.g. a proxy error page) confirms nothing.
+        std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
+        // Neither does an empty body.
+        std::make_pair(std::string(), true)));
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
@@ -1538,11 +1566,12 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithBulkDataTriggersNotifyOnce)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"({"took":5,"deleted":10})");
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"took":5,"deleted":10})");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
             }));
 
@@ -1982,11 +2011,13 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 processingCompletedPromise.set_value();
             }));
@@ -2037,11 +2068,13 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexEscapesSpecialCharactersInId)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 processingCompletedPromise.set_value();
             }));
@@ -2096,11 +2129,13 @@ TEST_F(IndexerConnectorSyncTest, BulkDeleteEscapesSpecialCharactersInId)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 processingCompletedPromise.set_value();
             }));
@@ -2144,11 +2179,13 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexDoesNotEscapeNormalIds)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 processingCompletedPromise.set_value();
             }));
@@ -2201,8 +2238,21 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     // Setup expectations
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
-                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+        .WillOnce(Invoke(
+            [this](auto requestParams, const auto& postParams, auto)
+            {
+                this->callCount++;
+                this->receivedData.push_back(std::get<TRequestParameters<std::string>>(requestParams).data);
+                const std::string body = R"({"took":3,"updated":2,"total":2,"noops":0,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
@@ -2312,6 +2362,79 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
 
     EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
 }
+
+/// An _update_by_query 200 confirms nothing when its body tallies failures or version conflicts,
+/// cannot be parsed, or lacks the documented counters. Reporting any of those as success means
+/// nothing ever re-runs the update.
+class IndexerConnectorSyncUpdateByQueryOutcomeTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<std::string, bool>>
+{
+};
+
+TEST_P(IndexerConnectorSyncUpdateByQueryOutcomeTest, AnUpdateByQueryReportsWhatItLeftBehind)
+{
+    const auto& [responseBody, shouldThrow] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [body = responseBody](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    if (shouldThrow)
+    {
+        EXPECT_THROW(connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery), IndexerConnectorException)
+            << "response: " << responseBody;
+        connector.invokePendingCallbacks();
+        EXPECT_FALSE(notifyCalled) << "an unconfirmed update must not fire the session callbacks";
+    }
+    else
+    {
+        EXPECT_NO_THROW(connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery))
+            << "response: " << responseBody;
+        connector.invokePendingCallbacks();
+        EXPECT_TRUE(notifyCalled);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    UpdateByQueryOutcomes,
+    IndexerConnectorSyncUpdateByQueryOutcomeTest,
+    ::testing::Values(
+        // Everything the query matched was updated: the only response that may pass silently.
+        std::make_pair(std::string(R"({"took":5,"updated":10,"total":10,"noops":0,"failures":[]})"), false),
+        // Per-shard error inside a 200.
+        std::make_pair(std::string(R"({"took":5,"updated":4,"total":10,)"
+                                   R"("failures":[{"shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
+                       true),
+        // conflicts=proceed tallies skipped documents in `version_conflicts`, not in `failures`.
+        std::make_pair(std::string(R"({"took":5,"updated":7,"total":10,"version_conflicts":3,"failures":[]})"), true),
+        // A body without the documented counters is not an _update_by_query response.
+        std::make_pair(std::string(R"({"took":5})"), true),
+        // A 200 whose body is not JSON (e.g. a proxy error page) confirms nothing.
+        std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
+        // Neither does an empty body.
+        std::make_pair(std::string(), true)));
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
 {
@@ -2932,7 +3055,7 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMultipleRealFailures)
     EXPECT_TRUE(postCalled);
 }
 
-TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsField)
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsFieldFails)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
@@ -2944,7 +3067,7 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsField)
             [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 postCalled = true;
-                // Response without 'errors' field - should be treated as success
+                // A real _bulk 200 always carries 'errors'; a body without it confirms nothing.
                 std::string noErrorsFieldResponse = R"({
                     "took": 10,
                     "items": [
@@ -2966,8 +3089,7 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsField)
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
 
-    // Should not throw - missing 'errors' field treated as success
-    EXPECT_NO_THROW(connector.flush());
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
     EXPECT_TRUE(postCalled);
 }
 

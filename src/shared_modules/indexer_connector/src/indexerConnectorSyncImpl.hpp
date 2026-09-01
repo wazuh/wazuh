@@ -158,11 +158,12 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
         // Parse response - nlohmann::json handles large documents efficiently
         auto responseJson = nlohmann::json::parse(response);
 
-        // Check if response has errors flag
+        // A _bulk answer always carries `errors`; a 200 body without it is not a bulk result and
+        // confirms nothing, so treating it as success would report unindexed documents as indexed.
         if (!responseJson.contains("errors"))
         {
-            logDebug2(tag, "Bulk response missing 'errors' field, treating as success");
-            return true;
+            logWarn(tag, "Bulk response missing 'errors' field, treating as failure");
+            return false;
         }
 
         // If no errors reported, success
@@ -378,6 +379,12 @@ class IndexerConnectorSyncImpl final
             const auto parsed = nlohmann::json::parse(response, nullptr, false);
             if (parsed.is_discarded())
             {
+                // An unparseable 200 confirms nothing; passing it would report a deletion that
+                // may never have happened.
+                LOGFN_WARN(m_logFn,
+                           "deleteByQuery response could not be parsed, cannot confirm the deletion. Response: %s",
+                           response.c_str());
+                deleteByQueryLeftDocuments = true;
                 return;
             }
 
@@ -410,8 +417,10 @@ class IndexerConnectorSyncImpl final
             deleteByQueryLeftDocuments = true;
         };
 
-        const auto onErrorDeleteByQuery =
-            [this](const std::string& error, const long statusCode, const std::string& responseBody)
+        bool deleteByQueryNeedsRetry = false;
+        const auto onErrorDeleteByQuery = [this, &deleteByQueryNeedsRetry](const std::string& error,
+                                                                           const long statusCode,
+                                                                           const std::string& responseBody)
         {
             if (statusCode == HTTP_NOT_FOUND)
             {
@@ -419,21 +428,18 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
                 return;
             }
-            else if (statusCode == HTTP_VERSION_CONFLICT)
-            {
-                LOGFN_DEBUG2(m_logFn, "Document version conflict for deleteByQuery - continuing.");
-                // For deleteByQuery, we don't retry - just log and continue
-                return;
-            }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                LOGFN_DEBUG2(m_logFn, "Too many requests for deleteByQuery - continuing.");
-                // For deleteByQuery, we don't retry - just log and continue
-                return;
+                // Rate-limited before anything ran: retry with backoff like the bulk loops.
+                // Confirming it instead reports a deletion that never happened.
+                deleteByQueryNeedsRetry = true;
+                LOGFN_DEBUG2(m_logFn, "Too many requests for deleteByQuery, retrying with exponential backoff.");
             }
             else
             {
-                // Includes transport-level failures (timeout, connection refused: statusCode <= 0).
+                // Includes request-level 409 (with conflicts=proceed staged in the query, a 409
+                // means the run was refused, not that one document moved) and transport-level
+                // failures (timeout, connection refused: statusCode <= 0).
                 // Raise it and let the catch around the post drop the staged queries -- the caller
                 // retries by re-staging them. The staged BULK data is deliberately left alone: it
                 // has not been attempted yet (deletes go out before the bulk POST) and the next
@@ -457,15 +463,34 @@ class IndexerConnectorSyncImpl final
             LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
             try
             {
-                m_httpRequest->post(
-                    RequestParameters {
-                        .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
-                    PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
-                if (deleteByQueryLeftDocuments)
+                IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                        std::chrono::seconds {m_maxRetryDelay}};
+                do
                 {
-                    throw IndexerConnectorException("deleteByQuery did not delete every matching document");
-                }
+                    if (m_stopping.load())
+                    {
+                        LOGFN_DEBUG2(m_logFn, "Stopping requested, aborting deleteByQuery");
+                        return;
+                    }
+                    deleteByQueryNeedsRetry = false;
+                    m_httpRequest->post(
+                        RequestParameters {
+                            .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
+                        PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
+                        ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                    if (deleteByQueryLeftDocuments)
+                    {
+                        throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+                    }
+                    if (deleteByQueryNeedsRetry)
+                    {
+                        const auto retryDelay = retryBackoff.nextDelay();
+                        LOGFN_DEBUG2(
+                            m_logFn, "Retrying deleteByQuery in %lld ms.", static_cast<long long>(retryDelay.count()));
+                        std::unique_lock<std::mutex> lock(m_retryMutex);
+                        m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
+                    }
+                } while (deleteByQueryNeedsRetry);
             }
             catch (...)
             {
@@ -1020,61 +1045,65 @@ public:
         }
 
         bool needToRetry = false;
+        // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
+        bool updateByQueryFailed = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, &updateByQueryFailed](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Update by query response: %s", response.c_str());
 
-            // Parse response to extract update statistics and check for failures
             try
             {
-                auto responseJson = nlohmann::json::parse(response);
+                const auto responseJson = nlohmann::json::parse(response);
 
-                // Check for failures first
-                if (responseJson.contains("failures") && !responseJson["failures"].empty())
+                // Same contract as _delete_by_query's 200: per-shard errors are tallied in
+                // `failures` and conflicts=proceed skips in `version_conflicts` -- either way,
+                // documents the caller asked to update were left untouched.
+                const auto failures = (responseJson.contains("failures") && responseJson.at("failures").is_array())
+                                          ? responseJson.at("failures").size()
+                                          : 0;
+                const auto conflicts = (responseJson.contains("version_conflicts") &&
+                                        responseJson.at("version_conflicts").is_number_integer())
+                                           ? responseJson.at("version_conflicts").get<std::size_t>()
+                                           : 0;
+                if (failures > 0 || conflicts > 0)
                 {
-                    auto failures = responseJson["failures"];
-                    LOGFN_WARN(m_logFn, "Update by query completed with %zu failures", failures.size());
-
-                    // Log first few failures for debugging
-                    size_t logCount = std::min<size_t>(failures.size(), 3);
-                    for (size_t i = 0; i < logCount; ++i)
-                    {
-                        LOGFN_DEBUG1(m_logFn, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
-                    }
+                    LOGFN_WARN(m_logFn,
+                               "Update by query left documents behind: %zu failure(s), %zu version conflict(s). "
+                               "Response: %s",
+                               failures,
+                               conflicts,
+                               response.c_str());
+                    updateByQueryFailed = true;
+                    return;
                 }
 
-                if (responseJson.contains("updated") && responseJson.contains("total"))
-                {
-                    auto updated = responseJson["updated"].get<int>();
-                    auto total = responseJson["total"].get<int>();
-                    auto noops = responseJson.contains("noops") ? responseJson["noops"].get<int>() : 0;
-                    auto failures = responseJson.contains("failures") ? responseJson["failures"].size() : 0;
+                const auto updated = responseJson.at("updated").get<int>();
+                const auto total = responseJson.at("total").get<int>();
+                const auto noops = responseJson.contains("noops") ? responseJson.at("noops").get<int>() : 0;
 
-                    if (updated > 0)
-                    {
-                        LOGFN_INFO(m_logFn,
-                                   "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
-                                   "failures)",
-                                   updated,
-                                   total,
-                                   noops,
-                                   failures);
-                    }
-                    else
-                    {
-                        LOGFN_DEBUG2(
-                            m_logFn,
-                            "Update by query completed: no documents needed updating (all %d documents already "
-                            "up-to-date, %zu failures)",
-                            total,
-                            failures);
-                    }
+                if (updated > 0)
+                {
+                    LOGFN_INFO(m_logFn,
+                               "Update by query completed: %d documents updated out of %d total (%d unchanged)",
+                               updated,
+                               total,
+                               noops);
+                }
+                else
+                {
+                    LOGFN_DEBUG2(m_logFn,
+                                 "Update by query completed: no documents needed updating (all %d documents already "
+                                 "up-to-date)",
+                                 total);
                 }
             }
             catch (const std::exception& e)
             {
-                LOGFN_DEBUG2(m_logFn, "Could not parse update by query response: %s", e.what());
+                // Unparseable body or one without the documented fields confirms nothing.
+                LOGFN_WARN(m_logFn, "Update by query response could not be validated: %s", e.what());
+                updateByQueryFailed = true;
+                return;
             }
 
             m_shouldNotifyAfterBulk = true;
@@ -1129,6 +1158,7 @@ public:
             }
 
             needToRetry = false;
+            updateByQueryFailed = false;
             auto serverUrl = m_selector->getNext();
             std::string url;
             url += serverUrl;
@@ -1142,6 +1172,11 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
+            if (updateByQueryFailed)
+            {
+                m_notify.clear();
+                throw IndexerConnectorException("Update by query did not confirm every requested update");
+            }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();

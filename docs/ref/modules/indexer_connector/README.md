@@ -87,12 +87,16 @@ achieve leaves documents nothing will ever overwrite:
   moved between the query's search and delete phases is skipped instead of aborting the whole run.
 - **A `200` is not automatically success.** The response is inspected, and the flush throws when it
   reports per-shard `failures` or a non-zero `version_conflicts` — the two ways a `200` can leave
-  matching documents in place. Callers treat that as retriable.
+  matching documents in place — or when its body cannot be parsed at all. Callers treat that as
+  retriable.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
-- HTTP-level `404`, `409` and `429` on a delete-by-query are tolerated (logged at debug) rather than
-  raised: a missing index has nothing to delete, and the other two are retried by re-running the
-  deletion.
+- HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the
+  same backoff as the bulk paths, and anything else — a request-level `409` included — fails the
+  flush: an unconfirmed delete is never reported as applied.
+- **`executeUpdateByQuery` follows the same contract**: a `200` whose body tallies `failures` or
+  `version_conflicts`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
+  instead of confirming it.
 - **A delete-by-query is a SEARCH**, so it only sees documents that are already searchable. Callers
   that need it to cover writes of the last few seconds must refresh the index themselves — the
   connector does not do it for them, and `refresh()` requires `indices:admin/refresh`, which is not
