@@ -77,6 +77,7 @@ Checks: 'clang-diagnostic-*,
         readability-redundant-function-ptr-dereference,
         readability-const-return-type,
         readability-identifier-naming'
+WarningsAsErrors: "*"
 CheckOptions:
   - { key: readability-identifier-naming.ClassCase, value: CamelCase }
   - { key: readability-identifier-naming.ClassMemberPrefix, value: "m_" }
