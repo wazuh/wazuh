@@ -321,6 +321,51 @@ namespace Utils
                 return ret;
             }
 
+            /*
+             * @brief Reads a string value as UTF-8 through the Unicode registry API.
+             *
+             * Registry strings are stored as UTF-16. Reading them with the ANSI API makes
+             * Windows transcode them to the system ANSI code page before handing them to the
+             * caller, so every character missing from that code page is already lost when it
+             * arrives: replaced by '?' or by a best-fit approximation of a different
+             * character. Going through RegQueryValueExW keeps the stored characters and
+             * converts them to UTF-8 without loss, so this is the method to use for any value
+             * whose data is reported as text (names, publishers, paths).
+             *
+             * @param[in]  valueName Name of the value to read, UTF-8 encoded.
+             * @param[out] value     Value data, UTF-8 encoded. Left untouched on failure.
+             *
+             * @return True if the value exists and holds a string, false otherwise.
+             */
+            bool stringUtf8(const std::string& valueName, std::string& value) const
+            {
+                const auto wideName {EncodingWindowsHelper::stringToWStringUTF8(valueName)};
+                DWORD type {0};
+                DWORD size {0};
+
+                if (RegQueryValueExW(m_registryKey, wideName.c_str(), nullptr, &type, nullptr, &size) != ERROR_SUCCESS)
+                {
+                    return false;
+                }
+
+                if ((REG_SZ != type && REG_EXPAND_SZ != type) || 0 == size)
+                {
+                    return false;
+                }
+
+                // The extra character guarantees a terminator even if the stored data lacks one.
+                const auto spBuff {std::make_unique<wchar_t[]>((size / sizeof(wchar_t)) + 1)};
+
+                if (RegQueryValueExW(m_registryKey, wideName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(spBuff.get()), &size) != ERROR_SUCCESS)
+                {
+                    return false;
+                }
+
+                value = EncodingWindowsHelper::wstringToStringUTF8(std::wstring {spBuff.get()});
+
+                return true;
+            }
+
             std::string HandleRegMultiSZ(const BYTE* data, DWORD size) const
             {
                 if (size == 0)
