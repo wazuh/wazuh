@@ -618,7 +618,7 @@ int w_request_agent_add_clustered(char *err_response,
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE, master_error_code);
     }
     else if (err_response) {
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
+        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
     free(output);
@@ -645,7 +645,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
     else if (err_response) {
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
+        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
     free(output);
