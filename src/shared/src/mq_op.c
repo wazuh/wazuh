@@ -224,6 +224,11 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
         return (0);
     }
 
+    if (message == NULL) {
+        merror(FORMAT_ERROR);
+        return (0);
+    }
+
     if (loc == SECURE_MQ) {
         loc = message[0];
         message++;
@@ -267,6 +272,10 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
      * Measure it and hand snprintf a length that keeps every character whole. */
     header_length = strlen(loc_buff) + (secure ? 4 : 3); /* "%c:" + loc_buff + "->" or ":" */
     message_length = w_utf8_truncate_len(message, OS_MAXSTR - 1 - header_length);
+
+    if (message[message_length] != '\0') {
+        mdebug2("Message from '%s' cut to %zu bytes to fit the queue.", locmsg, message_length);
+    }
 
     if (secure) {
         snprintf(tmpstr, OS_MAXSTR, "%c:%s->%.*s", loc, loc_buff, (int)message_length, message);

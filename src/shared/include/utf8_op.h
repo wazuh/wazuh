@@ -48,8 +48,12 @@ char * w_utf8_filter(const char * string, bool replacement);
  * so the whole trailing sequence is dropped instead. It does not write, so the
  * caller can hand the result to a precision specifier.
  *
- * @param string String to be measured.
+ * The string must already be valid UTF-8. A run of continuation bytes longer than
+ * any real character cannot be walked back past, so there the cut falls where asked
+ * and the result is only as valid as the input was.
+ *
+ * @param string String to be measured. Must already be valid UTF-8.
  * @param max_length Maximum length in bytes, excluding the null terminator.
- * @return Length in bytes that keeps every character whole.
+ * @return Length in bytes that keeps every character whole, given valid input.
  */
 size_t w_utf8_truncate_len(const char * string, size_t max_length);

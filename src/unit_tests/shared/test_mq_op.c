@@ -503,6 +503,19 @@ void test_SendMSGAction_secure_msg_keepalive(void ** state){
     assert_int_equal(ret, 0);
 }
 
+void test_SendMSGAction_rejects_a_null_message(void ** state){
+    (void)state;
+
+    expect_string(__wrap__merror, formatted_msg, "(1106): String not correctly formatted.");
+
+    int ret = SendMSG(0, NULL, "/var/log/test.log", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+/* utf8_reported in SendMSGAction() is process-global and cmocka runs every test in one
+ * process, so this must stay the first registered test that sends invalid UTF-8. A later
+ * one reaches the mdebug2 arm instead and this mwarn expectation fails. */
 void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void ** state){
     (void)state;
     int queue = 0;
@@ -540,6 +553,11 @@ void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(void **
     memset(expected + header, 'b', budget - 1);
     expected[header + budget - 1] = '\0';
 
+    char expected_debug[512];
+    snprintf(expected_debug, sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
+
     expect_value(__wrap_OS_SendUnix, socket, queue);
     expect_string(__wrap_OS_SendUnix, msg, expected);
     expect_value(__wrap_OS_SendUnix, size, 0);
@@ -576,6 +594,11 @@ void test_SendMSGAction_cuts_an_oversize_secure_message_on_a_character_boundary(
     int header = snprintf(expected, sizeof(expected), "4:%s->", location);
     memset(expected + header, 'b', budget - 1);
     expected[header + budget - 1] = '\0';
+
+    char expected_debug[512];
+    snprintf(expected_debug, sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
     expect_string(__wrap_OS_SendUnix, msg, expected);
@@ -712,6 +735,7 @@ int main(void){
        cmocka_unit_test(test_SendMSGAction_socket_busy),
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
+       cmocka_unit_test(test_SendMSGAction_rejects_a_null_message),
        cmocka_unit_test(test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message),
        cmocka_unit_test(test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary),
        cmocka_unit_test(test_SendMSGAction_cuts_an_oversize_secure_message_on_a_character_boundary),

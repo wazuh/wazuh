@@ -605,6 +605,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
         return retval;
     }
 
+    if (message == NULL) {
+        merror(FORMAT_ERROR);
+        ReleaseMutex(hMutex);
+        return retval;
+    }
+
     /* The engine puts this message in a JSON document, and Json::str() aborts
      * the whole document on any invalid byte, so the event and the alert it
      * would have raised are both lost. Filtering here covers every producer
@@ -630,6 +636,10 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
      * Measure it and hand snprintf a length that keeps every character whole. */
     header_length = strlen(loc_buff) + 3; /* "%c:" + loc_buff + ":" */
     message_length = w_utf8_truncate_len(message, OS_MAXSTR - 1 - header_length);
+
+    if (message[message_length] != '\0') {
+        mdebug2("Message from '%s' cut to %zu bytes to fit the queue.", locmsg, message_length);
+    }
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%.*s", loc, loc_buff, (int)message_length, message);
 
