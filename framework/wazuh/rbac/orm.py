@@ -604,16 +604,20 @@ class TokenManager(RBACManager):
                        run_as: bool = False) -> bool:
         """Check if the specified token is valid.
 
+        Every rule is looked up only when the argument selecting it is given, so a caller that
+        needs a subset of the checks pays for that subset alone.
+
         Parameters
         ----------
-        user_id : int
-            Current token's user id.
-        role_id : int
-            Current token's role id.
         token_nbf_time : int
             Token's issue timestamp.
+        user_id : int, optional
+            Current token's user id. The user rule is not read when it is omitted.
+        role_id : int, optional
+            Current token's role id. The role rule is not read when it is omitted.
         run_as : bool
-            Indicate if the token has been granted through run_as endpoint.
+            Indicate if the token has been granted through run_as endpoint. The run_as rule is
+            not read when it is False.
 
         Returns
         -------

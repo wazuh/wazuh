@@ -28,6 +28,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.utils as rbac_utils
+        from wazuh.core import common
         from wazuh.core.exception import WazuhInternalError
         from api.authentication import (generate_keypair, check_user_master, check_user, change_keypair,
                                         _private_key_path, _public_key_path, wazuh_uid, wazuh_gid, get_security_conf,
@@ -69,6 +70,8 @@ original_payload = {
 @pytest.fixture(autouse=True)
 def clear_generate_keypair_cache():
     generate_keypair.cache_clear()
+    yield
+    generate_keypair.cache_clear()
 
 
 @pytest.fixture(autouse=True)
@@ -77,6 +80,20 @@ def clear_policies_cache():
     rbac_utils.POLICIES_CACHE.clear()
     yield
     rbac_utils.POLICIES_CACHE.clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_token_cache_generation():
+    """Restore the shared generation counter, which outlives every test in the session.
+
+    It is a `multiprocessing.Value` created at import time, so a test that invalidates the cache
+    would otherwise leave it advanced for everything that runs afterwards.
+    """
+    with common.token_cache_generation.get_lock():
+        common.token_cache_generation.value = 0
+    yield
+    with common.token_cache_generation.get_lock():
+        common.token_cache_generation.value = 0
 
 def test_check_user_master():
     result = check_user_master('test_user', 'test_pass')
