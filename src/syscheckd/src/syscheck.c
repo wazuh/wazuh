@@ -77,6 +77,8 @@ void read_internal(int debug_level)
     syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
     syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
     syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
+    syscheck.sync_flush_batch_size = getDefine_Int_default("syscheck", "sync_flush_batch_size", 1, 100000, 100);
+    syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 1, 3600000, 500);
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
@@ -560,7 +562,8 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
+                                       (uint64_t)syscheck.sync_flush_batch_size, (uint64_t)syscheck.sync_flush_interval_ms);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

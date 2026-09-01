@@ -13,6 +13,9 @@
 #include "ipersistent_queue_storage.hpp"
 #include "persistent_queue.hpp"
 
+#include <chrono>
+#include <thread>
+
 using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -85,6 +88,30 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
 
     ASSERT_EQ(flushedBatch.size(), 1u);
     EXPECT_EQ(flushedBatch[0].id, "id1");
+}
+
+TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    std::vector<PersistedData> flushedBatch;
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .Times(1)
+    .WillOnce(SaveArg<0>(&flushedBatch));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Override the batch size to 2 (well below the 100-event default) and the interval to a
+    // value the test would time out waiting for. A flush before destruction proves the
+    // count-based override -- not the default -- is what triggered it.
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 2, std::chrono::milliseconds(60000));
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
+    queue.submit("id2", "index2", "{}", Operation::CREATE, 1);
+
+    // Give the flush thread a moment to react to the count threshold.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    ASSERT_EQ(flushedBatch.size(), 2u);
 }
 
 TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)

@@ -312,6 +312,11 @@ class PersistentQueueStorageTest : public ::testing::Test
         }
 };
 
+TEST_F(PersistentQueueStorageTest, ConstructorConfiguresWalAutocheckpointThreshold)
+{
+    EXPECT_EQ(storage->getWalAutocheckpoint(), 8000);
+}
+
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {
     // Insert items with different indices

@@ -110,7 +110,9 @@ long AgentSyncProtocol::currentAgentId()
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                      std::shared_ptr<IPersistentQueue> queue,
-                                     std::shared_ptr<ISyncSessionTransport> syncTransport)
+                                     std::shared_ptr<ISyncSessionTransport> syncTransport,
+                                     std::optional<std::size_t> flushBatchSize,
+                                     std::optional<std::chrono::milliseconds> flushInterval)
     : m_moduleName(moduleName),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
@@ -129,7 +131,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
         }
         else if (dbPath.has_value())
         {
-            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger);
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval);
         }
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation

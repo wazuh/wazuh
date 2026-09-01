@@ -45,6 +45,13 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         createTableIfNotExists();
         m_connection.execute("PRAGMA synchronous = OFF;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
+
+        // Raise the WAL auto-checkpoint threshold from SQLite's default (1000
+        // pages) to reduce how often the WAL is flushed back into the main
+        // fim_sync.db file. This only affects checkpoint frequency — WAL
+        // contents remain fully durable and recoverable regardless of this
+        // threshold.
+        m_connection.execute("PRAGMA wal_autocheckpoint = 8000;");
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -607,4 +614,16 @@ void PersistentQueueStorage::deleteDatabase()
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
     }
+}
+
+int32_t PersistentQueueStorage::getWalAutocheckpoint() const
+{
+    SQLite3Wrapper::Statement stmt(m_connection, "PRAGMA wal_autocheckpoint;");
+
+    if (stmt.step() == SQLITE_ROW)
+    {
+        return stmt.value<int32_t>(0);
+    }
+
+    return -1;
 }

@@ -138,6 +138,7 @@ void test_read_internal(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(0);
 }
@@ -147,6 +148,7 @@ void test_read_internal_debug(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(1);
 }
