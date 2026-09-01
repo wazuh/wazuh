@@ -213,11 +213,10 @@ def test_get_ossec_conf():
         with pytest.raises(WazuhError, match=".* 1101 .*"):
             configuration.get_ossec_conf()
 
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            configuration.get_ossec_conf(from_import=True)
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 0
+    # A broken configuration file must always raise, never terminate the process.
+    with patch('wazuh.core.configuration.load_wazuh_xml', side_effect=Exception('broken conf')):
+        with pytest.raises(WazuhError, match=".* 1101 .*"):
+            configuration.get_ossec_conf()
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
         configuration.get_ossec_conf(section='noexists',

@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from configparser import NoOptionError, RawConfigParser
 from io import StringIO
@@ -499,7 +498,7 @@ def _merged_mg2json(file_path: str) -> List[dict]:
 
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
-                   from_import: bool = False, distinct: bool = False) -> dict:
+                   distinct: bool = False) -> dict:
     """Return wazuh-manager.conf (manager) as dictionary.
 
     Parameters
@@ -510,8 +509,6 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         Filters by field in section (i.e. included).
     conf_file : str
         Path of the configuration file to read. Default: common.OSSEC_CONF
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
     distinct : bool
         Look for distinct values.
 
@@ -538,11 +535,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         # Parse XML to JSON
         data = _wazuhconf2json(xml_data)
     except Exception as e:
-        if not from_import:
-            raise WazuhError(1101, extra_message=str(e))
-        else:
-            print(f"wazuh-manager-apid: There is an error in the wazuh-manager.conf file: {str(e)}")
-            sys.exit(0)
+        raise WazuhError(1101, extra_message=str(e))
 
     if section:
         try:
