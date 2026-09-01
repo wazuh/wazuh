@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstring>
 #include <mutex>
+#include <type_traits>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -50,7 +51,13 @@ namespace
     };
 
     /**
-     * @brief RAII wrapper for shared memory
+     * @brief Process-wide owner of the shared memory segment
+     *
+     * Has no destructor on purpose (#38766): one would be registered after agentd's
+     * atexit(w_https_client_stop) and so would run before it, unmapping the segment
+     * while the shutdown drain still reads it. Staying trivially destructible also
+     * keeps the instance below out of the exit-time teardown entirely. The kernel
+     * reclaims the mapping and the descriptor at process exit.
      */
     class SharedMemoryProvider
     {
@@ -337,35 +344,6 @@ namespace
 #endif
             }
 
-            ~SharedMemoryProvider()
-            {
-#ifdef _WIN32
-
-                if (m_shm)
-                {
-                    UnmapViewOfFile(m_shm);
-                }
-
-                if (m_hMapFile)
-                {
-                    CloseHandle(m_hMapFile);
-                }
-
-#else
-
-                if (m_shm && m_shm != MAP_FAILED)
-                {
-                    munmap(m_shm, sizeof(SharedMetadata));
-                }
-
-                if (m_shm_fd != -1)
-                {
-                    close(m_shm_fd);
-                }
-
-#endif
-            }
-
             SharedMetadata* m_shm;
 #ifdef _WIN32
             HANDLE m_hMapFile;
@@ -374,6 +352,12 @@ namespace
             bool m_read_only;
 #endif
     };
+
+    // Guards the invariant above: anything that makes this destructible again brings back
+    // the exit-time unmap that #38766 was.
+    static_assert(std::is_trivially_destructible<SharedMemoryProvider>::value,
+                  "SharedMemoryProvider must stay trivially destructible: a destructor would "
+                  "unmap the segment before agentd's shutdown drain has finished reading it.");
 }
 
 // C API implementation

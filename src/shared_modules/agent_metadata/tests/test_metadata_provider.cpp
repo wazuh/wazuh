@@ -15,6 +15,12 @@
 #include <atomic>
 #include <vector>
 
+#ifndef _WIN32
+#include <cstdlib>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 class MetadataProviderTest : public ::testing::Test
 {
     protected:
@@ -346,3 +352,36 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
 
     metadata_provider_free_metadata(&retrieved);
 }
+
+#ifndef _WIN32
+
+extern const char* g_testBinaryPath;
+
+// #38766: a provider teardown registered after agentd's atexit(w_https_client_stop) runs
+// before it, so the drain that follows reads a dangling pointer and the process is
+// killed instead of exiting. Re-executes this binary because the fixture's SetUp() has
+// already built the singleton here; see runAtexitChild() in main.cpp.
+TEST_F(MetadataProviderTest, ReadFromAtexitAfterProviderTeardownDoesNotCrash)
+{
+    ASSERT_NE(g_testBinaryPath, nullptr);
+
+    const pid_t pid = fork();
+    ASSERT_NE(pid, -1);
+
+    if (pid == 0)
+    {
+        setenv("WAZUH_METADATA_ATEXIT_CHILD", "1", 1);
+        execl(g_testBinaryPath, g_testBinaryPath, static_cast<char*>(nullptr));
+        _exit(4); // Only reached if exec failed.
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+
+    ASSERT_FALSE(WIFSIGNALED(status)) << "child died with signal " << WTERMSIG(status)
+                                      << ": the provider was torn down while a later exit handler still read it";
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+#endif
