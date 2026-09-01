@@ -353,6 +353,16 @@ class WazuhException(Exception):
                'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service."},
+        3061: {'message': 'Unknown cluster item key',
+               'remediation': 'The received file metadata refers to a cluster item key which is not defined in the '
+                              'local cluster configuration. Check that every node of the cluster runs the same Wazuh '
+                              'version and check the `WAZUH_HOME/logs/cluster.log` file to identify the rejected '
+                              'item key.'},
+        3062: {'message': 'Rejected by the cluster synchronization guard',
+               'remediation': 'The reported file was not synchronized because it resolves outside its cluster item '
+                              'directory, is listed as an excluded file, or belongs to a cluster item which is not '
+                              'allowed to be synchronized. Check the `WAZUH_HOME/logs/cluster.log` file to identify '
+                              'the rejected file.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
