@@ -312,12 +312,11 @@ namespace remoted::enrollment
                 case 9007:
                 case 9008:
                 case 9012: return 409;
-                case 9013: // max_agents reached
+                case 9013: // max_agents reached -- also authd's id-assignment counter exhaustion,
+                           // which shares this sentinel; reachable from ordinary self-enrollment
+                           // since it never sends an id of its own.
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
-                case 9021: // authd's id-assignment counter is exhausted: same "out of capacity" shape
-                           // as 9013, and reachable from ordinary self-enrollment since it never sends
-                           // an id of its own.
                     return 503;
                 default: return 500;
             }

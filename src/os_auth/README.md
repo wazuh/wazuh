@@ -43,7 +43,7 @@ it would erase why.
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — the `200` means *queued*; waiting for the flush wedged the writer |
 | RF-12 | Survive a restart without losing work the system has no other record of | kept ([the state file](#the-state-file)) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
-| RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_COUNTER_EXHAUSTED`) — D9 |
+| RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
 
 ### Non-functional (RNF)
 
@@ -70,7 +70,7 @@ The deletion route is a contract between two modules; both sides depend on these
 | REQ-PURGE-4 | The purge is **delayed** by `authd.purge_delay` so it outlives the index refresh, the cluster sync and the keepalive tolerance — whatever it misses survives forever |
 | REQ-PURGE-5 | Deletion orders FIFO against that agent's in-flight sessions; the caller does not serialize it |
 
-## Design decisions (D1–D8)
+## Design decisions (D1–D9)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -286,8 +286,9 @@ what explains a jump in the ids handed out.
 The counter is a signed 32-bit int, the same width `client.keys` and the database store the id in,
 so a manager that is long-lived or churns through enough agents can drive it to `INT_MAX` on its own
 — no out-of-range input anywhere. `OS_AddNewAgent()` refuses to increment past that point rather than
-wrapping to a negative id: the enrollment fails with `9021 Agent ID counter exhausted` (the local
-socket) or the plain-text `ERROR: Agent ID counter exhausted` (anonymous enrollment on 1515), and
+wrapping to a negative id, reusing the same `OS_ADDAGENT_LIMIT_REACHED` sentinel an ordinary
+`max_agents` refusal returns: the enrollment fails with `9013 Maximum number of agents reached` (the
+local socket) or the plain-text `ERROR: Agent limit (N) reached` (anonymous enrollment on 1515), and
 nothing is written to either store. This is unreachable from remoted's `/enroll` route today only in
 the sense that a fleet has to be large or long-lived enough to exhaust ~2.1 billion ids first; there is
 no format check that could rule it out the way an out-of-range explicit id can be rejected up front.
@@ -364,7 +365,7 @@ The ones that shape the behaviour described here:
 | `The pending deletion queue is full` | the cap was hit; that deletion has to be repeated |
 | `Shutting down with N pending agent deletion(s)` | they stay in the file and are retried on the next start |
 | `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9018` path |
-| `Unable to add agent: NAME. Agent ID counter exhausted.` | `id_counter` reached `INT_MAX`; the enrollment is refused instead of wrapping to a negative id |
+| `Unable to add agent: NAME. Agent limit (N) reached.` | also fires when `id_counter` reached `INT_MAX`; the enrollment is refused instead of wrapping to a negative id |
 
 ## Tests
 

@@ -652,7 +652,6 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
     (WazuhError(9012, cmd_error=True), ".* 1708 .*"),
     (WazuhError(9018, cmd_error=True), ".* 1763 .*"),
     (WazuhError(9020, cmd_error=True), ".* 1765 .*"),
-    (WazuhError(9021, cmd_error=True), ".* 1766 .*"),
     (WazuhError(9000, cmd_error=True), ".* None")
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')

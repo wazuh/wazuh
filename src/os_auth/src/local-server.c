@@ -43,8 +43,7 @@ typedef enum auth_local_err {
     EINVALIDNAME,
     EPENDINGPURGE,
     EINVALIDKEY,
-    EINVALIDID,
-    EIDEXHAUSTED // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDID // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -77,10 +76,7 @@ static const struct {
     { 9019, "Invalid agent key" },
     // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
     // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
-    { 9020, "Invalid agent ID" },
-    // The auto-assignment counter (keystore.id_counter) is already at INT_MAX: incrementing it
-    // would wrap to a negative id instead of failing loudly.
-    { 9021, "Agent ID counter exhausted" }
+    { 9020, "Invalid agent ID" }
 };
 
 // Dispatch local request
@@ -725,11 +721,6 @@ cJSON* local_add(const char *id,
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
         ierror = EAGLIM;
-        goto fail;
-    }
-    if (index == OS_ADDAGENT_COUNTER_EXHAUSTED) {
-        merror("Unable to add agent: %s. Agent ID counter exhausted.", name);
-        ierror = EIDEXHAUSTED;
         goto fail;
     }
     if (index < 0) {

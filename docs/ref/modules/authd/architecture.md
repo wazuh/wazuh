@@ -131,7 +131,9 @@ Checked before the keystore is mutated:
 | version | rejected if newer than the manager's, unless `<agents><allow_higher_versions>` is `yes` |
 
 The agent limit is not on that list because it is not a separate check: `OS_AddNewAgent()` enforces
-`max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`.
+`max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`. The same sentinel
+covers the id-assignment counter (`id_counter`) reaching `INT_MAX`: both are "no capacity left"
+conditions and neither leaves a corrupted record behind.
 
 **The name is checked by two different validators, and the difference is intentional.** The TLS
 port 1515 path applies `OS_IsValidName()` — 2–128 characters, no leading `.`, a restricted charset.
@@ -243,11 +245,10 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9003 / 9004 / 9005 / 9006 / 9014 / 9017 | no such function/argument/name/IP, invalid groups, invalid agent name | `400` |
 | 9007 / 9008 / 9012 | duplicate IP, name or id | `409` |
 | 9010 / 9011 | no such agent id / agent id not found | — |
-| 9013 | `max_agents` reached | `503` |
+| 9013 | `max_agents` reached, or the id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `503` — the latter is reachable from ordinary self-enrollment, since it never sends an id of its own |
 | 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
 | 9018 | the id still has a pending deletion | — |
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
-| 9021 | id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `503` — same "out of capacity" shape as `9013`, and reachable from ordinary self-enrollment since it never sends an id of its own |
 
 ## Agent removal
 

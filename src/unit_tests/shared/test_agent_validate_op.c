@@ -134,7 +134,7 @@ static void test_id_counter_at_int_max_fails_instead_of_wrapping(void **state) {
     /* Refused before the CSPRNG or OS_AddKey are ever reached: no will_return()/expect_*() set up
      * for them, so cmocka fails the test if either gets called. */
     int index = OS_AddNewAgent(&keys, NULL, "agent1", "any", NULL, 0);
-    assert_int_equal(index, OS_ADDAGENT_COUNTER_EXHAUSTED);
+    assert_int_equal(index, OS_ADDAGENT_LIMIT_REACHED);
     assert_int_equal(keys.keysize, 0);
     assert_int_equal(keys.id_counter, INT_MAX);
 }

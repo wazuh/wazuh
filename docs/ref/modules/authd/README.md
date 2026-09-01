@@ -126,8 +126,9 @@ agent. On startup the id counter is raised to that mark if needed, and the chang
 Both `client.keys` and the database keep the id in a signed 32-bit integer, so a fleet large or
 long-lived enough can drive the counter all the way to `INT_MAX` on its own — no out-of-range input
 anywhere. Authd refuses to hand out the next id rather than wrapping it to a negative value: the
-auto-assigned enrollment fails with `9021 Agent ID counter exhausted` instead of silently producing
-a record `client.keys` and the database would disagree about.
+auto-assigned enrollment fails the same way an ordinary `max_agents` refusal does — `9013 Maximum
+number of agents reached` — instead of silently producing a record `client.keys` and the database
+would disagree about.
 
 For the same reason, an insertion that names an id explicitly
 (`POST /agents/insert`) is **refused** while that id still owes a purge, rather than cancelling the

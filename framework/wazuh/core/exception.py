@@ -235,10 +235,6 @@ class WazuhException(Exception):
                'remediation': 'The agent ID must be a positive integer no greater than 2147483647, '
                               'and other than 0, which is reserved for the manager'
                },
-        1766: {'message': 'No more agent IDs are available',
-               'remediation': 'The manager has handed out every ID it can store; it cannot enroll '
-                              'new agents until this is resolved'
-               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

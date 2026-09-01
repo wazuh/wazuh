@@ -681,7 +681,6 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9013, 503},
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
-                                           AuthdErrorCase {9021, 503}, // id-assignment counter exhausted
                                            AuthdErrorCase {9999, 500})); // unknown code -> safe default
 
 TEST(EnrollmentEndpointTest, AuthdUnreachableMapsTo503)

@@ -74,7 +74,7 @@ int OS_AddNewAgent(keystore *keys,
 
     if (!id) {
         if (keys->id_counter >= INT_MAX) {
-            return OS_ADDAGENT_COUNTER_EXHAUSTED;
+            return OS_ADDAGENT_LIMIT_REACHED;
         }
         snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);
         id = _id;

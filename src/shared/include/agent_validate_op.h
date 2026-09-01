@@ -18,7 +18,6 @@
 typedef struct _keystore keystore;
 
 #define OS_ADDAGENT_LIMIT_REACHED -2
-#define OS_ADDAGENT_COUNTER_EXHAUSTED -3
 #define FILE_SIZE                 257
 #define STR_SIZE                  66
 #define VALID_AGENT_NAME_CHARS    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
@@ -27,9 +26,8 @@ typedef struct _keystore keystore;
 // Adds an agent to the in-memory keystore. A NULL key is generated: exactly 32 CSPRNG bytes (OpenSSL
 // RAND_bytes) stored as 64 lowercase hex chars -- the agent's HS256 secret for remoted's
 // wazuh-agent+jwt bearer profile. Returns the new entry's index, OS_ADDAGENT_LIMIT_REACHED when
-// max_agents is hit, OS_ADDAGENT_COUNTER_EXHAUSTED when a NULL id and an id_counter already at
-// INT_MAX would wrap the auto-assigned id, or OS_INVALID (< 0) if the CSPRNG fails (nothing is
-// added).
+// max_agents is hit or a NULL id and an id_counter already at INT_MAX would wrap the auto-assigned
+// id, or OS_INVALID (< 0) if the CSPRNG fails (nothing is added).
 int OS_AddNewAgent(
     keystore* keys, const char* id, const char* name, const char* ip, const char* key, unsigned int max_agents);
 // True iff `key` has the exact shape OS_AddNewAgent() generates and remoted accepts: 64 lowercase
