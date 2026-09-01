@@ -17,6 +17,7 @@
 #include <vector>
 #include <mutex>
 #include <memory>
+#include <unordered_map>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
@@ -90,9 +91,19 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Items that failed to persist on a previous submit() call. Retried
-        ///        opportunistically at the start of the next submit() before the new
-        ///        item is processed, so a transient storage failure does not silently
-        ///        and permanently lose the event.
-        std::vector<PersistedData> m_pendingRetry;
+        /// @brief Items that failed to persist on a previous call, keyed by id so repeated
+        ///        failures (or a newer submit() for the same id arriving before the older
+        ///        failed attempt is retried) coalesce to just the latest attempt instead of
+        ///        accumulating stale duplicates. Retried opportunistically at the start of
+        ///        submit(), fetchAndMarkForSync(), and fetchPendingItems() -- i.e. every entry
+        ///        point that touches m_storage, not just submit() -- so a transient storage
+        ///        failure does not silently and permanently lose the event even if no further
+        ///        submit() call for a different id ever happens. Also given one last
+        ///        best-effort drain attempt in the destructor, so a failed item that was never
+        ///        retried again is not additionally lost on an otherwise graceful shutdown.
+        std::unordered_map<std::string, PersistedData> m_pendingRetry;
+
+        /// @brief Retries every item in m_pendingRetry against m_storage, keeping only the
+        ///        ones that still fail. Caller must already hold m_storageMutex.
+        void drainPendingRetryLocked();
 };

@@ -22,13 +22,18 @@ namespace
     constexpr size_t SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES = 512U;
     constexpr unsigned int MAX_OVERSIZED_ATTEMPTS = 5U;
 
-    /// @brief Maximum number of distinct (never-seen-before) ids this queue will hold at
-    ///        once. Bounds RSS growth if the sync peer is unreachable for an extended
-    ///        period: once full, a brand-new id is rejected (logged, not silently dropped)
+    /// @brief Maximum estimated total size (in bytes, using the same per-item estimate as
+    ///        the sync byte budget above) of distinct (never-seen-before) ids this queue
+    ///        will hold at once. Bounds RSS growth if the sync peer is unreachable for an
+    ///        extended period: once full, a brand-new id is rejected (throws -- see the
+    ///        throw site in applyCoalesceLogic below for why it must not silently no-op)
     ///        rather than evicting already-queued state. This value is a starting point,
     ///        not an authoritative figure -- there is no official sizing guidance for this
-    ///        queue, so it should be revisited against real operational data.
-    constexpr size_t MAX_QUEUE_ROWS = 10000U;
+    ///        queue, so it should be revisited against real operational data. Tracking the
+    ///        cap in bytes rather than row count avoids the previous mismatch where 10000
+    ///        rows of small FIM checksums was negligible RSS but the same row count of
+    ///        larger SCA/inventory payloads could be tens of MB.
+    constexpr size_t MAX_QUEUE_BYTES = 8U * 1024U * 1024U;
 
     size_t estimateSerializedItemBytes(const PersistedData& data)
     {
@@ -74,26 +79,53 @@ void InMemoryQueueStorage::loadFromDisk()
         return;
     }
 
-    try
-    {
-        PersistentQueueStorage onDiskSnapshot(m_dbPath, m_logger, m_fileSystemWrapper);
+    // A transient failure here is far more dangerous than it looks: giving up immediately
+    // leaves the on-disk snapshot file untouched (deleteDatabase() below is only reached on
+    // success), but m_rows starts empty regardless -- and the NEXT graceful shutdown's
+    // saveToDisk() unconditionally overwrites that same on-disk file with whatever is in
+    // m_rows at that point (PersistentQueueStorage::saveAll() deletes the old rows first),
+    // permanently destroying the never-loaded backlog. Retrying here, mirroring saveToDisk()'s
+    // own bounded retry, closes most of that window; a persistent failure still falls back to
+    // "start empty" exactly as before, since there is nothing else this constructor can do.
+    constexpr int MAX_LOAD_ATTEMPTS = 3;
+    constexpr std::chrono::milliseconds RETRY_DELAY{100};
 
-        for (auto& row : onDiskSnapshot.fetchAll())
+    for (int attempt = 1; attempt <= MAX_LOAD_ATTEMPTS; ++attempt)
+    {
+        try
         {
-            addRow(std::move(row));
+            PersistentQueueStorage onDiskSnapshot(m_dbPath, m_logger, m_fileSystemWrapper);
+
+            for (auto& row : onDiskSnapshot.fetchAll())
+            {
+                addRow(std::move(row));
+            }
+
+            // The snapshot has been fully loaded into memory; remove it so a crash before
+            // the next graceful shutdown correctly yields "no snapshot" rather than a stale
+            // one.
+            onDiskSnapshot.deleteDatabase();
+            return;
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception& ex)
+        {
+            if (attempt == MAX_LOAD_ATTEMPTS)
+            {
+                m_logger(LOG_ERROR, std::string("InMemoryQueueStorage: Failed to load snapshot from disk after ") +
+                         std::to_string(MAX_LOAD_ATTEMPTS) + " attempts, starting empty: " + ex.what());
+                return;
+            }
+
+            m_logger(LOG_WARNING,
+                     "InMemoryQueueStorage: Attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(MAX_LOAD_ATTEMPTS) +
+                     " to load the on-disk snapshot failed, retrying: " + ex.what());
+            std::this_thread::sleep_for(RETRY_DELAY);
         }
 
-        // The snapshot has been fully loaded into memory; remove it so a crash before the
-        // next graceful shutdown correctly yields "no snapshot" rather than a stale one.
-        onDiskSnapshot.deleteDatabase();
+        // LCOV_EXCL_STOP
     }
-    // LCOV_EXCL_START
-    catch (const std::exception& ex)
-    {
-        m_logger(LOG_ERROR, std::string("InMemoryQueueStorage: Failed to load snapshot from disk, starting empty: ") + ex.what());
-    }
-
-    // LCOV_EXCL_STOP
 }
 
 void InMemoryQueueStorage::saveToDisk()
@@ -142,8 +174,9 @@ void InMemoryQueueStorage::addRow(QueueRow row)
 {
     row.rowId = m_nextRowId++;
 
-    // Capture the id before the move below invalidates row's own copy.
+    // Capture the id and estimated size before the move below invalidates row's own copy.
     const std::string id = row.data.id;
+    const size_t rowBytes = estimateSerializedItemBytes(row.data);
     m_rows.push_back(std::move(row));
 
     try
@@ -158,6 +191,8 @@ void InMemoryQueueStorage::addRow(QueueRow row)
         m_rows.pop_back();
         throw;
     }
+
+    m_totalEstimatedBytes += rowBytes;
 }
 
 void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
@@ -166,13 +201,24 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
 
     if (it == m_index.end())
     {
-        if (m_rows.size() >= MAX_QUEUE_ROWS)
+        const size_t incomingBytes = estimateSerializedItemBytes(newData);
+
+        if (m_totalEstimatedBytes + incomingBytes > MAX_QUEUE_BYTES)
         {
-            m_logger(LOG_ERROR,
-                     "InMemoryQueueStorage: Queue is at capacity (" + std::to_string(MAX_QUEUE_ROWS) +
-                     " rows); rejecting new item id=" + newData.id +
-                     ". The sync peer may be unreachable for an extended period.");
-            return;
+            // Throw rather than silently returning: a caller like syscheckd's full-table
+            // recovery path (which clears the manager's index first, then re-persists every
+            // row in a loop with no capacity check of its own) cannot tell a silent no-op
+            // apart from success. Throwing lets PersistentQueue::submit() retain this item in
+            // m_pendingRetry and retry it once room frees up, instead of permanently losing it
+            // the moment the cap is hit -- turning "silently dropped forever" into "retried
+            // until the queue has room," which is not a full fix (the caller still gets no
+            // synchronous success/failure signal) but is a materially better failure mode.
+            const std::string message = "InMemoryQueueStorage: Queue is at capacity (~" +
+                                         std::to_string(m_totalEstimatedBytes) + " of " +
+                                         std::to_string(MAX_QUEUE_BYTES) + " B); rejecting new item id=" +
+                                         newData.id + ". The sync peer may be unreachable for an extended period.";
+            m_logger(LOG_ERROR, message);
+            throw std::runtime_error(message);
         }
 
         QueueRow row;
@@ -201,6 +247,7 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
 
     if (newData.operation == Operation::DELETE_ && oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
     {
+        m_totalEstimatedBytes -= estimateSerializedItemBytes(oldRow.data);
         m_rows.erase(it->second);
         m_index.erase(it);
         return;
@@ -217,6 +264,8 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
         newCreateStatus = CreateStatus::NEW;
     }
 
+    m_totalEstimatedBytes -= estimateSerializedItemBytes(oldRow.data);
+
     oldRow.data.index = newData.index;
     oldRow.data.data = newData.data;
     oldRow.data.operation = newData.operation;
@@ -225,6 +274,8 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
     oldRow.syncStatus = newSyncStatus;
     oldRow.createStatus = newCreateStatus;
     oldRow.operationSyncing = newOperationSyncing;
+
+    m_totalEstimatedBytes += estimateSerializedItemBytes(oldRow.data);
 }
 
 void InMemoryQueueStorage::submitOrCoalesce(const PersistedData& data)
@@ -284,6 +335,7 @@ std::vector<PersistedData> InMemoryQueueStorage::fetchAndMarkForSync(size_t maxB
                          " B) after " + std::to_string(m_oversizedItemAttempts) +
                          " consecutive cycles alone over the byte cap (" +
                          std::to_string(maxBytes) + " B); it was blocking every item behind it.");
+                m_totalEstimatedBytes -= estimateSerializedItemBytes(it->data);
                 m_index.erase(it->data.id);
                 it = m_rows.erase(it);
                 m_oversizedItemId.clear();
@@ -328,6 +380,14 @@ std::vector<PersistedData> InMemoryQueueStorage::fetchPending(bool onlyDataValue
         if (row.syncStatus == SyncStatus::PENDING && (!onlyDataValues || !row.data.is_data_context))
         {
             PersistedData data = row.data;
+            // NOTE: unlike PersistentQueueStorage (whose seq is the durable SQLite rowid,
+            // stable across restarts), row.rowId here comes from m_nextRowId, which restarts
+            // at 1 every process start -- including for rows just reloaded from a prior
+            // snapshot in loadFromDisk(). No current caller relies on seq being stable across
+            // restarts (fetchAndMarkForSync()'s own callers overwrite it per-batch anyway),
+            // but this is a real, disclosed drift from the field's documented semantics that
+            // a future or external consumer comparing seq values across restarts would need
+            // to be aware of.
             data.seq = row.rowId;
             result.push_back(std::move(data));
         }
@@ -352,6 +412,7 @@ void InMemoryQueueStorage::removeAllSynced()
 
         if (shouldDelete)
         {
+            m_totalEstimatedBytes -= estimateSerializedItemBytes(it->data);
             m_index.erase(it->data.id);
             it = m_rows.erase(it);
         }
@@ -387,6 +448,7 @@ void InMemoryQueueStorage::resetAllSyncing()
     {
         if (it->data.operation == Operation::DELETE_ && it->createStatus == CreateStatus::NEW_DELETED)
         {
+            m_totalEstimatedBytes -= estimateSerializedItemBytes(it->data);
             m_index.erase(it->data.id);
             it = m_rows.erase(it);
         }
@@ -403,6 +465,7 @@ void InMemoryQueueStorage::removeByIndex(const std::string& index)
     {
         if (it->data.index == index)
         {
+            m_totalEstimatedBytes -= estimateSerializedItemBytes(it->data);
             m_index.erase(it->data.id);
             it = m_rows.erase(it);
         }
@@ -419,6 +482,7 @@ void InMemoryQueueStorage::removeAllDataContext()
     {
         if (it->data.is_data_context)
         {
+            m_totalEstimatedBytes -= estimateSerializedItemBytes(it->data);
             m_index.erase(it->data.id);
             it = m_rows.erase(it);
         }
@@ -438,6 +502,7 @@ void InMemoryQueueStorage::deleteDatabase()
 {
     m_rows.clear();
     m_index.clear();
+    m_totalEstimatedBytes = 0;
 
     try
     {
@@ -463,6 +528,7 @@ void InMemoryQueueStorage::saveAll(const std::vector<QueueRow>& rows)
 {
     m_rows.clear();
     m_index.clear();
+    m_totalEstimatedBytes = 0;
 
     for (const auto& row : rows)
     {

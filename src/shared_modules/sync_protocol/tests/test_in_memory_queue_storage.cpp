@@ -620,29 +620,78 @@ TEST_F(InMemoryQueueStorageRoundTripTest, LoadsASnapshotWrittenDirectlyByPersist
     EXPECT_EQ(pending[0].id, "id1");
 }
 
-TEST(InMemoryQueueStorageCapacityTest, RejectsNewItemsPastQueueCapacityWithoutEvictingExisting)
+TEST(InMemoryQueueStorageCapacityTest, RejectsNewItemsPastQueueByteCapacityWithoutEvictingExisting)
 {
-    // Bounds RSS growth when the sync peer is unreachable for an extended period: once at
-    // capacity, a brand-new (never-seen) id is rejected rather than evicting already-queued
-    // state. The exact cap is an internal implementation detail (not exposed via the
-    // header), so this only checks the boundary behavior, not the specific limit value.
+    // Bounds RSS growth when the sync peer is unreachable for an extended period: once the
+    // estimated total size of the queue is at capacity, a brand-new (never-seen) id is
+    // rejected -- by throwing, not silently returning, so a caller (e.g.
+    // PersistentQueue::submit()) can tell the difference from success and retain the item
+    // for retry -- rather than evicting already-queued state. The exact byte cap is an
+    // internal implementation detail (not exposed via the header), so this only checks the
+    // boundary behavior, not the specific limit value -- each item carries a large enough
+    // payload, and enough of them are submitted, to comfortably exceed any plausible cap.
     InMemoryQueueStorage storage(":memory:", silentLogger());
 
-    // Fill well past any plausible cap.
-    for (int i = 0; i < 10001; ++i)
+    const std::string largePayload(4096, 'x');
+
+    // Fill up to well past any plausible cap, expecting the first throw to mark where the
+    // real limit was hit. 3000 items * (~4096 payload + ~512 overhead) bytes is well past
+    // any plausible byte cap.
+    size_t acceptedCount = 0;
+    bool threwOnce = false;
+
+    for (int i = 0; i < 3000; ++i)
     {
-        storage.submitOrCoalesce(PersistedData{0, "id" + std::to_string(i), "idx", "{}", Operation::CREATE, 1});
+        try
+        {
+            storage.submitOrCoalesce(PersistedData{0, "id" + std::to_string(i), "idx", largePayload, Operation::CREATE, 1});
+            ++acceptedCount;
+        }
+        catch (const std::exception&)
+        {
+            threwOnce = true;
+        }
     }
+
+    EXPECT_TRUE(threwOnce) << "Expected at least one rejection once the cap was reached";
 
     const auto rows = storage.fetchAll();
 
-    // The row count must have actually been capped -- not every one of the 10001 submitted
-    // items made it in.
-    EXPECT_LT(rows.size(), static_cast<size_t>(10001));
+    // The row count must match exactly how many submissions were actually accepted -- not
+    // every one of the 3000 attempted submissions made it in.
+    EXPECT_LT(rows.size(), static_cast<size_t>(3000));
+    EXPECT_EQ(rows.size(), acceptedCount);
 
     // The very first item submitted must still be present: capacity enforcement rejects
     // new arrivals once full, it does not evict already-queued state to make room.
     const bool firstItemStillPresent = std::any_of(rows.begin(), rows.end(),
                                                     [](const QueueRow & row) { return row.data.id == "id0"; });
     EXPECT_TRUE(firstItemStillPresent);
+}
+
+TEST(InMemoryQueueStorageCapacityTest, CoalescedUpdatesDoNotLeakIntoTheByteBudget)
+{
+    // Repeated updates to the SAME id must not each add to the running byte total -- only
+    // net queue content should count against the cap, otherwise a single hot id could
+    // eventually exhaust the whole budget on its own via in-place updates.
+    InMemoryQueueStorage storage(":memory:", silentLogger());
+
+    const std::string largePayload(4096, 'x');
+
+    for (int i = 0; i < 5000; ++i)
+    {
+        storage.submitOrCoalesce(PersistedData{0, "same-id", "idx", largePayload, Operation::MODIFY, static_cast<uint64_t>(i)});
+    }
+
+    // A single coalesced id, however many times it was updated, must never itself be
+    // rejected by the capacity check, and a fresh, distinct id must still fit right after.
+    storage.submitOrCoalesce(PersistedData{0, "brand-new-id", "idx", "{}", Operation::CREATE, 1});
+
+    const auto rows = storage.fetchAll();
+    const bool sameIdPresent = std::any_of(rows.begin(), rows.end(),
+                                            [](const QueueRow & row) { return row.data.id == "same-id"; });
+    const bool newIdPresent = std::any_of(rows.begin(), rows.end(),
+                                           [](const QueueRow & row) { return row.data.id == "brand-new-id"; });
+    EXPECT_TRUE(sameIdPresent);
+    EXPECT_TRUE(newIdPresent);
 }

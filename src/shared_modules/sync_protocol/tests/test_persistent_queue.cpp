@@ -109,8 +109,13 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
+    // The failed item also gets one final drain attempt from the destructor (see
+    // SubmitRetriesPreviouslyFailedItemOnNextCall for the next-submit() retry path, and the
+    // destructor's own best-effort drain) -- let that second attempt succeed so this test
+    // stays focused on submit()'s own error log, not on the destructor's.
     EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
-    .WillOnce(testing::Throw(std::runtime_error("Simulated persistence error")));
+    .WillOnce(testing::Throw(std::runtime_error("Simulated persistence error")))
+    .WillOnce(Return());
 
     // Capture the log message
     std::string capturedLogMessage;
@@ -167,6 +172,54 @@ TEST(PersistentQueueTest, SubmitRetriesPreviouslyFailedItemOnNextCall)
     EXPECT_EQ(submittedIds[0], "id1");
     EXPECT_EQ(submittedIds[1], "id1");
     EXPECT_EQ(submittedIds[2], "id2");
+}
+
+TEST(PersistentQueueTest, FetchAndMarkForSyncDrainsPreviouslyFailedItemEvenWithoutAnotherSubmit)
+{
+    // A failed item must not require a NEW submit() call for a different id to ever get
+    // retried -- AgentSyncProtocol's periodic sync cycle calls fetchAndMarkForSync() on its
+    // own timer, independently of submit(), so that call path must drain m_pendingRetry too.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
+    .WillOnce(Return());
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+
+    PersistentQueue queue(":memory:", logger, mockStorage);
+
+    queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+    // No further submit() call -- only a sync-cycle-style read.
+    queue.fetchAndMarkForSync();
+
+    // Both mock expectations above are satisfied only if fetchAndMarkForSync() actually
+    // retried "id1" (the second submitOrCoalesce WillOnce) before delegating to storage.
+}
+
+TEST(PersistentQueueTest, DestructorMakesFinalDrainAttemptForPendingRetryItems)
+{
+    // A failed item that was never retried again by a later call must still get one last
+    // chance to be persisted before the queue (and the storage snapshot it triggers on
+    // destruction) is gone -- otherwise it is lost even on an otherwise graceful shutdown.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    bool finalDrainSucceeded = false;
+
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
+    .WillOnce(::testing::DoAll(::testing::Invoke([&finalDrainSucceeded](const PersistedData&) { finalDrainSucceeded = true; }),
+                                ::testing::Return()));
+
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+        queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+        EXPECT_FALSE(finalDrainSucceeded);
+    } // destructor runs here, making the second (successful) submitOrCoalesce call
+
+    EXPECT_TRUE(finalDrainSucceeded);
 }
 
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)

@@ -61,6 +61,11 @@ class InMemoryQueueStorage : public IPersistentQueueStorage
         /// @brief Monotonically increasing counter assigned to each row on insertion.
         uint64_t m_nextRowId{1};
 
+        /// @brief Running total of estimated serialized bytes across all rows in m_rows,
+        ///        kept in sync with every insert/update/erase so the capacity check in
+        ///        applyCoalesceLogic() never has to rescan the whole queue.
+        size_t m_totalEstimatedBytes{0};
+
         /// @brief Id of the pending item currently stuck as a lone oversized block, if any.
         /// Mirrors PersistentQueueStorage's own oversized-item tracking.
         std::string m_oversizedItemId;
