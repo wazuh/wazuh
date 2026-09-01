@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# wazuh#38740 trigger-verification no-op, to be reverted after evidence is captured
 
 import os
 import subprocess
