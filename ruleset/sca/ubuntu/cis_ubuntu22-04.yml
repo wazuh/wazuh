@@ -1692,8 +1692,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled chrony.service" -> r:^enabled$'
-      - 'c:"systemctl is-active chrony.service" -> r:^active$'
+      - "c:systemctl is-enabled chrony.service -> r:^enabled$"
+      - "c:systemctl is-active chrony.service -> r:^active$"
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
   - id: 28625
