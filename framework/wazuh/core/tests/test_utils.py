@@ -489,6 +489,51 @@ def test_clean_pid_files_does_not_kill_itself(mock_process, mock_kill):
         assert not os.path.exists(pid_file)
 
 
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_access_denied(mock_process, mock_kill):
+    """A PID recycled by a process owned by another user must not crash the daemon's startup.
+
+    psutil.AccessDenied is not an OSError subclass, so it needs its own coverage: reading
+    cmdline() for a process this daemon can't introspect must be treated the same as not
+    being able to identify it, not left to propagate and abort the caller's startup.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-789.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('789\n')
+
+        mock_process.return_value.cmdline.side_effect = utils.psutil.AccessDenied(pid=789)
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_empty_cmdline(mock_process, mock_kill):
+    """A PID recycled by a process with no argv (e.g. a kernel thread) must not crash startup.
+
+    cmdline() can legitimately return an empty list without psutil raising anything; indexing
+    it with [-1] then raises a plain IndexError, which needs its own coverage too.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-321.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('321\n')
+
+        mock_process.return_value.cmdline.return_value = []
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
 @patch('wazuh.core.utils.chmod')
 def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""

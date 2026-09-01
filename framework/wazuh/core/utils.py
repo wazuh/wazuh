@@ -66,11 +66,21 @@ def clean_pid_files(daemon: str) -> None:
                 if pid != own_pid and belongs_to_daemon and predates_file:
                     os.kill(pid, SIGKILL)
                     print(f"{daemon}: Orphan child process {pid} was terminated.")
-                else:
+                elif pid == own_pid:
+                    print(f"{daemon}: Process {pid} is this process's own PID, recycled from a stale "
+                          f"pidfile, removing from {common.WAZUH_PATH}/var/run...")
+                elif not belongs_to_daemon:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                else:
+                    print(f"{daemon}: Process {pid} belongs to {daemon} but was created after its stale "
+                          f"pidfile (PID recycled), removing from {common.WAZUH_PATH}/var/run...")
 
-            except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+            except (OSError, psutil.Error, IndexError):
+                # psutil.Error also covers AccessDenied (the PID was recycled by a process
+                # owned by another user) and ZombieProcess; IndexError covers a recycling
+                # process with an empty cmdline (e.g. a kernel thread). None of these mean
+                # the file's original owner is still around, so it's still safe to drop it.
+                print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(full_path)
 

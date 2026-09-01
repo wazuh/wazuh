@@ -129,6 +129,11 @@ def _race_and_plant_collision(before_pids, timeout=RACE_TIMEOUT_SECONDS):
             with open(collision_file, 'w') as fp:
                 fp.write(f'{proc.pid}\n')
             return proc.pid, collision_file
+        # A tight busy-loop here would peg a CPU core for up to 'timeout' seconds and could
+        # itself starve the apid process this is racing against of the CPU time it needs to
+        # reach its own clean_pid_files() call. 10ms still gives ~100 checks/second, far more
+        # resolution than this race needs.
+        time.sleep(0.01)
     return None, None
 
 
@@ -140,7 +145,11 @@ def wazuh_running():
     yield
     # The test may have left apid down (that is the failure mode under test); bring everything
     # back up regardless of the outcome so later tests in the suite start from a clean state.
+    # Mirrors the setup above: control_service('start') returning only means the control
+    # script's own launch loop finished, not that every daemon is actually up yet -- without
+    # this wait, a still-initializing manager can bleed into whatever runs next.
     control_service('start')
+    wait_expected_daemon_status(timeout=STATUS_TIMEOUT_SECONDS)
 
 
 def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
@@ -194,9 +203,17 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
     before_pids = {proc.pid for proc in psutil.process_iter()}
     start = subprocess.Popen([WAZUH_CONTROL_PATH, 'start'],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    collided_pid, collision_file = _race_and_plant_collision(before_pids)
-    start.wait(timeout=60)
+    try:
+        collided_pid, collision_file = _race_and_plant_collision(before_pids)
+        start.wait(timeout=60)
+    finally:
+        # A wait() timeout (or any other failure in this block) must not leave
+        # 'wazuh-manager-control start' running in the background: it holds the control
+        # script's own start-script-lock and would race the 'wazuh_running' fixture's
+        # teardown, which also calls 'wazuh-manager-control start'.
+        if start.poll() is None:
+            start.kill()
+            start.wait()
 
     assert collided_pid is not None, (
         "Timed out waiting for the restarted 'wazuh-manager-apid' process to appear; "
