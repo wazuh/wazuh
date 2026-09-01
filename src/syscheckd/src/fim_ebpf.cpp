@@ -7,6 +7,10 @@
  * Foundation.
  */
 
+/* The eBPF whodata provider is Linux only; the file compiles to nothing elsewhere
+ * so the shared syscheckd source glob stays platform agnostic. */
+#ifdef __linux__
+
 #include <atomic>
 #include <cerrno>
 #include <climits>
@@ -103,7 +107,7 @@ void deliver_to_fim(const FileEvent& event) {
     w_evt->process_id = event.identity.pid;
     w_evt->ppid = event.identity.ppid;
     w_evt->cwd = strdup(event.identity.cwd.c_str());
-    w_evt->parent_cwd = strdup(event.identity.parent_comm.c_str());
+    w_evt->parent_cwd = strdup(event.identity.parent_cwd.c_str());
     w_evt->parent_name = strdup(event.identity.parent_comm.c_str());
 
     fim_whodata_event(w_evt);
@@ -338,3 +342,5 @@ void* ebpf_whodata(void* arg) {
 }
 
 } // extern "C"
+
+#endif /* __linux__ */
