@@ -24,7 +24,6 @@
 #define PLUGINS_DIR_AUDIT           "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
-#define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -504,6 +503,20 @@ void audit_set_db_consistency(void) {
 }
 // LCOV_EXCL_STOP
 
+// Reconnect to the Auditd socket, retrying up to MAX_CONN_RETRIES times.
+int audit_reconnect_with_retries(int *audit_sock) {
+    int conn_retries = 0;
+
+    *audit_sock = init_auditd_socket();
+    while (*audit_sock < 0 && conn_retries < MAX_CONN_RETRIES) {
+        sleep(1);
+        minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
+        *audit_sock = init_auditd_socket();
+    }
+
+    return *audit_sock;
+}
+
 // LCOV_EXCL_START
 void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
@@ -528,14 +541,7 @@ void *audit_main(audit_data_t *audit_data) {
     w_mutex_unlock(&audit_mutex);
 
     // Reconnect once the gate is lifted
-    int conn_retries = 0;
-    audit_data->socket = init_auditd_socket();
-    while (audit_data->socket < 0 && conn_retries < MAX_CONN_RETRIES) {
-        sleep(1);
-        minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
-        audit_data->socket = init_auditd_socket();
-    }
-    if (audit_data->socket < 0) {
+    if (audit_reconnect_with_retries(&audit_data->socket) < 0) {
         mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
         atomic_int_set(&audit_thread_active, 0);
         goto whodata_teardown;
