@@ -276,7 +276,9 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_max_header_value_size = getDefine_Int_default("remoted", "http_max_header_value_size", 1, 65536, 8192);
     rm_config->http_max_header_count = getDefine_Int_default("remoted", "http_max_header_count", 1, 1024, 64);
     rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
-    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
+    // Same reasoning as io_threads/http_worker_threads above: min+default 0 so an unset option
+    // resolves via cpp_get_nproc() on the C++ side instead of a fixed constant.
+    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 0, 64, 0);
     rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
     // Bytes per chunk when streaming a response body (POST /download). Bounded at 1 MiB because
     // this is per IN-FLIGHT TRANSFER: the worst case is roughly this times the number of
