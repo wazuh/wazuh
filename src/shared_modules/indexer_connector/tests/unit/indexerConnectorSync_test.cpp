@@ -5523,3 +5523,221 @@ TEST_F(IndexerConnectorSyncTest, ChunkItemFailuresFailBoundedInsteadOfLivelockin
     }
     EXPECT_EQ(postCount.load(), 2) << "the failing chunk was retried";
 }
+
+// ============================================================================
+// Recursive 413 splits. The nested split must slice the FAILING CHUNK, not the
+// whole buffer: rebuilding halves from m_bulkData resends other chunks'
+// operations and extends a nested second half to the end of the buffer.
+// ============================================================================
+
+namespace
+{
+    std::string extractBulkBody(const RequestParamsVariant& requestParams)
+    {
+        if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+        {
+            return std::get<TRequestParameters<std::string>>(requestParams).data;
+        }
+        if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+        {
+            return std::string {std::get<TRequestParameters<std::string_view>>(requestParams).data};
+        }
+        return std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+    }
+
+    size_t bulkActionCount(const std::string& body)
+    {
+        size_t actions = 0;
+        bool expectDocLine = false;
+        std::istringstream stream {body};
+        std::string line;
+        while (std::getline(stream, line))
+        {
+            if (expectDocLine)
+            {
+                expectDocLine = false;
+                continue;
+            }
+            const auto parsed = nlohmann::json::parse(line, nullptr, false);
+            if (parsed.is_discarded())
+            {
+                continue;
+            }
+            if (parsed.contains("index"))
+            {
+                ++actions;
+                expectDocLine = true;
+            }
+            else if (parsed.contains("delete"))
+            {
+                ++actions;
+            }
+        }
+        return actions;
+    }
+} // namespace
+
+/// Conservation oracle across a full recursive split: every multi-operation frame is refused
+/// with 413, so each document must arrive in exactly one ACCEPTED single-operation frame. Odd
+/// counts cover the asymmetric midpoints of the nested splits.
+TEST_F(IndexerConnectorSyncTest, Recursive413SplitsDeliverEveryDocumentExactlyOnce)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                if (bulkActionCount(extractBulkBody(requestParams)) > 1)
+                {
+                    respondBulkError(postParams, "Payload Too Large", 413);
+                    return;
+                }
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    std::vector<std::string> expected;
+    for (const size_t docCount : {4, 5, 7})
+    {
+        IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        for (size_t doc = 0; doc < docCount; ++doc)
+        {
+            const auto id = "n" + std::to_string(docCount) + "-" + std::to_string(doc);
+            expected.push_back(id);
+            auto lock = connector.scopeLock();
+            connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+        }
+        EXPECT_NO_THROW(connector.flush()) << "a clean recursive split of " << docCount << " docs must not throw";
+    }
+
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}
+
+/// The terminal "single operation too large" throw is only legitimate on a view that really
+/// holds one operation; the broken arithmetic reached it with a view spanning several.
+TEST_F(IndexerConnectorSyncTest, Exhausted413SplitThrowsOnASingleOperationChunkOnly)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string lastBody;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&lastBody](auto requestParams, auto postParams, auto)
+            {
+                lastBody = extractBulkBody(requestParams);
+                respondBulkError(postParams, "Payload Too Large", 413);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        for (size_t doc = 0; doc < 4; ++doc)
+        {
+            connector.bulkIndex("doc-" + std::to_string(doc), "test_index", R"({"v":"x"})");
+        }
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "an unsplittable 413 must surface";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Single operation exceeds"));
+    }
+    EXPECT_EQ(bulkActionCount(lastBody), 1u) << "the terminal 413 was reported for a multi-operation view";
+}
+
+/// TSAN target: stagers race flushers while every multi-operation frame 413s, so each flush
+/// runs the full recursive split under m_mutex. Conservation must stay exact.
+TEST_F(IndexerConnectorSyncTest, ConcurrentStagersWith413SplitsDeliverEveryDocumentExactlyOnce)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    BulkBodyRecorder recorder;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&recorder](auto requestParams, auto postParams, auto)
+            {
+                if (bulkActionCount(extractBulkBody(requestParams)) > 1)
+                {
+                    respondBulkError(postParams, "Payload Too Large", 413);
+                    return;
+                }
+                recorder.record(requestParams);
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    constexpr size_t STAGERS = 4;
+    constexpr size_t DOCS_PER_STAGER = 100;
+    std::atomic<bool> stagingDone {false};
+    std::atomic<size_t> flushThrows {0};
+
+    std::vector<std::string> expected;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+        {
+            expected.push_back("r" + std::to_string(stager) + "-" + std::to_string(doc));
+        }
+    }
+
+    std::vector<std::thread> stagers;
+    for (size_t stager = 0; stager < STAGERS; ++stager)
+    {
+        stagers.emplace_back(
+            [&connector, stager]()
+            {
+                for (size_t doc = 0; doc < DOCS_PER_STAGER; ++doc)
+                {
+                    const auto id = "r" + std::to_string(stager) + "-" + std::to_string(doc);
+                    auto lock = connector.scopeLock();
+                    connector.bulkIndex(id, "test_index", R"({"v":"x"})");
+                }
+            });
+    }
+    std::vector<std::thread> flushers;
+    for (size_t flusher = 0; flusher < 2; ++flusher)
+    {
+        flushers.emplace_back(
+            [&connector, &stagingDone, &flushThrows]()
+            {
+                while (!stagingDone.load())
+                {
+                    try
+                    {
+                        connector.flush();
+                    }
+                    catch (const IndexerConnectorException&)
+                    {
+                        ++flushThrows;
+                    }
+                    std::this_thread::yield();
+                }
+            });
+    }
+    for (auto& thread : stagers)
+    {
+        thread.join();
+    }
+    stagingDone.store(true);
+    for (auto& thread : flushers)
+    {
+        thread.join();
+    }
+    connector.flush();
+
+    EXPECT_EQ(flushThrows.load(), 0u) << "single-operation frames always got 200, no flush may throw";
+    expectExactlyOnce(recorder.deliveredIds(), expected);
+}

@@ -685,7 +685,7 @@ class IndexerConnectorSyncImpl final
                 indexingFailures = true;
             }
         };
-        const auto onError = [this, &needToRetry, boundaries](
+        const auto onError = [this, &needToRetry, boundaries, data](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -696,12 +696,19 @@ class IndexerConnectorSyncImpl final
                     const size_t midPoint = boundaries.size() / 2;
                     std::span<size_t> firstBoundaries(boundaries.begin(),
                                                       boundaries.begin() + static_cast<long>(midPoint));
-                    const size_t firstEndPos = boundaries[midPoint - 1];
-                    std::string_view firstHalf(m_bulkData.data(), firstEndPos);
                     std::span<size_t> secondBoundaries(boundaries.begin() + static_cast<long>(midPoint),
                                                        boundaries.end());
-                    const size_t secondStartPos = boundaries[midPoint - 1];
-                    std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
+                    // Boundaries are absolute offsets into m_bulkData, but this chunk may start
+                    // anywhere in it: both halves must be subviews of `data`, never rebuilt from
+                    // the whole buffer, or a nested split resends other chunks' operations.
+                    const size_t chunkStart = static_cast<size_t>(data.data() - m_bulkData.data());
+                    const size_t splitPos = boundaries[midPoint - 1];
+                    if (splitPos <= chunkStart || splitPos - chunkStart >= data.size())
+                    {
+                        throw IndexerConnectorException("Bulk split boundary falls outside its chunk");
+                    }
+                    const std::string_view firstHalf = data.substr(0, splitPos - chunkStart);
+                    const std::string_view secondHalf = data.substr(splitPos - chunkStart);
                     processBulkChunk(firstHalf, firstBoundaries);
                     processBulkChunk(secondHalf, secondBoundaries);
                     return;
