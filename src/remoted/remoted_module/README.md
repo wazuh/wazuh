@@ -255,9 +255,10 @@ src/endpoints/
   `wazuh-agent-stats` / `wazuh-agent-config`
   (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
   report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
-  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed* —
-  `wazuh-agent-stats` is `dynamic: strict`, so an undeclared metric is dropped silently at the
-  indexer. Three things differ from `/stateless`:
+  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed*, and an
+  indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
+  undeclared metric is indexed like any other field rather than rejected. Three things differ from
+  `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
     these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
     That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the

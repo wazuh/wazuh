@@ -71,11 +71,11 @@ namespace
      * an array), with an explicit per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a
      * module is unique per report by construction (object keys cannot repeat), so keying by module
      * name is what makes "does agent X have module Y" a single field lookup instead of a scan. The
-     * template is `dynamic: false`: a field this handler emits that isn't in that per-module
+     * template is `dynamic: true`: a field this handler emits that isn't in that per-module
      * sub-schema (a module the template doesn't know about yet, or a legacy/undeclared key within a
-     * known module) still gets written and stored in `_source`, it just isn't indexed for search --
-     * so nothing here validates individual `config` fields against that schema, only that every
-     * module's value is an object.
+     * known module) is indexed like any other field, with no schema check -- so nothing here
+     * validates individual `config` fields against that schema, only that every module's value is an
+     * object, and nothing downstream validates them either.
      *
      * An empty `modules` object is rejected: every push replaces the agent's document whole (its
      * `_id` is the agent id), so indexing an empty report would erase the last good configuration.
@@ -218,7 +218,7 @@ namespace invsync::endpoints::config
 
                 // Shaped to match the wazuh-agent-config template: schema version, the
                 // authenticated id, this manager's own identity, the server's clock, and the
-                // sanitized configuration -- nothing else. `dynamic: false` means an unmapped field
+                // sanitized configuration -- nothing else. `dynamic: true` means an unmapped field
                 // here would not fail the write, but there is still no reason to send one.
                 nlohmann::json indexedDocument;
                 indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;

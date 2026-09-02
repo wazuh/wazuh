@@ -316,9 +316,8 @@ TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
 
 /**
  * The endpoint stores each module's configuration verbatim: it never judges or rewrites the inner
- * `config` object (the template is `dynamic: false`, so an undeclared key is stored in `_source` and
- * simply not indexed). Only the outer shape -- a `modules` object whose every value is an object --
- * is validated.
+ * `config` object (the template is `dynamic: true`, so an undeclared key is indexed like any other
+ * field). Only the outer shape -- a `modules` object whose every value is an object -- is validated.
  */
 TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 {
