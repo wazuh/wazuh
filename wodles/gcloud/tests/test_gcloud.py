@@ -62,8 +62,8 @@ def get_wodle_config(integration_type: str, credentials_file: str = None, log_le
 
 
 @pytest.mark.parametrize('integration_type', ['pubsub', 'access_logs'])
-@patch('gcloud.GCSAccessLogs')
-@patch('gcloud.WazuhGCloudSubscriber')
+@patch('buckets.access_logs.GCSAccessLogs')
+@patch('pubsub.subscriber.WazuhGCloudSubscriber')
 @patch('gcloud.ThreadPoolExecutor')
 @patch('gcloud.tools.get_stdout_logger')
 @patch('gcloud.cpu_count', side_effect=TypeError)
@@ -101,11 +101,47 @@ def test_gcloud_ko(mock_logger, mock_data, mock_json, mock_messages, mock_permis
 
 
 # ---------------------------------------------------------------------------
+# Deferred, integration-specific imports
+# ---------------------------------------------------------------------------
+
+def test_gcloud_pubsub_unaffected_by_broken_bucket_import():
+    """A broken buckets.access_logs import (e.g. missing google-cloud-storage) must not block a
+    pubsub run, since it never uses the bucket integration. Runs gcloud.py fresh via runpy, since
+    `gcloud` is already cached in sys.modules by the time this test runs and would not re-execute
+    its top-level imports otherwise -- so a regression back to an eager import would go undetected.
+    """
+    import runpy
+
+    gcloud_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'gcloud.py')
+    kwargs = get_wodle_config(integration_type='pubsub')
+
+    _sentinel = object()
+    saved = sys.modules.get('buckets.access_logs', _sentinel)
+    sys.modules['buckets.access_logs'] = None
+
+    try:
+        with patch('tools.get_script_arguments', return_value=Namespace(**kwargs)), \
+                patch('tools.get_stdout_logger'), \
+                patch('pubsub.subscriber.WazuhGCloudSubscriber'), \
+                patch('concurrent.futures.ThreadPoolExecutor'), \
+                patch('os.cpu_count', side_effect=TypeError), \
+                pytest.raises(SystemExit) as err:
+            runpy.run_path(gcloud_path, run_name='__main__')
+    finally:
+        if saved is _sentinel:
+            sys.modules.pop('buckets.access_logs', None)
+        else:
+            sys.modules['buckets.access_logs'] = saved
+
+    assert err.value.code == 0
+
+
+# ---------------------------------------------------------------------------
 # __main__ block
 # ---------------------------------------------------------------------------
 
-@patch('gcloud.GCSAccessLogs')
-@patch('gcloud.WazuhGCloudSubscriber')
+@patch('buckets.access_logs.GCSAccessLogs')
+@patch('pubsub.subscriber.WazuhGCloudSubscriber')
 @patch('gcloud.ThreadPoolExecutor')
 @patch('gcloud.tools.get_stdout_logger')
 @patch('gcloud.cpu_count', side_effect=TypeError)
@@ -116,10 +152,8 @@ def test_main_block_invokes_main(mock_cpu_count, mock_logger, mock_threads, mock
     gcloud_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'gcloud.py')
     kwargs = get_wodle_config(integration_type='access_logs')
 
-    # Patch at the source-module level so runpy's fresh namespace picks them up
     with patch('tools.get_script_arguments', return_value=Namespace(**kwargs)), \
             patch('tools.get_stdout_logger', mock_logger), \
-            patch('buckets.access_logs.GCSAccessLogs', mock_access_logs), \
             patch('os.cpu_count', side_effect=TypeError), \
             pytest.raises(SystemExit) as err:
         runpy.run_path(gcloud_path, run_name='__main__')
