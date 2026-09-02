@@ -25,6 +25,7 @@
 
 // Wrappers
 
+#ifdef __linux__
 int __wrap_statfs(const char * path, struct statfs * buf) {
     check_expected(path);
 
@@ -36,6 +37,7 @@ int __wrap_statfs(const char * path, struct statfs * buf) {
 
     return mock_type(int);
 }
+#endif
 
 // Tests
 
@@ -75,7 +77,9 @@ void test_fs_magic(void **state)
 
 // Regression tests for https://github.com/wazuh/wazuh/issues/38693:
 // skipFS()/IsNFS() must actually evaluate the "#if defined(__linux__)" branch
-// instead of silently short-circuiting to 0.
+// instead of silently short-circuiting to 0. __wrap_statfs() above only exists
+// on Linux (struct statfs itself is only declared there), so these are too.
+#ifdef __linux__
 
 void test_skipFS_overlayfs_is_skipped(void **state)
 {
@@ -134,14 +138,18 @@ void test_IsNFS_regular_fs_is_not_detected(void **state)
     assert_int_equal(IsNFS("/etc"), 0);
 }
 
+#endif // __linux__
+
 int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_fs_magic),
+#ifdef __linux__
             cmocka_unit_test(test_skipFS_overlayfs_is_skipped),
             cmocka_unit_test(test_skipFS_regular_fs_is_not_skipped),
             cmocka_unit_test(test_skipFS_statfs_error),
             cmocka_unit_test(test_IsNFS_nfs_mount_is_detected),
             cmocka_unit_test(test_IsNFS_regular_fs_is_not_detected),
+#endif // __linux__
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
