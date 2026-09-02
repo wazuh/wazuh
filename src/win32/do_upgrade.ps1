@@ -399,6 +399,15 @@ function probe_server_verified($server, $port, $endpoint) {
         $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
+        # Both a real cert-trust failure and an unrelated hiccup (DNS, timeout) land here as
+        # the same $false, since probe_server() already confirmed reachability moments ago
+        # and this function's only job is the trust decision -- but log which one it was, so
+        # upgrade.log doesn't read "certificate not trusted" for a transient network blip.
+        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+            write-output "$(Get-Date -format u) - Certificate trust check failed: the system trust store does not verify the manager's certificate ($($_.Exception.Message))." >> .\upgrade\upgrade.log
+        } else {
+            write-output "$(Get-Date -format u) - Certificate trust check failed for a reason other than certificate trust ($($_.Exception.GetType().Name): $($_.Exception.Message)); treating as not verified." >> .\upgrade\upgrade.log
+        }
         return $false
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
@@ -640,7 +649,16 @@ $ssl_ca = get_conf_value "agent" "ssl" "certificate_authorities"
 $ssl_verification_mode_explicit = ($null -ne $ssl_verification_mode)
 
 if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
-    if ([string]::IsNullOrEmpty($ssl_ca)) {
+    if ($ssl_verification_mode_explicit) {
+        # <verification_mode/> (or <verification_mode></verification_mode>) is present but
+        # carries no value -- get_conf_value already distinguishes this from "absent" ($null
+        # vs ""), but Read_Agent_SSL() rejects empty content as an unrecognized value
+        # (XML_VALUEERR) same as any other typo. Treat it the same way here instead of
+        # silently substituting the default on a config the new binary is about to refuse
+        # to parse.
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is present but empty, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } elseif ([string]::IsNullOrEmpty($ssl_ca)) {
         $ssl_verification_mode = "system"
     } else {
         $ssl_verification_mode = "certificate"
@@ -652,12 +670,12 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
 # to hand-edit ossec.conf.
 $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 
-if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificate") {
+if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certificate") {
     if ([string]::IsNullOrEmpty($ssl_ca) -or -Not (Test-Path -PathType Leaf $ssl_ca)) {
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)' but <certificate_authorities> ('$($ssl_ca)') is missing or unreadable, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
-} elseif ($ssl_verification_mode -eq "system") {
+} elseif ($ssl_verification_mode -ceq "system") {
     # verification_mode=system with a certificate_authorities also set is rejected
     # outright at runtime (validateTls() in moduleConfig.cpp) regardless of whether
     # the manager's certificate happens to verify against the OS store -- catch the
@@ -695,7 +713,7 @@ if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificat
         write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
-} elseif ($ssl_verification_mode -eq "none") {
+} elseif ($ssl_verification_mode -ceq "none") {
     # Explicitly disabled -- nothing for this gate to check.
 } else {
     # Neither ReadConfig() nor this gate's own default-resolution above can produce

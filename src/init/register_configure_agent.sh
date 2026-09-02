@@ -233,7 +233,11 @@ delete_blank_lines() {
 # silently fails to match them.
 insert_into_agent_block() {
 
-    awk -v payload_file="$1" '
+    # $2 is the opening-tag pattern to insert right after, e.g. "ssl" for set_agent_ssl_ca()'s
+    # fresh-block fallback; defaults to <agent>/<client> for every other caller.
+    target_tag="${2:-agent|client}"
+
+    awk -v payload_file="$1" -v target_tag="${target_tag}" '
         BEGIN {
             while ((getline line < payload_file) > 0) {
                 payload = payload line "\n"
@@ -245,7 +249,7 @@ insert_into_agent_block() {
             print
             next
         }
-        !inserted && /^[ \t]*<(agent|client)>[ \t]*$/ {
+        !inserted && $0 ~ ("^[ \t]*<(" target_tag ")>[ \t]*$") {
             print
             printf "%s", payload
             inserted = 1
@@ -255,9 +259,16 @@ insert_into_agent_block() {
             if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
             print
         }
-    ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+        END { if (!inserted) { exit 1 } }
+    ' "${CONF_FILE}" > "${TMP_INSERT}"
+    inserted=$?
 
+    if [ "${inserted}" -eq 0 ]; then
+        cat "${TMP_INSERT}" > "${CONF_FILE}"
+    fi
     rm -f "${TMP_INSERT}"
+
+    return "${inserted}"
 
 }
 
@@ -345,36 +356,10 @@ set_agent_ssl_ca() {
 
     if agent_option_is_set "ssl"; then
         # <ssl> already exists (e.g. hand-configured) but without a CA yet: insert
-        # the tag right after the opening <ssl>, same technique
-        # insert_into_agent_block uses for <agent>.
+        # the tag right after the opening <ssl>, reusing insert_into_agent_block's own
+        # awk technique (parameterized by tag) instead of a second copy of it.
         echo "      <certificate_authorities>${ca_path}</certificate_authorities>" > "${TMP_SERVER}"
-        awk -v payload_file="${TMP_SERVER}" '
-            BEGIN {
-                while ((getline line < payload_file) > 0) {
-                    payload = payload line "\n"
-                }
-                close(payload_file)
-            }
-            in_comment {
-                if ($0 ~ /-->/) { in_comment = 0 }
-                print
-                next
-            }
-            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
-                print
-                printf "%s", payload
-                inserted = 1
-                next
-            }
-            {
-                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
-                print
-            }
-            END { if (!inserted) { exit 1 } }
-        ' "${CONF_FILE}" > "${TMP_INSERT}"
-        if [ $? -eq 0 ]; then
-            cat "${TMP_INSERT}" > "${CONF_FILE}"
-        else
+        if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
             # Deliberately a warning, not an install-aborting failure: unlike
             # pkg_installer.sh's equivalent pin_ca() failure during an upgrade (which
             # aborts, because there is a working prior version to protect), a fresh
@@ -385,7 +370,7 @@ set_agent_ssl_ca() {
             # who needs the CA can add <certificate_authorities> by hand afterward.
             echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
         fi
-        rm -f "${TMP_INSERT}" "${TMP_SERVER}"
+        rm -f "${TMP_SERVER}"
         return
     fi
 

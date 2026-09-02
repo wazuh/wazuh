@@ -61,9 +61,28 @@ else
     abort_upgrade "2"
 fi
 
+# Strips commented-out lines before xml_value/xml_tag_present/xml_block_present extract
+# anything, so a tag an operator comments out (e.g. to fall back to the default) reads as
+# absent here too, matching OS_XML's own comment handling -- same in_comment
+# line-tracking technique this file's pin_ca() and register_configure_agent.sh's
+# agent_option_value() already use. Like those, a comment that opens and closes on the
+# same line is not stripped: every comment actually shipped in this codebase's XML wraps
+# whole indented lines, so that trade-off is accepted here too rather than fixed once and
+# left inconsistent elsewhere.
+strip_xml_comments() {
+    awk '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
+        { print }
+    ' ./etc/ossec.conf 2>/dev/null
+}
+
 # Read <block><sub><tag> from the agent configuration, taking the last match.
 xml_value() {
-    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | \
         grep -o "<$2>.*</$2>" | grep -o "<$3>[^<]*</$3>" | tail -1 | \
         sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
 }
@@ -77,7 +96,7 @@ xml_value() {
 # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml), so
 # the agent reads it as the same empty-content opt-out and this must agree.
 xml_tag_present() {
-    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | \
         grep -o "<$2>.*</$2>" | grep -qE "<$3>[^<]*</$3>|<$3[[:space:]]*/>"
 }
 
@@ -236,9 +255,10 @@ parse_manager_endpoint() {
 # including the health probe, is served under the manager's global_prefix
 # (#38491) -- an unprefixed request always gets a 404, so the probe URL must
 # include the same endpoint/prefix the agent itself connects with (arg 3).
-probe_server() {
-    PROBE_TIMEOUT=5
-
+# Shared by probe_server()/probe_server_verified(), which differ only in which curl/wget
+# flags decide whether to accept the manager's certificate, not in how the target URL is
+# built. Sets PROBE_HOST/PROBE_PATH from ($1=host $2=port $3=endpoint).
+probe_build_target() {
     # MEP_HOST holds an IPv6 literal unbracketed, the way <endpoint> stores it. A URL
     # needs it bracketed again or curl, wget and Invoke-WebRequest all reject the value
     # as malformed and the upgrade aborts with "manager is not reachable".
@@ -257,6 +277,11 @@ probe_server() {
     else
         PROBE_PATH="/${3}/"
     fi
+}
+
+probe_server() {
+    PROBE_TIMEOUT=5
+    probe_build_target "${1}" "${2}" "${3}"
 
     if command -v curl > /dev/null 2>&1; then
         curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
@@ -298,18 +323,7 @@ probe_server() {
 # handshake; only the log message distinguishes the two causes for the operator.
 probe_server_verified() {
     PROBE_TIMEOUT=5
-
-    PROBE_HOST="${1}"
-    case "${PROBE_HOST}" in
-        \[*) ;;
-        *:*:*) PROBE_HOST="[${PROBE_HOST}]" ;;
-    esac
-
-    if [ -z "${3}" ]; then
-        PROBE_PATH="/"
-    else
-        PROBE_PATH="/${3}/"
-    fi
+    probe_build_target "${1}" "${2}" "${3}"
 
     if command -v curl > /dev/null 2>&1; then
         curl --tlsv1.3 -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
@@ -336,7 +350,7 @@ probe_server_verified() {
 # pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
 # <ssl> block instead of creating a second, duplicate one.
 xml_block_present() {
-    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | grep -q "<$2>"
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -q "<$2>"
 }
 
 # Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
@@ -483,7 +497,16 @@ SSL_VERIFICATION_MODE_EXPLICIT=0
 xml_tag_present agent ssl verification_mode && SSL_VERIFICATION_MODE_EXPLICIT=1
 
 if [ -z "${SSL_VERIFICATION_MODE}" ]; then
-    if [ -n "${SSL_CA}" ]; then
+    if [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
+        # <verification_mode/> (or <verification_mode></verification_mode>) is present
+        # but carries no value -- xml_tag_present() counts it as present, same as
+        # OS_XML does, but Read_Agent_SSL() rejects empty content as an unrecognized
+        # value (XML_VALUEERR) same as any other typo. Treat it the same way here
+        # instead of silently substituting the default on a config the new binary is
+        # about to refuse to parse.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is present but empty, interrupting upgrade." >> ./logs/upgrade.log
+        abort_upgrade "2"
+    elif [ -n "${SSL_CA}" ]; then
         SSL_VERIFICATION_MODE="certificate"
     else
         SSL_VERIFICATION_MODE="system"
