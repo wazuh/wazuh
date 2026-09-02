@@ -21,6 +21,7 @@
 
 #include "shared.h"
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 // Wrappers
 
@@ -83,6 +84,7 @@ void test_skipFS_overlayfs_is_skipped(void **state)
     expect_string(__wrap_statfs, path, "/etc");
     will_return(__wrap_statfs, 0x794c7630 /* OVERLAYFS, mirrors test_fs_magic above */);
     will_return(__wrap_statfs, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Skipping dir (FS OVERLAYFS): /etc ");
 
     assert_int_equal(skipFS("/etc"), 1);
 }
