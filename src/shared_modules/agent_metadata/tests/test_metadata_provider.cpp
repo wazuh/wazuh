@@ -392,6 +392,10 @@ TEST_F(MetadataProviderTest, ReadFromAtexitAfterProviderTeardownDoesNotCrash)
 // transitions into a restricted domain, even though the child never touches the file.
 // mmap() doesn't need the fd once it succeeds, so the fix closes it right away instead of
 // relying on O_CLOEXEC alone; this asserts that steady state directly.
+//
+// Linux-only: relies on /proc/self/fd, which macOS (no procfs) doesn't have. SELinux is
+// Linux-only too, so the regression this guards against can't occur on macOS anyway.
+#ifdef __linux__
 TEST_F(MetadataProviderTest, MetadataFdNotLeftOpenAfterConstruction)
 {
     agent_metadata_t metadata = createSampleMetadata();
@@ -418,5 +422,6 @@ TEST_F(MetadataProviderTest, MetadataFdNotLeftOpenAfterConstruction)
 
     closedir(fdDir);
 }
+#endif // __linux__
 
 #endif
