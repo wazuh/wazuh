@@ -1007,6 +1007,26 @@ Concurrent connections `remoted` keeps to `authd` for enrollment.
   [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
   its capacity at peak.
 
+#### remoted.vd_scan_read_timeout
+
+Seconds to wait for VD's answer to the inline `POST /scan/vd` admission relay.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** VD answers at admission into its bounded dispatch queue, not after running the scan,
+  so this is a local-socket round trip measured in milliseconds. A larger value does not make VD
+  queue the scan any sooner.
+
+#### remoted.vd_scan_write_timeout
+
+Seconds to wait for the write side of the same inline `POST /scan/vd` relay to VD.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** Same admission-only round trip as `remoted.vd_scan_read_timeout`. Both, plus the
+  fixed deadlines of the `/offset` query the scan gates on, make up the `/scan/vd` downstream
+  budget checked at startup against `http_request_timeout`.
+
 ---
 
 ## Configuration Examples

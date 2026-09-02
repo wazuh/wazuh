@@ -3720,7 +3720,8 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
-/* Tests remoted_module_control_config: the eight control_* options, in read order. */
+/* Tests remoted_module_control_config: the eight control_* options plus the two vd_scan_*
+ * timeouts, in read order. */
 
 static void queue_control_config_defines(int keepalive_throttle)
 {
@@ -3732,6 +3733,8 @@ static void queue_control_config_defines(int keepalive_throttle)
     will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
     will_return(__wrap_getDefine_Int_default, 10000); // control_tm_max_queue_size
     will_return(__wrap_getDefine_Int_default, keepalive_throttle);
+    will_return(__wrap_getDefine_Int_default, 5);     // vd_scan_read_timeout
+    will_return(__wrap_getDefine_Int_default, 5);     // vd_scan_write_timeout
 }
 
 void test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time(void** state)
@@ -3752,6 +3755,8 @@ void test_remoted_module_control_config_warns_when_throttle_reaches_disconnectio
     remoted_module_control_config(&rm_config);
 
     assert_int_equal(rm_config.keepalive_throttle_sec, 450);
+    assert_int_equal(rm_config.vd_scan_read_timeout_sec, 5);
+    assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
 }
 
 void test_remoted_module_control_config_silent_below_disconnection_time(void** state)
@@ -3768,6 +3773,8 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     remoted_module_control_config(&rm_config);
 
     assert_int_equal(rm_config.keepalive_throttle_sec, 449);
+    assert_int_equal(rm_config.vd_scan_read_timeout_sec, 5);
+    assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)

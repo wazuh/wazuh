@@ -685,9 +685,10 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
-  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
-  items), so the round trip is inline route work measured in milliseconds, never a scan.
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a read/write timeout
+  each configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
+  5 s each): VD answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup
+  of queued items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
   VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
   own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
