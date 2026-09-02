@@ -11,6 +11,13 @@
                 # one, so the installer's own opt-out does not reach it.
                 - endpoint:
                     value: '127.0.0.1:1517/'
+        # #38684: the agent's default verification_mode is now 'system', which
+        # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+        # suite is not testing TLS trust.
+        - ssl:
+            elements:
+              - verification_mode:
+                  value: none
     - section: wodle
       attributes:
         - name: syscollector

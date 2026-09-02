@@ -16,3 +16,10 @@
               # what the <endpoint>'' of the pre-#38624 template meant.
               - endpoint:
                   value: SERVER_ADDRESS
+          # #38684: the agent's default verification_mode is now 'system', which
+          # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+          # suite is not testing TLS trust.
+          - ssl:
+              elements:
+              - verification_mode:
+                  value: none
