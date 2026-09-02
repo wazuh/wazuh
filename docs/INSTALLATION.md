@@ -1,6 +1,6 @@
 # Documentation Installation Guide
 
-This guide explains how to set up and build the Wazuh technical documentation locally.
+This guide explains how to set up and build the Wazuh documentation locally for development and testing.
 
 ## Prerequisites
 
