@@ -4428,7 +4428,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not c:cat /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf -> r:^enforcing\s*\t*=\s*\t*0'
+      - 'not c:sh -c "cat /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf" -> r:^enforcing\s*\t*=\s*\t*0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 35686
@@ -5011,10 +5011,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^URL\s*\t*=\s*\t*\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerKeyFile\s*\t*=\s*\t*/\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerCertificateFile\s*\t*=\s*\t*/\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^TrustedCertificateFile\s*\t*=\s*\t*/\w+'
+      - 'c:sh -c "cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf" -> r:^URL\s*\t*=\s*\t*\w+'
+      - 'c:sh -c "cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf" -> r:^ServerKeyFile\s*\t*=\s*\t*/\w+'
+      - 'c:sh -c "cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf" -> r:^ServerCertificateFile\s*\t*=\s*\t*/\w+'
+      - 'c:sh -c "cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf" -> r:^TrustedCertificateFile\s*\t*=\s*\t*/\w+'
       - 'not c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 6.1.2.1.3 Ensure systemd-journal-upload is enabled and active. (Automated)

@@ -1092,7 +1092,7 @@ checks:
       - https://www.openldap.org
     condition: all
     rules:
-      - 'c:ls /etc/rc*.d/S*slapd -> !r:\.+|No such file or directory'
+      - 'c:sh -c "ls /etc/rc*.d/S*slapd" -> !r:\.+|No such file or directory'
 
   - id: 19565
     title: "Ensure NFS and RPC are not enabled"
@@ -1107,7 +1107,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:ls /etc/rc*.d/S*nfs-kernel-serverr -> !r:\.+|No such file or directory'
+      - 'c:sh -c "ls /etc/rc*.d/S*nfs-kernel-serverr" -> !r:\.+|No such file or directory'
       - "c:initctl show-config rpcbind -> r:^rpcbind"
 
   - id: 19566
@@ -1123,7 +1123,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c: ls /etc/rc*.d/S*bind9 -> !r:\.+|No such file or directory'
+      - 'c:sh -c "ls /etc/rc*.d/S*bind9" -> !r:\.+|No such file or directory'
 
   - id: 19567
     title: "Ensure FTP Server is not enabled"
@@ -1153,7 +1153,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:ls /etc/rc*.d/S*apache2 -> !r:\.+|No such file or directory'
+      - 'c:sh -c "ls /etc/rc*.d/S*apache2" -> !r:\.+|No such file or directory'
 
   - id: 19569
     title: "Ensure IMAP and POP3 server is not enabled"
@@ -1213,7 +1213,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:ls /etc/rc*.d/S*snmpd -> !r:\.+|No such file or directory'
+      - 'c:sh -c "ls /etc/rc*.d/S*snmpd" -> !r:\.+|No such file or directory'
 
   - id: 19573
     title: "Ensure mail transfer agent is configured for local-only mode"
@@ -1824,7 +1824,7 @@ checks:
       - tsc: [CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "c:ls /etc/rc*.d/S*auditd -> r:/etc/rc2.d/S37auditd  && r:/etc/rc3.d/S37auditd && r:/etc/rc4.d/S37auditd && r:/etc/rc5.d/S37auditd"
+      - 'c:sh -c "ls /etc/rc*.d/S*auditd" -> r:/etc/rc2.d/S37auditd  && r:/etc/rc3.d/S37auditd && r:/etc/rc4.d/S37auditd && r:/etc/rc5.d/S37auditd'
 
   - id: 19609
     title: "Ensure auditing for processes that start prior to auditd is enabled"
@@ -2192,7 +2192,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - "c:ls /etc/rc*.d/S*syslog-ng > r:/etc/rc2.d/S10syslog-ng  && r:/etc/rc3.d/S10syslog-ng && r:/etc/rc4.d/S10syslog-ng && r:/etc/rc5.d/S10syslog-ng"
+      - 'c:sh -c "ls /etc/rc*.d/S*syslog-ng" -> r:/etc/rc2.d/S10syslog-ng  && r:/etc/rc3.d/S10syslog-ng && r:/etc/rc4.d/S10syslog-ng && r:/etc/rc5.d/S10syslog-ng'
 
   # 4.2.2.3 Ensure syslog-ng default file permissions configured (Scored)
   - id: 19629

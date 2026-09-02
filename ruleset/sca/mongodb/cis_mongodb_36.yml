@@ -80,7 +80,7 @@ checks:
     condition: all
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"ssl:\"" -> r:PEMKeyFile'
-      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 "ssl:\"" -> r:clusterFile'
+      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"ssl:\"" -> r:clusterFile'
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"ssl:\"" -> r:CAFile'
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"security:\"" -> r:clusterAuthMode: "x509"'
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"security:\"" -> r:authenticationMechanisms: "MONGODB-X509"'

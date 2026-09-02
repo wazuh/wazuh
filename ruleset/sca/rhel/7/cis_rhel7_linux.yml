@@ -4244,9 +4244,9 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/bashrc -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'not c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
+      - 'not c:sh -c "grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh" -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
       - 'f:/etc/bashrc -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
-      - 'c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
+      - 'c:sh -c "grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh" -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
 
   # 5.5.5 Ensure default user umask is configured. (Automated)
   - id: 4687
