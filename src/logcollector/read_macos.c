@@ -180,7 +180,11 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
                     lf->macos_log->state = LOG_NOT_RUNNING;
                 }
             } else {    // LOG_RUNNING_STREAM
-                merror(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, status);
+                if (WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM) {
+                    mdebug1(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, WTERMSIG(status));
+                } else {
+                    merror(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, status);
+                }
                 w_macos_release_log_stream();
                 lf->macos_log->state = LOG_NOT_RUNNING;
             }
