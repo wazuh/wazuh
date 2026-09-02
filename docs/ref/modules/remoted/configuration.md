@@ -643,8 +643,9 @@ Maximum in-flight unanswered requests per connection (HTTP pipelining depth).
 
 Maximum concurrent in-progress TCP accepts for the HTTPS agent server.
 
-- **Default value:** `2`
-- **Allowed values:** Integer from `1` to `64`
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`, floored at `2` so a single-core host or
+  cgroup does not regress below the previous fixed default)
+- **Allowed values:** Integer from `0` to `64`
 
 #### remoted.http_buffer_size
 

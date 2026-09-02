@@ -298,10 +298,10 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 `Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready.
 
 ```ini
-wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=60
+wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
 ```
 
-- **Default value:** `60`
+- **Default value:** `10`
 - **Allowed values:** 10 to 1800
 - **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
   The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint. This
