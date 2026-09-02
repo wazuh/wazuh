@@ -31,6 +31,12 @@ All notable changes to this project will be documented in this file.
 - Restricted the GitHub, Office 365 and MS Graph wodles pagination and content retrieval to the configured API host, so the authentication token is not sent to another host. ([#38688](https://github.com/wazuh/wazuh/pull/38688))
 - Fixed whodata (audit) holding the audisp socket undrained at startup when the manager is unreachable, starving other audit plugins. ([#38382](https://github.com/wazuh/wazuh/pull/38382))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed the Debian 13 CIS SCA user emulation audit check. ([#38712](https://github.com/wazuh/wazuh/pull/38712))
+
 ## [v4.14.8]
 
 ### Manager
