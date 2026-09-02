@@ -77,13 +77,9 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     # remote.legacy.protocol is a closed enum (tcp|udp) with at most two unique items in the manager
-    # schema: any invalid or surplus protocol is rejected by the strict loader with 1244 and remoted
-    # never starts -- the old ignore-the-invalid-protocol-and-continue flow is gone.
+    # schema: any invalid or surplus protocol is rejected with 1244 by the control script's fail-fast
+    # (the CLI verdict, surfaced in the log) and remoted never starts -- the old
+    # ignore-the-invalid-protocol-and-continue flow is gone.
     log_monitor.start(callback=generate_callback(
-        r".*ERROR: \(1244\): Invalid configuration at '.*': /remote/legacy/protocol.*"))
-    assert log_monitor.callback_result
-
-    conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
-    log_monitor.start(callback=generate_callback(
-        patterns.CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', conf_path)))
+        r".*ERROR: \(1244\): Invalid configuration at '/remote/legacy/protocol.*"))
     assert log_monitor.callback_result

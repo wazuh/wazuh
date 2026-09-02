@@ -69,11 +69,9 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
 
-    # The strict loader reports the unknown option with its JSON pointer (1244) and remoted
-    # exits with CRITICAL (1202); there is no ERROR-severity 1202 line any more.
+    # wazuh-manager-control validates the file first and fails fast: the CLI verdict (1244 with the
+    # JSON pointer as the subject) is surfaced in the manager log; remoted never starts, so there is
+    # no daemon CRITICAL (1202) line any more.
     log_monitor.start(callback=generate_callback(test_metadata['invalid']))
     assert log_monitor.callback_result
     assert test_metadata['element_type'] in log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', conf_path)))
-    assert log_monitor.callback_result

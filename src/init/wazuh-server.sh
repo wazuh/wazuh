@@ -240,8 +240,12 @@ testconfig()
 
     # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
     # with the JSON pointer of the offending option before any daemon runs its own -t.
-    ${MCONF} validate
+    MCONF_VERDICT=$(${MCONF} validate 2>&1)
     if [ $? != 0 ]; then
+        echo "${MCONF_VERDICT}" >&2
+        # With the fail-fast no daemon starts, so nothing else records the reason where operators
+        # (and the integration tests) look for it: surface the verdict in the manager log too.
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
         if [ $USE_JSON = true ]; then
             echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
         else
