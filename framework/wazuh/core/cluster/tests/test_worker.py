@@ -27,10 +27,16 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.core.cluster import client, worker, common as cluster_common
+        from wazuh.core.cluster.utils import get_cluster_items
         from wazuh.core import common as core_common
         from wazuh.core.wdb import AsyncWazuhDBConnection
 
 logger = logging.getLogger("wazuh")
+
+# The confinement tests must reject the file the product really excludes, so the list comes from
+# cluster.json instead of a hardcoded 4.x name.
+EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
+
 cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
                                           "sync_agent_info": 5, "sync_agent_groups": 5,
@@ -1313,7 +1319,7 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
         'files': {
             'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
             'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': False},
-            'excluded_files': ['ar.conf', 'ossec.conf'],
+            'excluded_files': EXCLUDED_FILES,
         }
     }
 

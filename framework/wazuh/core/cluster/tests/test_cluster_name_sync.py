@@ -143,10 +143,10 @@ class TestRunClusterNameSync:
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
     @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
-    async def test_cluster_name_sync_missing_ossec_conf(
+    async def test_cluster_name_sync_missing_manager_conf(
         self, mock_get_ossec_conf, mock_sleep, task_with_indexer
     ):
-        """Test sync when cluster name is missing from ossec.conf."""
+        """Test sync when cluster name is missing from the manager configuration."""
         task, indexer = task_with_indexer
 
         mock_get_ossec_conf.side_effect = Exception("Config not found")
@@ -165,7 +165,7 @@ class TestRunClusterNameSync:
     async def test_cluster_name_sync_empty_cluster_name(
         self, mock_get_ossec_conf, mock_sleep, task_with_indexer
     ):
-        """Test sync when cluster name is empty in ossec.conf."""
+        """Test sync when cluster name is empty in the manager configuration."""
         task, indexer = task_with_indexer
 
         mock_get_ossec_conf.return_value = {}

@@ -4,6 +4,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 from collections import defaultdict
 from contextvars import ContextVar
@@ -30,7 +31,14 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.cluster.utils import get_cluster_items
         from wazuh.core.common import DECIMALS_DATE_FORMAT
+
+# The exclusion guard matches a file name, so the name under test and the list it is matched
+# against both come from production sources (common.OSSEC_CONF and cluster.json): dropping the
+# entry from cluster.json must make these tests fail.
+MANAGER_CONF_FILENAME = os.path.basename(common.OSSEC_CONF)
+EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
 # Global variables
 
@@ -1940,7 +1948,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
     )
     assert result['errors_per_folder'] == defaultdict(list)
 
-    files_metadata = {"etc/ossec.conf": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    files_metadata = {f"etc/{MANAGER_CONF_FILENAME}": {"merged": False, "cluster_item_key": "queue/testing/"}}
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
         decompressed_files_path='/decompressed',
@@ -2004,18 +2012,18 @@ def test_master_handler_process_files_from_worker_normalizes_path_before_exclude
                                                                                         uid_mock):
     """Test that the excluded_files/client.keys checks use the normalized path, not the raw worker-supplied key.
 
-    Regression test for GHSA-88p6-7cm8-xwj8: a raw key of "etc/ossec.conf/" has an empty
-    os.path.basename() ('' != 'ossec.conf'), bypassing the excluded_files guard, even though it
-    resolves (via safe_join/normpath, which strips the trailing slash) to the real ossec.conf.
+    Regression test for GHSA-88p6-7cm8-xwj8: a raw key with a trailing slash ("etc/<conf>/") has an
+    empty os.path.basename(), bypassing the excluded_files guard, even though it resolves (via
+    safe_join/normpath, which strips the trailing slash) to the manager configuration itself.
     """
     master_handler = get_master_handler()
     cluster_items_etc = dict(cluster_items)
     cluster_items_etc['files'] = {
         **cluster_items['files'],
         'etc/': {'remove_subdirs_if_empty': True, 'permissions': 'value', 'extra_valid': True},
-        'excluded_files': ['ossec.conf']
+        'excluded_files': EXCLUDED_FILES
     }
-    files_metadata = {"etc/ossec.conf/": {"merged": False, "cluster_item_key": "etc/"}}
+    files_metadata = {f"etc/{MANAGER_CONF_FILENAME}/": {"merged": False, "cluster_item_key": "etc/"}}
 
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
