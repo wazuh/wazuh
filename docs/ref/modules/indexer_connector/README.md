@@ -33,12 +33,20 @@ The library provides two classes depending on the use case:
 
 - Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size` for Inventory Sync Server).
 - Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner; the Inventory Sync Server deliberately overrides its periodic flush — its ingestion workers own every flush, see its [configuration reference](../inventory-sync-server/configuration.md)).
+- `flush_interval_seconds = 0` means **no background flush thread at all**: the connector is never created with one and every flush is the caller's. Use it when the caller has to answer for a failed flush — a timer flush that fails discards the staging buffer and has no caller to report to, so a later `flush()` finds an empty buffer and returns success for data that never landed. The value is set directly by the Inventory Sync Server; it is not reachable through the Vulnerability Scanner's `wazuh_modules.indexer_flush_interval`, whose range is 1–3600.
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
 - Version conflicts at the document level are handled per-document.
 
 ### Async flush behavior
 
 - Events are queued in memory immediately and flushed by a background thread.
+- The queue is **FIFO**, and a batch that fails is retried from its front, so operations are applied
+  in the order they were queued. That is what makes `deleteById()` usable to remove a document whose
+  own `index()` may still be pending: the delete is applied after it, never before. A caller that
+  needs that ordering cannot get it from another connector, and a `_delete_by_query` would not even
+  see a document that has not been refreshed yet.
+- A `deleteById()` of a document that is not there is a per-item `404 not_found`, which is not an
+  error and is not reported: deletes are idempotent.
 - Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
 - Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
 - If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.

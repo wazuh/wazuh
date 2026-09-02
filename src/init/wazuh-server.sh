@@ -37,10 +37,9 @@ SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# This number should be more than enough (even if it is
-# started multiple times together). It will try for up
-# to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="60"
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45,
+# templates/wazuh-manager.service), or systemd reports a timeout instead of the real reason.
+MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
@@ -200,7 +199,18 @@ status()
         fi
         pstatus ${i};
         if [ $? = 0 ]; then
-            if [ $USE_JSON = true ]; then
+            # The marker testconfig() leaves on a refused configuration, and the same one the
+            # framework reads as 'failed'. Without it a rejected value is indistinguishable from a
+            # daemon that was never started.
+            if [ -f ${DIR}/var/run/${i}.failed ]; then
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"daemon":"'${i}'","status":"failed"}'
+                elif [ "`cat ${DIR}/var/run/${i}.failed 2>/dev/null`" = "refused" ]; then
+                    echo "${i} refused its configuration..."
+                else
+                    echo "${i} failed to start..."
+                fi
+            elif [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
                 echo "${i} not running..."
@@ -221,6 +231,11 @@ status()
 
 testconfig()
 {
+    # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
+    # here, not in start_service(): this function exits 1 on the FIRST failure, so start_service()
+    # may never run to clear a marker left by an earlier, unrelated one.
+    rm -f ${DIR}/var/run/*.failed
+
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
         daemon_name="$i"
@@ -231,9 +246,10 @@ testconfig()
             else
                 echo "${i}: Configuration error. Exiting"
             fi
-            if [ ! -f ${DIR}/var/run/.restart ]; then
-                touch ${DIR}/var/run/${i}.failed
-            fi
+            # Unconditionally: the wipe at the top of this function already replaced the old
+            # .restart guard's job, and keeping the guard here would leave a restart with a
+            # refused configuration reporting plain "not running".
+            echo "refused" > ${DIR}/var/run/${i}.failed
             rm -f ${DIR}/var/run/*.start
             rm -f ${DIR}/var/run/.restart
             unlock;
@@ -301,7 +317,7 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail --unix-socket ${DIR}/queue/sockets/engine-api-http.sock \
             -X POST -H "Content-Type: application/json" \
             -d '{}' \
             http://localhost/_internal/event-dumper/status \
@@ -379,7 +395,6 @@ start_service()
         if [ $? = 0 ]; then
             ## Create starting flag
             failed=false
-            rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             daemon_name="$i"
 
@@ -415,7 +430,8 @@ start_service()
                     echo "${i} did not start correctly.";
                 fi
                 rm -f ${DIR}/var/run/${i}.start
-                touch ${DIR}/var/run/${i}.failed
+                # Same marker the framework reads as 'failed'; the content tells status why.
+                echo "start" > ${DIR}/var/run/${i}.failed
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
                 unlock;

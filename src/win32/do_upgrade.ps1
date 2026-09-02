@@ -304,6 +304,14 @@ function get_conf_value($block, $sub, $tag) {
     }
     $tag_matches = [regex]::Matches($sub_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
     if ($tag_matches.Count -eq 0) {
+        # A self-closing <tag/> is present, not absent: OS_XML parses it as exactly
+        # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml),
+        # so report it as present-but-empty ("") rather than absent ($null). Callers
+        # that only test IsNullOrEmpty are unaffected; the one caller that needs the
+        # distinction is <endpoint>'s opt-out (#38492).
+        if ([regex]::IsMatch($sub_match.Groups[1].Value, "<$tag\s*/>")) {
+            return ""
+        }
         return $null
     }
     return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
@@ -323,46 +331,216 @@ public static class WazuhProbeTrust {
 "@
 }
 
-# Check the manager is up: GET / is remoted's health endpoint and answers 200.
-# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
-function probe_server($server, $port) {
+function probe_tcp($server, $port) {
+    # Match the socket family to the resolved address so an IPv6-only manager is still reachable.
+    $family = [System.Net.Sockets.AddressFamily]::InterNetwork
+    try {
+        $addr = [System.Net.Dns]::GetHostAddresses($server) | Select-Object -First 1
+        if ($addr) { $family = $addr.AddressFamily }
+    } catch { }
+    $client = New-Object System.Net.Sockets.TcpClient($family)
+    try {
+        $result = $client.BeginConnect($server, $port, $null, $null)
+        return $result.AsyncWaitHandle.WaitOne(5000) -and $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
+# Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
+# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s. A TLS
+# handshake failure falls back to a TCP-only check, since older hosts can't negotiate the
+# manager's TLS 1.3 minimum (#38607); any non-TLS error is a real "not reachable".
+function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
-        $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
+        $path = if ([string]::IsNullOrEmpty($endpoint)) { "/" } else { "/$endpoint/" }
+
+        # $server holds an IPv6 literal unbracketed, the way <endpoint> stores it. A URL
+        # needs it bracketed again or Invoke-WebRequest rejects the value as malformed
+        # and the upgrade aborts with "manager is not reachable".
+        $host_part = $server
+        if ($host_part.Contains(":") -And -Not $host_part.StartsWith("[")) {
+            $host_part = "[$host_part]"
+        }
+
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
+        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+            write-output "$(Get-Date -format u) - HTTPS handshake failed (host may lack TLS 1.3), falling back to a TCP connectivity check (manager endpoint not verified)." >> .\upgrade\upgrade.log
+            return probe_tcp $server $port
+        }
         return $false
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
     }
 }
 
-# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-$server_address = get_conf_value "agent" "server" "address"
-if ([string]::IsNullOrEmpty($server_address)) {
-    $server_address = get_conf_value "client" "server" "address"
+# Defaults for the components an <endpoint> value leaves out, matching the agent's own
+# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
+$MEP_DEFAULT_PORT = "1517"
+$MEP_DEFAULT_ENDPOINT = "wazuh-manager"
+
+# Split a combined <endpoint> value (#38624) into $MEP_HOST / $MEP_PORT / $MEP_ENDPOINT:
+#
+#   [https://] host [:port] [/[prefix]]
+#
+# Only the host is mandatory. "No '/' at all" means the default prefix; "a trailing '/'
+# with nothing after it" is the operator's deliberate opt-out (#38614) and yields "".
+#
+# Same logic as parse_manager_endpoint() in src/init/pkg_installer.sh; duplicated because
+# this script ships inside the WPK and runs standalone, with nothing to import.
+function ParseManagerEndpoint($raw) {
+    $script:MEP_HOST = ""
+    $script:MEP_PORT = $MEP_DEFAULT_PORT
+    $script:MEP_ENDPOINT = $MEP_DEFAULT_ENDPOINT
+
+    if ([string]::IsNullOrEmpty($raw)) {
+        return $false
+    }
+
+    $rest = $raw
+
+    # Optional scheme, only where no '/' precedes the "://" so a path containing it
+    # cannot be mistaken for one.
+    $p = $rest.IndexOf("://")
+    if ($p -ge 0) {
+        $scheme = $rest.Substring(0, $p)
+        if (-Not $scheme.Contains("/")) {
+            if ($scheme.ToLower() -ne "https") {
+                return $false
+            }
+            $rest = $rest.Substring($p + 3)
+        }
+    }
+
+    # Authority up to the first '/', prefix after it. Whether that '/' was there at all
+    # is what separates "default prefix" from "opt-out".
+    $p = $rest.IndexOf("/")
+    if ($p -ge 0) {
+        $authority = $rest.Substring(0, $p)
+        $path = $rest.Substring($p + 1)
+        $path_given = $true
+    } else {
+        $authority = $rest
+        $path = ""
+        $path_given = $false
+    }
+
+    $port_given = ""
+    if ($authority.StartsWith("[")) {
+        $p = $authority.IndexOf("]")
+        if ($p -lt 0) { return $false }
+        $script:MEP_HOST = $authority.Substring(1, $p - 1)
+        $after = $authority.Substring($p + 1)
+        if ($after -ne "") {
+            if ($after.StartsWith(":")) { $port_given = $after.Substring(1) } else { return $false }
+        }
+    } else {
+        $colons = ($authority.ToCharArray() | Where-Object { $_ -eq ':' }).Count
+        if ($colons -gt 1) {
+            return $false
+        } elseif ($colons -eq 1) {
+            $p = $authority.IndexOf(":")
+            $script:MEP_HOST = $authority.Substring(0, $p)
+            $port_given = $authority.Substring($p + 1)
+        } else {
+            $script:MEP_HOST = $authority
+        }
+    }
+
+    if ([string]::IsNullOrEmpty($script:MEP_HOST)) { return $false }
+
+    if ($port_given -ne "") {
+        if ($port_given -notmatch '^[0-9]+$') { return $false }
+        if ([int64]$port_given -lt 1 -or [int64]$port_given -gt 65535) { return $false }
+        $script:MEP_PORT = $port_given
+    } elseif ($authority.EndsWith(":")) {
+        return $false
+    }
+
+    if ($path_given) {
+        $script:MEP_ENDPOINT = $path.Trim('/')
+    }
+
+    return $true
 }
 
-# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-$server_port = get_conf_value "agent" "server" "port"
+# A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
+# to read both (#38624):
+#
+#   current  <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
+#   upgraded the deprecated <agent><manager><address>/<port>, or a 4.x
+#            <client><server><address> -- neither has an endpoint concept
+#
+# <endpoint> always carries the whole target, so no disambiguation is needed: its presence
+# alone decides, exactly as Read_Agent_Manager() does. get_conf_value returns $null for
+# "tag absent" and "" for "tag present but empty", so test against $null specifically.
+$server_address = $null
+$server_port = $null
+$server_endpoint = $null
+$combined_endpoint = get_conf_value "agent" "manager" "endpoint"
+
+if ($null -ne $combined_endpoint) {
+    # Split the one value the same way the agent's parser does. An empty <endpoint> fails
+    # here just as it does there, leaving $server_address unset for the check below.
+    if (ParseManagerEndpoint $combined_endpoint) {
+        $server_address = $MEP_HOST
+        $server_port = $MEP_PORT
+        $server_endpoint = $MEP_ENDPOINT
+    }
+} else {
+    # Compose the same target the agent composes internally from the deprecated tags:
+    # the address, <port> or its 1517 default, and the default prefix.
+    $server_address = get_conf_value "agent" "manager" "address"
+    $server_port = get_conf_value "agent" "manager" "port"
+
+    if ([string]::IsNullOrEmpty($server_address)) {
+        # 4.x shape. Its <port> is not read by the agent either, so leave it defaulted.
+        $server_address = get_conf_value "client" "server" "address"
+        $server_port = $null
+    }
+
+    $server_endpoint = "wazuh-manager"
+}
+
 if ([string]::IsNullOrEmpty($server_port)) {
     $server_port = "1517"
 }
+if ($null -eq $server_endpoint) {
+    $server_endpoint = ""
+}
+$server_endpoint = $server_endpoint.Trim('/')
 
 if ([string]::IsNullOrEmpty($server_address)) {
     write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
     abort_upgrade "2"
 }
 
-write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
 
-if (-Not (probe_server $server_address $server_port)) {
-    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
-    abort_upgrade "2"
+if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
+    write-output "$(Get-Date -format u) - Manager connectivity check skipped (test mode)." >> .\upgrade\upgrade.log
+} else {
+    $probe_ok = $false
+    for ($i = 0; $i -lt 3; $i++) {
+        if (probe_server $server_address $server_port $server_endpoint) {
+            $probe_ok = $true
+            break
+        }
+        Start-Sleep -Seconds 1
+    }
+    if (-Not $probe_ok) {
+        write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } else {
+        write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
+    }
 }
-
-write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 
 # Ensure no other instance of msiexec is running by stopping them
 try {

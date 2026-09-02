@@ -7,7 +7,12 @@
   - sections:
     - section: agent
       elements:
-          - server:
+          - manager:
               elements:
-              - address:
+              # SERVER_ADDRESS must stay a BARE placeholder: expand_placeholders()
+              # substitutes whole values only, never substrings, so 'SERVER_ADDRESS:1517/'
+              # would reach ossec.conf verbatim. Each case therefore supplies the complete
+              # endpoint -- including the trailing '/' that opts out of the prefix, which is
+              # what the <endpoint>'' of the pre-#38624 template meant.
+              - endpoint:
                   value: SERVER_ADDRESS

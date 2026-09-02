@@ -53,7 +53,6 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -133,7 +132,6 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         - keys
     '''
 
-    authd_server = None
     remoted_server = None
     try:
         # Start RemotedSimulator
@@ -146,34 +144,16 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent: a 401 on every request is what actually
-        # drives re-enrollment under HTTPS (AuthGate.reportAuthFailure(),
-        # armed only by a rejected credential -- a dropped connection alone
-        # is just retried with backoff and never triggers it).
+        # Start rejecting Agent: a 401 on every /control request is what actually
+        # drives re-enrollment (AuthGate.reportAuthFailure(), armed only by a
+        # rejected credential -- a dropped connection alone is just retried with
+        # backoff and never triggers it). The same instance still serves /enroll
+        # normally, so the agent's re-enrollment attempt below succeeds.
         remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
 
-        # Start AuthdSimulator
-        authd_server = AuthdSimulator()
-        authd_server.start()
-
         # Wait until Agent asks a new key to enrollment
         wait_enrollment_try()
-
-        # AuthdSimulator's MitM handler gates its whole receive loop on a single
-        # threading.Event that lives on the server, not per-connection (mitm.py:
-        # StreamHandler.handle(), `while not event.is_set()`), and
-        # __authd_response_simulation() sets it after every response without ever
-        # resetting it. So once this first enrollment is served, the event stays set
-        # and any later connection's handler exits immediately without reading or
-        # answering it -- seen live as the agent hanging on "SSL read (unable to
-        # receive message)" forever. Because remoted_server is still REJECT_AUTH here,
-        # the freshly-issued key can itself get rejected (401) before the swap below
-        # completes, forcing a second enrollment cycle against this same
-        # authd_server; clear() resets the event so that cycle is actually served
-        # instead of silently dropped (same fix already applied in
-        # test_agentd_reconection_enrollment_no_keys.py for the analogous case).
-        authd_server.clear()
 
         # Reset simulator
         remoted_server.destroy()
@@ -188,5 +168,3 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         # Reset simulator
         if remoted_server:
             remoted_server.destroy()
-        if authd_server:
-            authd_server.destroy()

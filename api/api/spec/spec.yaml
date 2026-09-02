@@ -151,6 +151,15 @@ x-rbac-catalog:
         actions: ['agent:reload']
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
+    'agent:scan_vulnerability':
+      description: "Trigger an on-demand vulnerability scan on agents"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:scan_vulnerability']
+        resources: ['agent:id:050', 'agent:id:049']
+        effect: "deny"
     'agent:uninstall':
       description: "Check user's permission to uninstall agents"
       resources:
@@ -3070,6 +3079,7 @@ components:
       schema:
         type: string
         format: search
+        maxLength: 1024
     select:
       in: query
       name: select
@@ -4321,8 +4331,11 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using the `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name or the
+      same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
+      an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
+      owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
+      the agent and let its deletion complete before reusing its ID"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -4338,7 +4351,7 @@ paths:
               name: NewHost_2
               ip: 10.0.10.11
               id: "123"
-              key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+              key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               force:
                 enabled: True
                 disconnected_time:
@@ -4684,6 +4697,68 @@ paths:
                           - '010'
                           - '011'
                   message: "Restart command was not sent to some agents"
+                  error: 2
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/scan/vulnerability:
+    put:
+      tags:
+        - Agents
+      summary: "Scan agents for vulnerabilities"
+      description: "Request an on-demand vulnerability scan for all agents or a list of them"
+      operationId: api.controllers.agent_controller.scan_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:scan_vulnerability'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agent scan requested"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - '001'
+                      - '003'
+                    total_affected_items: 2
+                    total_failed_items: 3
+                    failed_items:
+                      - error:
+                          code: 1701
+                          message: "Agent does not exist"
+                        id:
+                          - '002'
+                      - error:
+                          code: 8005
+                          message: "Vulnerability scan queue is full, please retry later"
+                        id:
+                          - '004'
+                      - error:
+                          code: 1764
+                          message: "Vulnerability scanning requires agent version 5.0 or higher."
+                        id:
+                          - '005'
+                  message: "Scan was requested for some agents"
                   error: 2
 
         '400':
@@ -6042,16 +6117,19 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        legacy:
-                          port: 1514
-                          protocol:
-                            - tcp
-                          queue_size: 131072
-                        https:
-                          port: 1517
-                          bind_addr: "127.0.0.1"
-                          certificate: "etc/remoted-https/server.crt"
-                          key: "etc/remoted-https/server.key"
+                        - legacy:
+                            enabled: "yes"
+                            port: "1514"
+                            protocol:
+                              - tcp
+                            local_ip: "127.0.0.1"
+                          https:
+                            port: "1517"
+                            bind_addr: "127.0.0.1"
+                            certificate: "etc/certs/remoted.pem"
+                            key: "etc/certs/remoted-key.pem"
+                          agents:
+                            allow_higher_versions: "no"
                       syscollector:
                         disabled: no
                         interval: "1h"

@@ -164,52 +164,149 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
+/* Mirrors the <remote> XML tree this reports on: <legacy>, <https> and <agents> are siblings, and
+ * each option is reported under the block it is actually configured in. The pre-5.0 flat shape
+ * (every option directly under the connection object, plus a "connection":"secure" key) is gone
+ * along with the flat XML it described -- <connection> was removed in 5.0, and reporting it kept
+ * GET /manager/configuration describing a configuration the manager can no longer be given.
+ *
+ * Numeric options stay strings, unchanged from what this function has always emitted.
+ *
+ * Note this feeds ONE endpoint: GET /manager|cluster/.../configuration/request/remote, which asks
+ * the daemon over its socket. The plain .../configuration endpoint does NOT come through here -- the
+ * framework parses ossec.conf itself (get_ossec_conf()), so it reports the XML verbatim and its
+ * output is unaffected by anything below. */
 cJSON *getRemoteConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *rem = cJSON_CreateArray();
-    char port[255] = {0};
-    char queue_size[255] = {0};
+    char buffer[255] = {0};
 
     cJSON *conn = cJSON_CreateObject();
-    cJSON_AddStringToObject(conn,"connection","secure");
-    if (logr.ipv6) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
 
-    if (logr.lip) cJSON_AddStringToObject(conn,"local_ip",logr.lip);
+    /* <legacy>: the classic TCP/UDP listener. Reported only when it is actually running -- when the
+     * block is absent or disabled, RemotedConfig() zeroes port/proto/lip, so reporting the block
+     * would describe a listener that was never bound. */
+    if (logr.legacy_enabled) {
+        cJSON *legacy = cJSON_CreateObject();
 
-    if (logr.proto) {
-        cJSON * proto_array = cJSON_CreateArray();
+        cJSON_AddStringToObject(legacy, "enabled", "yes");
 
-        /* If TCP is enabled */
-        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
+        if (logr.port) {
+            snprintf(buffer, sizeof(buffer), "%d", logr.port);
+            cJSON_AddStringToObject(legacy, "port", buffer);
         }
-        /* If UDP is enabled */
-        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
+
+        if (logr.proto) {
+            cJSON *proto_array = cJSON_CreateArray();
+
+            /* If TCP is enabled */
+            if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+                cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
+            }
+            /* If UDP is enabled */
+            if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+                cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
+            }
+            cJSON_AddItemToObject(legacy, "protocol", proto_array);
         }
-        cJSON_AddItemToObject(conn, "protocol", proto_array);
+
+        cJSON_AddStringToObject(legacy, "ipv6", logr.ipv6 ? "yes" : "no");
+
+        if (logr.lip) {
+            cJSON_AddStringToObject(legacy, "local_ip", logr.lip);
+        }
+
+        if (logr.queue_size) {
+            snprintf(buffer, sizeof(buffer), "%ld", logr.queue_size);
+            cJSON_AddStringToObject(legacy, "queue_size", buffer);
+        }
+
+        snprintf(buffer, sizeof(buffer), "%d", logr.rids_closing_time);
+        cJSON_AddStringToObject(legacy, "rids_closing_time", buffer);
+
+        snprintf(buffer, sizeof(buffer), "%d", logr.connection_overtake_time);
+        cJSON_AddStringToObject(legacy, "connection_overtake_time", buffer);
+
+        cJSON_AddItemToObject(conn, "legacy", legacy);
+    } else {
+        cJSON *legacy = cJSON_CreateObject();
+        cJSON_AddStringToObject(legacy, "enabled", "no");
+        cJSON_AddItemToObject(conn, "legacy", legacy);
     }
 
-    if (logr.port){
-        sprintf(port,"%d",logr.port);
-        cJSON_AddStringToObject(conn,"port",port);
+    /* <https>: the agent-facing HTTPS listener. Always running, so always reported. Each option is
+     * reported only when the operator set it: an absent value means the C++ module applies its own
+     * default, and inventing that default here would report a value this side does not own. */
+    cJSON *https = cJSON_CreateObject();
+
+    if (logr.https.port) {
+        snprintf(buffer, sizeof(buffer), "%d", logr.https.port);
+        cJSON_AddStringToObject(https, "port", buffer);
     }
 
-    if (logr.queue_size) {
-        sprintf(queue_size,"%ld",logr.queue_size);
-        cJSON_AddStringToObject(conn,"queue_size", queue_size);
-
-        cJSON * agents = cJSON_CreateObject();
-        cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
-        cJSON_AddItemToObject(conn, "agents", agents);
+    if (logr.https.bind_addr) {
+        cJSON_AddStringToObject(https, "bind_addr", logr.https.bind_addr);
     }
 
-    cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+    if (logr.https.global_prefix) {
+        cJSON_AddStringToObject(https, "global_prefix", logr.https.global_prefix);
+    }
 
-    cJSON_AddItemToArray(rem,conn);
+    if (logr.https.certificate) {
+        cJSON_AddStringToObject(https, "certificate", logr.https.certificate);
+    }
 
-    cJSON_AddItemToObject(root,"remote",rem);
+    if (logr.https.key) {
+        cJSON_AddStringToObject(https, "key", logr.https.key);
+    }
+
+    if (logr.https.ca) {
+        cJSON_AddStringToObject(https, "ca", logr.https.ca);
+    }
+
+    /* UNSET is deliberately not reported: it is "the operator never configured this", which is a
+     * different statement from an explicit "none" and must not be flattened into it. */
+    switch (logr.https.verification_mode) {
+    case REMOTED_HTTPS_VERIFY_NONE:
+        cJSON_AddStringToObject(https, "verification_mode", "none");
+        break;
+    case REMOTED_HTTPS_VERIFY_CERTIFICATE:
+        cJSON_AddStringToObject(https, "verification_mode", "certificate");
+        break;
+    case REMOTED_HTTPS_VERIFY_FULL:
+        cJSON_AddStringToObject(https, "verification_mode", "full");
+        break;
+    default:
+        break;
+    }
+
+    if (logr.https.ciphers) {
+        cJSON_AddStringToObject(https, "ciphers", logr.https.ciphers);
+    }
+
+    if (logr.https.max_body_size) {
+        snprintf(buffer, sizeof(buffer), "%ld", logr.https.max_body_size);
+        cJSON_AddStringToObject(https, "max_body_size", buffer);
+    }
+
+    if (logr.https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET) {
+        cJSON_AddStringToObject(https, "dual_stack",
+                                logr.https.dual_stack == REMOTED_HTTPS_DUAL_STACK_YES ? "yes" : "no");
+    }
+
+    cJSON_AddItemToObject(conn, "https", https);
+
+    /* <agents>: a sibling of the two listener blocks, not part of either. It used to be emitted
+     * inside the connection object and only when queue_size was non-zero -- an unrelated legacy
+     * option, so allow_higher_versions went unreported on any manager that had not set it. */
+    cJSON *agents = cJSON_CreateObject();
+    cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
+    cJSON_AddItemToObject(conn, "agents", agents);
+
+    cJSON_AddItemToArray(rem, conn);
+
+    cJSON_AddItemToObject(root, "remote", rem);
 
     return root;
 }

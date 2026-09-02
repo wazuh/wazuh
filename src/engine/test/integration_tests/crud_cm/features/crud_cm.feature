@@ -28,6 +28,31 @@ Feature: Resource management via cmcrud resource handlers
     Then the resource request should succeed
     Then the updated decoder resource in namespace "analytics" should include "test.updated: true"
 
+  Scenario Outline: Create a decoder resource with an opaque id and list it unchanged
+    # Resource identifiers are opaque to the Engine: the content ships UUIDv5 ids, and any other
+    # non-empty string without control characters is accepted and stored byte by byte
+    When I send a request to create a "decoder" resource with id "<id>" named "<name>" in namespace "analytics"
+    Then the resource request should succeed
+    When I request the list of "decoder" resources in namespace "analytics"
+    Then the resource list request should succeed
+    And the resource list should contain a resource with id "<id>" named "<name>"
+
+    Examples:
+      | id                                   | name                     |
+      | 6093809a-6285-5cf8-9284-63bd68f796e9 | decoder/v5_decoder/0     |
+      | 6093809A-6285-5CF8-9284-63BD68F796E9 | decoder/upper_decoder/0  |
+      | custom/id_1                          | decoder/custom_decoder/0 |
+
+  Scenario: Ids that only differ in case identify different resources
+    When I send a request to create a "decoder" resource with id "ABC" named "decoder/upper/0" in namespace "analytics"
+    Then the resource request should succeed
+    When I send a request to create a "decoder" resource with id "abc" named "decoder/lower/0" in namespace "analytics"
+    Then the resource request should succeed
+    When I request the list of "decoder" resources in namespace "analytics"
+    Then the resource list request should succeed
+    And the resource list should contain a resource with id "ABC" named "decoder/upper/0"
+    And the resource list should contain a resource with id "abc" named "decoder/lower/0"
+
   Scenario: Delete an existing decoder resource and verify it is gone
     Given I have created a "decoder" resource named "decoder/my_decoder/0" in namespace "analytics"
     And I have fetched the decoder resources in namespace "analytics"
@@ -78,6 +103,16 @@ Feature: Resource management via cmcrud resource handlers
     Then the resource request should fail
     And the resource error message should be "Failed to upsert resource of type 'decoder' in namespace 'analytics': Asset name 'invalid/name' must have exactly 3 parts 'decoder/<name>/<version>'"
 
+  Scenario: Fail to create a decoder resource whose id contains a control character
+    When I send a request to create a "decoder" resource with an id containing a control character named "decoder/bad_id/0" in namespace "analytics"
+    Then the resource request should fail
+    And the resource error message should be "Failed to upsert resource of type 'decoder' in namespace 'analytics': Resource UUID at '/id' is not a valid identifier: it must be non-empty, at most 256 characters long and must not contain control characters"
+
+  Scenario: Fail to create a decoder resource whose id is too long
+    When I send a request to create a "decoder" resource with an id of 257 characters named "decoder/long_id/0" in namespace "analytics"
+    Then the resource request should fail
+    And the resource error message should be "Failed to upsert resource of type 'decoder' in namespace 'analytics': Resource UUID at '/id' is not a valid identifier: it must be non-empty, at most 256 characters long and must not contain control characters"
+
   # ===================================================================
   #                       VALIDATION ERRORS (DELETE)
   # ===================================================================
@@ -91,6 +126,11 @@ Feature: Resource management via cmcrud resource handlers
     When I send a request to delete a resource with empty UUID in namespace "analytics"
     Then the resource request should fail
     And the resource error message should be "Field /uuid cannot be empty"
+
+  Scenario: Fail to delete a resource with a UUID field containing a control character
+    When I send a request to delete a resource with a UUID containing a control character in namespace "analytics"
+    Then the resource request should fail
+    And the resource error message should be "Field /uuid is not a valid identifier"
 
   Scenario: Fail to delete a resource with a non-existing UUID in an existing namespace
     When I send a request to delete a resource with UUID "non-existing-uuid" in namespace "analytics"
@@ -143,6 +183,11 @@ Feature: Resource management via cmcrud resource handlers
     When I send a request to upsert a policy in namespace "analytics" with JSON having an invalid root decoder
     Then the policy request should fail
     And the policy error message should be "Failed to upsert policy in namespace 'analytics': Resource with UUID '00000000-0000-0000-0000-000000000001' does not exist"
+
+  Scenario: Fail to upsert a policy whose root decoder id contains a control character
+    When I send a request to upsert a policy in namespace "analytics" with JSON having a root decoder containing a control character
+    Then the policy request should fail
+    And the policy error message should be "Failed to upsert policy in namespace 'analytics': Policy root decoder is not a valid identifier: it must be non-empty, at most 256 characters long and must not contain control characters"
 
   Scenario: Fail to delete a policy with an empty space field
     When I send a request to delete a policy in an empty space

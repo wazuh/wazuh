@@ -4,8 +4,9 @@
 #
 # A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
 # enough to watch the REAL https_client module communicate: it verifies the
-# AES-CMAC of every request (via the openssl CLI, so it is an independent
-# implementation), then answers /control, /stateless and /stateful. Every
+# wazuh-agent+jwt bearer token of every request (HS256 with the standard
+# library, so it is an independent implementation), then answers /control,
+# /stateless and /stateful. Every
 # request is logged so the conversation is visible. A /stateful session that
 # is larger than the legacy 64 KB DGRAM cap gets spotlighted, since arriving
 # whole in one signed POST is exactly what the new STREAM intake makes possible.
@@ -13,7 +14,9 @@
 # Not production code; a demo harness only.
 
 import argparse
+import base64
 import hashlib
+import hmac
 import json
 import ssl
 import subprocess
@@ -47,22 +50,40 @@ def human_size(n):
     return f"{n / (1024 * 1024):.2f} MB"
 
 
-def cmac_hex(key_hex, message):
-    """AES-CMAC(key, message) as lowercase hex, via the openssl CLI. The
-    cipher follows the key length (16/24/32 bytes -> AES-128/192/256), the
-    same rule as the manager's client.keys resolver."""
-    cipher = {32: "AES-128-CBC", 48: "AES-192-CBC", 64: "AES-256-CBC"}[len(key_hex)]
-    out = subprocess.run(
-        ["openssl", "mac", "-macopt", f"cipher:{cipher}",
-         "-macopt", f"hexkey:{key_hex}", "CMAC"],
-        input=message, capture_output=True, check=True,
-    )
-    return out.stdout.decode().strip().lower()
+ENROLL_HKDF_INFO = b"WAZUH-ENROLL-JWT-KEY" + b"\x01"
+
+
+def hkdf_sha256(password, length=32, info=ENROLL_HKDF_INFO):
+    """HKDF-SHA256(IKM=password, salt=32 zero bytes, info="WAZUH-ENROLL-JWT-KEY"+0x01): the
+    wazuh-enroll+jwt key, via the stdlib hmac/hashlib, independent of the C++
+    enrollKeyDerivation.hpp it verifies (the frozen KAT in jwt_vectors.json "enroll.hkdf" was
+    itself derived this way -- see enrollSigner_test.cpp)."""
+    salt = bytes(32)
+    prk = hmac.new(salt, password, hashlib.sha256).digest()
+    okm = b""
+    previous = b""
+    counter = 1
+    while len(okm) < length:
+        previous = hmac.new(prk, previous + info + bytes([counter]), hashlib.sha256).digest()
+        okm += previous
+        counter += 1
+    return okm[:length]
+
+
+def zstd_decompress(data):
+    """Decompress a zstd frame via the `zstd` CLI (independent of the agent's
+    own libzstd linkage, reuse-a-real-CLI idiom). Returns
+    the original bytes, or None if `data` isn't a valid zstd frame."""
+    try:
+        out = subprocess.run(["zstd", "-d", "-c"], input=data, capture_output=True, check=True)
+        return out.stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
 
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"  # chunked /download needs 1.1
-    key_hex = "000102030405060708090a0b0c0d0e0f"
+    key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
     notify_count = 0
 
     # Timeline (driven by the notify counter): the config flips first (the
@@ -78,9 +99,29 @@ class Handler(BaseHTTPRequestHandler):
 
     # Credential rotation (#37828): after this notify the mock verifies ONLY
     # against ROTATED_KEY, so the agent's old key starts getting 401 and must
-    # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_key.
+    # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_identity.
     ROTATE_KEY_AT = 7
-    ROTATED_KEY = "0f0e0d0c0b0a09080706050403020100"
+
+    # key_hash (#38465) exists precisely so a re-enrolling agent that already
+    # has an entry is recognized as the SAME identity, not reassigned a new
+    # one: hc_set_agent_identity() (the module's #37828 credential-rotation path)
+    # only ever refreshes the key material on a live handle, by design --
+    # there is no ABI to also change its cached agent_id. A mock (or a real
+    # manager) that mints a fresh id on every /enroll regardless of key_hash
+    # would silently desync the module's id from what's on disk.
+    KEY_HASH_TO_ID = {}
+    ROTATED_KEY = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110"
+
+    # #38465: empty (default) -> /enroll accepts any request carrying
+    # protocol-version, no signature required (open mode). Non-empty ->
+    # /enroll additionally requires Authorization: Bearer <wazuh-enroll+jwt>
+    # verified against the HKDF key of this password. ENROLL_STATUS != 0 forces
+    # every /enroll response to that status with a generic error body, so the
+    # C-side 400/401/403/409/500/503 mapping (w_enrollment_process_response)
+    # can be driven on demand without five separate mocks.
+    ENROLL_PASSWORD = ""
+    ENROLL_STATUS = 0
+    ENROLL_NEXT_ID = 100
 
     # Exact startup-response bytes, kept verbatim: settings_hash is the SHA256
     # of precisely what goes on the wire (#37733 5.1.1).
@@ -157,23 +198,41 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _verify(self, target, body):
+        """The manager's wazuh-agent+jwt check, in stdlib: Bearer HS256 over
+        exactly {alg,kid,typ} / {exp,iat,iss,jti,nbf,sub}, keyed with the 32
+        bytes the 64-hex client.keys secret decodes to. The target and the body
+        play no part (identity only)."""
+        del target, body
         auth = self.headers.get("Authorization", "")
         version = self.headers.get("protocol-version", "")
-        if not auth.startswith("Wazuh ") or version != "1":
+        if not auth.startswith("Bearer ") or version != "1":
             return None, "missing/!=1 protocol-version or Authorization"
-        try:
-            agent_id, ts, mac = auth[len("Wazuh "):].split(":", 2)
-        except ValueError:
-            return None, "malformed Authorization"
-        canonical = (b"WAZUH-REQUEST\n1\nPOST\n" + target.encode() + b"\n"
-                     + agent_id.encode() + b"\n" + ts.encode() + b"\n" + body)
         active_key = (Handler.ROTATED_KEY
                       if Handler.notify_count >= Handler.ROTATE_KEY_AT
                       else Handler.key_hex)
-        expected = cmac_hex(active_key, canonical)
-        if expected != mac.lower():
-            return None, f"CMAC mismatch (got {mac[:12]}.., want {expected[:12]}.. - rotated?)"
-        return (agent_id, ts, mac), None
+        try:
+            h64, p64, s64 = auth[len("Bearer "):].split(".")
+            pad = lambda x: x + "=" * (-len(x) % 4)
+            header = json.loads(base64.urlsafe_b64decode(pad(h64)))
+            claims = json.loads(base64.urlsafe_b64decode(pad(p64)))
+            sig = base64.urlsafe_b64decode(pad(s64))
+        except (ValueError, json.JSONDecodeError):
+            return None, "malformed Authorization"
+        if header != {"alg": "HS256", "kid": claims.get("sub"), "typ": "wazuh-agent+jwt"}:
+            return None, f"unexpected header {header}"
+        if set(claims) != {"exp", "iat", "iss", "jti", "nbf", "sub"}:
+            return None, f"unexpected claim set {sorted(claims)}"
+        expected = hmac.new(bytes.fromhex(active_key), f"{h64}.{p64}".encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(expected, sig):
+            return None, f"signature mismatch (kid {claims.get('sub')} - rotated?)"
+        now = int(time.time())
+        if not (claims["nbf"] == claims["iat"] and 0 < claims["exp"] - claims["iat"] <= 60):
+            return None, "structural time rules violated"
+        if claims["iat"] > now + 30 or now > claims["exp"] + 30 or now - claims["iat"] > 90:
+            return None, f"token outside the time window (iat {claims['iat']}, now {now})"
+        if claims["iss"] != "wazuh-agent/" + claims["sub"]:
+            return None, "iss/sub mismatch"
+        return (claims["sub"], claims["iat"], claims["jti"]), None
 
     def _reply(self, code, payload=None, headers=None):
         body = b"" if payload is None else json.dumps(payload).encode()
@@ -208,15 +267,35 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(length)
         target = self.path
 
+        # /enroll predates any client.keys identity (that is the whole point:
+        # it is how one gets minted) -- it cannot go through the generic
+        # Bearer _verify() below, which requires an id the
+        # agent does not have yet. It carries its own wazuh-enroll+jwt bearer.
+        if target == "/enroll":
+            self._handle_enroll(body)
+            return
+
         identity, err = self._verify(target, body)
         if err:
             log(f"POST {target:<11} -> 401  ({err})")
             self._reply(401, {"error": "unauthorized"})
             return
 
-        agent_id, ts, mac = identity
-        preview = body[:70].decode("latin-1").replace("\n", "\\n")
-        log(f"POST {target:<11} <- id={agent_id} ts={ts} mac={mac[:10]}.. "
+        agent_id, ts, jti = identity
+
+        # Authentication never looked at the (possibly compressed) wire bytes, same
+        # as /enroll -- decompress only now, for the handlers below, which
+        # all expect plain JSON/text content.
+        if self.headers.get("Content-Encoding", "") == "zstd":
+            decompressed = zstd_decompress(body)
+            if decompressed is None:
+                log(f"POST {target:<11} -> 400  (bad zstd frame)")
+                self._reply(400, {"error": "bad zstd frame"})
+                return
+            body = decompressed
+
+        preview = body[:70].decode("latin-1", errors="replace").replace("\n", "\\n")
+        log(f"POST {target:<11} <- id={agent_id} iat={ts} jti={jti[:10]}.. "
             f"auth OK ({len(body)} B) body='{preview}'")
 
         if target == "/control":
@@ -261,7 +340,12 @@ class Handler(BaseHTTPRequestHandler):
         n = Handler.notify_count
         blob = self._config_blob()
         startup = self._startup_body()
+        # config_token is what the agent must echo back as /download's resource_id. It is
+        # opaque to the agent, so this value is deliberately not the group name -- seeing it
+        # in the /download log below proves the agent relayed the token instead of deriving a
+        # selector from agent.groups on its own.
         response = {"agent": {"groups": ["default"],
+                              "config_token": "cfg-token-abc123",
                               "config_hash": hashlib.sha256(blob).hexdigest()},
                     "settings_hash": hashlib.sha256(startup).hexdigest()}
         if n == 2:
@@ -336,6 +420,112 @@ class Handler(BaseHTTPRequestHandler):
         # which is not enough to see the per-module bodies.
         log(f"     {target} FULL BODY: {json.dumps(doc, sort_keys=True)}")
 
+    def _verify_enroll(self, body):
+        """Returns None on success, or an error string. Open mode (no
+        ENROLL_PASSWORD configured) accepts any request with protocol-version
+        present; password mode additionally checks Authorization: Bearer
+        <wazuh-enroll+jwt> -- header exactly {alg: HS256, typ: wazuh-enroll+jwt}
+        (no kid), claims exactly {exp, iat, jti, nbf}, HS256 with the HKDF key
+        of the password (see hkdf_sha256), same time rules as the agent bearer."""
+        del body  # The token does not cover the body (TLS does).
+        if self.headers.get("protocol-version", "") != "1":
+            return "missing/!=1 protocol-version"
+        if not Handler.ENROLL_PASSWORD:
+            return None
+        auth = self.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return "missing Bearer Authorization header"
+        parts = auth[len("Bearer "):].split(".")
+        if len(parts) != 3 or not all(parts):
+            return "malformed token"
+
+        def b64d(segment):
+            return base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4))
+
+        try:
+            header = json.loads(b64d(parts[0]))
+            claims = json.loads(b64d(parts[1]))
+            signature = b64d(parts[2])
+        except (ValueError, UnicodeDecodeError):
+            return "malformed token segments"
+        if header != {"alg": "HS256", "typ": "wazuh-enroll+jwt"}:
+            return f"header is not exactly the enroll profile: {header}"
+        key = hkdf_sha256(Handler.ENROLL_PASSWORD.encode())
+        expected = hmac.new(key, (parts[0] + "." + parts[1]).encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(expected, signature):
+            return "signature mismatch (wrong password?)"
+        if set(claims) != {"exp", "iat", "jti", "nbf"}:
+            return f"claims are not exactly the enroll profile: {sorted(claims)}"
+        if not all(isinstance(claims[k], int) for k in ("exp", "iat", "nbf")):
+            return "non-integer time claim"
+        now = int(time.time())
+        if claims["nbf"] != claims["iat"] or not 0 < claims["exp"] - claims["iat"] <= 60:
+            return "structural time rule broken"
+        if claims["iat"] > now + 30 or now > claims["exp"] + 30 or now - claims["iat"] > 90:
+            return "token outside the accepted time window"
+        log(f"     /enroll     bearer ok iat={claims['iat']} jti={claims['jti'][:10]}..")
+        return None
+
+    def _handle_enroll(self, body):
+        compressed = self.headers.get("Content-Encoding", "") == "zstd"
+        preview = body[:120].decode("latin-1", errors="replace").replace("\n", "\\n")
+        log(f"POST /enroll     <- ({len(body)} B{', zstd' if compressed else ''}) body='{preview}'")
+
+        if Handler.ENROLL_STATUS:
+            self._reply(Handler.ENROLL_STATUS,
+                        {"error": {"code": "forced", "message": "forced by --enroll-status"}})
+            log(f"     /enroll     -> {Handler.ENROLL_STATUS}  (forced by --enroll-status)")
+            return
+
+        # The token does not cover the wire bytes (compressed or not, #38465
+        # D7) -- verify against the raw body exactly as received, same as
+        # every other endpoint. Only the JSON parsing below needs the
+        # decompressed content.
+        err = self._verify_enroll(body)
+        if err:
+            self._reply(401, {"error": {"code": "invalid_signature", "message": err}})
+            log(f"     /enroll     -> 401  ({err})")
+            return
+
+        payload = body
+        if compressed:
+            decompressed = zstd_decompress(body)
+            if decompressed is None:
+                self._reply(400, {"error": {"code": "invalid_body", "message": "bad zstd frame"}})
+                log("     /enroll     -> 400  (bad zstd frame)")
+                return
+            payload = decompressed
+
+        try:
+            request = json.loads(payload.decode())
+        except (ValueError, UnicodeDecodeError):
+            self._reply(400, {"error": {"code": "invalid_body", "message": "malformed JSON"}})
+            log("     /enroll     -> 400  (malformed JSON)")
+            return
+
+        key_hash = request.get("key_hash")
+        agent_id = Handler.KEY_HASH_TO_ID.get(key_hash) if key_hash else None
+        if agent_id is None:
+            Handler.ENROLL_NEXT_ID += 1
+            agent_id = f"{Handler.ENROLL_NEXT_ID:03d}"
+            if key_hash:
+                Handler.KEY_HASH_TO_ID[key_hash] = agent_id
+        name = request.get("name", "unknown")
+        # Must match whatever _verify() checks the bearer against right now: if a
+        # key rotation (ROTATE_KEY_AT) already happened, handing back the
+        # pre-rotation key_hex would make the agent re-enroll, get the same
+        # already-invalid key, 401 again, and loop forever -- indistinguishable
+        # from a real bug on the agent side unless this endpoint tracks the
+        # same rotation state.
+        active_key = (Handler.ROTATED_KEY
+                      if Handler.ROTATE_KEY_AT > 0 and Handler.notify_count >= Handler.ROTATE_KEY_AT
+                      else Handler.key_hex)
+        response = {"id": agent_id, "name": name, "ip": request.get("ip", "any"),
+                   "key": active_key}
+        self._reply(200, response)
+        log(f"     /enroll     -> 200  minted id={agent_id} name={name} "
+            f"groups={request.get('groups')} key_hash={request.get('key_hash')}")
+
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")
         module, payload_start = self._parse_session_header(body)
@@ -362,7 +552,7 @@ class Handler(BaseHTTPRequestHandler):
         size = len(body)
         chunks = -(-size // MAX_BATCH_PAYLOAD)  # ceil
         log("──[ LARGE SESSION ]── streamed whole over the new intake socket ──")
-        log(f"     {human_size(size)} ({size} B) arrived as ONE CMAC-signed POST")
+        log(f"     {human_size(size)} ({size} B) arrived as ONE bearer-authenticated POST")
         log(f"     = {size / OS_MAXSTR:.0f}x the 64 KB OS_MAXSTR DGRAM cap; the legacy")
         log(f"       chunked path would need {chunks} x 60 KB datagrams reassembled")
         if module == "fim":
@@ -394,6 +584,9 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=27860)
+    parser.add_argument("--bind", default="127.0.0.1",
+                        help="Listen address. Default 127.0.0.1 (single-machine demo); use "
+                             "0.0.0.0 to accept real agents on other hosts on the LAN.")
     parser.add_argument("--cert", required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
@@ -403,9 +596,19 @@ def main():
     parser.add_argument("--client-ca",
                         help="Require a client certificate and verify it against this CA "
                              "(mutual TLS). Without it, client certs are not requested.")
+    parser.add_argument("--enroll-password", default="",
+                        help="#38465/#38582: require this password on POST /enroll (Authorization: "
+                             "Bearer <wazuh-enroll+jwt>, verified with the HKDF key of the password). "
+                             "Empty (default): open mode, no credential required.")
+    parser.add_argument("--enroll-status", type=int, default=0,
+                        help="#38465: force every POST /enroll response to this HTTP status "
+                             "(e.g. 403/409/500/503), to demo the agent-side error mapping "
+                             "instead of the real enroll flow.")
     args = parser.parse_args()
 
     Handler.key_hex = args.key_hex
+    Handler.ENROLL_PASSWORD = args.enroll_password
+    Handler.ENROLL_STATUS = args.enroll_status
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(args.cert, args.key)
 
@@ -425,10 +628,10 @@ def main():
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_verify_locations(args.client_ca)
 
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server = ThreadingHTTPServer((args.bind, args.port), Handler)
     server.requires_client_cert = bool(args.client_ca)
     server.socket = context.wrap_socket(server.socket, server_side=True)
-    log(f"HTTPS manager on https://127.0.0.1:{args.port} "
+    log(f"HTTPS manager on https://{args.bind}:{args.port} "
         f"(agent key {args.key_hex[:8]}..)")
     log(f"     mutual TLS: {'required, CA ' + args.client_ca if args.client_ca else 'not requested'}")
     log(f"     min TLS:    1.3")

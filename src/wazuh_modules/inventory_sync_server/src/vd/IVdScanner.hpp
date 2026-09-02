@@ -48,6 +48,13 @@ namespace invsync::vd
         /// the strand calls it at admission and the lane worker re-checks it at dispatch.
         virtual bool feedReady() const = 0;
 
+        /// @brief Whether this node runs a vulnerability scanner at all: false when vulnerability
+        /// detection is disabled (or failed to start), true whatever its feed is doing. Tells the
+        /// lane "there is no scanner here" apart from "the scanner is up but its current feed
+        /// offset reads 0", which happens while the content manager's offset store is not
+        /// answering yet. Only the former may skip the version check.
+        virtual bool scannerRunning() const = 0;
+
         /// @brief This node's current VD feed offset, for validating a VDFirst/VDSync session's
         /// Start.feed_offset before scanning it. Cheap in production (an atomic load behind the
         /// database feed manager).

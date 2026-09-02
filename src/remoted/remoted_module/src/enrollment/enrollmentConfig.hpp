@@ -13,6 +13,8 @@
 
 #include "remoted_module.h"
 
+#include "jwt/jwtProfileV1.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -38,12 +40,12 @@ namespace remoted::enrollment
         std::string managerVersion;
         bool isWorkerNode {false};
 
-        /// Same ABI fields (auth_max_request_age/auth_max_future_skew) and the same defaults (300 /
-        /// 30) the agent<->manager AES-CMAC scheme's AuthConfig resolves (authTypes.cpp) -- /enroll's
-        /// WazuhEnroll scheme reuses the identical freshness-window check, so it must not silently
-        /// diverge from these two already-documented, already-tunable internal options.
-        std::int64_t maxRequestAgeSeconds {300};
-        std::int64_t maxFutureSkewSeconds {30};
+        /// The SAME time policy the agent<->manager bearer scheme's AuthConfig resolves from the
+        /// `jwt_max_age` / `jwt_clock_skew` ABI fields (authTypes.cpp's buildTimePolicy()): /enroll's
+        /// freshness window (maxAgeSec back, skewSec either way) must never silently diverge from the
+        /// two documented, tunable internal options: the `wazuh-enroll+jwt` bearer is verified with
+        /// exactly this policy (EnrollmentAuthConfig::timePolicy).
+        jwt_profile::v1::TimePolicy timePolicy {};
 
         /// Same `auth_max_body_size` ABI field (and the same 10 MiB default) authTypes.cpp
         /// resolves for the agent<->manager scheme's AuthConfig -- see EnrollmentAuthConfig's own

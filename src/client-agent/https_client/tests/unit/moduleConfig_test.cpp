@@ -130,6 +130,26 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
     EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
 }
 
+// #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
+// deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
+// the manager routes on the literal wire request-target (prefix included;
+// the bearer does not bind it), so the prefix is folded into
+// HttpRequestSpec::target instead (RetrySender::attemptOnce, EnrollClient::performOnce),
+// not into the authority baseUrl() builds. See retrySender_test.cpp for the
+// URL/signature composition tests.
+
+TEST(ModuleConfigTest, ServerEndpointIsEmptyByDefault)
+{
+    EXPECT_EQ("", ModuleConfig::fromC(minimalConfig()).serverEndpoint);
+}
+
+TEST(ModuleConfigTest, ServerEndpointIsKeptVerbatimWhenConfigured)
+{
+    auto config = minimalConfig();
+    std::strncpy(config.server_endpoint, "wazuh-manager", sizeof(config.server_endpoint) - 1);
+    EXPECT_EQ("wazuh-manager", ModuleConfig::fromC(config).serverEndpoint);
+}
+
 TEST(ModuleConfigTest, ValidateRejectsMissingHostOrId)
 {
     NiceMock<MockFsProbe> fsProbe;
@@ -192,6 +212,37 @@ TEST(ModuleConfigTest, NoneModeIsValidWithoutCa)
     EXPECT_TRUE(ModuleConfig::fromC(minimalConfig()).validate(fsProbe, TEST_LOG));
 }
 
+TEST(ModuleConfigTest, SystemModeValidWithoutCaWhenBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+#if !defined(WIN32) && !defined(__APPLE__)
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+#endif
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenCaIsSet)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.ca_path, "/etc/ca.pem", sizeof(config.ca_path) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+#endif
+
 // -----------------------------------------------------------------------------
 // Paired timing options. getDefine_Int_default() range-checks each option on its
 // own, so an inverted pair is reachable from two individually valid values --
@@ -249,4 +300,35 @@ TEST(ModuleConfigTest, ClientCertValidWhenBothReadable)
     EXPECT_CALL(fsProbe, isReadableFile("/etc/agent.pem")).WillOnce(Return(true));
     EXPECT_CALL(fsProbe, isReadableFile("/etc/agent.key")).WillOnce(Return(true));
     EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+// validateTransport() (#38465): the same TLS/client-cert matrix as validate(),
+// but callable with no agent_id -- an enrolling agent has none yet.
+
+TEST(ModuleConfigTest, ValidateTransportIgnoresMissingAgentId)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.server_host[0] = '\0';
+    EXPECT_TRUE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillFailsClosedWithoutCa)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.verify_mode = HC_VERIFY_FULL;
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillRequiresBothClientCertHalves)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    ON_CALL(fsProbe, isReadableFile(::testing::_)).WillByDefault(Return(true));
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    std::strncpy(config.client_cert, "/etc/agent.pem", sizeof(config.client_cert) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
 }

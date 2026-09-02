@@ -249,6 +249,14 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
             error = base::Error {
                 fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
+            if (i + 1 < MAX_RETRIES)
+            {
+                LOG_WARNING("[Geo::Manager] Download attempt {}/{} for '{}' failed: {}. Retrying.",
+                            i + 1,
+                            MAX_RETRIES,
+                            gzUrl,
+                            base::getError(downloadResp).message);
+            }
             continue;
         }
 
@@ -264,6 +272,14 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
         error = base::Error {
             fmt::format("MD5 mismatch for database '{}'. Expected: {}, Got: {}", gzUrl, expectedMd5, computedMd5)};
+        if (i + 1 < MAX_RETRIES)
+        {
+            LOG_WARNING("[Geo::Manager] Download attempt {}/{} for '{}' returned a corrupt file (MD5 mismatch). "
+                        "Retrying.",
+                        i + 1,
+                        MAX_RETRIES,
+                        gzUrl);
+        }
     }
 
     if (base::isError(error))

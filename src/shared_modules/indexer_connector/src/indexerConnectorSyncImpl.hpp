@@ -10,6 +10,7 @@
  */
 
 #include "IURLRequest.hpp"
+#include "defer.hpp"
 #include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
@@ -336,6 +337,17 @@ class IndexerConnectorSyncImpl final
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound). Unreachable hosts are the monitor's
+    /// job -- this bound is the only thing that catches a host that ACCEPTED the connection and
+    /// then never answers, which otherwise blocks the caller inside curl_easy_perform forever.
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
+    /// Fallback for 'monitoring_interval_seconds' when the configuration has no opinion. Kept
+    /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
+    /// template deliberately does not include.
+    static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
     void processBulk()
     {
@@ -347,11 +359,19 @@ class IndexerConnectorSyncImpl final
 
         auto serverUrl = m_selector->getNext();
 
+        // No success callback below may throw: THttpRequest::post() invokes them inside its own
+        // try block and remaps anything thrown there to onError(statusCode = -1), which the error
+        // handlers read as a transport outage to retry -- resending a buffer that no longer
+        // matches what the callback saw. Callbacks report through these flags; the throw happens
+        // after post() returns, from this frame.
+        bool deleteByQueryLeftDocuments = false;
+        bool indexingFailures = false;
+
         // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
         // errors come back in a `failures` array inside the body. Reporting that run as success is
         // how documents survive a deletion that everyone upstream believes worked, so the failures
         // are raised like a transport error and the caller decides whether to retry.
-        const auto onSuccessDeleteByQuery = [this](const std::string& response)
+        const auto onSuccessDeleteByQuery = [this, &deleteByQueryLeftDocuments](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
@@ -387,7 +407,7 @@ class IndexerConnectorSyncImpl final
                        failures,
                        conflicts,
                        response.c_str());
-            throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+            deleteByQueryLeftDocuments = true;
         };
 
         const auto onErrorDeleteByQuery =
@@ -413,9 +433,13 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
+                // Includes transport-level failures (timeout, connection refused: statusCode <= 0).
+                // Raise it and let the catch around the post drop the staged queries -- the caller
+                // retries by re-staging them. The staged BULK data is deliberately left alone: it
+                // has not been attempted yet (deletes go out before the bulk POST) and the next
+                // flush sends it; clearing it here without clearing m_boundaries desyncs the two
+                // and a later 413 split would then index past the end of the buffer.
                 LOGFN_WARN(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
-                m_bulkData.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
         };
@@ -437,7 +461,11 @@ class IndexerConnectorSyncImpl final
                     RequestParameters {
                         .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                    {});
+                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                if (deleteByQueryLeftDocuments)
+                {
+                    throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+                }
             }
             catch (...)
             {
@@ -451,17 +479,15 @@ class IndexerConnectorSyncImpl final
             }
         }
 
-        const auto onSuccess = [this, &needToRetry](const std::string& response)
+        const auto onSuccess = [this, &needToRetry, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                m_bulkData.clear();
-                m_boundaries.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
-                throw IndexerConnectorException("Bulk operation had indexing failures");
+                indexingFailures = true;
+                return;
             }
 
             m_shouldNotifyAfterBulk = true;
@@ -503,6 +529,17 @@ class IndexerConnectorSyncImpl final
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // No HTTP response at all (timeout, connection refused, TLS failure): the transport
+                // reports these as a negative status. Discarding here would turn every transient
+                // outage into silent data loss, so keep the batch and retry with backoff.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk request.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
@@ -525,6 +562,8 @@ class IndexerConnectorSyncImpl final
                     LOGFN_DEBUG2(m_logFn, "Stopping requested, aborting bulk processing");
                     return;
                 }
+                needToRetry = false;
+                indexingFailures = false;
 
                 std::string url;
                 url += m_selector->getNext();
@@ -536,7 +575,14 @@ class IndexerConnectorSyncImpl final
                                                        .data = m_bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                if (indexingFailures)
+                {
+                    m_bulkData.clear();
+                    m_boundaries.clear();
+                    m_lastBulkTime = std::chrono::steady_clock::now();
+                    throw IndexerConnectorException("Bulk operation had indexing failures");
+                }
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
@@ -561,6 +607,16 @@ class IndexerConnectorSyncImpl final
 
     void splitAndProcessBulk()
     {
+        // Clear on every exit path: on failure the caller re-stages, so bytes kept here would be
+        // re-sent by whoever flushes next.
+        DEFER(
+            [this]()
+            {
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+            });
+
         const size_t totalOperations = m_boundaries.size();
         if (totalOperations <= 1)
         {
@@ -609,26 +665,24 @@ class IndexerConnectorSyncImpl final
         {
             m_shouldNotifyAfterBulk = true;
         }
-        m_bulkData.clear();
-        m_boundaries.clear();
-        m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
     {
-        std::string url;
-        url += m_selector->getNext();
-        url += "/_bulk";
         bool needToRetry = false;
+        // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
+        // Throwing here additionally livelocked -- the remapped onError(-1) retried the same
+        // chunk, whose 200 answer carried the same failing items, forever.
+        bool indexingFailures = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Chunk processed successfully: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+                indexingFailures = true;
             }
         };
         const auto onError = [this, &needToRetry, boundaries](
@@ -667,6 +721,19 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                 needToRetry = true;
             }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry the
+                // chunk with backoff instead of throwing, which would abandon the whole split and
+                // resend the full oversized batch just to hit 413 and split again. The chunk views
+                // stay valid across retries: they point into m_bulkData, which is only cleared by
+                // splitAndProcessBulk() after every chunk went through.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk chunk.",
+                             statusCode,
+                             error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
@@ -683,12 +750,23 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            indexingFailures = false;
+            // Resolved inside the loop so a retry rotates to the next healthy host -- and throws
+            // (batch retained, resent by a later flush) once the monitor marks every host down,
+            // instead of hammering the same dead host forever while holding m_mutex.
+            std::string url;
+            url += m_selector->getNext();
+            url += "/_bulk";
             LOGFN_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
+            if (indexingFailures)
+            {
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+            }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
@@ -757,8 +835,25 @@ public:
         m_secureCommunication =
             secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
-        m_selector =
-            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+        if (selector)
+        {
+            m_selector = std::move(selector);
+        }
+        else
+        {
+            // Health-monitor polling period, read only by whoever builds the monitor.
+            const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                    config.at("monitoring_interval_seconds").is_number_integer()
+                                                ? config.at("monitoring_interval_seconds").get<long>()
+                                                : DEFAULT_MONITORING_INTERVAL_SECONDS;
+            if (monitoringInterval < 1)
+            {
+                throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+            }
+
+            m_selector = std::make_unique<TSelector>(
+                config.at("hosts"), static_cast<uint32_t>(monitoringInterval), m_secureCommunication);
+        }
 
         m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
                             ? config.at("max_bulk_size").get<size_t>()
@@ -778,7 +873,22 @@ public:
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
         }
 
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
+        }
+
         m_lastBulkTime = std::chrono::steady_clock::now();
+
+        // 0 = no background flush thread; the caller owns every flush.
+        if (m_flushInterval == 0)
+        {
+            return;
+        }
         m_bulkThread = std::thread(
             [this]()
             {
@@ -833,11 +943,8 @@ public:
     {
         if (!isSafeIndexName(index))
         {
-            LOGFN_WARN(m_logFn,
-                       "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
-                       "[a-zA-Z0-9._*-]).",
-                       index.c_str());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("deleteByQuery: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
         }
 
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
@@ -982,6 +1089,19 @@ public:
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // Transport-level failure (timeout, connection refused, TLS failure): retry with
+                // backoff like a 429 -- `conflicts=proceed` makes the update idempotent to re-run.
+                // Failing here instead would clear m_notify and silently drop the pending session
+                // completion callbacks.
+                needToRetry = true;
+                LOGFN_DEBUG2(
+                    m_logFn,
+                    "Transport-level failure, no HTTP status received (code %ld): %s. Retrying update by query.",
+                    statusCode,
+                    error.c_str());
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
@@ -1013,12 +1133,12 @@ public:
                                                    .data = updateQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(
+                LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -1049,7 +1169,7 @@ public:
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG1(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
+                LOGFN_DEBUG2(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
             else
             {
@@ -1091,12 +1211,12 @@ public:
                                                    .data = searchQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
@@ -1256,7 +1376,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1296,7 +1416,7 @@ public:
                                                   .data = deleteBody.dump(),
                                                   .secureCommunication = m_secureCommunication},
                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                               {});
+                               ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     nlohmann::json search(const PointInTime& pit,
@@ -1391,7 +1511,7 @@ public:
                                                    .data = requestBody.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1415,14 +1535,9 @@ public:
     {
         if (!isSafeIndexName(index))
         {
-            LOGFN_ERROR(m_logFn,
-                        "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
-                        "[a-zA-Z0-9._*-]) on document '%.*s'",
-                        static_cast<int>(index.size()),
-                        index.data(),
-                        static_cast<int>(id.size()),
-                        id.data());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("bulkDelete: unsafe index name '" + std::string(index) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-]) on document '" +
+                                            std::string(id) + "'");
         }
 
         // Only flush if there is data already buffered.
@@ -1453,14 +1568,9 @@ public:
         // Validate input parameters
         if (!isSafeIndexName(index))
         {
-            LOGFN_ERROR(m_logFn,
-                        "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
-                        "[a-zA-Z0-9._*-]) on document '%.*s'",
-                        static_cast<int>(index.size()),
-                        index.data(),
-                        static_cast<int>(id.size()),
-                        id.data());
-            throw IndexerConnectorException("Unsafe index name");
+            throw IndexerConnectorException("bulkIndex: unsafe index name '" + std::string(index) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-]) on document '" +
+                                            std::string(id) + "'");
         }
 
         if (data.empty())
@@ -1608,7 +1718,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     bool isAvailable() const

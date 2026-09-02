@@ -59,7 +59,7 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
         case Event::AuthFailed:
             {
                 // 401: the credential is dead. All traffic pauses (via the
-                // AuthGate); recovery is hc_set_agent_key -> CredentialRenewed,
+                // AuthGate); recovery is hc_set_agent_identity -> CredentialRenewed,
                 // NOT a slow re-sign. An armed settings refresh is dropped.
                 m_startupRequested = false;
                 return transitionTo(State::AuthError);

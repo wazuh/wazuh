@@ -2,8 +2,7 @@
 """
 Sends signed POST /scan/vd requests to remoted's HTTPS auth endpoint, exactly
 the way AuthMiddleware (remoted_module/src/authMiddleware.cpp) expects them --
-same envelope as send_control.py, see that script's docstring for the MAC
-construction details.
+same bearer envelope as send_control.py (see wire_jwt.py for the token).
 
 /scan/vd is the on-demand VD re-scan endpoint: an agent that detects (via /control's vd_feed_offset)
 that the manager's vulnerability feed has moved on asks THIS node to re-scan it. The manager
@@ -14,7 +13,7 @@ exactly what a real agent uses to retry with the corrected value.
 The agent key is read straight out of client.keys (same file Keystore reads), so this always
 matches whatever agent is currently enrolled -- no need to copy/paste keys by hand.
 
-Requires: pip install requests cryptography
+Requires: pip install requests
 
 Examples:
   python3 send_scan_vd.py --auto-offset                    # queries /control for the current
@@ -26,13 +25,14 @@ Examples:
 """
 import argparse
 import json
+import re
 import sys
 import time
 
 import requests
 import urllib3
-from cryptography.hazmat.primitives import cmac
-from cryptography.hazmat.primitives.ciphers import algorithms
+from wire_jwt import (EXPIRED_IAT_OFFSET, FUTURE_IAT_OFFSET, auth_headers, make_jwt, read_agent_key,
+                      tamper_token)  # the shared wazuh-agent+jwt signer (same directory)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -42,8 +42,6 @@ DEFAULT_AGENT_VERSION = "5.0.0"
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
 # side of each window.
-MAX_REQUEST_AGE_SECONDS = 300
-MAX_FUTURE_SKEW_SECONDS = 30
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
 # through HttpServerConfig, so these are fixed regardless of manager config.
@@ -60,56 +58,66 @@ MAX_SCAN_VD_BODY_SIZE = 4 * 1024
 CONN_CLOSED = "CONN_CLOSED"
 
 
-def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
-    """Parses client.keys the same way Keystore does: 'id name ip key'
-    lines, '#'/' '-prefixed lines are comments, a name starting with '#'/'!' means
-    removed. Returns the raw key bytes (hex-decoded)."""
-    with open(client_keys_path, "r") as f:
-        for line in f:
-            if not line or line[0] in ("#", " "):
-                continue
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            line_id, name, _ip, key_hex = parts[0], parts[1], parts[2], parts[3]
-            if name.startswith("#") or name.startswith("!"):
-                continue
-            if line_id == agent_id:
-                return bytes.fromhex(key_hex)
-    raise SystemExit(f"agent id {agent_id!r} not found (or removed) in {client_keys_path}")
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
 
 
-def sign_request(agent_key: bytes, protocol_version: str, method: str,
-                  request_target: str, agent_id: str, timestamp: int, body: bytes) -> str:
-    """Builds the canonical byte sequence and returns its lowercase-hex AES-CMAC."""
-    if len(agent_key) not in (16, 24, 32):
-        raise SystemExit(f"agent key must be 16, 24 or 32 bytes (got {len(agent_key)})")
-
-    c = cmac.CMAC(algorithms.AES(agent_key))
-    c.update(b"WAZUH-REQUEST\n")
-    c.update(protocol_version.encode() + b"\n")
-    c.update(method.upper().encode() + b"\n")
-    c.update(request_target.encode() + b"\n")
-    c.update(agent_id.encode() + b"\n")
-    c.update(str(timestamp).encode() + b"\n")
-    c.update(body)
-
-    return c.finalize().hex()
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
 
 
-def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method: str,
-                  target: str, timestamp: int, body: bytes) -> dict:
-    mac = sign_request(agent_key, protocol_version, method, target, agent_id, timestamp, body)
-    return {"protocol-version": protocol_version, "Authorization": f"Wazuh {agent_id}:{timestamp}:{mac}"}
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
 
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
 
 def query_current_offset(base_url: str, agent_id: str, agent_key: bytes) -> int:
     """Sends a /control (type: notify) request and reads vd_feed_offset back -- the same way a
     real agent discovers the manager's current feed offset before ever calling /scan/vd."""
-    target = "/control"
+    target = prefixed("/control")
     body_dict = {"type": "notify", "agent": {"version": DEFAULT_AGENT_VERSION}}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     url = base_url.rstrip("/") + target
     response = requests.post(url, headers=headers, data=body, verify=False, timeout=10)
     if not response.ok:
@@ -127,118 +135,142 @@ def query_current_offset(base_url: str, agent_id: str, agent_key: bytes) -> int:
 # rather than guessing, so --all stays deterministic against a live manager.
 
 def scenario_matching_offset(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "feed_update", "feed_offset": current_offset}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_mismatched_offset(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     # Deliberately different from current_offset in both directions is unnecessary here -- any
     # value that isn't an exact match takes the same 409 path.
     body_dict = {"type": "feed_update", "feed_offset": current_offset + 999999}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_missing_type(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"feed_offset": current_offset}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_invalid_type(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "manual", "feed_offset": current_offset}  # only "feed_update" is accepted
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_missing_feed_offset(agent_id, agent_key, _current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "feed_update"}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_negative_feed_offset(agent_id, agent_key, _current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "feed_update", "feed_offset": -1}  # must be an unsigned integer
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_invalid_json(agent_id, agent_key, _current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = b'{not valid json}'
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_empty_body(agent_id, agent_key, _current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = b''
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_body_too_large(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "feed_update", "feed_offset": current_offset, "padding": "A" * MAX_SCAN_VD_BODY_SIZE}
     body = json.dumps(body_dict).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
-def scenario_invalid_mac(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
-    signed_body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
-    tampered_body = json.dumps({"type": "feed_update", "feed_offset": current_offset + 1}).encode()
-    return headers, tampered_body, target
+def _valid_with(agent_id, agent_key, current_offset, **jwt_kwargs):
+    """The valid scenario with its Authorization replaced by a deliberately deviant token:
+    every keyword goes to wire_jwt.make_jwt (see there). The manager must answer 401."""
+    result = list(scenario_matching_offset(agent_id, agent_key, current_offset))
+    result[0] = auth_headers(agent_id, agent_key, **jwt_kwargs)
+    return tuple(result)
+
+
+def scenario_invalid_signature(agent_id, agent_key, current_offset):
+    result = list(scenario_matching_offset(agent_id, agent_key, current_offset))
+    token = result[0]["Authorization"].split(" ", 1)[1]
+    result[0] = dict(result[0], Authorization="Bearer " + tamper_token(token))
+    return tuple(result)
+
+
+def scenario_alg_none(agent_id, agent_key, current_offset):
+    return _valid_with(agent_id, agent_key, current_offset, alg="none")
+
+
+def scenario_aud_present(agent_id, agent_key, current_offset):
+    return _valid_with(agent_id, agent_key, current_offset, extra_claims={"aud": "wazuh-manager"})
+
+
+def scenario_non_canonical_kid(agent_id, agent_key, current_offset):
+    return _valid_with(agent_id, agent_key, current_offset, kid="0" + f"{int(agent_id):03d}")
+
+
+def scenario_ascii_key(agent_id, agent_key, current_offset):
+    # The classic interoperability mistake: HMAC with the 64 hex chars instead of the 32 bytes.
+    return _valid_with(agent_id, agent_key, current_offset, sign_with=agent_key.encode())
 
 
 def scenario_missing_authorization(_agent_id, _agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
     return {"protocol-version": "1"}, body, target
 
 
 def scenario_expired_request(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
-    ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + EXPIRED_IAT_OFFSET  # older than jwt_max_age + jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
 def scenario_future_request(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
-    ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, ts, body)
+    ts = int(time.time()) + FUTURE_IAT_OFFSET  # issued further ahead than jwt_clock_skew
+    headers = auth_headers(agent_id, agent_key, now=ts)
     return headers, body, target
 
 
 def scenario_url_too_large(agent_id, agent_key, current_offset):
-    target = "/scan/vd?pad=" + ("a" * (MAX_URL_SIZE + 100))
+    target = prefixed("/scan/vd?pad=" + ("a" * (MAX_URL_SIZE + 100)))
     body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     return headers, body, target
 
 
 def scenario_header_value_too_large(agent_id, agent_key, current_offset):
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body = json.dumps({"type": "feed_update", "feed_offset": current_offset}).encode()
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = auth_headers(agent_id, agent_key)
     headers["X-Test"] = "v" * (MAX_FIELD_VALUE_SIZE + 500)
     return headers, body, target
 
@@ -253,10 +285,14 @@ SCENARIOS = [
     ("invalid_json", 400, scenario_invalid_json),
     ("empty_body", 400, scenario_empty_body),
     ("body_too_large", 400, scenario_body_too_large),
-    ("invalid_mac_tampered_body", 401, scenario_invalid_mac),
+    ("invalid_signature_tampered_token", 401, scenario_invalid_signature),
+    ("alg_none", 401, scenario_alg_none),
+    ("aud_present", 401, scenario_aud_present),
+    ("non_canonical_kid", 401, scenario_non_canonical_kid),
+    ("ascii_key", 401, scenario_ascii_key),
     ("missing_authorization", 401, scenario_missing_authorization),
-    ("expired_request", 401, scenario_expired_request),
-    ("future_request", 401, scenario_future_request),
+    ("expired_token", 401, scenario_expired_request),
+    ("future_token", 401, scenario_future_request),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
     ("header_value_too_large", CONN_CLOSED, scenario_header_value_too_large),
 ]
@@ -301,6 +337,12 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--feed-offset", type=int,
@@ -313,6 +355,10 @@ def main():
                         help="Ignore --feed-offset/--auto-offset and run every scenario "
                              "(queries the current offset once, up front, for the ones that need it).")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
@@ -326,11 +372,11 @@ def main():
     if args.auto_offset:
         print(f"Discovered current vd_feed_offset via /control: {feed_offset}")
 
-    target = "/scan/vd"
+    target = prefixed("/scan/vd")
     body_dict = {"type": "feed_update", "feed_offset": feed_offset}
     body = json.dumps(body_dict).encode()
     timestamp = int(time.time())
-    headers = _auth_header(args.agent_id, agent_key, "1", "POST", target, timestamp, body)
+    headers = auth_headers(args.agent_id, agent_key, now=timestamp)
 
     url = args.url.rstrip("/") + target
     print(f"--> POST {url}")

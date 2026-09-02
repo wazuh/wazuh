@@ -32,8 +32,8 @@ namespace remoted::control
     inline constexpr size_t kFileHashBufferSize = 8192;
     inline constexpr size_t kInotifyBufferSize = 4096;
 
-    inline constexpr const char* kTaskSocketPath = "/queue/tasks/task";
-    inline constexpr const char* kWdbSocketPath = "/queue/db/wdb";
+    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task.sock";
+    inline constexpr const char* kWdbSocketPath = "/queue/sockets/wdb.sock";
     inline constexpr const char* kSharedGroupsRoot = "/etc/shared";
     inline constexpr const char* kMultiGroupsRoot = "/var/multigroups";
 

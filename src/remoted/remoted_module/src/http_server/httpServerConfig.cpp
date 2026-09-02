@@ -13,14 +13,16 @@
 
 #include "proc.hpp"
 
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace
 {
     constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {1517};
     // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
-    // work here can block (CMAC verification, client.keys file I/O), so it is oversubscribed.
+    // work here can block (token verification, client.keys file I/O), so it is oversubscribed.
     constexpr unsigned int WORKER_THREADS_NPROC_MULTIPLIER {2};
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
@@ -143,6 +145,12 @@ namespace remoted::http
 
         result.bindAddress = config.bind_address[0] != '\0' ? std::string {config.bind_address} : DEFAULT_BIND_ADDRESS;
 
+        // Copied VERBATIM (an empty buffer resolves to "" == no prefix): canonicalization --
+        // trailing-slash strip, identity collapse -- happens in ONE place, RestinioHttpServer::
+        // start() via normalizeGlobalPrefix(), so a directly-constructed HttpServerConfig
+        // behaves identically to a builder-produced one.
+        result.globalPrefix = config.global_prefix[0] != '\0' ? std::string {config.global_prefix} : std::string {};
+
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
         result.ioThreads = resolveThreadCount(config.io_threads);
         result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);
@@ -183,6 +191,54 @@ namespace remoted::http
         result.dualStackMode = resolveDualStackMode(config.dual_stack);
 
         return result;
+    }
+
+    std::string normalizeGlobalPrefix(std::string_view raw)
+    {
+        // "" / "/" / "///" all mean the root: no prefix. N slashes are treated alike because
+        // they all normalize to the same (empty) set of path segments.
+        if (raw.find_first_not_of('/') == std::string_view::npos)
+        {
+            return {};
+        }
+
+        std::string prefix;
+        if (raw.front() != '/')
+        {
+            // Defensive only: the C-side validator already rejects a missing leading slash, but
+            // a directly-constructed HttpServerConfig (tests, embedders) gets the same contract.
+            prefix.reserve(raw.size() + 1);
+            prefix.push_back('/');
+        }
+        prefix.append(raw);
+
+        while (prefix.back() == '/')
+        {
+            prefix.pop_back();
+        }
+
+        for (const char byte : prefix)
+        {
+            // RFC 3986 unreserved + '/'. Deliberately no '%' (the prefix is compared byte-exactly
+            // against the wire target, never percent-decoded) and none of path2regex's
+            // metacharacters (: ( ) * + ?), which would corrupt the concatenated route pattern.
+            const bool allowed = (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') ||
+                                 (byte >= '0' && byte <= '9') || byte == '.' || byte == '_' || byte == '~' ||
+                                 byte == '-' || byte == '/';
+            if (!allowed)
+            {
+                throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                            "': allowed characters are A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'");
+            }
+        }
+
+        if (prefix.find("//") != std::string::npos)
+        {
+            throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                        "': it contains an empty path segment ('//')");
+        }
+
+        return prefix;
     }
 
 } // namespace remoted::http

@@ -27,9 +27,9 @@ namespace wazuh::uds_http
      * dependencies and the transport really is swappable at makeUdsHttpServer().
      *
      * Asynchronous end to end. A request whose response is deferred costs one socket plus one queue
-     * entry, never a blocked thread -- which is the whole reason this exists instead of reusing the
-     * blocking thread-per-request server in shared_modules/httpsrv. See IUdsHttpServer for the
-     * responder and shutdown contracts, which are the load-bearing parts.
+     * entry, never a blocked thread -- which is the whole reason this exists instead of a
+     * blocking thread-per-request server. See IUdsHttpServer for the responder and shutdown
+     * contracts, which are the load-bearing parts.
      */
     class AsioUdsHttpServer final : public IUdsHttpServer
     {

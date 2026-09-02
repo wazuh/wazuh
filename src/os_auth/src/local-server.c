@@ -40,8 +40,9 @@ typedef enum auth_local_err {
     EINVGROUP,
     ENOMASTER,
     ENOMASTERCOMM,
-    EINVALIDNAME // Appended, not inserted: ERRORS[] below is indexed directly by this enum's
-                 // value, so every existing entry must keep its current index.
+    EINVALIDNAME,
+    EPENDINGPURGE,
+    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -65,12 +66,13 @@ static const struct {
     { 9014, "Invalid Group(s) Name(s)" },
     { 9015, "Cannot execute this request on a worker node" },
     { 9016, "Cannot communicate with master node" },
-    // Distinct from 9005 ("No such name", raised when the "name" argument is missing entirely):
-    // this is a NAME THAT IS PRESENT but fails OS_IsValidName()'s charset/length/leading-dot rules
-    // (e.g. contains a space). Collapsing the two under 9005 left an API/manage_agents caller
-    // seeing "No such name" for a name it very much did supply, with nothing to point at the
-    // actual problem.
-    { 9017, "Invalid agent name" }
+    // A name that IS present but not storable in client.keys (see is_storable_agent_name()), as
+    // opposed to 9005 "No such name", which means the argument was missing.
+    { 9017, "Invalid agent name" },
+    { 9018, "Agent ID has a pending deletion" },
+    // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
+    // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
+    { 9019, "Invalid agent key" }
 };
 
 // Dispatch local request
@@ -84,18 +86,13 @@ struct local_client_ctx {
     int peer;
 };
 
-// Caps how many connections handle_local_client() may service CONCURRENTLY via a detached
-// thread. Without this, a burst of connections (e.g. many cluster workers enrolling against one
-// master's authd at once, or any local caller not otherwise rate-limited) would spawn one thread
-// per connection with no ceiling at all. 128 matches AUTH_LOCAL_SOCK's own listen backlog
-// (OS_BindUnixDomainWithPerms, shared/os_net/os_net.c) -- there is no benefit to servicing more
-// connections concurrently than that many could ever be queued at once to begin with.
+// Ceiling on concurrent client threads, so a burst of connections can't spawn them without bound.
+// 128 matches AUTH_LOCAL_SOCK's own listen backlog (OS_BindUnixDomainWithPerms, os_net.c): no point
+// servicing more at once than could ever be queued.
 #define MAX_LOCAL_CLIENT_THREADS 128
 
-// How long run_local_server() waits, and how often it re-checks, for detached client threads to
-// finish once it has been told to stop. The timeout only has to cover a dispatch already in
-// progress -- the longest of which is a worker's cluster-forwarded "add" (see local_add_clustered())
-// -- not a new one, since the accept loop has already exited by then.
+// Shutdown drain budget. Only has to cover a dispatch already in progress -- at worst a worker's
+// cluster-forwarded "add" -- since the accept loop has exited by then.
 #define LOCAL_CLIENT_DRAIN_TIMEOUT_MS 5000
 #define LOCAL_CLIENT_DRAIN_POLL_MS 50
 
@@ -123,27 +120,13 @@ static void release_local_client_slot(void) {
 // `agent_name` maxLength, so this adds no new limit of its own.
 #define MAX_STORABLE_AGENT_NAME_LEN 128
 
-// Rejects only names that would actually corrupt client.keys (or fail to round-trip back out of
-// it) -- deliberately NOT the stricter agent-name charset OS_IsValidName() enforces.
+// Rejects only what client.keys' `<id> <name> <ip> <key>` line cannot represent: whitespace/control
+// bytes (the record is whitespace-delimited, so they shift every later column) and a leading
+// '#'/'!' (the removed-entry marker, which makes readers skip the line).
 //
-// This socket's established callers are manage_agents and the API, and the API's own documented
-// contract is `^[\w\-.%]+$` with no minimum length (api/api/validator.py). Names it has always
-// accepted -- containing '%', a single character, or a leading '.' -- are all rejected by
-// OS_IsValidName() yet cannot corrupt anything, so enforcing that charset here would break
-// working POST /agents calls for no storage-safety gain at all.
-//
-// What genuinely must be refused is what the client.keys line format cannot represent:
-//   - whitespace and control bytes: the record is whitespace-delimited, so a space or tab splits
-//     the name into extra fields and shifts every later column (remoted's keystore reader, which
-//     does `tokens >> id >> name >> ip >> key`, would then take the name's tail as the IP and the
-//     IP as the key, leaving the agent with an undecodable key and a 401 on every request it ever
-//     makes); '\n' or '\r' ends the record outright.
-//   - a leading '#' or '!': both OS_ReadKeys() and remoted's keystore treat that as the
-//     removed/disabled-entry marker and skip the line, silently dropping the agent.
-//
-// The two ENROLLMENT paths -- port 1515 in auth.c, and POST /enroll in enrollmentEndpoint.cpp --
-// additionally apply OS_IsValidName() to the names they mint, where there is no back-compatibility
-// obligation and agreeing with each other matters more than being permissive.
+// Deliberately NOT OS_IsValidName()'s stricter charset, which the API's own `^[\w\-.%]+$` contract
+// (api/api/validator.py) has always allowed callers to violate harmlessly. The enrollment paths
+// (auth.c, enrollmentEndpoint.cpp) do apply it to the names they mint.
 STATIC int is_storable_agent_name(const char *name) {
     if (!name || !*name || strlen(name) > MAX_STORABLE_AGENT_NAME_LEN) {
         return 0;
@@ -161,6 +144,29 @@ STATIC int is_storable_agent_name(const char *name) {
     }
 
     return 1;
+}
+
+// Reads an optional string argument. cJSON_GetObjectItem() returning non-NULL only means the KEY is
+// present; valuestring is NULL for a number, bool, null or object.
+//
+// Absent or explicit null -> not supplied (*out stays NULL), how a client spells an unset field.
+// Any other non-string type -> -1 rather than silently treated as absent: these fields select a
+// specific agent identity, so dropping a malformed one would act on a different one.
+STATIC int get_optional_string_arg(cJSON *arguments, const char *key, char **out) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    *out = NULL;
+
+    if (!item || cJSON_IsNull(item)) {
+        return 0;
+    }
+
+    if (!cJSON_IsString(item)) {
+        return -1;
+    }
+
+    *out = item->valuestring;
+    return 0;
 }
 
 // local_add_clustered() is declared in auth.h (like local_add()) since it's genuinely
@@ -181,10 +187,9 @@ static cJSON* local_create_agent_delete_response(void);
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
 
-// Services one already-accepted local-socket connection: set its recv timeout, read one request,
-// dispatch it, send the reply, close. Shared by both the threaded and the at-the-cap synchronous
-// fallback path below (see run_local_server()) -- the logic is identical either way, only WHERE it
-// runs (a detached thread vs inline on the accept loop) differs.
+// Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
+// the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
+// fallback; only where it runs differs.
 static void service_local_client(int peer) {
     char *buffer = NULL;
     char *response;
@@ -192,9 +197,7 @@ static void service_local_client(int peer) {
 
     if (config.timeout_sec || config.timeout_usec) {
         if (OS_SetRecvTimeout(peer, config.timeout_sec, config.timeout_usec) < 0) {
-            // Log-once latch. Guarded now that this function also runs on concurrent client
-            // threads: an unsynchronized static read-modify-write is a data race even when the
-            // worst visible outcome is a duplicated line.
+            // Log-once latch, mutex-guarded because this now runs on concurrent client threads.
             static int reported = 0;
             static pthread_mutex_t mutex_reported = PTHREAD_MUTEX_INITIALIZER;
             int error = errno;
@@ -238,26 +241,18 @@ static void service_local_client(int peer) {
         }
     }
 
-    // Closed exactly once, here, on every arm. The "empty message" and OS_MAXLEN arms used to
-    // close it themselves and then fall through to this close as well: harmless while dispatch ran
-    // inline on the accept loop, but a genuine hazard now that each connection is serviced on its
-    // own thread -- between the two closes another thread can be handed the same descriptor number
-    // by accept()/open(), and the second close would silently destroy ITS connection (a truncated
-    // client.keys write from the writer thread, or a dropped cluster/wdb socket, with nothing
-    // logged). The empty-message arm is not a rare path either: OS_RecvSecureTCP() returns 0
-    // whenever the peer closes before the length header arrives, which is exactly what remoted's
-    // /enroll bridge does every time one of its own connect/response timeouts fires.
+    // Closed exactly once, here, on every arm -- the "empty message" and OS_MAXLEN arms must NOT
+    // close it themselves and fall through. Harmless when dispatch ran inline, but now that each
+    // connection has its own thread, another thread can be handed the same descriptor number
+    // between the two closes and the second would silently destroy its connection.
     close(peer);
     free(buffer);
 }
 
-// Runs on its own detached thread (see run_local_server()) so a single slow dispatch -- most
-// notably a worker's cluster-forwarded "add", which can legitimately take several seconds, see
-// local_add_clustered() -- never blocks any OTHER local-socket caller (manage_agents, the API, or
-// another concurrently queued /enroll request) behind it. Safe to run concurrently:
-// local_add()/local_remove()/local_get() already serialize access to the shared `keys` keystore
-// (and write_pending/cond_pending) through mutex_keys. Releases the slot try_reserve_local_client_slot()
-// reserved for it, so run_local_server() can admit another thread once this one finishes.
+// Runs on its own detached thread so one slow dispatch -- typically a worker's cluster-forwarded
+// "add", which can take seconds -- never blocks other callers (manage_agents, the API, another
+// /enroll request) behind it. Safe concurrently: local_add()/local_remove()/local_get() already
+// serialize the `keys` keystore and write_pending/cond_pending through mutex_keys.
 static void* handle_local_client(void *arg) {
     struct local_client_ctx *ctx = (struct local_client_ctx *)arg;
     int peer = ctx->peer;
@@ -311,11 +306,8 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         }
 
         if (!try_reserve_local_client_slot()) {
-            // At MAX_LOCAL_CLIENT_THREADS already-in-flight connections: fall back to the
-            // original synchronous behavior for this ONE connection (service it right here,
-            // inline, before accepting the next) instead of either spawning past the cap or
-            // dropping this client outright. Self-limiting by construction, exactly like the
-            // pre-existing behavior this whole function used to have unconditionally.
+            // At the cap: service this one inline, before accepting the next, rather than spawning
+            // past the ceiling or dropping the client. Self-limiting, as this loop always was.
             service_local_client(peer);
             continue;
         }
@@ -335,14 +327,10 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         pthread_detach(tid);
     }
 
-    // Drain in-flight client threads before returning. They are DETACHED, so nobody ever joins
-    // them, and main-server.c joins only this accept thread -- returning while one is still inside
-    // local_add() would let process teardown (atexit cleanup, then exit()) run concurrently with an
-    // OS_WriteKeys(), which is how client.keys ends up truncated on a restart. Bounded rather than
-    // unconditional: a client that connected and never sent holds its thread for as long as its
-    // recv timeout allows (and indefinitely if auth.timeout_seconds is set to 0), and a stuck
-    // client must not be able to block shutdown forever -- wazuh-control would escalate to SIGKILL
-    // anyway, which is strictly worse than proceeding deliberately.
+    // Drain in-flight client threads: they are detached and main-server.c joins only this thread,
+    // so returning while one is inside local_add() lets teardown race an OS_WriteKeys() and
+    // truncate client.keys. Bounded, since a client that never sent can hold its thread
+    // indefinitely (auth.timeout_seconds=0).
     for (int waited_ms = 0; waited_ms < LOCAL_CLIENT_DRAIN_TIMEOUT_MS; waited_ms += LOCAL_CLIENT_DRAIN_POLL_MS) {
         int in_flight;
 
@@ -391,7 +379,9 @@ char* local_dispatch(const char *input) {
             goto fail;
         }
 
-        if (function = cJSON_GetObjectItem(request, "function"), !function) {
+        // cJSON_IsString(), not just presence: every branch below strcmp()s valuestring, so
+        // {"function": 5} would segfault authd.
+        if (function = cJSON_GetObjectItem(request, "function"), !cJSON_IsString(function)) {
             ierror = ENOFUNCTION;
             goto fail;
         }
@@ -405,6 +395,9 @@ char* local_dispatch(const char *input) {
             char *ip = NULL;
             char *key_hash = NULL;
             char *key = NULL;
+            // Borrowed from the parsed JSON. Kept separate from the enclosing `groups`, which owns
+            // wstr_delete_repeated_groups()'s allocation and is what the fail path frees.
+            char *groups_arg = NULL;
             authd_force_options_t force_options = {0};
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
@@ -412,46 +405,52 @@ char* local_dispatch(const char *input) {
                 goto fail;
             }
 
-            id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
+            if (get_optional_string_arg(arguments, "id", &id) < 0) {
+                ierror = EJSON;
+                goto fail;
+            }
 
             if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
                 ierror = ENONAME;
                 goto fail;
             }
+            // Left untyped on purpose: a non-string value leaves this NULL, which the check below
+            // reports as 9017 -- a better answer for {"name": 5} than 9005 "No such name".
             name = item->valuestring;
 
-            // This local socket historically trusted every caller to have already validated the
-            // name -- true enough for manage_agents/the API, but not for /enroll, which bridges an
-            // arbitrary remote agent-supplied string straight here. An unstorable name silently
-            // corrupts client.keys once written, so it has to be refused before
-            // local_add()/local_add_clustered() ever runs, for every caller alike. See
-            // is_storable_agent_name() for why this is the storage-safety invariant and not
-            // OS_IsValidName()'s stricter charset (which would reject names the API has always
-            // accepted). EINVALIDNAME (9017), not ENONAME (9005, "No such name" -- for the
-            // argument being absent, checked just above): a caller that DID supply a name, just
-            // not a storable one, needs a message that says so rather than one reading as if it
-            // forgot the field entirely.
+            // Checked for every caller, before local_add()/local_add_clustered(): this socket used
+            // to trust callers to have validated the name, which was never true for /enroll, and an
+            // unstorable name silently corrupts client.keys once written.
             if (!is_storable_agent_name(name)) {
                 ierror = EINVALIDNAME;
                 goto fail;
             }
 
-            if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
+            // cJSON_IsString(): local_add() strcmp()s this against "any", so a NULL crashes it.
+            if (item = cJSON_GetObjectItem(arguments, "ip"), !cJSON_IsString(item)) {
                 ierror = ENOIP;
                 goto fail;
             }
             ip = item->valuestring;
 
-            if (item = cJSON_GetObjectItem(arguments, "groups"), item) {
-                groups = wstr_delete_repeated_groups(item->valuestring);
+            if (get_optional_string_arg(arguments, "groups", &groups_arg) < 0) {
+                ierror = EINVGROUP;
+                goto fail;
+            }
+
+            if (groups_arg) {
+                groups = wstr_delete_repeated_groups(groups_arg);
                 if (!groups) {
                     ierror = EINVGROUP;
                     goto fail;
                 }
             }
 
-            key_hash = (item = cJSON_GetObjectItem(arguments, "key_hash"), item) ? item->valuestring : NULL;
-            key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
+            if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
+                get_optional_string_arg(arguments, "key", &key) < 0) {
+                ierror = EJSON;
+                goto fail;
+            }
 
             if (force = cJSON_GetObjectItem(arguments, "force"), force) {
                 if (item = cJSON_GetObjectItem(force, "enabled"), !item) {
@@ -498,23 +497,15 @@ char* local_dispatch(const char *input) {
 
             if (config.worker_node) {
                 if (id || key) {
-                    // A caller-supplied id and/or key means this is an admin/restore-style add
-                    // (manage_agents/the API can send both; self-enrollment -- /enroll included --
-                    // never does), not the self-enrollment shape local_add_clustered() forwards.
-                    // There is no cluster RPC to honor a caller-chosen id/key on a worker, and
-                    // silently ignoring them (as local_add_clustered() itself does -- it has no
-                    // id/key parameters at all) would return 200 with a DIFFERENT id/key than the
-                    // one requested: a caller restoring or importing a specific agent would believe
-                    // it succeeded as asked while a different agent record was actually created.
-                    // Reject with the same code this request got before cluster forwarding was
-                    // added for "add", rather than complete it with the wrong identity.
+                    // An admin/restore-style add (manage_agents/the API; self-enrollment never
+                    // sends these). No cluster RPC can honor a caller-chosen id/key on a worker,
+                    // and local_add_clustered() has no parameters for them -- forwarding anyway
+                    // would report success having created a DIFFERENT agent than was asked for.
                     ierror = ENOMASTER;
                     goto fail;
                 }
-                // No id/key: a genuine self-enrollment-shaped request (the only shape /enroll ever
-                // sends). The force registration settings are ignored for workers too, exactly like
-                // the network (port 1515) enrollment path -- the master always assigns the ID,
-                // generates the key, and decides force-replace using its own configuration.
+                // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
+                // assigns the ID, generates the key, and decides force-replace itself.
                 response = local_add_clustered(name, ip, groups, key_hash);
             } else {
                 response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
@@ -535,7 +526,8 @@ char* local_dispatch(const char *input) {
                 goto fail;
             }
 
-            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+            // cJSON_IsString(): local_remove() passes this straight to OS_IsAllowedID().
+            if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item)) {
                 ierror = ENOID;
                 goto fail;
             }
@@ -556,12 +548,19 @@ char* local_dispatch(const char *input) {
                 goto fail;
             }
 
-            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+            // cJSON_IsString(): local_get() passes this straight to OS_IsAllowedID().
+            if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item)) {
                 ierror = ENOID;
                 goto fail;
             }
 
             response = local_get(item->valuestring);
+        } else {
+            // A valid string, but none of the three above. Without this branch no handler ran and
+            // the !response check below reported 9001 "Internal error" -- blaming the manager for
+            // the caller's typo.
+            ierror = ENOFUNCTION;
+            goto fail;
         }
 
         if (!response) {
@@ -617,19 +616,44 @@ cJSON* local_add(const char *id,
         }
     }
 
+    /* A caller-supplied key must already have the shape remoted will accept (64 lowercase hex chars
+     * -> the agent's 32-byte HS256 key). Anything else would be stored fine and then rejected on
+     * every request as an unusable key, which is far harder to diagnose than refusing it here. */
+    if (key && !OS_IsValidAgentKey(key)) {
+        ierror = EINVALIDKEY;
+        goto fail;
+    }
+
+    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
+     * owner is still being cleaned up. Both branches below refuse instead of reassigning it,
+     * because the pending purge matches by agent id and would delete the NEW agent's documents --
+     * and nothing in a state document lets the purge tell the two owners apart.
+     *
+     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
+     * caller is told to come back, which for a migration script is a retry, not a data loss. */
+    if (id && purge_is_pending(id)) {
+        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
+        ierror = EPENDINGPURGE;
+        goto fail;
+    }
+
     // Check for duplicate ID
+    //
+    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so the
+    // duplicate IP and name checks below free what the previous one left -- an add matching on both
+    // would otherwise leak, since only one os_free() runs at the end. The ID check does not
+    // participate: it refuses instead of replacing, so it never writes str_result.
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-            minfo("Duplicate ID. %s", str_result);
-        } else {
-            if (warn) {
-                mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
-            } else {
-                minfo("Duplicate ID, rejecting enrollment. %s", str_result);
-            }
-            ierror = EDUPID;
-            goto fail;
-        }
+        /* NOT replaced, even when force would allow it: replacing by the SAME id queues a purge for
+         * an id that gets a new owner in this very operation. The agent has to be deleted first,
+         * and its purge has to finish, before the id can be reused.
+         *
+         * Nothing is freed here, unlike the IP and name checks below: this branch no longer calls
+         * w_auth_replace_agent(), so it leaves nothing in str_result for them to free. */
+        mwarn("Duplicate ID '%s', rejecting the insertion: delete the agent and let its deletion "
+              "finish before reusing the ID.", id);
+        ierror = EDUPID;
+        goto fail;
     }
 
     /* Check for duplicate IP */
@@ -648,6 +672,7 @@ cJSON* local_add(const char *id,
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
+            os_free(str_result); // see the note on str_result above
             if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
                 minfo("Duplicate IP '%s'. %s", _ip, str_result);
             } else {
@@ -664,14 +689,9 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check whether the agent name is the same as the manager */
-    if (!strcmp(name, shost)) {
-        ierror = EDUPNAME;
-        goto fail;
-    }
-
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
+        os_free(str_result); // see the note on str_result above
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
             minfo("Duplicate name. %s", str_result);
         } else {
@@ -733,19 +753,18 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     if (result == 0) {
         response = local_create_agent_response(new_id, name, ip, new_key);
     } else if (master_error_code > 0) {
-        // The master responded with a well-formed business rejection; surface its exact code
-        // so the bridge can map it precisely instead of a generic failure. err_response always
-        // carries a "ERROR: " prefix here (see w_parse_agent_add_response) -- drop it, since the
-        // numeric code already conveys the outcome.
+        // A well-formed business rejection: surface the master's exact code so the bridge can map
+        // it precisely. Drop the "ERROR: " prefix w_parse_agent_add_response() always adds -- the
+        // numeric code already says as much.
         const char *message = err_response;
         if (!strncmp(message, "ERROR: ", 7)) {
             message += 7;
         }
-        merror("ERROR %d: %s.", master_error_code, message);
+
+        mwarn("Error %d: %s.", master_error_code, message);
         response = local_create_error_response(master_error_code, message);
     } else {
-        // Transport failure, or a malformed/unparseable response from the master -- either
-        // way, the cluster forward did not produce a clean answer.
+        // Transport failure, or an unparseable response: either way, no clean answer.
         merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
         response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
     }

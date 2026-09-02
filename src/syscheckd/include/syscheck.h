@@ -34,6 +34,21 @@
 #define FIM_SYNC_PROTOCOL_DB_PATH   "queue/fim/db/fim_sync.db"
 #define FIM_SYNC_RETRIES 3
 
+/* How long fim_shutdown_waiter() waits for the inventory synchronization thread to exit before
+ * giving up on the database teardown. */
+#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
+
+#ifdef WIN32
+/* Windows cannot afford the POSIX bound. The teardown runs inside the service control handler,
+ * which has to return well within the 30 seconds the SCM allows for it, and wm_kill_children()
+ * plus stop_wmodules() already ran by then. The whole teardown is therefore budgeted, and the
+ * SCM wait hint is derived from that budget rather than guessed. */
+#define FIM_SYNC_EXIT_TIMEOUT_WIN_MS 7000
+#define FIM_SCAN_MUTEX_WAIT_MS       3000
+#define FIM_SCAN_MUTEX_POLL_MS       100
+#define FIM_TEARDOWN_BUDGET_MS       (FIM_SYNC_EXIT_TIMEOUT_WIN_MS + (2 * FIM_SCAN_MUTEX_WAIT_MS))
+#endif
+
 #define FIM_FILES_SYNC_INDEX         "wazuh-states-fim-files"
 #ifdef WIN32
 #define FIM_REGISTRY_KEYS_SYNC_INDEX   "wazuh-states-fim-registry-keys"
@@ -74,6 +89,8 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
+extern pthread_mutex_t synced_docs_mutex;
+extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type
 {
@@ -415,9 +432,18 @@ void free_pending_sync_item(void* data);
 /**
  * @brief Process pending sync flag updates after transaction commit.
  *
+ * Does not log a summary itself: a single realtime/whodata event can call this with a
+ * one-item list, and logging per call there would flood debug=1 on a mass create/modify
+ * (e.g. copying many files into a monitored directory). Callers that run once per scan or
+ * per startup check (fim_file_scan(), fim_registry_scan(), and the document-limit
+ * promote/demote paths in fim_initialize()) log their own summary from the returned count;
+ * the realtime/whodata call site in fim_file() does not log at all.
+ *
+ * @param table_name Name of the table the pending items belong to.
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
+ * @return Number of items successfully updated (fim_db_set_sync_flag() failures aren't counted).
  */
-void process_pending_sync_updates(char* table_name, OSList* pending_items);
+int process_pending_sync_updates(char* table_name, OSList* pending_items);
 
 /**
  * @brief Send a log message
@@ -514,11 +540,43 @@ void audit_create_rules_file();
 void audit_rules_to_realtime();
 
 /**
- * @brief Set Auditd socket configuration
+ * @brief Build the list of audisp plugin configurations to try, ordered by preference
  *
- * @return 0 on success, -1 on error
+ * @param plugin_dir [out] Directory holding the audisp plugin configuration files
+ * @param templates [out] Array to fill with the configuration templates, most preferred first
+ * @param max Size of the templates array
+ * @return Number of candidates written to templates, 0 if no known plugins directory was found
  */
-int set_auditd_config(void);
+int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
+
+/**
+ * @brief Whether the audisp plugin configuration on disk is one of the known templates
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param templates Known configuration templates
+ * @param count Number of templates
+ * @return 1 when the file on disk matches one of them, 0 otherwise
+ */
+int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count);
+
+/**
+ * @brief Configure the audisp plugin and connect to the who-data socket, probing the known
+ *        configurations until one of them yields a socket that can be connected to
+ *
+ * @return File descriptor of the connected socket, -1 on error
+ */
+int configure_and_connect_audit_socket(void);
+
+/**
+ * @brief Write the given audisp plugin configuration and restart Auditd if it changed
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param audisp_config Configuration template to render
+ * @return 0 when the configuration is in place, 1 when it was written but Auditd was not
+ *         restarted because restart_audit is disabled, -1 on error (a failed Auditd restart
+ *         included)
+ */
+int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
 
 /**
  * @brief Initialize Audit evsents socket
@@ -735,6 +793,18 @@ extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid on
 int fim_execute_pause(void);
 
 /**
+ * @brief Checks if FIM pause is completed
+ *
+ * @return 1 if pause in progress, 0 if completed, -1 on error
+ */
+int fim_execute_is_pause_completed(void);
+
+/**
+ * @brief Cleans up and releases scan mutexes held by pause
+ */
+void fim_syscom_cleanup_pause(void);
+
+/**
  * @brief Flushes FIM synchronization pending data (async)
  *
  * @return 0 on success (request accepted), -1 on error
@@ -807,6 +877,17 @@ void fim_diff_folder_size();
  * @return Process shutdown flag.
  */
 bool fim_shutdown_process_on();
+
+#ifdef WIN32
+/**
+ * @brief Registers the FIM database teardown hook that closes the inventory synchronization
+ *        database on the service stop path (issue #38212).
+ *
+ * Call it as soon as the synchronization handle exists, so a stop arriving before the
+ * synchronization thread is launched still closes fim_sync.db.
+ */
+void fim_sync_register_teardown_hook(void);
+#endif
 
 #ifdef __linux__
 #ifdef ENABLE_AUDIT

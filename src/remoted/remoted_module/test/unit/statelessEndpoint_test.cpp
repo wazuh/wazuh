@@ -66,8 +66,8 @@ namespace
 
 TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
 {
-    const auto target = stateless::target("queue/sockets/queue-http.sock");
-    EXPECT_EQ(target.socketPath, "queue/sockets/queue-http.sock");
+    const auto target = stateless::target("queue/sockets/engine-ingest-http.sock");
+    EXPECT_EQ(target.socketPath, "queue/sockets/engine-ingest-http.sock");
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/events/enriched");
     EXPECT_EQ(target.contentType, "application/x-ndjson");
@@ -314,7 +314,7 @@ TEST(StatelessMakeHandler, ValidationFailureShortCircuitsBeforeForward)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateless::makeHandler(forwarder, "queue/sockets/queue-http.sock");
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
     auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1002\"}}}\nE some event\n", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -334,7 +334,7 @@ TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateless::makeHandler(forwarder, "queue/sockets/queue-http.sock");
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
     auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -343,7 +343,7 @@ TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
 
     ASSERT_TRUE(client->called());
     const auto req = client->request();
-    EXPECT_EQ(req.socketPath, "queue/sockets/queue-http.sock");
+    EXPECT_EQ(req.socketPath, "queue/sockets/engine-ingest-http.sock");
     EXPECT_EQ(req.path, "/events/enriched");
 
     client->fire(DownstreamError::None, DownstreamResponse {200, ""});
@@ -363,7 +363,7 @@ TEST(StatelessMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
-    auto handler = stateless::makeHandler(forwarder, "queue/sockets/queue-http.sock", &metrics);
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock", &metrics);
 
     // Payload identity mismatch: answered 400 by the handler itself, before any forward.
     {

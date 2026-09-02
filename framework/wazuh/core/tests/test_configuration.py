@@ -395,20 +395,20 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
             configuration.upload_group_file('default', [], 'a.conf')
 
 @pytest.mark.parametrize("component, socket, socket_dir, rec_msg", [
-    ('auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
-    ('auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    ('agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {}}'),
+    ('agent', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('analysis', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
     ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
     ('mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('monitor', 'monitor.sock', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    ('request', 'remote.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
-    ('wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
+    ('wazuh-manager-db', 'wdb.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('wmodules', 'wmodules.sock', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
 ])
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
@@ -417,7 +417,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
+    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol else "WazuhSocketJSON"

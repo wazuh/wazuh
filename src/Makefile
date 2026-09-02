@@ -98,7 +98,7 @@ CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=ebf9d2f82533ff2f84c3304ab29db01fcfb6735e
 
 ifeq (${TARGET},winagent)
-CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
+CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC}$(if $(filter gcc,${CC}),-posix) -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
 endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -113,6 +113,9 @@ endif
 endif
 ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DFSANITIZE=ON
+endif
+ifneq (,$(filter ${TSANITIZE},YES yes y Y 1))
+CMAKE_OPTS+=-DTSANITIZE=ON
 endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
@@ -476,7 +479,7 @@ endif
 #     shared by the unit-test CI, whose deps step runs `make deps TARGET=...`
 #     WITHOUT TEST=1 and only enables tests at build time. Gating these behind a
 #     TEST flag drops them from that bundle and breaks every test build (#36247).
-EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 zstd googletest benchmark
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 zstd googletest benchmark jwt-cpp rapidjson
 
 # Linux unit-test wrapper dependencies (every Linux leg except the winagent
 # cross-compile). unit_tests/wrappers/externals/{audit,procpc} include
@@ -504,7 +507,7 @@ endif
 # Manager-only dependencies.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio
 endif
 endif
 

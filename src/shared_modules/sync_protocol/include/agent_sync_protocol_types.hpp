@@ -28,8 +28,6 @@ enum class SyncResult
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
     ///< budget (HTTP 413); the session must be split and resent smaller.
-    NO_VD_OFFSET_ERROR,  ///< VD (VDFirst/VDSync) sync attempted before any feed offset has
-    ///< been received from the manager yet.
 };
 
 struct SyncModuleResult
@@ -51,9 +49,42 @@ struct SyncModuleResult
     /// expected hiccup; a growing count means the condition is not clearing and deserves a WARNING.
     unsigned int consecutiveFailures{0};
     /// @brief True when the sync was aborted because a prerequisite the manager has to supply
-    /// first (assigned groups, or -- for a VD sync -- a feed offset) has not arrived yet. Same
+    /// first (the assigned groups) has not arrived yet. Same
     /// intent as @ref stopped: lets the calling module demote this from WARNING to INFO/DEBUG,
     /// since it is expected and normally clears within the next cycle or two (e.g. right after
     /// an agent restart, before the first /control round trip completes).
     bool awaitingPrerequisite{false};
+    /// @brief True when the local sync intake itself could not be reached (wazuh-agentd's
+    /// https_client not done starting yet). Deliberately distinct from @ref managerNotReady: this
+    /// never got far enough to hear anything from the manager, so it must not be described as a
+    /// manager-side condition. Same idea as managerNotReady otherwise -- use it together with
+    /// @ref consecutiveFailures to tell a restart hiccup from a lasting local problem.
+    bool localTransportUnavailable{false};
+    /// @brief True when this call ran no session at all because another synchronization was
+    /// already in flight on the same instance (the periodic cycle and a flush colliding, for
+    /// example). Reported as a success -- the in-flight sync is draining the same queue -- but
+    /// a caller that records something about the session that was sent must not do so for a
+    /// call that sent nothing.
+    bool sessionSkipped{false};
+
+    /// @brief True when at least one block of queued items was actually sent to the manager.
+    ///
+    /// @ref success alone cannot distinguish "the manager accepted everything" from "there was
+    /// nothing queued, so no session was opened at all": an empty queue takes an early break and
+    /// returns the initial `true`. That is the intended contract -- a routine "nothing changed"
+    /// cycle is not a failure -- so this field carries the distinction instead, letting a module
+    /// log "nothing to send" rather than "finished successfully".
+    ///
+    /// It must NOT be used to gate durable state. A marker that records "the manager has this
+    /// agent's data" has to be gated on something that proves a round trip, such as
+    /// @ref IAgentSyncProtocol::notifyDataClean; gating it on a sync result instead is what lets
+    /// an untransmitted cycle be recorded as a completed one.
+    ///
+    /// Distinct from @ref sessionSkipped: that one means no session ran at all because another
+    /// was already in flight, while this one is about whether the session that did run carried
+    /// anything.
+    ///
+    /// Always false for metadata and group synchronizations, which send no queued items by
+    /// construction.
+    bool sentAnything{false};
 };

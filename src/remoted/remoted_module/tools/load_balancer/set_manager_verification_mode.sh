@@ -11,8 +11,9 @@
 #                on TLS termination before using this one.
 #
 # Those are the three modes remoted supports. Any other value is accepted by this script on
-# purpose -- writing one in is how the suite checks that an unsupported value is ignored with a
-# warning instead of taking the listener down.
+# purpose -- writing one in is how the suite checks that an unsupported value is REJECTED at
+# config parse time (remoted refuses to start and -t names it; the parser hardening made a typo
+# fatal instead of silently disabling certificate verification).
 #
 # <ca> is inserted alongside, because 'certificate' is unusable without a CA to validate
 # agent certificates against.

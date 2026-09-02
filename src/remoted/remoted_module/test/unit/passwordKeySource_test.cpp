@@ -21,13 +21,25 @@
 
 #include <gtest/gtest.h>
 
-#include "auth/cmac.hpp" // toLowerHex(), for the known-answer-vector assertion
 #include "auth/passwordKeySource.hpp"
+#include "jwt/testVectors.hpp"
 
 using namespace remoted::auth;
 
 namespace
 {
+    std::string toLowerHex(const std::uint8_t* data, std::size_t len)
+    {
+        static constexpr char kDigits[] = "0123456789abcdef";
+        std::string out;
+        out.reserve(len * 2);
+        for (std::size_t i = 0; i < len; ++i)
+        {
+            out.push_back(kDigits[data[i] >> 4]);
+            out.push_back(kDigits[data[i] & 0x0f]);
+        }
+        return out;
+    }
 
     class PasswordKeySourceTest : public ::testing::Test
     {
@@ -74,6 +86,39 @@ namespace
         EXPECT_FALSE(source.currentKey().has_value());
     }
 
+    TEST_F(PasswordKeySourceTest, MissingFileHasNoKeyRegardlessOfWorkerFlag)
+    {
+        PasswordKeySource source(m_path, PasswordKeySource::kDefaultRefreshIntervalSeconds, /*isWorkerNode=*/true);
+        EXPECT_FALSE(source.currentKey().has_value());
+    }
+
+    // ---------------------------------------------------------------------------
+    // shouldWarnAboutMissingPassword: pure WARN-vs-DEBUG1 decision function
+    // ---------------------------------------------------------------------------
+
+    TEST_F(PasswordKeySourceTest, MasterAlwaysWarnsEvenImmediately)
+    {
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(/*isWorkerNode=*/false, std::chrono::seconds(0)));
+    }
+
+    TEST_F(PasswordKeySourceTest, WorkerDoesNotWarnWithinGraceWindow)
+    {
+        EXPECT_FALSE(PasswordKeySource::shouldWarnAboutMissingPassword(/*isWorkerNode=*/true, std::chrono::seconds(0)));
+        EXPECT_FALSE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds - 1)));
+    }
+
+    // Safety-property regression guard: a worker still missing the password past the grace window
+    // is a real problem, not normal join timing, and must still warn -- this must never silently
+    // regress into suppressing the warning forever.
+    TEST_F(PasswordKeySourceTest, WorkerStillWarnsOnceGraceWindowIsExceeded)
+    {
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds)));
+        EXPECT_TRUE(PasswordKeySource::shouldWarnAboutMissingPassword(
+            /*isWorkerNode=*/true, std::chrono::seconds(PasswordKeySource::kWorkerJoinGraceSeconds + 3600)));
+    }
+
     TEST_F(PasswordKeySourceTest, ValidPasswordProducesA32ByteKey)
     {
         writeFile("MyEnrollmentSecret123\n");
@@ -96,9 +141,10 @@ namespace
         EXPECT_EQ(*first, *second);
     }
 
-    // Verified known-answer vector (see the Agent enrollment chapter of remoted_module/README.md):
-    // computed independently via `openssl kdf ... HKDF` against the exact construction this class
-    // implements (HKDF-SHA256, empty salt, info = "WAZUH-ENROLL-CMAC-KEY" + 0x01, 32-byte output).
+    // Frozen known-answer vector (jwt/testVectors.hpp, mirrored in jwt_vectors.json; computed with
+    // Python's stdlib as an independent oracle) of the exact construction the shared
+    // jwt/enrollKeyDerivation.hpp implements: HKDF-SHA256, salt 32 x 0x00,
+    // info = "WAZUH-ENROLL-JWT-KEY" + 0x01, 32-byte output.
     TEST_F(PasswordKeySourceTest, HkdfMatchesTheVerifiedKnownAnswerVector)
     {
         writeFile("MyEnrollmentSecret123\n");
@@ -106,8 +152,7 @@ namespace
 
         const auto key = source.currentKey();
         ASSERT_TRUE(key.has_value());
-        EXPECT_EQ(toLowerHex(key->data(), key->size()),
-                  "2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e");
+        EXPECT_EQ(toLowerHex(key->data(), key->size()), jwt_profile::v1::test_vectors::enroll::kKeyHex);
     }
 
     TEST_F(PasswordKeySourceTest, DifferentPasswordsProduceDifferentKeys)

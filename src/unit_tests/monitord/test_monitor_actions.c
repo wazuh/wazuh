@@ -98,8 +98,8 @@ void test_monitor_send_disconnection_msg_success(void **state) {
     expect_string(__wrap_wdb_find_agent, ip, agent_ip);
     will_return(__wrap_wdb_find_agent, 1);
 
-    // Expect minfo to be called with OS_AG_DISCON format: "wazuh: Agent disconnected: [%03d] (%s)."
-    expect_string(__wrap__minfo, formatted_msg, "wazuh: Agent disconnected: [001] (Agent1).");
+    // Expect mdebug1 to be called with OS_AG_DISCON format: "wazuh: Agent disconnected: [%03d] (%s)."
+    expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent disconnected: [001] (Agent1).");
 
     monitor_send_disconnection_msg(agent_name, agent_ip);
 }
@@ -254,11 +254,11 @@ void test_monitor_agents_alert_message_sent() {
     mond.global.agents_disconnection_alert_time = 100;
     will_return(__wrap_time, 1000);
 
-    // monitor_send_disconnection_msg - now logs via minfo
+    // monitor_send_disconnection_msg - now logs via mdebug1
     expect_string(__wrap_wdb_find_agent, name, "Agent1");
     expect_string(__wrap_wdb_find_agent, ip, "any");
     will_return(__wrap_wdb_find_agent, 1);
-    expect_string(__wrap__minfo, formatted_msg, "wazuh: Agent disconnected: [001] (Agent1).");
+    expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent disconnected: [001] (Agent1).");
 
     expect_value(__wrap_OSHash_Delete, self, agents_to_alert_hash);
     expect_value(__wrap_OSHash_Delete, key, "1");
@@ -299,8 +299,8 @@ void test_monitor_agents_deletion_success() {
     expect_string(__wrap_auth_remove_agent, id, agent_id_str);
     will_return(__wrap_auth_remove_agent, 0);
 
-    // Expect minfo to be called with OS_AG_REMOVED format
-    expect_string(__wrap__minfo, formatted_msg, "wazuh: Agent removed: [013] (Agent13).");
+    // Expect mdebug1 to be called with OS_AG_REMOVED format
+    expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent removed: [013] (Agent13).");
 
     monitor_agents_deletion();
 }

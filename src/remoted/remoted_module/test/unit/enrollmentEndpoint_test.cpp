@@ -10,7 +10,7 @@
  *
  * Exercises the JSON/validation/IP-resolution/authd-error-mapping layer of `POST /enroll`, with a
  * real AuthdClient wired to FakeUdsServer instances standing in for authd. The auth-rejection
- * matrix itself (mode pass/deny, CMAC tamper scenarios) is covered by enrollmentAuthenticator_test.cpp;
+ * matrix itself (mode pass/deny, bearer negative scenarios) is covered by enrollmentAuthenticator_test.cpp;
  * these tests all use Open mode so the handler's OWN logic is what's under test.
  */
 
@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
@@ -79,6 +80,10 @@ namespace
         req.target = "/enroll";
         req.body = body;
         req.remoteIp = remoteIp;
+        // Required on /enroll like on every other authenticated route: without it the endpoint
+        // answers 400 before it looks at anything else. Set here so each test exercises what it is
+        // actually about, rather than re-failing this one check.
+        req.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
         return req;
     }
 
@@ -668,6 +673,7 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9006, 400},
                                            AuthdErrorCase {9014, 400},
                                            AuthdErrorCase {9017, 400}, // invalid agent name (new)
+                                           AuthdErrorCase {9019, 400}, // invalid caller-supplied key
                                            AuthdErrorCase {9007, 409},
                                            AuthdErrorCase {9008, 409},
                                            AuthdErrorCase {9012, 409},

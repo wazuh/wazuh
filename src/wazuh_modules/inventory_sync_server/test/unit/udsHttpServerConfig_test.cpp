@@ -53,7 +53,7 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 {
     const auto config = buildServerConfig(zeroedConfig());
 
-    EXPECT_EQ("queue/sockets/inventory-sync.sock", config.socketPath);
+    EXPECT_EQ("queue/sockets/inventory-sync-http.sock", config.socketPath);
     EXPECT_EQ(0660U, config.socketMode);
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
@@ -192,7 +192,7 @@ TEST(UdsHttpServerConfigTest, EmptySocketPathFallsBackToTheDefault)
     auto input = zeroedConfig();
     input.socket_path[0] = '\0';
 
-    EXPECT_EQ("queue/sockets/inventory-sync.sock", buildServerConfig(input).socketPath);
+    EXPECT_EQ("queue/sockets/inventory-sync-http.sock", buildServerConfig(input).socketPath);
 }
 
 // Thread counts track the host/cgroup's CPUs rather than a fixed constant, so a container with a

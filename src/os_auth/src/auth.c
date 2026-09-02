@@ -41,6 +41,112 @@ struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *remove_tail;
 
+/* The queue between the writer thread and the relay that talks to the inventory sync server.
+ *
+ * Its own mutex and condition variable, deliberately NOT mutex_keys: the whole point is that the
+ * thread which persists client.keys stops waiting on anything, so it must never contend with the
+ * relay for the lock the enrollment path also takes.
+ *
+ * Only agent ids travel here, so the memory cost is a few dozen bytes per pending deletion. The cap
+ * is not about memory: it is there so an inventory sync server that has been unreachable for hours
+ * cannot grow this without bound in silence -- past it, the push is REFUSED and says so, naming the
+ * agent, because a deletion the operator can repeat is better than an invisible backlog. */
+#define PURGE_QUEUE_MAX_ENTRIES 65536
+
+/* Retry interval when the delay is disabled (purge_delay = 0, i.e. tests): even then a failed
+ * relay must not spin. */
+#define PURGE_RETRY_FLOOR_SECONDS 5
+
+typedef struct purge_node {
+    char *id;
+    /// Wall-clock second the deletion was requested. Persisted, and only ever used to work out how
+    /// much of the delay is left; never to decide "is it due now" -- see due_mono.
+    time_t requested_at;
+    /// Monotonic second this entry may be sent. Monotonic ON PURPOSE: an NTP correction while the
+    /// daemon runs must not be able to bring a purge forward, nor park it in a future that the
+    /// wall clock has already left behind.
+    time_t due_mono;
+    /// Failed relay attempts, for log throttling only. Not persisted: a restart re-arms anyway.
+    unsigned int attempts;
+    struct purge_node *next;
+} purge_node_t;
+
+static purge_node_t *purge_queue = NULL;
+static purge_node_t **purge_tail = &purge_queue;
+static unsigned int purge_queue_size = 0;
+static pthread_mutex_t mutex_purge = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_purge;
+/// True when cond_purge counts on CLOCK_MONOTONIC, so its timed waits are immune to clock changes
+/// too. False only on a platform that refuses the attribute, where the timed wait falls back to
+/// the wall clock (the due-time decision stays monotonic either way).
+static bool purge_cond_monotonic = false;
+/// Highest agent id ever handed out, persisted alongside the queue. Guarded by mutex_purge.
+static int purge_last_id = 0;
+/// Set by purge_queue_stop() to release the relay. The queue owns its own stop flag rather than
+/// reading the daemon's `running`, which lives in main-server.c: that file is deliberately left out
+/// of authd_lib, so depending on it here would make this code impossible to unit-test.
+static bool purge_stopping = false;
+
+/// An id that has left the keystore but whose purge the writer has not queued yet.
+///
+/// The delete response goes out as soon as the key is dropped from memory, while the purge is only
+/// queued by the writer, after it has rewritten client.keys. Without this list an insertion naming
+/// that same id would find it free in both guards -- gone from the keystore, not yet in the queue --
+/// and the purge, queued a moment later, would delete the NEW agent's documents. Under a bulk
+/// deletion the writer takes seconds to reach the last entry, so the window is not theoretical.
+///
+/// In memory only, on purpose: nothing about a removal is persisted before client.keys is rewritten,
+/// and a crash in that window leaves the agent still listed there, holding its id legitimately.
+typedef struct purge_reserved {
+    char *id;
+    struct purge_reserved *next;
+} purge_reserved_t;
+
+/// Guarded by mutex_purge, like the queue it feeds.
+static purge_reserved_t *purge_reserved = NULL;
+
+/// Reserve an id at removal time. Idempotent: an id cannot leave the keystore twice without the
+/// writer running in between, but a repeat must not grow the list either way.
+static void purge_reserve_id(const char *agent_id) {
+    purge_reserved_t *node;
+
+    if (!agent_id) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (node = purge_reserved; node; node = node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            w_mutex_unlock(&mutex_purge);
+            return;
+        }
+    }
+
+    os_calloc(1, sizeof(purge_reserved_t), node);
+    os_strdup(agent_id, node->id);
+    node->next = purge_reserved;
+    purge_reserved = node;
+
+    w_mutex_unlock(&mutex_purge);
+}
+
+/// Drop a reservation, with mutex_purge already held. Called once the id's fate is settled: either
+/// the queue owns it now, or it was refused and will never be purged at all.
+static void purge_unreserve_id_locked(const char *agent_id) {
+    purge_reserved_t **prev;
+    purge_reserved_t *node;
+
+    for (prev = &purge_reserved; (node = *prev) != NULL; prev = &node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            *prev = node->next;
+            os_free(node->id);
+            os_free(node);
+            return;
+        }
+    }
+}
+
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
 static bool w_auth_group_regex_compiled = false;
@@ -72,6 +178,10 @@ void add_remove(const keyentry *entry) {
 
     (*remove_tail) = node;
     remove_tail = &node->next;
+
+    // Before this returns, and therefore before the caller answers the deletion: from here on an
+    // insertion naming this id is refused until the writer has queued the purge for real.
+    purge_reserve_id(entry->id);
 }
 
 
@@ -677,4 +787,469 @@ char *w_authd_read_password(const char *path) {
     }
 
     return pass;
+}
+
+/**
+ * @brief Give cond_purge a monotonic clock, so its timed waits cannot be moved by an NTP jump.
+ *
+ * Called from main() before any thread exists. A platform that refuses the attribute still works:
+ * the fallback only makes the WAIT drift with the wall clock, never the due-time decision.
+ */
+void purge_queue_init(void) {
+#ifdef CLOCK_MONOTONIC
+    pthread_condattr_t attr;
+
+    if (pthread_condattr_init(&attr) == 0) {
+        if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) == 0) {
+            purge_cond_monotonic = true;
+        }
+        w_cond_init(&cond_purge, purge_cond_monotonic ? &attr : NULL);
+        pthread_condattr_destroy(&attr);
+
+        if (!purge_cond_monotonic) {
+            mdebug1("The deletion queue's condition variable could not be set to a monotonic clock.");
+        }
+        return;
+    }
+#endif
+    w_cond_init(&cond_purge, NULL);
+}
+
+/**
+ * @brief Persist the queue. The caller MUST hold mutex_purge.
+ *
+ * Rewrites the whole file into a temporary and renames it over the target, the same way
+ * OS_WriteKeys() persists client.keys: a partial write can then never be observed, and the file is
+ * small enough (an id and a timestamp per pending deletion) that rewriting it beats maintaining
+ * tombstones. `last_update` is what lets the next start tell that the clock moved backwards.
+ */
+static void purge_file_write_locked(void) {
+    File file;
+    purge_node_t *node;
+
+    if (TempFile(&file, PENDING_PURGES_FILE, 0) < 0) {
+        mwarn("Could not open a temporary file for '%s': %s. The pending deletions are still queued in "
+              "memory, but a restart would lose them.", PENDING_PURGES_FILE, strerror(errno));
+        return;
+    }
+
+    if (fprintf(file.fp, "last_update %ld\n", (long)time(NULL)) < 0) {
+        goto error;
+    }
+
+    /* The high-water mark of handed-out ids. It lives here rather than being derived from
+     * client.keys because that is exactly the case it has to survive: deleting the highest ids
+     * removes them from client.keys, and a restart would otherwise rebuild the counter lower and
+     * hand those very ids to new agents -- while their purges are still pending. */
+    if (fprintf(file.fp, "last_id %d\n", purge_last_id) < 0) {
+        goto error;
+    }
+
+    for (node = purge_queue; node; node = node->next) {
+        if (fprintf(file.fp, "purge %s %ld\n", node->id, (long)node->requested_at) < 0) {
+            goto error;
+        }
+    }
+
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error_closed;
+    }
+
+    if (OS_MoveFile(file.name, PENDING_PURGES_FILE) < 0) {
+        goto error_closed;
+    }
+
+    os_free(file.name);
+    return;
+
+error:
+    fclose(file.fp);
+error_closed:
+    mwarn("Could not write '%s'. The pending deletions are still queued in memory, but a restart "
+          "would lose them.", PENDING_PURGES_FILE);
+    unlink(file.name);
+    os_free(file.name);
+}
+
+/**
+ * @brief Queue an agent id for its indexer purge, and persist it. Called from the writer thread.
+ *
+ * Copies the id: the caller's keynode is freed a few lines later, so keeping its pointer would
+ * leave the relay reading freed memory.
+ */
+void purge_queue_push(const char *agent_id) {
+    purge_node_t *node;
+
+    os_calloc(1, sizeof(purge_node_t), node);
+    os_strdup(agent_id, node->id);
+    node->requested_at = time(NULL);
+    node->due_mono = w_get_monotonic_time() + config.purge_delay;
+
+    w_mutex_lock(&mutex_purge);
+
+    if (purge_queue_size >= PURGE_QUEUE_MAX_ENTRIES) {
+        // Nothing will ever purge this id, so it must not stay reserved either.
+        purge_unreserve_id_locked(agent_id);
+        w_mutex_unlock(&mutex_purge);
+        mwarn("The pending deletion queue is full (%d entries); the documents of agent '%s' were not "
+              "queued for deletion. Repeat the deletion once the inventory sync server catches up.",
+              PURGE_QUEUE_MAX_ENTRIES, agent_id);
+        os_free(node->id);
+        os_free(node);
+        return;
+    }
+
+    (*purge_tail) = node;
+    purge_tail = &node->next;
+    purge_queue_size++;
+
+    // The queue is the durable owner of this id now; the removal-time reservation can go.
+    purge_unreserve_id_locked(agent_id);
+
+    // Persisted BEFORE the relay is woken: if this crashed in between, the next start would replay
+    // an entry that was never sent, which is exactly the direction we want to fail in.
+    purge_file_write_locked();
+
+    w_cond_signal(&cond_purge);
+    w_mutex_unlock(&mutex_purge);
+}
+
+/**
+ * @brief Release the relay from any wait it is in, so it can finish. Used by the shutdown path.
+ */
+void purge_queue_stop(void) {
+    w_mutex_lock(&mutex_purge);
+    purge_stopping = true;
+    w_cond_broadcast(&cond_purge);
+    w_mutex_unlock(&mutex_purge);
+}
+
+/**
+ * @brief Whether this id still owes a purge.
+ *
+ * Handing such an id to a new agent would let the pending purge delete the NEW agent's documents:
+ * the purge matches by agent id, and nothing in a state document distinguishes one owner from the
+ * next (there is no timestamp, and two of the three indices in the scope carry no agent name).
+ */
+bool purge_is_pending(const char *agent_id) {
+    bool pending = false;
+    purge_node_t *node;
+
+    if (!agent_id) {
+        return false;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (node = purge_queue; node; node = node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            pending = true;
+            break;
+        }
+    }
+
+    // Also the ids still on their way to the queue, or the window between the delete response and
+    // the writer's pass would let an insertion reuse the id -- see purge_reserved.
+    if (!pending) {
+        purge_reserved_t *reserved;
+
+        for (reserved = purge_reserved; reserved; reserved = reserved->next) {
+            if (!strcmp(reserved->id, agent_id)) {
+                pending = true;
+                break;
+            }
+        }
+    }
+
+    w_mutex_unlock(&mutex_purge);
+    return pending;
+}
+
+/**
+ * @brief Record the highest id handed out, persisting it when it grows.
+ *
+ * Called from the writer thread with the id counter of the keystore snapshot it just wrote, so the
+ * file can never claim an id that client.keys does not already account for.
+ */
+void purge_last_id_update(int id_counter) {
+    bool grew = false;
+
+    w_mutex_lock(&mutex_purge);
+
+    if (id_counter > purge_last_id) {
+        purge_last_id = id_counter;
+        grew = true;
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (grew) {
+        mdebug2("Highest agent id handed out is now %d.", id_counter);
+    }
+}
+
+/**
+ * @brief Wait until the head of the queue is due and return a copy of its agent id.
+ *
+ * The entry is NOT removed: it stays queued (and persisted) until the relay confirms the purge was
+ * accepted, so a crash mid-request replays it instead of losing it.
+ *
+ * @return The agent id, owned by the caller, or NULL when the daemon is shutting down.
+ */
+char* purge_queue_peek_due(void) {
+    char *agent_id = NULL;
+
+    w_mutex_lock(&mutex_purge);
+
+    while (!purge_stopping) {
+        if (!purge_queue) {
+            w_cond_wait(&cond_purge, &mutex_purge);
+            continue;
+        }
+
+        const time_t now = w_get_monotonic_time();
+
+        if (purge_queue->due_mono <= now) {
+            os_strdup(purge_queue->id, agent_id);
+            break;
+        }
+
+        // Not due yet: sleep until it is, or until a push or the shutdown wakes us earlier.
+        struct timespec deadline = {0, 0};
+#ifdef CLOCK_MONOTONIC
+        clock_gettime(purge_cond_monotonic ? CLOCK_MONOTONIC : CLOCK_REALTIME, &deadline);
+#else
+        deadline.tv_sec = time(NULL);
+#endif
+        deadline.tv_sec += (purge_queue->due_mono - now);
+        pthread_cond_timedwait(&cond_purge, &mutex_purge, &deadline);
+    }
+
+    w_mutex_unlock(&mutex_purge);
+    return agent_id;
+}
+
+/**
+ * @brief Drop the head after a successful relay, and persist the shorter queue.
+ */
+void purge_queue_drop_head(void) {
+    purge_node_t *node;
+
+    w_mutex_lock(&mutex_purge);
+
+    node = purge_queue;
+    if (node) {
+        purge_queue = node->next;
+        if (!purge_queue) {
+            purge_tail = &purge_queue;
+        }
+        purge_queue_size--;
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (node) {
+        os_free(node->id);
+        os_free(node);
+    }
+}
+
+/**
+ * @brief Push the head's next attempt into the future after a failed relay.
+ *
+ * Kept rather than dropped: the entry is the only record that this agent's documents still have to
+ * go, and the purge is idempotent, so retrying costs nothing but a little indexer work. The log is
+ * throttled because a server that stays unreachable would otherwise print the same warning for the
+ * same agent every delay.
+ *
+ * The deferred entry stays at the head, so anything queued behind it waits too. That is the right
+ * trade here: every way this relay fails (an unreachable socket, a 503 while no indexer host is
+ * healthy) is server-wide, so the entries behind it would fail as well -- and holding the order
+ * keeps the retry from starving whoever is first in line.
+ */
+void purge_queue_defer_head(const char *agent_id) {
+    unsigned int attempts = 0;
+    time_t retry_in = 0;
+
+    w_mutex_lock(&mutex_purge);
+
+    if (purge_queue) {
+        // The delay doubles as the retry interval: it is already the "come back later" this queue
+        // is built around, and it keeps a stuck entry from spinning.
+        retry_in = (config.purge_delay > 0) ? config.purge_delay : PURGE_RETRY_FLOOR_SECONDS;
+        purge_queue->due_mono = w_get_monotonic_time() + retry_in;
+        attempts = ++purge_queue->attempts;
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (attempts == 1) {
+        mwarn("The deletion of agent '%s' could not be relayed to the inventory sync server; it stays "
+              "queued and will be retried in %ld s.", agent_id, (long)retry_in);
+    } else {
+        mdebug1("The deletion of agent '%s' is still pending after %u attempt(s); next retry in %ld s.",
+                agent_id, attempts, (long)retry_in);
+    }
+}
+
+/**
+ * @brief Load the deletions a previous run left behind, and arm them.
+ *
+ * Called from main() before the threads start, so nothing contends for the queue yet.
+ *
+ * Two rules that are not obvious:
+ *   - A backward clock jump (now earlier than the file's own last_update) makes every stored
+ *     timestamp untrustworthy, so they are all re-stamped to now: better to wait the full delay
+ *     again than to fire a purge whose delay never actually elapsed.
+ *   - Nothing is due before `purge_delay` from this very startup, even entries that are overdue on
+ *     paper. Part of what the delay buys is cluster workers having pulled the new client.keys, and
+ *     right after a restart they have not.
+ */
+void purge_file_load(void) {
+    FILE *fp = wfopen(PENDING_PURGES_FILE, "r");
+    char line[OS_BUFFER_SIZE];
+    const time_t now = time(NULL);
+    const time_t now_mono = w_get_monotonic_time();
+    time_t last_update = 0;
+    bool clock_went_back = false;
+    unsigned int loaded = 0;
+
+    if (!fp) {
+        if (errno != ENOENT) {
+            mwarn("Could not read '%s': %s. Deletions pending from the previous run, if any, will not "
+                  "be retried.", PENDING_PURGES_FILE, strerror(errno));
+        }
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        char label[32] = {0};
+        char id[32] = {0};
+        long stamp = 0;
+
+        if (sscanf(line, "%31s", label) != 1) {
+            continue;
+        }
+
+        if (!strcmp(label, "last_update")) {
+            if (sscanf(line, "%31s %ld", label, &stamp) == 2) {
+                last_update = (time_t)stamp;
+                clock_went_back = (now < last_update);
+            }
+            continue;
+        }
+
+        if (!strcmp(label, "last_id")) {
+            int stored_id = 0;
+
+            if (sscanf(line, "%31s %d", label, &stored_id) == 2 && stored_id > purge_last_id) {
+                purge_last_id = stored_id;
+            }
+            continue;
+        }
+
+        if (strcmp(label, "purge")) {
+            // Unknown label: ignored on purpose, so a newer format can add lines without this
+            // parser rejecting a file it merely does not fully understand.
+            mdebug2("Ignoring unknown entry '%s' in '%s'.", label, PENDING_PURGES_FILE);
+            continue;
+        }
+
+        if (sscanf(line, "%31s %31s %ld", label, id, &stamp) != 3 || !OS_IsValidID(id)) {
+            mwarn("Ignoring a malformed entry in '%s'.", PENDING_PURGES_FILE);
+            continue;
+        }
+
+        purge_node_t *node;
+        os_calloc(1, sizeof(purge_node_t), node);
+        os_strdup(id, node->id);
+        node->requested_at = clock_went_back ? now : (time_t)stamp;
+
+        const time_t elapsed = (now > node->requested_at) ? (now - node->requested_at) : 0;
+        const time_t remaining = (config.purge_delay > elapsed) ? (config.purge_delay - elapsed) : 0;
+        const time_t grace = now_mono + config.purge_delay;
+
+        node->due_mono = now_mono + remaining;
+        if (node->due_mono < grace) {
+            node->due_mono = grace;
+        }
+
+        (*purge_tail) = node;
+        purge_tail = &node->next;
+        purge_queue_size++;
+        loaded++;
+    }
+
+    fclose(fp);
+
+    if (clock_went_back) {
+        mwarn("The system clock is earlier than the last update of '%s'; the %u pending deletion(s) were "
+              "re-stamped so each one waits its full delay again.", PENDING_PURGES_FILE, loaded);
+    }
+
+    if (loaded > 0) {
+        minfo("Recovered %u pending agent deletion(s) from '%s'; they will be relayed to the inventory "
+              "sync server after %d s.", loaded, PENDING_PURGES_FILE, config.purge_delay);
+    }
+
+    /* The id counter never goes backwards. OS_ReadKeys() rebuilt it from client.keys, which no
+     * longer lists the agents that were just deleted, so without this an id whose purge is still
+     * pending could be handed to a new agent -- and the purge would wipe that agent's documents. */
+    if (purge_last_id > keys.id_counter) {
+        /* INFO, not debug: this is the line that explains why the next agent id "jumps", and it is
+         * the visible trace of a data-integrity guard -- an id whose purge is still pending must
+         * never be handed out again. It only prints when the counter actually had to be raised. */
+        minfo("Raising the agent id counter from %d to %d: ids that were handed out are never reused.",
+              keys.id_counter, purge_last_id);
+        keys.id_counter = purge_last_id;
+    } else if (keys.id_counter > purge_last_id) {
+        purge_last_id = keys.id_counter;
+    }
+}
+
+/**
+ * @brief Report what the relay could not send before shutdown. Frees memory; keeps the file.
+ *
+ * The file is deliberately left alone: it IS the record that these deletions are still owed, and
+ * the next start replays it. Saying the number out loud is what the previous behavior lacked --
+ * pending deletions used to be dropped without a word.
+ */
+void purge_queue_discard(void) {
+    unsigned int abandoned;
+    purge_node_t *node;
+    purge_node_t *next;
+
+    w_mutex_lock(&mutex_purge);
+
+    abandoned = purge_queue_size;
+    node = purge_queue;
+    purge_queue = NULL;
+    purge_tail = &purge_queue;
+    purge_queue_size = 0;
+
+    // Reservations die with the process: they were never persisted, and the agents they refer to are
+    // still in client.keys unless the writer got to them (in which case they are in `node` above).
+    while (purge_reserved) {
+        purge_reserved_t *stale = purge_reserved;
+        purge_reserved = stale->next;
+        os_free(stale->id);
+        os_free(stale);
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    for (; node; node = next) {
+        next = node->next;
+        os_free(node->id);
+        os_free(node);
+    }
+
+    if (abandoned > 0) {
+        minfo("Shutting down with %u pending agent deletion(s); they stay recorded in '%s' and will be "
+              "retried on the next start.", abandoned, PENDING_PURGES_FILE);
+    }
 }

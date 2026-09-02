@@ -16,6 +16,11 @@ extern "C" {
         AgentSyncProtocol::setSessionMaxBytes(static_cast<size_t>(max_session_bytes));
     }
 
+    long asp_get_agent_id(void)
+    {
+        return AgentSyncProtocol::currentAgentId();
+    }
+
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
@@ -111,15 +116,19 @@ extern "C" {
 
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
+            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
+            cResult.sent_anything = cppResult.sentAnything;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
         catch (...)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
     }
 
@@ -210,15 +219,19 @@ extern "C" {
 
             cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
+            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
+            cResult.sent_anything = cppResult.sentAnything;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
         catch (...)
         {
-            return {false, {}, false, false, 0};
+            return {};
         }
     }
 
@@ -245,7 +258,7 @@ extern "C" {
             if (indices_vec.empty()) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->notifyDataClean(indices_vec);
+            return wrapper->impl->notifyDataClean(indices_vec).success;
         }
         catch (const std::exception& ex)
         {

@@ -24,6 +24,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
+#include "syscollector_defs.hpp"
 #include "asyncFlushController.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
@@ -103,6 +104,7 @@ class EXPORTED Syscollector final
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
+
         SyncModuleResult syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
@@ -125,6 +127,8 @@ class EXPORTED Syscollector final
         void runRecoveryProcess();
 
     private:
+        SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS;
+
         Syscollector();
         ~Syscollector() = default;
         Syscollector(const Syscollector&) = delete;
@@ -174,6 +178,19 @@ class EXPORTED Syscollector final
         /// already hold it shared do not acquire it a second time on the same thread.
         void deleteDatabaseUnlocked();
         void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
+
+        /**
+         * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
+         *        VDFirst marker when the session succeeds.
+         * @details Picks the sync option that fits the current state: SYNC when the agent's own
+         *          collectors rule VD scanning out, VDFIRST/VDSYNC otherwise. The session is
+         *          sent regardless of the VD feed offset the agent has heard about; what to do
+         *          with one built against an offset the node does not have is the manager's
+         *          decision.
+         * @param mode Synchronization mode to use for the session.
+         * @return The result of the session.
+         */
+        SyncModuleResult synchronizeVDTables(const Mode mode);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,
@@ -421,6 +438,63 @@ class EXPORTED Syscollector final
          * @brief Initializes document counts from database for all tables
          */
         void initializeDocumentCounts();
+
+        /// @brief Picks the sync protocol an index's data belongs on.
+        ///
+        /// The system, packages and hotfixes indices ride the VD protocol: the manager routes a
+        /// VD session through the scan lane, which both indexes the documents and feeds them to
+        /// the vulnerability scanner, so sending them on the plain protocol still populates
+        /// wazuh-states-inventory-* but silently leaves the scanner with nothing to evaluate.
+        /// Every path that hands rows to the manager has to make the same choice, hence one
+        /// place to make it.
+        ///
+        /// @param index Destination index name.
+        /// @return The VD protocol for a VD index when one exists, the plain protocol otherwise;
+        ///         nullptr if neither is initialized.
+        IAgentSyncProtocol* protocolForIndex(const std::string& index) const;
+
+        /// @brief Whether an index's data rides the VD protocol (system, packages, hotfixes).
+        static bool isVDIndex(const std::string& index);
+
+        /// @brief Replaces the manager's copy of one table with what this agent currently holds.
+        ///
+        /// Bumps every row's version, clears the manager's index, re-persists the whole table and
+        /// syncs it. Extracted from runRecoveryProcess() so the same work can be driven by more
+        /// than one trigger; it makes no decision about *whether* a resync is needed, only about
+        /// carrying one out.
+        ///
+        /// @param tableName Source dbsync table.
+        /// @param index Destination index name.
+        /// @return false when the table could not be resynced at all (version bump failed, rows
+        ///         could not be read, no protocol, or the manager refused the DataClean), which
+        ///         the caller treats as "leave the integrity timestamp alone and retry". A failure
+        ///         of the final synchronization itself returns true: the data reached the queue
+        ///         and the ordinary sync cycle will drain it.
+        /// @param syncNow When false, the table is cleared and re-persisted but no session is
+        ///                opened, leaving the caller to send the queue. The identity resync uses
+        ///                that for the VD lane: its three indices have to reach the manager in
+        ///                one VDFirst session, which is the only one whose scan chain suppresses
+        ///                alerts, and each VDFirst session begins by deleting what the previous
+        ///                one indexed.
+        bool resyncTableToManager(const std::string& tableName, const std::string& index, bool syncNow = true);
+
+        /// @brief Whether the collector that owns a table is enabled in the configuration.
+        /// @param tableName dbsync table to check.
+        /// @return false when its collector is switched off, so callers iterating INDEX_MAP skip it.
+        bool isCollectorEnabledForTable(const std::string& tableName) const;
+
+        /// @brief Re-sends every table when this agent's id has changed since the last sync.
+        ///
+        /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
+        /// including first_sync_completed -- survive untouched, so every later cycle sends a
+        /// delta against a baseline the manager no longer has for this identity. Comparing the
+        /// id repairs that on the next cycle instead of waiting for integrity_interval to notice
+        /// it one table at a time.
+        ///
+        /// Reads the id from the shared-memory metadata provider, which is the same value, via
+        /// the same call, that stamps the outgoing session -- so a resync can never be sent
+        /// under an id different from the one it was compared against.
+        void checkAgentIdentity();
 
         /**
          * @brief Checks if document limit has been reached for a given table/index

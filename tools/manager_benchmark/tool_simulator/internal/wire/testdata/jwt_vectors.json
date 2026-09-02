@@ -1,0 +1,83 @@
+{
+  "_comment": "Frozen wazuh-agent+jwt (top level) and wazuh-enroll+jwt (\"enroll\") test vectors (issue #38582). Mirror of src/shared_modules/utils/jwt/testVectors.hpp; generated with Python stdlib hmac/hashlib/base64 as an implementation-independent oracle. Keep both files in sync.",
+  "profile": {
+    "typ": "wazuh-agent+jwt",
+    "alg": "HS256",
+    "lifetime_sec": 60,
+    "max_clock_skew_sec": 30,
+    "max_token_bytes": 4096
+  },
+  "key": {
+    "hex": "0030557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8cdf2173c61ff",
+    "bytes_len": 32,
+    "note": "first byte 0x00, last 0xff: the HS256 key is the 32 decoded bytes, never the 64 ASCII chars"
+  },
+  "agent_id": "001",
+  "iat": 1700000000,
+  "nbf": 1700000000,
+  "exp": 1700000060,
+  "jti_bytes_hex": "000102030405060708090a0b0c0d0e0f",
+  "jti": "AAECAwQFBgcICQoLDA0ODw",
+  "header_json": "{\"alg\":\"HS256\",\"kid\":\"001\",\"typ\":\"wazuh-agent+jwt\"}",
+  "payload_json": "{\"exp\":1700000060,\"iat\":1700000000,\"iss\":\"wazuh-agent/001\",\"jti\":\"AAECAwQFBgcICQoLDA0ODw\",\"nbf\":1700000000,\"sub\":\"001\"}",
+  "signing_input": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWFnZW50K2p3dCJ9.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoid2F6dWgtYWdlbnQvMDAxIiwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMCwic3ViIjoiMDAxIn0",
+  "signature_b64url": "VdKOn_yX2AkynNwDOrcjYMiOa8RYguaIhZ7PJCWfdUA",
+  "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWFnZW50K2p3dCJ9.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoid2F6dWgtYWdlbnQvMDAxIiwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMCwic3ViIjoiMDAxIn0.VdKOn_yX2AkynNwDOrcjYMiOa8RYguaIhZ7PJCWfdUA",
+  "negative": {
+    "ascii_key_token": {
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWFnZW50K2p3dCJ9.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoid2F6dWgtYWdlbnQvMDAxIiwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMCwic3ViIjoiMDAxIn0.3w8hHOsd1aZYBDiDmtA7wrKlLDdQdS8vgf3xYEeOki4",
+      "note": "same header/payload signed with the 64 hex chars as ASCII key: must be rejected"
+    },
+    "aud_present_token": {
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWFnZW50K2p3dCJ9.eyJhdWQiOiJ3YXp1aC1tYW5hZ2VyIiwiZXhwIjoxNzAwMDAwMDYwLCJpYXQiOjE3MDAwMDAwMDAsImlzcyI6IndhenVoLWFnZW50LzAwMSIsImp0aSI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJuYmYiOjE3MDAwMDAwMDAsInN1YiI6IjAwMSJ9.ScnCz_6A1XAqPd7vuqmbfMeRLdc8NaM7rDLuHqF9gng",
+      "payload_json": "{\"aud\":\"wazuh-manager\",\"exp\":1700000060,\"iat\":1700000000,\"iss\":\"wazuh-agent/001\",\"jti\":\"AAECAwQFBgcICQoLDA0ODw\",\"nbf\":1700000000,\"sub\":\"001\"}",
+      "note": "valid signature, correct key, extra aud claim: must be rejected (exact claim set)"
+    }
+  },
+  "enroll": {
+    "profile": {
+      "typ": "wazuh-enroll+jwt",
+      "alg": "HS256",
+      "lifetime_sec": 60,
+      "max_clock_skew_sec": 30,
+      "max_token_bytes": 4096,
+      "header_fields": [
+        "alg",
+        "typ"
+      ],
+      "claims": [
+        "exp",
+        "iat",
+        "jti",
+        "nbf"
+      ]
+    },
+    "hkdf": {
+      "password": "MyEnrollmentSecret123",
+      "salt_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "info_hex": "57415a55482d454e524f4c4c2d4a57542d4b455901",
+      "info_note": "\"WAZUH-ENROLL-JWT-KEY\" || 0x01; digest SHA-256; L = 32",
+      "key_hex": "eeecc651648436211783381e38d0a661bfecc2888a4e23b28c94f415f98616b6"
+    },
+    "iat": 1700000000,
+    "nbf": 1700000000,
+    "exp": 1700000060,
+    "jti": "AAECAwQFBgcICQoLDA0ODw",
+    "header_json": "{\"alg\":\"HS256\",\"typ\":\"wazuh-enroll+jwt\"}",
+    "payload_json": "{\"exp\":1700000060,\"iat\":1700000000,\"jti\":\"AAECAwQFBgcICQoLDA0ODw\",\"nbf\":1700000000}",
+    "signing_input": "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0",
+    "signature_b64url": "Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.Ll9rqCc4D0emY3xUV99-yD-ep0Xp7CI1qKG8Rzkvm8o",
+    "negative": {
+      "wrong_password_token": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.a8lxhFZIpYPD74vwYD_h6kPT4ZnedFOHEBMJPbltzZg",
+        "note": "same claims signed with the key of password \"WrongPassword\": must be rejected"
+      },
+      "kid_header_token": {
+        "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.-PID3RuMlsz0ShaKX5IppGhP3iX2nEq6mfyGPgqDDMY",
+        "note": "correct key, extra kid in the header: must be rejected (exact header set)"
+      },
+      "agent_token_note": "the top-level wazuh-agent+jwt token presented to the enroll verifier (and vice versa) must be rejected on typ"
+    }
+  }
+}

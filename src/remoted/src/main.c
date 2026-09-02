@@ -281,6 +281,9 @@ int main(int argc, char **argv)
 
     /* Exit if test_config is set */
     if (test_config) {
+        /* The http_*, downstream_* and control_* options are resolved in secure.c, on the daemon
+         * path only, so without this '-t' accepts every one of them whatever the value. */
+        w_remoted_validate_module_config();
         exit(0);
     }
 

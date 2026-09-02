@@ -97,12 +97,10 @@ namespace invsync
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
     constexpr int DEFAULT_VD_RETRY_AFTER_SECS {60};
-    /// The demoted flush timer of the pipeline's connectors -- see the overlay in
-    /// tryStartHttpServer() for why this is a correctness requirement rather than tuning.
-    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {3600};
-    /// VD scan lane worker fallback: 1 until the scanner gains real scan parallelism (its global
-    /// mutex serializes scans anyway -- REQ-VDQ-7).
-    constexpr std::size_t DEFAULT_VD_WORKERS {1};
+    /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
+    /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
+    /// that failed would have no responder to report to.
+    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {0};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -440,10 +438,19 @@ namespace invsync
             // capacity control stays in the pipeline.
             {
                 // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
-                // name): the deletion plane's inline 400/503 rejections count into the same
-                // sync.requests.total.* cells its pipeline-answered responses already use.
+                // name): the deletion plane answers at admission, so all of its responses -- the
+                // inline 400/503 rejections and the 200 that accepts -- count into the same
+                // sync.requests.total.* cells the sync route already uses.
+                //
+                // The async connector is in here because the deletion has a half that belongs to
+                // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
+                // connector, so their deletes have to ride its own queue to be ordered after a
+                // report it has accepted but not yet pushed (see the route's header).
                 const invsync::endpoints::delete_agent::Dependencies deleteDeps {
-                    m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
+                    m_syncPipeline,
+                    m_indexerConnectorSync,
+                    m_indexerConnectorAsync,
+                    invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps),
@@ -676,6 +683,19 @@ namespace invsync
             return cores / 2 > 0 ? cores / 2 : 1;
         }
 
+        /// vd_workers <= 0 follows the same "half the cores, at least one" convention as
+        /// sync_workers above -- the scanner's own per-slot pool (REQ-VDQ-7) makes
+        /// raising this safe.
+        static std::size_t resolveVdWorkers(const inventory_sync_server_config_t& config)
+        {
+            if (config.vd_workers > 0)
+            {
+                return static_cast<std::size_t>(config.vd_workers);
+            }
+            const auto cores = static_cast<std::size_t>(cpp_get_nproc());
+            return cores / 2 > 0 ? cores / 2 : 1;
+        }
+
         /// Diagnostic text for a stage. `label` appears in EVERY escalation branch; `settingHint`
         /// only in the first-attempt ERROR. One switch so a new stage cannot be half-added.
         struct StageDiagnostics
@@ -783,7 +803,7 @@ namespace invsync
             std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
 
             wazuh::uds_http::UdsHttpServerConfig serverConfig;
-            nlohmann::json rawIndexerConfig;
+            nlohmann::json sessionConfig;
             nlohmann::json syncConnectorConfig;
             nlohmann::json asyncConnectorConfig;
             IndexerSessionFactory sessionFactory;
@@ -793,7 +813,7 @@ namespace invsync
             std::size_t pipelineWorkers {1};
             std::string pipelineClusterName;
             invsync::vd::VdScanLaneConfig laneConfig;
-            std::size_t laneWorkers {DEFAULT_VD_WORKERS};
+            std::size_t laneWorkers {1};
             VdScannerFactory scannerFactory;
             std::uint64_t generation {0};
             bool needSession {false};
@@ -839,8 +859,7 @@ namespace invsync
                     m_agentRegistry = std::make_shared<invsync::vd::AgentInFlightRegistry>();
                 }
 
-                laneWorkers =
-                    m_config.vd_workers > 0 ? static_cast<std::size_t>(m_config.vd_workers) : DEFAULT_VD_WORKERS;
+                laneWorkers = resolveVdWorkers(m_config);
                 laneConfig.workers = laneWorkers;
                 laneConfig.queueSlots =
                     m_config.vd_scan_queue_slots > 0 ? static_cast<std::size_t>(m_config.vd_scan_queue_slots) : 0;
@@ -863,25 +882,19 @@ namespace invsync
                 pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
-                if (needSession || needSync || needAsync || needPipeline)
+                if (needSession || needSync || needAsync || needPipeline || needLane)
                 {
                     logIndexerSummary();
-                    rawIndexerConfig = m_indexerConfig;
-                    syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
-                    asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
-
-                    /*
-                     * The pipeline workers own EVERY flush (group commit: flush on queue-drain or
-                     * on the byte threshold), so the connector's own flush timer is demoted to a
-                     * last-resort safety net. That is a correctness requirement, not tuning: when
-                     * the TIMER's flush fails, the connector drops the staged buffer and swallows
-                     * the failure inside its background thread -- a worker that later flushed an
-                     * emptied buffer would answer 200 for data that was silently lost. The one-hour
-                     * interval keeps the timer from ever finding data in practice (a worker never
-                     * sleeps on a non-empty buffer) while still bounding a leak if one does.
-                     */
-                    syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
                 }
+
+                // Built on every attempt: any slot below -- the lane included -- may consume these
+                // on a retry where every other slot already succeeded.
+                sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
+                syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
+                asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+
+                // Correctness, not tuning: see PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS.
+                syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
             }
             catch (const std::exception& e)
             {
@@ -914,7 +927,7 @@ namespace invsync
                                  [&]
                                  {
                                      return sessionFactory(
-                                         rawIndexerConfig,
+                                         sessionConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
                                  }))
             {

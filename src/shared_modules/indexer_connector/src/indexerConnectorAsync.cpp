@@ -61,6 +61,11 @@ public:
         m_impl.bulkIndexDataStream(index, data);
     }
 
+    void deleteById(std::string_view id, std::string_view index)
+    {
+        m_impl.bulkDelete(id, index);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
@@ -142,6 +147,11 @@ void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_view data)
 {
     m_impl->indexDataStream(index, data);
+}
+
+void IndexerConnectorAsync::deleteById(std::string_view id, std::string_view index)
+{
+    m_impl->deleteById(id, index);
 }
 
 bool IndexerConnectorAsync::isAvailable() const

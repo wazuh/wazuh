@@ -15,7 +15,10 @@
 
 set -euo pipefail
 
-find $1 -depth -printf '%m:%u:%g:%p\0' | awk -v RS='\0' -F: '
+# Symlinks are excluded: find reports them as mode 777 and chmod/chown on a
+# symlink path dereference it, so restoring them would reset the target's
+# permissions to 777 whenever the symlink entry follows the target's own.
+find $1 -depth ! -type l -printf '%m:%u:%g:%p\0' | awk -v RS='\0' -F: '
 BEGIN {
     print "#!/bin/sh";
     q = "\047";

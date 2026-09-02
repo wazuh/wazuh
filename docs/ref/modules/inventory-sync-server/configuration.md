@@ -14,7 +14,7 @@ tuned through internal options.
 
 Two values are deliberately NOT configurable:
 
-- **The socket path** is fixed at `queue/sockets/inventory-sync.sock`, relative to the installation
+- **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
   resolves the same relative path through its chroot.
 - **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a
@@ -317,11 +317,11 @@ Workers on the vulnerability-detection scan lane.
 wazuh_modules.inventory_sync_server_vd_workers=0
 ```
 
-- **Default value:** `0` (resolves to 1)
-- **Allowed values:** 0 to 16
-- **Note:** The scanner serializes scans internally today, so values above 1 only help once the
-  scanner gains real scan parallelism. Lane occupancy and end-to-end time are `vd.lane.depth` and
-  `vd.lane.time` in [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
+- **Default value:** `0` (half the host's cores, minimum 1)
+- **Allowed values:** 0 to 64
+- **Note:** More workers let scans for different agents run at the same time instead of queueing
+  behind each other. Lane occupancy and end-to-end time are `vd.lane.depth` and `vd.lane.time` in
+  [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
 ### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
@@ -349,7 +349,7 @@ wazuh_modules.inventory_sync_server_session_query_batch_size=0
 ```
 
 - **Default value:** `0` (1000 documents)
-- **Allowed values:** 0 to 100000
+- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`)
 - **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
   per query.
 
@@ -384,8 +384,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
 **No effect.** The value is accepted for compatibility but the module overrides the connector's
-periodic flush to one hour regardless: the ingestion workers own every flush (a timer-driven flush
-that fails discards the buffer silently, which would let a worker answer `200` for lost data).
+periodic flush to `0` regardless, which means the connector never starts its background flush
+thread: the ingestion workers own every flush (a timer-driven flush that fails discards the buffer
+silently and has no responder to report to, which would let a worker answer `200` for lost data).
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
@@ -406,6 +407,22 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds=15
 - **Default value:** `15`
 - **Allowed values:** 1 to 3600
 - **Note:** Forwarded as `max_retry_delay_seconds`. The minimum is 1 because the connector rejects anything below its base retry delay.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Upper bound, in seconds, on one HTTP request against the indexer. This is what catches a
+  host that accepted the connection and then never answers, which otherwise blocks the caller
+  indefinitely. The connector reads `0` as "no bound" — exactly the unbounded blocking this option
+  exists to prevent — so `0` is rejected here rather than forwarded. A timed-out bulk request is
+  retried with backoff, not discarded.
 
 #### Asynchronous connector
 
@@ -469,6 +486,20 @@ wazuh_modules.inventory_sync_server_indexer_async_logger_threads=1
 - **Allowed values:** 1 to 64
 - **Note:** Forwarded as `logger_threads`.
 
+#### wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Same meaning as the synchronous family's `request_timeout_seconds`, for the asynchronous
+  connector. `0` (the connector's "no bound") is rejected here rather than forwarded. A timed-out
+  batch is requeued and retried, not discarded.
+
 #### wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes
 
 Forwarded as `max_queue_bytes`.
@@ -480,6 +511,23 @@ wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes=67108864
 - **Default value:** `67108864` (64 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Forwarded as `max_queue_bytes`. An unbounded queue is the only unbounded allocation this module can be configured to make, so the shipped default is deliberately finite.
+
+#### Shared session
+
+#### wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds
+
+Forwarded to the shared indexer session as `monitoring_interval_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
+```
+
+- **Default value:** `10`
+- **Allowed values:** 1 to 3600
+- **Note:** Polling period of the health monitor that marks each indexer host as available or
+  unavailable. One option, not a sync/async pair: both connectors share the session's single
+  monitor, so there is exactly one polling cadence per module. The connector rejects `0` (a zero
+  period would busy-loop the monitor thread), so `0` is rejected here rather than forwarded.
 
 ---
 

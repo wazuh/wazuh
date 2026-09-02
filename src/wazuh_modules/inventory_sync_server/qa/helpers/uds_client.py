@@ -54,7 +54,7 @@ class ServerClient:
             if content_type:
                 headers["Content-Type"] = content_type
             if agent_id is not None:
-                # What remoted sets from the identity it authenticated over AES-CMAC.
+                # What remoted sets from the identity it authenticated (the agent's bearer token).
                 headers["X-Wazuh-Agent-Id"] = agent_id
 
             # Head and body go out in ONE write, deliberately -- do not go back to

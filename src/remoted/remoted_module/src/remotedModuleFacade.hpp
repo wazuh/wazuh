@@ -87,10 +87,10 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
 // remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
-// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote". No
+// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
 // sync's socket path.
-constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remoted-module.sock"};
+constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remote-admin-http.sock"};
 
 /**
  * @brief Internal engine of the remoted module.
@@ -294,7 +294,7 @@ public:
         // debug line is how the LAST totals are observed. The macro skips the dump entirely
         // when debug logging is inactive.
         LOGFN_DEBUG1(moduleLogFn(),
-                     "remoted module metrics: %s",
+                     "remoted module metrics at stop: %s",
                      wazuh::metrics::dumpJson(*m_metricsManager, {"remoted"}).c_str());
 
         LOGFN_INFO(moduleLogFn(), "remoted module stopped.");
@@ -314,7 +314,7 @@ private:
         m_httpServer = remoted::http::makeHttpServer();
 
         // Framework-agnostic auth layer: reads agent keys from client.keys and
-        // verifies the AES-CMAC of every authenticated request. Wired on top of
+        // verifies the bearer token of every authenticated request. Wired on top of
         // OUR transport, so swapping the HTTP library never touches it. The keystore
         // hot-reloads client.keys on its own (background watcher, see keystore.hpp) --
         const auto keystoreRefreshSeconds = m_config.keystore_refresh_interval > 0
@@ -378,7 +378,7 @@ private:
             { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
             /*countAgainstBudget=*/false);
 
-        // /stateless: the gateway runs the full AES-CMAC validation and only calls this handler once
+        // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
         // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
         // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
@@ -454,7 +454,7 @@ private:
                 inventorySyncSocketPath, "0", downstreamConfig.statefulResponseTimeoutMs));
 
         // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
-        // -- the gateway runs the full AES-CMAC validation and only calls this handler once auth
+        // -- the gateway runs the full bearer-token validation and only calls this handler once auth
         // succeeds. controlEndpoint::makeHandler() parses the JSON body's "type" field and
         // dispatches to ControlHandler::handleStartup/handleNotify/handleShutdown; ControlHandler
         // then talks to wazuh-db and the task manager over UDS (its own async clients, NOT the
@@ -497,8 +497,17 @@ private:
             "/control",
             remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics));
 
+        // Not a DeferredForwarder, so it takes the shape-agnostic check. The two deadlines add
+        // up rather than overlap: past the group-refresh window getAgentGroups() runs first and
+        // gates the response. The wazuh-db write is fire-and-forget and is not in the budget.
+        warnIfBudgetExceedsRequestTimeout("/control",
+                                          "control_wdb_roundtrip_deadline'/'control_tm_deadline",
+                                          static_cast<long long>(controlConfig.wdbRoundtripDeadlineMs) +
+                                              controlConfig.tmDeadlineMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
+
         // /scan/vd: agent-initiated VD scans. Offset queries and scan triggers both travel to
-        // VD's socket (queue/sockets/vd.sock -- see ScanVdHandlerImpl's and VdClient's default
+        // VD's socket (queue/sockets/vd-http.sock -- see ScanVdHandlerImpl's and VdClient's default
         // arguments): since the socket unification, /offset starvation is prevented by the
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.
@@ -509,10 +518,16 @@ private:
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
+        // Deadlines fixed at compile time: nothing to reduce, so the check names only the cap.
+        warnIfBudgetExceedsRequestTimeout("/scan/vd",
+                                          nullptr,
+                                          remoted::scanvd::ScanVdHandlerImpl::VD_SCAN_BUDGET_MS,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
+
         // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
         // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
         // because an enrolling agent has no client.keys entry yet, so the agent<->manager
-        // AES-CMAC protocol cannot authenticate it. Always registered, regardless of
+        // bearer-token profile cannot authenticate it. Always registered, regardless of
         // enrollment_enabled: the handler itself answers 403 when enrollment is administratively
         // disabled, so the route is never a bare 404.
         //
@@ -521,7 +536,7 @@ private:
         // like legacy authd, which already enforces its own <ssl_verify_host> at the TLS handshake
         // and <use_password> while parsing the enrollment message as two separate checks on the
         // same connection (main-server.c). So EnrollmentAuthenticator only ever needs to know
-        // whether it must additionally require the WazuhEnroll CMAC; it has no notion of "mTLS
+        // whether it must additionally require the `wazuh-enroll+jwt` bearer; it has no notion of "mTLS
         // mode" at all, because a client certificate is never its concern -- the TLS listener
         // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
         // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
@@ -531,15 +546,15 @@ private:
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
         if (enrollConfig.usePassword)
         {
-            enrollPasswordKeySource = std::make_shared<remoted::auth::PasswordKeySource>(
-                remoted::auth::PasswordKeySource::kDefaultPath, enrollConfig.passwordRefreshIntervalSec);
+            enrollPasswordKeySource =
+                std::make_shared<remoted::auth::PasswordKeySource>(remoted::auth::PasswordKeySource::kDefaultPath,
+                                                                   enrollConfig.passwordRefreshIntervalSec,
+                                                                   enrollConfig.isWorkerNode);
         }
 
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
-            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
-                                                       enrollConfig.maxRequestAgeSeconds,
-                                                       enrollConfig.maxFutureSkewSeconds,
-                                                       enrollConfig.maxBodySize},
+            remoted::enrollment::EnrollmentAuthConfig {
+                enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
             enrollPasswordKeySource);
 
         m_authdClient =
@@ -760,8 +775,7 @@ private:
                 wazuh::uds_http::Method::Get,
                 "/",
                 [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
                     responder->send(
                         wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok","module":"remoted_module"})"));
                 },
@@ -1038,23 +1052,32 @@ private:
     /// authd_response_timeout, no write phase) rather than the DeferredForwarder/DownstreamConfig
     /// pair every other endpoint here shares, can run the same sanity check without forcing that
     /// shape onto it.
+    /// @param tunablesToReduce Options the operator could lower instead of raising the cap, or
+    /// nullptr when the budget is fixed at compile time and only the cap can move.
     void warnIfBudgetExceedsRequestTimeout(const char* path,
                                            const char* tunablesToReduce,
                                            long long budgetMs,
                                            long long requestCapMs)
     {
-        if (budgetMs > requestCapMs)
+        if (budgetMs <= requestCapMs)
         {
-            LOGFN_WARN(moduleLogFn(),
-                       "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
-                       "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
-                       "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
-                       "reducing '%s'.",
-                       path,
-                       budgetMs,
-                       requestCapMs,
-                       tunablesToReduce);
+            return;
         }
+
+        const std::string advice =
+            tunablesToReduce
+                ? "Consider increasing the value of 'http_request_timeout', or reducing '" +
+                      std::string {tunablesToReduce} + "'."
+                : std::string {"These deadlines are fixed, so only 'http_request_timeout' can be increased."};
+
+        LOGFN_WARN(moduleLogFn(),
+                   "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
+                   "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
+                   "downstream deadline is reached. %s",
+                   path,
+                   budgetMs,
+                   requestCapMs,
+                   advice.c_str());
     }
 
     /// Unwinds a partially-built HTTPS stack after a failed/incomplete start().
@@ -1177,7 +1200,7 @@ private:
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
-    std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
+    std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
     std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).

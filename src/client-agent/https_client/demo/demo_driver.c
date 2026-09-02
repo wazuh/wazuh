@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ static hc_handle *g_handle;
 
 /* The key the mock rotates to at ROTATE_KEY_AT; the re-enroll callback swaps
  * to it (matches mock_manager.py ROTATED_KEY). */
-static const char *g_rotated_key = "0f0e0d0c0b0a09080706050403020100";
+static const char *g_rotated_key = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
 
 /* Set by SIGINT/SIGTERM: ends sustained mode early with the clean drain. */
 static atomic_int g_stop;
@@ -87,14 +88,16 @@ static void on_startup_result(bool accepted, const char *handshake_json, void *u
 }
 
 /* The credential was rejected (401): the module paused all traffic. A real
- * agent re-enrolls via authd; here we just swap to the mock's rotated key
- * (hc_set_agent_key is callback-safe), which clears the pause and re-registers. */
+ * agent re-enrolls via POST /enroll; here we just swap to the mock's rotated
+ * key under the same identity ("001", this driver's own agent_id) via
+ * hc_set_agent_identity (callback-safe), which clears the pause and
+ * re-registers. */
 static void on_reenroll_required(void *user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] >> RE-ENROLL REQUIRED (401): swapping to the new key via "
-           "hc_set_agent_key -> %s\n", elapsed_ms(),
-           hc_set_agent_key(g_handle, g_rotated_key) ? "accepted" : "rejected");
+           "hc_set_agent_identity -> %s\n", elapsed_ms(),
+           hc_set_agent_identity(g_handle, "001", g_rotated_key) ? "accepted" : "rejected");
     fflush(stdout);
 }
 
@@ -238,11 +241,98 @@ static uint32_t additive_checksum(const unsigned char *data, size_t len)
     return sum;
 }
 
+/* Ad-hoc JSON string-field extraction: this driver is a demo harness (no
+ * cJSON dependency), and hc_enroll_result_t::body is always the mock's own
+ * flat, single-line {"id":..,"name":..,"ip":..,"key":..} -- not a document
+ * that ever needs a real parser here. Tolerates an optional space after the
+ * colon: Python's json.dumps default separators put one there
+ * (`"key": "..."`), which a naive `"key":"` needle would silently miss. */
+static bool extract_json_string_field(const char *json, const char *field, char *out, size_t out_cap)
+{
+    char needle[64];
+    snprintf(needle, sizeof needle, "\"%s\":", field);
+    const char *start = strstr(json, needle);
+    if (!start)
+    {
+        return false;
+    }
+    start += strlen(needle);
+    while (*start == ' ')
+    {
+        start++;
+    }
+    if (*start != '"')
+    {
+        return false;
+    }
+    start += 1;
+    const char *end = strchr(start, '"');
+    if (!end || (size_t)(end - start) >= out_cap)
+    {
+        return false;
+    }
+    memcpy(out, start, (size_t)(end - start));
+    out[end - start] = '\0';
+    return true;
+}
+
+/* First-boot enrollment (#38465): hc_enroll() is deliberately handle-less --
+ * it must work before hc_create() ever runs, exactly like this. password may
+ * be empty (open mode: no Authorization header, mock_manager.py must be
+ * started without --enroll-password for this to succeed). On success, fills
+ * key_out with the client.keys-shaped hex key the mock minted. */
+static bool enroll_agent(const char *host, uint16_t port, const char *password,
+                         char *key_out, size_t key_out_cap)
+{
+    hc_config_t enroll_config;
+    memset(&enroll_config, 0, sizeof enroll_config);
+    strncpy(enroll_config.server_host, host, sizeof enroll_config.server_host - 1);
+    enroll_config.server_port = port;
+    enroll_config.verify_mode = HC_VERIFY_NONE; /* demo mock uses a self-signed cert */
+    enroll_config.request_timeout_ms = 10000;
+
+    hc_enroll_request_t request;
+    memset(&request, 0, sizeof request);
+    snprintf(request.body_json, sizeof request.body_json,
+             "{\"name\":\"demo-agent\",\"version\":\"5.1.0\"}");
+    strncpy(request.password, password, sizeof request.password - 1);
+    request.log = on_log;
+
+    printf("== enrolling (POST /enroll, %s mode) ==\n",
+           password[0] ? "password" : "open");
+    fflush(stdout);
+
+    hc_enroll_result_t result;
+    if (!hc_enroll(&enroll_config, &request, &result))
+    {
+        fprintf(stderr, "enroll: transport failure (no response reached the manager)\n");
+        return false;
+    }
+
+    printf("== enroll response: http_code=%ld body=%s ==\n", result.http_code, result.body);
+    fflush(stdout);
+
+    if (result.http_code != 200)
+    {
+        fprintf(stderr, "enroll: rejected by the manager (http_code=%ld)\n", result.http_code);
+        return false;
+    }
+
+    if (!extract_json_string_field(result.body, "key", key_out, key_out_cap))
+    {
+        fprintf(stderr, "enroll: 200 response missing a \"key\" field\n");
+        return false;
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        fprintf(stderr, "usage: %s <host> <port> <key_hex> [sync_socket_path]\n", argv[0]);
+        fprintf(stderr,
+                "usage: %s <host> <port> <key_hex>|enroll[:<password>] [sync_socket_path]\n",
+                argv[0]);
         return 2;
     }
     const char *sync_socket = argc > 4 ? argv[4] : NULL;
@@ -254,12 +344,29 @@ int main(int argc, char **argv)
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGTERM, &action, NULL);
 
+    const uint16_t server_port = (uint16_t)atoi(argv[2]);
+    /* #38465: "enroll" or "enroll:<password>" in the key_hex slot drives a
+     * real first-boot POST /enroll against mock_manager.py instead of using a
+     * pre-provisioned key, exactly as agentd's try_enroll_to_server() does
+     * before hc_create() ever runs. */
+    char enrolled_key[HC_MAX_KEY];
+    const char *agent_key = argv[3];
+    if (strncmp(argv[3], "enroll", 6) == 0 && (argv[3][6] == '\0' || argv[3][6] == ':'))
+    {
+        const char *password = argv[3][6] == ':' ? argv[3] + 7 : "";
+        if (!enroll_agent(argv[1], server_port, password, enrolled_key, sizeof enrolled_key))
+        {
+            return 1;
+        }
+        agent_key = enrolled_key;
+    }
+
     hc_config_t config;
     memset(&config, 0, sizeof config);
     strncpy(config.server_host, argv[1], sizeof config.server_host - 1);
-    config.server_port = (uint16_t)atoi(argv[2]);
+    config.server_port = server_port;
     strncpy(config.agent_id, "001", sizeof config.agent_id - 1);
-    strncpy(config.agent_key, argv[3], sizeof config.agent_key - 1);
+    strncpy(config.agent_key, agent_key, sizeof config.agent_key - 1);
     config.verify_mode = HC_VERIFY_NONE; /* demo mock uses a self-signed cert */
     config.notify_interval_s = 2;        /* Notify every 2 s so we see a few   */
     config.batch_interval_ms = 1000;     /* flush events every 1 s             */
@@ -349,7 +456,7 @@ int main(int argc, char **argv)
      * #2); nothing is reported back (#37733: no response message). Then the
      * mock flips its config at #3 (-> /download), its settings at #5 (-> an
      * in-place startup refresh) and rotates its key at #7 (-> 401, one
-     * re-enroll callback, hc_set_agent_key recovery). */
+     * re-enroll callback, hc_set_agent_identity recovery). */
     nap(3000);
     hc_notify_now(handle);
     nap(7000);

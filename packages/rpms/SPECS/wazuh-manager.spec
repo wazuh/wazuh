@@ -654,6 +654,7 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/authd
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/kvdb-ioc
@@ -692,7 +693,7 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Tue Aug 04 2026 support <info@wazuh.com> - 5.0.0
+* Wed Sep 23 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
 * Thu May 14 2026 support <info@wazuh.com> - 4.14.6
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html

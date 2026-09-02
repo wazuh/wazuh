@@ -58,7 +58,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
-        bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
+        SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                         Option option = Option::SYNC,
+                                         bool trackConsecutiveFailures = false) override;
 
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
@@ -80,6 +82,23 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
+
+        /// @brief Returns the agent id this process is currently synchronizing under.
+        ///
+        /// Reads the shared-memory metadata provider -- the same source, through the same call,
+        /// that stamps every outgoing session's `Start.agentid` (see buildFullSessionBuffer).
+        /// A module comparing against this value can therefore never force a resync stamped with
+        /// an id different from the one it compared against.
+        ///
+        /// Static, not a member of IAgentSyncProtocol: the agent id is process-global state
+        /// rather than per-instance, and keeping it off the interface leaves every existing mock
+        /// untouched. The C counterpart is asp_get_agent_id().
+        ///
+        /// @return The agent id as a positive integer, or 0 when the provider has published
+        ///         nothing yet or holds a value that is not a plain number. Callers must treat 0
+        ///         as "unknown", never as "changed": an unavailable provider, or one still
+        ///         holding the previous id, must not look like a new identity.
+        static long currentAgentId();
 
         /// @copydoc IAgentSyncProtocol::stop
         void stop() override;
@@ -152,6 +171,20 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
         unsigned int trackSyncOutcome(bool success, bool stopped);
+
+        /// @brief Bumps (or, if a stop was requested, just reads) the consecutive-failure streak
+        ///        for the local sync intake being unreachable.
+        /// @param stopped Whether it was aborted because a stop was requested. Takes this as an
+        ///        already-computed parameter, mirroring trackSyncOutcome(), instead of calling
+        ///        shouldStop() again here: a second, independent read of m_stopRequested could
+        ///        observe a stop() that landed after the caller's own read, leaving the returned
+        ///        SyncModuleResult's "stopped" field and this streak disagreeing about whether one
+        ///        was in flight.
+        /// @return Consecutive checkStatus() failures in a row, including this one.
+        ///
+        /// Separate from @ref m_consecutiveSyncFailures: this fires before the handshake is even
+        /// attempted, and that counter is reserved for outcomes that reach it.
+        unsigned int trackLocalTransportFailure(bool stopped);
 
         /// @brief Waits for agent metadata to become available - indefinitely,
         ///        unless a stop is requested - then builds the Start table into
@@ -287,7 +320,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             bool lastSyncManagerNotReady = false;
 
             /// @brief True when the sync was aborted because a prerequisite the manager has to
-            /// supply first (assigned groups, or a VD feed offset) has not arrived yet. See
+            /// supply first (the assigned groups) has not arrived yet. See
             /// @ref SyncModuleResult::awaitingPrerequisite.
             bool lastSyncAwaitingPrerequisite = false;
 
@@ -353,6 +386,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
+
+        /// @brief Consecutive checkStatus() failures in a row, reset the moment it succeeds again.
+        ///
+        /// Deliberately not @ref m_consecutiveSyncFailures: this measures failures to reach the
+        /// local sync intake, which happens before any handshake is attempted, so it says nothing
+        /// about the manager and must not share a counter that is reserved for outcomes that do.
+        std::atomic<unsigned int> m_consecutiveLocalTransportFailures{0};
 
         /// Built-in ceiling on one session, used until a daemon calls setSessionMaxBytes()
         /// with what <agent><batch><size> says. Same 1 MiB the HTTPS transport applies to

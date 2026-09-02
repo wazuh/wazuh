@@ -4,7 +4,7 @@ The HTTPS agent server (`remoted_module`, the C++ module inside `wazuh-manager-r
 its statistics in a `wazuh_metrics` registry (the shared library at
 `src/shared_modules/metrics/` — the same one the inventory sync server uses) and serves a JSON
 dump of the whole registry on **`GET /metrics` over the module's local admin socket**,
-`queue/sockets/remoted-module.sock`. See the admin-socket contract in the
+`queue/sockets/remote-admin-http.sock`. See the admin-socket contract in the
 [module overview](README.md#local-admin-socket): the socket is local-only, optional
 (a failed bind is a warning, never fatal), and none of this is ever exposed on the public
 HTTPS listener. The legacy daemon statistics (`wazuh-manager-remoted.state`, the cluster
@@ -20,7 +20,7 @@ downstream service, agent enrollment, deployed content, or nothing at all).
 ## Querying
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 ```
 
 The dump is one JSON document: an envelope with the daemon name and a UTC timestamp, plus one
@@ -184,11 +184,13 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 | Metric | Meaning | Tuning |
 |---|---|---|
 | `remoted.auth.reject.unknown_agent` | The agent id is not in `client.keys` | diagnostic — enroll the agent |
-| `remoted.auth.reject.invalid_mac` | The request's AES-CMAC did not verify (wrong key, or tampering) | diagnostic — re-enroll; scanners/noise on exposed listeners also land here |
-| `remoted.auth.reject.clock_skew` | Timestamp outside the accepted window | [`remoted.auth_max_request_age`](configuration.md#remotedauth_max_request_age), [`remoted.auth_max_future_skew`](configuration.md#remotedauth_max_future_skew) — but fix NTP first |
+| `remoted.auth.reject.invalid_signature` | The bearer's HS256 signature did not verify with the agent's key (wrong key, or tampering); `/enroll`'s `wazuh-enroll+jwt` failures (wrong password) also land here | diagnostic — re-enroll (agent) or check `authd.pass` (enroll); scanners/noise on exposed listeners also land here |
+| `remoted.auth.reject.bad_token` | The bearer is not a well-formed token of the expected profile: size, compact grammar, base64url, JSON, header/claim sets or types, `jti`, structural time rules — including a token of the *other* profile (an agent token on `/enroll`, or vice versa) | diagnostic — a client that is not a 5.x agent, or a broken one |
+| `remoted.auth.reject.identity_mismatch` | The token's `sub`/`iss` do not name the agent its `kid` names | diagnostic — a security signal: a forged or hand-assembled token |
+| `remoted.auth.reject.clock_skew` | Token outside the accepted time window (too old, expired, or issued in the future) | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) — but fix NTP first |
 | `remoted.auth.reject.unusable_key` | The agent's `client.keys` entry does not decode to a usable AES key | diagnostic — re-enroll the agent |
 | `remoted.auth.reject.address_not_allowed` | The peer address does not satisfy the agent's [registered address](https-events-api.md#registered-address-ip-column) (`client.keys` `ip` column) | diagnostic — re-enroll the agent with the address it connects from, or with `any` |
-| `remoted.auth.reject.enrollment_key_unavailable` | Password-mode `/enroll` could not use the enrollment password key: `etc/authd.pass` missing, unreadable, invalid, or not yet synced to this worker — or AES-CMAC unavailable manager-wide. **Not** an agent credential fault: no agent exists yet, so re-enrolling fixes nothing | diagnostic — fix/sync `etc/authd.pass` |
+| `remoted.auth.reject.enrollment_key_unavailable` | Password-mode `/enroll` could not use the enrollment password key: `etc/authd.pass` missing, unreadable, invalid, or not yet synced to this worker — or the HKDF key derivation unavailable manager-wide. **Not** an agent credential fault: no agent exists yet, so re-enrolling fixes nothing | diagnostic — fix/sync `etc/authd.pass` |
 | `remoted.auth.reject.payload_mismatch` | An **authenticated** agent submitted a payload claiming another agent's id — a security signal, not a tuning problem | diagnostic — investigate the agent |
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
@@ -205,7 +207,7 @@ and [Request latency](#request-latency--remotedhttpendpointlatency). All are cou
 | Metric | Meaning | Tuning |
 |---|---|---|
 | `remoted.enroll.accepted` | `authd` created the agent and the key was returned | — |
-| `remoted.enroll.rejected_auth` | The enrollment credential check failed (Password mode: the `WazuhEnroll` CMAC; mTLS mode: the listener already refused the connection) | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) |
+| `remoted.enroll.rejected_auth` | The enrollment credential check failed (Password mode: the `wazuh-enroll+jwt` bearer; mTLS mode: the listener already refused the connection) | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) |
 | `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
@@ -277,7 +279,7 @@ unit `count`.
 |---|---|
 | `remoted.scanvd.requests.total` | Requests reaching the handler |
 | `remoted.scanvd.accepted` | 200: VD queued the scan (it will run) |
-| `remoted.scanvd.queue_full` | 503: VD's scan dispatch queue at capacity |
+| `remoted.scanvd.queue_full` | 503: VD's scan dispatch queue at capacity. **Not** `vd.capacity.503.total`, which the inventory sync server raises for its own VD lane on a different socket ([inventory sync server metrics](../inventory-sync-server/metrics.md#vulnerability-detection-lane--vd)) |
 | `remoted.scanvd.indexer_unavailable` | 503: VD reports no healthy indexer host |
 | `remoted.scanvd.vd_error` | 503 for any other reason: VD unreachable, not ready, unexpected answer |
 | `remoted.scanvd.version_mismatch` | 409: requested feed offset != current offset |
@@ -346,7 +348,7 @@ These rules say what sums to what — read them before comparing families:
 
 - [Configuration](configuration.md#internal-options) — every `remoted.*` setting linked from
   the Tuning columns above
-- [HTTPS Events API — Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems)
+- [HTTPS Agent API — Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems)
 - [Module overview — Local admin socket](README.md#local-admin-socket)
 - Developer-level detail (where each metric is counted, hot-path cost, test coverage):
   `src/remoted/remoted_module/README.md`, section *Metrics catalog* (in-repo, outside this book)

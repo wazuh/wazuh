@@ -10,6 +10,7 @@
  */
 
 #include "rocksDBWrapper_test.hpp"
+#include <algorithm>
 #include <fstream>
 
 /**
@@ -201,6 +202,138 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllColumnFamily)
     std::string value {};
     EXPECT_FALSE(db_wrapper->get("key6", value, "column_A")); // The key should have been deleted
     EXPECT_FALSE(db_wrapper->get("key7", value, "column_A")); // The key should have been deleted
+}
+
+/**
+ * @brief Tests the deleteAll function with multiple (more than one) non-default column families.
+ *
+ * This exercises the swap-with-last-element removal path in the internal column instances list: with 3+
+ * columns, at least one removal brings a previously-unvisited element into the currently examined slot, which
+ * must still be processed correctly by the loop.
+ */
+TEST_F(RocksDBWrapperTest, TestDeleteAllMultipleColumnFamilies)
+{
+    db_wrapper->createColumn("column_A");
+    db_wrapper->createColumn("column_B");
+    db_wrapper->createColumn("column_C");
+
+    db_wrapper->put("key1", "value1", "column_A");
+    db_wrapper->put("key2", "value2", "column_B");
+    db_wrapper->put("key3", "value3", "column_C");
+    db_wrapper->put("keyDefault", "valueDefault");
+
+    EXPECT_NO_THROW(db_wrapper->deleteAll());
+
+    std::string value {};
+    EXPECT_FALSE(db_wrapper->get("key1", value, "column_A"));
+    EXPECT_FALSE(db_wrapper->get("key2", value, "column_B"));
+    EXPECT_FALSE(db_wrapper->get("key3", value, "column_C"));
+    EXPECT_FALSE(db_wrapper->get("keyDefault", value));
+
+    // The columns must still exist (re-created empty) and the internal name->index map must be consistent
+    // regardless of the physical order left by the swap-remove loop.
+    const auto columns = db_wrapper->getAllColumns();
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_A") != columns.end());
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_B") != columns.end());
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_C") != columns.end());
+
+    // Subsequent put/get by column name must still work correctly for every column.
+    EXPECT_NO_THROW(db_wrapper->put("newKey1", "newValue1", "column_A"));
+    EXPECT_NO_THROW(db_wrapper->put("newKey2", "newValue2", "column_B"));
+    EXPECT_NO_THROW(db_wrapper->put("newKey3", "newValue3", "column_C"));
+
+    EXPECT_TRUE(db_wrapper->get("newKey1", value, "column_A"));
+    EXPECT_EQ(value, "newValue1");
+    EXPECT_TRUE(db_wrapper->get("newKey2", value, "column_B"));
+    EXPECT_EQ(value, "newValue2");
+    EXPECT_TRUE(db_wrapper->get("newKey3", value, "column_C"));
+    EXPECT_EQ(value, "newValue3");
+}
+
+/**
+ * @brief Regression test: deleteAll() must correctly handle the case where the last visited element in the
+ * internal column instances list is itself the last element of the vector (self-swap must be a safe no-op).
+ */
+TEST_F(RocksDBWrapperTest, TestDeleteAllLastColumnIsLastElement)
+{
+    db_wrapper->createColumn("column_A");
+    db_wrapper->createColumn("column_B");
+
+    db_wrapper->put("key1", "value1", "column_A");
+    db_wrapper->put("key2", "value2", "column_B");
+
+    EXPECT_NO_THROW(db_wrapper->deleteAll());
+
+    std::string value {};
+    EXPECT_FALSE(db_wrapper->get("key1", value, "column_A"));
+    EXPECT_FALSE(db_wrapper->get("key2", value, "column_B"));
+
+    // State must remain consistent: both columns still usable after the self-swap-safe removal.
+    EXPECT_NO_THROW(db_wrapper->put("key1", "value1again", "column_A"));
+    EXPECT_TRUE(db_wrapper->get("key1", value, "column_A"));
+    EXPECT_EQ(value, "value1again");
+}
+
+/**
+ * @brief Tests the deleteAll(columnName) overload with multiple columns present: only the targeted column
+ * should be removed, the others must be untouched.
+ */
+TEST_F(RocksDBWrapperTest, TestDeleteAllSpecificColumnFamilyMultipleColumns)
+{
+    db_wrapper->createColumn("column_A");
+    db_wrapper->createColumn("column_B");
+    db_wrapper->createColumn("column_C");
+
+    db_wrapper->put("key1", "value1", "column_A");
+    db_wrapper->put("key2", "value2", "column_B");
+    db_wrapper->put("key3", "value3", "column_C");
+
+    EXPECT_NO_THROW(db_wrapper->deleteAll("column_B"));
+
+    std::string value {};
+    // column_B was dropped and recreated empty.
+    EXPECT_FALSE(db_wrapper->get("key2", value, "column_B"));
+
+    // Other columns must be untouched.
+    EXPECT_TRUE(db_wrapper->get("key1", value, "column_A"));
+    EXPECT_EQ(value, "value1");
+    EXPECT_TRUE(db_wrapper->get("key3", value, "column_C"));
+    EXPECT_EQ(value, "value3");
+
+    const auto columns = db_wrapper->getAllColumns();
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_A") != columns.end());
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_B") != columns.end());
+    EXPECT_TRUE(std::find(columns.begin(), columns.end(), "column_C") != columns.end());
+
+    // The internal index must remain consistent: put/get by name must still work for every column.
+    EXPECT_NO_THROW(db_wrapper->put("newKey", "newValue", "column_B"));
+    EXPECT_TRUE(db_wrapper->get("newKey", value, "column_B"));
+    EXPECT_EQ(value, "newValue");
+}
+
+/**
+ * @brief Regression test: deleteAll(columnName) targeting the last column in the internal list must not
+ * corrupt state (self-swap must be a safe no-op).
+ */
+TEST_F(RocksDBWrapperTest, TestDeleteAllSpecificColumnFamilyLastElement)
+{
+    db_wrapper->createColumn("column_A");
+    db_wrapper->createColumn("column_B");
+
+    db_wrapper->put("key1", "value1", "column_A");
+    db_wrapper->put("key2", "value2", "column_B");
+
+    // column_B is the last element added to the internal columns list.
+    EXPECT_NO_THROW(db_wrapper->deleteAll("column_B"));
+
+    std::string value {};
+    EXPECT_FALSE(db_wrapper->get("key2", value, "column_B"));
+    EXPECT_TRUE(db_wrapper->get("key1", value, "column_A"));
+    EXPECT_EQ(value, "value1");
+
+    EXPECT_NO_THROW(db_wrapper->put("key2", "value2again", "column_B"));
+    EXPECT_TRUE(db_wrapper->get("key2", value, "column_B"));
+    EXPECT_EQ(value, "value2again");
 }
 
 /**

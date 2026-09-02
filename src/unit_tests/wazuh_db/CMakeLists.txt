@@ -145,8 +145,8 @@ foreach(counter RANGE ${count})
 endforeach()
 
 # Unit tests for the wazuh-db HTTP-over-Unix-socket API endpoints
-# (src/wazuh_db/src/httpsrv/), which had zero coverage before this file. Those
-# endpoint classes are header-only, templated on DBConnection/DBStatement and
+# (src/wazuh_db/src/http/), which had zero coverage before this file was added.
+# Those endpoint classes are header-only, templated on DBConnection/DBStatement and
 # defaulting to SQLite3Wrapper::Connection/Statement, but never requiring them --
 # see test_wdb_http_endpoints.cpp for how a hand-fed mock statement is used
 # instead to drive them without a real SQLite database, wdb_lib, or socket.
@@ -162,9 +162,9 @@ target_include_directories(
     test_wdb_http_endpoints
     PRIVATE ${SRC_FOLDER}
             ${SRC_FOLDER}/external/googletest/googletest/include/
-            ${SRC_FOLDER}/external/cpp-httplib
             ${SRC_FOLDER}/shared_modules/utils
-            ${SRC_FOLDER}/wazuh_db/src/httpsrv)
+            ${SRC_FOLDER}/shared_modules/uds_http_server/include
+            ${SRC_FOLDER}/wazuh_db/src/http)
 target_link_libraries(
     test_wdb_http_endpoints
     debug gtestd

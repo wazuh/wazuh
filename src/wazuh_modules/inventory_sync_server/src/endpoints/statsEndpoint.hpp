@@ -66,7 +66,7 @@ namespace invsync::endpoints::stats
      * ## Where the agent id comes from
      *
      * From the `X-Wazuh-Agent-Id` request header, which remoted sets from the identity it already
-     * authenticated via AES-CMAC. It is NOT taken from the document: the whole point is that this
+     * authenticated (the agent's bearer token). It is NOT taken from the document: the whole point is that this
      * endpoint stamps the *authenticated* id onto whatever the agent sent, so a document claiming a
      * different id cannot override it. A request without that header is a remoted/modulesd contract
      * violation rather than agent input, and is answered 400.

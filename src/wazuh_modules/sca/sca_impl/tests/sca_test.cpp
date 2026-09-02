@@ -3,6 +3,7 @@
 
 #include <sca.h>
 #include <sca_impl.hpp>
+#include <metadata_provider.h>
 
 #include <dbsync.hpp>
 #include <isca_policy.hpp>
@@ -27,6 +28,16 @@ class ScaTest : public ::testing::Test
         {
             m_logOutput.clear();
 
+            // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
+            // that provider is a file at a path relative to the working directory. Resetting it
+            // is not enough on its own: sca_recovery_test publishes agent id "001" into the very
+            // same file from its own SetUp, so under a parallel ctest that write can land after
+            // this reset and put these cases on the identity-changed branch, which nothing here
+            // scripts. Own directory per binary, like sca_identity_test.
+            std::filesystem::create_directories("sca_test_workdir/var/run");
+            std::filesystem::current_path("sca_test_workdir");
+            metadata_provider_reset();
+
             // Set up the logging callback to avoid "Log callback not set" errors
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
             {
@@ -36,6 +47,12 @@ class ScaTest : public ::testing::Test
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_sca = std::make_shared<SecurityConfigurationAssessment>("test_path", m_mockDBSync);
+        }
+
+        void TearDown() override
+        {
+            // Back out of the per-binary directory entered in SetUp.
+            std::filesystem::current_path("..");
         }
 
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
@@ -555,6 +572,160 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
 }
 
+// issue 38428: a first scan that silently never ran used to have no
+// persisted trace, so a skipped scan_on_start scan waited a full
+// m_scanInterval before the next attempt. first_scan_completed (in-memory
+// mirror: m_firstScanCompleted) closes that: false until a scan genuinely
+// finishes, true from then on -- checked by Run() to force an immediate
+// retry instead of waiting out the interval.
+TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    ASSERT_FALSE(scaMock->getFirstScanCompletedForTest());
+
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    std::thread runThread([&scaMock]()
+    {
+        scaMock->Run();
+    });
+
+    // Give the scan_on_start scan time to actually complete.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    scaMock->Stop();
+    runThread.join();
+
+    EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
+    EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
+}
+
+// issue 38428: first_scan_completed is write-once for the installation's whole
+// lifetime, so on an agent already past its first-ever scan it must NOT be
+// the thing that decides whether a scan_on_start retry is still owed --
+// otherwise a scan interrupted by a pause on such an agent would silently
+// wait out the full m_scanInterval instead of retrying once resumed. This
+// simulates that agent by driving Run() to completion once first (so
+// first_scan_completed is already true, as on a long-lived agent), then
+// calling Run() again -- as a fresh restart would -- and pausing before that
+// second scan_on_start attempt can complete.
+TEST_F(ScaTest, Run_RetriesScanOnStartAfterPauseEvenPastFirstScan)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    // Long interval: if the retry-after-pause guard is broken, the second scan
+    // would only happen after this interval elapses, which this test's window
+    // will not reach -- turning the bug into a reliable failure, not a flake.
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    // First Run(): let scan_on_start complete normally so first_scan_completed
+    // becomes true, matching an agent well past its first-ever scan.
+    {
+        std::thread runThread([&scaMock]()
+        {
+            scaMock->Run();
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        scaMock->Stop();
+        runThread.join();
+    }
+    ASSERT_TRUE(scaMock->getFirstScanCompletedForTest());
+
+    // Second Run(): simulates a fresh restart (Run() resets m_keepRunning and
+    // its local firstScan). Pause *before* starting this Run() call at all --
+    // pause() blocks until any in-progress scan/sync clears, which is
+    // immediately true here since the first Run() already fully stopped -- so
+    // the very first loop iteration is guaranteed to see m_paused already set,
+    // deterministically landing the pause before this scan_on_start attempt
+    // can do any work (racing it via a sleep_for() after starting the thread
+    // is not reliable: the mocked scan below can complete in far under a
+    // millisecond, so a real interruption-before-completion is not
+    // guaranteed to be observed).
+    m_logOutput.clear();
+    scaMock->pause();
+    std::thread runThread2([&scaMock]()
+    {
+        scaMock->Run();
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    scaMock->resume();
+
+    // Give the retried scan_on_start scan time to actually complete.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    scaMock->Stop();
+    runThread2.join();
+
+    EXPECT_NE(m_logOutput.find("Scan started."), std::string::npos);
+    EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
+}
+
 TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
 {
     const auto dbPath = makeTempPath();
@@ -598,8 +769,8 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         {"sync", 1}
     });
 
-    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC))
-    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
     .WillOnce(testing::Invoke([](const std::string&,
                                  Operation,
@@ -645,7 +816,7 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     .WillOnce(testing::Return(SyncModuleResult{true}));
     // After the first sync, periodic syncs call synchronizeModule() directly and never go
     // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
-    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_, testing::_))
     .Times(0);
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
     .Times(0);
@@ -685,7 +856,9 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyWithinToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -707,7 +880,9 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -715,6 +890,79 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA synchronization failed " + std::to_string(streak) +
                     " times in a row: Failed to communicate with the manager."));
+}
+
+// While the local sync intake itself isn't reachable yet (streak within tolerance), the periodic
+// sync is reported at INFO as deferred, not as a WARNING (issue #38621).
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = 1u,
+                                               .localTransportUnavailable = true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// Right at the tolerance boundary, still deferred at INFO.
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                                               .localTransportUnavailable = true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// Past the tolerance the periodic sync escalates to a WARNING that names the streak -- the bug this
+// issue guards against: an unreachable local sync intake must not stay silent forever, but it also
+// must not have been reported this way on the very first failure (see the two tests above).
+TEST_F(ScaTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                                               .consecutiveFailures = streak,
+                                               .localTransportUnavailable = true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization failed " + std::to_string(streak) +
+                    " times in a row: Local sync intake is unreachable."));
 }
 
 // When the manager hasn't synchronized this agent's groups yet (most commonly right after
@@ -732,9 +980,10 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult
     {
-        false,
+        .failureReason =
         "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        false, false, 0u, true}));
+        .awaitingPrerequisite = true
+    }));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
@@ -742,6 +991,171 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA synchronization deferred: No groups available in metadata."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// The very first sync after an agent restart clears the manager's index before resending a full
+// snapshot. While the manager is briefly not ready for that DataClean (the common case right after
+// a restart/upgrade), it is reported at INFO as deferred, not as a WARNING -- same tolerance as the
+// periodic path above. (#38579)
+TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    // No "first_sync_completed" row: the module takes the initial full-snapshot path.
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .Times(0);
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("WARNING")));
+}
+
+// Past the tolerance, a DataClean that keeps failing before the initial sync escalates to a
+// WARNING naming the streak -- same as any other sync failure. (#38579)
+TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
+}
+
+// While the manager is briefly not ready (streak within tolerance), a DataClean failure during
+// recovery is reported at INFO as deferred too, not as an immediate WARNING -- same policy as the
+// periodic sync path, not just the past-tolerance escalation covered below. (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
+}
+
+// performRecovery() has no periodic-cycle caller to log its outcome for it (unlike syncModule()),
+// so a DataClean failure during recovery must still be visible on its own -- at the same tolerance
+// level as any other sync failure, not silently dropped. (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
+}
+
+// logSyncFailure() treats localTransportUnavailable the same as managerNotReady (same tolerance,
+// same escalation) -- companion to the ManagerNotReady pair above, covering the local-socket-down
+// case that only became reachable through performRecovery() once it started routing through
+// notifyDataClean(). (#38579)
+TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery deferred: Failed to reach the sync intake socket. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
+}
+
+TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.callPerformRecovery());
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery failed " + std::to_string(streak) +
+                    " times in a row: Failed to reach the sync intake socket."));
 }
 
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
@@ -754,7 +1168,9 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -774,7 +1190,9 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
+                                               .managerNotReady = true,
+                                               .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -795,9 +1213,10 @@ TEST_F(ScaTest, ExecuteFlushSync_AwaitingPrerequisiteLogsDeferredNotError)
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult
     {
-        false,
+        .failureReason =
         "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        false, false, 0u, true}));
+        .awaitingPrerequisite = true
+    }));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -816,7 +1235,7 @@ TEST_F(ScaTest, ExecuteFlushSync_GenuineFailureKeepsError)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Manager sent an unexpected or invalid response.", false, false, 0u}));
+    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Manager sent an unexpected or invalid response."}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);

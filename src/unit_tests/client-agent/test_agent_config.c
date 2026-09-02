@@ -23,9 +23,6 @@
 
 static agent test_agt;
 static agent_server test_servers[3];
-static w_enrollment_ctx test_enrollment;
-static w_enrollment_target test_target;
-static w_enrollment_cert test_cert;
 
 static int setup_agent(void **state)
 {
@@ -33,9 +30,6 @@ static int setup_agent(void **state)
 
     memset(&test_agt, 0, sizeof(test_agt));
     memset(test_servers, 0, sizeof(test_servers));
-    memset(&test_enrollment, 0, sizeof(test_enrollment));
-    memset(&test_target, 0, sizeof(test_target));
-    memset(&test_cert, 0, sizeof(test_cert));
 
     /* The defaults ClientConf() seeds before parsing, so an "unconfigured" case here
      * is the same struct an agent with an untouched ossec.conf ends up running on. */
@@ -46,12 +40,10 @@ static int setup_agent(void **state)
     test_agt.config_report.enabled = 1;
     test_agt.config_report.interval = 3600;
 
-    test_enrollment.target_cfg = &test_target;
-    test_enrollment.cert_cfg = &test_cert;
-    test_enrollment.enabled = true;
-    test_enrollment.delay_after_enrollment = 20;
-    test_target.port = 1515;
-    test_cert.ciphers = "TLS_AES_256_GCM_SHA384";
+    /* #38465: <agent><enrollment> is a by-value struct now, always present
+     * (like <ssl>/<batch>) -- no more enrollment_cfg pointer to leave null. */
+    test_agt.enrollment.enabled = true;
+    test_agt.enrollment.delay_after_enrollment = 20;
 
     agt = &test_agt;
 
@@ -75,7 +67,7 @@ static void with_servers(void)
 
     test_servers[1].rip = "192.168.0.2";
     test_servers[1].port = 1518;
-    test_servers[1].network_interface = 3;
+    test_servers[1].scope_id = 3;
     test_servers[1].max_retries = 7;
     test_servers[1].retry_interval = 20;
 
@@ -141,7 +133,6 @@ static void test_reports_every_section(void **state)
         "auto_restart", "remote_conf", "manager", "enrollment", "ssl", "batch",
         "stats_report", "config_report"
     };
-    test_agt.enrollment_cfg = &test_enrollment;
 
     cJSON *section = get_agent_section(&root);
 
@@ -207,12 +198,12 @@ static void test_reports_every_manager(void **state)
     assert_number_field(first, "port", 1517);
     assert_number_field(first, "max_retries", 5);
     assert_number_field(first, "retry_interval", 10);
-    assert_null(cJSON_GetObjectItem(first, "interface_index"));
+    assert_null(cJSON_GetObjectItem(first, "scope_id"));
 
     cJSON *second = cJSON_GetArrayItem(managers, 1);
     assert_string_field(second, "address", "192.168.0.2");
     assert_number_field(second, "port", 1518);
-    assert_number_field(second, "interface_index", 3);
+    assert_number_field(second, "scope_id", 3);
 
     cJSON_Delete(root);
 }
@@ -232,31 +223,21 @@ static void test_reports_enrollment_with_every_optional_field(void **state)
     (void)state;
     cJSON *root = NULL;
 
-    test_agt.enrollment_cfg = &test_enrollment;
-    test_target.manager_name = "192.168.0.1";
-    test_target.network_interface = 4;
-    test_target.agent_name = "agent-01";
-    test_target.centralized_group = "default";
-    test_cert.ca_cert = "etc/root-ca.pem";
-    test_cert.agent_cert = "etc/agent.cert";
-    test_cert.agent_key = "etc/agent.key";
-    test_cert.authpass = "secret";
-    test_cert.authpass_file = "etc/authd.pass";
+    test_agt.enrollment.agent_name = "agent-01";
+    test_agt.enrollment.groups = "default";
+    test_agt.enrollment.agent_address = "192.168.0.1";
+    test_agt.enrollment.use_source_ip = true;
+    test_agt.enrollment.authorization_pass_path = "etc/authd.pass";
 
     cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
 
     assert_non_null(enrollment);
     assert_string_field(enrollment, "enabled", "yes");
     assert_number_field(enrollment, "delay_after_enrollment", 20);
-    assert_string_field(enrollment, "manager_address", "192.168.0.1");
-    assert_number_field(enrollment, "interface_index", 4);
-    assert_number_field(enrollment, "port", 1515);
     assert_string_field(enrollment, "agent_name", "agent-01");
     assert_string_field(enrollment, "group", "default");
-    assert_string_field(enrollment, "ssl_cipher", "TLS_AES_256_GCM_SHA384");
-    assert_string_field(enrollment, "server_certificate_path", "etc/root-ca.pem");
-    assert_string_field(enrollment, "agent_certificate_path", "etc/agent.cert");
-    assert_string_field(enrollment, "agent_key_path", "etc/agent.key");
+    assert_string_field(enrollment, "agent_address", "192.168.0.1");
+    assert_string_field(enrollment, "use_source_ip", "yes");
     assert_string_field(enrollment, "authorization_pass_path", "etc/authd.pass");
 
     cJSON_Delete(root);
@@ -267,32 +248,40 @@ static void test_reports_enrollment_without_optional_fields(void **state)
     (void)state;
     cJSON *root = NULL;
 
-    test_agt.enrollment_cfg = &test_enrollment;
-    test_enrollment.enabled = false;
+    test_agt.enrollment.enabled = false;
 
     cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
 
     assert_non_null(enrollment);
     assert_string_field(enrollment, "enabled", "no");
-    assert_number_field(enrollment, "port", 1515);
-    assert_null(cJSON_GetObjectItem(enrollment, "manager_address"));
-    assert_null(cJSON_GetObjectItem(enrollment, "interface_index"));
+    assert_string_field(enrollment, "use_source_ip", "no");
     assert_null(cJSON_GetObjectItem(enrollment, "agent_name"));
     assert_null(cJSON_GetObjectItem(enrollment, "group"));
-    assert_null(cJSON_GetObjectItem(enrollment, "server_certificate_path"));
-    assert_null(cJSON_GetObjectItem(enrollment, "agent_certificate_path"));
-    assert_null(cJSON_GetObjectItem(enrollment, "agent_key_path"));
+    assert_null(cJSON_GetObjectItem(enrollment, "agent_address"));
     assert_null(cJSON_GetObjectItem(enrollment, "authorization_pass_path"));
 
     cJSON_Delete(root);
 }
 
-static void test_omits_enrollment_when_unset(void **state)
+/* <agent><enrollment> is a by-value struct (#38465, like <ssl>/<batch>): it can
+ * never be "unset" the way a null enrollment_cfg pointer used to be -- an
+ * agent that never configured anything beyond ClientConf()'s own defaults
+ * still reports the section, with the optional fields simply absent. */
+static void test_reports_default_enrollment_posture(void **state)
 {
     (void)state;
     cJSON *root = NULL;
 
-    assert_null(cJSON_GetObjectItem(get_agent_section(&root), "enrollment"));
+    cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
+
+    assert_non_null(enrollment);
+    assert_string_field(enrollment, "enabled", "yes");
+    assert_number_field(enrollment, "delay_after_enrollment", 20);
+    assert_string_field(enrollment, "use_source_ip", "no");
+    assert_null(cJSON_GetObjectItem(enrollment, "agent_name"));
+    assert_null(cJSON_GetObjectItem(enrollment, "group"));
+    assert_null(cJSON_GetObjectItem(enrollment, "agent_address"));
+    assert_null(cJSON_GetObjectItem(enrollment, "authorization_pass_path"));
 
     cJSON_Delete(root);
 }
@@ -347,6 +336,18 @@ static void test_reports_full_verification_mode(void **state)
     test_agt.ssl.verification_mode = AGENT_VERIFY_FULL;
 
     assert_string_field(cJSON_GetObjectItem(get_agent_section(&root), "ssl"), "verification_mode", "full");
+
+    cJSON_Delete(root);
+}
+
+static void test_reports_system_verification_mode(void **state)
+{
+    (void)state;
+    cJSON *root = NULL;
+
+    test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+
+    assert_string_field(cJSON_GetObjectItem(get_agent_section(&root), "ssl"), "verification_mode", "system");
 
     cJSON_Delete(root);
 }
@@ -423,10 +424,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_omits_manager_without_servers, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_enrollment_with_every_optional_field, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_enrollment_without_optional_fields, setup_agent, teardown_agent),
-        cmocka_unit_test_setup_teardown(test_omits_enrollment_when_unset, setup_agent, teardown_agent),
+        cmocka_unit_test_setup_teardown(test_reports_default_enrollment_posture, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_every_configured_ssl_field, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_default_ssl_posture, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_full_verification_mode, setup_agent, teardown_agent),
+        cmocka_unit_test_setup_teardown(test_reports_system_verification_mode, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_configured_batch_limits, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_batch_defaults, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_both_periodic_pushes, setup_agent, teardown_agent),

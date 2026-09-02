@@ -21,13 +21,51 @@
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "os_win.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
 #endif
 
 HANDLE hMutex;
 int win_debug_level;
+
+/* Guards the "is a shutdown already in progress" decision against the actual
+ * mutation it gates: wm_config() building the wmodules list and each module
+ * thread being spawned (local_start(), below) versus stop_wmodules() setting
+ * wm_shutdown_requested and walking that same list. Without this, a stop
+ * landing mid-startup could run stop_wmodules() against an empty/half-built
+ * list, or local_start() could keep spawning module threads after a shutdown
+ * was already requested (issue 38428). Initialized once, from
+ * wm_lifecycle_lock_init(), before OssecServiceStart() registers the ctrl
+ * handler that can call stop_wmodules() -- see win_service.c. */
+static CRITICAL_SECTION wm_lifecycle_lock;
+static volatile LONG wm_lifecycle_lock_initialized = 0;
+
+/* Idempotent: local_start() (and therefore wm_start_modules_unless_shutting_down(),
+ * which takes wm_lifecycle_lock) is reachable both from OssecServiceStart() -- which
+ * calls this first -- and directly from "wazuh-agent.exe start" (win_agent.c), which
+ * never goes through OssecServiceStart() at all. Without the guard below, the "start"
+ * CLI path would enter wm_start_modules_unless_shutting_down()'s EnterCriticalSection()
+ * on a never-initialized CRITICAL_SECTION (issue 38428). Safe to call from both paths:
+ * InterlockedCompareExchange ensures InitializeCriticalSection() only actually runs once. */
+void wm_lifecycle_lock_init(void)
+{
+    if (InterlockedCompareExchange(&wm_lifecycle_lock_initialized, 1, 0) == 0) {
+        InitializeCriticalSection(&wm_lifecycle_lock);
+    }
+}
+
+/* Defined in win_service.c: pumps dwCheckPoint/dwWaitHint back to the SCM
+ * while stop_wmodules() is still joining module threads, so a slow shutdown
+ * doesn't look hung to the SCM (issue 38428, defect #7). */
+extern void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms);
 
 void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
@@ -36,12 +74,6 @@ sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 /** Prototypes **/
 int Start_win32_Syscheck();
 
-typedef struct win_module_start_ctx {
-    wm_routine routine;
-    void *data;
-    char name[OS_SIZE_128];
-} win_module_start_ctx_t;
-
 /* syscheck main thread */
 #ifdef WIN32
 DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
@@ -49,8 +81,9 @@ DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
 void *skthread()
 #endif
 {
-    startup_gate_wait_for_ready("wazuh-syscheckd");
-    Start_win32_Syscheck();
+    if (startup_gate_wait_for_ready("wazuh-syscheckd") == STARTUP_GATE_READY) {
+        Start_win32_Syscheck();
+    }
 #ifdef WIN32
     return 0;
 #else
@@ -65,8 +98,9 @@ DWORD WINAPI logcollector_thread(__attribute__((unused)) LPVOID arg)
 void *logcollector_thread()
 #endif
 {
-    startup_gate_wait_for_ready("wazuh-logcollector");
-    LogCollectorStart();
+    if (startup_gate_wait_for_ready("wazuh-logcollector") == STARTUP_GATE_READY) {
+        LogCollectorStart();
+    }
 #ifdef WIN32
     return 0;
 #else
@@ -91,32 +125,37 @@ void *win_module_thread(void *arg)
 #endif
     }
 
-    startup_gate_wait_for_ready(ctx->name[0] ? ctx->name : "wazuh-modulesd");
+    startup_gate_wait_result_t gate_result = startup_gate_wait_for_ready(ctx->name[0] ? ctx->name : "wazuh-modulesd");
 
     // The gate also releases when shutdown is requested, so getting here does not mean
     // the agent is starting -- it may already be stopping. Starting a module then is
     // never useful: it opens databases and runs a scan that the join below is about to
     // interrupt anyway. Each module also refuses to start under a stop it already
     // received (wm_sys_stop() records it before returning, SCA sets g_shutting_down,
-    // agent-info consults the injected predicate), but this check keeps the whole
-    // routine from running in the first place.
-    if (wm_shutdown_requested) {
-        mdebug1("Shutdown requested before '%s' started; skipping module start.",
-                ctx->name[0] ? ctx->name : "wazuh-modulesd");
-        os_free(ctx);
+    // agent-info consults the injected predicate), but checking gate_result here keeps
+    // the whole routine from running in the first place -- and unlike a bare
+    // wm_shutdown_requested re-check, the same STARTUP_GATE_SHUTDOWN_REQUESTED result
+    // also covers every other gated entry point (wazuh-syscheckd, wazuh-logcollector,
+    // execd), not just this one (issue 38428).
+    //
+    // gate_result is a snapshot from the moment startup_gate_wait_for_ready() last
+    // queried the gate -- a real IPC round trip, not an instantaneous check -- so a
+    // stop can still land between that query returning "ready" and ctx->routine()
+    // actually running below. Re-reading wm_shutdown_requested here is a cheap,
+    // near-zero-latency second look that closes almost all of that window.
+    const bool shutdown_before_start = (gate_result != STARTUP_GATE_READY) || wm_shutdown_requested;
 #ifdef WIN32
-        return 0;
-#else
-        return NULL;
-#endif
+    DWORD result = 0;
+    if (!shutdown_before_start) {
+        result = ctx->routine(ctx->data);
     }
-
-#ifdef WIN32
-    DWORD result = ctx->routine(ctx->data);
     os_free(ctx);
     return result;
 #else
-    void *result = ctx->routine(ctx->data);
+    void *result = NULL;
+    if (!shutdown_before_start) {
+        result = ctx->routine(ctx->data);
+    }
     os_free(ctx);
     return result;
 #endif
@@ -127,7 +166,18 @@ void stop_wmodules()
     // Signal the agent-wide shutdown so dispatchers (e.g. modulesSync) skip work
     // that targets modules already being torn down. On POSIX the modulesd SIGTERM
     // handler sets this; on Windows shutdown flows through here instead.
+    //
+    // Set under wm_lifecycle_lock, atomically with the check local_start() makes
+    // before building the wmodules list / spawning module threads (issue 38428):
+    // whichever of the two gets there first, the other sees a consistent state --
+    // either the list is untouched and local_start() is about to skip it entirely,
+    // or local_start() already finished spawning everything and this walk below
+    // sees the complete, stable list. The lock is released immediately after,
+    // deliberately NOT held through the (potentially many-second) join loop below,
+    // so it never makes a pending stop wait any longer than it has to.
+    EnterCriticalSection(&wm_lifecycle_lock);
     wm_shutdown_requested = 1;
+    LeaveCriticalSection(&wm_lifecycle_lock);
 
     // Two passes, mirroring the POSIX SIGTERM handler (wazuh_modules/src/main.c):
     // signal every module first, then join every module against one shared budget.
@@ -149,7 +199,12 @@ void stop_wmodules()
     // with no timeout of their own. Each module runs its own teardown before its thread
     // returns, so the join is what guarantees that teardown completed.
     const DWORD MODULE_JOIN_BUDGET_MS = 20000;
+    // Upper bound on how long any single wait slice blocks, so report_stop_progress()
+    // gets called often enough that the SCM never sees a stale checkpoint for more
+    // than this long, even while waiting on one slow module (issue 38428, defect #7).
+    const DWORD CHECKPOINT_SLICE_MS = 2000;
     const ULONGLONG budget_start = GetTickCount64();
+    DWORD checkpoint = 1;
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {
@@ -173,15 +228,25 @@ void stop_wmodules()
                 continue;
             }
 
-            const ULONGLONG elapsed = GetTickCount64() - budget_start;
-            const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;
+            DWORD wait_result;
 
-            // Always ask, even with the budget spent: a zero timeout still reports
-            // WAIT_OBJECT_0 for a thread that already finished. Asserting a timeout
-            // without looking at the handle logged the error below for modules that
-            // had shut down cleanly and were merely charged for a budget an earlier
-            // module had spent.
-            const DWORD wait_result = WaitForSingleObject(cur_module->win_thread, remaining);
+            while (1) {
+                const ULONGLONG elapsed = GetTickCount64() - budget_start;
+                const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;
+                const DWORD slice = remaining < CHECKPOINT_SLICE_MS ? remaining : CHECKPOINT_SLICE_MS;
+
+                // Always ask, even with the budget spent: a zero-length wait still
+                // reports WAIT_OBJECT_0 for a thread that already finished. Asserting
+                // a timeout without looking at the handle logged the error below for
+                // modules that had shut down cleanly and were merely charged for a
+                // budget an earlier module had spent.
+                wait_result = WaitForSingleObject(cur_module->win_thread, slice);
+                report_stop_progress(checkpoint++, CHECKPOINT_SLICE_MS * 2);
+
+                if (wait_result != WAIT_TIMEOUT || remaining == 0) {
+                    break;
+                }
+            }
 
             if (wait_result == WAIT_TIMEOUT) {
                 merror("Module '%s' worker thread did not exit within the %lu ms shutdown budget; "
@@ -198,6 +263,64 @@ void stop_wmodules()
     }
 }
 
+/* Loads the wodle configuration and spawns a module thread per configured
+ * wodle -- unless a shutdown is already in progress, in which case it skips
+ * both entirely. Extracted out of local_start() so this specific check can be
+ * unit-tested without dragging in local_start()'s enrollment/HTTPS-client/
+ * syscheck/logcollector setup.
+ *
+ * Shares wm_lifecycle_lock with stop_wmodules(): holding it across
+ * "check the flag, then build the list, then spawn every thread" makes that
+ * whole sequence atomic with respect to a concurrent stop_wmodules() call, so
+ * a stop landing mid-startup either sees the pre-startup empty list (and
+ * local_start() then sees the flag and skips out) or the fully-spawned list
+ * (issue 38428, defects #2/#3/#5). The lock is only held across
+ * w_create_thread() itself (fast, non-blocking) -- never across a module's
+ * own subsequent Run(), which happens on that module's own thread. */
+STATIC void wm_start_modules_unless_shutting_down(void)
+{
+    DWORD threadID2;
+
+    EnterCriticalSection(&wm_lifecycle_lock);
+
+    if (wm_shutdown_requested) {
+        LeaveCriticalSection(&wm_lifecycle_lock);
+        mdebug1("Shutdown already in progress; skipping wodle startup.");
+        return;
+    }
+
+    /* Read wodle configuration */
+    if (wm_config() < 0) {
+        LeaveCriticalSection(&wm_lifecycle_lock);
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, WAZUHCONF);
+    }
+
+    /* Start modules */
+    if (!wm_check()) {
+        wmodule * cur_module;
+
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            win_module_start_ctx_t *start_ctx = NULL;
+            const char *module_name = NULL;
+
+            os_calloc(1, sizeof(win_module_start_ctx_t), start_ctx);
+            start_ctx->routine = cur_module->context->start;
+            start_ctx->data = cur_module->data;
+            module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
+            snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
+
+            cur_module->win_thread = w_create_thread(NULL,
+                                                      0,
+                                                      win_module_thread,
+                                                      start_ctx,
+                                                      0,
+                                                      (LPDWORD)&threadID2);
+        }
+    }
+
+    LeaveCriticalSection(&wm_lifecycle_lock);
+}
+
 /* Locally start (after service/win init) */
 int local_start()
 {
@@ -207,7 +330,6 @@ int local_start()
     char *cfg = WAZUHCONF;
     WSADATA wsaData;
     DWORD  threadID;
-    DWORD  threadID2;
 
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
@@ -290,7 +412,7 @@ int local_start()
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+    if(agt->enrollment.enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
     } else {
@@ -390,33 +512,9 @@ int local_start()
     /* Initialize children pool */
     wm_children_pool_init();
 
-    /* Read wodle configuration */
-    if (wm_config() < 0) {
-        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
-    }
-
-    /* Start modules */
-    if (!wm_check()) {
-        wmodule * cur_module;
-
-        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            win_module_start_ctx_t *start_ctx = NULL;
-            const char *module_name = NULL;
-
-            os_calloc(1, sizeof(win_module_start_ctx_t), start_ctx);
-            start_ctx->routine = cur_module->context->start;
-            start_ctx->data = cur_module->data;
-            module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
-            snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
-
-            cur_module->win_thread = w_create_thread(NULL,
-                                                      0,
-                                                      win_module_thread,
-                                                      start_ctx,
-                                                      0,
-                                                      (LPDWORD)&threadID2);
-        }
-    }
+    /* Read wodle configuration and spawn a thread per configured module --
+     * unless a shutdown has already been requested (issue 38428). */
+    wm_start_modules_unless_shutting_down();
 
     /* Initialize random numbers */
     srandom(time(0));
@@ -473,6 +571,9 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
     int retval = -1;
+    char *sanitized = NULL;
+    size_t header_length;
+    size_t message_length;
     tmpstr[OS_MAXSTR + 1] = '\0';
 
     /* Using a mutex to synchronize the writes */
@@ -500,10 +601,49 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 
     if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
         merror(FORMAT_ERROR);
+        ReleaseMutex(hMutex);
         return retval;
     }
 
-    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
+    if (message == NULL) {
+        merror(FORMAT_ERROR);
+        ReleaseMutex(hMutex);
+        return retval;
+    }
+
+    /* The engine puts this message in a JSON document, and Json::str() aborts
+     * the whole document on any invalid byte, so the event and the alert it
+     * would have raised are both lost. Filtering here covers every producer
+     * that sends an event, instead of one reader at a time. */
+    if (!w_utf8_valid(message)) {
+        static int utf8_reported = 0;
+
+        sanitized = w_utf8_filter(message, true);
+        message = sanitized;
+
+        if (!utf8_reported) {
+            mwarn("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
+            utf8_reported = 1;
+        } else {
+            mdebug2("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
+        }
+    }
+
+    /* The snprintf below cuts at a byte offset, which can split a multi-byte
+     * character, including an EF BF BD just written above. The header is the
+     * only thing standing between the payload and OS_MAXSTR, and its real
+     * length is the escaped location, up to OS_SIZE_8192, not OS_LOG_HEADER.
+     * Measure it and hand snprintf a length that keeps every character whole. */
+    header_length = strlen(loc_buff) + 3; /* "%c:" + loc_buff + ":" */
+    message_length = w_utf8_truncate_len(message, OS_MAXSTR - 1 - header_length);
+
+    if (message[message_length] != '\0') {
+        mdebug2("Message from '%s' cut to %zu bytes to fit the queue.", locmsg, message_length);
+    }
+
+    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%.*s", loc, loc_buff, (int)message_length, message);
+
+    os_free(sanitized);
 
     /* Every event goes to the HTTPS /stateless accumulator; sync sessions are
      * handed to the module in-process (bridge_submit_sync_session).

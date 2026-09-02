@@ -237,11 +237,11 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
 
 | Socket | Daemon | Purpose |
 |--------|--------|---------|
-| `queue/db/wdb` | wazuh-manager-db | Database queries (length-prefixed socket protocol) |
+| `queue/sockets/wdb.sock` | wazuh-manager-db | Database queries (length-prefixed socket protocol) |
 | `queue/sockets/wdb-http.sock` | wazuh-manager-db | HTTP-based database queries (`wdb_http.py`) |
-| `queue/sockets/analysis` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
-| `queue/sockets/auth` | wazuh-manager-authd | Agent registration |
-| `queue/sockets/remote` | wazuh-manager-remoted | Agent communication |
+| `queue/sockets/engine-api-http.sock` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
+| `queue/sockets/auth.sock` | wazuh-manager-authd | Agent registration |
+| `queue/sockets/remote.sock` | wazuh-manager-remoted | Agent communication |
 
 ---
 

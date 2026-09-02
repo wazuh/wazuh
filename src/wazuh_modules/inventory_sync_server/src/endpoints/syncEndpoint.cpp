@@ -61,6 +61,7 @@ namespace invsync::endpoints::sync
             static wazuh::uds_http::LogThrottle rejectedThrottle;
             static wazuh::uds_http::LogThrottle identityThrottle;
             static wazuh::uds_http::LogThrottle vdThrottle;
+            static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
             static wazuh::uds_http::LogThrottle capacityThrottle;
 
@@ -71,7 +72,7 @@ namespace invsync::endpoints::sync
                 return;
             }
 
-            // remoted sets this from the identity it AUTHENTICATED via AES-CMAC. Its absence means
+            // remoted sets this from the identity it AUTHENTICATED (bearer token). Its absence means
             // the request did not come through remoted's authenticated route -- a contract
             // violation, not agent input.
             const auto agentIdIt = request->headers.find(agentIdHeader());
@@ -199,6 +200,14 @@ namespace invsync::endpoints::sync
             if (!indexer)
             {
                 // The facade cleared the connector: stop() is running. Distinct from an outage.
+                if (const auto decision = goneThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Rejected %llu session(s) with 503 in the last %d s: the module is shutting down "
+                                 "and the indexer connector is already gone.",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                }
                 deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
                 return;

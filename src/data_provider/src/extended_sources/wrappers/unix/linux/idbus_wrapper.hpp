@@ -32,11 +32,30 @@ class IDBusWrapper
         /// @param error Pointer to the DBusError structure.
         virtual void error_free(DBusError* error) = 0;
 
-        /// @brief Gets a D-Bus connection for the specified bus type.
+        /// @brief Gets a private D-Bus connection for the specified bus type.
+        ///
+        /// The caller owns the returned connection and must release it with
+        /// connection_close() followed by connection_unref(). A private connection is
+        /// required rather than the shared one: libdbus caches the shared connection
+        /// process-wide, so once the bus drops, every later request is handed back the same
+        /// closed connection and the caller never recovers for the lifetime of the process.
+        ///
         /// @param type The type of bus (session, system, etc.).
         /// @param error Pointer to the DBusError structure.
         /// @return Pointer to the DBusConnection, or nullptr on failure.
-        virtual DBusConnection* bus_get(DBusBusType type, DBusError* error) = 0;
+        virtual DBusConnection* bus_get_private(DBusBusType type, DBusError* error) = 0;
+
+        /// @brief Closes a private D-Bus connection.
+        ///
+        /// Required before dropping the last reference to a connection obtained from
+        /// bus_get_private(). Dropping the reference alone leaves the connection open.
+        ///
+        /// @param connection Pointer to the DBusConnection.
+        virtual void connection_close(DBusConnection* connection) = 0;
+
+        /// @brief Unreferences a D-Bus connection.
+        /// @param connection Pointer to the DBusConnection.
+        virtual void connection_unref(DBusConnection* connection) = 0;
 
         /// @brief Creates a new D-Bus method call message.
         /// @param destination The destination bus name.

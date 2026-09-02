@@ -59,6 +59,7 @@ void * close_fp_main(void * args);
 void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 // STATIC in secure.c, which expands to nothing under WAZUH_UNIT_TESTING.
 bool discard_legacy_agent_message(const char* msg, const char* agent_id);
+void remoted_module_control_config(remoted_module_config_t *rm_config);
 
 /* Setup/teardown */
 
@@ -649,6 +650,121 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
+
+    OS_FreeKey(node->key);
+    os_free(node->message);
+    os_free(node);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+    agent_meta_clear(mocked_meta_ptr);
+    agent_meta_free(mocked_meta_ptr);
+}
+
+void test_HandleSecureMessage_shutdown_message_embedded_null(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-agent shutdown ";
+    message_t message = {.buffer = buffer, .size = 18, .sock = 1, .counter = 10};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    /* Decrypted payload holding trailing bytes after its string terminator */
+    char decrypted[64] = "#!-agent shutdown ";
+    memset(decrypted + 19, 'A', 32);
+    const size_t decrypted_length = 51;
+    const size_t body_length = decrypted_length - 3;
+    const size_t body_strlen = strlen("agent shutdown ");
+
+    agent_meta_t *mocked_meta_ptr = NULL;
+    os_calloc(1, sizeof(*mocked_meta_ptr), mocked_meta_ptr);
+    mocked_meta_ptr->agent_id = 1;
+    mocked_meta_ptr->agent_name = strdup("test-agent");
+    mocked_meta_ptr->agent_version = strdup("5.0.0");
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-agent shutdown ");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, decrypted_length);
+    will_return(__wrap_ReadSecMSG, decrypted);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent shutdown ");
+    expect_value(__wrap_validate_control_msg, msg_length, body_length);
+    will_return(__wrap_validate_control_msg, 1);
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    /* __wrap_agent_meta_from_agent_info */
+    expect_string(__wrap_agent_meta_from_agent_info, id_str, "009");
+    expect_any(__wrap_agent_meta_from_agent_info, agent_name);
+    expect_any(__wrap_agent_meta_from_agent_info, ai);
+    will_return(__wrap_agent_meta_from_agent_info, mocked_meta_ptr);
+
+    /* __wrap_agent_meta_upsert_locked */
+    expect_string(__wrap_agent_meta_upsert_locked, agent_id_str, "009");
+    expect_value(__wrap_agent_meta_upsert_locked, fresh, mocked_meta_ptr);
+    will_return(__wrap_agent_meta_upsert_locked, 0);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    // Expect the control message to be added to the queue
+    w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
+    assert_non_null(node);
+    assert_string_equal(node->message, "agent shutdown ");
+
+    // Only the string is copied, the trailing bytes are not
+    for (size_t i = body_strlen; i < body_length; i++) {
+        assert_int_equal(node->message[i], '\0');
+    }
 
     OS_FreeKey(node->key);
     os_free(node->message);
@@ -3291,9 +3407,9 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_io_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_post_process_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 10485760);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 300);
-    will_return(__wrap_getDefine_Int_default, 30);
+    // jwt_* / auth_*
+    will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
 
     remoted_module_https_config(&rm_config);
@@ -3324,8 +3440,9 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.downstream_io_threads, 0);
     assert_int_equal(rm_config.downstream_post_process_threads, 0);
     assert_int_equal(rm_config.downstream_max_response_body_size, 10485760);
-    assert_int_equal(rm_config.auth_max_request_age, 300);
-    assert_int_equal(rm_config.auth_max_future_skew, 30);
+    assert_int_equal(rm_config.jwt_max_age, 60);
+    assert_int_equal(rm_config.jwt_clock_skew, 30);
+    assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 10485760);
     assert_true(rm_config.http_content_encoding_enabled);
 }
@@ -3367,9 +3484,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 600);
-    will_return(__wrap_getDefine_Int_default, 45);
+    // jwt_* / auth_* (in-range, non-default values: the profile caps jwt_max_age and skew at 43200)
+    will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);
 
     remoted_module_https_config(&rm_config);
@@ -3400,8 +3517,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.downstream_io_threads, 6);
     assert_int_equal(rm_config.downstream_post_process_threads, 9);
     assert_int_equal(rm_config.downstream_max_response_body_size, 20971520);
-    assert_int_equal(rm_config.auth_max_request_age, 600);
-    assert_int_equal(rm_config.auth_max_future_skew, 45);
+    assert_int_equal(rm_config.jwt_max_age, 45);
+    assert_int_equal(rm_config.jwt_clock_skew, 20);
+    assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
     assert_false(rm_config.http_content_encoding_enabled);
 }
@@ -3542,6 +3660,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.worker_node = true;
     test_logr.https.port = 9443;
     test_logr.https.bind_addr = "0.0.0.0";
+    test_logr.https.global_prefix = "/wazuh-manager/";
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
@@ -3577,9 +3696,9 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
-    // auth_*
-    will_return(__wrap_getDefine_Int_default, 300);
-    will_return(__wrap_getDefine_Int_default, 30);
+    // jwt_* / auth_*
+    will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
 
     // remoted_enrollment_config(): ReadConfig(CAUTHD, ...) succeeds with a "normally enabled"
@@ -3607,6 +3726,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.http_max_body_size, 12345);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
     assert_string_equal(rm_config.bind_address, "0.0.0.0");
+    // Copied verbatim, like every other https string: no getDefine involved (global_prefix is a
+    // regular <remote><https> setting, not an internal option), so the strict will_return
+    // ordering above is untouched.
+    assert_string_equal(rm_config.global_prefix, "/wazuh-manager/");
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
@@ -3625,13 +3748,65 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
+/* Tests remoted_module_control_config: the eight control_* options, in read order. */
+
+static void queue_control_config_defines(int keepalive_throttle)
+{
+    will_return(__wrap_getDefine_Int_default, 60);    // control_groups_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 4);     // control_wdb_request_connections
+    will_return(__wrap_getDefine_Int_default, 2000);  // control_wdb_roundtrip_deadline
+    will_return(__wrap_getDefine_Int_default, 10000); // control_wdb_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 4);     // control_tm_concurrency
+    will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
+    will_return(__wrap_getDefine_Int_default, 10000); // control_tm_max_queue_size
+    will_return(__wrap_getDefine_Int_default, keepalive_throttle);
+}
+
+void test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    // 450 = exactly half: the smallest value the guard must catch (throttle + notify interval can
+    // cross the threshold from here up).
+    queue_control_config_defines(450);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "'remoted.control_keepalive_throttle' (450 s) is at or above half of <agents_disconnection_time> "
+                  "(900 s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+                  "are answering normally are marked disconnected. Keep it below half.");
+
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    remoted_module_control_config(&rm_config);
+
+    assert_int_equal(rm_config.keepalive_throttle_sec, 450);
+}
+
+void test_remoted_module_control_config_silent_below_disconnection_time(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    // No expect_string for __wrap__mwarn: an unexpected warning fails the test. 449 sits just
+    // under half of 900.
+    queue_control_config_defines(449);
+
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    remoted_module_control_config(&rm_config);
+
+    assert_int_equal(rm_config.keepalive_throttle_sec, 449);
+}
+
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
 {
     (void) state;
     remoted test_logr;
     memset(&test_logr, 0, sizeof(test_logr));
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-    // bind_addr/certificate/key/ca/ciphers left NULL, as when <https> is entirely absent.
+    // bind_addr/global_prefix/certificate/key/ca/ciphers left NULL, as when <https> is entirely
+    // absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
+    // without the tag keeps serving unprefixed endpoints (the module resolves "" to "/").
 
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3679,6 +3854,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
     assert_string_equal(rm_config.bind_address, "");
+    assert_string_equal(rm_config.global_prefix, "");
     assert_string_equal(rm_config.certificate_path, "");
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");
@@ -3705,6 +3881,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
+        cmocka_unit_test(test_HandleSecureMessage_shutdown_message_embedded_null),
         cmocka_unit_test(test_HandleSecureMessage_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_invalid_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
@@ -3762,6 +3939,9 @@ int main(void)
         cmocka_unit_test(test_remoted_enrollment_config_read_config_fails_closed),
         // Tests w_remoted_build_module_config
         cmocka_unit_test(test_w_remoted_build_module_config_all_fields_populated),
-        cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty)};
+        cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty),
+        // Tests remoted_module_control_config
+        cmocka_unit_test(test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time),
+        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
