@@ -455,6 +455,30 @@ def test_DistributedAPI_tmp_file_cluster_error():
                 raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
 
+@pytest.mark.parametrize('sync_guard_code', [3061, 3062])
+@patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
+       new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
+def test_DistributedAPI_sync_guard_error_is_not_enriched_as_node_error(sync_guard_code):
+    """Check that synchronization guard errors are not treated as unknown node IDs.
+
+    Only 3022 means 'Unknown node ID', so only 3022 may trigger the get_nodes_info enrichment.
+    """
+    tmp_file_path = os.path.join(common.OSSEC_TMP_PATH, 'dapi_file.txt')
+    os.makedirs(common.OSSEC_TMP_PATH, exist_ok=True)
+    open(tmp_file_path, 'a').close()
+    with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
+        with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
+                   return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
+            with patch('wazuh.core.cluster.local_client.LocalClient.execute',
+                       new=AsyncMock(side_effect=WazuhClusterError(sync_guard_code))):
+                with patch('wazuh.core.cluster.dapi.dapi.get_nodes_info') as get_nodes_info_mock:
+                    dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                                   'f_kwargs': {'tmp_file': 'dapi_file.txt'}}
+                    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=sync_guard_code)
+                    get_nodes_info_mock.assert_not_called()
+
+
 @pytest.mark.parametrize('f_kwargs, expected', [
     ({'agent_list': ['001', '002']}, {}),
     ({'agent_list': '*'}, {}),
