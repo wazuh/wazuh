@@ -23,7 +23,6 @@ typedef enum global_db_access
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_UPDATE_AGENT_STATUS_CODE,
     WDB_GET_ALL_AGENTS,
-    WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_SELECT_AGENT_GROUP,
     WDB_FIND_GROUP,
@@ -126,16 +125,6 @@ int wdb_update_agent_status_code(
  * @retval NULL on errors.
  */
 rb_tree* wdb_get_all_agents_rbtree(int* sock);
-
-/**
- * @brief Find agent id by name and address.
- *
- * @param[in] name Name of the agent.
- * @param[in] ip IP address of the agent.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns id if success. OS_INVALID on error.
- */
-int wdb_find_agent(const char* name, const char* ip, int* sock);
 
 /**
  * @brief Returns a JSON with all the agent's information.
