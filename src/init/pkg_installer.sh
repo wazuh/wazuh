@@ -291,9 +291,11 @@ probe_server() {
 # trust store actually verifies the manager's certificate. probe_server() cannot tell
 # us this -- it deliberately skips verification so a plain reachability check never
 # depends on TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work
-# post-upgrade (#38684). No TCP/TLS-1.3 fallback here: a client that cannot do the
-# real handshake cannot tell us whether the cert is trusted, so treat that as
-# "unverified" rather than assume trust.
+# post-upgrade. No TCP fallback here: a client that cannot do the real handshake
+# cannot tell us whether the cert is trusted, so treat that as "unverified" rather
+# than assume trust -- this deliberately stays fail-closed even for the curl-too-old
+# case below, since there is no way to positively confirm trust without the
+# handshake; only the log message distinguishes the two causes for the operator.
 probe_server_verified() {
     PROBE_TIMEOUT=5
 
@@ -311,7 +313,16 @@ probe_server_verified() {
 
     if command -v curl > /dev/null 2>&1; then
         curl --tlsv1.3 -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
-        return $?
+        RC=$?
+        # Mirrors probe_server()'s own curl-too-old handling (#38607): exit 2/4 means
+        # curl itself doesn't recognize --tlsv1.3, not that the handshake was
+        # attempted and failed -- worth a distinct log line so an operator doesn't
+        # mistake "this curl build is too old" for "the manager's certificate is
+        # untrusted".
+        if [ ${RC} -eq 2 ] || [ ${RC} -eq 4 ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, so the manager's certificate could not be verified (not the same as an untrusted certificate)." >> ./logs/upgrade.log
+        fi
+        return ${RC}
     elif command -v wget > /dev/null 2>&1; then
         wget -q --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         return $?
@@ -334,9 +345,14 @@ xml_block_present() {
 # and runs standalone, with nothing to source. Only called when
 # xml_tag_present agent ssl certificate_authorities is false, so it never overwrites
 # an operator-configured CA.
+#
+# Returns non-zero (and leaves ossec.conf untouched) if the insertion point was never
+# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
+# rather than silently reporting success with nothing actually pinned.
 pin_ca() {
     CA_PATH="${1}"
     TMP_PIN_CONF="$(mktemp)"
+    PIN_OK=1
 
     if xml_block_present agent ssl; then
         awk -v ca="${CA_PATH}" '
@@ -355,7 +371,9 @@ pin_ca() {
                 if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
                 print
             }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}" && cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+            END { if (!inserted) { exit 1 } }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
+        PIN_OK=$?
     else
         awk -v ca="${CA_PATH}" '
             in_comment {
@@ -375,10 +393,16 @@ pin_ca() {
                 if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
                 print
             }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}" && cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+            END { if (!inserted) { exit 1 } }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
+        PIN_OK=$?
     fi
 
+    if [ "${PIN_OK}" -eq 0 ]; then
+        cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+    fi
     rm -f "${TMP_PIN_CONF}"
+    return ${PIN_OK}
 }
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
@@ -449,8 +473,8 @@ else
 fi
 
 # The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
-# posture the new agent boots under is exactly what's on disk now (#38684). A
-# verifying mode with no readable CA can never connect -- mirrors
+# posture the new agent boots under is exactly what's on disk now. A verifying mode
+# with no readable CA can never connect -- mirrors
 # w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
 # is gone, rather than leaving a freshly-upgraded host silently offline.
 SSL_VERIFICATION_MODE=$(xml_value agent ssl verification_mode)
@@ -507,8 +531,12 @@ case "${SSL_VERIFICATION_MODE}" in
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         elif [ -r "${DEFAULT_CA_FILE}" ]; then
-            pin_ca "${DEFAULT_CA_FILE}"
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
+            if pin_ca "${DEFAULT_CA_FILE}"; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (unexpected <ssl> block formatting), interrupting upgrade." >> ./logs/upgrade.log
+                abort_upgrade "2"
+            fi
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"

@@ -31,9 +31,9 @@ static int setup_agent(void **state)
     memset(&test_agt, 0, sizeof(test_agt));
     memset(test_servers, 0, sizeof(test_servers));
 
-    /* The defaults ClientConf() ends up with once <ssl> is unset (#38684: UNSET
-     * resolves to SYSTEM there), so an "unconfigured" case here is the same struct
-     * an agent with an untouched ossec.conf ends up running on. */
+    /* The defaults ClientConf() ends up with once <ssl> is unset (UNSET resolves to
+     * SYSTEM there), so an "unconfigured" case here is the same struct an agent with
+     * an untouched ossec.conf ends up running on. */
     test_agt.flags.auto_restart = 1;
     test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
     test_agt.batch.interval = 10;

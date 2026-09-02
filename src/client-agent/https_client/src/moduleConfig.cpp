@@ -120,9 +120,9 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 
     if (verifyMode == HC_VERIFY_NONE)
     {
-        // Reachable only via an explicit <verification_mode>none</verification_mode> since
-        // #38684 -- ClientConf() no longer defaults here, so this is always a deliberate
-        // operator opt-out, worth flagging.
+        // Reachable only via an explicit <verification_mode>none</verification_mode> --
+        // ClientConf() no longer defaults here, so this is always a deliberate operator
+        // opt-out, worth flagging.
         LOGFN_WARN(logFn, "TLS verification is DISABLED (verify_mode=none).");
         return true;
     }
