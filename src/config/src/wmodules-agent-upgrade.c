@@ -52,9 +52,9 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         module->data = data;
     }
 
+    #ifdef CLIENT
     data = module->data;
 
-    #ifdef CLIENT
     // Read deprecated CA configuration
     if (!wcom_ca_store) {
         if (wm_agent_upgrade_read_ca_verification_old(&data->agent_config.enable_ca_verification)) {

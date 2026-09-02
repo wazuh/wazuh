@@ -17,7 +17,7 @@ repository checkout).
 
 import json
 import os
-import subprocess
+import subprocess  # nosec B404 - runs the fixed wazuh-manager-conf CLI with a list argv, never a shell
 import tempfile
 from functools import lru_cache
 

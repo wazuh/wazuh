@@ -6,7 +6,7 @@ import copy
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - runs the fixed wazuh-manager-conf CLI with a list argv, never a shell
 from datetime import timezone
 from enum import Enum
 from os.path import exists
