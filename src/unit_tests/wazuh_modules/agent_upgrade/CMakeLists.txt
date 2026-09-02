@@ -72,7 +72,7 @@ if(${TARGET} STREQUAL "manager")
     "-Wl,--wrap,wm_agent_upgrade_validate_id \
                             -Wl,--wrap,wm_agent_upgrade_validate_system -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_version -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response \
-                            -Wl,--wrap,wm_agent_upgrade_send_tasks_information -Wl,--wrap,w_query_agentd -Wl,--wrap,ReadConfig ${DEBUG_OP_WRAPPERS}"
+                            -Wl,--wrap,wm_agent_upgrade_send_tasks_information -Wl,--wrap,w_query_agentd -Wl,--wrap,w_mconf_section -Wl,--wrap,Read_Remote_JSON ${DEBUG_OP_WRAPPERS}"
   )
 
 else()

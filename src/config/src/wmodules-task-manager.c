@@ -89,3 +89,34 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
 
     return 0;
 }
+
+/* Reader of the `task-manager` section of the effective document (etc/wazuh-manager.conf, see
+ * mconf-config.h). `module` is the instance default_modules[] already initialised through
+ * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
+ * module default, as with the XML reader. */
+int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
+    if (section == NULL || module == NULL || module->data == NULL) {
+        return 0;
+    }
+
+    wm_task_manager *data = module->data;
+    const struct {
+        const char *key;
+        int *value;
+    } settings[] = {
+        { XML_TASK_TTL, &data->task_ttl },
+        { XML_CLEANUP_INTERVAL, &data->cleanup_interval },
+        { XML_MAX_PAYLOAD_BYTES, &data->max_payload_bytes },
+        { XML_MAX_TASKS_PER_POLL, &data->max_tasks_per_poll },
+    };
+
+    for (size_t i = 0; i < sizeof(settings) / sizeof(settings[0]); i++) {
+        const cJSON *item = cJSON_GetObjectItem(section, settings[i].key);
+
+        if (cJSON_IsNumber(item) && item->valueint >= 0) {
+            *settings[i].value = item->valueint;
+        }
+    }
+
+    return 0;
+}

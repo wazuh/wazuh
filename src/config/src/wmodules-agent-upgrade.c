@@ -212,3 +212,31 @@ static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_
     return 0;
 }
 #endif
+
+#ifndef CLIENT
+#include "mconf-config.h"
+
+/* Reader of the `agent-upgrade` section of the effective document (etc/wazuh-manager.conf, see
+ * mconf-config.h). `module` is the instance default_modules[] already initialised through
+ * wm_agent_upgrade_read(NULL, NULL, module); a missing section keeps its defaults. `wpk_repository`
+ * has no schema default on purpose: left NULL, the module picks the repository by the target agent
+ * version (wm_agent_upgrade_validate_wpk_version()). */
+int wm_agent_upgrade_read_json(const cJSON *section, wmodule *module) {
+    if (section == NULL || module == NULL || module->data == NULL) {
+        return 0;
+    }
+
+    wm_agent_upgrade *data = module->data;
+
+    data->enabled = w_mconf_json_bool(cJSON_GetObjectItem(section, XML_ENABLED), data->enabled ? 1 : 0);
+
+    const cJSON *repository = cJSON_GetObjectItem(section, XML_WPK_REPOSITORY);
+
+    if (cJSON_IsString(repository) && repository->valuestring[0] != '\0') {
+        os_free(data->manager_config.wpk_repository);
+        os_strdup(repository->valuestring, data->manager_config.wpk_repository);
+    }
+
+    return 0;
+}
+#endif
