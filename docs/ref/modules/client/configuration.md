@@ -366,7 +366,10 @@ agent.state_interval=5
 These control the agent's half of the HTTPS timing contract with the manager. Each one pairs with
 a manager-side deadline, so they should be changed together with the corresponding
 `remoted.*` option rather than on their own — see
-[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module).
+[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module) for the
+manager half, and
+[connection timing tuning](../remoted/timing-tuning.md) for which pairs must move together and
+what measurably breaks when only one does.
 
 An attempt count is the **total** number of tries, not retries after the first: `1` means "send
 once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;

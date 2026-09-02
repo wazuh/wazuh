@@ -549,6 +549,10 @@ bind address, port and max body size are regular `<remote>` settings instead (se
 `wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
 `remoted` from starting, same as every other internal option.
 
+The timeout and retry settings below each pair with a deadline on the agent's side of the same
+hop; [Connection timing tuning](timing-tuning.md) covers which pairs must move together and what
+breaks when only one does.
+
 #### remoted.http_io_threads
 
 Number of I/O threads (accept + read/write) for the HTTPS agent server.
@@ -576,6 +580,12 @@ Seconds to wait for a full request to arrive on a connection.
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** The clock starts as soon as the connection is established, so this also bounds a
   stalled TLS handshake -- there is no separate handshake timeout
+- **Note:** It is a **total** deadline on receiving the request, not an idle timer: it is armed
+  once and never rearmed as bytes arrive, so a body that takes longer than this to upload is cut
+  even though it never stalled, and the connection is closed without an HTTP status. This is the
+  setting that bounds a large `POST /stateful` or `POST /stateless` over a slow link -- raising
+  the agent's own per-request budget without raising this one changes nothing (see
+  [Connection timing tuning](timing-tuning.md#3-invariants))
 
 #### remoted.http_write_timeout
 
