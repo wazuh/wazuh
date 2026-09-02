@@ -42,11 +42,12 @@ foreach(TEST_FILE ${TEST_FILES})
         fimebpf
     )
 
-    # Resolve libfimebpf.so's __asan_/__ubsan_ symbols when the agent build sanitized it.
-    target_link_libraries(${TEST_NAME}
-        -fsanitize=address
-        -fsanitize=undefined
-    )
+    if(FSANITIZE)
+        target_link_libraries(${TEST_NAME}
+            -fsanitize=address
+            -fsanitize=undefined
+        )
+    endif(FSANITIZE)
 
     add_test(NAME ${TEST_NAME}
     COMMAND ${TEST_NAME})

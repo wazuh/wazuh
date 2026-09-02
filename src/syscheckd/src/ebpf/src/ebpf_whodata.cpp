@@ -75,6 +75,18 @@ time_t (*w_time)(time_t*) = time;
 int ebpf_kernel_queue_full_reported = 0;
 fim::BoundedQueue<std::unique_ptr<dynamic_file_event>> kernelEventQueue;
 
+static void destroy_global_links()
+{
+    if (bpf_helpers && bpf_helpers->bpf_link_destroy)
+    {
+        for (auto* l : global_links)
+        {
+            bpf_helpers->bpf_link_destroy(l);
+        }
+    }
+    global_links.clear();
+}
+
 template<typename T>
 static char* num_to_str(T num)
 {
@@ -426,7 +438,6 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_object_close,
                     bpf_helpers->bpf_object_next_program,
                     bpf_helpers->bpf_program_attach,
-                    bpf_helpers->bpf_link_destroy,
                     bpf_helpers->bpf_object_find_map_fd_by_name,
                     bpf_helpers->bpf_program_set_autoload,
                     bpf_helpers->bpf_program_autoload,
@@ -451,14 +462,7 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 
 void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 {
-    for (auto* l : global_links)
-    {
-        if (bpf_helpers && bpf_helpers->bpf_link_destroy)
-        {
-            bpf_helpers->bpf_link_destroy(l);
-        }
-    }
-    global_links.clear();
+    destroy_global_links();
 
     if (bpf_helpers)
     {
@@ -540,7 +544,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
         return 1;
     }
 
-    const modules_log_level_t fail_level = final_attempt ? LOG_ERROR : LOG_DEBUG;
+    const modules_log_level_t fail_level = final_attempt ? LOG_ERROR : LOG_INFO;
     bpf_object* obj = nullptr;
     bool prefer_dpath = use_lsm;
 
@@ -624,24 +628,17 @@ int init_bpfobj()
     auto abspathFn = fimebpf::instance().m_abspath;
     char bpfobj_path[PATH_MAX] = {0};
 
-    if (!logFn || !abspathFn)
+    if (!logFn || !abspathFn || !bpf_helpers)
     {
         return 1;
     }
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
-    g_bpf_lsm_active = is_bpf_lsm_active();
-    if (!g_bpf_lsm_active)
-    {
-        logFn(LOG_INFO, FIM_EBPF_LSM_INACTIVE);
-    }
+    g_bpf_lsm_active = bpf_helpers->is_bpf_lsm_active ? bpf_helpers->is_bpf_lsm_active() : is_bpf_lsm_active();
+    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
 
     if (load_and_attach(bpfobj_path, g_bpf_lsm_active, !g_bpf_lsm_active) == 0)
     {
-        if (g_bpf_lsm_active)
-        {
-            logFn(LOG_INFO, FIM_EBPF_LSM_ACTIVE);
-        }
         return 0;
     }
 
@@ -670,6 +667,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     if (rb_fd < 0)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_MAP);
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         return 1;
@@ -679,6 +677,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     if (!*rb)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_NEW);
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         return 1;
@@ -840,6 +839,7 @@ extern "C"
 
         if (healthcheck_failed)
         {
+            destroy_global_links();
             return 1;
         }
 
@@ -872,14 +872,7 @@ extern "C"
         }
 
         bpf_helpers->ring_buffer_free(rb);
-        for (auto* l : global_links)
-        {
-            if (bpf_helpers->bpf_link_destroy)
-            {
-                bpf_helpers->bpf_link_destroy(l);
-            }
-        }
-        global_links.clear();
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         w_bpf_deinit(bpf_helpers);

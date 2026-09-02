@@ -27,22 +27,24 @@ protected:
     }
 };
 
+static bool mock_bpf_lsm_active_true() {
+    return true;
+}
+
 static int s_load_calls = 0;
 static int mock_bpf_object_load_fail_first([[maybe_unused]] void* obj) {
     s_load_calls++;
-    if (s_load_calls == 1) {
-        return 1;
-    }
-    return 0;
+    // Fail both LSM variants (dpath, then walk) so init_bpfobj must reach the
+    // kprobe retry instead of the in-function dpath->walk fallback.
+    return s_load_calls <= 2 ? 1 : 0;
 }
 
 static int s_attach_calls = 0;
 static int mock_bpf_program_attach_fail_first([[maybe_unused]] void* prog) {
     s_attach_calls++;
-    if (s_attach_calls == 1) {
-        return 0;
-    }
-    return 1;
+    // Fail once during the LSM attempt so init_bpfobj falls back to kprobe,
+    // which then attaches cleanly.
+    return s_attach_calls == 2 ? 1 : 0;
 }
 
 TEST_F(InitBpfobjTest, Success) {
@@ -120,6 +122,7 @@ TEST_F(InitBpfobjTest, FallbackToKprobeOnLoadFailure) {
     MockFimebpf::SetMockFunctions();
 
     s_load_calls = 0;
+    bpf_helpers->is_bpf_lsm_active = (is_bpf_lsm_active_t)mock_bpf_lsm_active_true;
     bpf_helpers->bpf_object_open_file = (bpf_object__open_file_t)mock_bpf_object_open_file_success;
     bpf_helpers->bpf_object_load = (bpf_object__load_t)mock_bpf_object_load_fail_first;
     bpf_helpers->bpf_object_close = (bpf_object__close_t)mock_bpf_object_close_called;
@@ -139,6 +142,7 @@ TEST_F(InitBpfobjTest, FallbackToKprobeOnAttachFailure) {
     MockFimebpf::SetMockFunctions();
 
     s_attach_calls = 0;
+    bpf_helpers->is_bpf_lsm_active = (is_bpf_lsm_active_t)mock_bpf_lsm_active_true;
     bpf_helpers->bpf_object_open_file = (bpf_object__open_file_t)mock_bpf_object_open_file_success;
     bpf_helpers->bpf_object_load = (bpf_object__load_t)mock_bpf_object_load_success;
     bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)mock_bpf_object_next_program_in;

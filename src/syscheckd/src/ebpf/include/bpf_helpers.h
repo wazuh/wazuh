@@ -83,7 +83,7 @@ typedef void (*ring_buffer__free_t)(struct ring_buffer *rb);
 typedef void (*bpf_object__close_t)(struct bpf_object *obj);
 typedef struct bpf_program *(*bpf_object__next_program_t)(const struct bpf_object *obj, struct bpf_program *prog);
 typedef struct bpf_link *(*bpf_program__attach_t)(struct bpf_program *prog);
-typedef void (*bpf_link__destroy_t)(struct bpf_link *link);
+typedef int (*bpf_link__destroy_t)(struct bpf_link *link);
 typedef int (*bpf_object__find_map_fd_by_name_t)(struct bpf_object *obj, const char *name);
 typedef int (*bpf_program__set_autoload_t)(struct bpf_program *prog, bool autoload);
 typedef bool (*bpf_program__autoload_t)(const struct bpf_program *prog);
@@ -93,6 +93,7 @@ typedef const char *(*bpf_program__name_t)(const struct bpf_program *prog);
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue);
 typedef int(*check_invalid_kernel_version_t)();
+typedef bool(*is_bpf_lsm_active_t)();
 typedef int(*init_libbpf_t)(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 typedef int(*init_bpfobj_t)();
 
@@ -127,6 +128,7 @@ typedef struct {
     init_ring_buffer_t init_ring_buffer;
     ebpf_pop_events_t ebpf_pop_events;
     check_invalid_kernel_version_t check_invalid_kernel_version;
+    is_bpf_lsm_active_t is_bpf_lsm_active;
     init_libbpf_t init_libbpf;
     init_bpfobj_t init_bpfobj;
 
