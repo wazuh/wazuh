@@ -52,6 +52,7 @@ static void wm_fluent_destroy(wm_fluent_t * data);  // Destroy data
 cJSON *wm_fluent_dump(const wm_fluent_t * data);     // Read config
 
 static char * wm_fluent_strdup(const msgpack_object_str * str);
+static char * wm_fluent_sanitize(const char * string, size_t size);
 static char * wm_fluent_bindup(const msgpack_object_bin * bin);
 static int wm_fluent_connect(wm_fluent_t * fluent);
 static int wm_fluent_ssl_ctx(wm_fluent_t * fluent);
@@ -179,6 +180,22 @@ static char * wm_fluent_strdup(const msgpack_object_str * str) {
     memcpy(string, str->ptr, str->size);
     string[str->size] = '\0';
     return string;
+}
+
+/* Copy a string received from the server, replacing the control characters,
+   so that it cannot forge log entries */
+static char * wm_fluent_sanitize(const char * string, size_t size) {
+    char * copy;
+    size_t i;
+
+    os_malloc(size + 1, copy);
+
+    for (i = 0; i < size; i++) {
+        copy[i] = iscntrl((unsigned char)string[i]) ? '_' : string[i];
+    }
+
+    copy[i] = '\0';
+    return copy;
 }
 
 static char * wm_fluent_bindup(const msgpack_object_bin * bin) {
@@ -483,7 +500,9 @@ static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent) {
             expect_type(map[i].val, MSGPACK_OBJECT_BOOLEAN, "boolean value");
             helo->keepalive = map[i].val.via.boolean;
         } else {
-            mdebug2("Unexpected key: %.*s", map[i].key.via.str.size, map[i].key.via.str.ptr);
+            char * key = wm_fluent_sanitize(map[i].key.via.str.ptr, map[i].key.via.str.size);
+            mdebug2("Unexpected key: %s", key);
+            free(key);
         }
     }
 
@@ -723,7 +742,9 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     /* Check the authentication result */
 
     if (!pong->auth_result) {
-        mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "Unknown reason");
+        char * reason = pong->reason ? wm_fluent_sanitize(pong->reason, strlen(pong->reason)) : NULL;
+        mwarn("Authentication error: the Fluent server rejected the connection: %s", reason ? reason : "Unknown reason");
+        free(reason);
         goto end;
     }
 
@@ -731,7 +752,9 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
         goto end;
     }
 
-    minfo("Connected to host '%s' (%s:%hu)", pong->server_hostname, fluent->address, fluent->port);
+    char * server_hostname = wm_fluent_sanitize(pong->server_hostname, strlen(pong->server_hostname));
+    minfo("Connected to host '%s' (%s:%hu)", server_hostname, fluent->address, fluent->port);
+    free(server_hostname);
 
     retval = 0;
 end:

@@ -24,6 +24,7 @@
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 #define AUDIT_SOCKET                "queue/sockets/audit"
+#define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
@@ -553,6 +554,14 @@ void audit_remove_plugin_config(void);
  * @return File descriptor of the socket, -1 on error
  */
 int init_auditd_socket(void);
+
+/**
+ * @brief Reconnect to the Auditd socket, retrying up to MAX_CONN_RETRIES times
+ *
+ * @param audit_sock Output: file descriptor of the reconnected socket, -1 on failure
+ * @return File descriptor of the socket, -1 on error
+ */
+int audit_reconnect_with_retries(int *audit_sock);
 
 /**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds

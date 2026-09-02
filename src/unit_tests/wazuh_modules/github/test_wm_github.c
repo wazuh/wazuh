@@ -1357,6 +1357,91 @@ void test_error_event_type_1(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_github_execute_scan_next_page_out_of_host(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 1024;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    data->github_config->auth->next = NULL;
+    os_strdup("web", data->github_config->event_type);
+
+    // A full page makes the module ask for the next one
+    char body[OS_SIZE_2048] = "[";
+    for (int i = 0; i < ITEM_PER_PAGE; i++) {
+        strcat(body, i ? ",{\"id\":1}" : "{\"id\":1}");
+    }
+    strcat(body, "]");
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup(body, data->response->body);
+    os_strdup("Link: <https://api.com/>; rel=\"next\"\r\n", data->response->header);
+
+    int initial_scan = 0;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2021-05-07 12:34:56");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    // Only one request must be issued: the hostile next page must not be followed
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_string(__wrap_wurl_http_request, url, "https://api.github.com/orgs/test_org/audit-log?phrase=created:2021-05-07 12:24:56..2021-05-07 12:34:56&include=web&order=asc&per_page=100");
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_any_count(__wrap__mtdebug2, tag, ITEM_PER_PAGE);
+    expect_any_count(__wrap__mtdebug2, formatted_msg, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg, usec, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg, queue, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg, message, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg, locmsg, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg, loc, ITEM_PER_PAGE);
+    will_return_count(__wrap_wm_sendmsg, 0, ITEM_PER_PAGE);
+
+    expect_string(__wrap_OSRegex_Compile, pattern, GITHUB_NEXT_PAGE_REGEX);
+    will_return(__wrap_OSRegex_Compile, 1);
+    expect_string(__wrap_OSRegex_Execute, str, data->response->header);
+    will_return(__wrap_OSRegex_Execute, "https://api.com/");
+    expect_any(__wrap_OSRegex_FreePattern, reg);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Ignoring next page URL out of 'api.github.com'.");
+
+    wm_github_execute_scan(data->github_config, initial_scan);
+
+    // The scan is marked as failed, so the bookmark is not advanced over the skipped pages
+    assert_int_equal(data->github_config->fails->fails, 1);
+    assert_string_equal(data->github_config->fails->org_name, "test_org");
+}
+
 int main(void) {
 
     const struct CMUnitTest tests_functionality[] = {
@@ -1383,6 +1468,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_execute_scan_next_page_out_of_host, setup_conf, teardown_conf),
     };
     const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
