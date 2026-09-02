@@ -10,6 +10,7 @@ on:
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
       - src/shared_modules/metrics/**
+      - src/shared_modules/manager_config/**
       - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/vulnerability_scanner/**
       - src/remoted/remoted_module/**
@@ -119,6 +120,17 @@ jobs:
           path: src/remoted/remoted_module
           id: remoted_module
 
+      # Manager configuration (etc/wazuh-manager.conf reader and CLI)
+      - name: Manager config - Coding style
+        id: manager_config_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/manager_config
+          id: manager_config
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -150,6 +162,10 @@ jobs:
 
           if [ "${{ steps.remoted_module_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS RemotedModule"
+          fi
+
+          if [ "${{ steps.manager_config_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS ManagerConfig"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then

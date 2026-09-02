@@ -1374,6 +1374,11 @@ InstallCommon()
         fi
     fi
 
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
+        # JSON Schema of etc/wazuh-manager.conf: product (always refreshed), consumed by the Python framework.
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${INSTALLDIR}/etc/wazuh-manager.schema.json
+    fi
+
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
         if [ "X${INSTYPE}" = "Xagent" ]; then
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
@@ -1392,6 +1397,14 @@ InstallCommon()
         fi
 
         if [ -f ../etc/wazuh.mc ]; then
+            if [ "X${INSTYPE}" = "Xmanager" ]; then
+                # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
+                # installed (file existence is not checked: the certificates are generated later in the installation).
+                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
+                    echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
+                    exit 1
+                fi
+            fi
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
@@ -1616,6 +1629,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
 
