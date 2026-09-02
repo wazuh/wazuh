@@ -593,6 +593,11 @@ Seconds to wait for a response write to complete.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `300`
+- **Note:** On a streamed `POST /download` the deadline is rearmed per chunk, but it still bounds
+  each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link: measured
+  5/10 aborts at the shipped 10 s below ~1 Mbit/s against 0/5 at 120 s on the same shaper. Size it
+  against the slowest link that must be able to complete an upgrade
+  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes))
 
 #### remoted.http_request_timeout
 
@@ -672,9 +677,11 @@ Maximum simultaneous HTTPS connections.
 - **Allowed values:** Integer from `1` to `65536`
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
-  `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a transfer open
-  indefinitely and there is no per-stream limiter. A mass upgrade (the whole fleet fetching a WPK
-  at once, many over slow links) is therefore bounded only by this value. Started transfers and
+  `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
+  a slot for as long as the transfer needs. A slow one does not get the same freedom: below roughly
+  1 Mbit/s the per-chunk write deadline is what aborts the transfer (see
+  [Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). A mass upgrade (the whole fleet
+  fetching a WPK at once, many over slow links) is therefore bounded only by this value. Started transfers and
   offered bytes are visible as `remoted.download.*` in
   [`GET /metrics`](metrics.md#downloads--remoteddownload).
 
