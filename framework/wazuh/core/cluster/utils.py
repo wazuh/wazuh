@@ -28,7 +28,7 @@ logger = logging.getLogger('wazuh')
 api_operation_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_operation_lock")
 
 
-def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
+def read_cluster_config(config_file=common.OSSEC_CONF) -> typing.Dict:
     """Read cluster configuration from wazuh-manager.conf.
 
     If some fields are missing in the wazuh-manager.conf cluster configuration, they are replaced
@@ -39,8 +39,6 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     ----------
     config_file : str
         Path to configuration file.
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
 
     Returns
     -------
@@ -59,7 +57,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
     except WazuhException as e:
             if e.code == 1106:
                 # If no cluster configuration is present in wazuh configuration file, return the default configuration.
