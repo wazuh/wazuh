@@ -103,7 +103,8 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_wazuh_conf:
+  valid_wazuh_conf: |
+    <!-- etc/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -115,31 +116,39 @@ variables:
 
       <remote>
         <legacy>
+          <enabled>yes</enabled>
           <port>1514</port>
           <protocol>tcp</protocol>
           <local_ip>0.0.0.0</local_ip>
         </legacy>
       </remote>
 
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-
       <vulnerability-detection>
         <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
+
+      <cluster>
+        <name>wazuh</name>
+        <node_name>worker1</node_name>
+        <node_type>worker</node_type>
+        <key>9d273b53510fef702b54a92e9cffc82e</key>
+        <port>1516</port>
+        <bind_addr>0.0.0.0</bind_addr>
+        <nodes>
+          <node>wazuh-master</node>
+        </nodes>
+      </cluster>
     </wazuh_config>
 
-  invalid_wazuh_conf:
+  invalid_wazuh_conf: |
+    <!-- Well-formed XML that violates the schema: use_password is a boolean (1130 at /auth/use_password) -->
     <wazuh_config>
-      <global>
-      </global>
+      <auth>
+        <use_password>maybe</use_password>
+      </auth>
 
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
-
-      <remote>
+      <cluster>
+        <key>9d273b53510fef702b54a92e9cffc82e</key>
+      </cluster>
     </wazuh_config>

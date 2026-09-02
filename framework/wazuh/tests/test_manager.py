@@ -684,9 +684,9 @@ _EFFECTIVE_STUB = {'cluster': {'name': 'wazuh', 'node_name': 'master-node', 'nod
 
 @pytest.mark.parametrize('raw', [True, False])
 @patch('wazuh.core.configuration.load_manager_conf', return_value=_EFFECTIVE_STUB)
-def test_read_ossec_conf(load_mock, raw):
-    """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf(raw=raw)
+def test_read_manager_conf(load_mock, raw):
+    """Tests read_manager_conf() function works as expected"""
+    result = read_manager_conf(raw=raw)
 
     if raw:
         assert isinstance(result, str), 'No expected result type'
@@ -696,16 +696,16 @@ def test_read_ossec_conf(load_mock, raw):
 
 
 @patch('wazuh.core.configuration.load_manager_conf', return_value=_EFFECTIVE_STUB)
-def test_read_ossec_con_ko(load_mock):
-    """Tests read_ossec_conf() function returns an error"""
-    result = read_ossec_conf(section='test')
+def test_read_manager_conf_ko(load_mock):
+    """Tests read_manager_conf() function returns an error"""
+    result = read_manager_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
 # ---------------------------------------------------------------------------
-# Tests for cluster.key masking in read_ossec_conf (CVE fix)
+# Tests for cluster.key masking in read_manager_conf (CVE fix)
 # ---------------------------------------------------------------------------
 
 _MANAGER_CONF_WITH_CLUSTER_KEY = """\
@@ -721,9 +721,9 @@ _MANAGER_CONF_WITH_CLUSTER_KEY = """\
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
-    result = read_ossec_conf(raw=True)
+def test_read_manager_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
+    """read_manager_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' not in result
@@ -732,9 +732,9 @@ def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perm
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_no_masking_for_admin(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) returns the real cluster key for admin users with update_config."""
-    result = read_ossec_conf(raw=True)
+def test_read_manager_conf_raw_no_masking_for_admin(mock_file, mock_perms):
+    """read_manager_conf(raw=True) returns the real cluster key for admin users with update_config."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' in result
@@ -742,9 +742,9 @@ def test_read_ossec_conf_raw_no_masking_for_admin(mock_file, mock_perms):
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
+def test_read_manager_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
     """Masking cluster.key must not corrupt other fields in the configuration."""
-    result = read_ossec_conf(raw=True)
+    result = read_manager_conf(raw=True)
 
     assert '<name>wazuh</name>' in result
     assert '<node_name>master-node</node_name>' in result
@@ -779,16 +779,16 @@ _UPDATE_PATCHES = [
 
 @pytest.fixture
 def update_mocks():
-    """Every collaborator of update_ossec_conf() mocked, keyed by function name."""
+    """Every collaborator of update_manager_conf() mocked, keyed by function name."""
     from contextlib import ExitStack
     with ExitStack() as stack:
         yield {target.rsplit('.', 1)[1]: stack.enter_context(patch(target, **kwargs)) for target, kwargs in _UPDATE_PATCHES}
 
 
-def test_update_ossec_conf(update_mocks):
-    """update_ossec_conf() validates the new text (syntax, schema, protected sections), writes it and validates the file."""
+def test_update_manager_conf(update_mocks):
+    """update_manager_conf() validates the new text (syntax, schema, protected sections), writes it and validates the file."""
     new_conf = "<wazuh_config>\n  <cluster>\n    <name>wazuh</name>\n  </cluster>\n</wazuh_config>\n"
-    result = update_ossec_conf(new_conf=new_conf)
+    result = update_manager_conf(new_conf=new_conf)
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
@@ -808,15 +808,15 @@ def test_update_ossec_conf(update_mocks):
      WazuhError(1127, '/indexer'), 1127),
     ("<wazuh_config><cluster><name>wazuh</name></cluster></wazuh_config>", 'validate_manager_conf', None, 1125),
 ])
-def test_update_ossec_conf_ko(update_mocks, new_conf, failing, error, expected_code):
-    """update_ossec_conf() reports the first failing check, never writes when the text is rejected and restores the
+def test_update_manager_conf_ko(update_mocks, new_conf, failing, error, expected_code):
+    """update_manager_conf() reports the first failing check, never writes when the text is rejected and restores the
     backup when the written file is refused by the validator."""
     if failing == 'validate_manager_conf':
         update_mocks[failing].return_value = {'status': 'ERROR'}
     elif failing:
         update_mocks[failing].side_effect = error
 
-    result = update_ossec_conf(new_conf=new_conf)
+    result = update_manager_conf(new_conf=new_conf)
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == expected_code
