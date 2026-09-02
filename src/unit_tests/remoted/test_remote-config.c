@@ -23,13 +23,9 @@
 #include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
 
-int w_remoted_get_net_protocol(const char * content);
-
-void w_remoted_parse_agents(XML_NODE node, remoted * logr);
-
-int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
-
-int w_remoted_parse_https(XML_NODE node, remoted * logr);
+int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len);
+int w_remoted_validate_tls13_ciphers(const char * ciphers);
+int w_remoted_validate_global_prefix(const char * prefix);
 
 int Read_Remote_JSON(const cJSON *remote, void *d1);
 
@@ -57,42 +53,11 @@ static cJSON *mock_remote_section(void) {
 }
 
 typedef struct test_state {
-    OS_XML xml;
     remoted *logr;
 } test_state;
 
 /* setup/teardown */
 
-static xml_node *create_xml_node(const char *element, const char *content) {
-    xml_node *node = calloc(1, sizeof(xml_node));
-    if (element) node->element = strdup(element);
-    if (content) node->content = strdup(content);
-    return node;
-}
-
-static xml_node **create_node_array(int count, ...) {
-    va_list args;
-    xml_node **nodes = calloc(count + 1, sizeof(xml_node *));
-
-    va_start(args, count);
-    for (int i = 0; i < count; i++) {
-        nodes[i] = va_arg(args, xml_node *);
-    }
-    va_end(args);
-
-    nodes[count] = NULL;
-    return nodes;
-}
-
-static void free_node_array(xml_node **nodes) {
-    if (!nodes) return;
-    for (int i = 0; nodes[i]; i++) {
-        free(nodes[i]->element);
-        free(nodes[i]->content);
-        free(nodes[i]);
-    }
-    free(nodes);
-}
 static remoted *create_remoted() {
     remoted *logr = calloc(1, sizeof(remoted));
     logr->port = 0;
@@ -133,185 +98,6 @@ static int teardown(void **state) {
 
 /* tests */
 
-// Test w_remoted_get_net_protocol
-
-void test_w_remoted_get_net_protocol_content_NULL(void **state)
-{
-    const char * content = NULL;
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
-
-}
-
-void test_w_remoted_get_net_protocol_content_empty(void **state)
-{
-    const char * content = "";
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value '' for 'protocol'.");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
-
-}
-
-void test_w_remoted_get_net_protocol_content_ignore_values(void **state)
-{
-    const char * content = "hello, world";
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'hello' for 'protocol'.");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'world' for 'protocol'.");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
-
-}
-
-void test_w_remoted_get_net_protocol_content_tcp(void **state)
-{
-    const char * content = "tcp";
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, 1);
-
-}
-
-void test_w_remoted_get_net_protocol_content_udp(void **state)
-{
-    const char * content = "udp";
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, 2);
-
-}
-
-void test_w_remoted_get_net_protocol_content_tcp_udp(void **state)
-{
-    const char * content = "tcp,udp";
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, 3);
-
-}
-
-void test_w_remoted_get_net_protocol_content_udp_tcp(void **state)
-{
-    const char * content = "udp, tcp";
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, 3);
-
-}
-
-void test_w_remoted_get_net_protocol_content_mix(void **state)
-{
-    const char * content = "hello, tcp, , world, udp";
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'hello' for 'protocol'.");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value '' for 'protocol'.");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'world' for 'protocol'.");
-
-    int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, 3);
-
-}
-
-// Test w_remoted_parse_agents
-
-static void test_w_remoted_parse_agents_no(void **state) {
-    logr.allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
-    XML_NODE node;
-    os_calloc(2, sizeof(xml_node *), node);
-    os_calloc(1, sizeof(xml_node), node[0]);
-    os_strdup("allow_higher_versions", node[0]->element);
-    os_strdup("no", node[0]->content);
-    node[1] = NULL;
-
-    w_remoted_parse_agents(node, &logr);
-    assert_false(logr.allow_higher_versions);
-
-    os_free(node[0]->element);
-    os_free(node[0]->content);
-    os_free(node[0]);
-    os_free(node);
-}
-
-static void test_w_remoted_parse_agents_yes(void **state) {
-    logr.allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
-    XML_NODE node;
-
-    os_calloc(2, sizeof(xml_node *), node);
-    os_calloc(1, sizeof(xml_node), node[0]);
-    os_strdup("allow_higher_versions", node[0]->element);
-    os_strdup("yes", node[0]->content);
-    node[1] = NULL;
-
-    w_remoted_parse_agents(node, &logr);
-    assert_true(logr.allow_higher_versions);
-
-    os_free(node[0]->element);
-    os_free(node[0]->content);
-    os_free(node[0]);
-    os_free(node);
-}
-
-static void test_w_remoted_parse_agents_invalid_value(void **state) {
-    logr.allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
-    XML_NODE node;
-
-    os_calloc(2, sizeof(xml_node *), node);
-    os_calloc(1, sizeof(xml_node), node[0]);
-    os_strdup("allow_higher_versions", node[0]->element);
-    os_strdup("invalid_value", node[0]->content);
-    node[1] = NULL;
-
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(9001): Ignored invalid value 'invalid_value' for 'allow_higher_versions'.");
-    w_remoted_parse_agents(node, &logr);
-    assert_int_equal(logr.allow_higher_versions, REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT);
-
-    os_free(node[0]->element);
-    os_free(node[0]->content);
-    os_free(node[0]);
-    os_free(node);
-}
-
-static void test_w_remoted_parse_agents_invalid_element(void **state) {
-    logr.allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
-
-    XML_NODE node;
-
-    os_calloc(2, sizeof(xml_node *), node);
-    os_calloc(1, sizeof(xml_node), node[0]);
-    os_strdup("invalid_element", node[0]->element); // Use an invalid element name
-    os_strdup("no", node[0]->content);
-    node[1] = NULL;
-
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'invalid_element'.");
-    w_remoted_parse_agents(node, &logr);
-    assert_int_equal(logr.allow_higher_versions, REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT);
-
-    os_free(node[0]->element);
-    os_free(node[0]->content);
-    os_free(node[0]);
-    os_free(node);
-}
-
-/* Mocks every internal option RemotedConfig reads, in order, ending with
- * legacy_task_polling_interval returning `legacy_value` (after asserting the
- * call site still passes min=300/max=86400/default=900). Shared by the main
- * prime-number test and the dedicated legacy_task_polling_interval boundary
- * test so the latter doesn't have to duplicate ~40 unrelated will_return calls. */
 static void mock_remoted_internal_option_values(int legacy_value) {
     // FIM limits
     will_return(__wrap_getDefine_Int_default, 1);
@@ -390,7 +176,7 @@ static void mock_remoted_internal_options(int legacy_value) {
     will_return(__wrap_w_mconf_section, mock_remote_section());
     expect_string(__wrap_w_mconf_section, section, "global");
     will_return(__wrap_w_mconf_section,
-                cJSON_Parse("{\"agents_disconnection_time\":900,\"agents_disconnection_alert_time\":0}"));
+                cJSON_Parse("{\"agents_disconnection_time\":900}"));
 
     // Mock get_node_name and get_cluster_name calls
     will_return(__wrap_get_node_name, NULL);
@@ -409,7 +195,7 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(ret, 1);
 
     // verification_mode must start UNSET (not NONE/0), so a later absent
-    // <https><verification_mode> stays distinguishable from an explicit "none".
+    // https.verification_mode stays distinguishable from an explicit "none".
     assert_int_equal(logr.https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
 
     // Now validate getRemoteInternalConfig returns the correct values
@@ -487,7 +273,7 @@ static void test_remoted_legacy_task_polling_interval_bounds(void **state) {
     os_free(logr.lip);
 }
 
-/* docs/ref/modules/remoted/configuration.md documents that <queue_size> above
+/* docs/ref/modules/remoted/configuration.md documents that queue_size above
  * 262144 logs a warning (confirmed in config.c: `if (cfg->queue_size > 262144)`),
  * which had no test anywhere in this file. s_mconf_queue_size puts that value in the
  * mocked `remote` section, since the loader itself is mocked out here. */
@@ -528,879 +314,58 @@ static void test_remoted_queue_size_at_threshold_does_not_warn(void **state) {
     os_free(logr.lip);
 }
 
-// Test w_remoted_parse_legacy
 
-static void test_w_remoted_parse_legacy_valid_port(void **state) {
-    test_state *ts = *state;
+/* Validators shared with Read_Remote_JSON(), exercised directly now that the XML reader is gone. */
 
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("port", "1514")
-    );
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->port, 1514);
-
-    free_node_array(nodes);
+static void test_w_remoted_validate_global_prefix_accepts_usable_prefixes(void **state) {
+    (void) state;
+    assert_int_equal(w_remoted_validate_global_prefix("/"), OS_SUCCESS);
+    assert_int_equal(w_remoted_validate_global_prefix("/wazuh-manager-5/"), OS_SUCCESS);
+    assert_int_equal(w_remoted_validate_global_prefix("/a/b_c.d~e"), OS_SUCCESS);
 }
 
-static void test_w_remoted_parse_legacy_invalid_port(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("port", "-1")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'port': -1.");
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_int_equal(ts->logr->port, 0);
-
-    free_node_array(nodes);
+static void test_w_remoted_validate_global_prefix_rejects_empty_and_relative(void **state) {
+    (void) state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: the value cannot be empty.");
+    assert_int_equal(w_remoted_validate_global_prefix(""), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: the value cannot be empty.");
+    assert_int_equal(w_remoted_validate_global_prefix(NULL), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: 'wazuh' must start with '/'.");
+    assert_int_equal(w_remoted_validate_global_prefix("wazuh"), OS_INVALID);
 }
 
-static void test_w_remoted_parse_legacy_connection_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("connection", "secure")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'connection'.");
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
+static void test_w_remoted_validate_global_prefix_rejects_bad_chars_and_segments(void **state) {
+    (void) state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid character '?' in the 'remote.https.global_prefix' option: allowed "
+                  "characters are A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.");
+    assert_int_equal(w_remoted_validate_global_prefix("/a?b"), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: '/a//b' contains an empty path segment ('//').");
+    assert_int_equal(w_remoted_validate_global_prefix("/a//b"), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: '/a/../b' contains a '.' or '..' path segment.");
+    assert_int_equal(w_remoted_validate_global_prefix("/a/../b"), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.global_prefix' option: '/./a' contains a '.' or '..' path segment.");
+    assert_int_equal(w_remoted_validate_global_prefix("/./a"), OS_INVALID);
 }
 
-static void test_w_remoted_parse_legacy_allowed_ips_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("allowed-ips", "x")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'allowed-ips'.");
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
+static void test_w_remoted_validate_tls13_ciphers_accepts_and_rejects(void **state) {
+    (void) state;
+    assert_int_equal(w_remoted_validate_tls13_ciphers("TLS_AES_256_GCM_SHA384"), OS_SUCCESS);
+    assert_int_equal(w_remoted_validate_tls13_ciphers("TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"), OS_SUCCESS);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.ciphers' option: expected TLS 1.3 cipher suite names.");
+    assert_int_equal(w_remoted_validate_tls13_ciphers(""), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'remote.https.ciphers' option: 'TLS_AES_256_GCM_SHA384::TLS_CHACHA20_POLY1305_SHA256' "
+                  "has an empty cipher suite name.");
+    assert_int_equal(w_remoted_validate_tls13_ciphers("TLS_AES_256_GCM_SHA384::TLS_CHACHA20_POLY1305_SHA256"), OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite 'ECDHE-RSA-AES128-GCM-SHA256' in the 'remote.https.ciphers' option.");
+    assert_int_equal(w_remoted_validate_tls13_ciphers("ECDHE-RSA-AES128-GCM-SHA256:TLS_AES_256_GCM_SHA384"), OS_INVALID);
 }
 
-static void test_w_remoted_parse_legacy_denied_ips_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("denied-ips", "x")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'denied-ips'.");
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
+static void test_w_remoted_https_check_max_len_boundary(void **state) {
+    (void) state;
+    assert_int_equal(w_remoted_https_check_max_len("certificate", "abc", 3), OS_SUCCESS);
+    expect_string(__wrap__merror, formatted_msg, "Value for 'remote.https.certificate' exceeds the maximum length of 3 characters.");
+    assert_int_equal(w_remoted_https_check_max_len("certificate", "abcd", 3), OS_INVALID);
 }
-
-static void test_w_remoted_parse_legacy_enabled_yes(void **state) {
-    test_state *ts = *state;
-    ts->logr->legacy_enabled = false;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("enabled", "yes")
-    );
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_true(ts->logr->legacy_enabled);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_legacy_enabled_no(void **state) {
-    test_state *ts = *state;
-    ts->logr->legacy_enabled = true;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("enabled", "no")
-    );
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_false(ts->logr->legacy_enabled);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_legacy_enabled_invalid(void **state) {
-    test_state *ts = *state;
-    ts->logr->legacy_enabled = true;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("enabled", "maybe")
-    );
-
-    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'maybe' for 'enabled'.");
-
-    int result = w_remoted_parse_legacy(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_true(ts->logr->legacy_enabled);
-
-    free_node_array(nodes);
-}
-
-// Test w_remoted_parse_https
-
-static void test_w_remoted_parse_https_valid_full(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(9,
-        create_xml_node("port", "9443"),
-        create_xml_node("bind_addr", "0.0.0.0"),
-        create_xml_node("global_prefix", "/wazuh-manager/"),
-        create_xml_node("certificate", "etc/remoted-https/server.crt"),
-        create_xml_node("key", "etc/remoted-https/server.key"),
-        create_xml_node("ca", "etc/remoted-https/ca.crt"),
-        create_xml_node("verification_mode", "certificate"),
-        create_xml_node("ciphers", "TLS_AES_256_GCM_SHA384"),
-        create_xml_node("max_body_size", "50MB")
-    );
-
-    expect_string(__wrap_OS_IsValidIP, ip_address, "0.0.0.0");
-    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
-    will_return(__wrap_OS_IsValidIP, 1);
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.port, 9443);
-    assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
-    assert_string_equal(ts->logr->https.certificate, "etc/remoted-https/server.crt");
-    assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
-    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
-    assert_string_equal(ts->logr->https.ciphers, "TLS_AES_256_GCM_SHA384");
-    assert_int_equal(ts->logr->https.max_body_size, 50L * 1024 * 1024);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_port(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("port", "70000")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1205): Invalid port number: '70000'.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_bind_addr(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("bind_addr", "not-an-ip")
-    );
-
-    expect_string(__wrap_OS_IsValidIP, ip_address, "not-an-ip");
-    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
-    will_return(__wrap_OS_IsValidIP, 0);
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1237): Invalid ip address: 'not-an-ip'.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-// global_prefix: valid values
-
-static void test_w_remoted_parse_https_global_prefix_valid(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/wazuh-manager/")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_root_identity(void **state) {
-    test_state *ts = *state;
-
-    // "/" is the explicit identity value: accepted, endpoints served unprefixed.
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_no_trailing_slash(void **state) {
-    test_state *ts = *state;
-
-    // Both spellings are accepted; trailing-slash normalization is the C++ side's job.
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/wazuh-manager")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_multi_segment(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "/edge/wazuh-5")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, "/edge/wazuh-5");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_max_len_boundary(void **state) {
-    test_state *ts = *state;
-
-    // Exactly REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN (255) characters: the last accepted length
-    // (one less than the 256-byte C-ABI buffer, leaving room for the NUL).
-    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1];
-    value[0] = '/';
-    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN - 1);
-    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN] = '\0';
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", value)
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_string_equal(ts->logr->https.global_prefix, value);
-
-    free_node_array(nodes);
-}
-
-// global_prefix: invalid values (every one is fatal, so 'remoted -t' reports it)
-
-static void test_w_remoted_parse_https_global_prefix_too_long(void **state) {
-    test_state *ts = *state;
-
-    // One character over the limit: rejected by the shared max-len check, never truncated.
-    char value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 2];
-    value[0] = '/';
-    memset(value + 1, 'a', REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN);
-    value[REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN + 1] = '\0';
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", value)
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Value for '<remote><https><global_prefix>' exceeds the maximum length of 255 characters.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_null(ts->logr->https.global_prefix);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_empty(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid '<remote><https><global_prefix>' option: the value cannot be empty.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_null(ts->logr->https.global_prefix);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_no_leading_slash(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("global_prefix", "wazuh")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid '<remote><https><global_prefix>' option: 'wazuh' must start with '/'.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_null(ts->logr->https.global_prefix);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_global_prefix_empty_segment(void **state) {
-    test_state *ts = *state;
-
-    const char *values[] = { "//", "/a//b", NULL };
-    const char *messages[] = {
-        "Invalid '<remote><https><global_prefix>' option: '//' contains an empty path segment ('//').",
-        "Invalid '<remote><https><global_prefix>' option: '/a//b' contains an empty path segment ('//').",
-        NULL
-    };
-
-    for (int i = 0; values[i]; i++) {
-        xml_node **nodes = create_node_array(1,
-            create_xml_node("global_prefix", values[i])
-        );
-
-        expect_string(__wrap__merror, formatted_msg, messages[i]);
-
-        int result = w_remoted_parse_https(nodes, ts->logr);
-
-        assert_int_equal(result, OS_INVALID);
-        assert_null(ts->logr->https.global_prefix);
-
-        free_node_array(nodes);
-    }
-}
-
-static void test_w_remoted_parse_https_global_prefix_bad_chars(void **state) {
-    test_state *ts = *state;
-
-    // One representative per rejected class: query, space, percent-encoding (the prefix is
-    // matched byte-exactly against the wire, never decoded).
-    const char *values[] = { "/a?x=1", "/a b", "/a%20b", NULL };
-    const char *messages[] = {
-        "Invalid character '?' in the '<remote><https><global_prefix>' option: allowed characters are "
-        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
-        "Invalid character ' ' in the '<remote><https><global_prefix>' option: allowed characters are "
-        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
-        "Invalid character '%' in the '<remote><https><global_prefix>' option: allowed characters are "
-        "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
-        NULL
-    };
-
-    for (int i = 0; values[i]; i++) {
-        xml_node **nodes = create_node_array(1,
-            create_xml_node("global_prefix", values[i])
-        );
-
-        expect_string(__wrap__merror, formatted_msg, messages[i]);
-
-        int result = w_remoted_parse_https(nodes, ts->logr);
-
-        assert_int_equal(result, OS_INVALID);
-        assert_null(ts->logr->https.global_prefix);
-
-        free_node_array(nodes);
-    }
-}
-
-static void test_w_remoted_parse_https_global_prefix_dot_segment(void **state) {
-    test_state *ts = *state;
-
-    // Proxies dot-normalize request paths, so a '.'/'..' prefix could never match consistently.
-    const char *values[] = { "/./a", "/a/../b", "/a/..", NULL };
-
-    for (int i = 0; values[i]; i++) {
-        xml_node **nodes = create_node_array(1,
-            create_xml_node("global_prefix", values[i])
-        );
-
-        char message[256];
-        snprintf(message, sizeof(message),
-                 "Invalid '<remote><https><global_prefix>' option: '%s' contains a '.' or '..' path segment.",
-                 values[i]);
-        expect_string(__wrap__merror, formatted_msg, message);
-
-        int result = w_remoted_parse_https(nodes, ts->logr);
-
-        assert_int_equal(result, OS_INVALID);
-        assert_null(ts->logr->https.global_prefix);
-
-        free_node_array(nodes);
-    }
-}
-
-static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("verification_mode", "invalid_value")
-    );
-
-    // Rejected rather than ignored: silently defaulting an invalid verification_mode to 'none'
-    // would disable client-certificate verification on a typo.
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'verification_mode': invalid_value.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_ciphers(void **state) {
-    test_state *ts = *state;
-
-    // A TLS 1.2-style cipher string is rejected at parse time; left unchecked it would make the
-    // HTTPS server fail to start at runtime, past the point 'wazuh-manager-remoted -t' could catch it.
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("ciphers", "HIGH:!ADH")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid TLS 1.3 cipher suite 'HIGH' in the '<remote><https><ciphers>' option.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_dual_stack(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("dual_stack", "maybe")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'dual_stack': maybe.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_verification_mode_without_ca(void **state) {
-    test_state *ts = *state;
-
-    // <verification_mode> alone, no <ca>: no longer a hard error -- ca resolution
-    // (XML/env var/default) happens later in the C++ module, which the parser can't
-    // see, so the parser must not fail this. See M7 in the review history.
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("verification_mode", "certificate")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
-    assert_null(ts->logr->https.ca);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_verification_mode_full(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("verification_mode", "full")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("ca", "etc/remoted-https/ca.crt")
-    );
-
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "The '<remote><https><ca>' option is configured but '<verification_mode>' is not; "
-                  "defaulting '<verification_mode>' to 'certificate'.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
-    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_ca_with_explicit_none_verification_mode_not_overridden(void **state) {
-    test_state *ts = *state;
-
-    // <ca> and an EXPLICIT <verification_mode>none</verification_mode> together: the
-    // auto-upgrade special case only fires when verification_mode is still UNSET, so an
-    // explicit choice (even "none", which the operator may want e.g. while staging a CA
-    // file before enabling verification) must never be silently overridden, and no
-    // warning should be logged.
-    xml_node **nodes = create_node_array(2,
-        create_xml_node("ca", "etc/remoted-https/ca.crt"),
-        create_xml_node("verification_mode", "none")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_NONE);
-    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_minimal_block_no_ca_no_verification_mode_succeeds(void **state) {
-    test_state *ts = *state;
-
-    // Regression test: an <https> block that configures something other than
-    // verification_mode/ca must parse successfully with no warning at all -- this is
-    // the "HTTPS with no mTLS configured" scenario documented as the zero-config
-    // default, and previously broke when verification_mode's UNSET sentinel was
-    // introduced without updating this cross-field check.
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("port", "9443")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
-    assert_null(ts->logr->https.ca);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_max_body_size(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("max_body_size", "not-a-size")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'max_body_size': not-a-size.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_zero_max_body_size(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("max_body_size", "0")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'max_body_size': 0.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_negative_max_body_size(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("max_body_size", "-1024")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'max_body_size': -1024.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_max_body_size_unit_suffixes(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("max_body_size", "2KB")
-    );
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.max_body_size, 2L * 1024);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_ciphers_too_long(void **state) {
-    test_state *ts = *state;
-
-    char long_ciphers[REMOTED_HTTPS_CIPHERS_MAX_LEN + 2];
-    memset(long_ciphers, 'A', sizeof(long_ciphers) - 1);
-    long_ciphers[sizeof(long_ciphers) - 1] = '\0';
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("ciphers", long_ciphers)
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Value for '<remote><https><ciphers>' exceeds the maximum length of 255 characters.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_null(ts->logr->https.ciphers);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_certificate_too_long(void **state) {
-    test_state *ts = *state;
-
-    char long_certificate[REMOTED_HTTPS_CERTIFICATE_MAX_LEN + 2];
-    memset(long_certificate, 'A', sizeof(long_certificate) - 1);
-    long_certificate[sizeof(long_certificate) - 1] = '\0';
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("certificate", long_certificate)
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "Value for '<remote><https><certificate>' exceeds the maximum length of 511 characters.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-    assert_null(ts->logr->https.certificate);
-
-    free_node_array(nodes);
-}
-
-static void test_w_remoted_parse_https_invalid_element(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("invalid_element", "x")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'invalid_element'.");
-
-    int result = w_remoted_parse_https(nodes, ts->logr);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-// Read_remote tests
-
-static void test_read_remote_flat_legacy_option_rejected(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("port", "1514")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'port'.");
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_connection_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("connection", "secure")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'connection'.");
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_allowed_ips_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("allowed-ips", "x")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'allowed-ips'.");
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_denied_ips_section(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(1,
-        create_xml_node("denied-ips", "x")
-    );
-
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'denied-ips'.");
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, OS_INVALID);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_no_legacy_block_disables_legacy(void **state) {
-    test_state *ts = *state;
-
-    xml_node **nodes = create_node_array(0);
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, 0);
-    assert_false(ts->logr->legacy_enabled);
-    assert_null(ts->logr->lip);
-    assert_int_equal(ts->logr->port, 0);
-    assert_int_equal(ts->logr->proto, 0);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_legacy_block_present_defaults_applied(void **state) {
-    test_state *ts = *state;
-    ts->logr->legacy_enabled = true;
-
-    xml_node **nodes = create_node_array(0);
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, 0);
-    assert_true(ts->logr->legacy_enabled);
-    assert_non_null(ts->logr->lip);
-    assert_string_equal(ts->logr->lip, "127.0.0.1");
-    assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
-    assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_DEFAULT);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_explicit_values_cleared_when_disabled(void **state) {
-    test_state *ts = *state;
-    ts->logr->legacy_enabled = false;
-    ts->logr->port = 1514;
-    ts->logr->proto = REMOTED_NET_PROTOCOL_TCP;
-    os_strdup("127.0.0.1", ts->logr->lip);
-
-    xml_node **nodes = create_node_array(0);
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, 0);
-    assert_false(ts->logr->legacy_enabled);
-    assert_int_equal(ts->logr->port, 0);
-    assert_int_equal(ts->logr->proto, 0);
-    assert_null(ts->logr->lip);
-
-    free_node_array(nodes);
-}
-
-static void test_read_remote_local_ip_not_defaulted_for_ipv6(void **state) {
-    test_state *ts = *state;
-    ts->logr->ipv6 = 1;
-    ts->logr->legacy_enabled = true;
-
-    xml_node **nodes = create_node_array(0);
-
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
-
-    assert_int_equal(result, 0);
-    assert_null(ts->logr->lip);
-
-    free_node_array(nodes);
-}
-
-/* getRemoteConfig() -- what GET /manager/configuration?section=remote reports.
- *
- * These read the GLOBAL logr (remoted.c), not the per-test one the parser tests allocate, since
- * that is what the real function reports on. Each test sets only the fields it asserts and clears
- * the global afterwards, so no state leaks into the next one.
- *
- * Regression guard: this used to emit the pre-5.0 FLAT shape -- every option directly under the
- * connection object, plus a "connection":"secure" key for an option that no longer exists -- and
- * omitted the whole <https> block, so the manager's actual agent-facing listener was invisible to
- * the API. */
-/* Read_Remote_JSON(): the effective `remote` section of etc/wazuh-manager.conf (defaults applied by the
- * loader) poured into the same struct the XML reader fills. */
 
 static cJSON *json_or_fail(const char *text) {
     cJSON *json = cJSON_Parse(text);
@@ -1507,8 +472,8 @@ static void test_Read_Remote_JSON_ca_infers_certificate_mode(void **state) {
     cJSON *remote = json_or_fail("{\"https\":{\"certificate\":\"c.pem\",\"key\":\"k.pem\",\"ca\":\"ca.pem\"}}");
 
     expect_string(__wrap__mwarn, formatted_msg,
-                  "The '<remote><https><ca>' option is configured but '<verification_mode>' is not; "
-                  "defaulting '<verification_mode>' to 'certificate'.");
+                  "The 'remote.https.ca' option is configured but 'verification_mode' is not; "
+                  "defaulting 'verification_mode' to 'certificate'.");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
     assert_string_equal(ts->logr->https.ca, "ca.pem");
@@ -1547,7 +512,7 @@ static void test_Read_Remote_JSON_https_string_too_long(void **state) {
     cJSON *remote = json_or_fail(json);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Value for '<remote><https><bind_addr>' exceeds the maximum length of 255 characters.");
+                  "Value for 'remote.https.bind_addr' exceeds the maximum length of 255 characters.");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), OS_INVALID);
 
@@ -1569,7 +534,6 @@ static void test_RemotedConfig_loads_sections_from_mconf(void **state) {
     assert_string_equal(logr.lip, REMOTED_LEGACY_LOCAL_IP_DEFAULT);
     assert_int_equal(logr.queue_size, 131072);
     assert_int_equal(logr.global.agents_disconnection_time, 900);
-    assert_int_equal(logr.global.agents_disconnection_alert_time, 0);
 
     os_free(logr.lip);
 }
@@ -1626,7 +590,7 @@ static void test_getRemoteGlobalConfig_returns_effective_section(void **state) {
 
     expect_string(__wrap_w_mconf_section, section, "global");
     will_return(__wrap_w_mconf_section,
-                cJSON_Parse("{\"agents_disconnection_time\":900,\"agents_disconnection_alert_time\":0}"));
+                cJSON_Parse("{\"agents_disconnection_time\":900}"));
 
     cJSON *root = getRemoteGlobalConfig();
     cJSON *global = cJSON_GetObjectItem(root, "global");
@@ -1640,71 +604,18 @@ static void test_getRemoteGlobalConfig_returns_effective_section(void **state) {
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        // Tests
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_NULL),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_empty),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_ignore_values),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_tcp),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_udp),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_tcp_udp),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_udp_tcp),
-        cmocka_unit_test(test_w_remoted_get_net_protocol_content_mix),
-        cmocka_unit_test(test_w_remoted_parse_agents_no),
-        cmocka_unit_test(test_w_remoted_parse_agents_yes),
-        cmocka_unit_test(test_w_remoted_parse_agents_invalid_value),
-        cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
+        /* Internal options and post-load validation */
         cmocka_unit_test(test_remoted_internal_options_config),
         cmocka_unit_test(test_remoted_legacy_task_polling_interval_bounds),
         cmocka_unit_test(test_remoted_queue_size_above_threshold_warns),
         cmocka_unit_test(test_remoted_queue_size_at_threshold_does_not_warn),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_valid_port, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_invalid_port, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_connection_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_allowed_ips_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_denied_ips_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_yes, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_no, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_invalid, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_valid_full, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_port, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_valid, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_root_identity, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_trailing_slash, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_multi_segment, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_max_len_boundary, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_too_long, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_no_leading_slash, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_empty_segment, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_bad_chars, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_global_prefix_dot_segment, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_ciphers, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_dual_stack, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_without_ca, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_full, setup, teardown),
-        cmocka_unit_test_setup_teardown(
-            test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate, setup, teardown),
-        cmocka_unit_test_setup_teardown(
-            test_w_remoted_parse_https_ca_with_explicit_none_verification_mode_not_overridden, setup, teardown),
-        cmocka_unit_test_setup_teardown(
-            test_w_remoted_parse_https_minimal_block_no_ca_no_verification_mode_succeeds, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_max_body_size, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_zero_max_body_size, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_negative_max_body_size, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_max_body_size_unit_suffixes, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_ciphers_too_long, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_certificate_too_long, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_element, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_flat_legacy_option_rejected, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_no_legacy_block_disables_legacy, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_legacy_block_present_defaults_applied, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_explicit_values_cleared_when_disabled, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
+
+        /* Validators shared by Read_Remote_JSON() */
+        cmocka_unit_test(test_w_remoted_validate_global_prefix_accepts_usable_prefixes),
+        cmocka_unit_test(test_w_remoted_validate_global_prefix_rejects_empty_and_relative),
+        cmocka_unit_test(test_w_remoted_validate_global_prefix_rejects_bad_chars_and_segments),
+        cmocka_unit_test(test_w_remoted_validate_tls13_ciphers_accepts_and_rejects),
+        cmocka_unit_test(test_w_remoted_https_check_max_len_boundary),
 
         /* Read_Remote_JSON() -- the effective `remote` section of etc/wazuh-manager.conf */
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_effective_defaults, setup, teardown),

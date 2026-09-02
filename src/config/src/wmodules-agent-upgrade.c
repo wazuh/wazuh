@@ -22,7 +22,7 @@ static const char *XML_WAIT_FACTOR = "notification_wait_factor";
 static const char *XML_CA_VERIFICATION = "ca_verification";
 static const char *XML_CA_STORE = "ca_store";
 #else
-static const char *XML_WPK_REPOSITORY = "wpk_repository";
+static const char *XML_WPK_REPOSITORY = "wpk_repository";   // key of the `agent-upgrade` section
 #endif
 
 #ifdef CLIENT
@@ -63,13 +63,13 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
     }
     #endif
 
+    #ifdef CLIENT
     for (int i = 0; nodes && nodes[i]; i++)
     {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
         }
-        #ifdef CLIENT
         // Agent configurations
         else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
@@ -97,26 +97,17 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
             }
             OS_ClearNode(childs);
         }
-        #else
-        else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                data->enabled = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                data->enabled = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_AGENT_UPGRADE_CONTEXT.name);
-                return OS_INVALID;
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
-            os_free(data->manager_config.wpk_repository);
-            os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
-        }
-        #endif
         else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_AGENT_UPGRADE_CONTEXT.name);
         }
     }
+    #else
+    // The manager's own settings come from etc/wazuh-manager.conf (wm_agent_upgrade_read_json()). An
+    // <agent-upgrade> block only reaches this reader from an agent file (agent.conf), whose keys are
+    // for the agent to validate, so it is left alone here.
+    (void)xml;
+    (void)nodes;
+    #endif
 
     #ifdef CLIENT
     if (data->agent_config.enable_ca_verification) {

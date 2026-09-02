@@ -370,8 +370,8 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
 
+    cJSON_AddBoolToObject(wm_info, "enabled", task_config->enabled ? 1 : 0);
     if (task_config->enabled) {
-        cJSON_AddStringToObject(wm_info, "enabled", "yes");
         cJSON_AddNumberToObject(wm_info, "task_ttl",
             task_config->task_ttl > 0 ? task_config->task_ttl : WM_TASK_DEFAULT_TTL);
         cJSON_AddNumberToObject(wm_info, "cleanup_interval",
@@ -414,8 +414,6 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
 
             cJSON_AddItemToObject(wm_info, "recurring_tasks", tasks);
         }
-    } else {
-        cJSON_AddStringToObject(wm_info, "enabled", "no");
     }
     cJSON_AddItemToObject(root, "task-manager", wm_info);
 

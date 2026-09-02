@@ -135,7 +135,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 
 /**
- * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
+ * @brief maps logr's remote.https config, the `remoted.http_*` internal options,
  *        and the memory-management constants onto the C-ABI struct handed to the C++
  *        remoted_module
  *
@@ -153,7 +153,7 @@ STATIC void *current_timestamp(void *none);
 STATIC void * close_fp_main(void * args);
 
 /* Start every subsystem that only serves 4.x agents (queues, caches, the legacy AES keystore,
- * and every thread that only reads/writes them). No-op when <remote><legacy> is absent or
+ * and every thread that only reads/writes them). No-op when remote.legacy is disabled or
  * disabled. */
 static void start_legacy_subsystems(void);
 
@@ -353,17 +353,17 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
 
     if (auth_section != NULL && Read_Authd_JSON(auth_section, &authd_cfg) == 0) {
         // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
-        // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
+        // (enabled) unless auth.disabled: true is explicit -- see the Agent
         // enrollment chapter of remoted_module/README.md for the verified analysis.
         rm_config->enrollment_enabled = !authd_cfg.flags.disabled && authd_cfg.flags.remote_enrollment;
         rm_config->enroll_use_password = authd_cfg.flags.use_password;
         rm_config->enroll_use_source_ip = authd_cfg.flags.use_source_ip;
         // NOT logr->allow_higher_versions: that is a separate, independently configured
-        // <remote> setting used by /control. /enroll reads authd's own <agents> setting so
+        // `remote` setting used by /control. /enroll reads authd's own `agents` setting so
         // it agrees with legacy port 1515 on which agent versions are acceptable.
         rm_config->enroll_allow_higher_versions = authd_cfg.allow_higher_versions;
     } else {
-        // authd's <auth> block could not be parsed at all -- fail closed rather than
+        // authd's `auth` section could not be read at all -- fail closed rather than
         // silently enabling enrollment with unknown password/version requirements.
         rm_config->enrollment_enabled = false;
     }
@@ -392,7 +392,7 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
 /**
  * @brief Build the config struct passed to remoted_module_start(), combining the
  *        `remoted.http_*` internal options (see remoted_module_https_config()) with
- *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
+ *        the `remote.https` settings parsed into `logr`, plus the memory-management
  *        constants that are deliberately not internal options. Extracted out of
  *        HandleSecure() so it's unit-testable without starting the module.
  */
@@ -401,7 +401,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
     // own classic TCP/UDP port, already bound by the time we get here). Populated
-    // from <remote><https> when configured; otherwise left at 0 so the module falls
+    // from remote.https when configured; otherwise left at 0 so the module falls
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
@@ -603,8 +603,8 @@ void HandleSecure()
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
 
-    /* protocol is 0 when <remote><legacy> is absent/disabled -- Read_Remote() resets proto
-     * to 0 in that case even if <protocol> was explicitly set, so neither branch below
+    /* protocol is 0 when remote.legacy is disabled -- Read_Remote_JSON() resets proto
+     * to 0 in that case even if protocol was explicitly set, so neither branch below
      * adds a socket and the event loop just idles -- no separate legacy_enabled check
      * needed here. */
 
@@ -752,7 +752,7 @@ static void start_legacy_subsystems(void) {
 
 static void log_secure_startup_message(void) {
     if (!logr.legacy_enabled) {
-        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+        minfo(STARTUP_MSG " Legacy listener disabled (remote.legacy.enabled is false).",
             (int)getpid());
         return;
     }

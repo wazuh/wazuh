@@ -68,7 +68,7 @@ namespace
 
     // Zero-initialized C-ABI config, like remoted's `= {0}`. verification_mode is set to
     // UNSET (not left at the memset 0) because that's what remoted actually sends when
-    // <https><verification_mode> was never configured -- RemotedConfig() pre-initializes
+    // https.verification_mode was never configured -- RemotedConfig() pre-initializes
     // it to REMOTED_HTTPS_VERIFY_UNSET before parsing, and secure.c copies it through
     // unconditionally. 0 is reserved for an explicit <verification_mode>none</verification_mode>.
     remoted_module_config_t zeroedConfig()

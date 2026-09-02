@@ -17,6 +17,7 @@
 #include "wmodules.h"
 #include "config.h"
 #include "global-config.h"
+#include "mconf-config.h"
 #include "wm_task_manager.h"
 #include "wm_manager_task_schedules.h"
 
@@ -27,8 +28,8 @@
 #define WM_MANAGER_TASK_SCHEDULE_DELETE_OLD  "agent_delete_old"
 #define WM_MANAGER_TASK_SCHEDULE_LOG_ROTATE  "log_rotate_daily"
 
-/* The disconnection default lives here rather than in Read_Global because <global> is optional:
- * the struct has to carry a value when the stanza is absent. */
+/* The disconnection default lives here rather than in Read_Global_JSON because the effective
+ * document may be unavailable: the struct has to carry a value when the read fails. */
 #define WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME 900
 #define WM_MANAGER_TASK_DEFAULT_DAY_WAIT 10
 
@@ -91,13 +92,13 @@ const wm_manager_task_schedule_def* wm_manager_task_schedules_get(const char *sc
 }
 
 /**
- * @brief Read `<global><agents_disconnection_time>` from ossec.conf.
+ * @brief Read `agents_disconnection_time` from the effective `global` section.
  *
- * Its own read rather than a shared one: modulesd does not parse CGLOBAL anywhere else, and remoted
+ * Its own read rather than a shared one: modulesd does not read `global` anywhere else, and remoted
  * reads the same value into its own struct.
  *
- * A parse failure keeps the default instead of exiting: inside modulesd, merror_exit() here would
- * take down every other module for a `<global>` typo.
+ * A read failure keeps the default instead of exiting: inside modulesd, merror_exit() here would
+ * take down every other module for a `global` problem.
  *
  * @return Disconnection time in seconds, always positive.
  */
@@ -106,15 +107,20 @@ STATIC int wm_manager_task_disconnection_time(void) {
 
     global.agents_disconnection_time = WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME;
 
-    if (ReadConfig(CGLOBAL, WAZUHCONF, &global, NULL) < 0) {
+    cJSON *section = w_mconf_section("global");
+
+    if (section == NULL || Read_Global_JSON(section, &global) < 0) {
         mtwarn(WM_TASK_MANAGER_LOGTAG,
-               "Cannot read the <global> configuration; the agent disconnection sweep will run every %d seconds.",
+               "Cannot read the global configuration; the agent disconnection sweep will run every %d seconds.",
                WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME);
+        cJSON_Delete(section);
         return WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME;
     }
 
-    // Read_Global already rejects a value below 1, leaving the struct untouched, so this covers a
-    // caller mistake rather than operator input.
+    cJSON_Delete(section);
+
+    // Read_Global_JSON already rejects a value below 1, leaving the struct untouched, so this covers
+    // a caller mistake rather than operator input.
     return global.agents_disconnection_time > 0 ? (int)global.agents_disconnection_time
                                                 : WM_MANAGER_TASK_DEFAULT_DISCONNECTION_TIME;
 }
