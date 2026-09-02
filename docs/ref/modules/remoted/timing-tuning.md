@@ -36,7 +36,7 @@ Each hop has its own clock, and they are not nested inside one another:
 | Downstream connect | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) | 2 s | `503` |
 | Downstream body write | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) | 5 s | `503` |
 | Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` |
-| Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed; **rearmed per chunk** on a streamed `POST /download` |
+| Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed. Rearmed per chunk on a streamed `POST /download`, which does **not** make a slow transfer safe: below ~1 Mbit/s it is what aborts WPK downloads (§5) |
 | The whole request, from the agent's side | `agent.https_request_timeout` / `agent.https_stateful_timeout` | 10 s / 90 s | attempt consumed, retry after backoff |
 
 Two properties of that table are where most tuning mistakes start:
@@ -73,8 +73,8 @@ Check these before changing anything. Each one has a measured failure mode.
 | # | Rule | What breaks when violated |
 |---|---|---|
 | 1 | [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) < ½ · `<global><agents_disconnection_time>` | live, answering agents flap to `disconnected` for part of every cycle (measured: ~30 s of every 120 s at 2× the threshold). The staleness monitord sees is the throttle **plus** the agent's `<client><notify_time>`, which the manager cannot know; remoted warns at startup from half upward |
-| 2 | `agent.https_request_timeout` > the downstream answer the manager is waiting for | the agent abandons a request the engine already ingested and retries it → duplicate events, ×(1+attempts) amplification (measured ×6 with defaults against a slow engine). `/stateless` has no dedup. At defaults the comparison is 10 s against a 5 s response deadline, with 12 s of worst-case downstream chain behind it: raise `downstream_response_timeout` and you cross into the duplicating regime without touching the agent |
-| 3 | `remoted.http_read_timeout` ≥ (largest body) / (slowest sustained uplink) | the manager closes the connection mid-upload, the agent sees a transport failure and burns an attempt, forever. Raising `agent.https_stateful_timeout` for a slow link **buys nothing on its own** — the read deadline is the one that fires first |
+| 2 | `agent.https_request_timeout` > the downstream answer the manager is waiting for | the agent abandons a request the engine already ingested and retries it → duplicate events (measured ×6 against a slow engine). `/stateless` carries no batch identity, so the engine cannot recognize a repeat, and the amplification is **not** bounded by the attempt budget: once those are spent the batch is kept and re-sent on the next flush tick, so it repeats until the downstream answers inside the deadline. At defaults the comparison is 10 s against a 5 s response deadline, with 12 s of worst-case downstream chain behind it: raise `downstream_response_timeout` and you cross into the duplicating regime without touching the agent |
+| 3 | `remoted.http_read_timeout` ≥ (largest body) / (slowest sustained uplink) | the manager closes the connection mid-upload, the agent sees a transport failure and burns an attempt, forever. Cuts track the knob to a tenth of a second (measured: 10.16 s at the shipped 10 s, 3.13 s at 3 s, none at 60 s) and raising `remoted.http_request_timeout` to 180 s does not move them, so raising `agent.https_stateful_timeout` for a slow link **buys nothing on its own** |
 | 4 | `agent.https_stateful_attempts × agent.https_stateful_timeout` + backoffs < 15 min | that ceiling is the agent's fixed session safety net (§4); past it, sessions overlap, duplicate and head-of-line block. Defaults sit at ≈8 min (5 × 90 s + ≤15 s of ladder) — do not raise both together |
 | 5 | proxy response timeout ≥ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) (30 s), proxy body limit ≥ `<remote><https><max_body_size>` (20 MiB) | the proxy cuts requests the manager would have completed, and — if it retries them on another manager — the same session is processed twice. See [load balancers §4.5](load-balancers/README.md#45-align-the-timeouts) |
 | 6 | `connect + write + response` ≤ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | the HTTP server tears the request down before the downstream deadline can fire, so the log names the wrong culprit. remoted warns at startup when the sum cannot be honored |
@@ -90,7 +90,7 @@ These have no option. They are the ceilings the tunable values have to fit under
 |---|---|---|
 | 60 s | Agent bearer token lifetime (`exp - iat`) of the `wazuh-agent+jwt` profile | the tolerated clock error is [`jwt_max_age`](configuration.md#remotedjwt_max_age) + [`jwt_clock_skew`](configuration.md#remotedjwt_clock_skew), nothing else |
 | 15 min | Agent-side ceiling on waiting for one `/stateful` session's verdict (`SESSION_RESPONSE_TIMEOUT`) | invariant 4 |
-| 60 s | I/O deadline on the agent's local `queue-sync` hand-off between a sync module and the HTTPS client | a module whose session cannot be spooled locally in 60 s reports the local transport as unavailable — a disk/agent problem, not a link problem |
+| 60 s | I/O deadline on the agent's local `queue-sync` hand-off between a sync module and the HTTPS client | the intake answers only once it has spooled the whole body, so on a slow link — where the previous upload is still in flight — this fires **before** the 90 s HTTPS budget ever binds: the module reports the local transport as unavailable, defers, and the next cycle restarts the session from zero |
 | 3 | Consecutive deferrals tolerated before a sync failure is logged at WARNING instead of INFO | `Synchronization of <table> deferred: ... Will retry next cycle.` at INFO is normal right after a restart; the same cause four cycles running escalates |
 | 5 × 10 s | Integrity-check retries on a `409` before the agent trusts a checksum mismatch | a full resync is not triggered by one disagreeing check |
 | 6 h / 5 min | remoted's control-registry entry TTL and eviction sweep | throttle state for an agent that stops talking is reclaimed on that cadence |
@@ -101,9 +101,12 @@ These have no option. They are the ceilings the tunable values have to fit under
 **Slow or satellite links.** Work the upload budget first (invariant 3): the ceiling is
 `http_read_timeout × link rate`, and inventory bodies compress ~16:1 on the wire, so the effective
 payload allowance is much larger than the raw figure suggests. The two casualties, in order, are
-(a) WPK downloads, which are binary and do not compress — budget `size / rate` against the agent's
-90 s `https_stateful_timeout` and against any proxy response timeout, since streamed responses are
-bounded per chunk on the manager but end-to-end at the proxy; and (b) large first-time inventory
+(a) WPK downloads, which are binary and do not compress, and where the manager gives up before the
+agent does: below roughly 0.8–1.1 Mbit/s it tears the stream down (isolated to
+[`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout): 5/10 aborts at the
+shipped 10 s, 0/5 at 120 s on the same shaper), so a real 11,977,198 B WPK needs ~1.06 Mbit/s to
+land inside the agent's 90 s and the pass/fail band is [0.90, 1.10) Mbit/s — non-deterministic
+near it, so one passing run does not clear a link class; and (b) large first-time inventory
 sessions, where the fix is reducing what one session carries rather than raising a timeout.
 Raise `remoted.http_read_timeout` and `agent.https_stateful_timeout` **together** — either alone
 is inert.
@@ -131,7 +134,10 @@ independent of `downstream_stateful_response_timeout`; what the knob bounds is t
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat
 at 3.4× the measured flush p99 under 3× overload — and never set it below 2× your deployment's
 flush p99: shedding grows fast below that (17% at 10 s, 50% at 2 s in overload). Raising it past
-23 s also breaks invariant 6.
+23 s also breaks invariant 6. When the sync server is what is saturated, add workers before you
+add queue: at 80-agent overload the shipped 4 workers with a 64 MiB budget shed 26,946 of 30,527
+sessions, while a 256 MiB budget shed nothing and moved p50 from 53 ms to 721 ms — a bigger queue
+converts shedding into latency, it does not add capacity.
 
 **Mass upgrades.** Every agent fetching a WPK at once is bounded only by
 `remoted.max_parallel_connections`; there is no per-transfer limiter, and a chunked transfer
