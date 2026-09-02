@@ -131,10 +131,10 @@ int main (int argc, char **argv) {
         os_free(cmd_path);
         return OS_INVALID;
     }
-    // Read the command diagnostic before closing, otherwise the reason is lost.
-    // The stream is drained to EOF: wpclose() closes the read end before waiting,
-    // so leaving output buffered would expose the child to SIGPIPE and make it
-    // look like a failure.
+    // Keep the first diagnostic line, then drain to EOF: wpclose() closes the read
+    // end before waiting, so output left buffered would give the child a SIGPIPE
+    // and make a successful command look like a failure. The drain runs
+    // unconditionally, since the first read may fail without reaching EOF.
     char cmd_output[OS_SIZE_1024];
     char discarded[OS_SIZE_1024];
     memset(cmd_output, '\0', OS_SIZE_1024);
@@ -143,9 +143,9 @@ int main (int argc, char **argv) {
         if (newline) {
             *newline = '\0';
         }
-        while (fgets(discarded, OS_SIZE_1024, wfd->file_out)) {
-            continue;
-        }
+    }
+    while (fgets(discarded, OS_SIZE_1024, wfd->file_out)) {
+        continue;
     }
 
     int wp_closefd = wpclose(wfd);
