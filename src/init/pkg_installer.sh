@@ -542,6 +542,19 @@ case "${SSL_VERIFICATION_MODE}" in
             abort_upgrade "2"
         fi
         ;;
+    none)
+        # Explicitly disabled -- nothing for this gate to check.
+        ;;
+    *)
+        # Neither ReadConfig() nor this gate's own default-resolution above can produce
+        # anything but full/certificate/system/none, so getting here means ossec.conf
+        # carries something else (a typo, wrong case, hand-edited garbage). Read_Agent_SSL()
+        # rejects that value case-sensitively too, so letting the upgrade proceed would just
+        # trade this loud failure for the new binary refusing to start after the old one is
+        # already gone.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}', which is not a value this agent recognizes (full, certificate, system, or none); interrupting upgrade." >> ./logs/upgrade.log
+        abort_upgrade "2"
+        ;;
 esac
 
 if [[ "$OS" == "Darwin" ]]; then

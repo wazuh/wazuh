@@ -375,6 +375,14 @@ set_agent_ssl_ca() {
         if [ $? -eq 0 ]; then
             cat "${TMP_INSERT}" > "${CONF_FILE}"
         else
+            # Deliberately a warning, not an install-aborting failure: unlike
+            # pkg_installer.sh's equivalent pin_ca() failure during an upgrade (which
+            # aborts, because there is a working prior version to protect), a fresh
+            # install has no working state yet to fall back to -- aborting here would
+            # just block the install outright over a recoverable edge case (a
+            # hand-edited <ssl> block in a shipped template, which is not expected).
+            # The agent still comes up under the resolved default (system); an operator
+            # who needs the CA can add <certificate_authorities> by hand afterward.
             echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
         fi
         rm -f "${TMP_INSERT}" "${TMP_SERVER}"

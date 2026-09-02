@@ -396,6 +396,31 @@ public function config()
 
         End If
 
+        ' Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>, mirroring
+        ' register_configure_agent.sh on Linux/macOS: <enrollment><server_ca_path> above is
+        ' parsed-but-ignored by the 5.x agent, since enrollment now reuses <agent><ssl> for
+        ' its TLS material instead of a CA path of its own.
+        If WAZUH_REGISTRATION_CA <> "" Then
+            If InStr(strText, "<verification_mode>system</verification_mode>") > 0 Then
+                ' 'system' trusts the OS store, not a configured CA: the agent refuses to
+                ' start with both set (validateTls() in moduleConfig.cpp), so writing a CA
+                ' here would just trade a silently-unused CA for a daemon that won't boot.
+            ElseIf InStr(strText, "<certificate_authorities>") > 0 Then
+                Set re = new regexp
+                re.Pattern = "<certificate_authorities>.*</certificate_authorities>"
+                re.Global = True
+                strText = re.Replace(strText, "<certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
+            ElseIf InStr(strText, "<ssl>") > 0 Then
+                strText = Replace(strText, "    <ssl>", "    <ssl>" & vbCrLf & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
+            Else
+                ssl_block = "    <ssl>" & vbCrLf
+                ssl_block = ssl_block & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>" & vbCrLf
+                ssl_block = ssl_block & "    </ssl>" & vbCrLf
+                ssl_block = ssl_block & "  </agent>" & vbCrLf
+                strText = Replace(strText, "  </agent>", ssl_block)
+            End If
+        End If
+
         ' Writing the ossec.conf file
         Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
         objFile.WriteLine strText
