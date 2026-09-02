@@ -422,6 +422,15 @@ endif()
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+# Manager only: cluster_utils.c and the manager branch of os_logging_config() read the effective
+# etc/wazuh-manager.conf through the mconf hook (the tests register their own provider).
+if(${TARGET} STREQUAL "manager")
+list(APPEND shared_tests_names "test_cluster_utils")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_names "test_logging_config")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
