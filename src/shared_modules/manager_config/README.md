@@ -7,8 +7,16 @@ class (`manager_config.hpp`). It replaces the pseudo-XML `ReadConfig`/`os_xml` p
 readers of the manager (`<logging>`, `<cluster>`, `<indexer>`). `agent.conf` and the agent stay on
 `os_xml`.
 
-Nothing consumes the library yet: the CLI (`bin/wazuh-manager-conf`), the libwazuh hook (`w_mconf_*`), the
-daemons, the engine and the Python framework switch to it in the following stages.
+Consumers: `bin/wazuh-manager-conf` (also run by the installer to validate the generated file); the C
+daemons remoted, authd, wazuh-db and modulesd through libconfig's `w_mconf_*()`
+(`src/config/src/mconf-config.c`: one load per process without file checks, `-t` validates with them,
+`getconfig` returns the effective sections); the cluster getters and the logging format inside libwazuh
+through the `w_mconf_hook_*` provider; the engine (`wazuh-manager-analysisd`) through the C++ API —
+`src/engine/source/base/src/managerConfig.cpp` links the `manager_config` target, loads the document
+once and registers it as the section provider of `libwazuhshared.so`; `wazuh-server.sh` (`validate`
+before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); and the Python framework
+(`wazuh.core.manager_conf` consumes `dump`/`validate` of the CLI — there is no second implementation of
+the language).
 
 ## Requirements
 
@@ -40,7 +48,7 @@ daemons, the engine and the Python framework switch to it in the following stage
 - **Validate the raw document, then fill defaults, then check semantics.** The effective document may therefore contain
   values the schema would reject on input (e.g. `indexer.hosts: []` when the section is absent): consumers decide whether
   an absent section is fatal.
-- **Defaults algorithm** (mirrored in Python): for every property of an object schema missing in the document, insert its
+- **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
   object properties. Options without `default` (`verification_mode`, `ciphers`, `max_body_size`, `dual_stack`) stay absent:
   absence is meaningful ("module default / inferred").

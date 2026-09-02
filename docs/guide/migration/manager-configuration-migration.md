@@ -82,6 +82,28 @@ Replace `<ossec_config>` with `<wazuh_config>` throughout the file.
 </wazuh_config>
 ```
 
+### Strict XML
+
+5.0 parses `wazuh-manager.conf` as **well-formed XML** validated against a JSON Schema
+(`etc/wazuh-manager.schema.json`; `bin/wazuh-manager-conf validate` reports the same verdict the
+daemons apply). Constructs the 4.x parser tolerated are now rejected at startup, each reported as
+`(1244): Invalid configuration at '<pointer or file>': <detail>`:
+
+- **A single root.** Multiple sibling `<wazuh_config>` blocks are no longer merged — keep one root.
+- **No raw `&` or `<` in values.** Escape them as `&amp;` and `&lt;`. XML entities are now **decoded**:
+  a value written `&amp;` reaches the daemons as `&` (4.x delivered the literal `&amp;`).
+- **`<!-- -->` comments only.** The legacy `<! ... !>` comment form is a syntax error, and `--` inside
+  a comment is rejected.
+- **No `<var>` definitions** (they had no effect on the manager's own configuration in 4.x).
+- **Unknown options are fatal**, reported with their JSON pointer
+  (`/remote/connection: unknown option`), as are duplicated elements the schema declares unique.
+- **Booleans are `yes`/`no`**, checked strictly; numbers must be digits; every option is typed by the
+  schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
+- **`<cluster><key>` is required**: the section cannot be written without it (the installer always
+  generates one).
+- An **empty configuration file is valid**: every option takes its schema default
+  (`bin/wazuh-manager-conf dump` prints the resulting effective document).
+
 ### `<global>` section
 
 In 5.0 the `<global>` parser accepts exactly one element: `<agents_disconnection_time>`. **Every other element causes a startup error.** Remove all email, logging, and alert options before starting the manager.
@@ -183,7 +205,7 @@ rejected and the manager will not start; there is no automatic migration.
 The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
 
 - `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-authd` does not start.
-- `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an invalid element (`ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.`) and also blocks `wazuh-authd` from starting.
+- `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an unknown option (`ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [...]`) and blocks the manager from starting.
 
 **4.x:**
 ```xml

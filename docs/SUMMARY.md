@@ -48,6 +48,7 @@
   - [Installation](ref/getting-started/installation.md)
 - [Configuration](ref/configuration/README.md)
   - [Manager Configuration](ref/configuration/manager/README.md)
+    - [Manager Configuration Reference](ref/configuration/manager/reference.md)
   - [Agent Configuration](ref/configuration/agent/README.md)
 - [Modules](ref/modules/README.md)
   - [Active Response](ref/modules/active-response/README.md)
