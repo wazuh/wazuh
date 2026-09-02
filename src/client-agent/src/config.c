@@ -51,11 +51,11 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-    /* Resolved after parsing, once we know whether <certificate_authorities> was set
-     * (#38684): SYSTEM by default (verifies without requiring any <ssl> block, e.g.
-     * against cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was
-     * pinned without an explicit <verification_mode>. Never left UNSET past this
-     * function returning -- see the resolution below, after both ReadConfig() calls. */
+    /* Resolved after parsing, once we know whether <certificate_authorities> was set:
+     * SYSTEM by default (verifies without requiring any <ssl> block, e.g. against
+     * cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was pinned
+     * without an explicit <verification_mode>. Never left UNSET past this function
+     * returning -- see the resolution below, after both ReadConfig() calls. */
     agt->ssl.verification_mode = AGENT_VERIFY_UNSET;
 
     /* <config_report> ships enabled: the manager needs the periodic /config snapshot
@@ -109,9 +109,9 @@ int ClientConf(const char *cfgfile)
 #endif
 
     /* verification_mode is still UNSET whenever neither ossec.conf nor the shared
-     * remote config set <ssl><verification_mode> explicitly (#38684). Mirrors the
-     * manager's own inference (remote-config.c): a pinned CA without an explicit mode
-     * means the operator wants it verified, not silently unused. */
+     * remote config set <ssl><verification_mode> explicitly. Mirrors the manager's
+     * own inference (remote-config.c): a pinned CA without an explicit mode means the
+     * operator wants it verified, not silently unused. */
     if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
         if (agt->ssl.certificate_authorities != NULL) {
             mwarn("The '<ssl><certificate_authorities>' option is configured but "

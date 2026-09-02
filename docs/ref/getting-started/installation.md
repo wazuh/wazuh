@@ -433,9 +433,10 @@ A 5.0 agent enrolls over the **same** connection and TLS configuration it uses f
 connection to the legacy `authd` listener on port `1515`, so enrollment needs no address, port or
 certificate settings of its own.
 
-> The four variables below are still accepted so an existing deployment script keeps working, but a
-> 5.0 agent **ignores** them: they write `<enrollment>` options that were removed in 5.0. Point
-> `WAZUH_MANAGER` at the server and configure TLS once, for the whole connection.
+> The variables below are still accepted so an existing deployment script keeps working. The address
+> and port ones are genuinely ignored: enrollment always targets the configured manager endpoint now,
+> not a separate listener. `WAZUH_REGISTRATION_CA`, below, is the exception — it is read and does
+> take effect, since `<agent><ssl>` is where enrollment gets its TLS material from too.
 
 **`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
 Formerly the address of a separate enrollment server. Enrollment now always targets the configured manager endpoint.
@@ -452,9 +453,13 @@ sudo cat /var/wazuh-manager/etc/authd.pass
 
 Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
 
-**`WAZUH_REGISTRATION_CA`** *(ignored in 5.0)*\
-Formerly the CA used to verify the manager during enrollment. Configure the CA once for the whole
-connection, under `<agent><ssl><certificate_authorities>`.
+**`WAZUH_REGISTRATION_CA`**\
+Path to the CA used to verify the manager's certificate. Writes `<agent><ssl><certificate_authorities>`
+directly — the whole connection's TLS material, not just enrollment's, since 5.0 no longer has a
+separate enrollment connection. If `<verification_mode>` is not also set explicitly, the agent infers
+`certificate` from the presence of this CA (see [`verification_mode`](../modules/client/configuration.md#verification_mode)).
+Has no effect if `<verification_mode>` is already explicitly `system` in the shipped configuration,
+since the agent rejects that combination at runtime; a log line explains why in that case.
 
 **`WAZUH_REGISTRATION_CERTIFICATE`** *(ignored in 5.0)*\
 Formerly the agent's certificate for enrollment authentication. Use `<agent><ssl><certificate>`.

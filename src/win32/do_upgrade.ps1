@@ -384,8 +384,7 @@ function probe_server($server, $port, $endpoint) {
 # of WazuhProbeTrust::Always: succeeds only if the system trust store actually
 # verifies the manager's certificate. probe_server() cannot tell us this, since it
 # deliberately accepts any certificate so a plain reachability check never depends on
-# TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work post-upgrade
-# (#38684).
+# TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work post-upgrade.
 function probe_server_verified($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
@@ -429,6 +428,10 @@ function xml_block_present($block, $sub) {
 # script ships inside the WPK and runs standalone, with nothing to source. Only called
 # when certificate_authorities is not already configured, so it never overwrites an
 # operator-configured CA.
+#
+# Returns $false (and leaves ossec.conf untouched) if the insertion point was never
+# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
+# rather than silently reporting success with nothing actually pinned.
 function pin_ca($ca_path) {
     $conf_path = Join-Path $wazuhDir "ossec.conf"
     $lines = Get-Content $conf_path
@@ -457,7 +460,12 @@ function pin_ca($ca_path) {
         }
     }
 
+    if (-Not $inserted) {
+        return $false
+    }
+
     Set-Content -Path $conf_path -Value $output
+    return $true
 }
 
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
@@ -623,8 +631,8 @@ if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
 }
 
 # The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
-# posture the new agent boots under is exactly what's on disk now (#38684). A
-# verifying mode with no readable CA can never connect -- mirrors
+# posture the new agent boots under is exactly what's on disk now. A verifying mode
+# with no readable CA can never connect -- mirrors
 # w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
 # is gone, rather than leaving a freshly-upgraded host silently offline.
 $ssl_verification_mode = get_conf_value "agent" "ssl" "verification_mode"
@@ -677,8 +685,12 @@ if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificat
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     } elseif (Test-Path -PathType Leaf $default_ca_file) {
-        pin_ca $default_ca_file
-        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
+        if (pin_ca $default_ca_file) {
+            write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
+        } else {
+            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (unexpected <ssl> block formatting), interrupting upgrade." >> .\upgrade\upgrade.log
+            abort_upgrade "2"
+        }
     } else {
         write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"

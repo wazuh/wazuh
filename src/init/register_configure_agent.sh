@@ -275,6 +275,25 @@ agent_option_is_set() {
 
 }
 
+# Text content of a tag, comment-aware like agent_option_is_set -- empty if the tag
+# is absent or commented out.
+agent_option_value() {
+
+    awk -v tag="$1" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        match($0, "<" tag ">[^<]*</" tag ">") {
+            value = substr($0, RSTART + length(tag) + 2, RLENGTH - 2 * length(tag) - 5)
+            print value
+            exit
+        }
+        { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
+    ' "${CONF_FILE}"
+
+}
+
 # Set an option of the agent block, adding it when the shipped configuration does
 # not carry it. Options left at their default are no longer written to ossec.conf,
 # so edit_value_tag alone would find nothing to substitute and quietly do nothing.
@@ -295,7 +314,7 @@ set_agent_option() {
 
 }
 
-# Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities> (#38684).
+# Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>.
 # The <enrollment><server_ca_path> tag set_auto_enrollment_tag_value below still
 # writes is parsed-but-ignored by the 5.x agent -- enrollment now reuses
 # <agent><ssl> instead of its own CA -- so without this an operator who supplies a
@@ -305,6 +324,14 @@ set_agent_ssl_ca() {
     ca_path="$1"
 
     if [ -z "${ca_path}" ]; then
+        return
+    fi
+
+    # verification_mode=system trusts the OS store, not a configured CA: the agent
+    # refuses to start with both set (validateTls() in moduleConfig.cpp), so writing
+    # a CA here would just trade a silently-unused CA for a daemon that won't boot.
+    if [ "$(agent_option_value verification_mode)" = "system" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together." >> "${INSTALLDIR}/logs/ossec.log"
         return
     fi
 
@@ -340,7 +367,13 @@ set_agent_ssl_ca() {
                 if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
                 print
             }
-        ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+            END { if (!inserted) { exit 1 } }
+        ' "${CONF_FILE}" > "${TMP_INSERT}"
+        if [ $? -eq 0 ]; then
+            cat "${TMP_INSERT}" > "${CONF_FILE}"
+        else
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
+        fi
         rm -f "${TMP_INSERT}" "${TMP_SERVER}"
         return
     fi

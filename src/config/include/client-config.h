@@ -35,7 +35,7 @@ typedef struct agent_server {
  * FULL/CERT/NONE/SYSTEM mirror the module ABI's hc_verify_mode_t (bridge_map_verify_mode()
  * translates between them explicitly, so the two enums are free to diverge). UNSET is
  * agent-config-only: it never reaches the bridge, and only ever exists between ClientConf()
- * setting it and ClientConf() resolving it once <ssl> has been parsed (#38684) -- to
+ * setting it and ClientConf() resolving it once <ssl> has been parsed -- to
  * AGENT_VERIFY_CERT when <certificate_authorities> was configured without an explicit
  * <verification_mode> (mirrors the manager's own inference, remote-config.c), otherwise to
  * AGENT_VERIFY_SYSTEM, so a default install verifies without requiring any <ssl> block. */
@@ -52,7 +52,7 @@ typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
     char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
-    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default SYSTEM (#38684).
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default SYSTEM.
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 

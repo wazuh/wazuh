@@ -131,7 +131,10 @@ Path to the CA bundle used to verify the manager's certificate.
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `none`
+- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
+  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
+  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
+  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
 - **Allowed values:**
   - `full` — verify the certificate against `<certificate_authorities>` AND check that it
     matches the manager's hostname (strictest).
