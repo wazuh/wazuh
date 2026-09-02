@@ -695,6 +695,16 @@ if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificat
         write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
+} elseif ($ssl_verification_mode -eq "none") {
+    # Explicitly disabled -- nothing for this gate to check.
+} else {
+    # Neither ReadConfig() nor this gate's own default-resolution above can produce
+    # anything but full/certificate/system/none, so getting here means ossec.conf carries
+    # something else (a typo, hand-edited garbage). Read_Agent_SSL() rejects that value
+    # too, so letting the upgrade proceed would just trade this loud failure for the new
+    # binary refusing to start after the old one is already gone.
+    write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)', which is not a value this agent recognizes (full, certificate, system, or none); interrupting upgrade." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
 }
 
 # Ensure no other instance of msiexec is running by stopping them
