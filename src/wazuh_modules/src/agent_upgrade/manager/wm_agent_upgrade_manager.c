@@ -12,6 +12,7 @@
 #include "wm_agent_upgrade_manager.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "os_net.h"
+#include "http_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -138,42 +139,64 @@ void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
 }
 
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
-    cJSON* response = NULL;
+    uhttp_options_t options = {0};
+    uhttp_result_t result = {0};
+    uhttp_client_t *client = NULL;
+    cJSON *response = NULL;
+    char *message = NULL;
+    char *buffer = NULL;
+    int rc = 0;
 
-    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK, SOCK_STREAM, OS_MAXSTR);
+    /* The task manager serves HTTP/1.1 over its socket now, so this is a POST rather than the
+     * connect/send/recv over the framed protocol it used to be. Both deadlines are set explicitly:
+     * to libcurl an unset request timeout means "never" and an unset connect timeout means its own
+     * 300-second default, either of which would stall the upgrade path on an absent task manager. */
+    options.unix_socket_path = WM_TASK_MODULE_SOCK;
+    options.url = WM_UPGRADE_TASK_CREATE_ROUTE;
+    options.content_type = "application/json";
+    options.connect_timeout_ms = WM_UPGRADE_TASK_CONNECT_TIMEOUT_MS;
+    options.timeout_ms = WM_UPGRADE_TASK_REQUEST_TIMEOUT_MS;
 
-    if (sock == OS_SOCKTERR) {
+    if (client = uhttp_client_new(&options), !client) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK);
-    } else {
-        char *buffer = NULL;
-        int length;
-        char *message = cJSON_PrintUnformatted(message_object);
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
+        return NULL;
+    }
 
-        OS_SendSecureTCP(sock, strlen(message), message);
-        os_free(message);
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+    message = cJSON_PrintUnformatted(message_object);
 
-        switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
-            case OS_SOCKTERR:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
-                break;
-            case -1:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
-                break;
-            default:
-                response = cJSON_Parse(buffer);
-                if (!response) {
-                    mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
-                } else {
-                    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, buffer);
-                }
-                break;
+    if (!message) {
+        uhttp_client_free(client);
+        return NULL;
+    }
+
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
+
+    os_calloc(OS_MAXSTR, sizeof(char), buffer);
+    uhttp_client_set_response_buffer(client, buffer, OS_MAXSTR - 1);
+
+    rc = uhttp_post(client, message, strlen(message), &result);
+
+    uhttp_client_free(client);
+    os_free(message);
+
+    if (rc != 0) {
+        if (result.http_status == 0) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, "The task manager refused the upgrade task with HTTP %ld.",
+                    result.http_status);
         }
         os_free(buffer);
-
-        close(sock);
+        return NULL;
     }
+
+    if (response = cJSON_Parse(buffer), !response) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+    } else {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, buffer);
+    }
+
+    os_free(buffer);
 
     return response;
 }

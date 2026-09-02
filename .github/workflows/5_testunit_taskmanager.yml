@@ -1,0 +1,120 @@
+name: 5.X - Task Manager - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_taskmanager.yml"
+      - "src/shared_modules/metrics/**"
+      - "src/shared_modules/uds_http_server/**"
+      - "src/shared_modules/utils/**"
+      - "src/wazuh_modules/task_manager/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  taskmanager-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Task manager - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "task_manager_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is deliberately off, matching the other socket-server suites. This one starts a
+      # worker pool and asserts on what several threads did concurrently -- how many ran at once,
+      # that each row was claimed exactly once -- and under Valgrind's serialized execution those
+      # timing-bounded waits fail for the wrong reason. The sanitizer job below is what covers the
+      # memory-safety surface.
+      - name: Task manager - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "task_manager_utest"
+
+      # The threshold is BELOW the action's 90% default on purpose, and the reason is structural
+      # rather than a coverage debt to be paid down quietly.
+      #
+      # Roughly a fifth of this module by line count is its lifecycle and its transport: the facade
+      # that wires store -> registry -> executor -> scheduler -> server, the extern "C" entry
+      # points, the uds_http_server route table and the libcurl client that reaches the consumers.
+      # Covering those from a unit test means binding a real socket, opening a real database and
+      # starting the worker pool -- which is not a unit test, it is the qa harness, and the qa
+      # harness already does exactly that (see qa/, including kill -9 recovery and the graceful
+      # shutdown budget). This job measures only the utest binary, so that work counts for nothing
+      # here no matter how thorough it is.
+      #
+      # What the number is NOT is permission to stop testing. Everything that can be reached
+      # without a socket is expected to stay covered, and the gate still fails on a regression.
+      # Raise it as the remaining reachable files -- the scheduler, the metrics facade -- get unit
+      # tests of their own.
+      - name: Task manager - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/wazuh_modules/task_manager
+          test_directory: src/wazuh_modules/task_manager
+          id: task_manager
+          threshold: "65"
+          validate_function_coverage: "false"
+
+  taskmanager-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Task manager - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "task_manager_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is the point of the workflow rather than a redundant second run. The executor
+      # tests are the only place where the worker pool, the store's prepared statements and the
+      # shutdown path run against each other, and without a sanitizer a use-after-free between a
+      # worker and a store being torn down usually still passes.
+      - name: Task manager - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "task_manager_utest"
+          valgrind: "false"

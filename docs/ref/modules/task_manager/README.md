@@ -1,8 +1,8 @@
 # Task Manager Module
 
-The Task Manager is a generic manager-side task-broker that stores tasks addressed to agents and lets other manager components (Agent Upgrade, Active Response, API) hand off asynchronous work to be picked up by agents on their next poll.
+The Task Manager owns two kinds of work: **agent tasks**, which it stores for agents to pick up, and **manager tasks**, which it executes itself and retries until they reach an outcome.
 
-**Daemon:** Part of `wazuh-modulesd`
+**Daemon:** Part of `wazuh-manager-modulesd`
 
 **Platform:** Manager only (Linux)
 
@@ -12,26 +12,26 @@ The Task Manager is a generic manager-side task-broker that stores tasks address
 
 **XML Section:** `<task-manager>`
 
-Source: [src/wazuh_modules/src/task_manager/](../../../../src/wazuh_modules/src/task_manager/)
+Source: [src/wazuh_modules/task_manager/](../../../../src/wazuh_modules/task_manager/)
 
 ---
 
 ## Overview
 
-The Task Manager owns the lifecycle of *tasks* — small, typed JSON records that instruct an agent to perform an action. It exposes a JSON-based IPC interface over a Unix domain socket and persists tasks in the `tasks.db` SQLite database (managed by Wazuh DB). The Task Manager itself never delivers a task to an agent — it only stores `create_task` calls and hands back pending ones on `get_pending_tasks`, marking them delivered as it does. Delivery is the consumer's job: `remoted`'s own task-polling thread is the current consumer, and it pushes `remote_upgrade` tasks over the agent's existing session.
+The module exposes an HTTP/1.1 interface over `queue/sockets/task.sock` and **owns `queue/tasks/tasks.db` outright** — it is the only process that opens that database.
 
-Key properties of the current implementation:
+Key properties:
 
-- **Task-type based** — a task is not tied to a single module. Four task types are supported today: `active_response`, `remote_upgrade`, `agent_restart`, and `agent_reload`.
-- **Deterministic task IDs** — task IDs are UUID-like strings derived from `SHA-256(source_id : agent_id : task_type : create_time)`, so the same logical task produced on different cluster nodes has the same ID and is not duplicated.
-- **Fire-and-forget** — the Task Manager does not track task execution results. It stores tasks, delivers them to the agent, marks them as delivered, and expires them after their TTL.
-- **In-memory cache** — caches "no pending tasks" state per agent to reduce database queries from high-frequency agent polls without risk of re-delivering tasks.
-- **Multi-threaded architecture** — uses a dealer thread to accept connections and a pool of 8 worker threads to process requests concurrently, matching the WazuhDB architecture. Worker threads use `wnotify` for event-driven I/O and maintain persistent connections to optimize performance.
-- **Runs on every manager node** — the listener socket and cleanup thread start on both master and worker nodes so any node can create tasks and serve them to the agents connected to it.
+- **Two task kinds, one database.** An agent task is *stored and handed out*, and the manager never learns what came of it. A manager task is *claimed, executed and retired with an outcome*. They live in separate tables and share nothing but the file.
+- **Deterministic agent-task IDs** derived from `SHA-256(source_id : agent_id : task_type : create_time)`, so the same logical request produced on different cluster nodes collapses to one row.
+- **Fire-and-forget agent delivery.** `POST /v1/tasks/pending` marks everything it returns as `delivered` as a *read side effect*; delivery itself is the caller's job, and remoted keeps its own retry list for what it could not hand over.
+- **Negative cache.** Only the *absence* of pending tasks is cached, per agent, so an idle poll never reaches SQLite. Creating a task for an agent evicts its entry.
+- **No polling.** The scheduler sleeps until the earliest backed-off row becomes eligible, and producers wake it on insert. A task created through the socket starts immediately.
+- **Runs on every manager node.** Any node can accept task creation and serve its own agents; master-scoped recurring work checks the cluster role before spawning.
 
 ---
 
-## Task types
+## Agent task types
 
 | Type              | Purpose                                        | Created by                        |
 | ----------------- | ---------------------------------------------- | --------------------------------- |
@@ -40,148 +40,131 @@ Key properties of the current implementation:
 | `agent_restart`   | Restart the `wazuh-agent` service              | Server API                        |
 | `agent_reload`    | Reload the agent configuration                 | Server API                        |
 
-Each task carries a free-form JSON `payload` whose contents are defined by the producer of the task and interpreted by the agent.
+Each carries a free-form JSON `payload` defined by the producer and interpreted by the agent.
 
-The module also runs **manager tasks**, which are work the manager owes itself rather than work an
-agent picks up. They live in a separate table, are claimed and executed by dispatcher lanes inside
-`wazuh-modulesd`, and are retired with an outcome instead of a delivery. Three of them are recurring
-— the agent disconnection sweep, the retention deletion of long-disconnected agents, and log
-rotation. See [Manager tasks](manager-tasks.md) for the queue itself and
-[Recurring manager tasks](schedules.md) for those three.
+Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 
 ---
 
-## IPC interface
+## HTTP interface
 
-The Task Manager listens on the Unix domain socket `queue/sockets/task.sock` (`WM_TASK_MODULE_SOCK`). Messages are JSON documents; the socket uses the Wazuh secure TCP framing (`OS_SendSecureTCP` / `OS_RecvSecureTCP`).
+The module listens on `queue/sockets/task.sock`, serving HTTP/1.1 through the shared
+[uds_http_server](../utils/uds-http-server/) transport — the same one wazuh-db and inventory-sync use.
 
-Two actions are accepted:
+**Every route is a POST**, including the reads. Routing is exact-match with no path parameters, and
+the C clients that call this speak POST only, so a GET-shaped read surface would need either
+query-string parsing or a second client. The liveness probe is the one exception.
 
-### `create_task`
+### Agent tasks
 
-Request:
+| Route | Body | Answers |
+| --- | --- | --- |
+| `POST /v1/tasks` | `agent_id`, `task_type`, `create_time`, `payload`, optional `source_id` | `{"task_id": "..."}` |
+| `POST /v1/tasks/bulk` | `{"tasks": [ … ]}` | `{"results": [{"agent_id", "task_id", "created"}, …]}` |
+| `POST /v1/tasks/pending` | `{"agent_id": "001"}` | `{"tasks": [{"task_id", "task_type", "payload"}, …]}` |
 
-```json
-{
-  "action": "create_task",
-  "agent_id": "001",
-  "task_type": "remote_upgrade",
-  "create_time": 1734879600,
-  "source_id": "optional-source-identifier",
-  "payload": {
-    "wpk_file": "wazuh_agent_v5.0.0_linux_x86_64.wpk",
-    "wpk_sha1": "aabbccdd...",
-    "installer": "upgrade.sh"
-  }
-}
-```
+`create_time` must fall within `[now - 1 year, now + 60 s]`. `payload` is capped at
+`max_payload_bytes`; over it the answer is `413`.
 
-- `agent_id` — required string.
-- `task_type` — required, one of the values listed above.
-- `create_time` — required Unix timestamp. Must be within `[now - 1 year, now + 60 s]`.
-- `source_id` — optional. When present it is mixed into the deterministic task ID (useful for Active Response, which uses the source document ID).
-- `payload` — required JSON object. Any structure is accepted; the module validates it is well-formed JSON and its serialized size does not exceed `max_payload_bytes`.
+**The bulk route exists for fleet-wide operations.** Restarting a fleet used to open one socket
+connection per agent inside a chunk of 500; it is now one request and one database transaction.
 
-Successful response:
+### Manager tasks
 
-```json
-{"status": "ok", "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f"}
-```
+| Route | Body | Answers |
+| --- | --- | --- |
+| `POST /v1/manager-tasks` | the row to create | `{"result", "task_id"}` |
+| `POST /v1/manager-tasks/get` | `{"task_id"}` | the full row |
+| `POST /v1/manager-tasks/by-agent` | `{"agent_id", "task_type"}` | `{"task": …}` or `{}` |
+| `POST /v1/manager-tasks/list` | `{"task_type", "status"?, "last_task_id"?, "limit"?}` | a narrow listing |
+| `POST /v1/manager-tasks/count` | `{"task_type", "status"}` | `{"count": N}` |
 
-Error response:
+`result` is one of `created`, `coalesced`, `collided` or `queue_full`. **On a coalesce the
+`task_id` is the SURVIVING row's**, not the one that was requested — returning the requested one
+would hand the caller an id with no row behind it.
 
-```json
-{"error": "<code>", "message": "<description>"}
-```
+**Coalescing and the admission bound are the module's decision, not the request's.** A registered
+task type takes both from its own descriptor; a producer cannot contradict it. Both fields are
+honoured from the body only for a task type this build does not know, which is how a test fixture
+registers a synthetic one.
 
-Possible error codes returned by the module: `invalid_json`, `parsing_error`, `create_failed`, `query_failed`, `parsing_failed`, `serialization_failed`.
+### Operations
 
-### `get_pending_tasks`
-
-Request:
-
-```json
-{"action": "get_pending_tasks", "agent_id": "001"}
-```
-
-Successful response:
-
-```json
-{
-  "status": "ok",
-  "tasks": [
-    {
-      "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f",
-      "task_type": "remote_upgrade",
-      "payload": { "...": "..." }
-    }
-  ]
-}
-```
-
-Calling `get_pending_tasks` also **marks the returned tasks as delivered** in `tasks.db`. Delivery is recorded only on the node that served the request; the Task Manager does not propagate delivery state across cluster nodes.
+| Route | Class | Purpose |
+| --- | --- | --- |
+| `GET /v1/health` | Liveness | Answered from resident state, so it survives any pressure |
+| `POST /v1/metrics` | Control | Queue depth per type, executor occupancy, handler durations, transport diagnostics |
 
 ---
 
-## Task lifecycle
+## Architecture
 
 ```
-create_task ─► pending (stored in tasks.db)
-                 │
-                 ▼
-       get_pending_tasks ─► delivered (delivery_time recorded, cache updated)
-                              │
-                              ▼
-        (after task_ttl)   expired (marked by cleanup thread)
-                              │
-                              ▼
-        (after 24 h)        deleted (removed by cleanup thread)
+   producers ──HTTP──▶ ┌─────────────────────────────────────────┐
+                       │  uds_http_server   (2 I/O threads)      │
+                       ├─────────────────────────────────────────┤
+                       │  ApiHandlers ──▶ SqliteTaskStore        │
+                       │                    (owns tasks.db)      │
+                       ├─────────────────────────────────────────┤
+   scheduler ─────────▶│  Executor  (4–8 workers, group caps)    │
+   (1 timer thread)    │      │                                  │
+                       │      ├─▶ HttpHandler ──▶ consumers      │
+                       │      └─▶ local handlers ──▶ host ops    │
+                       └─────────────────────────────────────────┘
 ```
 
-- The cleanup thread runs every `cleanup_interval` seconds. It sends `task cleanup_expired` and `task delete_old` queries to Wazuh DB and, once a day, `task sql VACUUM;`.
-- A task that never got picked up by an agent transitions `pending → expired → deleted`.
-- A task that was delivered stays as `delivered` until it is deleted by the cleanup thread.
+- **The store owns the database.** One connection behind one mutex, WAL with `synchronous=FULL`,
+  every statement prepared at open. `create` and `claim` commit inline because their return is
+  treated as durable; outcomes, re-queues and retention are **group-committed** on a short timer,
+  which is safe for the same reason the design already tolerates a lost outcome write: the row stays
+  claimed, the sweep reclaims it, and every handler is idempotent.
+- **The executor is one worker pool**, not a set of lanes. Isolation comes from a per-**group**
+  concurrency cap in each task type's descriptor. Adding a task type is one descriptor plus a
+  handler — no lane assignment, no rotation logic, no change to the store or the schema.
+- **The scheduler is one timer thread.** It spawns scheduled runs, sweeps ownership, applies
+  retention, runs the daily VACUUM and reports stalls. It sleeps until the earliest of those is due
+  rather than polling.
 
----
-
-## In-memory cache
-
-`get_pending_tasks` uses an in-memory cache to optimize database access. The cache only stores "no pending tasks" states per agent — actual tasks are never cached to ensure each task is delivered exactly once. Cache invalidation happens automatically when a new task is created for the agent.
-
-The cache reduces database queries for agents that poll frequently when they have no pending tasks. Its size grows linearly with the number of distinct agents with no pending work.
-
----
-
-## Cluster behavior
-
-- The listener socket and the cleanup thread run on every manager node — master and workers alike. Any node can accept `create_task` requests from local producers and serve `get_pending_tasks` to the agents connected to it.
-- Task IDs are deterministic, so the same logical request routed to different manager nodes produces the same `task_id` and collapses into a single row in `tasks.db`.
-- Delivery bookkeeping is node-local: `mark_delivered` is issued by the node that returned the task, and no cross-node broadcast is performed. Task creation always routes to the agent's current owning node, so this is a stranding risk (a task can sit on the wrong node's `tasks.db` if an agent reconnects elsewhere, and simply expires via the normal TTL sweep), not a duplication risk — an agent can't receive the same task twice from two nodes, since `remoted`'s poller only ever talks to the agent's own node.
+**Threads:** 2 HTTP I/O + 4–8 executor workers + 1 scheduler. The module's modulesd thread returns
+immediately after `start()`.
 
 ---
 
 ## Storage
 
-Tasks are stored in the `tasks.db` database managed by Wazuh DB. The Task Manager talks to Wazuh DB through the standard `task <command> <parameters>` protocol; commands used by this module are:
+`queue/tasks/tasks.db`, opened only by this module.
 
-| Command                | Direction               | Purpose                                                   |
-| ---------------------- | ----------------------- | --------------------------------------------------------- |
-| `task create`          | Task Manager → wazuh-db | Persist a new task row                                    |
-| `task get_pending`     | Task Manager → wazuh-db | Fetch pending tasks for an agent                          |
-| `task mark_delivered`  | Task Manager → wazuh-db | Record `delivery_time` for a task                         |
-| `task cleanup_expired` | Task Manager → wazuh-db | Mark tasks older than `task_ttl` as expired               |
-| `task delete_old`      | Task Manager → wazuh-db | Remove tasks older than one day from the expiration point |
-| `task sql VACUUM;`     | Task Manager → wazuh-db | Daily database compaction                                 |
+| Table | Holds |
+| --- | --- |
+| `TASKS` | Agent tasks: `pending` → `delivered` → `expired` → removed |
+| `MANAGER_TASKS` | Manager tasks and their outcomes |
+| `MANAGER_TASK_SCHEDULES` | The mutable half of each recurring schedule |
+| `metadata` | Module bookkeeping (last VACUUM) |
 
-See the [Wazuh DB module documentation](../wazuh_db/README.md) for the underlying schema.
+**Agent tasks age out while pending; manager tasks never do.** That asymmetry is deliberate: ageing
+out a pending manager task would destroy exactly the long-outage work the queue exists to survive.
+
+The schema lives in [storage/schema.hpp](../../../../src/wazuh_modules/task_manager/src/storage/schema.hpp)
+as a raw string literal, applied on every open with `CREATE ... IF NOT EXISTS`. Because it cannot
+alter an existing table, any change to a table's shape needs a real step in the module's `migrate()`.
+
+---
+
+## Clients
+
+| Client | Uses |
+| --- | --- |
+| `wazuh-manager-remoted` (C poller and C++ `TaskClient`) | `/v1/tasks/pending` |
+| Agent Upgrade module | `/v1/tasks` |
+| Server API / framework | `/v1/tasks`, `/v1/tasks/bulk` via `wazuh.core.task_http` |
+| `wazuh-manager-authd` | `/v1/manager-tasks`, `/count`, `/by-agent` via `manager_task_op.h` |
+| Vulnerability scanner | `/v1/manager-tasks`, through a callback modulesd hands it at start |
 
 ---
 
 ## Configuration
 
-For every option and defaults, see the [Task Manager Configuration Reference](configuration.md).
-
-Minimal example:
+For every option and default, see the [Task Manager Configuration Reference](configuration.md).
 
 ```xml
 <task-manager>
@@ -192,35 +175,30 @@ Minimal example:
 </task-manager>
 ```
 
----
-
-## Architecture
-
-The Task Manager uses a multi-threaded architecture similar to WazuhDB:
-
-- **Dealer thread** (`wm_task_manager_dealer`): Accepts incoming socket connections and adds them to a `wnotify` notification queue
-- **Worker pool** (`wm_task_manager_worker`): 8 worker threads wait on the notification queue, process requests concurrently, and maintain persistent connections by re-adding peers to the queue after serving responses
-- **Main thread** (`wm_task_manager_main`): Initializes the notification queue and starts the dealer and worker threads
-
-This design allows multiple concurrent connections from remoted's `/control` endpoint and other IPC clients, improving throughput and responsiveness.
+Everything else is an internal option, resolved **before modulesd daemonizes**, so an out-of-range
+value fails `wazuh-modulesd -t` rather than aborting a module thread later.
 
 ---
 
 ## Key source files
 
-| File                         | Purpose                                                                      |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `wm_task_manager.c`          | Module entry point, dealer thread, worker pool, and multi-threaded dispatcher |
-| `wm_task_manager_parsing.c`  | JSON request parsing and response building                                   |
-| `wm_task_manager_commands.c` | Wazuh DB IPC, `create_task` and `get_pending_tasks` handlers, cleanup thread |
-| `wm_task_manager_tasks.c`    | Deterministic task ID generation and in-memory task cache                    |
+| Path | Purpose |
+| --- | --- |
+| `include/task_manager.h` | The C ABI: config struct, host-operations table, start/stop |
+| `src/storage/` | Schema, statement catalogue, the SQLite store |
+| `src/registry/` | Task type descriptors, retry and deferral ladders, HTTP result mapping |
+| `src/execution/` | The worker pool, ownership, the sweep and the watchdog |
+| `src/schedule/` | Cadence arithmetic and the timer thread |
+| `src/handlers/` | The routed handler, its UDS client, and the three local handlers |
+| `src/http/` | Route wiring and per-route request logic |
+| `src/wazuh_modules/src/wm_task_manager.c` | modulesd's shim: loads the module, implements the host operations |
 
 ---
 
 ## See Also
 
 - [Task Manager Configuration Reference](configuration.md)
-- [Manager tasks](manager-tasks.md) — the durable queue: states, retry, lanes, and finding what failed
+- [Manager tasks](manager-tasks.md) — states, retry, concurrency groups, and finding what failed
 - [Recurring manager tasks](schedules.md) — the disconnection sweep, agent retention and log rotation
-- [Agent Upgrade Module](../agent_upgrade/README.md) — main producer of `remote_upgrade` tasks
-- [Wazuh DB Module](../wazuh_db/README.md) — persistence backend
+- [Agent Upgrade Module](../agent_upgrade/README.md)
+- [Inventory Sync Server](../inventory-sync-server/README.md) — executes the two routed task types

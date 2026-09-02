@@ -148,6 +148,16 @@ list(APPEND shared_tests_names "test_http_op")
 list(APPEND shared_tests_flags " ")
 endif()
 
+# manager_task_op.c reaches the Task Manager over http_op, so it is server-only for the same
+# reason. Only the manager has producers for it: authd and, through modulesd's callback, the
+# vulnerability scanner.
+if(${TARGET} STREQUAL "manager")
+list(APPEND shared_tests_names "test_manager_task_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,uhttp_client_new -Wl,--wrap,uhttp_client_free \
+                                -Wl,--wrap,uhttp_client_set_response_buffer -Wl,--wrap,uhttp_post \
+                                ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(APPEND shared_tests_names "test_agent_validate_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \

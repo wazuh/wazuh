@@ -43,6 +43,7 @@ subgraph manager[" "]
   subgraph modulesd["Modulesd"]
     direction TB
     vs["Vuln Scanner"]:::m
+    cm["Content Manager"]:::m
     is["Inventory Sync Server"]:::m
     au["Agent Upgrade"]:::m
     tm["Task Manager"]:::m
@@ -73,29 +74,44 @@ authd -->|1,10| wdb
 
 %% Modulesd → Core
 vs -->|3| engine
-tm -->|5,9| wdb
+tm -->|9| wdb
 
 %% Modulesd internal (in-process VD scan lane)
 is -->|3| vs
 au -->|5| tm
+vs -->|3| tm
+
+%% Task Manager dispatches its manager tasks to Inventory Sync Server's internal routes
+tm -->|3,10| is
+
+%% CVE feed downloads: VD registers a provider, Content Manager pages the feed back to it
+vs <-->|3| cm
 
 %% Modulesd ↔ Gateway (UDS relay: POST /stateful → queue/sockets/inventory-sync-http.sock)
 remoted <-->|3| is
-authd -->|10| is
+
+%% Remoted asks for an agent's pending tasks and hands them back in the POST /control response
+remoted -->|4,5| tm
+
+%% Auth records the indexer purge as a task rather than calling Inventory Sync itself
+authd -->|10| tm
 
 %% Core / Modulesd → Indexer
 engine <-->|2,3,4| indexer
 vs <-->|3| indexer
+cm <-->|3| indexer
 is <-->|3,10| indexer
 clusterd <-->|4,8| indexer
 clusterd -->|8| wdb
-clusterd -->|4| remoted
+
+%% Active response: clusterd turns each finding into an agent task; remoted hands it to the agent
+clusterd -->|4| tm
 
 %% Clusterd reads the Indexer credentials from the keystore before any Indexer access
 clusterd -->|4,8| ks
 
 %% Management → Internal
-api -->|6| engine & wdb & remoted
+api -->|6| engine & wdb & remoted & tm
 api -->|1,6,10| authd
 api -->|5| au
 api -->|7| ctrl
@@ -114,18 +130,41 @@ clients -->|1,5,6,7,8,10| api
 | **Wazuh DB**   | `wazuh-manager-db`        | SQLite-based database daemon for agent and global state                                                                      |
 | **Auth**       | `wazuh-manager-authd`     | Owns all agent registration logic. Reached by Remoted's `POST /enroll` over its local socket for 5.x agents; its own TLS listener on port 1515 serves 4.x agents, gated by `<auth><legacy_enrollment>` |
 | **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC                                                                    |
-| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, agent upgrade, task manager, and control (restart/reload) |
+| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, content manager, agent upgrade, task manager, and control (restart/reload) |
 | **Cluster**    | `wazuh-manager-clusterd`  | Multi-node master-worker synchronization (Python, asyncio)                                                                   |
 
 > **Note:** The manager also ships CLI tools (`wazuh-manager-control`, `wazuh-manager-keystore`, etc.) listed in the [CLI Tools](#cli-tools) section below.
 
+### Modulesd Module Composition
+
+A manager-side module hosted by `wazuh-manager-modulesd` is three pieces, not one. The split is what lets a C daemon host C++ modules, and it is why the same name can appear in two directories.
+
+| Layer                  | Location                        | Build output                            | Role                                                                                                                                                                                                                                     |
+| ---------------------- | ------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Shim**               | `wazuh_modules/src/wm_<name>.c` | compiled into `wazuh-manager-modulesd`  | Declares the module's `wm_context` (`start`, `stop`, `destroy`, `dump`, `query`), registers it in `wmodules.c`, then `dlopen`s the implementation and calls its `extern "C"` entry points. The C↔C++ ABI boundary; ~100 lines, no logic of its own. |
+| **Implementation**     | `wazuh_modules/<name>/`         | `lib<name>.so`, loaded by the shim      | The module proper. Exports a flat `<name>_start()` / `<name>_stop()` pair and nothing else.                                                                                                                                              |
+| **Shared library**     | `shared_modules/<name>/`        | `.so` or `.a`, linked by its consumers  | Reusable code with more than one consumer. Not a module: no `wm_context`, no registration.                                                                                                                                               |
+
+| Module                    | Implementation                         | Shim                            |
+| ------------------------- | -------------------------------------- | ------------------------------- |
+| **Vulnerability Scanner** | `wazuh_modules/vulnerability_scanner/` | `wm_vulnerability_scanner.c`    |
+| **Inventory Sync Server** | `wazuh_modules/inventory_sync_server/` | `wm_inventory_sync_server.c`    |
+| **Task Manager**          | `wazuh_modules/task_manager/`          | `wm_task_manager.c`             |
+| **Keystore Server**       | `wazuh_modules/keystore_server/`       | `wm_keystore_server.c`          |
+| **Content Manager**       | `shared_modules/content_manager/`      | `wm_content_manager.c`          |
+| **Agent Upgrade**         | `wazuh_modules/src/agent_upgrade/`     | `wm_agent_upgrade.c`            |
+| **Control**               | —                                      | `wm_control.c`                  |
+
+The last two are plain C compiled straight into modulesd, so they have no `.so` and no ABI boundary to cross. The agent-side modules (`agent_info`, `sca`, `syscollector`) follow the same three-layer shape under the same directories, gated by `#ifdef CLIENT`.
+
 ### Shared Libraries
 
-| Library               | Source                             | Consumers                                                      | Purpose                                                                           |
-| --------------------- | ---------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **Indexer Connector** | `shared_modules/indexer_connector` | Engine, Vulnerability Scanner, Inventory Sync Server, Content Manager | Client library for pushing data to the Wazuh Indexer                              |
-| **Content Manager**   | `shared_modules/content_manager`   | Vulnerability Scanner, Modulesd                                | Plugin framework for downloading and managing content (feeds, rulesets)           |
-| **Keystore**          | `shared_modules/keystore`          | Indexer Connector, in-process; also served over `queue/sockets/keystore.sock` by the `keystore_server` module, whose client is the Python framework's Indexer client — used by **Clusterd**, not by the API daemon | AES-256 encrypted credential store (RocksDB)                                      |
+| Library               | Source                             | Consumers                                                                              | Purpose                                                                                                                                                                    |
+| --------------------- | ---------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Indexer Connector** | `shared_modules/indexer_connector` | Engine, Vulnerability Scanner, Inventory Sync Server, Content Manager                    | Client library for reading from and pushing to the Wazuh Indexer. Per-instance classes with RAII lifetimes; reads Indexer credentials through the Keystore library.        |
+| **Content Manager**   | `shared_modules/content_manager`   | Vulnerability Scanner (links it), Modulesd (registers it as a module)                    | Fetches CVE feed documents from the Indexer with Point-In-Time pagination and delivers them page-by-page to a registered callback. Also a modulesd module — see above.      |
+| **Keystore**          | `shared_modules/keystore`          | Indexer Connector, Keystore Server, `wazuh-manager-keystore` CLI                         | AES-256 encrypted credential store (RocksDB). Static library, in-process only; socket access is the Keystore Server module's job.                                          |
+| **UDS HTTP Server**   | `shared_modules/uds_http_server`   | Wazuh DB, Inventory Sync Server, Task Manager                                            | Asio-based HTTP/1.1 server over a Unix socket. The shared transport behind the `*-http.sock` endpoints listed below.                                                       |
 
 ### CLI Tools
 
@@ -143,18 +182,40 @@ clients -->|1,5,6,7,8,10| api
 
 1. **Agent Registration** — A 5.x agent POSTs its registration request to **Remoted**'s HTTPS route `POST /enroll` (port 1517, the same connection and TLS configuration it uses for everything afterward), which bridges it to **Auth** over Auth's local socket (`queue/sockets/auth.sock`). A 4.x agent instead connects directly to **Auth** over TLS on port 1515, which remains available via `<auth><legacy_enrollment>`; a client may also register via **API** → **Auth**. Auth owns all enrollment logic in every case: it generates and returns an agent key, then persists the agent record in **Wazuh DB** (`queue/sockets/wdb.sock`).
 2. **Event Processing** — Agent sends stateless events (logs, SCA, etc.) to **Remoted**'s authenticated HTTPS route `POST /stateless` (port 1517, authenticated with the agent's `wazuh-agent+jwt` bearer token, the transport a 5.x agent uses). 4.x agents send events over the classic AES-encrypted TCP/UDP channel (port 1514), which remains available via `<remote><legacy>`. The two paths differ in what Remoted does with the batch: on the HTTPS route it verifies the signature, cross-checks the batch's `wazuh.agent.id` against the authenticated agent, and forwards the body **verbatim** — the agent supplies its own metadata in the batch's `H` line, so there is nothing to enrich; on the legacy channel it decrypts the message and enriches it from its in-memory agent-metadata cache, which is what the keep-alives on that channel are for. Either way the batch reaches the **Engine** via HTTP POST (`engine-ingest-http.sock`). The Engine routes events through policies and pushes resulting events to the **Wazuh Indexer** via Indexer Connector. The Engine also pulls content (rulesets, configurations) from the Indexer via its internal **cmsync** module.
-3. **Inventory & Vulnerability Scan** — Agent POSTs a whole synchronization session (one FlatBuffers `FullSession`) to **Remoted**'s authenticated HTTPS route `POST /stateful`, and Remoted relays it over UDS (`queue/sockets/inventory-sync-http.sock`) to **Inventory Sync Server** in modulesd. The server validates the session, applies it to the **Indexer** (via Indexer Connector) and answers; the HTTP response relayed back to the agent IS the session result. Vulnerability-detection sessions run through a dedicated scan lane that executes the **Vulnerability Scanner** synchronously BEFORE indexing, so a `200` guarantees both the scan and the ingest. The scanner queries CVE feeds from the Indexer (via Content Manager → Indexer Connector), matches against the agent's packages, and sends vulnerability events to the **Engine** (via `engine-ingest-http.sock`) and vulnerability state to the **Indexer** (via Indexer Connector). Feed-update scans and session scans coordinate through a per-agent registry, so they never race.
+3. **Inventory & Vulnerability Scan** — Agent POSTs a whole synchronization session (one FlatBuffers `FullSession`) to **Remoted**'s authenticated HTTPS route `POST /stateful`, and Remoted relays it over UDS (`queue/sockets/inventory-sync-http.sock`) to **Inventory Sync Server** in modulesd. The server validates the session, applies it to the **Indexer** (via Indexer Connector) and answers; the HTTP response relayed back to the agent IS the session result. Vulnerability-detection sessions run through a dedicated scan lane that executes the **Vulnerability Scanner** synchronously BEFORE indexing, so a `200` guarantees both the scan and the ingest. The scanner queries CVE feeds from the Indexer (via Content Manager → Indexer Connector), matches against the agent's packages, and sends vulnerability events to the **Engine** (via `engine-ingest-http.sock`) and vulnerability state to the **Indexer** (via Indexer Connector). Feed-update scans and session scans coordinate through a per-agent registry, so they never race. An **on-demand** rescan is the one path that is not inline: remoted (or the API) posts to the scanner's own socket, and the scanner records a `vd_scan` manager task with **Task Manager** rather than scanning on the caller's thread, so the answer is an admission and the scan itself survives a restart. Task Manager later runs it against `POST /_internal/vd/scan` on **Inventory Sync Server**.
 4. **Active Response** — The **Engine** produces events and sends them to the **Wazuh Indexer** (via Indexer Connector). The Indexer's internal processes evaluate these events against its own rules and generate active response findings, indexing them into `wazuh-active-responses*`. **Clusterd** polls this index periodically (`active_response_polling`, 30s by default) and dispatches an `active_response` task per agent to **Task Manager** (`queue/sockets/task.sock`), the same path used for `remote_upgrade`. There is deliberately **no filtering by status or by connected node**: stateless HTTPS means no node owns an agent, so the agent-to-worker assignment that such filtering relied on no longer exists. Tasks simply wait in the database until the agent polls for them. The bookmark that drives that polling is a **high-water mark of what was read**, not of what was delivered: it is written once per page and clears every document the page returned, whatever happened to each one, and the read itself is bounded at the present instant. That is what keeps one document from either skipping the rest of the stream (a future `@timestamp` used to move the cursor past every response created before it) or freezing it (a document discarded before dispatch used to leave the cursor on its page, re-read every cycle). The exception is a response whose referenced event is not visible in its own index yet: that one is still deliverable, so the page is held short of it and read again on the next cycle, for up to two minutes. Past that the reference is taken as broken, because holding for an event that never appears would stop delivery fleet-wide. A response that cannot be delivered is lost, and every path that loses one says so at `WARNING` or above: delivery guarantees are the Task Manager's job, not the cursor's. For an agent on v5.0.0+, the task is handed back in a `POST /control` response and forwarded to the agent's `execd` daemon, which executes the corresponding active response script. Active response has no delivery path for agents below v5.0.0 (removed with the legacy TCP/UDP protocol); a task targeting one is dropped.
-5. **Agent Upgrade** — Client sends an upgrade request via **API** → **Agent Upgrade** (`queue/sockets/task-upgrade.sock`) module. AU validates the request, downloads and verifies the WPK on the manager filesystem, and hands the upgrade off to **Task Manager** (`queue/sockets/task.sock`) as a `remote_upgrade` task, which is persisted in **Wazuh DB** (`queue/sockets/wdb.sock`). Delivery then depends on the agent's version, and the manager never pushes to a 5.x agent:
+5. **Agent Upgrade** — Client sends an upgrade request via **API** → **Agent Upgrade** (`queue/sockets/task-upgrade.sock`) module. AU validates the request, downloads and verifies the WPK on the manager filesystem, and hands the upgrade off to **Task Manager** (`queue/sockets/task.sock`) as a `remote_upgrade` task, which Task Manager persists in its own database (`queue/tasks/tasks.db`). Delivery then depends on the agent's version, and the manager never pushes to a 5.x agent:
     - **v5.0.0+** — the task is handed back in the response to the agent's next `POST /control` `notify`, and the agent **pulls** the WPK itself via `POST /download`.
     - **Below v5.0.0** — a polling thread in **Remoted** (gated on the legacy channel) walks the connected agents, asks Task Manager for each one's pending task, and pushes the WPK down its existing session using the legacy six-step WPK push. This path exists only so 4.x agents remain upgradable; it deliberately skips agents at v5.0.0 or above.
 
     Task delivery is fire-and-forget from the manager's perspective either way.
-6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock`), **Remoted** (`queue/sockets/remote.sock`), or **Auth** (`queue/sockets/auth.sock`) depending on the endpoint. The **DAPI** layer transparently routes requests across cluster nodes.
+6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock`), **Remoted** (`queue/sockets/remote.sock`), **Auth** (`queue/sockets/auth.sock`), or **Task Manager** (`queue/sockets/task.sock`) depending on the endpoint. Agent restart and reload are the Task Manager cases: the API creates one `agent_restart` or `agent_reload` task per agent, in bulk requests of up to 500, and answers as soon as they are recorded — the agent picks the task up on its next `POST /control`. The **DAPI** layer transparently routes requests across cluster nodes.
 7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which signals the appropriate daemons.
 8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/sockets/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics — reading the Indexer credentials from the **Keystore Server** (`queue/sockets/keystore.sock`) first, since they are never held in the cluster configuration. Its Indexer-dependent jobs are supervised: availability is re-checked every 300s and the jobs are cancelled and restarted with exponential backoff (capped at 3600s) whenever the Indexer becomes unreachable. The API forwards cluster queries to Clusterd (`queue/sockets/cluster-internal.sock`).
-9. **Agent Monitoring** — **Remoted** refreshes each agent's keep-alive in **Wazuh DB** (`queue/sockets/wdb.sock`). Marking silent agents disconnected, deleting long-disconnected ones and rotating the manager's logs are recurring **Task Manager** jobs inside **Modulesd**, which reach the same socket — see [Recurring manager tasks](modules/task_manager/schedules.md).
-10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth.sock`). Auth removes the agent from **Wazuh DB** (`queue/sockets/wdb.sock`) and calls **Inventory Sync Server**'s delete endpoint over UDS (`queue/sockets/inventory-sync-http.sock`) to delete every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`); the HTTP status tells Auth whether the deletion was applied, and Auth retries before logging an error that names the agent.
+9. **Agent Monitoring** — **Remoted** refreshes each agent's keep-alive in **Wazuh DB** (`queue/sockets/wdb.sock`). Marking silent agents disconnected, deleting long-disconnected ones and rotating the manager's logs are recurring **Task Manager** jobs inside **Modulesd**. These are the only Task Manager work that still reaches **Wazuh DB**, and it does so through modulesd's host callbacks rather than for its own storage — the agent queries live there, the task rows do not — see [Recurring manager tasks](modules/task_manager/schedules.md).
+10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth.sock`). Auth removes the agent from **Wazuh DB** (`queue/sockets/wdb.sock`), journals the deletion, and records an `agent_delete_indexer` manager task with **Task Manager** (`queue/sockets/task.sock`) — a durable intent, keyed by a deterministic id so a retry of the same journal line collapses onto the same row rather than deleting twice. Task Manager then executes it against **Inventory Sync Server**'s delete endpoint (`queue/sockets/inventory-sync-http.sock`) to remove every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`). This task type never gives up: attempts and deferrals are unbounded and a 4xx requeues, because an agent whose documents outlive it is a data-retention problem rather than a transient one.
+
+### Who uses the Task Manager
+
+The Task Manager is the manager's only durable work queue, and it holds two kinds of work that behave differently. An **agent task** is stored and handed out — the manager records what the agent should do and never learns what came of it. A **manager task** is claimed, executed by the module itself and retired with an outcome, retrying on its own schedule until it reaches one.
+
+It owns `queue/tasks/tasks.db` outright and is the only process that opens it. Nothing about task storage goes through Wazuh DB.
+
+| Task type | Kind | Created by | Executed by |
+| --------- | ---- | ---------- | ----------- |
+| `active_response` | Agent | Clusterd, from the `wazuh-active-responses*` index (flow 4) | The agent, on its next `POST /control` |
+| `remote_upgrade` | Agent | Agent Upgrade module (flow 5) | The agent pulls the WPK; Remoted's legacy poller pushes it for 4.x |
+| `agent_restart`, `agent_reload` | Agent | Server API, in bulk per 500 agents | The agent, on its next `POST /control` |
+| `agent_delete_indexer` | Manager | Auth, after journaling a deletion (flow 10) | `POST /_internal/agents/delete` on Inventory Sync Server |
+| `vd_scan` | Manager | Vulnerability Scanner, on an on-demand rescan (flow 3) | `POST /_internal/vd/scan` on Inventory Sync Server |
+| `agent_disconnect_sweep`, `agent_delete_old`, `log_rotate_daily` | Manager | The module's own schedules (flow 9) | In-process, against Wazuh DB and the filesystem |
+
+Two properties are worth knowing at this level, because they are what the rest of the manager relies on:
+
+- **Task IDs are deterministic**, derived by SHA-256 from the request's own identity. The same logical request produced twice — retried by its creator, or raised independently on two cluster nodes — collapses onto one row instead of doing the work twice. This is what lets Auth keep a deletion journal and replay it freely.
+- **Creation is answered at admission**, not at completion. A `200` means the work is recorded durably, not that it has happened. A producer that needs the outcome asks for the row later.
+
+See [Task Manager](modules/task_manager/README.md) for the HTTP surface and [Manager tasks](modules/task_manager/manager-tasks.md) for the retry, deferral and ownership rules.
 
 ### IPC (Unix Domain Sockets)
 
@@ -183,7 +244,7 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/wmodules.sock`            | modulesd              | Framed   | Per-module query and control, and the API's component=wmodules      |
 | `queue/sockets/wdb.sock`                 | wazuh-db              | Framed   | Legacy wdb query protocol                                          |
 | `queue/sockets/wdb-http.sock`            | wazuh-db              | HTTP     | Agent sync and summary REST API, used by clusterd and the API      |
-| `queue/sockets/task.sock`                | task_manager          | Framed   | Task creation and lookup (upgrade, active response)                |
+| `queue/sockets/task.sock`                | task_manager          | HTTP     | Agent and manager task creation, lookup and pending-task delivery   |
 | `queue/sockets/task-upgrade.sock`        | agent_upgrade         | Framed   | Upgrade requests coming from the API                               |
 | `queue/sockets/cluster-internal.sock`    | clusterd              | Cluster  | Cluster and DAPI queries                                           |
 

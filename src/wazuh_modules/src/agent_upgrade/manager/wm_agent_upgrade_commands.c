@@ -399,7 +399,6 @@ STATIC cJSON* wm_agent_upgrade_build_task_message(int agent_id, time_t request_t
     char agent_id_str[16];
     snprintf(agent_id_str, sizeof(agent_id_str), "%03d", agent_id);
 
-    cJSON_AddStringToObject(task_msg, "action", "create_task");
     cJSON_AddStringToObject(task_msg, "agent_id", agent_id_str);
     cJSON_AddStringToObject(task_msg, "task_type", "remote_upgrade");
     cJSON_AddNumberToObject(task_msg, "create_time", (double)request_time);
@@ -489,12 +488,11 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
     if (!tm_resp) {
         result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
     } else {
-        cJSON *status_obj = cJSON_GetObjectItem(tm_resp, "status");
-        if (status_obj && cJSON_IsString(status_obj) && strcmp(status_obj->valuestring, "ok") == 0) {
-            result = WM_UPGRADE_SUCCESS;
-        } else {
-            result = WM_UPGRADE_TASK_MANAGER_FAILURE;
-        }
+        /* The task manager answers 2xx with a task_id, and anything else already came back as
+         * NULL above, so a parsed response carrying an id is the success signal. There is no
+         * "status" member any more: the HTTP status carried that. */
+        cJSON *task_id = cJSON_GetObjectItem(tm_resp, "task_id");
+        result = (task_id && cJSON_IsString(task_id)) ? WM_UPGRADE_SUCCESS : WM_UPGRADE_TASK_MANAGER_FAILURE;
         cJSON_Delete(tm_resp);
     }
 

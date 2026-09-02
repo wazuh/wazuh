@@ -201,28 +201,28 @@ curl -k -X GET "https://localhost:55000/manager/configuration/wmodules/wmodules"
      -H "Authorization: Bearer $TOKEN"
 ```
 
-`recurring_tasks` is absent while the dispatcher is not running — the values are resolved once at
+`recurring_tasks` is absent while the module is not running — the values are resolved once at
 startup, and reporting compiled defaults instead would be indistinguishable from a live reading.
 
 ### Options the retention sweep adds
 
 Both are internal options in the `wazuh_modules` namespace, and both bound one attempt of
 `agent_delete_old` so that a large backlog spans several claims instead of holding the shared local
-lane for the whole sweep.
+executor slot for the whole sweep.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
 | `wazuh_modules.manager_task_delete_old_batch` | 200 | 1–100000 | agents examined per attempt |
-| `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds of lane occupancy per attempt |
+| `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds an attempt may hold its executor slot |
 | `wazuh_modules.manager_task_disconnect_log_max` | 200 | 0–1000000 | agents the disconnection sweep names individually per run |
 
 The time bound is the one that binds in practice: the send timeout on the connection to
 `wazuh-authd` is a fixed five seconds, so 200 agents against a wedged `wazuh-authd` would otherwise
-be a worst case measured in minutes on a single-threaded lane. Counting agents bounds the work;
+be a worst case measured in minutes while holding one executor slot. Counting agents bounds the work;
 counting seconds bounds the occupancy.
 
 Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the
-lane re-claims the row and resumes where it stopped.
+executor re-claims the row and resumes where it stopped.
 
 ### The option the disconnection sweep adds
 

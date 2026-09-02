@@ -18,6 +18,7 @@
 #include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/http_op_wrappers.h"
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 #include "../../wrappers/wazuh/shared/sym_load_wrappers.h"
@@ -689,19 +690,27 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
 }
 
 // Tests for wm_agent_upgrade_send_tasks_information
+//
+// The task manager serves HTTP/1.1 over its socket, so these drive the uhttp_* client rather than
+// the connect/send/recv trio this function used to call. __wrap_uhttp_post() takes three queued
+// values in order -- response body, return code, HTTP status -- and delivers the body through the
+// buffer the caller installed with uhttp_client_set_response_buffer(), which is what makes the
+// success case exercise the real parse rather than a handed-over pointer.
 
-void test_wm_agent_upgrade_send_tasks_information_connect_error(void **state)
+/// @brief A non-NULL handle for uhttp_client_new() to hand back. Never dereferenced: every uhttp_*
+///        entry point the function calls is wrapped, so the value only has to be distinguishable
+///        from NULL.
+static uhttp_client_t *const TEST_HTTP_CLIENT = (uhttp_client_t *)0xC0FFEE;
+
+void test_wm_agent_upgrade_send_tasks_information_client_error(void **state)
 {
     (void) state;
 
     cJSON *message = cJSON_CreateObject();
     cJSON_AddStringToObject(message, "command", "upgrade");
 
-    // Connection fails
-    expect_any(__wrap_OS_ConnectUnixDomain, path);
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
+    // The client cannot even be built -- no socket, no request, and nothing to free.
+    will_return(__wrap_uhttp_client_new, NULL);
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to 'queue/sockets/task.sock'. Could not reach task manager module.");
@@ -713,36 +722,26 @@ void test_wm_agent_upgrade_send_tasks_information_connect_error(void **state)
     cJSON_Delete(message);
 }
 
-void test_wm_agent_upgrade_send_tasks_information_recv_sockterr(void **state)
+void test_wm_agent_upgrade_send_tasks_information_transport_error(void **state)
 {
     (void) state;
 
     cJSON *message = cJSON_CreateObject();
     cJSON_AddStringToObject(message, "command", "upgrade");
 
-    // Connection succeeds
-    expect_any(__wrap_OS_ConnectUnixDomain, path);
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 10);
-
-    // Send succeeds
-    expect_value(__wrap_OS_SendSecureTCP, sock, 10);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
+    will_return(__wrap_uhttp_client_new, TEST_HTTP_CLIENT);
 
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    // Receive fails with OS_SOCKTERR
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 10);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, "");
-    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+    // The request never reached a server: no status was ever read off the wire, which is what
+    // separates "the task manager is not there" from "the task manager said no".
+    will_return(__wrap_uhttp_post, NULL);
+    will_return(__wrap_uhttp_post, -1);
+    will_return(__wrap_uhttp_post, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to 'queue/sockets/task.sock'. Could not reach task manager module.");
 
     cJSON *result = wm_agent_upgrade_send_tasks_information(message);
 
@@ -751,36 +750,26 @@ void test_wm_agent_upgrade_send_tasks_information_recv_sockterr(void **state)
     cJSON_Delete(message);
 }
 
-void test_wm_agent_upgrade_send_tasks_information_recv_error(void **state)
+void test_wm_agent_upgrade_send_tasks_information_http_error(void **state)
 {
     (void) state;
 
     cJSON *message = cJSON_CreateObject();
     cJSON_AddStringToObject(message, "command", "upgrade");
 
-    // Connection succeeds
-    expect_any(__wrap_OS_ConnectUnixDomain, path);
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 10);
-
-    // Send succeeds
-    expect_value(__wrap_OS_SendSecureTCP, sock, 10);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
+    will_return(__wrap_uhttp_client_new, TEST_HTTP_CLIENT);
 
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    // Receive fails with -1
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 10);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, "");
-    will_return(__wrap_OS_RecvSecureTCP, -1);
+    // A real answer, refusing the task. Reported with its status rather than as an unreachable
+    // module, so an operator can tell a rejected request from an absent daemon.
+    will_return(__wrap_uhttp_post, "{\"error\":\"bad request\"}");
+    will_return(__wrap_uhttp_post, -1);
+    will_return(__wrap_uhttp_post, 400);
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_any(__wrap__mterror, formatted_msg);
+    expect_string(__wrap__mterror, formatted_msg, "The task manager refused the upgrade task with HTTP 400.");
 
     cJSON *result = wm_agent_upgrade_send_tasks_information(message);
 
@@ -796,26 +785,15 @@ void test_wm_agent_upgrade_send_tasks_information_invalid_json(void **state)
     cJSON *message = cJSON_CreateObject();
     cJSON_AddStringToObject(message, "command", "upgrade");
 
-    // Connection succeeds
-    expect_any(__wrap_OS_ConnectUnixDomain, path);
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 10);
-
-    // Send succeeds
-    expect_value(__wrap_OS_SendSecureTCP, sock, 10);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
+    will_return(__wrap_uhttp_client_new, TEST_HTTP_CLIENT);
 
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    // Receive succeeds but with invalid JSON
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 10);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, "invalid json {");
-    will_return(__wrap_OS_RecvSecureTCP, 15);
+    // 2xx with a body that is not JSON.
+    will_return(__wrap_uhttp_post, "invalid json {");
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
@@ -834,27 +812,16 @@ void test_wm_agent_upgrade_send_tasks_information_success(void **state)
     cJSON *message = cJSON_CreateObject();
     cJSON_AddStringToObject(message, "command", "upgrade");
 
-    // Connection succeeds
-    expect_any(__wrap_OS_ConnectUnixDomain, path);
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 10);
-
-    // Send succeeds
-    expect_value(__wrap_OS_SendSecureTCP, sock, 10);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
+    will_return(__wrap_uhttp_client_new, TEST_HTTP_CLIENT);
 
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    // Receive succeeds with valid JSON
-    char *response_str = "{\"status\":\"ok\",\"error\":0}";
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 10);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response_str);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response_str));
+    // A created task is answered with its id and nothing else; the HTTP status carries what the
+    // old "status" member used to.
+    will_return(__wrap_uhttp_post, "{\"task_id\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}");
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
@@ -862,9 +829,17 @@ void test_wm_agent_upgrade_send_tasks_information_success(void **state)
     cJSON *result = wm_agent_upgrade_send_tasks_information(message);
 
     assert_non_null(result);
-    cJSON *status = cJSON_GetObjectItem(result, "status");
-    assert_non_null(status);
-    assert_string_equal(cJSON_GetStringValue(status), "ok");
+    cJSON *task_id = cJSON_GetObjectItem(result, "task_id");
+    assert_non_null(task_id);
+    assert_string_equal(cJSON_GetStringValue(task_id),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+    // The url must be ABSOLUTE. libcurl parses it before it looks at CURLOPT_UNIX_SOCKET_PATH and
+    // rejects a bare path with CURLE_URL_MALFORMAT and no HTTP status -- which this function would
+    // report as an unreachable task manager, so the mistake looks like an outage rather than a bug.
+    const uhttp_captured_options_t *sent = uhttp_wrappers_last_options();
+    assert_string_equal(sent->url, "http://localhost/v1/tasks");
+    assert_string_equal(sent->unix_socket_path, "queue/sockets/task.sock");
 
     cJSON_Delete(message);
     cJSON_Delete(result);
@@ -891,9 +866,9 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_enabled),
         cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_disabled),
         // wm_agent_upgrade_send_tasks_information
-        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_connect_error),
-        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_recv_sockterr),
-        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_recv_error),
+        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_client_error),
+        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_transport_error),
+        cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_http_error),
         cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_invalid_json),
         cmocka_unit_test(test_wm_agent_upgrade_send_tasks_information_success),
     };

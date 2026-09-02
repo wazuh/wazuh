@@ -281,8 +281,11 @@ void test_wm_agent_upgrade_create_task_for_agent_custom_wpk_uses_basename(void *
     agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
     agent_task->task_info->task = upgrade_custom_task;
 
+    // The task manager answers a created task with its id and nothing else -- the old "status"
+    // member went away with the wdb protocol, since the HTTP status now carries that.
     cJSON *tm_response = cJSON_CreateObject();
-    cJSON_AddStringToObject(tm_response, "status", "ok");
+    cJSON_AddStringToObject(tm_response, "task_id",
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     expect_check(__wrap_wm_agent_upgrade_send_tasks_information, message_object,
                  check_task_message_wpk_file_is_basename, (LargestIntegralType)expected_basename);
@@ -1278,7 +1281,8 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     // wm_agent_upgrade_send_tasks_information
 
     cJSON *tm_response = cJSON_CreateObject();
-    cJSON_AddStringToObject(tm_response, "status", "ok");
+    cJSON_AddStringToObject(tm_response, "task_id",
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     expect_any(__wrap_wm_agent_upgrade_send_tasks_information, message_object);
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, tm_response);
@@ -1480,7 +1484,8 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     // wm_agent_upgrade_send_tasks_information
 
     cJSON *tm_response2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(tm_response2, "status", "ok");
+    cJSON_AddStringToObject(tm_response2, "task_id",
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     expect_any(__wrap_wm_agent_upgrade_send_tasks_information, message_object);
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, tm_response2);

@@ -705,13 +705,26 @@ class TestActiveResponseBuilder:
     class TestDispatch:
         """Tests for dispatch."""
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_success(self, mock_socket):
-            """Test successful task creation via Task Manager socket."""
-            # Mock socket response
-            mock_sock_instance = MagicMock()
-            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "task-123"}
-            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+        @staticmethod
+        def _patched_client(mock_client, response=None, side_effect=None):
+            """Wire a patched TaskManagerHTTPClient and return the client the code will use.
+
+            dispatch() opens the client once for the whole pass and uses it as a context manager,
+            so the mock has to answer __enter__ rather than being the client itself.
+            """
+            client = MagicMock()
+            if side_effect is not None:
+                client.create_task.side_effect = side_effect
+            else:
+                client.create_task.return_value = response or {"task_id": "task-123"}
+
+            mock_client.return_value.__enter__.return_value = client
+            return client
+
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_success(self, mock_client):
+            """Test successful task creation via the Task Manager."""
+            client = self._patched_client(mock_client)
 
             # Create AR with proper structure
             ar = ActiveResponse(
@@ -748,15 +761,16 @@ class TestActiveResponseBuilder:
 
             assert result is builder
 
-            # Verify socket was called with proper message format
-            mock_sock_instance.send.assert_called_once()
-            sent_msg = mock_sock_instance.send.call_args[0][0]
-            assert sent_msg["action"] == "create_task"
-            assert sent_msg["task_type"] == "active_response"
-            assert sent_msg["agent_id"] == "001"
-            assert sent_msg["source_id"] == "ar-doc-123"
-            assert sent_msg["create_time"] == 1704067200  # 2024-01-01T00:00:00Z
-            assert "payload" in sent_msg
+            # Verify the task was created with the right fields
+            client.create_task.assert_called_once()
+            sent = client.create_task.call_args.kwargs
+            assert sent["task_type"] == "active_response"
+            assert sent["agent_id"] == "001"
+            # The AR document id, mixed into the deterministic task id so the same alert produces
+            # the same task on any cluster node.
+            assert sent["source_id"] == "ar-doc-123"
+            assert sent["create_time"] == 1704067200  # 2024-01-01T00:00:00Z
+            assert "payload" in sent
 
             # Verify bookmark was updated
             bookmark_file.update.assert_called_once_with([1, "ar-doc-123"])
@@ -774,15 +788,17 @@ class TestActiveResponseBuilder:
 
             assert result is builder
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_holds_the_page_on_a_failed_send(self, mock_socket):
-            """WazuhSocketJSON raises a bare WazuhException(1014) when the send fails. That says
-            nothing about this response, so the page must be held rather than cleared."""
-            from wazuh.core.exception import WazuhException
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_holds_the_page_when_task_manager_is_unreachable(self, mock_client):
+            """A Task Manager that cannot be reached says nothing about this response, so the page
+            must be HELD rather than cleared: clearing it would drop every response on it over a
+            transient outage, turning at-least-once delivery into at-most-once."""
+            from wazuh.core.exception import WazuhInternalError
 
-            mock_sock_instance = MagicMock()
-            mock_sock_instance.send.side_effect = WazuhException(1014)
-            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+            # 2021 is "cannot connect": the module is not listening. A WazuhInternalError is a
+            # sibling of WazuhError under WazuhException rather than a subclass, so catching only
+            # WazuhError would let it escape the loop and abort the cycle from here on.
+            self._patched_client(mock_client, side_effect=WazuhInternalError(2021))
 
             ar = ActiveResponse(
                 doc_source={
@@ -820,51 +836,6 @@ class TestActiveResponseBuilder:
             logger.error.assert_called_once()
             bookmark_file.update.assert_not_called()
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_holds_the_page_when_task_manager_is_unreachable(self, mock_socket):
-            """A dead Task Manager socket raises WazuhInternalError, a sibling of WazuhError under
-            WazuhException rather than a subclass, so catching only WazuhError let it escape the
-            loop and abort the cycle from that response on. Caught here instead, and the page is
-            held: clearing it would drop every response on it over a transient outage, turning
-            at-least-once delivery into at-most-once."""
-            from wazuh.core.exception import WazuhInternalError
-
-            mock_socket.return_value.__enter__.side_effect = WazuhInternalError(1013)
-
-            ar = ActiveResponse(
-                doc_source={
-                    "@timestamp": "2024-01-01T00:00:00Z",
-                    "wazuh": {
-                        "active_response": {
-                            "location": "defined-agent",
-                            "agent_id": "001",
-                            "name": "test-ar",
-                            "executable": "test.sh",
-                            "extra_arguments": None,
-                            "type": "stateless",
-                        }
-                    },
-                },
-                doc_id="ar-doc-123",
-                bookmark=ActiveResponseBookmark([1]),
-            )
-
-            logger = MagicMock()
-            bookmark_file = MagicMock()
-            bookmark_file.page_end_sort = [1]
-
-            builder = ActiveResponseBuilder(
-                logger=logger,
-                all_agents=["001"],
-                bookmark_file=bookmark_file,
-            )
-            builder._ars = [ar]
-
-            builder.dispatch()
-
-            logger.error.assert_called_once()
-            bookmark_file.update.assert_not_called()
-
         def test_dispatch_advances_the_cursor_on_a_page_that_dispatched_nothing(self):
             """Every document of the page was discarded before dispatch (invalid schema, unusable
             event reference, unparseable @timestamp), so nothing reaches _ars. The cursor still has
@@ -882,14 +853,12 @@ class TestActiveResponseBuilder:
 
             bookmark_file.update.assert_called_once_with([9, "z"])
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_follows_the_page_not_the_last_dispatched_response(self, mock_socket):
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_follows_the_page_not_the_last_dispatched_response(self, mock_client):
             """The cursor clears the whole page, including documents that came after the last one
             dispatched. Following the last dispatched response instead would leave them to be
             re-read."""
-            mock_sock_instance = MagicMock()
-            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "t1"}
-            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+            self._patched_client(mock_client, response={"task_id": "t1"})
 
             ar = ActiveResponse(
                 doc_source={
@@ -922,19 +891,23 @@ class TestActiveResponseBuilder:
             # Once for the page, not once per response, which also means one fsync per cycle.
             bookmark_file.update.assert_called_once_with([7, "later-doc"])
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_handles_task_manager_error_response(self, mock_socket):
-            """Task Manager answering with an error is a decision about this task, not a transport
-            failure (receive(raw=True) returns it instead of raising), so the page still clears.
-            This is the contrast with the two hold cases above."""
-            # Mock socket to return error response
-            mock_sock_instance = MagicMock()
-            mock_sock_instance.receive.return_value = {
-                "status": "error",
-                "error": "invalid_agent",
-                "message": "Agent not found"
-            }
-            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_clears_the_page_when_task_manager_refuses(self, mock_client):
+            """A refusal is a decision ABOUT THIS TASK, not a transport failure, so the page still
+            clears -- the contrast with the hold case above.
+
+            It reaches the handler differently now: the framed socket returned a refusal in the
+            body (`status != "ok"`) and never raised, while TaskManagerHTTPClient raises WazuhError
+            2019 on any non-2xx. dispatch() therefore has to tell that one code apart from every
+            transport failure, or a permanently invalid document would freeze the cursor on its
+            page for as long as it existed.
+            """
+            from wazuh.core.exception import WazuhError
+
+            self._patched_client(
+                mock_client,
+                side_effect=WazuhError(2019, extra_message="invalid_agent"),
+            )
 
             ar = ActiveResponse(
                 doc_source={
@@ -969,15 +942,17 @@ class TestActiveResponseBuilder:
 
             builder.dispatch()
 
-            # Error should be logged
+            # Error should be logged, carrying the reason the Task Manager gave
             logger.error.assert_called_once()
             assert "invalid_agent" in str(logger.error.call_args)
             # Bookmark should still be updated
             bookmark_file.update.assert_called_once_with([1])
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_missing_timestamp(self, mock_socket):
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_missing_timestamp(self, mock_client):
             """Test dispatch skips ARs without @timestamp."""
+            client = self._patched_client(mock_client)
+
             ar = ActiveResponse(
                 doc_source={
                     # Missing @timestamp
@@ -1010,15 +985,15 @@ class TestActiveResponseBuilder:
             # Should log warning and skip
             logger.warning.assert_called_once()
             assert "missing @timestamp" in str(logger.warning.call_args)
-            # Socket should not be called
-            mock_socket.assert_not_called()
+            # No task should be created. The client itself IS built -- it is opened once for the
+            # whole pass, before any AR is examined -- so this asserts on the request, not the
+            # connection.
+            client.create_task.assert_not_called()
 
-        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_with_event_enrichment(self, mock_socket):
+        @patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient")
+        def test_dispatch_with_event_enrichment(self, mock_client):
             """Test dispatch includes enriched event data in payload."""
-            mock_sock_instance = MagicMock()
-            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "task-123"}
-            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+            client = self._patched_client(mock_client)
 
             ar = ActiveResponse(
                 doc_source={
@@ -1053,8 +1028,7 @@ class TestActiveResponseBuilder:
             builder.dispatch()
 
             # Verify payload includes both AR and event data
-            sent_msg = mock_sock_instance.send.call_args[0][0]
-            payload = sent_msg["payload"]
+            payload = client.create_task.call_args.kwargs["payload"]
 
             # AR data should be present
             assert payload["ar_field"] == "ar_value"

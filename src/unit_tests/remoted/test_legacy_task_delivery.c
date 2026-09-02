@@ -20,6 +20,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/http_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/agent_metadata_wrappers.h"
@@ -672,20 +673,10 @@ static keyentry **setup_single_task_poll_cycle(const char *agent_id, int agent_i
     cJSON_Delete(response_obj);
     *out_response = response;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_id);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, sock_id);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, sock_id);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     return keyentries;
 }
@@ -727,6 +718,14 @@ static void test_poll_cycle_retry_recovers_within_same_cycle(void **state) {
     // wouldn't match (this uses expect_any elsewhere, so absence is enforced by exhausting exactly
     // the calls above and no more).
     legacy_upgrade_poll_cycle();
+
+    // The url must be ABSOLUTE. libcurl parses it before it looks at CURLOPT_UNIX_SOCKET_PATH and
+    // rejects a bare path with CURLE_URL_MALFORMAT and no HTTP status, which this poller cannot
+    // distinguish from a task manager that is not listening -- so the poll would silently return
+    // nothing for every cycle, forever.
+    const uhttp_captured_options_t *sent = uhttp_wrappers_last_options();
+    assert_string_equal(sent->url, "http://localhost/v1/tasks/pending");
+    assert_string_equal(sent->unix_socket_path, "queue/sockets/task.sock");
 
     free_single_task_poll_cycle(keyentries, response);
 }
@@ -813,20 +812,10 @@ static void test_poll_cycle_permanent_failure_short_circuits_no_retry(void **sta
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 72);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 72);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 72);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     // Exactly one merror ("invalid or incomplete...") is queued: if the loop retried, no
     // req_send_and_wait mock exists at all for this task, so a retry attempt would abort the test
@@ -899,20 +888,10 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     char *response_041 = cJSON_PrintUnformatted(response_041_obj);
     cJSON_Delete(response_041_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 50);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 50);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 50);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response_041);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response_041));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response_041);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     // The unsupported task type is simply logged and dropped -- no push attempted for it, and it's
     // never reintroduced later (a pre-v5.0.0 agent has no legacy delivery path at all for a
@@ -946,20 +925,10 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     char *response_042 = cJSON_PrintUnformatted(response_042_obj);
     cJSON_Delete(response_042_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 51);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 51);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 51);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response_042);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response_042));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response_042);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     // Every attempt is a REJECTION (agent answers "busy" at the 'open' step, never a no-response),
     // so this is retried in-cycle up to LEGACY_TASK_MAX_PUSH_ATTEMPTS times -- queue exactly that
@@ -1033,20 +1002,10 @@ static void test_poll_cycle_invalid_payload_logged_and_dropped(void **state) {
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 15);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 15);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 15);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     expect_any(__wrap__merror, formatted_msg); // "has an invalid payload, not delivered"
 
@@ -1091,20 +1050,10 @@ static void test_poll_cycle_unparsable_payload_logged_and_dropped(void **state) 
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 17);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 17);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 17);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     expect_any(__wrap__merror, formatted_msg); // "has an unparsable payload, not delivered"
 
@@ -1140,20 +1089,10 @@ static void test_poll_cycle_eligible_agent_zero_pending_tasks(void **state) {
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 60);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 60);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 60);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     // No req_send_and_wait/minfo/merror calls are queued: an empty task list must not attempt
     // any push and must not log a failure -- any unexpected call here fails the test.
@@ -1202,20 +1141,10 @@ static void test_poll_cycle_no_response_without_task_id_is_logged_not_retried(vo
     char *response = cJSON_PrintUnformatted(response_obj);
     cJSON_Delete(response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 84);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 84);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 84);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     // lock_restart gets no response at all -- a single attempt (attempt 1 of 5, not the last), so
     // this logs at debug1, not warning.
@@ -1373,20 +1302,10 @@ static void test_poll_cycle_no_response_defers_to_retry_list_then_succeeds_next_
     char *empty_response = cJSON_PrintUnformatted(empty_response_obj);
     cJSON_Delete(empty_response_obj);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, "queue/sockets/task.sock");
-    expect_any(__wrap_OS_ConnectUnixDomain, type);
-    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
-    will_return(__wrap_OS_ConnectUnixDomain, 82);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 82);
-    expect_any(__wrap_OS_SendSecureTCP, size);
-    expect_any(__wrap_OS_SendSecureTCP, msg);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 82);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, empty_response);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(empty_response));
+    will_return(__wrap_uhttp_client_new, (void *)1);
+    will_return(__wrap_uhttp_post, empty_response);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
 
     legacy_upgrade_poll_cycle();
 

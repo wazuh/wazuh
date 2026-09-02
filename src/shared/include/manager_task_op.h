@@ -15,16 +15,18 @@
 
 /**
  * The producer side of the manager task queue: creating rows, counting them, and asking what an
- * agent still owes. Everything here speaks the `task <sub-command> <json>` protocol over
- * `queue/db/wdb`, which is how a producer OUTSIDE modulesd reaches the queue.
+ * agent still owes. Everything here POSTs JSON over `queue/sockets/task.sock`, which is how a
+ * producer OUTSIDE modulesd reaches the queue.
  *
  * It lives in shared/ rather than in the Task Manager because its callers cannot link the Task
- * Manager: `create_manager_task` is in modulesd's static library, modulesd is not built with
- * -rdynamic, and authd and the vulnerability scanner are a separate daemon and a separate shared
- * object respectively. A second copy of the wire protocol in each of them is the alternative.
+ * Manager: it is a shared object loaded by modulesd, and authd and the vulnerability scanner are a
+ * separate daemon and a separate shared object respectively. A second copy of the wire protocol in
+ * each of them is the alternative.
  *
- * The dispatcher's own client is deliberately NOT this one -- it holds a long-lived connection per
- * lane and needs the claim, requeue and sweep commands a producer has no business issuing.
+ * This used to speak the `task <sub-command> <json>` protocol to wazuh-db, because that is where
+ * the queue's storage lived. The Task Manager now owns tasks.db outright, so the operations a
+ * producer needs are three HTTP routes on its own socket and the ones it has no business issuing --
+ * claim, requeue, the ownership sweep -- are not on any wire at all.
  */
 
 /* The task type authd creates. Spelled here rather than taken from the registry for the same
@@ -74,7 +76,7 @@ typedef struct manager_task_request_t {
     const char *task_id;   ///< 64 hex characters; see the id helpers below.
     const char *task_type;
     const char *agent_id;  ///< Optional: agent-subject types only.
-    const char *payload;   ///< JSON, capped at 16 KB once escaped (wazuh-db enforces it).
+    const char *payload;   ///< JSON. The Task Manager enforces its own size cap and answers 413.
     long long create_time;
     /// When the dispatcher may first attempt it. 0 defers to CREATE_TIME.
     long long next_attempt_at;
@@ -132,12 +134,11 @@ char* manager_task_id_random(const char *tag);
  *
  * @param request The row.
  * @param timeout Seconds to allow for the round trip; 0 waits indefinitely.
- * @param sock Reusable wazuh-db socket, or NULL for a private one.
  * @param[out] surviving_task_id Optional. The id of the row that actually exists, which on a
  *                               coalesce is NOT the one that was asked for. Caller frees.
  * @return A manager_task_create_result.
  */
-int manager_task_create(const manager_task_request_t *request, int timeout, int *sock, char **surviving_task_id);
+int manager_task_create(const manager_task_request_t *request, int timeout, char **surviving_task_id);
 
 /**
  * @brief Count the rows of one type in one status.
@@ -146,13 +147,13 @@ int manager_task_create(const manager_task_request_t *request, int timeout, int 
  *         as a bound must keep their previous value rather than treating a failure as an empty
  *         queue.
  */
-int manager_task_count(const char *task_type, const char *status, int timeout, int *sock);
+int manager_task_count(const char *task_type, const char *status, int timeout);
 
 /**
  * @brief What the newest row of this type says about one agent.
  *
  * @return A manager_task_status.
  */
-int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout, int *sock);
+int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout);
 
 #endif /* MANAGER_TASK_OP_H */

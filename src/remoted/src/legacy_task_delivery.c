@@ -70,6 +70,7 @@
 #include "os_net.h"
 #include "legacy_task_delivery.h"
 #include "queue_linked_op.h"
+#include "http_op.h"
 
 #include <limits.h>
 
@@ -181,11 +182,17 @@ typedef struct {
  * poller thread, so no lock is needed, same assumption pending_clear_upgrade_replies makes for its
  * queue. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it; legacy_task_retry_list_count tracks how many of
  * the leading slots are actually populated. */
+/* Deadlines for the Task Manager round trip. Both are set EXPLICITLY because zero means different
+ * things to libcurl: an unset request timeout is "never", while an unset connect timeout is its own
+ * 300-second default -- either would let one unanswered poll stall this thread far past its cycle. */
+#define LEGACY_TASK_CONNECT_TIMEOUT_MS 2000
+#define LEGACY_TASK_REQUEST_TIMEOUT_MS 10000
+
 static legacy_task_retry_entry_t *legacy_task_retry_list[LEGACY_TASK_RETRY_LIST_MAX_SIZE];
 static size_t legacy_task_retry_list_count = 0;
 
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) __attribute__((nonnull(1)));
-STATIC char *legacy_task_manager_socket_request(const char *request_str) __attribute__((nonnull));
+STATIC char *legacy_task_manager_request(const char *route, const char *request_str) __attribute__((nonnull));
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
 STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 3, 5)));
 STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
@@ -274,33 +281,52 @@ STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version
 }
 
 /**
- * @brief Send a pre-serialized request to the Task Manager socket and return its raw response.
+ * @brief POST a pre-serialized request to the Task Manager and return its raw response.
  *
- * Connect/send/recv plumbing for legacy_task_get_pending()'s `get_pending_tasks` action.
- * Deliberately does no JSON parsing and no logging of its own -- the caller wants specific
- * wording/severity when the round trip fails; a connect failure and a timed-out response are
- * folded into the same NULL return here rather than distinguished, since the caller couldn't act
- * on that distinction differently anyway.
+ * The Task Manager serves HTTP/1.1 over its Unix socket now, so this is a libcurl POST rather than
+ * the connect/send/recv it used to be over the framed protocol. It deliberately does no JSON
+ * parsing and no logging of its own -- the caller wants specific wording and severity when the
+ * round trip fails; a refused connection and a timed-out response are folded into the same NULL
+ * return, since the caller could not act on that distinction differently anyway.
  *
- * @param request_str Pre-serialized JSON request to send.
- * @return Caller-owned raw response string on success, or NULL if the socket couldn't be reached
- * or no response came back.
+ * @param route Path on the Task Manager socket.
+ * @param request_str Pre-serialized JSON request body.
+ * @return Caller-owned response string on success, or NULL when the socket could not be reached,
+ *         no response came back, or the answer was not a 2xx.
  */
-STATIC char *legacy_task_manager_socket_request(const char *request_str) {
-    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK, SOCK_STREAM, OS_MAXSTR);
+STATIC char *legacy_task_manager_request(const char *route, const char *request_str) {
+    uhttp_options_t options = {0};
+    uhttp_result_t result = {0};
+    uhttp_client_t *client = NULL;
+    char *response = NULL;
+    char url[512] = "";
+    int rc = 0;
 
-    if (sock < 0) {
+    /* An ABSOLUTE url, not the bare route: libcurl parses it before it consults the socket option,
+     * and rejects a path on its own. */
+    snprintf(url, sizeof(url), "%s%s", WM_TASK_MODULE_URL, route);
+
+    options.unix_socket_path = WM_TASK_MODULE_SOCK;
+    options.url = url;
+    options.content_type = "application/json";
+    options.connect_timeout_ms = LEGACY_TASK_CONNECT_TIMEOUT_MS;
+    options.timeout_ms = LEGACY_TASK_REQUEST_TIMEOUT_MS;
+
+    if (client = uhttp_client_new(&options), !client) {
         return NULL;
     }
 
-    OS_SendSecureTCP(sock, strlen(request_str), request_str);
-
-    char *response = NULL;
+    /* One buffer per call rather than a shared one: this runs on the poller thread only, but a
+     * static buffer would still have to be sized for the largest fleet-wide response, and the
+     * allocation is dwarfed by the round trip. */
     os_calloc(OS_MAXSTR, sizeof(char), response);
-    int length = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
-    close(sock);
+    uhttp_client_set_response_buffer(client, response, OS_MAXSTR - 1);
 
-    if (length <= 0) {
+    rc = uhttp_post(client, request_str, strlen(request_str), &result);
+
+    uhttp_client_free(client);
+
+    if (rc != 0) {
         os_free(response);
         return NULL;
     }
@@ -322,12 +348,11 @@ STATIC char *legacy_task_manager_socket_request(const char *request_str) {
  */
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
     cJSON *request = cJSON_CreateObject();
-    cJSON_AddStringToObject(request, "action", "get_pending_tasks");
     cJSON_AddStringToObject(request, "agent_id", agent_id);
     char *request_str = cJSON_PrintUnformatted(request);
     cJSON_Delete(request);
 
-    char *response = legacy_task_manager_socket_request(request_str);
+    char *response = legacy_task_manager_request("/v1/tasks/pending", request_str);
     os_free(request_str);
 
     if (!response) {
@@ -344,13 +369,8 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
         return NULL;
     }
 
-    cJSON *status = cJSON_GetObjectItem(json_response, "status");
-    if (!cJSON_IsString(status) || strcmp(status->valuestring, "ok") != 0) {
-        mwarn("legacy_task_delivery: Task Manager returned a non-ok status for agent '%s'", agent_id);
-        cJSON_Delete(json_response);
-        return NULL;
-    }
-
+    /* No "status" member to check: a non-2xx already came back as NULL from the request helper,
+     * so reaching here means the Task Manager answered successfully. */
     cJSON *tasks_json = cJSON_GetObjectItem(json_response, "tasks");
     cJSON *tasks = cJSON_IsArray(tasks_json) ? cJSON_Duplicate(tasks_json, 1) : NULL;
 

@@ -47,6 +47,7 @@ if(${TARGET} STREQUAL "manager")
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command \
                             -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,sleep -Wl,--wrap,CreateThread \
                             -Wl,--wrap,pthread_exit -Wl,--wrap,getpid -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym \
+                            -Wl,--wrap,uhttp_client_new -Wl,--wrap,uhttp_client_free -Wl,--wrap,uhttp_client_set_response_buffer -Wl,--wrap,uhttp_post \
                             -Wl,--wrap,FOREVER -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}"
   )
 

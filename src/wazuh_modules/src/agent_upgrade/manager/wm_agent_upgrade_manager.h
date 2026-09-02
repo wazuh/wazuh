@@ -127,6 +127,15 @@ void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task);
  * @param message_object JSON message to send to Task Manager
  * @return JSON response from Task Manager, or NULL on communication error
  * */
+/// The task manager URL that stores an agent task, and the two deadlines for reaching it.
+///
+/// Absolute, not a bare path: the request travels over WM_TASK_MODULE_SOCK and the host is never
+/// resolved, but libcurl parses the URL before it consults the socket option and rejects a path on
+/// its own with no HTTP status -- which reads like an unreachable task manager.
+#define WM_UPGRADE_TASK_CREATE_ROUTE WM_TASK_MODULE_URL "/v1/tasks"
+#define WM_UPGRADE_TASK_CONNECT_TIMEOUT_MS 2000
+#define WM_UPGRADE_TASK_REQUEST_TIMEOUT_MS 10000
+
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __attribute__((nonnull));
 
 /**
