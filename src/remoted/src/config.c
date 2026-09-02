@@ -130,7 +130,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
-    cfg->global.agents_disconnection_alert_time = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
@@ -365,7 +364,6 @@ cJSON *getRemoteGlobalConfig(void) {
     cJSON *global = cJSON_CreateObject();
     cJSON *remoted = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(remoted,"agents_disconnection_alert_time",logr.global.agents_disconnection_alert_time);
     cJSON_AddNumberToObject(remoted,"agents_disconnection_time",logr.global.agents_disconnection_time);
 
     cJSON_AddItemToObject(global,"remoted",remoted);

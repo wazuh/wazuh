@@ -94,12 +94,21 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_user_version_get \
 list(APPEND wdb_tests_names "test_wdb_task_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_create -Wl,--wrap,wdb_task_get_pending -Wl,--wrap,wdb_task_mark_delivered \
                              -Wl,--wrap,wdb_task_cleanup_expired -Wl,--wrap,wdb_task_delete_old -Wl,--wrap,wdb_open_tasks \
+                             -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_finalize_all_statements -Wl,--wrap,wdb_exec \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_task")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
                              -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND wdb_tests_names "test_wdb_manager_task")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,wdb_step \
+                             -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 \
+                             -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_text \
+                             -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_errmsg \
+                             -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int64 -Wl,--wrap,sqlite3_changes \
+                             ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")
 list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")

@@ -136,7 +136,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/engine-api-http.sock"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/engine-ingest-http.sock"
 #define INV_SYNC_SOCK      "queue/sockets/inventory-sync-http.sock"
-#define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
 #define CLUSTER_SOCK       "queue/sockets/cluster-internal.sock"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 

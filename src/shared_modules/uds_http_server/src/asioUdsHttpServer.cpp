@@ -526,12 +526,18 @@ namespace wazuh::uds_http
                     // handler that kept a responder and never used it.
                     if (const auto decision = m_state->responseTimeoutThrottle.record())
                     {
+                        // The route in hand, not the server-wide value: with per-route overrides
+                        // those differ, and naming the wrong one sends an operator to the wrong knob.
                         LOGFN_WARN(m_state->log,
-                                   "%llu request(s) in the last %d s were not answered within %zu s and were closed "
-                                   "with 504. Their handler is stuck or lost the responder.",
+                                   "%llu request(s) in the last %d s were not answered within their response "
+                                   "backstop and were closed with 504 (last: %s, %zu s). Their handler is stuck or "
+                                   "lost the responder.",
                                    static_cast<unsigned long long>(decision.total),
                                    LogThrottle::kDefaultWindowSeconds,
-                                   m_state->config.responseTimeoutSec);
+                                   m_route ? m_route->path.c_str() : "unknown route",
+                                   m_route && m_route->options.responseTimeoutSec != 0
+                                       ? m_route->options.responseTimeoutSec
+                                       : m_state->config.responseTimeoutSec);
                     }
                     deliver(errorResponse(504, "Handler did not respond in time"));
                     return;
@@ -904,7 +910,13 @@ namespace wazuh::uds_http
                     m_readBuffer.clear();
                     m_readBuffer.shrink_to_fit();
 
-                    armTimer(Phase::Response, std::chrono::seconds {m_state->config.responseTimeoutSec});
+                    // Per-route override, same 0-defers-to-policy rule as the body and session caps.
+                    // Routes whose peer waits longer than the server-wide backstop raise their own;
+                    // see RouteOptions::responseTimeoutSec for why not the global one.
+                    armTimer(Phase::Response,
+                             std::chrono::seconds {m_route->options.responseTimeoutSec != 0
+                                                       ? m_route->options.responseTimeoutSec
+                                                       : m_state->config.responseTimeoutSec});
                     watchPeerDuringDeferral();
 
                     responder = std::make_shared<SessionResponder>(m_runtime, weak_from_this(), m_state);

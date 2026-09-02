@@ -27,6 +27,15 @@ typedef enum _wm_task_type {
 // Defaults
 #define WM_TASK_DEFAULT_TTL 3600 // 1 hour
 #define WM_TASK_DEFAULT_CLEANUP_INTERVAL 300 // 5 minutes
+
+/* Manager task retention, applied by the same cleanup thread. Only TERMINAL rows are ever removed:
+ * a pending manager task is never expired by age, which is the opposite of what the TTL above does
+ * to agent tasks and is deliberate -- ageing out pending rows would destroy the long-outage work
+ * this queue exists to survive. */
+#define WM_TASK_DEFAULT_RETENTION_DAYS 7
+#define WM_TASK_DEFAULT_DEAD_LETTER_RETENTION_DAYS 30
+#define WM_TASK_DEFAULT_HISTORY_PER_SCHEDULE 20
+#define WM_TASK_DEFAULT_MAX_ROWS 100000
 #define WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES 1048576 // 1 MB
 #define WM_TASK_DEFAULT_MAX_TASKS_PER_POLL 100 // Maximum tasks returned per poll
 
@@ -72,7 +81,22 @@ typedef struct _wm_task_get_pending_params {
     char *agent_id;
 } wm_task_get_pending_params;
 
+/* Forward declaration: the cleanup thread runs the manager task watchdog, but nothing else here
+ * needs the dispatcher's layout. */
+struct _wm_manager_task_dispatcher;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
+
+/**
+ * @brief The running manager task dispatcher, or NULL when it did not start.
+ *
+ * Exposed so the cleanup thread can run the watchdog without a thread of its own. Returning NULL
+ * rather than a zeroed dispatcher matters: a dispatcher that failed to start has no lanes, and a
+ * watchdog walking one would report on workers that do not exist.
+ *
+ * @return The dispatcher, or NULL.
+ */
+struct _wm_manager_task_dispatcher* wm_task_manager_dispatcher(void);
 
 // Parse XML configuration
 int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);

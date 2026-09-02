@@ -679,32 +679,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Show the config of monitor/internal on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/monitor/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - monitord:
-                compress: !anyint
-                daily_rotations: !anyint
-                day_wait: !anyint
-                delete_old_agents: !anyint
-                keep_log_days: !anyint
-                monitor_agents: !anyint
-                rotate_log: !anyint
-                size_rotate: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Show the config of request/remote on worker2
     request:
       verify: False

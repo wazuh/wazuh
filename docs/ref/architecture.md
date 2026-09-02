@@ -38,7 +38,6 @@ subgraph manager[" "]
     direction TB
     engine["Engine<br/>(analysisd)"]:::e
     wdb["Wazuh DB"]:::d
-    monitord["Monitord"]:::d
   end
 
   subgraph modulesd["Modulesd"]
@@ -74,8 +73,7 @@ authd -->|1,10| wdb
 
 %% Modulesd → Core
 vs -->|3| engine
-tm -->|5| wdb
-monitord -->|9| wdb
+tm -->|5,9| wdb
 
 %% Modulesd internal (in-process VD scan lane)
 is -->|3| vs
@@ -97,7 +95,7 @@ clusterd -->|4| remoted
 clusterd -->|4,8| ks
 
 %% Management → Internal
-api -->|6| engine & wdb & remoted & monitord
+api -->|6| engine & wdb & remoted
 api -->|1,6,10| authd
 api -->|5| au
 api -->|7| ctrl
@@ -114,7 +112,6 @@ clients -->|1,5,6,7,8,10| api
 | **Engine**     | `wazuh-manager-analysisd` | Event processing, event generation (replaces legacy analysisd)                                                               |
 | **Remoted**    | `wazuh-manager-remoted`   | Agent communication gateway — HTTPS agent API on port 1517 (enrollment, events, state sync, control, downloads); legacy AES TCP/UDP on 1514 for 4.x agents, opt-in via `<remote><legacy>` |
 | **Wazuh DB**   | `wazuh-manager-db`        | SQLite-based database daemon for agent and global state                                                                      |
-| **Monitord**   | `wazuh-manager-monitord`  | Agent monitoring and log rotation                                                                                            |
 | **Auth**       | `wazuh-manager-authd`     | Owns all agent registration logic. Reached by Remoted's `POST /enroll` over its local socket for 5.x agents; its own TLS listener on port 1515 serves 4.x agents, gated by `<auth><legacy_enrollment>` |
 | **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC                                                                    |
 | **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, agent upgrade, task manager, and control (restart/reload) |
@@ -153,10 +150,10 @@ clients -->|1,5,6,7,8,10| api
     - **Below v5.0.0** — a polling thread in **Remoted** (gated on the legacy channel) walks the connected agents, asks Task Manager for each one's pending task, and pushes the WPK down its existing session using the legacy six-step WPK push. This path exists only so 4.x agents remain upgradable; it deliberately skips agents at v5.0.0 or above.
 
     Task delivery is fire-and-forget from the manager's perspective either way.
-6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock`), **Remoted** (`queue/sockets/remote.sock`), **Monitord** (`queue/sockets/monitor.sock`), or **Auth** (`queue/sockets/auth.sock`) depending on the endpoint. The **DAPI** layer transparently routes requests across cluster nodes.
+6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock`), **Remoted** (`queue/sockets/remote.sock`), or **Auth** (`queue/sockets/auth.sock`) depending on the endpoint. The **DAPI** layer transparently routes requests across cluster nodes.
 7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which signals the appropriate daemons.
 8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/sockets/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics — reading the Indexer credentials from the **Keystore Server** (`queue/sockets/keystore.sock`) first, since they are never held in the cluster configuration. Its Indexer-dependent jobs are supervised: availability is re-checked every 300s and the jobs are cancelled and restarted with exponential backoff (capped at 3600s) whenever the Indexer becomes unreachable. The API forwards cluster queries to Clusterd (`queue/sockets/cluster-internal.sock`).
-9. **Agent Monitoring** — **Remoted** updates agent connection state (keep-alive, disconnection) in **Wazuh DB** (`queue/sockets/wdb.sock`). **Monitord** handles log rotation and periodic state checks via **Wazuh DB** (`queue/sockets/wdb.sock`).
+9. **Agent Monitoring** — **Remoted** refreshes each agent's keep-alive in **Wazuh DB** (`queue/sockets/wdb.sock`). Marking silent agents disconnected, deleting long-disconnected ones and rotating the manager's logs are recurring **Task Manager** jobs inside **Modulesd**, which reach the same socket — see [Recurring manager tasks](modules/task_manager/schedules.md).
 10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth.sock`). Auth removes the agent from **Wazuh DB** (`queue/sockets/wdb.sock`) and calls **Inventory Sync Server**'s delete endpoint over UDS (`queue/sockets/inventory-sync-http.sock`) to delete every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`); the HTTP status tells Auth whether the deletion was applied, and Auth retries before logging an error that names the agent.
 
 ### IPC (Unix Domain Sockets)
@@ -183,7 +180,6 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/vd-http.sock`             | Vulnerability Scanner | HTTP     | On-demand scans and feed operations, called by remoted and the API |
 | `queue/sockets/keystore.sock`            | keystore_server       | Framed   | Indexer credential retrieval, called by clusterd                   |
 | `queue/sockets/control.sock`             | wm_control            | Framed   | Daemon restart and reload                                          |
-| `queue/sockets/monitor.sock`             | monitord              | Framed   | Active configuration query, via the API's component=monitor         |
 | `queue/sockets/wmodules.sock`            | modulesd              | Framed   | Per-module query and control, and the API's component=wmodules      |
 | `queue/sockets/wdb.sock`                 | wazuh-db              | Framed   | Legacy wdb query protocol                                          |
 | `queue/sockets/wdb-http.sock`            | wazuh-db              | HTTP     | Agent sync and summary REST API, used by clusterd and the API      |

@@ -38,13 +38,45 @@ list(APPEND task_names "test_wm_task_manager_commands")
 list(
   APPEND
   task_flags
-  "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until \
+  "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,wm_sleep_until_interruptible \
                         -Wl,--wrap,wm_task_cache_get -Wl,--wrap,wm_task_cache_set -Wl,--wrap,wm_task_cache_invalidate \
                         -Wl,--wrap,wm_task_manager_generate_task_id \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND task_names "test_wm_task_manager_tasks")
 list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
+
+# The registry is pure data plus pure functions, so nothing here needs a socket, a thread or a
+# database: only the logging wrappers, and getDefine_Int_default for the timeout ordering check.
+list(APPEND task_names "test_wm_manager_task_registry")
+list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}")
+
+# Reads /proc for real: the value of a process start time is precisely that it comes from the
+# kernel rather than from anything this process could be wrong about, so mocking it would test
+# the mock. Only the logging wrappers are needed.
+list(APPEND task_names "test_wm_manager_task_owner")
+list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
+
+# Covers the dispatcher's decisions, which are pure functions by design; its threads are
+# integration territory. uhttp and wazuh-db are linked but never reached by these tests.
+list(APPEND task_names "test_wm_manager_task_dispatcher")
+list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}")
+
+# The schedule table and its arithmetic. ReadConfig is wrapped rather than pointed at a fixture
+# file, because what is under test is what the loader does with the answer -- including the answer
+# "the file will not parse", which no fixture can produce reliably.
+list(APPEND task_names "test_wm_manager_task_schedules")
+list(APPEND task_flags "-Wl,--wrap,getDefine_Int_default -Wl,--wrap,ReadConfig ${DEBUG_OP_WRAPPERS}")
+
+# The local handlers' rules. Their bodies are a wazuh-db round trip per agent, an authd connection
+# per removal and a rename plus a gzip, which is integration territory; every rule those bodies
+# consult is here.
+list(APPEND task_names "test_wm_manager_task_local")
+list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
+
+list(APPEND task_names "test_wm_manager_task_client")
+list(APPEND task_flags "-Wl,--wrap,wdbc_query_ex_timeout -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_close \
+                        -Wl,--wrap,time ${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH task_names count)

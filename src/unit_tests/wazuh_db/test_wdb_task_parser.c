@@ -505,6 +505,129 @@ void test_wdb_parse_task_delete_old_timestamp_err(void **state)
     assert_string_equal(output, "err Error delete old tasks: 'parsing timestamp error'");
 }
 
+/* Test the "commit" sub-command */
+
+void test_wdb_parse_task_commit_ok(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task commit";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: commit");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_task_commit_err(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task commit";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: commit");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Task DB Cannot end transaction.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot end transaction");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+/* Test the "sql" sub-command */
+
+void test_wdb_parse_task_sql_ends_transaction_first(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task sql VACUUM;";
+    cJSON *result_json = cJSON_CreateArray();
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: sql VACUUM;");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    // The open deferred transaction must be committed and the prepared statements released
+    // before the query runs: SQLite refuses to VACUUM inside a transaction.
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
+    expect_string(__wrap_wdb_exec, sql, "VACUUM;");
+    will_return(__wrap_wdb_exec, result_json);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok []");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_task_sql_commit_err(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task sql VACUUM;";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: sql VACUUM;");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Task DB Cannot end transaction.");
+
+    // The query must not run at all, so no wdb_exec expectation is registered.
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot end transaction");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_sql_no_argument(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task sql";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: sql");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Task DB Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Task DB query error near: sql");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'sql'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_create_no_argument(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task create";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: create");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Task DB Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Task DB query error near: create");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'create'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -535,6 +658,15 @@ int main(void)
         cmocka_unit_test_teardown(test_wdb_parse_task_delete_old_ok, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_delete_old_err, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_delete_old_timestamp_err, teardown_json),
+        // "commit" sub-command
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_commit_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_commit_err, test_setup, test_teardown),
+        // "sql" sub-command
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_sql_ends_transaction_first, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_sql_commit_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_sql_no_argument, test_setup, test_teardown),
+        // Sub-commands that require an argument
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_create_no_argument, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

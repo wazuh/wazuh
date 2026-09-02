@@ -12,6 +12,8 @@
 #include "wmodules.h"
 #include "wm_task_manager_tasks.h"
 #include "wm_task_manager_parsing.h"
+#include "wm_manager_task_dispatcher.h"
+#include "wm_manager_task_local.h"
 #include "os_net.h"
 #include "notify_op.h"
 
@@ -27,6 +29,22 @@ extern void mock_assert(const int result, const char* const expression,
 #else
 #define STATIC static
 #endif
+
+/**
+ * @brief Resolve the socket the routed manager task types' consumer listens on.
+ *
+ * Both sides read INV_SYNC_SOCK, so neither carries its own copy of the path. inventory-sync does
+ * have a socket_path field, but it sits behind that module's C-ABI header, which its own wrapper
+ * header deliberately does not include -- and its comment records that internal options carry
+ * integers only, so nothing can set it today. Reaching through the ABI to read a field that is
+ * always empty would buy a coupling this module is specifically built to avoid.
+ *
+ * If a real string configuration source ever appears, this is the seam: both sides must read it
+ * from one place, and a second copy of the default is the failure to avoid.
+ *
+ * @return Socket path. Never NULL.
+ */
+STATIC const char* wm_task_manager_consumer_socket(void);
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
@@ -56,9 +74,23 @@ const char *task_type_names[] = {
 /* Global config for access from dispatch functions */
 static wm_task_manager *g_task_manager_config = NULL;
 
+/* The manager task dispatcher. Module scope so the cleanup thread's watchdog can read the lanes
+ * it publishes, which is the whole of what is achievable about a hung handler: there is no
+ * cancellation primitive in the tree. */
+static wm_manager_task_dispatcher g_manager_task_dispatcher = {0};
+static bool g_manager_task_dispatcher_started = false;
+
 // Global notification queue for worker threads
 static wnotify_t *task_notify_queue = NULL;
 static pthread_mutex_t task_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+STATIC const char* wm_task_manager_consumer_socket(void) {
+    return INV_SYNC_SOCK;
+}
+
+wm_manager_task_dispatcher* wm_task_manager_dispatcher(void) {
+    return g_manager_task_dispatcher_started ? &g_manager_task_dispatcher : NULL;
+}
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     // Store config globally
@@ -290,6 +322,15 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
         }
     }
 
+    // Manager tasks. A failure here is not fatal to the module: the agent delivery path above is
+    // what remoted depends on, and taking it down because a manager task lane could not start
+    // would turn a degraded feature into an outage.
+    if (wm_manager_task_dispatcher_start(&g_manager_task_dispatcher, wm_task_manager_consumer_socket()) == 0) {
+        g_manager_task_dispatcher_started = true;
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Manager task dispatcher did not start; manager tasks will not run.");
+    }
+
     // Wait for dealer thread
     pthread_join(dealer_thread, NULL);
 
@@ -298,6 +339,14 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
         if (worker_threads[i]) {
             pthread_join(worker_threads[i], NULL);
         }
+    }
+
+    // Joined here, on the one thread modulesd itself joins, so the lanes come down inside the
+    // shared thirty second budget rather than being killed wherever they happen to be. That is
+    // what makes a half-written query to wazuh-db impossible rather than merely unlikely.
+    if (g_manager_task_dispatcher_started) {
+        wm_manager_task_dispatcher_stop(&g_manager_task_dispatcher);
+        g_manager_task_dispatcher_started = false;
     }
 
     os_free(worker_threads);
@@ -331,6 +380,40 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
             task_config->max_payload_bytes > 0 ? task_config->max_payload_bytes : WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES);
         cJSON_AddNumberToObject(wm_info, "max_tasks_per_poll",
             task_config->max_tasks_per_poll > 0 ? task_config->max_tasks_per_poll : WM_TASK_DEFAULT_MAX_TASKS_PER_POLL);
+
+        /* The recurring tasks' settings, reported alongside the four XML options.
+         *
+         * They have no <task-manager> element of their own -- they are internal options, resolved
+         * once at startup -- so without this there is no way to ask a running manager what values it
+         * actually resolved. That matters more here than for a knob with an XML element, because the
+         * only other place these appear is a file the manager ships empty: an operator reading
+         * configuration off disk sees nothing at all, whether or not an override is in effect.
+         *
+         * Read from the resolved struct, not re-read from the options, so what is reported is what
+         * the handlers are using. Absent while the dispatcher is down, since there is nothing
+         * resolved to report and inventing defaults would be a guess the caller cannot distinguish
+         * from a reading. */
+        const wm_manager_task_local_config *recurring = wm_task_manager_dispatcher()
+            ? wm_manager_task_local_config_get() : NULL;
+
+        if (recurring) {
+            cJSON *tasks = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(tasks, "agents_disconnection_time", recurring->disconnection_time);
+            cJSON_AddNumberToObject(tasks, "delete_old_agents", recurring->delete_old_agents);
+            cJSON_AddNumberToObject(tasks, "monitor_agents", recurring->monitor_agents);
+            cJSON_AddNumberToObject(tasks, "log_rotate", recurring->rotate_log);
+            cJSON_AddNumberToObject(tasks, "log_compress", recurring->compress);
+            cJSON_AddNumberToObject(tasks, "log_keep_days", recurring->keep_log_days);
+            cJSON_AddNumberToObject(tasks, "log_daily_rotations", recurring->daily_rotations);
+            // Reported in megabytes, the unit the option is written in, rather than in the bytes it
+            // is held as -- so an operator can compare the answer with what they configured.
+            cJSON_AddNumberToObject(tasks, "log_size_rotate", recurring->size_rotate / (1024 * 1024));
+            cJSON_AddNumberToObject(tasks, "delete_old_batch", recurring->delete_old_batch);
+            cJSON_AddNumberToObject(tasks, "delete_old_budget", recurring->delete_old_budget);
+
+            cJSON_AddItemToObject(wm_info, "recurring_tasks", tasks);
+        }
     } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }

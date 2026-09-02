@@ -383,7 +383,7 @@ TEST(SyncPipelineTest, SameAgentSessionsKeepTheirOrderWithManyWorkers)
     }
 }
 
-// --- DeleteAgent items (DELETE /agents, design doc 04) ------------------------------------------
+// --- DeleteAgent items (design doc 04) ---------------------------------------------------------
 
 namespace
 {

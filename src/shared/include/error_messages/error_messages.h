@@ -559,7 +559,6 @@
 #define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
 
 /* Wazuh alert messages */
-#define OS_MG_STARTED   "wazuh: Manager started."
 #define OS_AG_STOPPED   "wazuh: Agent stopped: [%03d] (%s)."
 #define OS_AG_DISCON    "wazuh: Agent disconnected: [%03d] (%s)."
 #define OS_AG_REMOVED   "wazuh: Agent removed: [%03d] (%s)."

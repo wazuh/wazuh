@@ -211,7 +211,6 @@ WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
 WAZUH_MANAGER_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'auth': {"auth"},
-        'monitor': {"global", "internal"},
         'request': {"global", "remote", "internal"},
         'wazuh-manager-db': {"wdb", "internal"},
         'wmodules': {"wmodules"}

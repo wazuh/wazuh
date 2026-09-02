@@ -107,7 +107,7 @@ stop_services() {
     done
 
     if command -v pkill >/dev/null 2>&1; then
-        pkill -9 -f 'wazuh-manager-authd|wazuh-manager-remoted|wazuh-manager-monitord|wazuh-manager-modulesd|wazuh-manager-analysisd|wazuh-manager-db|wazuh_manager_apid|wazuh_manager_clusterd' 2>/dev/null || true
+        pkill -9 -f 'wazuh-manager-authd|wazuh-manager-remoted|wazuh-manager-modulesd|wazuh-manager-analysisd|wazuh-manager-db|wazuh_manager_apid|wazuh_manager_clusterd' 2>/dev/null || true
         pkill -9 -f 'wazuh-agentd|wazuh-syscheckd|wazuh-logcollector|wazuh-execd|wazuh-modulesd' 2>/dev/null || true
     fi
 }

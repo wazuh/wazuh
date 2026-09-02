@@ -131,7 +131,7 @@ peer contract is narrow and the sender **MUST** follow it exactly:
 - HTTP/1.1, `Content-Length` delimited — chunked transfer encoding is answered `411`.
 - **One request per connection**, `Connection: close`; no pipelining.
 - `X-Wazuh-Agent-Id` is set by the sender here (there is no remoted to set it).
-- Routes: `POST /stateful`, `DELETE /agents` / `POST /agents/delete`, and `GET /metrics` for the
+- Routes: `POST /stateful`, `POST /_internal/agents/delete`, and `GET /metrics` for the
   monitor's scrape.
 
 Two operational notes learned the hard way:

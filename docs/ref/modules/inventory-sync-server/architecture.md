@@ -22,12 +22,12 @@ flowchart TB
         subgraph ISS["inventory_sync_server (modulesd) — HTTP/1.1 over UDS"]
             SYNCR["POST /stateful"] -->|non-VD sessions| PIPE[SyncPipeline\nworkers sharded by agent id\none IndexerConnectorSync each\ngroup commit]
             SYNCR -->|"vulnerability-detection sessions\n(queue full ⇒ 503)"| LANE[[VD scan lane\nbounded queue + vd_workers\nscan → ok → index → respond]]
-            DELR["DELETE /agents\n(UDS-local callers only)"] -->|"enqueue on the agent's shard\nanswers 200 at admission"| PIPE
+            DELR["POST /_internal/agents/delete\n(manager-internal, UDS-local)"] -->|"enqueue on the agent's shard\nanswers 200 after the flush"| PIPE
             PIPE <-.->|in-flight agent registry| LANE
         end
         REME -->|"POST /stateful over UDS\n+ X-Wazuh-Agent-Id"| SYNCR
         SYNCR -.->|HTTP response| REME
-        AUTHD[wazuh-manager-authd] -->|"POST /agents/delete (UDS)"| DELR
+        TM[Task Manager dispatcher\nmodulesd] -->|"POST /_internal/agents/delete (UDS)"| DELR
         subgraph VD["vulnerability_scanner (same process)"]
             ORCH[ScanOrchestrator]
         end
@@ -42,8 +42,8 @@ flowchart TB
 ```
 
 Every hop is HTTP/1.1. The two ingestion-side routes are independent: `POST /stateful` (the only
-one remoted relays for agents) and `DELETE /agents` (UDS-local manager daemons only — remoted has
-no downstream route to it, by design).
+one remoted relays for agents) and `POST /_internal/agents/delete` (manager-internal, UDS-local —
+remoted has no downstream route to it, by design).
 
 ## The request pipeline
 
@@ -225,10 +225,15 @@ production adapter is confined to a single translation unit (`src/vd/vdScannerAd
 
 ## Agent deletion
 
-`DELETE /agents` (and its `POST /agents/delete` alias, for C callers whose HTTP helper only
-speaks POST) deletes every document of one agent across the whole deletion scope —
-`wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. The production caller is
-`wazuh-manager-authd`, right after it removes the agent from `client.keys` and Wazuh DB.
+`POST /_internal/agents/delete` deletes every document of one agent across the whole deletion
+scope — `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. Its only caller is the Task
+Manager's dispatcher, executing a durable `agent_delete_indexer` task that `wazuh-manager-authd`
+created right after removing the agent from `client.keys` and Wazuh DB. The agent id travels in the
+body (`{"agent_id":"7"}`), because the dispatcher forwards a task row's payload verbatim and sets no
+headers of its own.
+
+**It answers at COMPLETION**: the `200` means the delete-by-query ran and flushed, which is what
+lets the task row read `completed` and have that mean purged rather than "accepted".
 
 **Two halves, one per writer.** A document can only be deleted in the right ORDER by the connector
 that writes it, and this module writes through two, so the scope is split accordingly
@@ -241,7 +246,7 @@ that writes it, and this module writes through two, so the scope is split accord
   through the same registry.
 - `wazuh-agent-config` and `wazuh-agent-stats` — written by `POST /config` and `POST /stats` through
   the **asynchronous** connector, which accumulates reports and pushes them in batches. Deleted by
-  **document id**, queued on that same connector at admission. The queue is FIFO, so a report it has
+  **document id**, queued on that same connector up front. The queue is FIFO, so a report it has
   accepted but not yet pushed is applied before the delete queued behind it; and a by-id delete
   resolves against the live version map, so it is unaffected by the index refresh interval. These two
   are deliberately NOT in the by-query scope: a delete-by-query on the sync connector could neither
@@ -249,21 +254,27 @@ that writes it, and this module writes through two, so the scope is split accord
   deletion used to land after it and outlive the agent. Both are named exactly (not a `wazuh-agent-*`
   wildcard) so a future index sharing that prefix is not wiped by accident.
 
-**The route answers at admission.** `200 {"status":"queued"}` means the deletion was recorded and
-queued, not that the documents are gone; the item travels without a responder and the purge's own
-outcome is reported in this module's log. `503` means "not admitted, come back" — no indexer host is
-healthy, the pipeline is stopping, or the queue is full — and it is the only status the caller has to
-act on. Waiting for the flush instead is what wedged the caller: authd relays deletions from the one
-thread that persists `client.keys`, and on populated `wazuh-states-*` a single delete-by-query
-legitimately outlives authd's request budget, so it timed out, retried into the very same running
-purge, and blocked every key write in between — no agent could enroll until the batch drained. This
-is the same contract `POST /vulnerability-detector/scan` already moved to, for the same reason.
+**The route answers at completion.** The item carries its responder onto the pipeline, so the `200`
+is sent after the by-query half has run **and flushed** — which is what lets the dispatcher record
+its task row `completed` and have that mean purged. `503` means "not admitted, come back" — no
+indexer host is healthy, the pipeline is stopping, or the queue is full — and the dispatcher reads it
+as retryable.
 
-A queued deletion still has to be complete when it runs: an index that does not exist counts as
-success (so repeating a deletion is harmless), while a per-shard failure or a skipped document (a
-version conflict, which `conflicts: "proceed"` counts separately) fails it instead of passing as
-success, because with the agent gone nothing would ever overwrite what was missed. A failure is
-logged, and authd — which keeps the deletion queued and persisted until it is accepted — retries it.
+The `200` still promises only that the by-id half was **queued**: that connector is a buffering FIFO
+with nothing to wait on, which is precisely the property that orders it behind an accepted report.
+
+Nothing waits on `client.keys` any more. The route used to answer at admission because authd relayed
+deletions from the one thread that persists that file, and on populated `wazuh-states-*` a single
+delete-by-query legitimately outlives any request budget worth setting — it timed out, retried into
+the very same running purge, and blocked every key write in between, so no agent could enroll until
+the batch drained. What waits now is a dispatcher lane, which is built to.
+
+A deletion has to be complete when it runs: an index that does not exist counts as success (so
+repeating a deletion is harmless), while a per-shard failure or a skipped document (a version
+conflict, which `conflicts: "proceed"` counts separately) fails it instead of passing as success,
+because with the agent gone nothing would ever overwrite what was missed. A failure is answered as a
+non-2xx, and the dispatcher retries it — against a task type with no attempt budget, so it retries
+until it succeeds.
 
 One window this does NOT cover on its own, which leaves a document behind while still reporting
 success:
@@ -272,8 +283,8 @@ success:
   the agent's last session wrote before the index refreshed are invisible to it. Refreshing each index
   first closed this, but `_refresh` needs the `indices:admin/refresh` privilege that the manager's
   least-privilege indexer role does not grant — every deletion failed with `403` — so it was removed
-  pending that privilege. **This is why the caller delays the purge**: authd holds each deletion for
-  `authd.purge_delay` seconds before relaying it, so the refresh (and, in a cluster, the worker nodes'
+  pending that privilege. **This is why the deletion is delayed**: authd sets the task's first
+  attempt `authd.purge_delay` seconds out, so the refresh (and, in a cluster, the worker nodes'
   `client.keys` reload) has already happened by the time the query runs. See
   [authd's architecture](../authd/architecture.md). The by-id half is not exposed to this window.
 

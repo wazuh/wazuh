@@ -107,7 +107,6 @@ variables:
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
       </global>
 
       <logging>

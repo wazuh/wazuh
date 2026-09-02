@@ -1615,7 +1615,6 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
-    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd

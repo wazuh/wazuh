@@ -137,7 +137,7 @@ int wm_config() {
     if ((module = wm_keystore_server_read()))
         wm_add(module);
 
-    // Inventory sync server: the POST /stateful ingestion pipeline plus DELETE /agents.
+    // Inventory sync server: the POST /stateful ingestion pipeline plus the agent-deletion route.
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
 

@@ -51,6 +51,6 @@ The logging configuration parser is implemented in `src/shared/src/debug_op.c` a
 
 ## See Also
 
-- [Monitord Module](../monitord/configuration.md) - Daemon monitoring and log rotation
+- [Recurring manager tasks](../task_manager/schedules.md) - Daily and size-based log rotation on the manager
 - [Manager Configuration](../../configuration/manager/README.md) - Manager configuration overview
 - [Agent Configuration](../../configuration/agent/README.md) - Agent configuration overview

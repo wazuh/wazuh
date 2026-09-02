@@ -153,8 +153,95 @@ wazuh_modules.debug=2
 
 ---
 
+## Recurring manager tasks
+
+The Task Manager's three recurring jobs — the agent disconnection sweep, the retention deletion of
+long-disconnected agents and log rotation — have **no `<task-manager>` options of their own**. They
+are configured through the internal options below, and their behaviour is described in
+[Recurring manager tasks](schedules.md).
+
+### Where their intervals come from
+
+| Setting | Where it lives | Default | Governs |
+| --- | --- | --- | --- |
+| `agents_disconnection_time` | `<global>` in `wazuh-manager.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
+| `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
+| `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | whether the retention sweep runs and whether disconnections are logged |
+| `wazuh_modules.manager_task_log_rotate` | internal option | 1 | whether either kind of log rotation happens |
+| `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | offset from local midnight for the daily rotation |
+| `wazuh_modules.manager_task_log_compress` | internal option | 1 | whether rotated logs are gzipped |
+| `wazuh_modules.manager_task_log_keep_days` | internal option | 31 | how long rotated logs are kept |
+| `wazuh_modules.manager_task_log_size_rotate` | internal option | 512 MB | threshold for size-based rotation |
+| `wazuh_modules.manager_task_log_daily_rotations` | internal option | 12 | rotated slots per day per file |
+
+**None of these ships in a file.** The manager reads only
+`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`, which is an empty overrides file —
+there is no manager defaults file to consult. Every default above lives in code, so an option you
+have not written is at the value in this table, and writing one is the only way to change it.
+
+> **Renamed in 5.0.** These were `monitord.*` while log rotation and agent monitoring belonged to
+> `wazuh-manager-monitord`. If you set any of them in `wazuh-manager-internal-options.conf` on an
+> earlier build, rename the key — an override under the old name is silently ignored, because
+> `getDefine_Int` compares the part before the first `.` as well as the part after it.
+>
+> **The agent is unaffected.** It keeps `monitord.*` for its own log rotation; see the
+> [Agent configuration reference](../client/configuration.md). Only the manager's keys moved.
+
+`agents_disconnection_time` is also read by `remoted`, so `<global>` is shared configuration rather
+than something the Task Manager owns.
+
+### Reading back what a running manager resolved
+
+Because these are internal options with no XML element, configuration on disk does not tell you what
+is in effect. The resolved values are reported through the active-configuration endpoint, under the
+`task-manager` module's `recurring_tasks` object:
+
+```bash
+curl -k -X GET "https://localhost:55000/manager/configuration/wmodules/wmodules" \
+     -H "Authorization: Bearer $TOKEN"
+```
+
+`recurring_tasks` is absent while the dispatcher is not running — the values are resolved once at
+startup, and reporting compiled defaults instead would be indistinguishable from a live reading.
+
+### Options the retention sweep adds
+
+Both are internal options in the `wazuh_modules` namespace, and both bound one attempt of
+`agent_delete_old` so that a large backlog spans several claims instead of holding the shared local
+lane for the whole sweep.
+
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.manager_task_delete_old_batch` | 200 | 1–100000 | agents examined per attempt |
+| `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds of lane occupancy per attempt |
+| `wazuh_modules.manager_task_disconnect_log_max` | 200 | 0–1000000 | agents the disconnection sweep names individually per run |
+
+The time bound is the one that binds in practice: the send timeout on the connection to
+`wazuh-authd` is a fixed five seconds, so 200 agents against a wedged `wazuh-authd` would otherwise
+be a worst case measured in minutes on a single-threaded lane. Counting agents bounds the work;
+counting seconds bounds the occupancy.
+
+Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the
+lane re-claims the row and resumes where it stopped.
+
+### The option the disconnection sweep adds
+
+`manager_task_disconnect_log_max` bounds a different thing: not the work, but the *diagnostics*. The
+sweep's database transition is a single query and always completes for every agent. Turning each of
+those ids into a name for the log line is one round trip per agent, and a partition — or a manager
+that was down long enough for a fleet to age out — can transition tens of thousands at once.
+
+Past the bound, agents are still transitioned; they are just not named individually, and the run
+reports how many were skipped. Set it to `0` to transition silently. Unlike the retention sweep this
+does not return `incomplete` and resume: the ids exist only within one call, so a later attempt would
+have no list to resume from.
+
+---
+
 ## See Also
 
+- [Manager tasks](manager-tasks.md) — the queue's own options, states and operator lookup
+- [Recurring manager tasks](schedules.md) — the three schedules and how they fire
 - [Task Manager Module](README.md) — Module overview and architecture
 - [Agent Upgrade Configuration](../agent_upgrade/configuration.md) — main producer of `remote_upgrade` tasks
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) — persistence backend for `tasks.db`

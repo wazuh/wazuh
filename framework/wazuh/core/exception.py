@@ -235,6 +235,12 @@ class WazuhException(Exception):
                'remediation': 'The agent ID must be a positive integer no greater than 2147483647, '
                               'and other than 0, which is reserved for the manager'
                },
+        1766: {'message': 'The agent was not deleted: too many deletions are still pending',
+               'remediation': 'The manager is still removing the documents of previously deleted '
+                              'agents from the indexer. The agent is untouched and can be deleted '
+                              'again once the backlog drains; check the indexer is reachable if it '
+                              'does not'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

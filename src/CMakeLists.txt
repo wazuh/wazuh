@@ -274,7 +274,6 @@ endif()
 # Server-only modules
 if(NOT IS_AGENT)
   add_subdirectory(engine)
-  add_subdirectory(monitord)
   add_subdirectory(os_auth)
   add_subdirectory(remoted)
   add_subdirectory(shared_modules/content_manager)

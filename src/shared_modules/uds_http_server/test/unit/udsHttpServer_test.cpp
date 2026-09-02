@@ -670,6 +670,55 @@ TEST(UdsHttpServerTest, NeverAnsweredResponderTimesOutWith504)
     EXPECT_EQ(504, response.status);
 }
 
+/**
+ * A route whose PEER waits longer than the server-wide backstop raises its own.
+ *
+ * Without the override this is not a slow request, it is a broken one: the backstop fires while the
+ * work is still succeeding, the peer reads a 504, retries, and the same thing happens again --
+ * forever, for a caller with no attempt budget. The fix has to be per route, because raising the
+ * server-wide value to suit one slow route would weaken the leak backstop for every other one.
+ */
+TEST(UdsHttpServerTest, ARouteMayRaiseItsOwnResponseBackstop)
+{
+    const auto path = uniqueSocketPath("route504");
+    auto config = configFor(path);
+    config.responseTimeoutSec = 1;
+
+    // Answers well after the server-wide backstop would have fired, and well before its own.
+    auto slowHandler = [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+    {
+        std::thread(
+            [responder = std::move(responder)]
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds {2500});
+                responder->send(HttpResponse::json(200, R"({"ok":true})"));
+            })
+            .detach();
+    };
+
+    static std::vector<std::shared_ptr<IHttpResponder>> forever;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/patient",
+                     slowHandler,
+                     wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control, 0, 0, 30});
+    // The control: same class, no override, a responder that is never used. It must still be cut at
+    // the server-wide value, or the override would have been a global change wearing a local name.
+    server->addRoute(Method::Post,
+                     "/impatient",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { forever.push_back(std::move(responder)); },
+                     wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
+    server->start(config);
+
+    const auto patient = sendRaw(path, peerRequest("POST", "/patient", "x"), std::chrono::seconds {20});
+    EXPECT_EQ(200, patient.status) << "the route's own backstop is 30 s; 2.5 s is not late";
+
+    const auto impatient = sendRaw(path, peerRequest("POST", "/impatient", "x"), std::chrono::seconds {20});
+    EXPECT_EQ(504, impatient.status) << "a route without an override still gets the server-wide 1 s";
+}
+
 TEST(UdsHttpServerTest, AddRouteAfterStartThrows)
 {
     const auto path = uniqueSocketPath("late");

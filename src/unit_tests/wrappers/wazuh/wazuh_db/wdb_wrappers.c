@@ -74,6 +74,22 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     return mock();
 }
 
+int __wrap_wdbc_query_ex_timeout(int *sock, const char *query, char *response, const int len, int timeout) {
+    check_expected(*sock);
+    check_expected(query);
+    check_expected(len);
+    check_expected(timeout);
+
+    snprintf(response, len, "%s", mock_ptr_type(char*));
+
+    return mock();
+}
+
+int __wrap_wdbc_close(int *sock) {
+    *sock = -1;
+    return 0;
+}
+
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
                                     __attribute__((unused)) const char *query,
                                     char *response,

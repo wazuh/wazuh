@@ -1631,431 +1631,80 @@ components:
               format: int32
               description: "Current active TCP sessions (agents)"
 
+    EngineMetricEntry:
+      type: object
+      description: "A single Engine metric with its current value and metadata"
+      properties:
+        name:
+          type: string
+          description: "Metric name. Global metrics carry their full name (e.g. `router.events.processed`); space-scoped metrics carry only the suffix, since the enclosing group already names the space"
+        type:
+          type: string
+          description: "Metric kind"
+          enum:
+            - counter
+            - gauge_int
+            - gauge_dbl
+            - pull
+        enabled:
+          type: boolean
+          description: "Whether collection is enabled. A disabled metric is still reported, but its value stops being updated"
+        value:
+          type: number
+          format: double
+          description: "Current metric value"
+
     WazuhAnalysisdStatsItem:
       type: object
+      description: |
+        Metrics dump of the `wazuh-manager-analysisd` daemon, served by the Engine's
+        `POST /metrics/dump` API. Unlike the other daemons, which report a fixed set of
+        named fields, the Engine returns a flat, self-describing list of metrics: the set
+        of metric names belongs to the Engine and may change between versions, so it is
+        deliberately not enumerated here.
       properties:
-        uptime:
+        status:
           type: string
-          format: date-time
-          description: "When the count of the metrics started"
-        timestamp:
+          description: "Status of the metrics dump"
+          enum:
+            - UNKNOWN
+            - OK
+            - ERROR
+        error:
           type: string
-          format: date-time
-          description: "Daemon stats request time"
+          description: "Error message. Only present when `status` is `ERROR`"
         name:
           type: string
           description: "Daemon name"
           enum:
             - wazuh-manager-analysisd
-        metrics:
-          type: object
-          properties:
-            bytes:
-              type: object
-              properties:
-                received:
-                  type: integer
-                  format: int32
-                  description: "Bytes received from agents and local modules"
-            eps:
-              type: object
-              properties:
-                available_credits:
-                  type: integer
-                  format: int32
-                  description: "Available credits to process events in the current timeframe"
-                available_credits_prev:
-                  type: integer
-                  format: int32
-                  description: "Available credits to process events in the previous timeframe"
-                events_dropped:
-                  type: integer
-                  format: int32
-                  description: "Events discarded because the EPS limit was reached and queues were full"
-                events_dropped_not_eps:
-                  type: integer
-                  format: int32
-                  description: "Events discarded due to causes unrelated to EPS limit"
-                seconds_over_limit:
-                  type: integer
-                  format: int32
-                  description: "Time in seconds the EPS limit was exceeded"
-            events:
-              type: object
-              properties:
-                processed:
-                  type: integer
-                  format: int32
-                  description: "Total processed events (analyzed by rules)"
-                received:
-                  type: integer
-                  format: int32
-                  description: "Total received events from agents and local modules"
-                received_breakdown:
-                  type: object
-                  properties:
-                    decoded_breakdown:
-                      type: object
-                      properties:
-                        agent:
-                          type: integer
-                          format: int32
-                          description: "Events coming from agentd"
-                        dbsync:
-                          type: integer
-                          format: int32
-                          description: "Synchronization events"
-                        modules_breakdown:
-                          type: object
-                          properties:
-                            aws:
-                              type: integer
-                              format: int32
-                              description: "Events coming from AWS module"
-                            azure:
-                              type: integer
-                              format: int32
-                              description: "Events coming from Azure module"
-                            command:
-                              type: integer
-                              format: int32
-                              description: "Events coming from command module"
-                            docker:
-                              type: integer
-                              format: int32
-                              description: "Events coming from Docker module"
-                            gcp:
-                              type: integer
-                              format: int32
-                              description: "Events coming from GCP module"
-                            github:
-                              type: integer
-                              format: int32
-                              description: "Events coming from GitHub module"
-                            logcollector_breakdown:
-                              type: object
-                              properties:
-                                eventchannel:
-                                  type: integer
-                                  format: int32
-                                  description: "EventChannel events collected by logcollector"
-                                eventlog:
-                                  type: integer
-                                  format: int32
-                                  description: "EventLog events collected by logcollector"
-                                macos:
-                                  type: integer
-                                  format: int32
-                                  description: "MacOS events collected by logcollector"
-                                others:
-                                  type: integer
-                                  format: int32
-                                  description: "Other events collected by logcollector"
-                            office365:
-                              type: integer
-                              format: int32
-                              description: "Events coming from Office365 module"
-                            ms-graph:
-                              type: integer
-                              format: int32
-                              description: "Events coming from ms-graph module"
-                            rootcheck:
-                              type: integer
-                              format: int32
-                              description: "Events coming from rootcheck (syscheckd)"
-                            sca:
-                              type: integer
-                              format: int32
-                              description: "Events coming from SCA module"
-                            syscheck:
-                              type: integer
-                              format: int32
-                              description: "Events coming from syscheckd"
-                            syscollector:
-                              type: integer
-                              format: int32
-                              description: "Events coming from syscollector module"
-                            upgrade:
-                              type: integer
-                              format: int32
-                              description: "Events coming from upgrade agent module (upgrade responses)"
-                        monitor:
-                          type: integer
-                          format: int32
-                          description: "Events coming from monitord"
-                        remote:
-                          type: integer
-                          format: int32
-                          description: "Events coming from remoted"
-                    dropped_breakdown:
-                      type: object
-                      properties:
-                        agent:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from agentd because the queue was full"
-                        dbsync:
-                          type: integer
-                          format: int32
-                          description: "Synchronization events discarded because the queue was full"
-                        modules_breakdown:
-                          type: object
-                          properties:
-                            aws:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from AWS module because the queue was full"
-                            azure:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from Azure module because the queue was full"
-                            command:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from command module because the queue was full"
-                            docker:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from Docker module because the queue was full"
-                            gcp:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from GCP module because the queue was full"
-                            github:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from GitHub module because the queue was full"
-                            logcollector_breakdown:
-                              type: object
-                              properties:
-                                eventchannel:
-                                  type: integer
-                                  format: int32
-                                  description: "EventChannel events collected by logcollector discarded because the queue was full"
-                                eventlog:
-                                  type: integer
-                                  format: int32
-                                  description: "EventLog events collected by logcollector discarded because the queue was full"
-                                macos:
-                                  type: integer
-                                  format: int32
-                                  description: "MacOS events collected by logcollector discarded because the queue was full"
-                                others:
-                                  type: integer
-                                  format: int32
-                                  description: "Other events collected by logcollector discarded because the queue was full"
-                            office365:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from Office365 module because the queue was full"
-                            ms-graph:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from ms-graph module because the queue was full"
-                            rootcheck:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from rootcheck (syscheckd) because the queue was full"
-                            sca:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from SCA module because the queue was full"
-                            syscheck:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from syscheckd because the queue was full"
-                            syscollector:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from syscollector module because the queue was full"
-                            upgrade:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from upgrade agent module because the queue was full"
-                        monitor:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from monitord because the queue was full"
-                        remote:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from remoted because the queue was full"
-                written_breakdown:
-                  type: object
-                  properties:
-                    alerts:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in alerts log file"
-                    archives:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in archives log file"
-                    fts:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in FTS queue file"
-                    stats:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in stats files"
-            queues:
-              type: object
-              properties:
-                alerts:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Alerts messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the alerts queue (percentage)"
-                archives:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Archives messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the archives queue (percentage)"
-                dbsync:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "DBsync messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the dbsync queue (percentage)"
-                eventchannel:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "EventChannel messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the eventchannel queue (percentage)"
-                fts:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "FTS messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the FTS queue (percentage)"
-                hostinfo:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Hostinfo messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the hostinfo queue (percentage)"
-                others:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Other events messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the other events queue (percentage)"
-                processed:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Processed messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the processed queue (percentage)"
-                rootcheck:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Rootcheck messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the rootcheck queue (percentage)"
-                sca:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "SCA messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the SCA queue (percentage)"
-                stats:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Stats messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the stats queue (percentage)"
-                syscheck:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Syscheck messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the syscheck queue (percentage)"
-                syscollector:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Syscollector messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the syscollector queue (percentage)"
-                upgrade:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Upgrade messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the upgrade queue (percentage)"
+        uptime:
+          type: string
+          format: date-time
+          description: "When the daemon started"
+        timestamp:
+          type: string
+          format: date-time
+          description: "Daemon stats request time"
+        global:
+          type: array
+          description: "Engine-wide metrics, not scoped to any space"
+          items:
+            $ref: '#/components/schemas/EngineMetricEntry'
+        spaces:
+          type: array
+          description: "Metrics scoped to a policy namespace, grouped by space"
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Space name"
+              metrics:
+                type: array
+                description: "Metrics belonging to this space"
+                items:
+                  $ref: '#/components/schemas/EngineMetricEntry'
 
     WazuhDBStatsItem:
       type: object
@@ -2515,8 +2164,6 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-authd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-manager-monitord:
-            $ref: '#/components/schemas/LogSummary'
           wazuh-manager-remoted:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-db:
@@ -2657,7 +2304,6 @@ components:
         type: string
         enum:
         - auth
-        - monitor
         - request
         - wazuh-manager-db
         - wmodules
@@ -2682,15 +2328,6 @@ components:
         <td><code>&lt;auth&gt;</code></td>
         </tr>
         <tr>
-        <td>monitor</td>
-        <td>global</td>
-        <td><code>&lt;global&gt;</code></td>
-        </tr>
-        <tr>
-        <td>monitor</td>
-        <td>internal</td>
-        <td><code>&lt;monitord&gt;</code></td>
-        </tr>
         <td>request</td>
         <td>global</td>
         <td><code>&lt;global&gt;</code></td>
@@ -3481,7 +3118,9 @@ paths:
       tags:
         - Agents
       summary: "Delete agents"
-      description: "Delete all agents or a list of them based on optional criteria"
+      description: "Delete all agents or a list of them based on optional criteria. An agent whose
+      deletion cannot be admitted because too many earlier deletions are still being applied to the
+      indexer is reported with error 1766 and is left untouched - retry it once the backlog drains"
       operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'
@@ -6119,7 +5758,6 @@ paths:
                   affected_items:
                     - global:
                         agents_disconnection_time: "10m"
-                        agents_disconnection_alert_time: 0
                         update_check: yes
                       alerts:
                         log_alert_level: "3"
@@ -6334,7 +5972,20 @@ paths:
                             size: 67108864
                             usage: 0
                         tcp_sessions: 0
-                  total_affected_items: 1
+                    - status: OK
+                      name: wazuh-manager-analysisd
+                      uptime: 2022-07-21T10:09:20+00:00
+                      timestamp: 2022-07-21T10:48:32+00:00
+                      global:
+                        - { name: router.events.processed, type: counter, enabled: true, value: 0 }
+                        - { name: router.events.dropped, type: counter, enabled: true, value: 0 }
+                        - { name: router.queue.usage.percent, type: gauge_dbl, enabled: true, value: 0 }
+                        - { name: router.eps.1m, type: gauge_dbl, enabled: true, value: 0 }
+                      spaces:
+                        - name: standard
+                          metrics:
+                            - { name: events.unclassified, type: counter, enabled: true, value: 0 }
+                  total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
         '400':

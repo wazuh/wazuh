@@ -113,10 +113,30 @@ typedef struct _task_tasks_t {
     struct timeval delete_old_time;
 } task_tasks_t;
 
+typedef struct _task_manager_tasks_t {
+    uint64_t create_queries;
+    uint64_t claim_queries;
+    uint64_t requeue_queries;
+    uint64_t result_queries;
+    uint64_t get_queries;
+    uint64_t poll_queries;
+    uint64_t list_queries;
+    struct timeval create_time;
+    struct timeval claim_time;
+    struct timeval requeue_time;
+    struct timeval result_time;
+    struct timeval get_time;
+    struct timeval poll_time;
+    struct timeval list_time;
+} task_manager_tasks_t;
+
 typedef struct _task_breakdown_t {
     uint64_t sql_queries;
+    uint64_t commit_queries;
     struct timeval sql_time;
+    struct timeval commit_time;
     task_tasks_t tasks;
+    task_manager_tasks_t manager_tasks;
 } task_breakdown_t;
 
 typedef struct _queries_breakdown_t {
@@ -578,6 +598,19 @@ void w_inc_task_sql();
 void w_inc_task_sql_time(struct timeval time);
 
 /**
+ * @brief Increment commit task queries counter
+ *
+ */
+void w_inc_task_commit();
+
+/**
+ * @brief Increment commit task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_commit_time(struct timeval time);
+
+/**
  * @brief Increment create task queries counter
  *
  */
@@ -641,6 +674,99 @@ void w_inc_task_delete_old();
  * @param time Value to increment the counter.
  */
 void w_inc_task_delete_old_time(struct timeval time);
+
+/**
+ * @brief Increment create manager task queries counter
+ *
+ */
+void w_inc_task_manager_task_create();
+
+/**
+ * @brief Increment create manager task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_create_time(struct timeval time);
+
+/**
+ * @brief Increment claim manager task queries counter
+ *
+ */
+void w_inc_task_manager_task_claim();
+
+/**
+ * @brief Increment claim manager task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_claim_time(struct timeval time);
+
+/**
+ * @brief Increment requeue manager task queries counter
+ *
+ */
+void w_inc_task_manager_task_requeue();
+
+/**
+ * @brief Increment requeue manager task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_requeue_time(struct timeval time);
+
+/**
+ * @brief Increment manager task result queries counter
+ *
+ */
+void w_inc_task_manager_task_result();
+
+/**
+ * @brief Increment manager task result time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_result_time(struct timeval time);
+
+/**
+ * @brief Increment get manager task queries counter
+ *
+ */
+void w_inc_task_manager_task_get();
+
+/**
+ * @brief Increment get manager task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_get_time(struct timeval time);
+
+/**
+ * @brief Increment manager task poll queries counter
+ *
+ * Shared by the work poll and the ownership sweep: both are the scheduler thread's periodic
+ * scans, and separating them would say nothing the two intervals do not already say.
+ */
+void w_inc_task_manager_task_poll();
+
+/**
+ * @brief Increment manager task poll time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_poll_time(struct timeval time);
+
+/**
+ * @brief Increment manager task list queries counter
+ *
+ */
+void w_inc_task_manager_task_list();
+
+/**
+ * @brief Increment manager task list time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_manager_task_list_time(struct timeval time);
 
 /**
  * @brief Increment mitre queries counter

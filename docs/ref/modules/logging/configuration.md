@@ -113,6 +113,6 @@ Output both plain text and JSON logs simultaneously:
 
 ## See Also
 
-- [Monitord Configuration](../monitord/configuration.md) - Daemon monitoring and log rotation
+- [Recurring manager tasks](../task_manager/schedules.md) - Daily and size-based log rotation on the manager
 - [Manager Configuration](../../configuration/manager/index.md) - Manager-side configuration overview
 - [Agent Configuration](../../configuration/agent/index.md) - Agent-side configuration overview

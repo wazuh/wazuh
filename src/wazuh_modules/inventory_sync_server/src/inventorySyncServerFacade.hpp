@@ -30,6 +30,7 @@
 #include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
+#include "endpoints/vdScanEndpoint.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
@@ -430,17 +431,20 @@ namespace invsync
                                    invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
-            // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
-            // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
-            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST. CONTROL class (signed
-            // decision): the agent id travels in a header and the body is empty, so a saturated
-            // ingest budget must never fail deletions that cost it no payload memory; their real
-            // capacity control stays in the pipeline.
+            // Whole-agent deletion (design doc 04): UDS-local, manager-internal, deferred to the
+            // agent's pipeline shard and ANSWERED AT COMPLETION -- the item carries its responder,
+            // so the pipeline answers only once the purge has flushed. That is what lets the Task
+            // Manager write a row `completed` and have it mean purged, rather than "inventory-sync
+            // accepted it". Its caller is the dispatcher, which drives the deletion's retries.
+            //
+            // CONTROL class (signed decision): the agent id is a few bytes of body, so a saturated
+            // ingest budget must never fail deletions that cost it no payload memory. Its capacity
+            // bound is the dispatcher's delete-lane depth rather than a queue of its own.
             {
                 // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
-                // name): the deletion plane answers at admission, so all of its responses -- the
-                // inline 400/503 rejections and the 200 that accepts -- count into the same
-                // sync.requests.total.* cells the sync route already uses.
+                // name). The handler counts only what IT answers -- the inline 400/503 rejections;
+                // the terminal response is counted by the pipeline, the site that sends it, so an
+                // accepted deletion is counted exactly once.
                 //
                 // The async connector is in here because the deletion has a half that belongs to
                 // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
@@ -451,15 +455,39 @@ namespace invsync
                     m_indexerConnectorSync,
                     m_indexerConnectorAsync,
                     invsync::metrics::RequestCounters::make(*m_metricsManager)};
-                m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
-                                       invsync::endpoints::delete_agent::path(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
-                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
-                m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
-                                       invsync::endpoints::delete_agent::altPath(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
-                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
+
+                // Its own response backstop, because this is the one route whose peer waits LONGER
+                // than the server-wide 300 s -- see responseTimeoutSeconds() for what the inverted
+                // pair costs. The zeroes before it keep the class policy's body and session caps.
+                m_httpServer->addRoute(
+                    invsync::endpoints::delete_agent::method(),
+                    invsync::endpoints::delete_agent::path(),
+                    invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control,
+                                                   0,
+                                                   0,
+                                                   invsync::endpoints::delete_agent::responseTimeoutSeconds()});
             }
+
+            // On-demand vulnerability rescan of one agent (design doc 04's sibling): UDS-local,
+            // manager-internal, executed on the VD scan lane and ANSWERED AT COMPLETION, so the
+            // Task Manager row behind it means scanned rather than accepted. Its caller is the
+            // dispatcher; the scanner's own admission route is untouched.
+            //
+            // CONTROL class for the same reason as the deletion route: the agent id is a few bytes
+            // of body, so a saturated ingest budget must never fail a scan that costs it no payload
+            // memory. Its capacity control is the lane's bounded queue, which is what the class
+            // contract asks of a route doing real work.
+            //
+            // And its own response backstop: its peer waits 300 s, which is exactly the
+            // server-wide value -- see responseTimeoutSeconds() for what that tie costs.
+            m_httpServer->addRoute(
+                invsync::endpoints::vd_scan::method(),
+                invsync::endpoints::vd_scan::path(),
+                invsync::endpoints::vd_scan::makeHandler(invsync::endpoints::vd_scan::Dependencies {
+                    m_vdScanLane, invsync::metrics::RequestCounters::make(*m_metricsManager)}),
+                wazuh::uds_http::RouteOptions {
+                    wazuh::uds_http::RouteClass::Control, 0, 0, invsync::endpoints::vd_scan::responseTimeoutSeconds()});
 
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
             // most valuable exactly when the byte budget is under pressure.
@@ -472,7 +500,7 @@ namespace invsync
             registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s, %s and %s; "
                        "%zu sync worker(s)).",
                        config.socketPath.c_str(),
                        invsync::endpoints::metrics::path(),
@@ -480,6 +508,7 @@ namespace invsync
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
+                       invsync::endpoints::vd_scan::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 

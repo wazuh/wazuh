@@ -269,7 +269,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
+                                -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,OS_SetRecvTimeout ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_wazuhdb_queries_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,strerror \
