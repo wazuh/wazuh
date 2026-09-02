@@ -292,12 +292,17 @@ namespace
 #else
                 // Unix/Linux: Use mmap on a file
                 // Try read-write first (for writers), fallback to read-only (for readers)
-                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT, 0644);
+                // O_CLOEXEC: this fd must not survive into children spawned via fork()+exec()
+                // (e.g. SCA's command rules through wm_exec()) -- an inherited fd here is
+                // exactly what an SELinux policy denies once the child transitions into a
+                // restricted domain (e.g. passwd_t), producing a false-positive AVC even though
+                // the child never touches the file (issue #38813).
+                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
 
                 if (m_shm_fd == -1 && errno == EACCES)
                 {
                     // Permission denied for write, try read-only
-                    m_shm_fd = open(SHM_PATH, O_RDONLY);
+                    m_shm_fd = open(SHM_PATH, O_RDONLY | O_CLOEXEC);
                     m_read_only = true;
                 }
 
@@ -333,6 +338,13 @@ namespace
                     m_shm = nullptr;
                     return;
                 }
+
+                // The mapping stands on its own once mmap() succeeds; the fd itself is not
+                // needed for the mapping to keep working, so drop it now instead of holding it
+                // open (and leaking it into every future child process) for the rest of this
+                // object's lifetime. Belt-and-suspenders with O_CLOEXEC above.
+                close(m_shm_fd);
+                m_shm_fd = -1;
 
                 if (created && !m_read_only)
                 {
