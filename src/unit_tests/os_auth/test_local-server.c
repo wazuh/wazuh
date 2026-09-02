@@ -184,6 +184,25 @@ static void test_local_add_rejects_a_malformed_explicit_key(void **state) {
     cJSON_Delete(response);
 }
 
+/* A caller-supplied id outside [1, INT32_MAX], or equal to 0, is
+ * refused up front with 9020, before any keystore lookup */
+static void test_local_add_rejects_an_out_of_range_or_reserved_id(void **state) {
+    (void) state;
+    cJSON *response;
+    const char *invalid_ids[] = {"2147483648", "4294967296", "0", "000", "abc"};
+    size_t i;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    for (i = 0; i < sizeof(invalid_ids) / sizeof(invalid_ids[0]); i++) {
+        response = local_add(invalid_ids[i], "agent1", "any", NULL, NULL, NULL, &config.force_options);
+        assert_non_null(response);
+        assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9020);
+        assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Invalid agent ID");
+        cJSON_Delete(response);
+    }
+}
+
 static void test_storable_agent_name_accepts_ordinary_names(void **state) {
     (void) state;
 
@@ -311,6 +330,7 @@ int main(void) {
         cmocka_unit_test(test_local_add_clustered_business_rejection_preserves_master_code),
         cmocka_unit_test(test_local_add_clustered_transport_failure_maps_to_9016),
         cmocka_unit_test(test_local_add_rejects_a_malformed_explicit_key),
+        cmocka_unit_test(test_local_add_rejects_an_out_of_range_or_reserved_id),
         cmocka_unit_test(test_storable_agent_name_accepts_ordinary_names),
         cmocka_unit_test(test_storable_agent_name_accepts_names_os_isvalidname_rejects),
         cmocka_unit_test(test_storable_agent_name_rejects_whitespace_and_control_bytes),

@@ -904,7 +904,7 @@ components:
       type: object
       properties:
         id:
-          $ref: '#/components/schemas/AgentID'
+          $ref: '#/components/schemas/AgentInsertID'
         key:
           type: string
           maxLength: 64
@@ -1001,6 +1001,12 @@ components:
       minLength: 3
       description: "Agent ID|all"
       format: numbers_or_all
+
+    AgentInsertID:
+      type: string
+      minLength: 3
+      description: "Agent ID. Must be a positive integer no greater than 2147483647 (2^31-1), and other than 0, which is reserved for the manager"
+      format: agent_id
 
     NodeID:
       type: string
@@ -4335,7 +4341,8 @@ paths:
       same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
       an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
       owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
-      the agent and let its deletion complete before reusing its ID"
+      the agent and let its deletion complete before reusing its ID. An explicit ID outside
+      `[1, 2147483647]`, or `0`, is rejected with error 1765"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'

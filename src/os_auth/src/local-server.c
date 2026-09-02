@@ -42,7 +42,8 @@ typedef enum auth_local_err {
     ENOMASTERCOMM,
     EINVALIDNAME,
     EPENDINGPURGE,
-    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDKEY,
+    EINVALIDID // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -72,7 +73,10 @@ static const struct {
     { 9018, "Agent ID has a pending deletion" },
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
-    { 9019, "Invalid agent key" }
+    { 9019, "Invalid agent key" },
+    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
+    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    { 9020, "Invalid agent ID" }
 };
 
 // Dispatch local request
@@ -621,6 +625,14 @@ cJSON* local_add(const char *id,
      * every request as an unusable key, which is far harder to diagnose than refusing it here. */
     if (key && !OS_IsValidAgentKey(key)) {
         ierror = EINVALIDKEY;
+        goto fail;
+    }
+
+    /* A caller-supplied id must be within the range the manager can actually store it in --
+     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
+     * not the id space /agents/insert accepts. */
+    if (id && !OS_IsValidAgentInsertID(id)) {
+        ierror = EINVALIDID;
         goto fail;
     }
 
