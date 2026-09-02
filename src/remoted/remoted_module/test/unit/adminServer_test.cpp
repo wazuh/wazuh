@@ -103,6 +103,18 @@ class AdminServerTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        // Isolate each test in a fresh, unique scratch directory instead of writing relative to
+        // the test binary's ambient cwd: SetUp() below creates/truncates "queue/sockets" and
+        // "etc/client.keys" relative to cwd, and if that cwd were ever a real install (e.g.
+        // ctest invoked from /var/wazuh-manager), this would wipe a real keystore. A fresh temp
+        // directory can also never contain a leftover, real etc/authd.pass from the host.
+        m_originalCwd = std::filesystem::current_path();
+        m_scratchDir = std::filesystem::temp_directory_path() /
+                       ("admin_server_test_" + std::to_string(::getpid()) + "_" +
+                        std::to_string(reinterpret_cast<std::uintptr_t>(this)));
+        std::filesystem::create_directories(m_scratchDir);
+        std::filesystem::current_path(m_scratchDir);
+
         // The facade binds a fixed relative path and the library creates no parent directories
         // (RF-9), so the test provides the installed manager's queue/sockets/ layout under cwd.
         std::filesystem::create_directories("queue/sockets");
@@ -126,6 +138,12 @@ protected:
         remoted_module_stop();
         std::error_code ec;
         std::filesystem::remove(kAdminSocketPath, ec);
+
+        // Restore the original cwd before removing the scratch directory: ctest runs many test
+        // binaries from a shared working directory, so a later test/binary must not inherit this
+        // one's scratch cwd.
+        std::filesystem::current_path(m_originalCwd, ec);
+        std::filesystem::remove_all(m_scratchDir, ec);
     }
 
     /**
@@ -139,9 +157,13 @@ protected:
      *        enroll_use_password): whether Password-mode enrollment (and, with it,
      *        PasswordKeySource) is constructed for this run. Defaults to false, matching every
      *        other test in this file that doesn't care about the enrollment password.
+     * @param enrollmentEnabled Mirrors !authd's <disabled> (remoted_module_config_t's
+     *        enrollment_enabled): whether enrollment itself is administratively enabled.
+     *        Defaults to true so existing call sites that pass enrollUsePassword=true keep
+     *        exercising Password-mode enrollment being active, as before this parameter existed.
      * @return The public HTTPS port the module bound (0 when the fixture itself failed).
      */
-    std::uint16_t startModule(bool enrollUsePassword = false)
+    std::uint16_t startModule(bool enrollUsePassword = false, bool enrollmentEnabled = true)
     {
         // A second cycle regenerates the SAME pid-derived paths, so the previous cleanup must
         // run BEFORE the new files exist -- destroying it after would delete them again.
@@ -159,6 +181,7 @@ protected:
         cfg.port = findFreePort();
         EXPECT_NE(cfg.port, 0) << "could not obtain a free port to bind the module to";
         cfg.worker_node = false;
+        cfg.enrollment_enabled = enrollmentEnabled;
         cfg.enroll_use_password = enrollUsePassword;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certificate->certPath.c_str());
@@ -183,6 +206,8 @@ protected:
 
 private:
     std::unique_ptr<remoted::test::ScratchFileCleanup> m_certificateCleanup;
+    std::filesystem::path m_originalCwd;
+    std::filesystem::path m_scratchDir;
 };
 
 // GET / answers the liveness probe inline, and the socket itself carries the contract: the
@@ -346,6 +371,23 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled
     const auto response = client->Get("/status");
     ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
     EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+}
+
+// Regression test: a healthy, supported config (enrollment administratively disabled, but
+// <use_password> left at its installer default of "yes") must not construct a PasswordKeySource
+// that waits forever for an etc/authd.pass nothing will ever create -- "ready" must converge
+// immediately, with `enrollment_password` omitted entirely, the same as the Password-mode-off
+// case above.
+TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
+{
+    startModule(/*enrollUsePassword=*/true, /*enrollmentEnabled=*/false);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/status");
+    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_NE(response->body.find(R"({"ready":true)"), std::string::npos) << response->body;
     EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
 }
 

@@ -376,7 +376,7 @@ def test_modulesd_scan_agent_request_error():
 
 REMOTED_STATUS_RESPONSE = {
     'ready': True,
-    'keystore': {'ready': True, 'agents_loaded': 12, 'entries_skipped': 0},
+    'keystore': {'readable': True, 'agents_loaded': 12, 'entries_skipped': 0},
     'enrollment_password': {'ready': True},
 }
 

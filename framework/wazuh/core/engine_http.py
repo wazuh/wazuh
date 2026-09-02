@@ -200,7 +200,7 @@ class RemotedHTTPClient:
         Returns
         -------
         dict
-            `ready` (bool), `keystore` ({ready, agents_loaded, entries_skipped}),
+            `ready` (bool), `keystore` ({readable, agents_loaded, entries_skipped}),
             and `enrollment_password` ({ready}) when Password-mode enrollment
             is enabled (omitted entirely when it is not).
         """

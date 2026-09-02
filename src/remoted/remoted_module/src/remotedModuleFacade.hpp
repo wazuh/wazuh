@@ -86,8 +86,8 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
-// remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
+// purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
@@ -208,8 +208,9 @@ public:
 
             // Same phase-1 contract for the local admin socket: after this, no admin handler
             // will ever run again. Its handlers only read m_metricsManager -- which is never
-            // reset -- but the discipline of closing accepts before ANY teardown is kept
-            // uniform so the admin plane can never depend on teardown order by accident.
+            // reset -- and, via /status, the Keystore/PasswordKeySource diag weak_ptrs -- which
+            // outlive this call too -- but the discipline of closing accepts before ANY teardown
+            // is kept uniform so the admin plane can never depend on teardown order by accident.
             if (m_adminServer)
             {
                 m_adminServer->stopAccepting();
@@ -546,7 +547,7 @@ private:
         const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
 
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
-        if (enrollConfig.usePassword)
+        if (enrollConfig.enrollmentEnabled && enrollConfig.usePassword)
         {
             enrollPasswordKeySource =
                 std::make_shared<remoted::auth::PasswordKeySource>(remoted::auth::PasswordKeySource::kDefaultPath,
@@ -770,12 +771,12 @@ private:
     }
 
     /**
-     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics) -- best effort.
+     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics + GET /status) -- best effort.
      *
      * Sibling of startHttpServer(), called after it: this is the module's management plane
      * (shared_modules/uds_http_server over REMOTED_MODULE_ADMIN_SOCKET_PATH), reachable only
      * from the local host -- agents can never reach it, and the public HTTPS server must never
-     * grow these routes (it is agent-facing, not an admin plane). Both routes are Liveness
+     * grow these routes (it is agent-facing, not an admin plane). All three routes are Liveness
      * class: answered inline from resident state, exempt from the byte budget, so they respond
      * under any pressure.
      *
@@ -867,8 +868,9 @@ private:
                     const bool hasPasswordSource = static_cast<bool>(passwordSource);
                     if (hasPasswordSource)
                     {
-                        // .has_value() only -- the key material itself is never touched, copied
-                        // into the response, or logged.
+                        // .has_value() only -- currentKey() does make a transient, wiped-on-destroy
+                        // copy internally (see passwordKeySource.cpp), but that copy is never
+                        // serialized into the response or logged.
                         pwReady = passwordSource->currentKey().has_value();
                         overallReady = pwReady;
                     }
@@ -898,7 +900,7 @@ private:
             config.logTag = "wazuh-manager-remoted:remoted-module:admin";
             config.serverName = "remoted admin";
             config.serverHeader = "wazuh-remoted";
-            // Two liveness routes serving one local operator: sized far below the library's
+            // Three liveness routes serving one local operator: sized far below the library's
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
@@ -1258,8 +1260,8 @@ private:
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
     /// nothing else shares ownership.
     std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
-    /// Local admin plane (fixed UDS socket, GET / + GET /metrics). OPTIONAL by policy: a failed
-    /// start leaves it null and the module keeps running (see startAdminServer()).
+    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status). OPTIONAL by
+    /// policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
     /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is
     /// repointed under its own mutex on every start; the pulls are registered exactly once per

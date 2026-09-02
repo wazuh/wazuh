@@ -1697,11 +1697,11 @@ KDF, nothing that can block the admin socket's fixed 2-reactor-thread "never blo
   `remoted.auth.keystore.*` pulls above) through the same `m_keystoreDiagMutex`/
   `m_keystoreDiagTarget` weak_ptr pair `/metrics`'s pulls already use.
 - `PasswordKeySource::currentKey().has_value()` (a mutex-guarded check of an already-derived,
-  cached key — see `#### PasswordKeySource` above; the key material itself is never touched,
-  copied into the response, or logged) through a sibling `m_passwordKeySourceDiagMutex`/
-  `m_passwordKeySourceDiagTarget` weak_ptr pair, populated right after
-  `EnrollmentAuthenticator` construction and permanently expired when Password-mode
-  enrollment is disabled.
+  cached key — see `#### PasswordKeySource` above; `currentKey()` does make a transient,
+  wiped-on-destroy copy internally, but that copy is never serialized into the response or
+  logged) through a sibling `m_passwordKeySourceDiagMutex`/`m_passwordKeySourceDiagTarget`
+  weak_ptr pair, populated right after `EnrollmentAuthenticator` construction and permanently
+  expired when Password-mode enrollment is disabled.
 
 Response shape:
 
@@ -1712,9 +1712,10 @@ Response shape:
 - **`ready`** is the AND of the *gating* components only, and `enrollment_password` (when
   present) is the sole gating component. With Password-mode disabled, `ready` is `true`
   whenever the handler answers at all.
-- **`enrollment_password`** is present only when Password-mode enrollment is enabled (the
-  diag weak_ptr resolves); omitted entirely otherwise, not reported as a distinct
-  not-applicable state. Its `ready` is raw current state — never grace-window masked.
+- **`enrollment_password`** is present only when enrollment is administratively enabled
+  **and** Password-mode enrollment is on (the diag weak_ptr resolves); omitted entirely if
+  either is off, not reported as a distinct not-applicable state. Its `ready` is raw current
+  state — never grace-window masked.
 - **`keystore`** is always present and always informational — `readable` (not `ready`, to
   avoid reading as a readiness claim) reflects `Keystore::lastLoadOk()`; `agents_loaded`/
   `entries_skipped` mirror the pull metrics. It never gates the top-level `ready`: the module
