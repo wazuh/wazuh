@@ -1451,6 +1451,7 @@ void fim_file_scan() {
     // teardown guards, and the shutdown waiter (fim_shutdown_waiter(), main.c) relies on this
     // mutex to know no scan (including its trailing writes) is in flight before it tears the
     // database down.
+    // commnet added to change the file hash
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     /* Re-checked now that this thread owns the mutex: the shutdown teardown may have released the
