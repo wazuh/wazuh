@@ -42,12 +42,13 @@ foreach(TEST_FILE ${TEST_FILES})
         fimebpf
     )
 
-    if(FSANITIZE)
-        target_link_libraries(${TEST_NAME}
-            -fsanitize=address
-            -fsanitize=undefined
-        )
-    endif(FSANITIZE)
+    # libfimebpf.so inherits -fsanitize from the agent/unit-test build, which is a
+    # separate CMake configure from this test; link the runtime unconditionally so
+    # its __asan_/__ubsan_ symbols always resolve. Harmless when the lib has none.
+    target_link_libraries(${TEST_NAME}
+        -fsanitize=address
+        -fsanitize=undefined
+    )
 
     add_test(NAME ${TEST_NAME}
     COMMAND ${TEST_NAME})
