@@ -12,6 +12,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
+# Reader of the manager configuration: validation and effective values (schema defaults applied).
+MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${DIR}/etc/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.0.0"
@@ -171,7 +173,7 @@ disable()
 
 get_node_type()
 {
-    sed -n 's/.*<node_type>\([^<]*\)<\/node_type>.*/\1/p' ${DIR}/etc/${WAZUH_CONF} 2>/dev/null | tr -d ' '
+    ${MCONF} get cluster.node_type 2>/dev/null
 }
 
 status()
@@ -236,7 +238,22 @@ testconfig()
     # may never run to clear a marker left by an earlier, unrelated one.
     rm -f ${DIR}/var/run/*.failed
 
-    # We first loop to check the config.
+    # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
+    # with the JSON pointer of the offending option before any daemon runs its own -t.
+    ${MCONF} validate
+    if [ $? != 0 ]; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
+        else
+            echo "${WAZUH_CONF}: Configuration error. Exiting"
+        fi
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock;
+        exit 1;
+    fi
+
+    # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
         daemon_name="$i"
         ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
@@ -372,16 +389,9 @@ start_service()
             continue
         fi
 
-        ## If wazuh-manager-authd is disabled, don't try to start it.
+        ## If wazuh-manager-authd is disabled (auth.disabled: true), don't try to start it.
         if [ X"$i" = "Xwazuh-manager-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/${WAZUH_CONF} | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
+             if [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
                 continue
              fi
         fi
