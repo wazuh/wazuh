@@ -69,6 +69,12 @@ proceeding, rather than assuming readiness the moment the process starts. On a j
 `ready` typically converges within ~10-20 seconds, as the initial `cluster.json` sync lands the
 `etc/` file group (`client.keys`, `authd.pass`).
 
+This is a first-join side effect of both files travelling in the same `cluster.json` block, not a
+synchronization check: `authd.pass` never changes after that first sync, and `client.keys` changes
+on every subsequent enrollment, so a later `ready: true` does not mean `client.keys` is currently
+in sync with the master — only `enrollment_password.ready` gates `ready`, and `keystore` stays
+purely informational for exactly that reason (see above).
+
 ## Related Modules
 
 - **wazuh-manager-db**: Stores agent information and connection status
