@@ -380,6 +380,86 @@ function probe_server($server, $port, $endpoint) {
     }
 }
 
+# Same target as probe_server(), but with the OS's own certificate validation instead
+# of WazuhProbeTrust::Always: succeeds only if the system trust store actually
+# verifies the manager's certificate. probe_server() cannot tell us this, since it
+# deliberately accepts any certificate so a plain reachability check never depends on
+# TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work post-upgrade
+# (#38684).
+function probe_server_verified($server, $port, $endpoint) {
+    $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+        $path = if ([string]::IsNullOrEmpty($endpoint)) { "/" } else { "/$endpoint/" }
+
+        $host_part = $server
+        if ($host_part.Contains(":") -And -Not $host_part.StartsWith("[")) {
+            $host_part = "[$host_part]"
+        }
+
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+        return ($response.StatusCode -eq 200)
+    } catch {
+        return $false
+    } finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
+    }
+}
+
+# True if <block><sub> exists at all, regardless of what it contains -- distinct from
+# get_conf_value/a specific-tag check, which look for one leaf tag. Needed so pin_ca()
+# inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only) <ssl> block
+# instead of creating a second, duplicate one.
+function xml_block_present($block, $sub) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    if (-Not (Test-Path $conf_path)) {
+        return $false
+    }
+    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
+    if (-Not $block_match.Success) {
+        return $false
+    }
+    return $block_match.Groups[1].Value.Contains("<$sub>")
+}
+
+# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
+# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
+# register_configure_agent.sh / pin_ca() in pkg_installer.sh; duplicated because this
+# script ships inside the WPK and runs standalone, with nothing to source. Only called
+# when certificate_authorities is not already configured, so it never overwrites an
+# operator-configured CA.
+function pin_ca($ca_path) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    $lines = Get-Content $conf_path
+    $output = New-Object System.Collections.Generic.List[string]
+    $inserted = $false
+
+    if (xml_block_present "agent" "ssl") {
+        foreach ($line in $lines) {
+            $output.Add($line)
+            if ((-Not $inserted) -and ($line -match '^\s*<ssl>\s*$')) {
+                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
+                $inserted = $true
+            }
+        }
+    } else {
+        foreach ($line in $lines) {
+            if ((-Not $inserted) -and ($line -match '^\s*<(agent|client)>\s*$')) {
+                $output.Add($line)
+                $output.Add("    <ssl>")
+                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
+                $output.Add("    </ssl>")
+                $inserted = $true
+            } else {
+                $output.Add($line)
+            }
+        }
+    }
+
+    Set-Content -Path $conf_path -Value $output
+}
+
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
 # (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
 $MEP_DEFAULT_PORT = "1517"
@@ -549,6 +629,7 @@ if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
 # is gone, rather than leaving a freshly-upgraded host silently offline.
 $ssl_verification_mode = get_conf_value "agent" "ssl" "verification_mode"
 $ssl_ca = get_conf_value "agent" "ssl" "certificate_authorities"
+$ssl_verification_mode_explicit = ($null -ne $ssl_verification_mode)
 
 if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
     if ([string]::IsNullOrEmpty($ssl_ca)) {
@@ -558,9 +639,48 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
     }
 }
 
+# Default drop-in location for the manager's CA (mirrored on Linux in
+# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf.
+$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
+
 if ($ssl_verification_mode -eq "full" -or $ssl_verification_mode -eq "certificate") {
     if ([string]::IsNullOrEmpty($ssl_ca) -or -Not (Test-Path -PathType Leaf $ssl_ca)) {
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)' but <certificate_authorities> ('$($ssl_ca)') is missing or unreadable, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+} elseif ($ssl_verification_mode -eq "system") {
+    # verification_mode=system with a certificate_authorities also set is rejected
+    # outright at runtime (validateTls() in moduleConfig.cpp) regardless of whether
+    # the manager's certificate happens to verify against the OS store -- catch the
+    # config error itself here rather than let a live probe that happens to pass mask
+    # a daemon that will refuse to start.
+    if (-Not [string]::IsNullOrEmpty($ssl_ca)) {
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is 'system' but <certificate_authorities> ('$($ssl_ca)') is also set; 'system' trusts the OS store, not a configured CA, and the agent refuses to start with both set. Remove <certificate_authorities>, or switch to <verification_mode>certificate</verification_mode>, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+
+    # 'system' trusts the OS store, not a configured CA -- probe_server() above cannot
+    # tell us whether that store actually trusts THIS manager's certificate, since it
+    # deliberately accepts any certificate so the plain reachability check never
+    # depends on TLS trust. Find out for real before assuming the freshly-upgraded
+    # agent will still be able to connect.
+    if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
+        write-output "$(Get-Date -format u) - System CA trust check skipped (test mode)." >> .\upgrade\upgrade.log
+    } elseif (probe_server_verified $server_address $server_port $server_endpoint) {
+        write-output "$(Get-Date -format u) - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> .\upgrade\upgrade.log
+    } elseif ($ssl_verification_mode_explicit) {
+        # <verification_mode>system</verification_mode> was set explicitly: pinning a
+        # CA here would be rejected at runtime (validateTls() in moduleConfig.cpp
+        # refuses system+certificate_authorities together), so there is nothing this
+        # script can safely fix on the operator's behalf.
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } elseif (Test-Path -PathType Leaf $default_ca_file) {
+        pin_ca $default_ca_file
+        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
+    } else {
+        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
 }

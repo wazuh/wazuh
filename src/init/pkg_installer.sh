@@ -287,6 +287,100 @@ probe_server() {
     return $?
 }
 
+# Same target as probe_server(), but without -k: succeeds only if the system's own
+# trust store actually verifies the manager's certificate. probe_server() cannot tell
+# us this -- it deliberately skips verification so a plain reachability check never
+# depends on TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work
+# post-upgrade (#38684). No TCP/TLS-1.3 fallback here: a client that cannot do the
+# real handshake cannot tell us whether the cert is trusted, so treat that as
+# "unverified" rather than assume trust.
+probe_server_verified() {
+    PROBE_TIMEOUT=5
+
+    PROBE_HOST="${1}"
+    case "${PROBE_HOST}" in
+        \[*) ;;
+        *:*:*) PROBE_HOST="[${PROBE_HOST}]" ;;
+    esac
+
+    if [ -z "${3}" ]; then
+        PROBE_PATH="/"
+    else
+        PROBE_PATH="/${3}/"
+    fi
+
+    if command -v curl > /dev/null 2>&1; then
+        curl --tlsv1.3 -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        return $?
+    elif command -v wget > /dev/null 2>&1; then
+        wget -q --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        return $?
+    else
+        return 1
+    fi
+}
+
+# True (exit 0) if <block><sub> exists at all, regardless of what it contains --
+# distinct from xml_tag_present, which looks for a specific leaf tag. Needed so
+# pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
+# <ssl> block instead of creating a second, duplicate one.
+xml_block_present() {
+    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | grep -q "<$2>"
+}
+
+# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
+# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
+# register_configure_agent.sh; duplicated because this script ships inside the WPK
+# and runs standalone, with nothing to source. Only called when
+# xml_tag_present agent ssl certificate_authorities is false, so it never overwrites
+# an operator-configured CA.
+pin_ca() {
+    CA_PATH="${1}"
+    TMP_PIN_CONF="$(mktemp)"
+
+    if xml_block_present agent ssl; then
+        awk -v ca="${CA_PATH}" '
+            in_comment {
+                if ($0 ~ /-->/) { in_comment = 0 }
+                print
+                next
+            }
+            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
+                print
+                print "      <certificate_authorities>" ca "</certificate_authorities>"
+                inserted = 1
+                next
+            }
+            {
+                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+                print
+            }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}" && cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+    else
+        awk -v ca="${CA_PATH}" '
+            in_comment {
+                if ($0 ~ /-->/) { in_comment = 0 }
+                print
+                next
+            }
+            !inserted && /^[[:space:]]*<(agent|client)>[[:space:]]*$/ {
+                print
+                print "    <ssl>"
+                print "      <certificate_authorities>" ca "</certificate_authorities>"
+                print "    </ssl>"
+                inserted = 1
+                next
+            }
+            {
+                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+                print
+            }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}" && cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+    fi
+
+    rm -f "${TMP_PIN_CONF}"
+}
+
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
 # to read both (#38624):
 #
@@ -361,6 +455,8 @@ fi
 # is gone, rather than leaving a freshly-upgraded host silently offline.
 SSL_VERIFICATION_MODE=$(xml_value agent ssl verification_mode)
 SSL_CA=$(xml_value agent ssl certificate_authorities)
+SSL_VERIFICATION_MODE_EXPLICIT=0
+xml_tag_present agent ssl verification_mode && SSL_VERIFICATION_MODE_EXPLICIT=1
 
 if [ -z "${SSL_VERIFICATION_MODE}" ]; then
     if [ -n "${SSL_CA}" ]; then
@@ -370,10 +466,51 @@ if [ -z "${SSL_VERIFICATION_MODE}" ]; then
     fi
 fi
 
+# Default drop-in location for the manager's CA (mirrored on Windows in
+# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf. Resolves to /var/ossec/etc/certs/root-ca.pem on a default
+# install.
+DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
+
 case "${SSL_VERIFICATION_MODE}" in
     full|certificate)
         if [ -z "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+        ;;
+    system)
+        # verification_mode=system with a certificate_authorities also set is rejected
+        # outright at runtime (validateTls() in moduleConfig.cpp) regardless of
+        # whether the manager's certificate happens to verify against the OS store --
+        # catch the config error itself here rather than let a live probe that
+        # happens to pass mask a daemon that will refuse to start.
+        if [ -n "${SSL_CA}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is 'system' but <certificate_authorities> ('${SSL_CA}') is also set; 'system' trusts the OS store, not a configured CA, and the agent refuses to start with both set. Remove <certificate_authorities>, or switch to <verification_mode>certificate</verification_mode>, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+
+        # 'system' trusts the OS store, not a configured CA -- probe_server() above
+        # cannot tell us whether that store actually trusts THIS manager's
+        # certificate, since it deliberately skips verification (-k) so the plain
+        # reachability check never depends on TLS trust. Find out for real before
+        # assuming the freshly-upgraded agent will still be able to connect.
+        if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - System CA trust check skipped (test mode)." >> ./logs/upgrade.log
+        elif probe_server_verified "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> ./logs/upgrade.log
+        elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
+            # <verification_mode>system</verification_mode> was set explicitly:
+            # pinning a CA here would be rejected at runtime (validateTls() in
+            # moduleConfig.cpp refuses system+certificate_authorities together), so
+            # there is nothing this script can safely fix on the operator's behalf.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        elif [ -r "${DEFAULT_CA_FILE}" ]; then
+            pin_ca "${DEFAULT_CA_FILE}"
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;
