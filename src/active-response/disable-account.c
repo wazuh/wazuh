@@ -151,8 +151,14 @@ int main (int argc, char **argv) {
     int wp_closefd = wpclose(wfd);
     if (!WIFEXITED(wp_closefd) || WEXITSTATUS(wp_closefd) != 0) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR -1, "Command '%s' failed to %s the account '%s': %s", cmd_path,
-                 action == ADD_COMMAND ? "disable" : "enable", user, cmd_output);
+        if (WIFEXITED(wp_closefd)) {
+            snprintf(log_msg, OS_MAXSTR -1, "Command '%s' failed to %s the account '%s' (exit code %d): %s",
+                     cmd_path, action == ADD_COMMAND ? "disable" : "enable", user,
+                     WEXITSTATUS(wp_closefd), cmd_output);
+        } else {
+            snprintf(log_msg, OS_MAXSTR -1, "Command '%s' terminated abnormally while trying to %s the account '%s': %s",
+                     cmd_path, action == ADD_COMMAND ? "disable" : "enable", user, cmd_output);
+        }
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         os_free(cmd_path);
