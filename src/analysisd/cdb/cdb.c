@@ -108,22 +108,19 @@ static int match(struct cdb *c, char *key, unsigned int len, uint32 pos)
     return 1;
 }
 
-int cdb_findnext(struct cdb *c, char *key, unsigned int len)
+static int cdb_findnext_unlocked(struct cdb *c, char *key, unsigned int len)
 {
     char buf[8];
     uint32 pos;
     uint32 u;
 
-    w_mutex_lock(&c->mutex);
     if (!c->loop) {
         u = cdb_hash(key, len);
         if (cdb_read(c, buf, 8, (u << 3) & 2047) == -1) {
-            w_mutex_unlock(&c->mutex);
             return -1;
         }
         uint32_unpack(buf + 4, &c->hslots);
         if (!c->hslots) {
-            w_mutex_unlock(&c->mutex);
             return 0;
         }
         uint32_unpack(buf, &c->hpos);
@@ -136,12 +133,10 @@ int cdb_findnext(struct cdb *c, char *key, unsigned int len)
 
     while (c->loop < c->hslots) {
         if (cdb_read(c, buf, 8, c->kpos) == -1) {
-            w_mutex_unlock(&c->mutex);
             return -1;
         }
         uint32_unpack(buf + 4, &pos);
         if (!pos) {
-            w_mutex_unlock(&c->mutex);
             return 0;
         }
         c->loop += 1;
@@ -152,29 +147,38 @@ int cdb_findnext(struct cdb *c, char *key, unsigned int len)
         uint32_unpack(buf, &u);
         if (u == c->khash) {
             if (cdb_read(c, buf, 8, pos) == -1) {
-                w_mutex_unlock(&c->mutex);
                 return -1;
             }
             uint32_unpack(buf, &u);
             if (u == len)
                 switch (match(c, key, len, pos + 8)) {
                     case -1:
-                        w_mutex_unlock(&c->mutex);
                         return -1;
                     case 1:
                         uint32_unpack(buf + 4, &c->dlen);
                         c->dpos = pos + 8 + len;
-                        w_mutex_unlock(&c->mutex);
                         return 1;
                 }
         }
     }
-    w_mutex_unlock(&c->mutex);
     return 0;
+}
+
+int cdb_findnext(struct cdb *c, char *key, unsigned int len)
+{
+    int ret;
+    w_mutex_lock(&c->mutex);
+    ret = cdb_findnext_unlocked(c, key, len);
+    w_mutex_unlock(&c->mutex);
+    return ret;
 }
 
 int cdb_find(struct cdb *c, char *key, unsigned int len)
 {
-    cdb_findstart(c);
-    return cdb_findnext(c, key, len);
+    int ret;
+    w_mutex_lock(&c->mutex);
+    c->loop = 0;
+    ret = cdb_findnext_unlocked(c, key, len);
+    w_mutex_unlock(&c->mutex);
+    return ret;
 }
