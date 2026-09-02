@@ -262,7 +262,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
                                 -Wl,--wrap,OSRegex_Execute_ex")
 
 list(APPEND shared_tests_names "test_fs_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
