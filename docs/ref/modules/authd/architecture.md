@@ -107,7 +107,7 @@ sequenceDiagram
             KS-->>T: force rules decide (see below)
         end
         T->>KS: OS_AddNewAgent() — assigns the id, generates the key
-        T->>W: queue_insert += entry; write_pending = 1; signal
+        T->>W: queue_insert += entry, write_pending = 1, signal
     end
     T-->>C: id + name + ip + key
     Note over C: the agent can sign requests NOW…

@@ -81,9 +81,20 @@ namespace invsync::endpoints::delete_agent
      * queue is FIFO, which is the only thing that can order those deletes after a report it has
      * already accepted, and it exposes no seam to wait on. So a 200 promises the state documents
      * were deleted and flushed, and promises only that the other two deletions were queued. Closing
-     * that would mean giving up the ordering property the by-id half exists for. What limits the
-     * exposure is idempotency: a retried deletion re-queues them, and deleting an absent document is
-     * a no-op everywhere in the chain.
+     * that would mean giving up the ordering property the by-id half exists for.
+     *
+     * Idempotency limits the exposure only while something still retries: a deletion that is
+     * retried re-queues both deletes, and deleting an absent document is a no-op everywhere in the
+     * chain. It does NOT cover the residual case, which is worth naming rather than implying --
+     * that queue is an in-memory deque with no disk backing, so if modulesd stops between this
+     * 200 and the flush, the two by-id deletes are lost while the manager-task row already reads
+     * `completed`, and nothing revisits it. The agent's state documents are gone; its
+     * `wazuh-agent-config` and `wazuh-agent-stats` documents survive their agent.
+     *
+     * That is a narrower promise than "a task reaches `completed` only once the work is done", and
+     * the gap is deliberate for now: closing it needs either a durable queue, a completion that
+     * waits on an unacknowledgeable send, or a periodic sweep for documents whose agent no longer
+     * exists. The sweep is the only one of the three that costs nothing here.
      *
      * CAPACITY. RouteClass::Control requires a route doing real work to shed its own capacity
      * module-side. This one has no queue of its own; the bound is the dispatcher's delete-lane depth

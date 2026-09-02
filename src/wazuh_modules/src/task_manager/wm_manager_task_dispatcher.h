@@ -133,6 +133,17 @@ typedef struct _wm_manager_task_dispatcher {
     int poll_interval;
     int sweep_interval;
     int claim_grace;
+
+    /* Stop signal owned by the dispatcher, checked alongside wm_shutdown_requested by every loop
+     * that can outlive this struct. Two callers need it: a start() that failed partway has live
+     * threads to bring down while the module is NOT shutting down, and stop() itself, which used to
+     * rely on the module's flag already being set and would otherwise wake workers that go straight
+     * back to claiming while it joins them. */
+    volatile bool stopping;
+
+    /* Whether the per-lane mutexes and condition variables have been initialised, so stop() knows
+     * whether there is anything to destroy -- and destroys them exactly once. */
+    bool primed;
 } wm_manager_task_dispatcher;
 
 /**
@@ -141,7 +152,9 @@ typedef struct _wm_manager_task_dispatcher {
  *
  * @param[out] dispatcher Dispatcher to start.
  * @param[in] consumer_socket Socket the routed task types' consumer listens on.
- * @return 0 on success, -1 on failure, in which case nothing has been started.
+ * @return 0 on success, -1 on failure, in which case everything this call started has already been
+ *         brought down and joined -- so the caller must NOT call wm_manager_task_dispatcher_stop()
+ *         on a failed start, and must not treat the dispatcher as running.
  */
 int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, const char *consumer_socket);
 
@@ -149,8 +162,25 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
  * @brief Wake every worker and join every thread.
  *
  * Called by the module's own main thread, which is the one thread modulesd joins, so that the
- * lanes are joined inside the shared shutdown budget rather than killed wherever they happen to
- * be. A half-written query to wazuh-db becomes impossible rather than unlikely.
+ * lanes are joined rather than killed wherever they happen to be.
+ *
+ * IT IS NOT BOUNDED BY THE SHUTDOWN BUDGET, and that is worth stating plainly. A worker parked
+ * inside its consumer call returns only when that call's own deadline expires -- up to
+ * `manager_task_delete_timeout` (600 s by default) on the delete lane -- and there is no
+ * cancellation primitive here to cut it short. wazuh-control waits MAX_KILL_TRIES (30) seconds and
+ * then sends SIGKILL, so in that case the process is killed rather than joined, and this function
+ * never returns.
+ *
+ * What makes that survivable is the state machine, not the join: the claim was committed before the
+ * handler ran and the outcome write is deliberately left in the deferred transaction, so a SIGKILL
+ * mid-call leaves the row `claimed`, the next start's ownership sweep reclaims it, and the handler
+ * -- required to be idempotent -- runs again. A half-written wazuh-db query is impossible for the
+ * same reason it always was: every sub-command is one round trip, and an unfinished one is simply
+ * not applied.
+ *
+ * So the cost of a shutdown that catches a delete in flight is a 30 s stop and a hard kill, not
+ * lost or duplicated work. Lowering the delete lane's request timeout under 30 s would make the
+ * join fit the budget, at the price of abandoning purges that legitimately take longer.
  *
  * @param[in,out] dispatcher Dispatcher to stop.
  */

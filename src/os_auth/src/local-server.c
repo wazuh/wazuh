@@ -618,6 +618,20 @@ cJSON* local_add(const char *id,
 
     mdebug2("add(%s)", name);
 
+    /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
+     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
+     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
+     * thread -- to ask whether an id that cannot exist owes a deletion.
+     *
+     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
+     * not the id space /agents/insert accepts.
+     *
+     * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
+     * held yet. */
+    if (id && !OS_IsValidAgentInsertID(id)) {
+        return local_create_error_response(ERRORS[EINVALIDID].code, ERRORS[EINVALIDID].message);
+    }
+
     /* An explicitly chosen id is the one case where the caller can land on an id whose previous
      * owner is still being cleaned up. Both this check and the duplicate-ID one below refuse
      * instead of reassigning it, because the pending purge matches by agent id and would delete the
@@ -664,15 +678,6 @@ cJSON* local_add(const char *id,
         ierror = EINVALIDKEY;
         goto fail;
     }
-
-    /* A caller-supplied id must be within the range the manager can actually store it in --
-     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
-     * not the id space /agents/insert accepts. */
-    if (id && !OS_IsValidAgentInsertID(id)) {
-        ierror = EINVALIDID;
-        goto fail;
-    }
-
 
     // Check for duplicate ID
     //

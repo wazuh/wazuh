@@ -1071,6 +1071,36 @@ void purge_journal_drop(const purge_journal_entry_t *entries, size_t count) {
  * The kept lines stay journaled until phase 3 records them, so an explicit-id insert naming one of
  * them is refused from memory in the meantime.
  */
+purge_journal_entry_t* purge_journal_snapshot(size_t *count) {
+    purge_journal_entry_t *owed = NULL;
+    purge_node_t *node;
+    size_t i = 0;
+
+    if (count) {
+        *count = 0;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    if (purge_journal_size > 0) {
+        os_calloc(purge_journal_size, sizeof(purge_journal_entry_t), owed);
+
+        for (node = purge_journal; node && i < purge_journal_size; node = node->next, i++) {
+            strncpy(owed[i].id, node->id, sizeof(owed[i].id) - 1);
+            owed[i].requested_at = node->requested_at;
+            owed[i].journal_seq = node->journal_seq;
+        }
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (count) {
+        *count = i;
+    }
+
+    return owed;
+}
+
 purge_journal_entry_t* purge_journal_reconcile(size_t *count) {
     purge_journal_entry_t *owed = NULL;
     purge_node_t **prev;

@@ -102,6 +102,7 @@
 | [#34849](https://github.com/wazuh/wazuh/issues/34849) | Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. |
 | [#33199](https://github.com/wazuh/wazuh/issues/33199) | Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. |
 | [#31478](https://github.com/wazuh/wazuh/issues/31478) | Simplified rootcheck: removed the server-side database, sync path, and API surface; findings are now indexed through the standard alert pipeline. |
+| [#38589](https://github.com/wazuh/wazuh/issues/38589) | Changed the shared log-rotation helper so a rotation whose target directory cannot be created is reported and skipped instead of terminating the daemon. This also applies to the agent's own log rotation, which previously exited on that error and was restarted by the service manager. |
 | [#33382](https://github.com/wazuh/wazuh/issues/33382) | Updated logcollector file-tailing initial read strategy for more consistent behavior across log rotation scenarios. |
 | [#34462](https://github.com/wazuh/wazuh/issues/34462) | Updated Windows Event Channel log collection to emit native XML from `EvtRender()` without an XML declaration header. |
 | [#35330](https://github.com/wazuh/wazuh/issues/35330) | Increased default limits for agent event throughput and inventory message sizes. |

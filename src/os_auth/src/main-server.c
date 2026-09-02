@@ -673,6 +673,25 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
+    /* BEFORE the listeners, not just before the writer. Read what the previous run left, decide
+     * what each surviving line means against the client.keys just loaded, and record the deletions
+     * that were interrupted before their task row existed.
+     *
+     * The ordering is the point. Every request that can reassign an agent id consults
+     * purge_is_pending(), which answers from the journal held in memory -- so a request served
+     * while the journal is still unread is answered against an empty one. The id of an agent
+     * deleted before the last crash would be judged free, handed to a new agent, and then
+     * reconciliation would find that id present in client.keys and drop the line as "never
+     * deleted": the original agent's documents are never purged, which is the exact window this
+     * design exists to close, reopened at startup.
+     *
+     * Nothing contends for the journal here, which is also what lets these two run without the
+     * mutex doing any real work. */
+    if (!config.worker_node) {
+        purge_file_load();
+        purge_startup_recover();
+    }
+
     /* Start working threads */
 
     if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
@@ -691,12 +710,6 @@ int main(int argc, char **argv)
     }
 
     if (!config.worker_node) {
-        /* Before any thread exists, so nothing contends for the journal: read what the previous run
-         * left, decide what each surviving line means against the client.keys just loaded, and
-         * record the deletions that were interrupted before their task row existed. */
-        purge_file_load();
-        purge_startup_recover();
-
         if (status = pthread_create(&thread_writer, NULL, (void *)&run_writer, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
             return EXIT_FAILURE;
@@ -1189,7 +1202,13 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
  * phase 0 refuses new deletions against. The rest of the batch is abandoned for this pass, because
  * a full queue does not empty between two rows.
  *
- * @param entries The journaled deletions.
+ * Both non-success cases leave their line in place and abandon the rest of the pass, which is only
+ * safe because the callers hand over EVERY outstanding line rather than one cycle's additions:
+ * purge_journal_snapshot() on the writer, purge_journal_reconcile() at startup. Called with just
+ * the ids a single cycle journaled, an untouched line would wait for the next process start while
+ * its agent was already gone from client.keys.
+ *
+ * @param entries Every deletion still owed, oldest first.
  * @param count How many.
  * @param wdb_sock Reusable wazuh-db socket.
  * @return How many rows are now recorded.
@@ -1492,17 +1511,37 @@ void* run_writer(__attribute__((unused)) void *arg) {
             removed_agents++;
         }
 
-        /* PHASES 3 and 4, gated on phase 2. Skipping them costs nothing: the journal lines stay,
-         * the next cycle retries them, and a start that never gets one reconciles them instead. */
+        /* PHASES 3 and 4, gated on phase 2. Skipping them costs nothing: the journal lines stay and
+         * the next cycle retries them, because phase 3 below works from the whole outstanding set
+         * rather than from this cycle's ids. */
         if (journaled) {
-            if (keys_written) {
-                purge_create_rows(journaled, removed_count, &wdb_sock);
-            } else {
+            os_free(journaled);
+
+            if (!keys_written) {
                 mwarn("client.keys could not be written, so %zu deletion(s) were not recorded; they "
                       "stay journaled until a write succeeds.", removed_count);
             }
+        }
 
-            os_free(journaled);
+        /* Everything the journal still owes, not just what this cycle added. A create that failed
+         * -- wazuh-db restarting, a socket timeout, a full admission bound -- left its line in
+         * place, and this is what picks it up on the next cycle. Working from `journaled` instead
+         * stranded those ids until the process restarted, with their agents already gone from
+         * client.keys and their documents orphaned in the meantime.
+         *
+         * Gated on keys_written, which is the whole safety argument: the write is attempted on
+         * every cycle, so a successful one means the keys ON DISK already reflect every deletion
+         * applied to the in-memory keystore -- this cycle's and every earlier one's -- and any line
+         * still journaled therefore belongs to an agent that is really gone. A failed write means
+         * the opposite for at least some of them, so nothing is recorded until one succeeds. */
+        if (keys_written) {
+            size_t owed_count = 0;
+            purge_journal_entry_t *owed = purge_journal_snapshot(&owed_count);
+
+            if (owed) {
+                purge_create_rows(owed, owed_count, &wdb_sock);
+                os_free(owed);
+            }
         }
 
         /* Phase 0's second term, refreshed once per cycle rather than once per agent. A failed

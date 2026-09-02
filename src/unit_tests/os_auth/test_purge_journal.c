@@ -511,6 +511,75 @@ static void test_reconciliation_keeps_lines_whose_agent_is_gone(void **state) {
     os_free(owed);
 }
 
+/* ------------------------------------------------- what the writer retries after a failed phase 3 */
+
+static void test_a_failed_record_is_still_owed_on_the_next_cycle(void **state) {
+    (void)state;
+
+    /* The failure this whole sequence exists to survive: wazuh-db was unreachable when phase 3 ran.
+     * The agent is already gone from client.keys, so nothing will ask again -- the journal line is
+     * the only record, and the next writer cycle has to find it. It does, because phase 3 works
+     * from purge_journal_snapshot() rather than from the ids the failing cycle happened to journal.
+     *
+     * Read directly rather than through the writer: run_writer() lives in main-server.c, outside
+     * authd_lib, and the phase ORDER is the integration suite's. What is testable here is that the
+     * line an unrecorded deletion left behind is still on offer afterwards. */
+    size_t first_count = 0;
+    size_t second_count = 0;
+    purge_journal_entry_t *first = NULL;
+    purge_journal_entry_t *second = NULL;
+    purge_journal_entry_t *journaled = journal_one("061");
+
+    assert_non_null(journaled);
+
+    first = purge_journal_snapshot(&first_count);
+    assert_int_equal(1, first_count);
+    assert_string_equal("061", first[0].id);
+
+    /* Phase 3 failed, so phase 4 never ran and nothing was dropped. The snapshot still offers it,
+     * with the SAME sequence -- so the retry derives the same task id and a create that did land
+     * before the failure was reported collides instead of duplicating. */
+    second = purge_journal_snapshot(&second_count);
+    assert_int_equal(1, second_count);
+    assert_string_equal("061", second[0].id);
+    assert_int_equal(first[0].journal_seq, second[0].journal_seq);
+
+    // And once it is recorded, the line goes and the next cycle is offered nothing.
+    purge_journal_drop(second, 1);
+    os_free(second);
+
+    second = purge_journal_snapshot(&second_count);
+    assert_int_equal(0, second_count);
+    assert_null(second);
+
+    os_free(first);
+    os_free(journaled);
+}
+
+static void test_the_snapshot_decides_nothing(void **state) {
+    (void)state;
+
+    /* Unlike reconcile, it must not drop a line whose agent is back in client.keys, or write the
+     * file: it runs on every writer cycle, and a cycle is not the place to re-decide what is owed.
+     * Reconciliation owns that, once, at startup. */
+    size_t count = 0;
+    purge_journal_entry_t *owed = NULL;
+
+    write_journal_file("last_update 1000\nlast_id 9999\nlast_seq 4\npurge 062 1000 4\n");
+    purge_file_load();
+
+    enroll_id("062");
+
+    // No expect_any for __wrap__minfo: reconcile logs what it drops, and this must log nothing.
+    owed = purge_journal_snapshot(&count);
+
+    assert_int_equal(1, count);
+    assert_string_equal("062", owed[0].id);
+    assert_non_null(strstr(read_journal_file(), "purge 062 "));
+
+    os_free(owed);
+}
+
 /* ----------------------------------------------------------------- the id high-water mark */
 
 static void test_the_id_counter_only_ever_grows(void **state) {
@@ -650,6 +719,10 @@ int main(void) {
                                         setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_reconciliation_keeps_lines_whose_agent_is_gone,
                                         setup_journal, teardown_journal),
+        // What the writer retries after a failed phase 3
+        cmocka_unit_test_setup_teardown(test_a_failed_record_is_still_owed_on_the_next_cycle,
+                                        setup_journal, teardown_journal),
+        cmocka_unit_test_setup_teardown(test_the_snapshot_decides_nothing, setup_journal, teardown_journal),
         // The id high-water mark
         cmocka_unit_test_setup_teardown(test_the_id_counter_only_ever_grows, setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_loading_raises_the_id_counter_past_every_stored_id,

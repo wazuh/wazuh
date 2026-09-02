@@ -268,7 +268,10 @@ typedef struct purge_journal_entry_t {
 } purge_journal_entry_t;
 
 /// Recover the journal a previous run left behind, and raise the id counter past every id it
-/// mentions. Call after OS_ReadKeys() and before any thread starts.
+/// mentions. Call after OS_ReadKeys() and before ANY thread starts -- including the request
+/// listeners, not just the writer: purge_is_pending() answers from the journal held in memory, so a
+/// request served before this runs is judged against an empty one and can reassign an id whose
+/// purge is still owed.
 void purge_file_load(void);
 
 /// Phase 0. Whether the deletion backlog is too deep to admit another one. Called on the request
@@ -284,6 +287,24 @@ purge_journal_entry_t* purge_journal_append(char **ids, size_t count);
 
 /// Phase 4. Drop these entries from the journal and persist the shorter file.
 void purge_journal_drop(const purge_journal_entry_t *entries, size_t count);
+
+/**
+ * @brief Every deletion the journal still owes, as of now.
+ *
+ * Phase 3 works from this rather than from the ids the calling cycle happened to journal, so a
+ * create that failed -- wazuh-db restarting, a socket timeout, or an admission bound that was full
+ * at the time -- is retried by the next cycle instead of waiting for the next process start. That
+ * is what makes "it stays journaled and will be retried" true: without it the untouched lines are
+ * only ever revisited by purge_journal_reconcile(), and the agents behind them are already gone
+ * from client.keys, so their documents stay orphaned for the lifetime of the process.
+ *
+ * Unlike purge_journal_reconcile() this decides nothing and changes nothing: no client.keys
+ * comparison, no line dropped, no file written. Safe to call on every writer cycle.
+ *
+ * @param[out] count Number of entries returned.
+ * @return A caller-owned array of @p count entries, or NULL when nothing is owed.
+ */
+purge_journal_entry_t* purge_journal_snapshot(size_t *count);
 
 /// Startup reconciliation. For every journaled line, consult the client.keys already read: an
 /// agent still listed there means the deletion never became final, so the line is dropped; an

@@ -105,6 +105,19 @@ wm_manager_task_spawn_decision wm_manager_task_spawn_decide(bool known,
     return WM_MANAGER_TASK_SPAWN;
 }
 
+/**
+ * @brief Whether the threads this dispatcher owns should stop.
+ *
+ * Two sources, and both are needed. `wm_shutdown_requested` is the module's, set when modulesd is
+ * coming down. `dispatcher->stopping` is this struct's own, and covers the case the module flag
+ * cannot: a start() that failed partway has to bring down the workers it already created while
+ * modulesd carries on running. It also makes stop() self-contained rather than only correct when
+ * the caller happens to have set the module flag first.
+ */
+STATIC bool wm_manager_task_stopping(const wm_manager_task_dispatcher *dispatcher) {
+    return wm_shutdown_requested || (dispatcher && dispatcher->stopping);
+}
+
 const wm_manager_task_descriptor* wm_manager_task_rotate(wm_manager_task_lane lane, size_t *rotation, size_t offset) {
     size_t count = 0;
     const wm_manager_task_descriptor **types = wm_manager_task_registry_lane(lane, &count);
@@ -281,7 +294,7 @@ STATIC bool wm_manager_task_run_one(wm_manager_task_dispatcher *dispatcher,
     // running something else; the CLAIM_TIME grace is what covers it.
     wm_manager_task_publish(worker, task_id, desc->request_timeout_ms);
 
-    if (wm_shutdown_requested) {
+    if (wm_manager_task_stopping(dispatcher)) {
         // Checked here rather than only at the top of the loop: the row stays claimed and the
         // next boot's startup sweep reclaims it, which is cheaper than starting work that a
         // thirty second shutdown budget will not let finish.
@@ -339,7 +352,7 @@ STATIC void wm_manager_task_lane_wait(wm_manager_task_dispatcher *dispatcher, wm
 
     w_mutex_lock(&dispatcher->lane_mutex[lane]);
 
-    if (!dispatcher->lane_signalled[lane] && !wm_shutdown_requested) {
+    if (!dispatcher->lane_signalled[lane] && !wm_manager_task_stopping(dispatcher)) {
         clock_gettime(CLOCK_REALTIME, &deadline);
         deadline.tv_sec += WM_MANAGER_TASK_LANE_IDLE_FALLBACK;
 
@@ -428,12 +441,12 @@ STATIC void* wm_manager_task_lane_thread(void *arg) {
 
     wm_manager_task_registry_lane(worker->lane, &lane_types);
 
-    while (!wm_shutdown_requested) {
+    while (!wm_manager_task_stopping(dispatcher)) {
         bool claimed = false;
 
         wm_manager_task_lane_wait(dispatcher, worker->lane);
 
-        if (wm_shutdown_requested) {
+        if (wm_manager_task_stopping(dispatcher)) {
             break;
         }
 
@@ -443,14 +456,14 @@ STATIC void* wm_manager_task_lane_thread(void *arg) {
          * is stated rather than implied, because "every 60 s" would otherwise read as a guarantee. */
         wm_manager_task_direct_run(dispatcher, worker->lane);
 
-        if (wm_shutdown_requested) {
+        if (wm_manager_task_stopping(dispatcher)) {
             break;
         }
 
         // One pass over this lane's types, taking the first that yields a row. The claim stays
         // scoped to a single type throughout: an IN clause over several would give up the
         // single-seek property the claim index exists for.
-        for (size_t offset = 0; offset < lane_types && !wm_shutdown_requested; offset++) {
+        for (size_t offset = 0; offset < lane_types && !wm_manager_task_stopping(dispatcher); offset++) {
             const wm_manager_task_descriptor *desc = wm_manager_task_rotate(worker->lane, &worker->rotation, offset);
 
             if (!desc) {
@@ -490,7 +503,7 @@ STATIC int wm_manager_task_sweep(wm_manager_task_dispatcher *dispatcher, const c
     int reclaimed = 0;
     bool more = true;
 
-    while (more && !wm_shutdown_requested) {
+    while (more && !wm_manager_task_stopping(dispatcher)) {
         cJSON *rows = NULL;
         cJSON *row = NULL;
         int seen = 0;
@@ -719,7 +732,7 @@ STATIC void wm_manager_task_spawn_due(wm_manager_task_dispatcher *dispatcher) {
         char *task_id = NULL;
         char *outcome = NULL;
 
-        if (wm_shutdown_requested) {
+        if (wm_manager_task_stopping(dispatcher)) {
             // Nothing spawned here would be claimed before the lanes are joined, and the slot stays
             // due for the next start.
             break;
@@ -833,7 +846,7 @@ STATIC void* wm_manager_task_scheduler_thread(void *arg) {
         os_calloc(wm_manager_task_direct_count(), sizeof(time_t), next_direct);
     }
 
-    while (!wm_shutdown_requested) {
+    while (!wm_manager_task_stopping(dispatcher)) {
         time_t now = time(NULL);
 
         for (size_t i = 0; next_direct && i < wm_manager_task_direct_count(); i++) {
@@ -927,12 +940,15 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
      * that fires them, rather than reading the option a second time, so the two cannot disagree. */
     wm_manager_task_local_init();
 
+    /* Both unwind through fail: as well, even though no thread or allocation exists yet -- it is
+     * what runs wm_manager_task_local_teardown() for the init above, and it keeps every exit from
+     * this function on one path. */
     if (wm_manager_task_registry_init(consumer_socket) != 0) {
-        return -1;
+        goto fail;
     }
 
     if (wm_manager_task_owner_self(&dispatcher->self) != 0) {
-        return -1;
+        goto fail;
     }
 
     wm_manager_task_policy_load(&dispatcher->policy);
@@ -969,6 +985,9 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
         }
     }
 
+    // From here on stop() has objects to destroy, whether or not any thread ever starts.
+    dispatcher->primed = true;
+
     os_calloc(dispatcher->worker_count, sizeof(wm_manager_task_worker), dispatcher->workers);
 
     for (wm_manager_task_lane lane = 0; lane < WM_MANAGER_TASK_LANE_COUNT; lane++) {
@@ -990,7 +1009,7 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
                 0) {
                 mterror(WM_TASK_MANAGER_LOGTAG, "Cannot build the owner string for lane '%s'.",
                         wm_manager_task_lane_name(lane));
-                return -1;
+                goto fail;
             }
 
             // One client per thread: a uhttp_client_t is not thread-safe. The local lane needs
@@ -1007,7 +1026,7 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
                     mterror(WM_TASK_MANAGER_LOGTAG,
                             "Lane '%s' carries %zu routed task types; a routed lane must carry exactly one.",
                             wm_manager_task_lane_name(lane), lane_type_count);
-                    return -1;
+                    goto fail;
                 }
 
                 options.timeout_ms = lane_types[0]->request_timeout_ms;
@@ -1019,7 +1038,7 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
                 if (!worker->http) {
                     mterror(WM_TASK_MANAGER_LOGTAG, "Cannot create the HTTP client for lane '%s'.",
                             wm_manager_task_lane_name(lane));
-                    return -1;
+                    goto fail;
                 }
             }
         }
@@ -1043,25 +1062,43 @@ int wm_manager_task_dispatcher_start(wm_manager_task_dispatcher *dispatcher, con
     wm_manager_task_schedules_upsert(dispatcher);
 
     for (size_t i = 0; i < dispatcher->worker_count; i++) {
-        // Joinable, deliberately. w_create_thread wraps CreateThread, which calls pthread_detach
-        // unconditionally, and a detached thread cannot be joined at shutdown.
-        if (pthread_create(&dispatcher->workers[i].thread, NULL, wm_manager_task_lane_thread,
-                           &dispatcher->workers[i]) != 0) {
+        /* Joinable, deliberately. w_create_thread wraps CreateThread, which calls pthread_detach
+         * unconditionally, and a detached thread cannot be joined at shutdown.
+         *
+         * CreateThreadJoinable rather than a bare pthread_create: it is what applies the
+         * `wazuh.thread_stack_size` internal option, so these threads are sized like every other
+         * daemon thread instead of silently taking the platform default. */
+        if (CreateThreadJoinable(&dispatcher->workers[i].thread, wm_manager_task_lane_thread,
+                                 &dispatcher->workers[i]) != 0) {
             mterror(WM_TASK_MANAGER_LOGTAG, "Cannot start lane thread '%s'.", dispatcher->workers[i].owner);
-            return -1;
+            goto fail;
         }
 
         dispatcher->workers[i].started = true;
     }
 
-    if (pthread_create(&dispatcher->scheduler, NULL, wm_manager_task_scheduler_thread, dispatcher) != 0) {
+    if (CreateThreadJoinable(&dispatcher->scheduler, wm_manager_task_scheduler_thread, dispatcher) != 0) {
         mterror(WM_TASK_MANAGER_LOGTAG, "Cannot start the manager task scheduler.");
-        return -1;
+        goto fail;
     }
 
     dispatcher->scheduler_started = true;
 
     return 0;
+
+fail:
+    /* Every failure exit lands here, including the ones that already have live threads: this call
+     * adds seven of them to modulesd, so a pthread_create that fails under RLIMIT_NPROC or memory
+     * pressure is reachable, not theoretical. Returning -1 with workers still running left them
+     * claiming and executing tasks while the caller logged that manager tasks would not run, and
+     * nobody would ever join them -- stop() is only called when start() succeeded.
+     *
+     * stop() is the whole unwind: it signals, wakes, joins whatever has `started`, frees the HTTP
+     * clients and the arrays, and destroys what was initialised. It is safe on a partial start
+     * because every step is guarded by the flag that records whether that step happened. */
+    wm_manager_task_dispatcher_stop(dispatcher);
+
+    return -1;
 }
 
 void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
@@ -1069,11 +1106,20 @@ void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
         return;
     }
 
-    // The flag is already set by the module's stop callback; waking every lane is what stops its
-    // workers sleeping out the idle fallback below before noticing it. Broadcast, not signal: the
-    // joins that follow wait for all of them, not for one per lane.
-    for (wm_manager_task_lane lane = 0; lane < WM_MANAGER_TASK_LANE_COUNT; lane++) {
-        wm_manager_task_lane_wake_all(dispatcher, lane);
+    /* Set here rather than relied upon from the module's stop callback. On shutdown the module flag
+     * is already set and this is redundant; on a failed start it is the only thing that makes the
+     * workers exit, and without it the joins below would wait forever on threads that go straight
+     * back to claiming after being woken. */
+    dispatcher->stopping = true;
+
+    // Waking every lane is what stops its workers sleeping out the idle fallback before noticing
+    // the flag. Broadcast, not signal: the joins that follow wait for all of them, not for one per
+    // lane. Only when the mutexes exist -- a start() that failed before priming them has no
+    // threads either.
+    if (dispatcher->primed) {
+        for (wm_manager_task_lane lane = 0; lane < WM_MANAGER_TASK_LANE_COUNT; lane++) {
+            wm_manager_task_lane_wake_all(dispatcher, lane);
+        }
     }
 
     if (dispatcher->scheduler_started) {
@@ -1091,6 +1137,10 @@ void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
             uhttp_client_free(dispatcher->workers[i].http);
             dispatcher->workers[i].http = NULL;
         }
+
+        // Initialised per worker in start(), so destroyed per worker here: after the join, when
+        // nothing can be publishing through it.
+        w_mutex_destroy(&dispatcher->workers[i].published_mutex);
     }
 
     // After the joins, so nothing is holding the socket the local handlers share.
@@ -1105,6 +1155,18 @@ void wm_manager_task_dispatcher_stop(wm_manager_task_dispatcher *dispatcher) {
     dispatcher->schedule_count = 0;
 
     os_free(dispatcher->direct_pending);
+
+    /* Last, and only once: after this, wake_all() would be operating on destroyed objects. Making
+     * stop() the inverse of start() matters less for the process lifetime -- the module starts once
+     * -- than for the failed-start path, which now runs stop() while modulesd keeps running. */
+    if (dispatcher->primed) {
+        for (wm_manager_task_lane lane = 0; lane < WM_MANAGER_TASK_LANE_COUNT; lane++) {
+            w_mutex_destroy(&dispatcher->lane_mutex[lane]);
+            w_cond_destroy(&dispatcher->lane_cond[lane]);
+        }
+
+        dispatcher->primed = false;
+    }
 }
 
 void wm_manager_task_dispatcher_watchdog(wm_manager_task_dispatcher *dispatcher, time_t now) {

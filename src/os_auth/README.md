@@ -341,7 +341,7 @@ stateDiagram-v2
     Journaled --> [*]: reconciliation - the agent is still enrolled,\nso the deletion never became final
     Journaled --> Recorded: phase 3 - the row is committed in tasks.db
     Recorded --> [*]: phase 4 - the journal line is dropped
-    Recorded --> Recorded: restart - reconciliation re-creates the row;\nthe id collides, which is success
+    Recorded --> Recorded: restart - reconciliation re-creates the row,\nthe id collides, which is success
 ```
 
 ### The reusable-id guard
