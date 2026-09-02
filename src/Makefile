@@ -595,7 +595,7 @@ external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
 	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 external-precompiled/$(CPYTHON).tar.gz:
 	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
@@ -603,20 +603,20 @@ external-precompiled/$(CPYTHON).tar.gz:
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 endif
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 endif
 
 # Explicit rule for tzdata - always download from sources URL
@@ -633,15 +633,15 @@ external/%.tar.gz: external-precompiled/%.tar.gz
 	@test -d $(patsubst %.tar.gz,%,$@) ||\
 	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 else
 external/%.tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 endif
 
 ifneq (,$(PRECOMPILED_RES))
@@ -663,10 +663,10 @@ shared_modules/http-request.tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
 	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL)) &&\
-	($(GUNZIP) $@ || (rm -f $@ && echo "[-] Error decompressing $@, maybe wrong branch was supplied" && false)) &&\
+	($(GUNZIP) $@ || (rm -f $@ && printf "\033[31m[-] Error decompressing %s, maybe wrong branch was supplied\033[0m\n" "$@" && false)) &&\
 	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
 	rm $(patsubst %.gz,%,$@)) || true
-	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 # Indexer plugin templates download
 # Get refs from get_git_refs.sh if INDEXER_PLUGINS_REFS is not set
@@ -677,7 +677,7 @@ INDEXER_PLUGIN_REFS_LIST := $(shell $(ROUTE_PATH)/../tools/get_git_refs.sh 2>/de
 endif
 
 $(INDEXER_PLUGINS_DIR):
-	mkdir -p $(INDEXER_PLUGINS_DIR)
+	@mkdir -p $(INDEXER_PLUGINS_DIR)
 
 $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
@@ -690,7 +690,7 @@ $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUG
 		fi; \
 	done; \
 	if [ $$success -eq 0 ]; then \
-		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		printf "\033[31mERROR: Failed to download %s from any reference\033[0m\n" "$(notdir $@)" >&2; \
 		exit 1; \
 	fi
 
@@ -707,14 +707,14 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 		fi; \
 	done; \
 	if [ $$success -eq 0 ]; then \
-		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		printf "\033[31mERROR: Failed to download %s from any reference\033[0m\n" "$(notdir $@)" >&2; \
 		exit 1; \
 	fi
-	 @echo "[+] Dependency $(notdir $@) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $@)"
 
 # WCS flat files directory
 $(WCS_FLAT_DIR):
-	mkdir -p $(WCS_FLAT_DIR)
+	@mkdir -p $(WCS_FLAT_DIR)
 
 # Rule for WCS flat consolidated YAML file
 $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
@@ -729,10 +729,10 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 		fi; \
 	done; \
 	if [ $$success -eq 0 ]; then \
-		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		printf "\033[31mERROR: Failed to download %s from any reference\033[0m\n" "$(notdir $@)" >&2; \
 		exit 1; \
 	fi
-	 @echo "[+] Dependency $(notdir $@) installed successfully"
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $@)"
 
 ####################
 #### Python ########
