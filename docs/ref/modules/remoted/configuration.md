@@ -764,7 +764,9 @@ Seconds to wait for the downstream service's response after the write completes.
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
   declare its own deadline instead of forcing this value up for every endpoint (which would delay
-  detection of a genuinely hung downstream on the fast ones).
+  detection of a genuinely hung downstream on the fast ones). `/stateless` is bound by this default:
+  it must stay above the engine's real p99 ingestion latency, or a batch the engine takes longer to
+  ingest is redelivered by the agent's retry, with nothing able to recognize it as the same batch.
 
 #### remoted.downstream_stateful_response_timeout
 
