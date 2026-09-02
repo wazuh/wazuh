@@ -207,7 +207,8 @@ void test_is_valid_username_invalid_with_slash(void **state) {
     assert_int_equal(is_valid_username("test\\user"), 0);
 }
 
-void test_is_valid_username_invalid_path_traversal(void **state) {
+// Traversal sequences are rejected by the separator rule, not by a dedicated guard
+void test_is_valid_username_invalid_separators_in_traversal(void **state) {
     (void) state;
     assert_int_equal(is_valid_username("../root"), 0);
     assert_int_equal(is_valid_username("test/../user"), 0);
@@ -257,6 +258,16 @@ void test_get_username_from_json_rejects_invalid(void **state) {
     cJSON_Delete(input);
 }
 
+void test_get_username_from_json_accepts_consecutive_dots(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"john..doe\"}}}}");
+    assert_non_null(input);
+    const char *username = get_username_from_json(input);
+    assert_non_null(username);
+    assert_string_equal(username, "john..doe");
+    cJSON_Delete(input);
+}
+
 void test_get_username_from_json_rejects_root(void **state) {
     (void) state;
     cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"root\"}}}}");
@@ -291,13 +302,14 @@ int main(void) {
         cmocka_unit_test(test_is_valid_username_invalid_with_comma),
         cmocka_unit_test(test_is_valid_username_invalid_with_whitespace),
         cmocka_unit_test(test_is_valid_username_invalid_with_slash),
-        cmocka_unit_test(test_is_valid_username_invalid_path_traversal),
+        cmocka_unit_test(test_is_valid_username_invalid_separators_in_traversal),
         cmocka_unit_test(test_is_valid_username_valid_with_consecutive_dots),
         cmocka_unit_test(test_is_valid_username_length_boundary),
 
         // get_username_from_json tests
         cmocka_unit_test(test_get_username_from_json_accepts_valid),
         cmocka_unit_test(test_get_username_from_json_rejects_invalid),
+        cmocka_unit_test(test_get_username_from_json_accepts_consecutive_dots),
         cmocka_unit_test(test_get_username_from_json_rejects_root),
     };
 
