@@ -344,9 +344,7 @@ namespace
         }
 
     private:
-        struct rlimit m_original
-        {
-        };
+        struct rlimit m_original {};
         bool m_valid {true};
         bool m_restored {false};
     };

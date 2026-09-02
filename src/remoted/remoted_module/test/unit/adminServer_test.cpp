@@ -83,8 +83,7 @@ namespace
     bool publicLivenessProbeAnswers(std::uint16_t port)
     {
         const auto response = remoted::test::sendGetRequest(port, "/");
-        return response.find(" 200 ") != std::string::npos &&
-               response.find(R"("status":"ok")") != std::string::npos;
+        return response.find(" 200 ") != std::string::npos && response.find(R"("status":"ok")") != std::string::npos;
     }
 } // namespace
 
@@ -168,9 +167,7 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
 {
     startModule();
 
-    struct stat socketStat
-    {
-    };
+    struct stat socketStat {};
     ASSERT_EQ(::stat(kAdminSocketPath, &socketStat), 0) << "admin socket was not bound at the fixed path";
     EXPECT_TRUE(S_ISSOCK(socketStat.st_mode));
     EXPECT_EQ(socketStat.st_mode & 0777U, 0660U);
