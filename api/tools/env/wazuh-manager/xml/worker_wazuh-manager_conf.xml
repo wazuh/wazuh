@@ -4,7 +4,7 @@
         <name>wazuh</name>
         <node_name>worker</node_name>
         <node_type>worker</node_type>
-        <key>9d273b53510fef702b54a92e9cffc82e</key>
+        <key>CLUSTER_KEY_PLACEHOLDER</key>
         <port>1516</port>
         <bind_addr>0.0.0.0</bind_addr>
         <nodes>
