@@ -262,7 +262,11 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
                                 -Wl,--wrap,OSRegex_Execute_ex")
 
 list(APPEND shared_tests_names "test_fs_op")
-list(APPEND shared_tests_flags " ")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND shared_tests_flags "-Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
+endif()
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
