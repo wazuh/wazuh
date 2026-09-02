@@ -330,6 +330,41 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('body', [None, [], ['password'], 'password', 0, False])
+async def test_access_log_non_object_body(body, mock_req):
+    """Check that `access_log` logs a body that is not a JSON object instead of raising.
+
+    `null`, a list and bare scalars are all valid JSON bodies. Testing `'password' in body` on any
+    of them raises a `TypeError`, which turned the validator's 400 into an unhandled 500.
+    """
+    response = MagicMock()
+    response.status_code = 400
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    mock_req._json = MagicMock()
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh', 'token_info': {'hash_auth_context': 'hash'}}
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=operation), \
+            patch('api.middlewares.custom_logging') as mock_custom_logging, \
+            patch('api.middlewares.logger.warning'):
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_custom_logging.assert_called_once_with(
+            'wazuh', mock_req.client.host, 'POST', RUN_AS_LOGIN_ENDPOINT, {}, body, 0.0, 400,
+            hash_auth_context='hash', headers=mock_req.headers
+        )
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 async def test_access_log_hash_auth_context(mock_req):
     """Check that `access_log` obtains the authentication context hash from the JWT token."""
     response = MagicMock()

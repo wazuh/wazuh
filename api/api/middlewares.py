@@ -77,10 +77,14 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     if 'password' in query:
         query['password'] = '****'
-    if 'password' in body:
-        body['password'] = '****'
-    if 'key' in body and '/agents' in path:
-        body['key'] = '****'
+    # A JSON body is not necessarily an object: `null`, a list and bare scalars are all valid JSON,
+    # and only a mapping can carry the fields masked below. Testing membership on any of the others
+    # raises a TypeError here, which turned the validator's 400 into a 500.
+    if isinstance(body, dict):
+        if 'password' in body:
+            body['password'] = '****'
+        if 'key' in body and '/agents' in path:
+            body['key'] = '****'
 
     # Get the username from the request. If it is not found in the context, try
     # to get it from the headers using basic or bearer authentication methods.

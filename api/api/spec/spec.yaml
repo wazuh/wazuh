@@ -6851,7 +6851,9 @@ paths:
       summary: "Login auth_context"
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
-      /security/config"
+      /security/config. An authorization context that matches no rule -including an empty object- yields a token
+      with no roles. The body must be a JSON object: a missing body, or one that is not an object, is rejected
+      with a 400"
       operationId: api.controllers.security_controller.run_as_login
       parameters:
         - $ref: '#/components/parameters/raw'
