@@ -31,6 +31,7 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "wazuh_db-config.h"
+#include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 
 
 int wdb_execute_non_select_query(wdb_t * wdb, const char *query);
@@ -977,27 +978,25 @@ void test_wdb_get_internal_config() {
 /* Tests wdb_get_config */
 
 void test_wdb_get_config(){
+    /* The effective `wdb` section of the document: backup.global.{...}, no "database" array */
+    expect_string(__wrap_w_mconf_section, section, "wdb");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"backup\":{\"global\":{\"enabled\":true,\"interval\":\"1d\",\"max_files\":3}}}"));
+
     cJSON *ret = wdb_get_config();
 
     cJSON *root = cJSON_GetObjectItem(ret, "wdb");
     assert_true(cJSON_IsObject(root));
 
-    cJSON *cfg_array = cJSON_GetObjectItem(root, "backup");
-    assert_true(cJSON_IsArray(cfg_array));
+    cJSON *backup = cJSON_GetObjectItem(root, "backup");
+    assert_true(cJSON_IsObject(backup));
+    assert_null(cJSON_GetObjectItem(backup, "database"));
 
-    cJSON *cfg = 0;
-    cJSON_ArrayForEach(cfg, cfg_array){
-        assert_true(cJSON_IsObject(cfg));
-
-        cJSON *c0 = cJSON_GetObjectItem(cfg, "database");
-        assert_true(cJSON_IsString(c0));
-        cJSON *c1 = cJSON_GetObjectItem(cfg, "enabled");
-        assert_true(cJSON_IsBool(c1));
-        cJSON *c2 = cJSON_GetObjectItem(cfg, "interval");
-        assert_true(cJSON_IsNumber(c2));
-        cJSON *c3 = cJSON_GetObjectItem(cfg, "max_files");
-        assert_true(cJSON_IsNumber(c3));
-    }
+    cJSON *global = cJSON_GetObjectItem(backup, "global");
+    assert_true(cJSON_IsObject(global));
+    assert_true(cJSON_IsBool(cJSON_GetObjectItem(global, "enabled")));
+    assert_true(cJSON_IsString(cJSON_GetObjectItem(global, "interval")));
+    assert_true(cJSON_IsNumber(cJSON_GetObjectItem(global, "max_files")));
 
     cJSON_Delete(ret);
 }

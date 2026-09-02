@@ -173,16 +173,18 @@ def test_wdb_backup_configs(test_configuration, test_metadata, configure_wazuh_d
     try:
         control_service('restart')
     except (subprocess.CalledProcessError, ValueError) as err:
+        # The strict loader refuses the whole file with 1244 and its JSON pointer; the old
+        # per-option warn-and-default messages are gone.
         if not validate_interval_format(test_interval):
-            wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.WRONG_INTERVAL_CALLBACK), timeout=timeout)
-            assert wazuh_log_monitor.callback_result, 'Did not receive expected ' \
-                                                    '"Invalid value element for interval..." event'
+            wazuh_log_monitor.start(callback=callbacks.generate_callback(
+                r".*\(1244\): Invalid configuration at '.*': /wdb/backup/global/interval"), timeout=timeout)
+            assert wazuh_log_monitor.callback_result, 'Did not receive the expected 1244 interval rejection'
 
             return
         elif not isinstance(test_max_files, numbers.Number) or test_max_files==0:
-            wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.WRONG_MAX_FILES_CALLBACK), timeout=timeout)
-            assert wazuh_log_monitor.callback_result, 'Did not receive expected ' \
-                                                        '"Invalid value element for max_files..." event'
+            wazuh_log_monitor.start(callback=callbacks.generate_callback(
+                r".*\(1244\): Invalid configuration at '.*': /wdb/backup/global/max_files"), timeout=timeout)
+            assert wazuh_log_monitor.callback_result, 'Did not receive the expected 1244 max_files rejection'
             return
         else:
             pytest.fail(f"Got unexpected Error: {err}")
