@@ -85,8 +85,7 @@ namespace
             options.workers = workers;
             options.queueDepth = queueDepth;
             m_service = std::make_unique<UpgradeService>(
-                *m_orchestrator, [] { return RemotedSettings {true, true, RemotedSettings::VERIFY_NONE}; },
-                options);
+                *m_orchestrator, [] { return RemotedSettings {true, true, RemotedSettings::VERIFY_NONE}; }, options);
             m_service->start();
         }
 
@@ -121,9 +120,9 @@ TEST_F(ServiceTest, RunsABatchAndAnswersThroughTheParkedResponder)
     EXPECT_EQ(responder->status(), 200);
     // No agent rows were scripted, so both are "not in the database" -- what matters here is that
     // an answer arrived at all, from a thread that is not the one that submitted.
-    EXPECT_EQ(agentErrors(responder->body()),
-              (std::vector<int> {errorValue(UpgradeError::GlobalDbFailure),
-                                 errorValue(UpgradeError::GlobalDbFailure)}));
+    EXPECT_EQ(
+        agentErrors(responder->body()),
+        (std::vector<int> {errorValue(UpgradeError::GlobalDbFailure), errorValue(UpgradeError::GlobalDbFailure)}));
 }
 
 TEST_F(ServiceTest, ShedsOnceTheQueueIsFull)
@@ -133,9 +132,11 @@ TEST_F(ServiceTest, ShedsOnceTheQueueIsFull)
     startService(1, 1);
 
     // A slow download keeps the worker busy so the queue actually backs up.
-    m_hostOps.agentRows[1] = nlohmann::json {
-        {"os_platform", "ubuntu"}, {"os_major", "22"}, {"os_minor", "04"}, {"os_arch", "x86_64"},
-        {"version", "v4.14.0"}};
+    m_hostOps.agentRows[1] = nlohmann::json {{"os_platform", "ubuntu"},
+                                             {"os_major", "22"},
+                                             {"os_minor", "04"},
+                                             {"os_arch", "x86_64"},
+                                             {"version", "v4.14.0"}};
     m_repository.scriptVersions("https://packages.wazuh.com/5.x/wpk/linux/deb/amd64/versions",
                                 {true, "v5.0.0 bdac63d27983c405531b56e2cd0eafa54b2f1d42\n", 200, 0});
     m_repository.scriptDownload(
@@ -281,8 +282,7 @@ TEST_F(UpgradeApiTest, AMissingAgentListIsARequiredParameterFailure)
     m_api->handleUpgrade(bodyOf(R"({"request_time":1756800000})"), responder);
 
     ASSERT_TRUE(responder->answered());
-    EXPECT_EQ(agentErrors(responder->body()),
-              (std::vector<int> {errorValue(UpgradeError::ParsingRequiredParameter)}));
+    EXPECT_EQ(agentErrors(responder->body()), (std::vector<int> {errorValue(UpgradeError::ParsingRequiredParameter)}));
 }
 
 TEST_F(UpgradeApiTest, AValidRequestIsAcceptedAndAnsweredLater)
@@ -325,8 +325,7 @@ TEST_F(UpgradeApiTest, ADisabledModuleStillValidatesTheBodyFirst)
     m_api->handleUpgrade(bodyOf(R"({"agents":[]})"), responder);
 
     ASSERT_TRUE(responder->answered());
-    EXPECT_EQ(agentErrors(responder->body()),
-              (std::vector<int> {errorValue(UpgradeError::ParsingRequiredParameter)}));
+    EXPECT_EQ(agentErrors(responder->body()), (std::vector<int> {errorValue(UpgradeError::ParsingRequiredParameter)}));
 }
 
 TEST_F(UpgradeApiTest, ANullRequestIsAnsweredRatherThanDropped)
@@ -346,8 +345,7 @@ TEST_F(UpgradeApiTest, TheCustomRouteUsesTheCustomParser)
 
     // `file_path` is a custom-route key; on the repository route it would be ignored as unknown.
     auto responder {std::make_shared<FakeResponder>()};
-    m_api->handleUpgradeCustom(
-        bodyOf(R"({"agents":[1],"request_time":1756800000,"file_path":7})"), responder);
+    m_api->handleUpgradeCustom(bodyOf(R"({"agents":[1],"request_time":1756800000,"file_path":7})"), responder);
 
     ASSERT_TRUE(responder->answered());
     EXPECT_EQ(nlohmann::json::parse(responder->body()).at("data")[0].at("message"),

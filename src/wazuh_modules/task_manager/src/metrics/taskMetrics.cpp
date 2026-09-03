@@ -22,14 +22,12 @@ namespace task_manager::metrics
             "task_manager.handler.duration", "Manager task handler execution time", "microseconds");
         m_busyWorkers = m_manager->getOrCreateGaugeInt(
             "task_manager.executor.busy_workers", "Executor workers currently running a handler", "workers");
-        m_agentTasksCreated = m_manager->getOrCreateCounter(
-            "task_manager.agent_tasks.created", "Agent tasks stored", "count");
+        m_agentTasksCreated =
+            m_manager->getOrCreateCounter("task_manager.agent_tasks.created", "Agent tasks stored", "count");
         m_agentTasksDelivered = m_manager->getOrCreateCounter(
             "task_manager.agent_tasks.delivered", "Agent tasks handed to a poller", "count");
         m_tasksReclaimed = m_manager->getOrCreateCounter(
-            "task_manager.manager_tasks.reclaimed",
-            "Claimed rows the ownership sweep returned to pending",
-            "count");
+            "task_manager.manager_tasks.reclaimed", "Claimed rows the ownership sweep returned to pending", "count");
     }
 
     std::shared_ptr<wazuh::metrics::ICounter> TaskMetrics::counterFor(const std::string& name)
@@ -48,13 +46,10 @@ namespace task_manager::metrics
 
     void TaskMetrics::taskRetired(const std::string& taskType, const TaskStatus status)
     {
-        counterFor("task_manager.manager_tasks.retired." + taskType + "." + std::string {toString(status)})
-            ->add();
+        counterFor("task_manager.manager_tasks.retired." + taskType + "." + std::string {toString(status)})->add();
     }
 
-    void TaskMetrics::handlerRan(const std::string& taskType,
-                                 const Outcome outcome,
-                                 const std::uint64_t micros)
+    void TaskMetrics::handlerRan(const std::string& taskType, const Outcome outcome, const std::uint64_t micros)
     {
         m_handlerDuration->observe(micros);
         counterFor("task_manager.handler.outcome." + taskType + "." + std::string {toString(outcome)})->add();
@@ -62,8 +57,7 @@ namespace task_manager::metrics
 
     void TaskMetrics::taskCreated(const std::string& taskType, const CreateResult result)
     {
-        counterFor("task_manager.manager_tasks.created." + taskType + "." + std::string {toString(result)})
-            ->add();
+        counterFor("task_manager.manager_tasks.created." + taskType + "." + std::string {toString(result)})->add();
     }
 
     void TaskMetrics::agentTaskCreated()

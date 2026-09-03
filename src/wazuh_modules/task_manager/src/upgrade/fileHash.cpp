@@ -32,9 +32,7 @@ namespace task_manager::upgrade
 {
     std::optional<FileStamp> stampOf(const std::string& path)
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
 
         if (::stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode))
         {

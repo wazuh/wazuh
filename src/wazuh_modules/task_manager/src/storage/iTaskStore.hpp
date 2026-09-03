@@ -174,9 +174,8 @@ namespace task_manager::storage
 
         /// @brief Take the earliest eligible row of one type. Commits before returning.
         /// @return The claimed row, or nullopt when nothing is eligible -- which is normal.
-        virtual std::optional<ClaimedTask> claim(const std::string& taskType,
-                                                 const std::string& owner,
-                                                 Timestamp now) = 0;
+        virtual std::optional<ClaimedTask>
+        claim(const std::string& taskType, const std::string& owner, Timestamp now) = 0;
 
         /// @brief Return a row to pending, or retire it as superseded when a competing pending row
         ///        already holds its slot.
@@ -215,16 +214,14 @@ namespace task_manager::storage
 
         /// @brief Retire every pending row of a type the registry does not know.
         /// @return Rows affected.
-        virtual std::int64_t failPendingByType(const std::string& taskType,
-                                               const std::string& lastError,
-                                               Timestamp endTime) = 0;
+        virtual std::int64_t
+        failPendingByType(const std::string& taskType, const std::string& lastError, Timestamp endTime) = 0;
 
         /// @brief One page of claimed rows. An empty `owner` means EVERY claimed row, whoever owns
         ///        it -- the startup form, whose result set is bounded by nothing after repeated
         ///        crashes, which is why it pages.
-        virtual std::vector<ClaimedRow> claimedRows(const std::string& owner,
-                                                    const std::string& afterTaskId,
-                                                    int limit) = 0;
+        virtual std::vector<ClaimedRow>
+        claimedRows(const std::string& owner, const std::string& afterTaskId, int limit) = 0;
 
         virtual RetentionStats applyRetention(const RetentionRules& rules) = 0;
 
@@ -235,9 +232,8 @@ namespace task_manager::storage
         ///         previous ENABLED is the only way to detect a disabled-to-enabled transition,
         ///         which is the one signal that NEXT_RUN_AT must be recomputed -- and that
         ///         transition can straddle a restart.
-        virtual std::optional<ScheduleRow> upsertSchedule(const std::string& scheduleId,
-                                                          Timestamp nextRunAt,
-                                                          bool enabled) = 0;
+        virtual std::optional<ScheduleRow>
+        upsertSchedule(const std::string& scheduleId, Timestamp nextRunAt, bool enabled) = 0;
 
         virtual void setScheduleNextRun(const std::string& scheduleId, Timestamp nextRunAt) = 0;
 

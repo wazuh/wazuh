@@ -259,10 +259,8 @@ TEST_F(StoreTest, SetResultRefusesSupersededBecauseNoHandlerMayChooseIt)
 {
     m_store->createManagerTask(request("a"));
 
-    EXPECT_THROW(m_store->setResult("a", TaskStatus::Superseded, 0, 0, std::nullopt, 2000),
-                 std::invalid_argument);
-    EXPECT_THROW(m_store->setResult("a", TaskStatus::Pending, 0, 0, std::nullopt, 2000),
-                 std::invalid_argument);
+    EXPECT_THROW(m_store->setResult("a", TaskStatus::Superseded, 0, 0, std::nullopt, 2000), std::invalid_argument);
+    EXPECT_THROW(m_store->setResult("a", TaskStatus::Pending, 0, 0, std::nullopt, 2000), std::invalid_argument);
 
     m_store->setResult("a", TaskStatus::Completed, 1, 0, std::nullopt, 2000);
     const auto row {m_store->getManagerTask("a")};

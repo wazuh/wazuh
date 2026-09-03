@@ -142,10 +142,11 @@ TEST_F(OrchestratorTest, AHomogeneousFleetCostsOneFetchOneDownloadAndOneTransact
     EXPECT_EQ(m_store->countManagerTasks("remote_upgrade", TaskStatus::Pending), 0); // Not a manager task.
     for (int index = 1; index <= AGENTS; ++index)
     {
-        EXPECT_EQ(m_store->takePendingAgentTasks(index < 10 ? "00" + std::to_string(index)
-                                                           : (index < 100 ? "0" + std::to_string(index)
-                                                                          : std::to_string(index)),
-                                                 10)
+        EXPECT_EQ(m_store
+                      ->takePendingAgentTasks(index < 10
+                                                  ? "00" + std::to_string(index)
+                                                  : (index < 100 ? "0" + std::to_string(index) : std::to_string(index)),
+                                              10)
                       .size(),
                   1U);
     }
@@ -196,8 +197,7 @@ TEST_F(OrchestratorTest, WritesTheAgentTaskShapeTheDeliveryPathsExpect)
     m_hostOps.agentRows[5] = ubuntuRow();
     scriptRepo("linux/deb/amd64/", "wazuh_agent_v5.0.0_linux_amd64.deb.wpk");
 
-    ASSERT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error,
-              UpgradeError::Success);
+    ASSERT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error, UpgradeError::Success);
 
     // Zero-padded to three, which is how both remoted pollers look their tasks up.
     const auto tasks {m_store->takePendingAgentTasks("005", 10)};
@@ -226,8 +226,7 @@ TEST_F(OrchestratorTest, EvictsTheAgentFromTheNegativeCacheSoTheTaskIsVisible)
     m_pendingCache.markEmpty("005");
     ASSERT_TRUE(m_pendingCache.knownEmpty("005"));
 
-    ASSERT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error,
-              UpgradeError::Success);
+    ASSERT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error, UpgradeError::Success);
 
     EXPECT_FALSE(m_pendingCache.knownEmpty("005"));
 }
@@ -278,8 +277,7 @@ TEST_F(OrchestratorTest, WindowsAgentsGetTheBatchInstaller)
     m_hostOps.agentRows[7] = windowsRow();
     scriptRepo("windows/", "wazuh_agent_v5.0.0_windows.wpk");
 
-    ASSERT_EQ(m_orchestrator->process(requestFor({7}), permissive(), m_stop).front().error,
-              UpgradeError::Success);
+    ASSERT_EQ(m_orchestrator->process(requestFor({7}), permissive(), m_stop).front().error, UpgradeError::Success);
 
     const auto tasks {m_store->takePendingAgentTasks("007", 10)};
     ASSERT_EQ(tasks.size(), 1U);
@@ -293,10 +291,8 @@ TEST_F(OrchestratorTest, TheSameRequestTwiceCreatesTheTaskOnce)
     m_hostOps.agentRows[5] = ubuntuRow();
     scriptRepo("linux/deb/amd64/", "wazuh_agent_v5.0.0_linux_amd64.deb.wpk");
 
-    EXPECT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error,
-              UpgradeError::Success);
-    EXPECT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error,
-              UpgradeError::Success);
+    EXPECT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error, UpgradeError::Success);
+    EXPECT_EQ(m_orchestrator->process(requestFor({5}), permissive(), m_stop).front().error, UpgradeError::Success);
 
     EXPECT_EQ(m_store->takePendingAgentTasks("005", 10).size(), 1U);
 }
@@ -437,8 +433,7 @@ TEST(UpgradeCustomPath, RejectsAnythingOutsideIt)
               UpgradeError::WpkFileDoesNotExist);
 
     // So is a file that does not exist at all: realpath() requires it.
-    EXPECT_EQ(resolveCustomWpkPath(dir.path() + "absent.wpk", dir.path(), fileName),
-              UpgradeError::WpkFileDoesNotExist);
+    EXPECT_EQ(resolveCustomWpkPath(dir.path() + "absent.wpk", dir.path(), fileName), UpgradeError::WpkFileDoesNotExist);
 
     EXPECT_EQ(resolveCustomWpkPath("", dir.path(), fileName), UpgradeError::WpkFileDoesNotExist);
 }
@@ -454,8 +449,7 @@ TEST(UpgradeCustomPath, ASymlinkOutOfTheDirectoryDoesNotCount)
     ASSERT_EQ(::symlink((elsewhere.path() + "real.wpk").c_str(), (dir.path() + "link.wpk").c_str()), 0);
 
     std::string fileName;
-    EXPECT_EQ(resolveCustomWpkPath(dir.path() + "link.wpk", dir.path(), fileName),
-              UpgradeError::WpkFileDoesNotExist);
+    EXPECT_EQ(resolveCustomWpkPath(dir.path() + "link.wpk", dir.path(), fileName), UpgradeError::WpkFileDoesNotExist);
 }
 
 TEST(UpgradeCustomPath, ASiblingDirectoryWithASharedPrefixDoesNotCount)

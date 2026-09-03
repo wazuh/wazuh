@@ -142,13 +142,12 @@ namespace task_manager::handlers
         // "synced" is the sync_status WRITTEN onto the transitioned rows, not a filter on which
         // agents are considered: the master marks agents in its own database and no cluster
         // synchronisation is involved, so the rows are already in their final state.
-        const auto disconnected {m_hostOps.disconnectAgents(
-            static_cast<long>(nowSeconds() - m_config.disconnectionTime.count()), "synced")};
+        const auto disconnected {
+            m_hostOps.disconnectAgents(static_cast<long>(nowSeconds() - m_config.disconnectionTime.count()), "synced")};
 
         if (!disconnected.has_value())
         {
-            return HandlerResult::of(Outcome::Retryable,
-                                     "wazuh-db did not complete the disconnection sweep");
+            return HandlerResult::of(Outcome::Retryable, "wazuh-db did not complete the disconnection sweep");
         }
 
         int logged {0};
@@ -164,8 +163,8 @@ namespace task_manager::handlers
                 continue;
             }
 
-            if (logged >= m_config.disconnectLogMax ||
-                nowSeconds() - started >= m_config.disconnectLogBudget.count() || stop.stopRequested())
+            if (logged >= m_config.disconnectLogMax || nowSeconds() - started >= m_config.disconnectLogBudget.count() ||
+                stop.stopRequested())
             {
                 ++dropped;
                 continue;
@@ -176,9 +175,8 @@ namespace task_manager::handlers
             const auto info {m_hostOps.agentInfo(agentId)};
             if (!info.has_value())
             {
-                LOGFN_DEBUG2(moduleLogFn(),
-                             "Cannot read agent '%d' data; its disconnection is not logged by name.",
-                             agentId);
+                LOGFN_DEBUG2(
+                    moduleLogFn(), "Cannot read agent '%d' data; its disconnection is not logged by name.", agentId);
                 continue;
             }
 
@@ -191,10 +189,8 @@ namespace task_manager::handlers
             const auto name {row->find("name")};
             if (name != row->end() && name->is_string())
             {
-                LOGFN_DEBUG1(moduleLogFn(),
-                             "Agent '%d' (%s) is disconnected.",
-                             agentId,
-                             name->get<std::string>().c_str());
+                LOGFN_DEBUG1(
+                    moduleLogFn(), "Agent '%d' (%s) is disconnected.", agentId, name->get<std::string>().c_str());
             }
         }
 
@@ -272,8 +268,7 @@ namespace task_manager::handlers
 
         for (const auto agentId : *candidates)
         {
-            if (examined >= m_config.deleteOldBatch ||
-                nowSeconds() - started >= m_config.deleteOldBudget.count())
+            if (examined >= m_config.deleteOldBatch || nowSeconds() - started >= m_config.deleteOldBudget.count())
             {
                 // Bound reached with candidates left. Neither success nor failure: completing
                 // would retire the row with the sweep half done, and consuming an attempt would
@@ -310,17 +305,16 @@ namespace task_manager::handlers
             }
 
             const auto keepalive {row->find("last_keepalive")};
-            const auto expired {keepalive != row->end() && keepalive->is_number() &&
-                                deleteOldExpired(keepalive->get<Timestamp>(),
-                                                 nowSeconds(),
-                                                 m_config.disconnectionTime,
-                                                 m_config.deleteOldAgents)};
+            const auto expired {
+                keepalive != row->end() && keepalive->is_number() &&
+                deleteOldExpired(
+                    keepalive->get<Timestamp>(), nowSeconds(), m_config.disconnectionTime, m_config.deleteOldAgents)};
 
             if (expired)
             {
                 int authdError {0};
-                const auto answered {m_hostOps.removeAgent(
-                    agentId, static_cast<int>(m_config.authdTimeout.count()), authdError)};
+                const auto answered {
+                    m_hostOps.removeAgent(agentId, static_cast<int>(m_config.authdTimeout.count()), authdError)};
                 const auto outcome {deleteOldOutcome(answered, authdError)};
 
                 if (outcome.outcome == Outcome::Ok)
@@ -329,10 +323,8 @@ namespace task_manager::handlers
                     const auto name {row->find("name")};
                     if (name != row->end() && name->is_string())
                     {
-                        LOGFN_DEBUG1(moduleLogFn(),
-                                     "Agent '%d' (%s) removed.",
-                                     agentId,
-                                     name->get<std::string>().c_str());
+                        LOGFN_DEBUG1(
+                            moduleLogFn(), "Agent '%d' (%s) removed.", agentId, name->get<std::string>().c_str());
                     }
                 }
                 else
@@ -393,8 +385,7 @@ namespace task_manager::handlers
             return HandlerResult::of(Outcome::NotReady, "shutting down before the rotation started");
         }
 
-        if (!m_hostOps.rotateLogDaily(
-                m_config.compressRotatedLogs, m_config.keepLogDays, m_config.dailyRotations))
+        if (!m_hostOps.rotateLogDaily(m_config.compressRotatedLogs, m_config.keepLogDays, m_config.dailyRotations))
         {
             return HandlerResult::of(Outcome::Retryable, "the daily log rotation did not complete");
         }

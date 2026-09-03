@@ -65,7 +65,10 @@ namespace task_manager::handlers
             ~Lease();
             Lease(const Lease&) = delete;
             Lease& operator=(const Lease&) = delete;
-            UdsHttpClient& operator*() const noexcept { return *m_client; }
+            UdsHttpClient& operator*() const noexcept
+            {
+                return *m_client;
+            }
 
         private:
             HttpHandler& m_handler;

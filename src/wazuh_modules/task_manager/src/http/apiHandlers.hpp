@@ -32,7 +32,10 @@ namespace task_manager::http
         int status {200};
         nlohmann::json body;
 
-        static ApiResponse ok(nlohmann::json body) { return {200, std::move(body)}; }
+        static ApiResponse ok(nlohmann::json body)
+        {
+            return {200, std::move(body)};
+        }
         static ApiResponse error(int status, const std::string& code, const std::string& message);
     };
 

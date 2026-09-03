@@ -120,7 +120,7 @@ namespace task_manager::upgrade
      *   darwin       < v4.9.0       macos/<arch>/<pkg>/                   wazuh_agent_V_macos_<arch>.wpk
      *   linux       >= v4.9.0       linux/<pkg>/<arch*>/                  wazuh_agent_V_linux_<arch*>.<pkg>.wpk
      *   linux       >= v3.4.0       linux/<arch>/                         wazuh_agent_V_linux_<arch>.wpk
-     *   ubuntu       < v3.4.0       ubuntu/<major>.<minor>/<arch>/        wazuh_agent_V_ubuntu_<major>.<minor>_<arch>.wpk
+     *   ubuntu       < v3.4.0       ubuntu/<major>.<minor>/<arch>/ wazuh_agent_V_ubuntu_<major>.<minor>_<arch>.wpk
      *   other        < v3.4.0       <platform>/<major>/<arch>/            wazuh_agent_V_<platform>_<major>_<arch>.wpk
      *
      * arch* is translateArch()'d; the pre-4.9 shapes use the agent's raw architecture. Note the

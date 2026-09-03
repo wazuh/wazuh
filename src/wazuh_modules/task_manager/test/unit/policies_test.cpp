@@ -104,8 +104,8 @@ TEST(ApplyResult, OkCompletes)
 
 TEST(ApplyResult, RetryableIncrementsAttemptsAndResetsDeferrals)
 {
-    const auto transition {applyResult(
-        descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Retryable, 1, 7, 1000)};
+    const auto transition {
+        applyResult(descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Retryable, 1, 7, 1000)};
 
     EXPECT_FALSE(transition.terminalStatus.has_value());
     EXPECT_EQ(transition.attempts, 2);
@@ -118,8 +118,8 @@ TEST(ApplyResult, RetryableIncrementsAttemptsAndResetsDeferrals)
 
 TEST(ApplyResult, TerminalFailsWithoutConsumingTheBudget)
 {
-    const auto transition {applyResult(
-        descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Terminal, 3, 0, 1000)};
+    const auto transition {
+        applyResult(descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Terminal, 3, 0, 1000)};
 
     ASSERT_TRUE(transition.terminalStatus.has_value());
     EXPECT_EQ(*transition.terminalStatus, TaskStatus::Failed);
@@ -144,8 +144,8 @@ TEST(ApplyResult, NoFaultOutcomesCostADeferralNotAnAttempt)
 
 TEST(ApplyResult, IncompleteIsEligibleImmediatelyAndCostsNothing)
 {
-    const auto transition {applyResult(
-        descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Incomplete, 2, 3, 1000)};
+    const auto transition {
+        applyResult(descriptorWith(USE_DEFAULT, USE_DEFAULT), defaultPolicy(), Outcome::Incomplete, 2, 3, 1000)};
 
     EXPECT_FALSE(transition.terminalStatus.has_value());
     EXPECT_EQ(transition.attempts, 2);
@@ -179,12 +179,10 @@ TEST(ApplyResult, AnUnboundedTypeNeverDeadLetters)
     // ask again, so the row is the only remaining record of the obligation.
     const auto descriptor {descriptorWith(UNBOUNDED, UNBOUNDED)};
 
-    const auto afterManyRetries {
-        applyResult(descriptor, defaultPolicy(), Outcome::Retryable, 100000, 0, 1000)};
+    const auto afterManyRetries {applyResult(descriptor, defaultPolicy(), Outcome::Retryable, 100000, 0, 1000)};
     EXPECT_FALSE(afterManyRetries.terminalStatus.has_value());
 
-    const auto afterManyDeferrals {
-        applyResult(descriptor, defaultPolicy(), Outcome::NotReady, 0, 100000, 1000)};
+    const auto afterManyDeferrals {applyResult(descriptor, defaultPolicy(), Outcome::NotReady, 0, 100000, 1000)};
     EXPECT_FALSE(afterManyDeferrals.terminalStatus.has_value());
 }
 
@@ -202,10 +200,7 @@ TEST(ApplyResult, APerTypeOverrideBeatsThePolicyDefault)
 
 namespace
 {
-    TransportResult transport(const int returnCode,
-                              const int curlCode,
-                              const int httpStatus,
-                              std::string body = {})
+    TransportResult transport(const int returnCode, const int curlCode, const int httpStatus, std::string body = {})
     {
         TransportResult result;
         result.returnCode = returnCode;
@@ -225,8 +220,8 @@ TEST(HttpResultMapper, CouldNotConnectDefersRatherThanRetrying)
 {
     // The executor routinely starts before its in-process consumers bind. Classifying this as a
     // generic transport error would burn the whole retry budget on a boot race.
-    const auto result {classifyTransportResult(
-        transport(-CURLE_COULDNT_CONNECT_CODE, CURLE_COULDNT_CONNECT_CODE, 0), true)};
+    const auto result {
+        classifyTransportResult(transport(-CURLE_COULDNT_CONNECT_CODE, CURLE_COULDNT_CONNECT_CODE, 0), true)};
 
     EXPECT_EQ(result.outcome, Outcome::NotReady);
     EXPECT_FALSE(result.error.empty());
@@ -234,8 +229,7 @@ TEST(HttpResultMapper, CouldNotConnectDefersRatherThanRetrying)
 
 TEST(HttpResultMapper, TimeoutIsItsOwnOutcome)
 {
-    EXPECT_EQ(classifyTransportResult(
-                  transport(-CURLE_OPERATION_TIMEDOUT_CODE, CURLE_OPERATION_TIMEDOUT_CODE, 0), true)
+    EXPECT_EQ(classifyTransportResult(transport(-CURLE_OPERATION_TIMEDOUT_CODE, CURLE_OPERATION_TIMEDOUT_CODE, 0), true)
                   .outcome,
               Outcome::Timeout);
 }
@@ -263,8 +257,7 @@ TEST(HttpResultMapper, ConflictIsBusyEvenWithAnUnreadableBody)
     // The truncation fallback is the point, not a detail: falling through to the 4xx rule here
     // would, for a type that must never be abandoned, produce exactly the orphan that
     // allowTerminalFailure exists to prevent.
-    EXPECT_EQ(classifyTransportResult(transport(409, 0, 409, R"({"error":"scan_in_pr)"), true).outcome,
-              Outcome::Busy);
+    EXPECT_EQ(classifyTransportResult(transport(409, 0, 409, R"({"error":"scan_in_pr)"), true).outcome, Outcome::Busy);
     EXPECT_EQ(classifyTransportResult(transport(409, 0, 409), true).outcome, Outcome::Busy);
 }
 
@@ -288,8 +281,7 @@ TEST(HttpResultMapper, ServerErrorsAndBackpressureRetryRegardless)
 
 TEST(HttpResultMapper, ABodyLevelRetryableFlagOverridesATerminalStatus)
 {
-    const auto result {
-        classifyTransportResult(transport(400, 0, 400, R"({"error":"busy","retryable":true})"), true)};
+    const auto result {classifyTransportResult(transport(400, 0, 400, R"({"error":"busy","retryable":true})"), true)};
     EXPECT_EQ(result.outcome, Outcome::Retryable);
 }
 

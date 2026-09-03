@@ -69,8 +69,8 @@ namespace task_manager::registry
 
     /// @brief The one periodic action that is deliberately not a task row. It joins the rotation
     ///        concurrency group, which is what keeps it from overlapping the daily rotation.
-    std::shared_ptr<execution::Executor::PeriodicAction> makeSizeRotationAction(
-        host::IHostOps& hostOps, const handlers::LocalConfig& localConfig);
+    std::shared_ptr<execution::Executor::PeriodicAction>
+    makeSizeRotationAction(host::IHostOps& hostOps, const handlers::LocalConfig& localConfig);
 } // namespace task_manager::registry
 
 #endif // _TASK_MANAGER_REGISTRY_BUILTIN_TYPES_HPP

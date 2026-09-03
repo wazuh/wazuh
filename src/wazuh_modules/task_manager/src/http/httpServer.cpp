@@ -50,61 +50,57 @@ namespace task_manager::http
         // One adapter for every JSON route: parse, dispatch, answer. The try/catch is the barrier
         // that keeps a handler bug from taking the I/O thread with it -- and therefore from
         // silently stopping every other route.
-        const auto route {[this](Method method,
-                                 const std::string& path,
-                                 RouteClass cls,
-                                 ApiResponse (ApiHandlers::*fn)(const nlohmann::json&))
-                          {
-                              m_server->addRoute(
-                                  method,
-                                  path,
-                                  [this, fn, path](std::shared_ptr<const HttpRequest> request,
-                                                   std::shared_ptr<IHttpResponder> responder)
-                                  {
-                                      try
-                                      {
-                                          if (!request)
-                                          {
-                                              responder->send(HttpResponse::json(
-                                                  400, R"({"error":"invalid_json","message":"empty request"})"));
-                                              return;
-                                          }
+        const auto route {
+            [this](Method method,
+                   const std::string& path,
+                   RouteClass cls,
+                   ApiResponse (ApiHandlers::*fn)(const nlohmann::json&))
+            {
+                m_server->addRoute(
+                    method,
+                    path,
+                    [this, fn, path](std::shared_ptr<const HttpRequest> request,
+                                     std::shared_ptr<IHttpResponder> responder)
+                    {
+                        try
+                        {
+                            if (!request)
+                            {
+                                responder->send(
+                                    HttpResponse::json(400, R"({"error":"invalid_json","message":"empty request"})"));
+                                return;
+                            }
 
-                                          auto body = nlohmann::json::parse(request->body, nullptr, false);
-                                          if (body.is_discarded())
-                                          {
-                                              responder->send(HttpResponse::json(
-                                                  400,
-                                                  R"({"error":"invalid_json","message":"body is not valid JSON"})"));
-                                              return;
-                                          }
+                            auto body = nlohmann::json::parse(request->body, nullptr, false);
+                            if (body.is_discarded())
+                            {
+                                responder->send(HttpResponse::json(
+                                    400, R"({"error":"invalid_json","message":"body is not valid JSON"})"));
+                                return;
+                            }
 
-                                          if (!body.is_object())
-                                          {
-                                              body = nlohmann::json::object();
-                                          }
+                            if (!body.is_object())
+                            {
+                                body = nlohmann::json::object();
+                            }
 
-                                          const auto result {(m_handlers.*fn)(body)};
-                                          responder->send(
-                                              HttpResponse::json(result.status, result.body.dump()));
-                                      }
-                                      catch (const std::exception& exception)
-                                      {
-                                          LOGFN_ERROR(httpLogFn(),
-                                                      "Unhandled error serving %s: %s",
-                                                      path.c_str(),
-                                                      exception.what());
-                                          responder->send(HttpResponse::json(
-                                              500, R"({"error":"internal_error","message":"see the manager log"})"));
-                                      }
-                                      catch (...)
-                                      {
-                                          responder->send(HttpResponse::json(
-                                              500, R"({"error":"internal_error","message":"see the manager log"})"));
-                                      }
-                                  },
-                                  RouteOptions {cls});
-                          }};
+                            const auto result {(m_handlers.*fn)(body)};
+                            responder->send(HttpResponse::json(result.status, result.body.dump()));
+                        }
+                        catch (const std::exception& exception)
+                        {
+                            LOGFN_ERROR(httpLogFn(), "Unhandled error serving %s: %s", path.c_str(), exception.what());
+                            responder->send(HttpResponse::json(
+                                500, R"({"error":"internal_error","message":"see the manager log"})"));
+                        }
+                        catch (...)
+                        {
+                            responder->send(HttpResponse::json(
+                                500, R"({"error":"internal_error","message":"see the manager log"})"));
+                        }
+                    },
+                    RouteOptions {cls});
+            }};
 
         // Agent tasks. Data class: these carry producer-authored payloads and are the only routes
         // whose volume can be driven by something outside the manager, so they are the ones that
@@ -117,10 +113,7 @@ namespace task_manager::http
         // is created here -- so they must never be shed by agent-task pressure.
         route(Method::Post, "/v1/manager-tasks", RouteClass::Control, &ApiHandlers::createManagerTask);
         route(Method::Post, "/v1/manager-tasks/get", RouteClass::Control, &ApiHandlers::getManagerTask);
-        route(Method::Post,
-              "/v1/manager-tasks/by-agent",
-              RouteClass::Control,
-              &ApiHandlers::getManagerTaskByAgent);
+        route(Method::Post, "/v1/manager-tasks/by-agent", RouteClass::Control, &ApiHandlers::getManagerTaskByAgent);
         route(Method::Post, "/v1/manager-tasks/list", RouteClass::Control, &ApiHandlers::listManagerTasks);
         route(Method::Post, "/v1/manager-tasks/count", RouteClass::Control, &ApiHandlers::countManagerTasks);
 

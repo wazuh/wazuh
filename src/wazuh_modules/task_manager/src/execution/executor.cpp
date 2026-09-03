@@ -332,8 +332,7 @@ namespace task_manager::execution
                 // at its group's cap, this worker sleeps until releaseGroup() notifies, rather
                 // than waking to fail selection and poll.
                 m_condition.wait(lock,
-                                 [this]
-                                 { return m_stopping.load(std::memory_order_acquire) || hasEligibleLocked(); });
+                                 [this] { return m_stopping.load(std::memory_order_acquire) || hasEligibleLocked(); });
 
                 if (m_stopping.load(std::memory_order_acquire))
                 {
@@ -382,10 +381,8 @@ namespace task_manager::execution
         {
             // A periodic action has no row to record a failure on, so the log line is the whole
             // record. It is retried on its own next signal regardless.
-            LOGFN_ERROR(executorLogFn(),
-                        "Periodic action '%s' threw: %s",
-                        selection.action->name.c_str(),
-                        exception.what());
+            LOGFN_ERROR(
+                executorLogFn(), "Periodic action '%s' threw: %s", selection.action->name.c_str(), exception.what());
         }
     }
 
@@ -400,10 +397,7 @@ namespace task_manager::execution
         }
         catch (const std::exception& exception)
         {
-            LOGFN_ERROR(executorLogFn(),
-                        "Failed to claim a '%s' task: %s",
-                        descriptor.name.c_str(),
-                        exception.what());
+            LOGFN_ERROR(executorLogFn(), "Failed to claim a '%s' task: %s", descriptor.name.c_str(), exception.what());
             return;
         }
 
@@ -418,9 +412,8 @@ namespace task_manager::execution
         // starting work we cannot finish inside the shutdown budget.
         if (m_stopping.load(std::memory_order_acquire))
         {
-            LOGFN_DEBUG1(executorLogFn(),
-                         "Leaving task '%s' claimed: shutting down before it started",
-                         claimed->taskId.c_str());
+            LOGFN_DEBUG1(
+                executorLogFn(), "Leaving task '%s' claimed: shutting down before it started", claimed->taskId.c_str());
             return;
         }
 
@@ -441,8 +434,7 @@ namespace task_manager::execution
         {
             // A handler that throws is a bug, but it must not take the worker with it or the whole
             // type stops being executed for the life of the process.
-            result =
-                HandlerResult::of(Outcome::Retryable, std::string {"handler threw: "} + exception.what());
+            result = HandlerResult::of(Outcome::Retryable, std::string {"handler threw: "} + exception.what());
             LOGFN_ERROR(executorLogFn(),
                         "Handler for '%s' threw on task '%s': %s",
                         descriptor.name.c_str(),
@@ -451,8 +443,7 @@ namespace task_manager::execution
         }
 
         const auto micros {static_cast<std::uint64_t>(
-            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started)
-                .count())};
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count())};
 
         unpublish(worker);
 
@@ -492,18 +483,13 @@ namespace task_manager::execution
         const auto transition {registry::applyResult(
             descriptor, m_registry.policy(), result.outcome, task.attempts, task.deferCount, now)};
 
-        const std::optional<std::string> lastError {result.error.empty()
-                                                        ? std::nullopt
-                                                        : std::optional<std::string> {result.error}};
+        const std::optional<std::string> lastError {result.error.empty() ? std::nullopt
+                                                                         : std::optional<std::string> {result.error}};
 
         if (transition.terminalStatus.has_value())
         {
-            m_store.setResult(task.taskId,
-                              *transition.terminalStatus,
-                              transition.attempts,
-                              transition.deferCount,
-                              lastError,
-                              now);
+            m_store.setResult(
+                task.taskId, *transition.terminalStatus, transition.attempts, transition.deferCount, lastError, now);
 
             if (m_metrics)
             {

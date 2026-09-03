@@ -234,8 +234,7 @@ TEST(UpgradeParser, RequestTimeMustFallInTheSameWindowTheCreateRouteEnforces)
 
 TEST(UpgradeParser, ANonObjectBodyIsARequiredParameterFailure)
 {
-    EXPECT_EQ(parseUpgradeRequest(nlohmann::json::array(), NOW).failure.error,
-              UpgradeError::ParsingRequiredParameter);
+    EXPECT_EQ(parseUpgradeRequest(nlohmann::json::array(), NOW).failure.error, UpgradeError::ParsingRequiredParameter);
     EXPECT_EQ(parseUpgradeCustomRequest(nlohmann::json {"nope"}, NOW).failure.error,
               UpgradeError::ParsingRequiredParameter);
 }

@@ -23,8 +23,8 @@
 
 namespace
 {
-    using task_manager::Timestamp;
     using SQLite3Wrapper::Statement;
+    using task_manager::Timestamp;
 
     /// @brief Bind a value that may be SQL NULL. bindNull() must go through the wrapper: step()
     ///        only executes once every parameter is accounted for.
@@ -174,8 +174,8 @@ namespace task_manager::storage
         auto& slot {statements.at(static_cast<std::size_t>(id))};
         if (!slot)
         {
-            slot = std::make_unique<SQLite3Wrapper::Statement>(
-                connection, STATEMENT_SQL.at(static_cast<std::size_t>(id)));
+            slot =
+                std::make_unique<SQLite3Wrapper::Statement>(connection, STATEMENT_SQL.at(static_cast<std::size_t>(id)));
         }
         slot->reset();
         return *slot;
@@ -250,8 +250,8 @@ namespace task_manager::storage
         if (version > SCHEMA_VERSION)
         {
             throw std::runtime_error("tasks database is at schema version " + std::to_string(version) +
-                                     ", newer than this build understands (" +
-                                     std::to_string(SCHEMA_VERSION) + "). Refusing to open it.");
+                                     ", newer than this build understands (" + std::to_string(SCHEMA_VERSION) +
+                                     "). Refusing to open it.");
         }
 
         // No migration steps yet: 5.0 is always a fresh install, so version 0 (a database created
@@ -303,8 +303,7 @@ namespace task_manager::storage
     }
 
     template<typename Fn>
-    auto SqliteTaskStore::inTransaction(const bool commitNow, Fn&& fn)
-        -> decltype(fn(std::declval<Session&>()))
+    auto SqliteTaskStore::inTransaction(const bool commitNow, Fn&& fn) -> decltype(fn(std::declval<Session&>()))
     {
         using Result = decltype(fn(std::declval<Session&>()));
 
@@ -314,11 +313,9 @@ namespace task_manager::storage
         // Committing when the window has already elapsed, rather than only on a timer, is what
         // bounds a batch under sustained load: the first write past the window closes it, so no
         // caller ever waits for the scheduler's tick to make its predecessor durable.
-        const auto shouldCommit {[&]
-                                 {
-                                     return commitNow || std::chrono::steady_clock::now() - m_txnOpenedAt >=
-                                                             m_options.groupCommitWindow;
-                                 }};
+        const auto shouldCommit {
+            [&]
+            { return commitNow || std::chrono::steady_clock::now() - m_txnOpenedAt >= m_options.groupCommitWindow; }};
 
         try
         {
@@ -411,8 +408,7 @@ namespace task_manager::storage
         return results;
     }
 
-    std::vector<AgentTask> SqliteTaskStore::takePendingAgentTasks(const std::string& agentId,
-                                                                  const int maxTasks)
+    std::vector<AgentTask> SqliteTaskStore::takePendingAgentTasks(const std::string& agentId, const int maxTasks)
     {
         std::vector<AgentTask> tasks;
 
@@ -550,93 +546,90 @@ namespace task_manager::storage
             });
     }
 
-    std::optional<ClaimedTask> SqliteTaskStore::claim(const std::string& taskType,
-                                                      const std::string& owner,
-                                                      const Timestamp now)
+    std::optional<ClaimedTask>
+    SqliteTaskStore::claim(const std::string& taskType, const std::string& owner, const Timestamp now)
     {
         // Commits inline. Winning the UPDATE is not enough: the claim's whole purpose is to be
         // visible to other workers before the handler runs.
-        return inTransaction(
-            true,
-            [&](Session& session) -> std::optional<ClaimedTask>
-            {
-                auto& select {session.stmt(Stmt::MtSelectClaimable)};
-                select.bind(1, taskType);
-                select.bind(2, static_cast<std::int64_t>(now));
+        return inTransaction(true,
+                             [&](Session& session) -> std::optional<ClaimedTask>
+                             {
+                                 auto& select {session.stmt(Stmt::MtSelectClaimable)};
+                                 select.bind(1, taskType);
+                                 select.bind(2, static_cast<std::int64_t>(now));
 
-                if (select.step() != SQLITE_ROW)
-                {
-                    return std::nullopt;
-                }
+                                 if (select.step() != SQLITE_ROW)
+                                 {
+                                     return std::nullopt;
+                                 }
 
-                ClaimedTask claimed;
-                claimed.taskId = select.value<std::string>(0);
-                claimed.taskType = select.value<std::string>(1);
-                claimed.agentId = readOptionalText(select, 2);
-                claimed.payload = select.value<std::string>(3);
-                claimed.attempts = select.value<std::int32_t>(4);
-                claimed.deferCount = select.value<std::int32_t>(5);
+                                 ClaimedTask claimed;
+                                 claimed.taskId = select.value<std::string>(0);
+                                 claimed.taskType = select.value<std::string>(1);
+                                 claimed.agentId = readOptionalText(select, 2);
+                                 claimed.payload = select.value<std::string>(3);
+                                 claimed.attempts = select.value<std::int32_t>(4);
+                                 claimed.deferCount = select.value<std::int32_t>(5);
 
-                auto& update {session.stmt(Stmt::MtClaim)};
-                update.bind(1, owner);
-                update.bind(2, static_cast<std::int64_t>(now));
-                update.bind(3, claimed.taskId);
-                update.step();
+                                 auto& update {session.stmt(Stmt::MtClaim)};
+                                 update.bind(1, owner);
+                                 update.bind(2, static_cast<std::int64_t>(now));
+                                 update.bind(3, claimed.taskId);
+                                 update.step();
 
-                return claimed;
-            });
+                                 return claimed;
+                             });
     }
 
     RequeueResult SqliteTaskStore::requeue(const RequeueRequest& request)
     {
-        return inTransaction(
-            false,
-            [&](Session& session) -> RequeueResult
-            {
-                if (request.coalesce && request.agentId.has_value() && request.taskType.has_value())
-                {
-                    auto& probe {session.stmt(Stmt::MtFindCompetingPending)};
-                    probe.bind(1, *request.agentId);
-                    probe.bind(2, *request.taskType);
-                    probe.bind(3, request.taskId);
+        return inTransaction(false,
+                             [&](Session& session) -> RequeueResult
+                             {
+                                 if (request.coalesce && request.agentId.has_value() && request.taskType.has_value())
+                                 {
+                                     auto& probe {session.stmt(Stmt::MtFindCompetingPending)};
+                                     probe.bind(1, *request.agentId);
+                                     probe.bind(2, *request.taskType);
+                                     probe.bind(3, request.taskId);
 
-                    if (probe.step() == SQLITE_ROW)
-                    {
-                        const auto survivorId {probe.value<std::string>(0)};
-                        const auto survivorAttempts {probe.value<std::int32_t>(1)};
-                        const auto survivorDefers {probe.value<std::int32_t>(2)};
+                                     if (probe.step() == SQLITE_ROW)
+                                     {
+                                         const auto survivorId {probe.value<std::string>(0)};
+                                         const auto survivorAttempts {probe.value<std::int32_t>(1)};
+                                         const auto survivorDefers {probe.value<std::int32_t>(2)};
 
-                        // The survivor inherits the MAXIMUM of both rows' counters, so the budget
-                        // belongs to the work rather than to the row. Without this a coalescing
-                        // type can never dead-letter under load: every timed-out row is superseded
-                        // by a fresh row starting at zero and nothing ever terminates -- quietly,
-                        // because the pending count stays bounded and nothing looks wrong.
-                        auto& inherit {session.stmt(Stmt::MtInheritCounters)};
-                        inherit.bind(1, std::max(survivorAttempts, request.attempts));
-                        inherit.bind(2, std::max(survivorDefers, request.deferCount));
-                        inherit.bind(3, survivorId);
-                        inherit.step();
+                                         // The survivor inherits the MAXIMUM of both rows' counters, so the budget
+                                         // belongs to the work rather than to the row. Without this a coalescing
+                                         // type can never dead-letter under load: every timed-out row is superseded
+                                         // by a fresh row starting at zero and nothing ever terminates -- quietly,
+                                         // because the pending count stays bounded and nothing looks wrong.
+                                         auto& inherit {session.stmt(Stmt::MtInheritCounters)};
+                                         inherit.bind(1, std::max(survivorAttempts, request.attempts));
+                                         inherit.bind(2, std::max(survivorDefers, request.deferCount));
+                                         inherit.bind(3, survivorId);
+                                         inherit.step();
 
-                        auto& supersede {session.stmt(Stmt::MtSupersede)};
-                        bindOptional(supersede, 1, request.lastError);
-                        supersede.bind(2, static_cast<std::int64_t>(request.nextAttemptAt));
-                        supersede.bind(3, request.taskId);
-                        supersede.step();
+                                         auto& supersede {session.stmt(Stmt::MtSupersede)};
+                                         bindOptional(supersede, 1, request.lastError);
+                                         supersede.bind(2, static_cast<std::int64_t>(request.nextAttemptAt));
+                                         supersede.bind(3, request.taskId);
+                                         supersede.step();
 
-                        return RequeueResult::Superseded;
-                    }
-                }
+                                         return RequeueResult::Superseded;
+                                     }
+                                 }
 
-                auto& update {session.stmt(Stmt::MtRequeue)};
-                update.bind(1, static_cast<std::int64_t>(request.nextAttemptAt));
-                update.bind(2, request.attempts);
-                update.bind(3, request.deferCount);
-                bindOptional(update, 4, request.lastError);
-                update.bind(5, request.taskId);
-                update.step();
+                                 auto& update {session.stmt(Stmt::MtRequeue)};
+                                 update.bind(1, static_cast<std::int64_t>(request.nextAttemptAt));
+                                 update.bind(2, request.attempts);
+                                 update.bind(3, request.deferCount);
+                                 bindOptional(update, 4, request.lastError);
+                                 update.bind(5, request.taskId);
+                                 update.step();
 
-                return RequeueResult::Requeued;
-            });
+                                 return RequeueResult::Requeued;
+                             });
     }
 
     void SqliteTaskStore::setResult(const std::string& taskId,
@@ -699,11 +692,10 @@ namespace task_manager::storage
             });
     }
 
-    std::vector<ManagerTaskSummary> SqliteTaskStore::listManagerTasks(
-        const std::string& taskType,
-        const std::optional<TaskStatus>& status,
-        const std::string& afterTaskId,
-        const int limit)
+    std::vector<ManagerTaskSummary> SqliteTaskStore::listManagerTasks(const std::string& taskType,
+                                                                      const std::optional<TaskStatus>& status,
+                                                                      const std::string& afterTaskId,
+                                                                      const int limit)
     {
         const auto pageSize {clampLimit(limit)};
 
@@ -728,8 +720,7 @@ namespace task_manager::storage
                     ManagerTaskSummary row;
                     row.taskId = statement.value<std::string>(0);
                     row.agentId = readOptionalText(statement, 1);
-                    row.status = taskStatusFromString(statement.value<std::string>(2))
-                                     .value_or(TaskStatus::Pending);
+                    row.status = taskStatusFromString(statement.value<std::string>(2)).value_or(TaskStatus::Pending);
                     row.createTime = static_cast<Timestamp>(statement.value<std::int64_t>(3));
                     row.lastError = readOptionalText(statement, 4);
                     rows.push_back(std::move(row));
@@ -764,8 +755,8 @@ namespace task_manager::storage
                 auto& statement {session.stmt(Stmt::MtPollDue)};
                 while (statement.step() == SQLITE_ROW)
                 {
-                    types.push_back({statement.value<std::string>(0),
-                                     static_cast<Timestamp>(statement.value<std::int64_t>(1))});
+                    types.push_back(
+                        {statement.value<std::string>(0), static_cast<Timestamp>(statement.value<std::int64_t>(1))});
                 }
                 return types;
             });
@@ -817,9 +808,8 @@ namespace task_manager::storage
                              });
     }
 
-    std::vector<ClaimedRow> SqliteTaskStore::claimedRows(const std::string& owner,
-                                                         const std::string& afterTaskId,
-                                                         const int limit)
+    std::vector<ClaimedRow>
+    SqliteTaskStore::claimedRows(const std::string& owner, const std::string& afterTaskId, const int limit)
     {
         const auto pageSize {clampLimit(limit)};
 
@@ -860,116 +850,114 @@ namespace task_manager::storage
 
     RetentionStats SqliteTaskStore::applyRetention(const RetentionRules& rules)
     {
-        return inTransaction(
-            false,
-            [&](Session& session)
-            {
-                RetentionStats stats;
+        return inTransaction(false,
+                             [&](Session& session)
+                             {
+                                 RetentionStats stats;
 
-                if (rules.terminalBefore.has_value())
-                {
-                    auto& statement {session.stmt(Stmt::MtDeleteTerminalOld)};
-                    statement.bind(1, static_cast<std::int64_t>(*rules.terminalBefore));
-                    statement.step();
-                    stats.byAge += session.connection.changes();
-                }
+                                 if (rules.terminalBefore.has_value())
+                                 {
+                                     auto& statement {session.stmt(Stmt::MtDeleteTerminalOld)};
+                                     statement.bind(1, static_cast<std::int64_t>(*rules.terminalBefore));
+                                     statement.step();
+                                     stats.byAge += session.connection.changes();
+                                 }
 
-                if (rules.deadLetterBefore.has_value())
-                {
-                    auto& statement {session.stmt(Stmt::MtDeleteDeadLetterOld)};
-                    statement.bind(1, static_cast<std::int64_t>(*rules.deadLetterBefore));
-                    statement.step();
-                    stats.byAge += session.connection.changes();
-                }
+                                 if (rules.deadLetterBefore.has_value())
+                                 {
+                                     auto& statement {session.stmt(Stmt::MtDeleteDeadLetterOld)};
+                                     statement.bind(1, static_cast<std::int64_t>(*rules.deadLetterBefore));
+                                     statement.step();
+                                     stats.byAge += session.connection.changes();
+                                 }
 
-                if (rules.historyPerSchedule != UNBOUNDED)
-                {
-                    std::vector<std::string> scheduleIds;
-                    {
-                        auto& statement {session.stmt(Stmt::MtScheduleIds)};
-                        while (statement.step() == SQLITE_ROW)
-                        {
-                            scheduleIds.push_back(statement.value<std::string>(0));
-                        }
-                    }
+                                 if (rules.historyPerSchedule != UNBOUNDED)
+                                 {
+                                     std::vector<std::string> scheduleIds;
+                                     {
+                                         auto& statement {session.stmt(Stmt::MtScheduleIds)};
+                                         while (statement.step() == SQLITE_ROW)
+                                         {
+                                             scheduleIds.push_back(statement.value<std::string>(0));
+                                         }
+                                     }
 
-                    for (const auto& scheduleId : scheduleIds)
-                    {
-                        auto& statement {session.stmt(Stmt::MtTrimScheduleHistory)};
-                        statement.bind(1, scheduleId);
-                        statement.bind(2, scheduleId);
-                        statement.bind(3, rules.historyPerSchedule);
-                        statement.step();
-                        stats.bySchedule += session.connection.changes();
-                    }
-                }
+                                     for (const auto& scheduleId : scheduleIds)
+                                     {
+                                         auto& statement {session.stmt(Stmt::MtTrimScheduleHistory)};
+                                         statement.bind(1, scheduleId);
+                                         statement.bind(2, scheduleId);
+                                         statement.bind(3, rules.historyPerSchedule);
+                                         statement.step();
+                                         stats.bySchedule += session.connection.changes();
+                                     }
+                                 }
 
-                std::int64_t total {0};
-                {
-                    auto& statement {session.stmt(Stmt::MtCountAll)};
-                    if (statement.step() == SQLITE_ROW)
-                    {
-                        total = statement.value<std::int64_t>(0);
-                    }
-                }
+                                 std::int64_t total {0};
+                                 {
+                                     auto& statement {session.stmt(Stmt::MtCountAll)};
+                                     if (statement.step() == SQLITE_ROW)
+                                     {
+                                         total = statement.value<std::int64_t>(0);
+                                     }
+                                 }
 
-                if (rules.maxRows != UNBOUNDED && total > rules.maxRows)
-                {
-                    auto& statement {session.stmt(Stmt::MtEvict)};
-                    statement.bind(1, static_cast<std::int32_t>(total - rules.maxRows));
-                    statement.step();
-                    stats.byCeiling = session.connection.changes();
-                    total -= stats.byCeiling;
-                }
+                                 if (rules.maxRows != UNBOUNDED && total > rules.maxRows)
+                                 {
+                                     auto& statement {session.stmt(Stmt::MtEvict)};
+                                     statement.bind(1, static_cast<std::int32_t>(total - rules.maxRows));
+                                     statement.step();
+                                     stats.byCeiling = session.connection.changes();
+                                     total -= stats.byCeiling;
+                                 }
 
-                // Reported so the caller can notice a ceiling it could not meet: the excess is
-                // then pending, claimed or dead-lettered rows that no rule may remove.
-                stats.remaining = total;
-                return stats;
-            });
+                                 // Reported so the caller can notice a ceiling it could not meet: the excess is
+                                 // then pending, claimed or dead-lettered rows that no rule may remove.
+                                 stats.remaining = total;
+                                 return stats;
+                             });
     }
 
     // ---- schedules ---------------------------------------------------------------------------
 
-    std::optional<ScheduleRow> SqliteTaskStore::upsertSchedule(const std::string& scheduleId,
-                                                               const Timestamp nextRunAt,
-                                                               const bool enabled)
+    std::optional<ScheduleRow>
+    SqliteTaskStore::upsertSchedule(const std::string& scheduleId, const Timestamp nextRunAt, const bool enabled)
     {
-        return inTransaction(
-            true,
-            [&](Session& session) -> std::optional<ScheduleRow>
-            {
-                std::optional<ScheduleRow> previous;
-                {
-                    auto& statement {session.stmt(Stmt::SchedGet)};
-                    statement.bind(1, scheduleId);
-                    if (statement.step() == SQLITE_ROW)
-                    {
-                        previous = ScheduleRow {statement.value<std::string>(0),
-                                                static_cast<Timestamp>(statement.value<std::int64_t>(1)),
-                                                statement.value<std::int32_t>(2) != 0};
-                    }
-                }
+        return inTransaction(true,
+                             [&](Session& session) -> std::optional<ScheduleRow>
+                             {
+                                 std::optional<ScheduleRow> previous;
+                                 {
+                                     auto& statement {session.stmt(Stmt::SchedGet)};
+                                     statement.bind(1, scheduleId);
+                                     if (statement.step() == SQLITE_ROW)
+                                     {
+                                         previous =
+                                             ScheduleRow {statement.value<std::string>(0),
+                                                          static_cast<Timestamp>(statement.value<std::int64_t>(1)),
+                                                          statement.value<std::int32_t>(2) != 0};
+                                     }
+                                 }
 
-                if (previous.has_value())
-                {
-                    auto& statement {session.stmt(Stmt::SchedUpdate)};
-                    statement.bind(1, static_cast<std::int64_t>(nextRunAt));
-                    statement.bind(2, enabled ? 1 : 0);
-                    statement.bind(3, scheduleId);
-                    statement.step();
-                }
-                else
-                {
-                    auto& statement {session.stmt(Stmt::SchedInsert)};
-                    statement.bind(1, scheduleId);
-                    statement.bind(2, static_cast<std::int64_t>(nextRunAt));
-                    statement.bind(3, enabled ? 1 : 0);
-                    statement.step();
-                }
+                                 if (previous.has_value())
+                                 {
+                                     auto& statement {session.stmt(Stmt::SchedUpdate)};
+                                     statement.bind(1, static_cast<std::int64_t>(nextRunAt));
+                                     statement.bind(2, enabled ? 1 : 0);
+                                     statement.bind(3, scheduleId);
+                                     statement.step();
+                                 }
+                                 else
+                                 {
+                                     auto& statement {session.stmt(Stmt::SchedInsert)};
+                                     statement.bind(1, scheduleId);
+                                     statement.bind(2, static_cast<std::int64_t>(nextRunAt));
+                                     statement.bind(3, enabled ? 1 : 0);
+                                     statement.step();
+                                 }
 
-                return previous;
-            });
+                                 return previous;
+                             });
     }
 
     void SqliteTaskStore::setScheduleNextRun(const std::string& scheduleId, const Timestamp nextRunAt)

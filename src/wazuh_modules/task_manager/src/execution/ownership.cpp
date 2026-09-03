@@ -116,8 +116,7 @@ namespace task_manager::execution
         {
             OwnerIdentity identity;
             identity.pid = static_cast<std::int32_t>(std::stol(std::string {owner.substr(0, firstColon)}));
-            identity.startTime =
-                std::stoull(std::string {owner.substr(firstColon + 1, secondColon - firstColon - 1)});
+            identity.startTime = std::stoull(std::string {owner.substr(firstColon + 1, secondColon - firstColon - 1)});
             identity.workerIndex = std::stoi(std::string {workerPart.substr(1)});
             return identity;
         }
@@ -154,14 +153,11 @@ namespace task_manager::execution
     {
         switch (classifyOwner(query.owner, self))
         {
-            case OwnerKind::Dead:
-                return true;
+            case OwnerKind::Dead: return true;
 
-            case OwnerKind::Unparseable:
-                return true;
+            case OwnerKind::Unparseable: return true;
 
-            case OwnerKind::Foreign:
-                return false;
+            case OwnerKind::Foreign: return false;
 
             case OwnerKind::Mine:
                 // Both terms, in this order. A worker that says it is running this row IS running

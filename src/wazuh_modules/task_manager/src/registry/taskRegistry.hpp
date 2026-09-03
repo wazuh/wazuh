@@ -56,12 +56,21 @@ namespace task_manager::registry
         ///         orphaned-type reaper looks for.
         const TaskTypeDescriptor* find(std::string_view name) const noexcept;
 
-        const std::vector<TaskTypeDescriptor>& all() const noexcept { return m_descriptors; }
+        const std::vector<TaskTypeDescriptor>& all() const noexcept
+        {
+            return m_descriptors;
+        }
 
-        const RetryPolicy& policy() const noexcept { return m_policy; }
+        const RetryPolicy& policy() const noexcept
+        {
+            return m_policy;
+        }
 
         /// @brief Concurrency cap per group, resolved from the descriptors.
-        const std::map<std::string, int, std::less<>>& groupLimits() const noexcept { return m_groupLimits; }
+        const std::map<std::string, int, std::less<>>& groupLimits() const noexcept
+        {
+            return m_groupLimits;
+        }
 
         /// @brief Every registered type name, for the orphaned-type reaper's known set.
         std::vector<std::string> typeNames() const;

@@ -70,7 +70,10 @@ namespace task_manager
     {
     public:
         TaskManagerFacade() = default;
-        ~TaskManagerFacade() { stop(); }
+        ~TaskManagerFacade()
+        {
+            stop();
+        }
 
         TaskManagerFacade(const TaskManagerFacade&) = delete;
         TaskManagerFacade& operator=(const TaskManagerFacade&) = delete;
@@ -116,16 +119,14 @@ namespace task_manager
             execution::Executor::Options executorOptions;
             executorOptions.workerCount = resolveWorkerCount(config);
             executorOptions.claimGrace = std::chrono::seconds {valueOr(config.claim_grace, 30)};
-            m_executor = std::make_unique<execution::Executor>(
-                *m_store, *m_registry, executorOptions, m_metrics);
+            m_executor = std::make_unique<execution::Executor>(*m_store, *m_registry, executorOptions, m_metrics);
 
-            m_executor->registerPeriodicAction(
-                registry::makeSizeRotationAction(*m_hostOps, localConfig));
+            m_executor->registerPeriodicAction(registry::makeSizeRotationAction(*m_hostOps, localConfig));
 
             execution::Sweeper::Options sweeperOptions;
             sweeperOptions.claimGrace = executorOptions.claimGrace;
-            m_sweeper = std::make_unique<execution::Sweeper>(
-                *m_store, *m_registry, *m_executor, sweeperOptions, m_metrics);
+            m_sweeper =
+                std::make_unique<execution::Sweeper>(*m_store, *m_registry, *m_executor, sweeperOptions, m_metrics);
 
             schedule::Scheduler::Options schedulerOptions;
             schedulerOptions.wakeBackstop = std::chrono::seconds {valueOr(config.wake_backstop, 60)};
@@ -317,10 +318,8 @@ namespace task_manager
             orchestratorOptions.configuredRepository = config.wpk_repository;
             orchestratorOptions.managerVersion = config.manager_version;
             orchestratorOptions.upgradeDir = wpkOptions.upgradeDir;
-            orchestratorOptions.batchDeadline =
-                std::chrono::seconds {valueOr(config.upgrade_batch_deadline, 180)};
-            orchestratorOptions.maxAgents =
-                static_cast<std::size_t>(valueOr(config.upgrade_max_agents, 500));
+            orchestratorOptions.batchDeadline = std::chrono::seconds {valueOr(config.upgrade_batch_deadline, 180)};
+            orchestratorOptions.maxAgents = static_cast<std::size_t>(valueOr(config.upgrade_max_agents, 500));
             // The SAME PendingCache the pending-tasks route reads. A separate one would let an
             // upgrade task be written while the route still believes the agent has nothing.
             m_upgradeOrchestrator = std::make_unique<upgrade::UpgradeOrchestrator>(
@@ -335,8 +334,7 @@ namespace task_manager
 
             upgrade::UpgradeService::Options serviceOptions;
             serviceOptions.workers = valueOr(config.upgrade_workers, resolveUpgradeWorkers());
-            serviceOptions.queueDepth =
-                static_cast<std::size_t>(valueOr(config.upgrade_queue_depth, 8));
+            serviceOptions.queueDepth = static_cast<std::size_t>(valueOr(config.upgrade_queue_depth, 8));
             m_upgradeService = std::make_unique<upgrade::UpgradeService>(
                 *m_upgradeOrchestrator, [remoted] { return remoted; }, serviceOptions);
             m_upgradeService->start();
@@ -394,8 +392,7 @@ namespace task_manager
 
             m_metrics->registerPull(
                 "task_manager.upgrade.versions_fetches",
-                [this]
-                { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->fetchCount()) : 0; },
+                [this] { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->fetchCount()) : 0; },
                 "Repository `versions` files fetched",
                 "requests");
 
@@ -453,8 +450,7 @@ namespace task_manager
                     {
                         try
                         {
-                            return static_cast<std::uint64_t>(
-                                m_store->countManagerTasks(name, TaskStatus::Pending));
+                            return static_cast<std::uint64_t>(m_store->countManagerTasks(name, TaskStatus::Pending));
                         }
                         catch (const std::exception&)
                         {

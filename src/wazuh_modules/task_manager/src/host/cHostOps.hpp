@@ -33,8 +33,7 @@ namespace task_manager::host
         explicit CHostOps(const task_manager_host_ops_t& ops);
 
         int workerState() override;
-        std::optional<std::vector<int>> disconnectAgents(long keepAliveBefore,
-                                                         const std::string& syncStatus) override;
+        std::optional<std::vector<int>> disconnectAgents(long keepAliveBefore, const std::string& syncStatus) override;
         std::optional<std::vector<int>> agentsByStatusFrom(int afterId, const std::string& status) override;
         std::optional<nlohmann::json> agentInfo(int agentId) override;
         bool removeAgent(int agentId, int timeoutSeconds, int& authdError) override;
@@ -46,9 +45,7 @@ namespace task_manager::host
 
     private:
         /// @brief Call a JSON-returning host op and take ownership of the result.
-        std::optional<nlohmann::json> callJson(int (*fn)(int, const char*, char**),
-                                               int arg,
-                                               const std::string& text);
+        std::optional<nlohmann::json> callJson(int (*fn)(int, const char*, char**), int arg, const std::string& text);
 
         task_manager_host_ops_t m_ops;
     };

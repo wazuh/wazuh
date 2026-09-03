@@ -29,9 +29,9 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
-#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -166,8 +166,7 @@ namespace task_manager::test
         return std::make_unique<storage::SqliteTaskStore>(std::move(options));
     }
 
-    inline storage::CreateManagerTaskRequest pendingRow(const std::string& id,
-                                                        const std::string& type = "test_type")
+    inline storage::CreateManagerTaskRequest pendingRow(const std::string& id, const std::string& type = "test_type")
     {
         storage::CreateManagerTaskRequest request;
         request.taskId = id;
@@ -190,7 +189,10 @@ namespace task_manager::test
     class FakeHostOps final : public host::IHostOps
     {
     public:
-        int workerState() override { return workerStateValue; }
+        int workerState() override
+        {
+            return workerStateValue;
+        }
 
         std::optional<std::vector<int>> disconnectAgents(long, const std::string&) override
         {
@@ -248,8 +250,7 @@ namespace task_manager::test
                 return nlohmann::json::array({scripted->second});
             }
 
-            return nlohmann::json {{"name", "agent-" + std::to_string(agentId)},
-                                   {"last_keepalive", lastKeepalive}};
+            return nlohmann::json {{"name", "agent-" + std::to_string(agentId)}, {"last_keepalive", lastKeepalive}};
         }
 
         bool removeAgent(const int agentId, int, int& authdError) override
@@ -348,17 +349,25 @@ namespace task_manager::test
         LiveForeignProcess(const LiveForeignProcess&) = delete;
         LiveForeignProcess& operator=(const LiveForeignProcess&) = delete;
 
-        bool valid() const { return m_pid > 0 && m_startTime > 0; }
+        bool valid() const
+        {
+            return m_pid > 0 && m_startTime > 0;
+        }
 
-        std::int32_t pid() const { return static_cast<std::int32_t>(m_pid); }
+        std::int32_t pid() const
+        {
+            return static_cast<std::int32_t>(m_pid);
+        }
 
-        std::uint64_t startTime() const { return m_startTime; }
+        std::uint64_t startTime() const
+        {
+            return m_startTime;
+        }
 
         /// @brief The OWNER string this process would write, in the module's own format.
         std::string owner(const int workerIndex = 0) const
         {
-            return std::to_string(m_pid) + ':' + std::to_string(m_startTime) + ":w" +
-                   std::to_string(workerIndex);
+            return std::to_string(m_pid) + ':' + std::to_string(m_startTime) + ":w" + std::to_string(workerIndex);
         }
 
     private:

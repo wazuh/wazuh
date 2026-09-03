@@ -67,9 +67,7 @@ extern "C"
         {
             if (Log::GLOBAL_LOG_FUNCTION)
             {
-                LOGFN_ERROR(task_manager::moduleLogFn(),
-                            "Task manager failed to start: %s",
-                            exception.what());
+                LOGFN_ERROR(task_manager::moduleLogFn(), "Task manager failed to start: %s", exception.what());
             }
             return -1;
         }

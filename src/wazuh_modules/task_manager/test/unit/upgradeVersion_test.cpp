@@ -168,8 +168,7 @@ TEST(UpgradeVersionPolicy, ACallerSuppliedVersionWinsOverTheManagerVersion)
 
 TEST(UpgradeVersionPolicy, RejectsAgentsBelowTheMinimumSupportedVersion)
 {
-    EXPECT_EQ(checkRepositoryUpgrade("v2.9.9", MANAGER, "", false).error,
-              UpgradeError::NotMinimalVersionSupported);
+    EXPECT_EQ(checkRepositoryUpgrade("v2.9.9", MANAGER, "", false).error, UpgradeError::NotMinimalVersionSupported);
 
     // v3.0.0 is exactly at the boundary and clears this gate -- shown against a pre-v5 manager,
     // because against a v5 manager it would clear the minimum only to be stopped by the NEXT gate.
@@ -177,8 +176,7 @@ TEST(UpgradeVersionPolicy, RejectsAgentsBelowTheMinimumSupportedVersion)
 
     // That "next gate" is worth pinning down, since it is the more common answer in practice: any
     // agent below v4.14.0 is told to go there first, however far below it is.
-    EXPECT_EQ(checkRepositoryUpgrade("v3.0.0", MANAGER, "", false).error,
-              UpgradeError::IntermediateVersionRequired);
+    EXPECT_EQ(checkRepositoryUpgrade("v3.0.0", MANAGER, "", false).error, UpgradeError::IntermediateVersionRequired);
 }
 
 TEST(UpgradeVersionPolicy, AnUnreadableAgentVersionIsADatabaseFailure)
@@ -198,8 +196,7 @@ TEST(UpgradeVersionPolicy, AManagerVersionWithNoVIsADatabaseFailure)
 
 TEST(UpgradeVersionPolicy, DirectUpgradeToFiveRequiresFourteenFirst)
 {
-    EXPECT_EQ(checkRepositoryUpgrade("v4.13.9", MANAGER, "", false).error,
-              UpgradeError::IntermediateVersionRequired);
+    EXPECT_EQ(checkRepositoryUpgrade("v4.13.9", MANAGER, "", false).error, UpgradeError::IntermediateVersionRequired);
     EXPECT_EQ(checkRepositoryUpgrade("v4.14.0", MANAGER, "", false).error, UpgradeError::Success);
 }
 
@@ -207,8 +204,7 @@ TEST(UpgradeVersionPolicy, TheIntermediateVersionRuleCannotBeForced)
 {
     // Deliberate, and the one gate force does not open: a 5.x agent cannot re-enroll from a pre-4.14
     // state, so forcing it strands the agent rather than upgrading it.
-    EXPECT_EQ(checkRepositoryUpgrade("v4.13.9", MANAGER, "", true).error,
-              UpgradeError::IntermediateVersionRequired);
+    EXPECT_EQ(checkRepositoryUpgrade("v4.13.9", MANAGER, "", true).error, UpgradeError::IntermediateVersionRequired);
 }
 
 TEST(UpgradeVersionPolicy, RefusesToDowngradeOrReinstallUnlessForced)
@@ -223,8 +219,7 @@ TEST(UpgradeVersionPolicy, RefusesToDowngradeOrReinstallUnlessForced)
 
 TEST(UpgradeVersionPolicy, RefusesToOutrunTheManagerUnlessForced)
 {
-    EXPECT_EQ(checkRepositoryUpgrade("v4.14.0", MANAGER, "v5.1.0", false).error,
-              UpgradeError::NewVersionGreaterMaster);
+    EXPECT_EQ(checkRepositoryUpgrade("v4.14.0", MANAGER, "v5.1.0", false).error, UpgradeError::NewVersionGreaterMaster);
     EXPECT_EQ(checkRepositoryUpgrade("v4.14.0", MANAGER, "v5.1.0", true).error, UpgradeError::Success);
 }
 
@@ -269,7 +264,6 @@ TEST(UpgradeVersionPolicy, ANonCanonicalCustomNameFallsThroughToTheAgent)
 
 TEST(UpgradeVersionPolicy, TheCustomPathStillEnforcesTheMinimumAndReadability)
 {
-    EXPECT_EQ(checkCustomUpgrade("v2.9.9", "/var/upgrade/renamed.wpk").error,
-              UpgradeError::NotMinimalVersionSupported);
+    EXPECT_EQ(checkCustomUpgrade("v2.9.9", "/var/upgrade/renamed.wpk").error, UpgradeError::NotMinimalVersionSupported);
     EXPECT_EQ(checkCustomUpgrade("unknown", "/var/upgrade/renamed.wpk").error, UpgradeError::GlobalDbFailure);
 }

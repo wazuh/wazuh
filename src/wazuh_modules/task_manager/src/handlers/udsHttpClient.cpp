@@ -116,8 +116,7 @@ namespace task_manager::handlers
         // Both deadlines set EXPLICITLY, because zero means different things to libcurl: an unset
         // CURLOPT_TIMEOUT_MS is "never", while an unset CURLOPT_CONNECTTIMEOUT_MS is its own 300 s
         // default. Leaving either implicit would silently ignore the descriptor's intent.
-        curl_easy_setopt(
-            handle, CURLOPT_CONNECTTIMEOUT_MS, static_cast<long>(m_impl->options.connectTimeout.count()));
+        curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT_MS, static_cast<long>(m_impl->options.connectTimeout.count()));
         curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, static_cast<long>(m_impl->options.requestTimeout.count()));
 
         // Mandatory in a threaded process: without it libcurl installs signal handlers and can use

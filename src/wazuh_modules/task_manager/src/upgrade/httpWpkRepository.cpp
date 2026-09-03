@@ -126,9 +126,7 @@ namespace task_manager::upgrade
         return result;
     }
 
-    RepoResult HttpWpkRepository::download(const std::string& url,
-                                           const std::string& destPath,
-                                           const StopToken& stop)
+    RepoResult HttpWpkRepository::download(const std::string& url, const std::string& destPath, const StopToken& stop)
     {
         RepoResult result;
 
@@ -152,15 +150,14 @@ namespace task_manager::upgrade
         // raised" is the success signal. WpkCache hands it a STAGING path, never the served one.
         HTTPRequest::instance().download(
             RequestParameters {.url = target, .secureCommunication = secure},
-            PostRequestParameters {.onError =
-                                       [&failed, &result](const std::string&,
-                                                          const long responseCode,
-                                                          const std::string&)
-                                   {
-                                       failed = true;
-                                       result.httpStatus = static_cast<int>(responseCode);
-                                   },
-                                   .outputFile = destPath},
+            PostRequestParameters {
+                .onError =
+                    [&failed, &result](const std::string&, const long responseCode, const std::string&)
+                {
+                    failed = true;
+                    result.httpStatus = static_cast<int>(responseCode);
+                },
+                .outputFile = destPath},
             ConfigurationParameters {.timeout = static_cast<long>(m_options.downloadTimeout.count()),
                                      .handlerType = CurlHandlerTypeEnum::MULTI,
                                      .shouldRun = shouldRunFlag()});

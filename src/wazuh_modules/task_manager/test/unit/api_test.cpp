@@ -53,8 +53,8 @@ namespace
             plain.watchdogBudget = std::chrono::seconds {60};
             plain.handler = m_handler;
 
-            m_registry = std::make_unique<registry::TaskRegistry>(registry::TaskRegistry {
-                registry::RetryPolicy {}, {scan, plain}});
+            m_registry = std::make_unique<registry::TaskRegistry>(
+                registry::TaskRegistry {registry::RetryPolicy {}, {scan, plain}});
 
             m_api = std::make_unique<ApiHandlers>(
                 *m_store,
@@ -221,8 +221,7 @@ TEST_F(ApiTest, ABulkRequestWithOneBadEntryWritesNothing)
     auto bad = agentTaskBody("002");
     bad.erase("task_type");
 
-    const auto response {
-        m_api->createAgentTasksBulk(nlohmann::json {{"tasks", nlohmann::json::array({good, bad})}})};
+    const auto response {m_api->createAgentTasksBulk(nlohmann::json {{"tasks", nlohmann::json::array({good, bad})}})};
 
     EXPECT_EQ(response.status, 400);
 
@@ -235,9 +234,8 @@ TEST_F(ApiTest, ABulkRequestWithOneBadEntryWritesNothing)
 
 namespace
 {
-    nlohmann::json managerTaskBody(const std::string& id,
-                                   const std::string& agentId = "007",
-                                   const std::string& type = "vd_scan")
+    nlohmann::json
+    managerTaskBody(const std::string& id, const std::string& agentId = "007", const std::string& type = "vd_scan")
     {
         return nlohmann::json {{"task_id", id},
                                {"task_type", type},
@@ -326,8 +324,7 @@ TEST_F(ApiTest, GettingAnUnknownTaskIsANotFoundNotAnEmptyRow)
 
 TEST_F(ApiTest, TheByAgentLookupAnswersEmptyRatherThanErroringWhenThereIsNoRow)
 {
-    const auto response {
-        m_api->getManagerTaskByAgent(nlohmann::json {{"agent_id", "404"}, {"task_type", "vd_scan"}})};
+    const auto response {m_api->getManagerTaskByAgent(nlohmann::json {{"agent_id", "404"}, {"task_type", "vd_scan"}})};
 
     // "This agent has no such task" is the answer authd's pending-purge check is actually asking
     // for, so it must not look like a failure.
@@ -339,8 +336,7 @@ TEST_F(ApiTest, TheByAgentLookupReturnsTheRowWithItsStatus)
 {
     m_api->createManagerTask(managerTaskBody("a", "007"));
 
-    const auto response {
-        m_api->getManagerTaskByAgent(nlohmann::json {{"agent_id", "007"}, {"task_type", "vd_scan"}})};
+    const auto response {m_api->getManagerTaskByAgent(nlohmann::json {{"agent_id", "007"}, {"task_type", "vd_scan"}})};
 
     ASSERT_TRUE(response.body.contains("task"));
     EXPECT_EQ(response.body["task"]["status"], "pending");
@@ -352,12 +348,10 @@ TEST_F(ApiTest, ListingIsNarrowAndPagesOnTaskId)
     // number that proves a second page exists at all.
     for (int i = 0; i < 5; ++i)
     {
-        m_api->createManagerTask(
-            managerTaskBody("task-" + std::to_string(i), "00" + std::to_string(i), "plain_type"));
+        m_api->createManagerTask(managerTaskBody("task-" + std::to_string(i), "00" + std::to_string(i), "plain_type"));
     }
 
-    const auto page {m_api->listManagerTasks(
-        nlohmann::json {{"task_type", "plain_type"}, {"limit", 2}})};
+    const auto page {m_api->listManagerTasks(nlohmann::json {{"task_type", "plain_type"}, {"limit", 2}})};
 
     ASSERT_EQ(page.body["tasks"].size(), 2U);
 
@@ -365,10 +359,8 @@ TEST_F(ApiTest, ListingIsNarrowAndPagesOnTaskId)
     EXPECT_FALSE(page.body["tasks"][0].contains("payload"));
     EXPECT_TRUE(page.body["tasks"][0].contains("status"));
 
-    const auto next {m_api->listManagerTasks(
-        nlohmann::json {{"task_type", "plain_type"},
-                        {"limit", 2},
-                        {"last_task_id", page.body["tasks"][1]["task_id"]}})};
+    const auto next {m_api->listManagerTasks(nlohmann::json {
+        {"task_type", "plain_type"}, {"limit", 2}, {"last_task_id", page.body["tasks"][1]["task_id"]}})};
 
     // Asserted rather than expected: indexing an empty array below is undefined behaviour, and a
     // regression here should read as a failed test rather than as a crashed one.
@@ -378,8 +370,7 @@ TEST_F(ApiTest, ListingIsNarrowAndPagesOnTaskId)
 
 TEST_F(ApiTest, ListingRejectsAnUnknownStatus)
 {
-    const auto response {m_api->listManagerTasks(
-        nlohmann::json {{"task_type", "vd_scan"}, {"status", "almost_done"}})};
+    const auto response {m_api->listManagerTasks(nlohmann::json {{"task_type", "vd_scan"}, {"status", "almost_done"}})};
 
     EXPECT_EQ(response.status, 400);
 }
@@ -390,8 +381,7 @@ TEST_F(ApiTest, CountingRequiresBothFields)
     EXPECT_EQ(m_api->countManagerTasks(nlohmann::json {{"status", "pending"}}).status, 400);
 
     m_api->createManagerTask(managerTaskBody("a", "001"));
-    const auto response {
-        m_api->countManagerTasks(nlohmann::json {{"task_type", "vd_scan"}, {"status", "pending"}})};
+    const auto response {m_api->countManagerTasks(nlohmann::json {{"task_type", "vd_scan"}, {"status", "pending"}})};
 
     EXPECT_EQ(response.status, 200);
     EXPECT_EQ(response.body["count"], 1);

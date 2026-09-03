@@ -78,9 +78,7 @@ namespace task_manager::upgrade
          * @param stop Checked periodically during the transfer. A requested stop ends the download
          *             with `aborted` set, which the caller must NOT treat as a repository failure.
          */
-        virtual RepoResult download(const std::string& url,
-                                    const std::string& destPath,
-                                    const StopToken& stop) = 0;
+        virtual RepoResult download(const std::string& url, const std::string& destPath, const StopToken& stop) = 0;
     };
 } // namespace task_manager::upgrade
 

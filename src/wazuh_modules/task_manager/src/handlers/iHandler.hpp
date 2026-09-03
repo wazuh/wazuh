@@ -37,8 +37,14 @@ namespace task_manager
     public:
         StopToken() = default;
 
-        bool stopRequested() const noexcept { return m_stop.load(std::memory_order_acquire); }
-        void requestStop() noexcept { m_stop.store(true, std::memory_order_release); }
+        bool stopRequested() const noexcept
+        {
+            return m_stop.load(std::memory_order_acquire);
+        }
+        void requestStop() noexcept
+        {
+            m_stop.store(true, std::memory_order_release);
+        }
 
         StopToken(const StopToken&) = delete;
         StopToken& operator=(const StopToken&) = delete;
@@ -55,7 +61,10 @@ namespace task_manager
         ///        dead-lettered row carries about why it failed.
         std::string error;
 
-        static HandlerResult ok() { return {Outcome::Ok, {}}; }
+        static HandlerResult ok()
+        {
+            return {Outcome::Ok, {}};
+        }
         static HandlerResult of(const Outcome outcome, std::string error)
         {
             return {outcome, std::move(error)};

@@ -83,8 +83,7 @@ namespace task_manager::registry
                     return HandlerResult::of(Outcome::NotReady, "consumer not listening");
 
                 case CURLE_OPERATION_TIMEDOUT_CODE:
-                    return HandlerResult::of(Outcome::Timeout,
-                                             "consumer did not answer before the deadline");
+                    return HandlerResult::of(Outcome::Timeout, "consumer did not answer before the deadline");
 
                 default:
                     // Everything else reachable over a Unix socket is mid-transfer: RECV_ERROR,
@@ -129,7 +128,6 @@ namespace task_manager::registry
             outcome = Outcome::Retryable;
         }
 
-        return HandlerResult::of(outcome,
-                                 "HTTP " + std::to_string(result.returnCode) + ": " + detailFrom(parsed));
+        return HandlerResult::of(outcome, "HTTP " + std::to_string(result.returnCode) + ": " + detailFrom(parsed));
     }
 } // namespace task_manager::registry

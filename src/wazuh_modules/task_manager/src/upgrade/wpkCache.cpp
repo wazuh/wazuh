@@ -25,9 +25,7 @@ namespace
 
     bool isDirectory(const std::string& path)
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
         return ::stat(path.c_str(), &info) == 0 && S_ISDIR(info.st_mode);
     }
 } // namespace

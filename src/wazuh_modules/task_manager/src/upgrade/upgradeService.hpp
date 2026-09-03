@@ -117,8 +117,7 @@ namespace task_manager::upgrade
 
         void workerLoop();
         void run(Job& job);
-        static void answer(const std::shared_ptr<wazuh::uds_http::IHttpResponder>& responder,
-                           const std::string& body);
+        static void answer(const std::shared_ptr<wazuh::uds_http::IHttpResponder>& responder, const std::string& body);
         static std::vector<int> agentsOf(const ParsedRequest& request);
 
         UpgradeOrchestrator& m_orchestrator;

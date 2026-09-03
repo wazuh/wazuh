@@ -163,8 +163,8 @@ namespace task_manager::registry
             descriptor.name = TYPE_AGENT_DELETE_OLD;
             descriptor.concurrencyGroup = TYPE_AGENT_DELETE_OLD;
             descriptor.maxConcurrent = 1;
-            descriptor.watchdogBudget = std::chrono::seconds {
-                valueOr(config.delete_old_budget, DEFAULT_DELETE_OLD_BUDGET) + 60};
+            descriptor.watchdogBudget =
+                std::chrono::seconds {valueOr(config.delete_old_budget, DEFAULT_DELETE_OLD_BUDGET) + 60};
             descriptor.handler = std::make_shared<handlers::DeleteOldAgentsHandler>(hostOps, localConfig);
             descriptors.push_back(std::move(descriptor));
         }
@@ -225,10 +225,8 @@ namespace task_manager::registry
         // rotates them.
         {
             schedule::Schedule rotation;
-            rotation.definition = {SCHEDULE_LOG_ROTATE_DAILY,
-                                   TYPE_LOG_ROTATE_DAILY,
-                                   schedule::NodeScope::Any,
-                                   schedule::Cadence::Daily};
+            rotation.definition = {
+                SCHEDULE_LOG_ROTATE_DAILY, TYPE_LOG_ROTATE_DAILY, schedule::NodeScope::Any, schedule::Cadence::Daily};
             rotation.dayWait = std::chrono::seconds {valueOr(config.day_wait, DEFAULT_DAY_WAIT)};
             rotation.enabled = config.rotate_log != 0;
             schedules.push_back(std::move(rotation));
@@ -237,8 +235,8 @@ namespace task_manager::registry
         return schedules;
     }
 
-    std::shared_ptr<execution::Executor::PeriodicAction> makeSizeRotationAction(
-        host::IHostOps& hostOps, const handlers::LocalConfig& localConfig)
+    std::shared_ptr<execution::Executor::PeriodicAction>
+    makeSizeRotationAction(host::IHostOps& hostOps, const handlers::LocalConfig& localConfig)
     {
         auto action {std::make_shared<execution::Executor::PeriodicAction>()};
         action->name = ACTION_LOG_ROTATE_SIZE;

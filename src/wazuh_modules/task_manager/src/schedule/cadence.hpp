@@ -92,11 +92,8 @@ namespace task_manager::schedule
      *                      an operator flipping the switch and getting an instant purge is a
      *                      surprise worth not shipping. Disabled time is not downtime.
      */
-    Timestamp startupNextRun(const Schedule& schedule,
-                             bool hadRow,
-                             Timestamp storedNextRun,
-                             bool storedEnabled,
-                             Timestamp now);
+    Timestamp
+    startupNextRun(const Schedule& schedule, bool hadRow, Timestamp storedNextRun, bool storedEnabled, Timestamp now);
 
     /**
      * @brief May this node run a schedule of this scope?

@@ -44,10 +44,10 @@ namespace task_manager::execution
 
     enum class OwnerKind
     {
-        Dead,        ///< No such process, or the pid was recycled.
-        Mine,        ///< This process instance.
-        Foreign,     ///< A different, LIVE process. Another modulesd, or an overlapping restart.
-        Unparseable  ///< Not an owner string this build can read.
+        Dead,       ///< No such process, or the pid was recycled.
+        Mine,       ///< This process instance.
+        Foreign,    ///< A different, LIVE process. Another modulesd, or an overlapping restart.
+        Unparseable ///< Not an owner string this build can read.
     };
 
     /// @brief This process's identity for `workerIndex`.

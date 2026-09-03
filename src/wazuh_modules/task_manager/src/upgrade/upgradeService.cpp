@@ -18,8 +18,8 @@
 namespace task_manager::upgrade
 {
     UpgradeService::UpgradeService(UpgradeOrchestrator& orchestrator,
-                                  std::function<RemotedSettings()> remotedProvider,
-                                  Options options)
+                                   std::function<RemotedSettings()> remotedProvider,
+                                   Options options)
         : m_orchestrator {orchestrator}
         , m_remotedProvider {std::move(remotedProvider)}
         , m_options {std::move(options)}
@@ -71,8 +71,7 @@ namespace task_manager::upgrade
         }
     }
 
-    bool UpgradeService::submit(ParsedRequest request,
-                                std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+    bool UpgradeService::submit(ParsedRequest request, std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
     {
         std::lock_guard lock {m_mutex};
 
@@ -122,8 +121,7 @@ namespace task_manager::upgrade
             const auto remoted {m_remotedProvider ? m_remotedProvider() : RemotedSettings {}};
 
             const auto outcomes {std::visit(
-                [&](const auto& typed) { return m_orchestrator.process(typed, remoted, m_stopToken); },
-                job.request)};
+                [&](const auto& typed) { return m_orchestrator.process(typed, remoted, m_stopToken); }, job.request)};
 
             answer(job.responder, buildResponse(UpgradeError::Success, outcomes));
         }
@@ -133,14 +131,12 @@ namespace task_manager::upgrade
             // Still an answer, and still per agent: an unhandled fault here is indistinguishable
             // from the task manager being unreachable, which is what error 4 means -- and which the
             // Server API retries with a smaller chunk.
-            answer(job.responder,
-                   buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
+            answer(job.responder, buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
         }
         catch (...)
         {
             LOGFN_ERROR(upgradeLogFn(), "Unhandled non-standard error running an upgrade batch");
-            answer(job.responder,
-                   buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
+            answer(job.responder, buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
         }
     }
 
@@ -171,8 +167,7 @@ namespace task_manager::upgrade
         // transport's 503 -- see the header.
         for (auto& job : pending)
         {
-            answer(job.responder,
-                   buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
+            answer(job.responder, buildUniformResponse(UpgradeError::TaskManagerCommunication, agentsOf(job.request)));
         }
 
         for (auto& worker : workers)

@@ -19,8 +19,7 @@ namespace
     /// @brief Wire-format strings. Every one of these reaches a user through the Server API verbatim.
     ParseFailure typeFailure(const char* key, const char* expectation)
     {
-        return {UpgradeError::TaskConfigurations,
-                std::string {"Parameter \""} + key + "\" should be " + expectation};
+        return {UpgradeError::TaskConfigurations, std::string {"Parameter \""} + key + "\" should be " + expectation};
     }
 
     /**

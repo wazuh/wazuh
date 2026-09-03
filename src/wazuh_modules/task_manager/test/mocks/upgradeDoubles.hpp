@@ -320,7 +320,10 @@ namespace task_manager::test
         TempDir(const TempDir&) = delete;
         TempDir& operator=(const TempDir&) = delete;
 
-        const std::string& path() const { return m_path; }
+        const std::string& path() const
+        {
+            return m_path;
+        }
 
         void writeFile(const std::string& name, const std::string& content) const
         {

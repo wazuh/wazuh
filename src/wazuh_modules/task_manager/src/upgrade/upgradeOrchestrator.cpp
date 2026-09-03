@@ -51,9 +51,7 @@ namespace
 
 namespace task_manager::upgrade
 {
-    UpgradeError resolveCustomWpkPath(const std::string& filePath,
-                                      const std::string& upgradeDir,
-                                      std::string& fileName)
+    UpgradeError resolveCustomWpkPath(const std::string& filePath, const std::string& upgradeDir, std::string& fileName)
     {
         if (filePath.empty())
         {
@@ -169,8 +167,8 @@ namespace task_manager::upgrade
                 continue;
             }
 
-            const auto platform {resolvePackageType(
-                agent.platform, agent.majorVersion, agent.minorVersion, agent.architecture)};
+            const auto platform {
+                resolvePackageType(agent.platform, agent.majorVersion, agent.minorVersion, agent.architecture)};
             if (platform.error != UpgradeError::Success)
             {
                 candidate.error = platform.error;
@@ -196,11 +194,11 @@ namespace task_manager::upgrade
             if (delivery.forcedOverUnsafeVerification)
             {
                 LOGFN_WARN(upgradeLogFn(),
-                              "Agent %d: upgrading to '%s' while remoted's HTTPS verification_mode is not "
-                              "'none'; the agent may be unable to reconnect afterward. Proceeding because "
-                              "'force' was set (accepted risk).",
-                              candidate.agentId,
-                              version.wpkVersion.c_str());
+                           "Agent %d: upgrading to '%s' while remoted's HTTPS verification_mode is not "
+                           "'none'; the agent may be unable to reconnect afterward. Proceeding because "
+                           "'force' was set (accepted risk).",
+                           candidate.agentId,
+                           version.wpkVersion.c_str());
             }
 
             RepoRequest repo;
@@ -222,29 +220,28 @@ namespace task_manager::upgrade
             {
                 case PackageTypeNotice::ForcedOverride:
                     LOGFN_DEBUG1(upgradeLogFn(),
-                                "Agent %d (%s): using the requested package type '%s' over the reported one, "
-                                "because 'force' was set.",
-                                candidate.agentId,
-                                agent.platform.c_str(),
-                                layout.layout.packageType.c_str());
+                                 "Agent %d (%s): using the requested package type '%s' over the reported one, "
+                                 "because 'force' was set.",
+                                 candidate.agentId,
+                                 agent.platform.c_str(),
+                                 layout.layout.packageType.c_str());
                     break;
                 case PackageTypeNotice::MismatchIgnored:
                     LOGFN_WARN(upgradeLogFn(),
-                                  "Agent %d (%s): the requested package type does not match the one the agent "
-                                  "reports; using the agent's. Set 'force' to override.",
-                                  candidate.agentId,
-                                  agent.platform.c_str());
+                               "Agent %d (%s): the requested package type does not match the one the agent "
+                               "reports; using the agent's. Set 'force' to override.",
+                               candidate.agentId,
+                               agent.platform.c_str());
                     break;
                 case PackageTypeNotice::DefaultedFromRequest:
                     LOGFN_DEBUG1(upgradeLogFn(),
-                                "Agent %d (%s): no package type reported; using the requested '%s'.",
-                                candidate.agentId,
-                                agent.platform.c_str(),
-                                layout.layout.packageType.c_str());
+                                 "Agent %d (%s): no package type reported; using the requested '%s'.",
+                                 candidate.agentId,
+                                 agent.platform.c_str(),
+                                 layout.layout.packageType.c_str());
                     break;
                 case PackageTypeNotice::None:
-                default:
-                    break;
+                default: break;
             }
 
             candidate.wpkUrl = layout.layout.pathUrl + layout.layout.fileName;
@@ -285,8 +282,7 @@ namespace task_manager::upgrade
             {
                 for (auto* member : members)
                 {
-                    member->error = stopping ? UpgradeError::TaskManagerCommunication
-                                             : UpgradeError::UrlNotFound;
+                    member->error = stopping ? UpgradeError::TaskManagerCommunication : UpgradeError::UrlNotFound;
                 }
                 continue;
             }
@@ -407,9 +403,8 @@ namespace task_manager::upgrade
         }
     }
 
-    std::vector<AgentOutcome> UpgradeOrchestrator::process(const UpgradeRequest& request,
-                                                          const RemotedSettings& remoted,
-                                                          const StopToken& stop)
+    std::vector<AgentOutcome>
+    UpgradeOrchestrator::process(const UpgradeRequest& request, const RemotedSettings& remoted, const StopToken& stop)
     {
         std::vector<AgentOutcome> outcomes;
 
@@ -439,8 +434,8 @@ namespace task_manager::upgrade
     }
 
     std::vector<AgentOutcome> UpgradeOrchestrator::process(const UpgradeCustomRequest& request,
-                                                          const RemotedSettings& remoted,
-                                                          const StopToken& stop)
+                                                           const RemotedSettings& remoted,
+                                                           const StopToken& stop)
     {
         std::vector<AgentOutcome> outcomes;
 
@@ -505,8 +500,7 @@ namespace task_manager::upgrade
             // v5.0.0 unconditionally, and force=false: a custom file's NAME cannot be trusted to say
             // what it installs, so the HTTPS gate is applied as though it might be 5.x. There is no
             // 'force' parameter on this route, so the gate has no override.
-            const auto delivery {
-                checkRemotedDelivery(wazuhVersion, FIVE_X_MINIMUM_VERSION, false, remoted)};
+            const auto delivery {checkRemotedDelivery(wazuhVersion, FIVE_X_MINIMUM_VERSION, false, remoted)};
             if (delivery.error != UpgradeError::Success)
             {
                 candidate.error = delivery.error;

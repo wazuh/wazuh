@@ -140,8 +140,8 @@ namespace task_manager::upgrade
                      const StopToken& stop);
 
         void materialise(std::vector<Candidate>& candidates, const StopToken& stop);
-        void persist(const std::vector<Candidate>& candidates, Timestamp createTime,
-                     std::vector<AgentOutcome>& outcomes);
+        void
+        persist(const std::vector<Candidate>& candidates, Timestamp createTime, std::vector<AgentOutcome>& outcomes);
 
         host::IHostOps& m_hostOps;
         storage::ITaskStore& m_store;
@@ -168,9 +168,8 @@ namespace task_manager::upgrade
      * @return Success, or WpkFileDoesNotExist -- which is what the caller already got, just now
      *         reported at admission instead of discovered by the agent.
      */
-    UpgradeError resolveCustomWpkPath(const std::string& filePath,
-                                      const std::string& upgradeDir,
-                                      std::string& fileName);
+    UpgradeError
+    resolveCustomWpkPath(const std::string& filePath, const std::string& upgradeDir, std::string& fileName);
 } // namespace task_manager::upgrade
 
 #endif // _TASK_MANAGER_UPGRADE_ORCHESTRATOR_HPP

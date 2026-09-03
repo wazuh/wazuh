@@ -82,9 +82,7 @@ namespace task_manager::storage
 
         // ---- manager tasks -------------------------------------------------------------------
         CreateManagerTaskOutcome createManagerTask(const CreateManagerTaskRequest& request) override;
-        std::optional<ClaimedTask> claim(const std::string& taskType,
-                                         const std::string& owner,
-                                         Timestamp now) override;
+        std::optional<ClaimedTask> claim(const std::string& taskType, const std::string& owner, Timestamp now) override;
         RequeueResult requeue(const RequeueRequest& request) override;
         void setResult(const std::string& taskId,
                        TaskStatus status,
@@ -103,18 +101,15 @@ namespace task_manager::storage
         std::vector<DueType> pendingTypes() override;
         std::optional<Timestamp> minPendingNextAttemptAt() override;
         std::vector<std::string> distinctPendingTaskTypes() override;
-        std::int64_t failPendingByType(const std::string& taskType,
-                                       const std::string& lastError,
-                                       Timestamp endTime) override;
-        std::vector<ClaimedRow> claimedRows(const std::string& owner,
-                                            const std::string& afterTaskId,
-                                            int limit) override;
+        std::int64_t
+        failPendingByType(const std::string& taskType, const std::string& lastError, Timestamp endTime) override;
+        std::vector<ClaimedRow>
+        claimedRows(const std::string& owner, const std::string& afterTaskId, int limit) override;
         RetentionStats applyRetention(const RetentionRules& rules) override;
 
         // ---- schedules -----------------------------------------------------------------------
-        std::optional<ScheduleRow> upsertSchedule(const std::string& scheduleId,
-                                                  Timestamp nextRunAt,
-                                                  bool enabled) override;
+        std::optional<ScheduleRow>
+        upsertSchedule(const std::string& scheduleId, Timestamp nextRunAt, bool enabled) override;
         void setScheduleNextRun(const std::string& scheduleId, Timestamp nextRunAt) override;
         std::vector<ScheduleRow> dueSchedules(Timestamp now) override;
         bool scheduleHasActiveRun(const std::string& scheduleId) override;

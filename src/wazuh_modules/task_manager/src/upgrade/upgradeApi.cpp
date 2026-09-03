@@ -115,9 +115,8 @@ namespace task_manager::upgrade
             {
                 // Shed. Error 4 per agent, which the Server API answers by halving the chunk and
                 // retrying -- the backpressure a 503 would ask for, in a dialect it already speaks.
-                LOGFN_WARN(upgradeLogFn(),
-                           "Refusing an upgrade request for %zu agents: the queue is full.",
-                           agentIds.size());
+                LOGFN_WARN(
+                    upgradeLogFn(), "Refusing an upgrade request for %zu agents: the queue is full.", agentIds.size());
                 send(responder, buildUniformResponse(UpgradeError::TaskManagerCommunication, agentIds));
             }
 

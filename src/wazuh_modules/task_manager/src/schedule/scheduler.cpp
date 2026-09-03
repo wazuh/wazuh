@@ -411,9 +411,8 @@ namespace task_manager::schedule
             const auto sleepFor {std::max<Timestamp>(wakeAt - nowSeconds(), 0)};
 
             std::unique_lock lock {m_mutex};
-            m_condition.wait_for(lock,
-                                 std::chrono::seconds {sleepFor},
-                                 [this] { return m_stopping.load(std::memory_order_acquire); });
+            m_condition.wait_for(
+                lock, std::chrono::seconds {sleepFor}, [this] { return m_stopping.load(std::memory_order_acquire); });
         }
 
         LOGFN_DEBUG1(schedulerLogFn(), "Scheduler finished");

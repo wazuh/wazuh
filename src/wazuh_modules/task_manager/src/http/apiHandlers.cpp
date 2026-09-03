@@ -127,9 +127,8 @@ namespace task_manager::http
 
     nlohmann::json toJson(const ManagerTaskSummary& summary)
     {
-        nlohmann::json out {{"task_id", summary.taskId},
-                            {"status", toString(summary.status)},
-                            {"create_time", summary.createTime}};
+        nlohmann::json out {
+            {"task_id", summary.taskId}, {"status", toString(summary.status)}, {"create_time", summary.createTime}};
 
         if (summary.agentId.has_value())
         {
@@ -203,8 +202,7 @@ namespace task_manager::http
         {
             return ApiResponse::error(413,
                                       "payload_too_large",
-                                      "payload exceeds max_payload_bytes (" +
-                                          std::to_string(m_maxPayloadBytes) + ")");
+                                      "payload exceeds max_payload_bytes (" + std::to_string(m_maxPayloadBytes) + ")");
         }
 
         // An absent source_id and an empty one produce the SAME id. That aliasing is pre-existing
@@ -330,10 +328,10 @@ namespace task_manager::http
             // The payload is stored as text and handed back as JSON, so a consumer sees the object
             // it created rather than a string containing one.
             auto payload = nlohmann::json::parse(task.payload, nullptr, false);
-            out.push_back(nlohmann::json {
-                {"task_id", task.taskId},
-                {"task_type", task.taskType},
-                {"payload", payload.is_discarded() ? nlohmann::json::object() : std::move(payload)}});
+            out.push_back(
+                nlohmann::json {{"task_id", task.taskId},
+                                {"task_type", task.taskType},
+                                {"payload", payload.is_discarded() ? nlohmann::json::object() : std::move(payload)}});
         }
 
         if (m_metrics)
@@ -421,8 +419,7 @@ namespace task_manager::http
             m_notifyManagerTask(*taskType);
         }
 
-        return ApiResponse::ok(
-            nlohmann::json {{"result", toString(outcome.result)}, {"task_id", outcome.taskId}});
+        return ApiResponse::ok(nlohmann::json {{"result", toString(outcome.result)}, {"task_id", outcome.taskId}});
     }
 
     ApiResponse ApiHandlers::getManagerTask(const nlohmann::json& body)
@@ -513,7 +510,6 @@ namespace task_manager::http
             return ApiResponse::error(400, "parsing_error", "unknown status '" + *statusText + "'");
         }
 
-        return ApiResponse::ok(
-            nlohmann::json {{"count", m_store.countManagerTasks(*taskType, *status)}});
+        return ApiResponse::ok(nlohmann::json {{"count", m_store.countManagerTasks(*taskType, *status)}});
     }
 } // namespace task_manager::http

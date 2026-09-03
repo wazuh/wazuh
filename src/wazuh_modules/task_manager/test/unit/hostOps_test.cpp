@@ -77,7 +77,10 @@ namespace
         return raw;
     }
 
-    int fakeIsWorker() { return g_host.workerState; }
+    int fakeIsWorker()
+    {
+        return g_host.workerState;
+    }
 
     int fakeDisconnect(long keepAlive, const char* syncStatus, char** out)
     {
@@ -119,9 +122,15 @@ namespace
         return g_host.removeResult;
     }
 
-    int fakeRotateDaily(int, int, int) { return g_host.rotateDailyResult; }
+    int fakeRotateDaily(int, int, int)
+    {
+        return g_host.rotateDailyResult;
+    }
 
-    int fakeRotateSize(int, int, int, long) { return g_host.rotateSizeResult; }
+    int fakeRotateSize(int, int, int, long)
+    {
+        return g_host.rotateSizeResult;
+    }
 
     /// @brief A fully populated table. Tests null out the one entry they are about.
     task_manager_host_ops_t completeTable()
@@ -141,7 +150,10 @@ namespace
     class HostOpsTest : public ::testing::Test
     {
     protected:
-        void SetUp() override { g_host = FakeHost {}; }
+        void SetUp() override
+        {
+            g_host = FakeHost {};
+        }
 
         void TearDown() override
         {

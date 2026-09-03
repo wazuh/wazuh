@@ -60,15 +60,13 @@ namespace task_manager::registry
                 descriptor.concurrencyGroup = descriptor.name;
             }
 
-            const auto [it, inserted] {
-                m_groupLimits.emplace(descriptor.concurrencyGroup, descriptor.maxConcurrent)};
+            const auto [it, inserted] {m_groupLimits.emplace(descriptor.concurrencyGroup, descriptor.maxConcurrent)};
 
             if (!inserted && it->second != descriptor.maxConcurrent)
             {
                 throw std::invalid_argument("concurrency group '" + descriptor.concurrencyGroup +
-                                            "' is declared with two different caps (" +
-                                            std::to_string(it->second) + " and " +
-                                            std::to_string(descriptor.maxConcurrent) +
+                                            "' is declared with two different caps (" + std::to_string(it->second) +
+                                            " and " + std::to_string(descriptor.maxConcurrent) +
                                             "); there is no defensible way to resolve that");
             }
         }
@@ -78,8 +76,7 @@ namespace task_manager::registry
     {
         const auto it {std::find_if(m_descriptors.cbegin(),
                                     m_descriptors.cend(),
-                                    [&name](const TaskTypeDescriptor& descriptor)
-                                    { return descriptor.name == name; })};
+                                    [&name](const TaskTypeDescriptor& descriptor) { return descriptor.name == name; })};
 
         return it == m_descriptors.cend() ? nullptr : &(*it);
     }

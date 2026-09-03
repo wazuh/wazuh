@@ -65,10 +65,8 @@ namespace task_manager::taskId
      * Only the first 16 bytes of the digest survive, formatted 8-4-4-4-12. Truncated, and
      * therefore weaker than the manager-task ids; also unchanged, for the same reason.
      */
-    std::string forAgentTask(std::string_view sourceId,
-                             std::string_view agentId,
-                             std::string_view taskType,
-                             Timestamp createTime);
+    std::string
+    forAgentTask(std::string_view sourceId, std::string_view agentId, std::string_view taskType, Timestamp createTime);
 } // namespace task_manager::taskId
 
 #endif // _TASK_MANAGER_MODEL_TASK_ID_HPP

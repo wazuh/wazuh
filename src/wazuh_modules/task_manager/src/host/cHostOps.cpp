@@ -99,9 +99,8 @@ namespace task_manager::host
         return m_ops.is_worker();
     }
 
-    std::optional<nlohmann::json> CHostOps::callJson(int (*fn)(int, const char*, char**),
-                                                     const int arg,
-                                                     const std::string& text)
+    std::optional<nlohmann::json>
+    CHostOps::callJson(int (*fn)(int, const char*, char**), const int arg, const std::string& text)
     {
         if (fn == nullptr || m_ops.free_json == nullptr)
         {
@@ -207,10 +206,8 @@ namespace task_manager::host
         return m_ops.rotate_log_daily(compress ? 1 : 0, keepDays, maxRotations) == 0;
     }
 
-    bool CHostOps::rotateLogBySize(const bool compress,
-                                   const int keepDays,
-                                   const int maxRotations,
-                                   const long sizeBytes)
+    bool
+    CHostOps::rotateLogBySize(const bool compress, const int keepDays, const int maxRotations, const long sizeBytes)
     {
         if (m_ops.rotate_log_size == nullptr)
         {

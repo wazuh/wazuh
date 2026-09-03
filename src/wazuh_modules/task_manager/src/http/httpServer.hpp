@@ -70,7 +70,10 @@ namespace task_manager::http
          * Left unset -- by the testtool, and by any build that does not want the surface -- the two
          * routes simply do not exist and answer 404.
          */
-        void setUpgradeApi(upgrade::UpgradeApi& api) noexcept { m_upgradeApi = &api; }
+        void setUpgradeApi(upgrade::UpgradeApi& api) noexcept
+        {
+            m_upgradeApi = &api;
+        }
 
         HttpServer(const HttpServer&) = delete;
         HttpServer& operator=(const HttpServer&) = delete;

@@ -49,12 +49,12 @@ namespace task_manager
      */
     enum class TaskStatus
     {
-        Pending,   ///< Waiting to be claimed. Eligible once NEXT_ATTEMPT_AT has passed.
-        Claimed,   ///< A named executor worker is running it.
-        Completed, ///< The consumer reported the work done.
-        Failed,    ///< Declared impossible. Not "gave up after trying" -- that is DeadLetter.
-        DeadLetter,///< Exhausted its attempt or deferral budget.
-        Superseded ///< A newer pending row for the same agent took its place while it ran.
+        Pending,    ///< Waiting to be claimed. Eligible once NEXT_ATTEMPT_AT has passed.
+        Claimed,    ///< A named executor worker is running it.
+        Completed,  ///< The consumer reported the work done.
+        Failed,     ///< Declared impossible. Not "gave up after trying" -- that is DeadLetter.
+        DeadLetter, ///< Exhausted its attempt or deferral budget.
+        Superseded  ///< A newer pending row for the same agent took its place while it ran.
     };
 
     /**
@@ -78,30 +78,30 @@ namespace task_manager
     ///        so a producer sees the same vocabulary on the wire that it sees in C.
     enum class CreateResult
     {
-        Created,  ///< A new row exists.
-        Coalesced,///< An equivalent pending row already existed; its id is returned.
-        Collided, ///< The id already exists. Normal for deterministic ids, a bug for random ones.
-        QueueFull ///< The type's admission bound is reached.
+        Created,   ///< A new row exists.
+        Coalesced, ///< An equivalent pending row already existed; its id is returned.
+        Collided,  ///< The id already exists. Normal for deterministic ids, a bug for random ones.
+        QueueFull  ///< The type's admission bound is reached.
     };
 
     /// @brief A manager task row, as stored.
     struct ManagerTask
     {
-        std::string taskId;   ///< 64 lowercase hex characters.
-        std::string taskType; ///< Opaque to storage; meaningful only to the registry.
-        std::string payload;  ///< The consumer's request body, verbatim. Authored by the producer.
+        std::string taskId;                 ///< 64 lowercase hex characters.
+        std::string taskType;               ///< Opaque to storage; meaningful only to the registry.
+        std::string payload;                ///< The consumer's request body, verbatim. Authored by the producer.
         std::optional<std::string> agentId; ///< Absent for tasks that are not about one agent.
         Timestamp createTime {0};
         TaskStatus status {TaskStatus::Pending};
-        std::optional<std::string> owner;     ///< Set while Claimed. See execution/ownership.hpp.
+        std::optional<std::string> owner; ///< Set while Claimed. See execution/ownership.hpp.
         std::optional<Timestamp> claimTime;
-        int attempts {0};    ///< Never decreases, except when a survivor inherits a larger value.
-        int deferCount {0};  ///< CONSECUTIVE no-fault deferrals. Zeroed by any other outcome.
+        int attempts {0};   ///< Never decreases, except when a survivor inherits a larger value.
+        int deferCount {0}; ///< CONSECUTIVE no-fault deferrals. Zeroed by any other outcome.
         std::optional<std::string> lastError;
-        Timestamp nextAttemptAt {0}; ///< Never left at 0 -- see storage/schema.hpp for why.
-        std::optional<std::string> scheduleId;     ///< Set on rows spawned by a schedule.
-        std::optional<Timestamp> scheduledRunAt;   ///< The slot this run belongs to.
-        std::optional<Timestamp> endTime;          ///< When it reached a terminal state.
+        Timestamp nextAttemptAt {0};             ///< Never left at 0 -- see storage/schema.hpp for why.
+        std::optional<std::string> scheduleId;   ///< Set on rows spawned by a schedule.
+        std::optional<Timestamp> scheduledRunAt; ///< The slot this run belongs to.
+        std::optional<Timestamp> endTime;        ///< When it reached a terminal state.
     };
 
     /// @brief What a worker needs to run a task. A projection of ManagerTask, not the whole row:
@@ -119,7 +119,7 @@ namespace task_manager
     /// @brief An agent task row -- work handed to an agent, not executed by the manager.
     struct AgentTask
     {
-        std::string taskId;   ///< UUID-shaped, 36 characters. See model/taskId.hpp.
+        std::string taskId; ///< UUID-shaped, 36 characters. See model/taskId.hpp.
         std::string agentId;
         std::string taskType;
         std::string payload;
@@ -147,8 +147,8 @@ namespace task_manager
     /// @brief Terminal states are one-way. Retention only ever removes these.
     constexpr bool isTerminal(TaskStatus status) noexcept
     {
-        return status == TaskStatus::Completed || status == TaskStatus::Failed ||
-               status == TaskStatus::DeadLetter || status == TaskStatus::Superseded;
+        return status == TaskStatus::Completed || status == TaskStatus::Failed || status == TaskStatus::DeadLetter ||
+               status == TaskStatus::Superseded;
     }
 
     /// @brief NotReady and Busy are the two no-fault outcomes: they cost a deferral, never an

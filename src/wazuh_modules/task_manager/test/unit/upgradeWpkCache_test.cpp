@@ -167,7 +167,7 @@ TEST(UpgradeWpkCache, AWarmFileIsHashedOnceAndThenOnlyStatted)
 
     EXPECT_EQ(cache.ensure(requestFor(SHA1_A), stop), UpgradeError::Success);
     EXPECT_EQ(repository.totalDownloadCalls(), 0U); // Nothing was fetched.
-    EXPECT_EQ(cache.memoHitCount(), 0U);           // The first call had to hash it.
+    EXPECT_EQ(cache.memoHitCount(), 0U);            // The first call had to hash it.
 
     EXPECT_EQ(cache.ensure(requestFor(SHA1_A), stop), UpgradeError::Success);
     EXPECT_EQ(cache.memoHitCount(), 1U); // The second did not.
@@ -306,9 +306,7 @@ TEST(UpgradeWpkCache, CapsHowManyDownloadsRunAtOnce)
         threads.emplace_back(
             [&, index]
             {
-                cache.ensure({"https://repo/" + std::to_string(index) + ".wpk",
-                              std::to_string(index) + ".wpk",
-                              SHA1_A},
+                cache.ensure({"https://repo/" + std::to_string(index) + ".wpk", std::to_string(index) + ".wpk", SHA1_A},
                              stop);
             });
     }

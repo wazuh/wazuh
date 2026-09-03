@@ -76,10 +76,8 @@ namespace task_manager::execution
         }
         catch (const std::exception& exception)
         {
-            LOGFN_ERROR(schedulerLogFn(),
-                        "Failed to reclaim manager task '%s': %s",
-                        row.taskId.c_str(),
-                        exception.what());
+            LOGFN_ERROR(
+                schedulerLogFn(), "Failed to reclaim manager task '%s': %s", row.taskId.c_str(), exception.what());
             return false;
         }
 
@@ -205,8 +203,7 @@ namespace task_manager::execution
                 continue;
             }
 
-            const auto affected {
-                m_store.failPendingByType(taskType, "unknown task type", nowSeconds())};
+            const auto affected {m_store.failPendingByType(taskType, "unknown task type", nowSeconds())};
 
             if (affected > 0)
             {

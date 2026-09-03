@@ -33,7 +33,10 @@ namespace
     class ExecutorTest : public ::testing::Test
     {
     protected:
-        void SetUp() override { m_store = makeMemoryStore(); }
+        void SetUp() override
+        {
+            m_store = makeMemoryStore();
+        }
 
         void TearDown() override
         {
@@ -337,7 +340,10 @@ TEST_F(ExecutorTest, PeriodicActionsRunOnSignalAndCoalesce)
     auto action {std::make_shared<Executor::PeriodicAction>()};
     action->name = "log_rotate_size";
     action->concurrencyGroup = "rotation";
-    action->run = [&runs](const StopToken&) { ++runs; };
+    action->run = [&runs](const StopToken&)
+    {
+        ++runs;
+    };
 
     // BEFORE start(), as the contract requires: the action list is read by workers under the
     // executor's mutex but written without it, so registering afterwards would be a data race.

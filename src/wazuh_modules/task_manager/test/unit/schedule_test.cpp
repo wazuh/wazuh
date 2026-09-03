@@ -49,8 +49,7 @@ TEST(TaskId, ScheduledRunIdIsKeyedOnTheSlotSoARetryReDerivesIt)
 TEST(TaskId, AgentTaskIdMatchesItsGoldenVectors)
 {
     // Without a source id.
-    EXPECT_EQ(taskId::forAgentTask("", "001", "agent_restart", 1700000000),
-              "2d6a55b2-b99f-d3df-f07e-e64d2f08dc54");
+    EXPECT_EQ(taskId::forAgentTask("", "001", "agent_restart", 1700000000), "2d6a55b2-b99f-d3df-f07e-e64d2f08dc54");
 
     // With one -- Active Response passes the document id.
     EXPECT_EQ(taskId::forAgentTask("ar-doc", "001", "active_response", 1700000000),

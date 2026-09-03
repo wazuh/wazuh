@@ -53,8 +53,7 @@ namespace task_manager::host
                                                                  const std::string& syncStatus) = 0;
 
         /// @brief Agents in a connection status, with ids strictly greater than `afterId`.
-        virtual std::optional<std::vector<int>> agentsByStatusFrom(int afterId,
-                                                                   const std::string& status) = 0;
+        virtual std::optional<std::vector<int>> agentsByStatusFrom(int afterId, const std::string& status) = 0;
 
         /// @brief One agent's row.
         virtual std::optional<nlohmann::json> agentInfo(int agentId) = 0;

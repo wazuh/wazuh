@@ -68,7 +68,10 @@ namespace task_manager::metrics
                           const std::string& description,
                           const std::string& unit);
 
-        wazuh::metrics::IManager& manager() const noexcept { return *m_manager; }
+        wazuh::metrics::IManager& manager() const noexcept
+        {
+            return *m_manager;
+        }
 
     private:
         /// @brief Counters are per (task type, outcome), so they cannot all be resolved up front:

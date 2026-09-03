@@ -33,7 +33,10 @@ namespace
 {
     volatile std::sig_atomic_t gStop = 0;
 
-    void onSignal(int) { gStop = 1; }
+    void onSignal(int)
+    {
+        gStop = 1;
+    }
 
     void logCallback(const int level,
                      const char* tag,
@@ -46,8 +49,7 @@ namespace
         static const char* const LEVELS[] = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "DEBUG2"};
         const auto* name {(level >= 0 && level <= 5) ? LEVELS[level] : "INFO"};
 
-        std::fprintf(stderr, "[%s] %s %s:%d:%s: ", name, tag ? tag : "-", file ? file : "-", line,
-                     func ? func : "-");
+        std::fprintf(stderr, "[%s] %s %s:%d:%s: ", name, tag ? tag : "-", file ? file : "-", line, func ? func : "-");
         std::vfprintf(stderr, msg, args);
         std::fprintf(stderr, "\n");
         std::fflush(stderr);
@@ -131,7 +133,10 @@ namespace
         return *out != nullptr ? 0 : -1;
     }
 
-    void freeJson(char* json) { std::free(json); }
+    void freeJson(char* json)
+    {
+        std::free(json);
+    }
 
     int removeAgent(int, int, int* authdError)
     {
@@ -139,7 +144,10 @@ namespace
         return 0;
     }
 
-    int rotateDaily(int, int, int) { return 0; }
+    int rotateDaily(int, int, int)
+    {
+        return 0;
+    }
 
     int rotateBySize(int, int, int, long)
     {
@@ -280,8 +288,7 @@ int main(int argc, char** argv)
 
     std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", socketPath.c_str());
     std::snprintf(config.db_path, sizeof(config.db_path), "%s", dbPath.c_str());
-    std::snprintf(config.inventory_sync_socket, sizeof(config.inventory_sync_socket), "%s",
-                  consumerPath.c_str());
+    std::snprintf(config.inventory_sync_socket, sizeof(config.inventory_sync_socket), "%s", consumerPath.c_str());
 
     /*
      * Short intervals, so the suite does not have to wait out production cadences. Everything else

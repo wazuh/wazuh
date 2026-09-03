@@ -13,9 +13,8 @@
 
 namespace task_manager::registry
 {
-    std::chrono::seconds ladder(const int steps,
-                                const std::chrono::seconds base,
-                                const std::chrono::seconds cap) noexcept
+    std::chrono::seconds
+    ladder(const int steps, const std::chrono::seconds base, const std::chrono::seconds cap) noexcept
     {
         if (base.count() <= 0)
         {
@@ -71,9 +70,7 @@ namespace task_manager::registry
 
         switch (outcome)
         {
-            case Outcome::Ok:
-                transition.terminalStatus = TaskStatus::Completed;
-                break;
+            case Outcome::Ok: transition.terminalStatus = TaskStatus::Completed; break;
 
             case Outcome::Retryable:
             case Outcome::Timeout:
