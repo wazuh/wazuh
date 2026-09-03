@@ -162,7 +162,18 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     }
     while (remaining != 0);
 
-    dest.reset(); // Close (flush to disk) before handing the path off.
+    // fclose() is where a buffered write finally reaches the disk, so a full filesystem can
+    // surface as ENOSPC *here* and nowhere earlier: the fwrite() above only fails once a whole
+    // stdio buffer has been flushed, so the last partial buffer's failure arrives at close time.
+    // unique_ptr's deleter discards fclose()'s result, so relying on it would hand back a truncated
+    // spool file as a complete compressed body, which /stateful would then upload in place of the
+    // real session -- caught only by the manager rejecting the frame, if at all.
+    if (std::fclose(dest.release()) != 0)
+    {
+        // LCOV_EXCL_START: needs a genuinely full filesystem, not reproducible in the unit tests.
+        return fail(); // Already released above, so fail() only removes the temp file.
+        // LCOV_EXCL_STOP
+    }
 
     return std::make_pair(std::make_unique<SpoolFile>(destPath), compressedSize);
 }

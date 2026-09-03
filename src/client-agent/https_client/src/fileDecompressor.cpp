@@ -248,7 +248,20 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
         return fail();
     }
 
-    dest.reset();   // Close (flush to disk) before the rename.
+    // fclose() is where a buffered write finally reaches the disk, so a full filesystem can
+    // surface as ENOSPC *here* and nowhere earlier: the fwrite() above only fails once a whole
+    // stdio buffer has been flushed, so the last partial buffer's failure arrives at close time.
+    // unique_ptr's deleter discards fclose()'s result, so relying on it would rename a truncated
+    // file over the caller's download and return totalOut as though every byte had landed. The
+    // caller's SHA-256 would then reject it as a hash mismatch -- a disk-full condition reported
+    // as corruption, costing a download cycle and pointing the operator at the wrong problem.
+    if (std::fclose(dest.release()) != 0)
+    {
+        // LCOV_EXCL_START: needs a genuinely full filesystem, not reproducible in the unit tests.
+        return fail(); // Already released above, so fail() only removes the temp file.
+        // LCOV_EXCL_STOP
+    }
+
     source.reset(); // Close before replacing the file it was reading (required on Windows).
 
     if (!replaceFile(destPath, pathToReplace))
