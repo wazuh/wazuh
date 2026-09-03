@@ -60,7 +60,7 @@ wazuh-manager-remoted listeners.
 | `legacy.connection_overtake_time` | integer | `60` | 0-3600 | Seconds before an agent may take over an existing connection. |
 | `https` | mapping |  |  | HTTPS agent listener served by remoted_module. |
 | `https.port` | integer | `1517` | 1-65535 | Listening port. |
-| `https.bind_addr` | string | `127.0.0.1` | not empty | Bind address (IPv4 or IPv6). |
+| `https.bind_addr` | string | `0.0.0.0` | not empty | Bind address (IPv4 or IPv6). |
 | `https.global_prefix` | string | `/wazuh-manager/` | `^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$` | Path prefix of every HTTPS route. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments. |
 | `https.certificate` | string | `etc/certs/remoted.pem` |  | Server certificate (PEM). |
 | `https.key` | string | `etc/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. |

@@ -20,7 +20,7 @@
 
 namespace
 {
-    constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
+    constexpr auto DEFAULT_BIND_ADDRESS {"0.0.0.0"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {1517};
     // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
     // work here can block (token verification, client.keys file I/O), so it is oversubscribed.

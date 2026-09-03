@@ -36,9 +36,9 @@ to**. Anything that relied on that mapping is gone or reworked.
 Open `1517/tcp` on the manager before migrating any agent. If your fleet is fully on 5.x, `1514` and
 `1515` can both be closed — see [Retiring the legacy channel](#retiring-the-legacy-channel).
 
-> The default `<remote><https><bind_addr>` is `127.0.0.1`. On a manager that must accept agents from
-> other hosts, set it to `0.0.0.0` (or a specific address). This mirrors the `<legacy><local_ip>`
-> default change described in
+> Both listeners default to every IPv4 interface: `<remote><https><bind_addr>` and
+> `<remote><legacy><local_ip>` are `0.0.0.0` unless set, so a fresh manager accepts agents from other
+> hosts out of the box. Set a specific address to restrict a listener -- see
 > [Manager configuration migration](manager-configuration-migration.md#remote-section).
 
 ## Message mapping
@@ -125,7 +125,7 @@ there is no automatic migration.
 | `<remote><port>` | `<remote><legacy><port>` |
 | `<remote><protocol>` | `<remote><legacy><protocol>` |
 | `<remote><ipv6>` | `<remote><legacy><ipv6>` |
-| `<remote><local_ip>` | `<remote><legacy><local_ip>` — **default changed to `127.0.0.1`** |
+| `<remote><local_ip>` | `<remote><legacy><local_ip>` — default `0.0.0.0` (any IPv4 interface), as an unset 4.x `<local_ip>` behaved |
 | `<remote><queue_size>` | `<remote><legacy><queue_size>` — legacy channel only; the HTTPS channel uses back-pressure instead |
 | `<remote><rids_closing_time>` | `<remote><legacy><rids_closing_time>` |
 | `<remote><connection_overtake_time>` | `<remote><legacy><connection_overtake_time>` |
