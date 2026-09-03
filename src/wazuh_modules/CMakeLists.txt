@@ -60,6 +60,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync_server/include
   ${SRC_FOLDER}/wazuh_modules/keystore_server/include
+  ${SRC_FOLDER}/wazuh_modules/container_instances/include
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager

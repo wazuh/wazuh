@@ -11,6 +11,7 @@
 #if defined(__linux__) && defined(CLIENT)
 
 #include "wmodules.h"
+#include "wm_container_instances.h"
 
 static const char* CI_XML_ENABLED = "enabled";
 static const char* CI_XML_KUBERNETES = "kubernetes";
