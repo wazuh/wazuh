@@ -52,9 +52,8 @@ namespace manager_config::detail
 
     } // namespace
 
-    std::optional<Error> checkSemantics(const rapidjson::Document& doc,
-                                        const rapidjson::Document& raw,
-                                        const LoadOptions& options)
+    std::optional<Error>
+    checkSemantics(const rapidjson::Document& doc, const rapidjson::Document& raw, const LoadOptions& options)
     {
         // certificate/key pairs must be EXPLICITLY set together (or not at all). Checked on the raw
         // document: both halves carry non-empty schema defaults, so on the effective document they

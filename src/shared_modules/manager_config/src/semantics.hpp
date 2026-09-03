@@ -26,8 +26,7 @@ namespace manager_config::detail
      *  - when options.checkFiles: every non-empty certificate/key/CA path exists (relative to options.home).
      * All failures are fatal and reported with the JSON pointer of the offending option.
      */
-    std::optional<Error> checkSemantics(const rapidjson::Document& effective,
-                                        const rapidjson::Document& raw,
-                                        const LoadOptions& options);
+    std::optional<Error>
+    checkSemantics(const rapidjson::Document& effective, const rapidjson::Document& raw, const LoadOptions& options);
 
 } // namespace manager_config::detail
