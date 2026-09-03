@@ -127,7 +127,8 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 -Wl,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
-                                -Wl,--wrap,wfopen \
+                                -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow -Wl,--wrap,unlink \
+                                -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,ferror \
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
                                 -Wl,--wrap,w_agentd_populate_metadata \
                                 -Wl,--wrap,startup_gate_release_from_https_apply \

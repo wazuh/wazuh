@@ -19,8 +19,11 @@
 #include "https_client.h"
 #include "task_registry_client.h"
 #include "vd_offset_client.h"
+#include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "sha256_op.h"
 
 /* hc_create/hc_start/hc_destroy mocks (no pre-existing wrapper for this ABI):
@@ -2271,18 +2274,87 @@ static void test_on_remote_upgrade_ready_unsafe_wpk_file_counts_failed(void **st
     w_https_client_stop();
 }
 
-static void test_on_remote_upgrade_ready_stage_copy_failure_counts_failed(void **state)
+/* Staging now always unlinks INCOMING_DIR/<wpk_file> first (#38833: a prior legacy-path upgrade,
+ * delivered by root, can leave a same-named WPK behind that the unprivileged agent process
+ * cannot open for writing), then copies via wfopen(src)/w_fopen_nofollow(dst) instead of
+ * w_copy_file(). ENOENT from that unlink is the common case (no stale file) and is not an error. */
+
+static void test_on_remote_upgrade_ready_unlink_stale_wpk_failure_counts_failed(void **state)
 {
     (void)state;
     start_client_successfully();
 
     expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
     will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_copy_file, src, "/tmp/wpk");
-    expect_string(__wrap_w_copy_file, dst, INCOMING_DIR "/agent.wpk");
-    expect_value(__wrap_w_copy_file, mode, 'b');
-    expect_value(__wrap_w_copy_file, silent, 0);
-    will_return(__wrap_w_copy_file, -1);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, -1);
+    expect_unlink_errno(EACCES); /* Real removal failure, not "nothing to remove". */
+    /* strerror() content is not deterministic here, so only that the failure
+     * path logs and counts it is asserted -- same convention as
+     * test_upgrade_thread_socket_unreachable_counts_failed. */
+    expect_any(__wrap__merror, formatted_msg);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "agent.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_remote_upgrade_ready_stage_source_open_failure_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    /* This is the only group of tests in this file that reaches wfopen()/fclose()/ferror():
+     * those wrappers only mock when test_mode is set (see stdio_wrappers.c/file_op_wrappers.c),
+     * otherwise they fall through to the real libc/wazuh call. Scoped to just these tests so no
+     * other test in this file is affected. */
+    test_mode = 1;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, -1);
+    expect_unlink_errno(ENOENT); /* No stale file to begin with: not an error. */
+    expect_string(__wrap_wfopen, path, "/tmp/wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, NULL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade task t1: could not open downloaded WPK "
+                  "'/tmp/wpk'; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "agent.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+    test_mode = 0;
+}
+
+static void test_on_remote_upgrade_ready_stage_dest_open_failure_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    test_mode = 1; /* See test_on_remote_upgrade_ready_stage_source_open_failure_counts_failed. */
+    FILE *fsrc = (FILE *)1111;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_wfopen, path, "/tmp/wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fsrc);
+    expect_string(__wrap_w_fopen_nofollow, basedir, INCOMING_DIR);
+    expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
+    expect_string(__wrap_w_fopen_nofollow, mode, "wb");
+    will_return(__wrap_w_fopen_nofollow, NULL);
+    errno = EACCES; /* Not a symlink: the generic message applies. */
+    expect_fclose(fsrc, 0);
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: remote_upgrade task t1: could not stage the WPK at '" INCOMING_DIR
                   "/agent.wpk'; aborting.");
@@ -2294,6 +2366,84 @@ static void test_on_remote_upgrade_ready_stage_copy_failure_counts_failed(void *
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
+    test_mode = 0;
+}
+
+/* Mirrors the symlink hardening already applied to the legacy path's WCOM uncompress()
+ * (os_execd/src/wcom.c, #38200): a symlink planted at INCOMING_DIR/<wpk_file> between the
+ * unlink() above and this open must be refused, not followed. */
+static void test_on_remote_upgrade_ready_stage_symlink_rejected_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    test_mode = 1; /* See test_on_remote_upgrade_ready_stage_source_open_failure_counts_failed. */
+    FILE *fsrc = (FILE *)1111;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_wfopen, path, "/tmp/wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fsrc);
+    expect_string(__wrap_w_fopen_nofollow, basedir, INCOMING_DIR);
+    expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
+    expect_string(__wrap_w_fopen_nofollow, mode, "wb");
+    will_return(__wrap_w_fopen_nofollow, NULL);
+    errno = ELOOP;
+    expect_fclose(fsrc, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade task t1: refused to stage the WPK at '"
+                  INCOMING_DIR "/agent.wpk': the path is a symbolic link; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "agent.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+    test_mode = 0;
+}
+
+static void test_on_remote_upgrade_ready_stage_write_failure_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    test_mode = 1; /* See test_on_remote_upgrade_ready_stage_source_open_failure_counts_failed. */
+    FILE *fsrc = (FILE *)1111;
+    FILE *fdst = (FILE *)2222;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_wfopen, path, "/tmp/wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fsrc);
+    expect_string(__wrap_w_fopen_nofollow, basedir, INCOMING_DIR);
+    expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
+    expect_string(__wrap_w_fopen_nofollow, mode, "wb");
+    will_return(__wrap_w_fopen_nofollow, fdst);
+    expect_fread("some-wpk-bytes", 14);
+    will_return(__wrap_fwrite, 0); /* Disk full / write error: short write. */
+    expect_ferror(fsrc, 0);
+    expect_fclose(fsrc, 0);
+    expect_fclose(fdst, 0);
+    expect_string(__wrap_unlink, file, INCOMING_DIR "/agent.wpk");
+    will_return(__wrap_unlink, 0); /* Clean up the partial file left behind. */
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade task t1: could not stage the WPK at '" INCOMING_DIR
+                  "/agent.wpk'; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "agent.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+    test_mode = 0;
 }
 
 /* bridge_upgrade_thread now opens COM_LOCAL_SOCK first (lock_restart) before it ever
@@ -2597,7 +2747,11 @@ int main(void)
         // remote_upgrade
         cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_missing_fields_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_unsafe_wpk_file_counts_failed, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_copy_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_unlink_stale_wpk_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_source_open_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_dest_open_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_symlink_rejected_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_write_failure_counts_failed, setup_test, teardown_test),
         cmocka_unit_test(test_upgrade_thread_socket_unreachable_counts_failed),
         cmocka_unit_test(test_upgrade_thread_module_accepts_counts_dispatched),
         cmocka_unit_test(test_upgrade_thread_lock_restart_connect_failure_still_dispatches),

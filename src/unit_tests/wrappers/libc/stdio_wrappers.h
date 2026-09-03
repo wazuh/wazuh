@@ -18,6 +18,9 @@ extern fpos_t * test_position;
 int __wrap_fclose(FILE *_File);
 void expect_fclose(FILE *_File, int ret);
 
+int __wrap_ferror(FILE *_File);
+void expect_ferror(FILE *_File, int ret);
+
 int __wrap_fflush(FILE *__stream);
 
 char * __wrap_fgets (char * __s, int __n, FILE * __stream);
