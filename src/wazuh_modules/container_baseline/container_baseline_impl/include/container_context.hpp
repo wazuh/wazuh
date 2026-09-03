@@ -68,4 +68,18 @@ struct ContainerContext
 /// for the same container within a baseline run.
 using ContainerContextPtr = std::shared_ptr<const ContainerContext>;
 
+/// @brief The container attribution carried by every baseline row, whatever its
+/// data class.
+///
+/// Every row type repeated these two fields verbatim, which meant one
+/// ApplyIdentity() overload per row type — twelve functions with byte-identical
+/// bodies. Sharing the fields collapses that to a single overload, and makes
+/// "a baseline row is attributed to a container" a property of the type system
+/// rather than a convention twelve structs happen to follow.
+struct ContainerScoped
+{
+    std::string         container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
+};
+
 } // namespace wazuh::container_baseline

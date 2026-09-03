@@ -13,7 +13,7 @@ namespace wazuh::container_baseline {
 /// @brief One process baseline row. Field names mirror syscollector's
 /// PROCESSES_SQL_STATEMENT (dbsync_processes) column-for-column, plus the same
 /// container-context fields used throughout this module.
-struct ProcessBaselineRow
+struct ProcessBaselineRow : ContainerScoped
 {
     std::string pid;
     std::string name;
@@ -25,9 +25,6 @@ struct ProcessBaselineRow
     std::string args;         ///< Remaining argv, space-joined (argv[0] is command_line).
     int64_t     args_count{0};
     std::string start;        ///< Process start time as a Unix epoch-seconds string.
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Build one baseline row per PID from /proc/<pid>/{stat,cmdline}.

@@ -18,7 +18,7 @@ namespace wazuh::container_baseline {
 /// syscheck-config.h) so this struct maps 1:1 onto the shape FIM already syncs
 /// for host files — the only genuinely new fields are the container-context
 /// ones, which mirror the container fields already present on `whodata_evt`.
-struct FileBaselineRow
+struct FileBaselineRow : ContainerScoped
 {
     std::string path;          ///< Logical in-container path (e.g. "/etc/passwd").
     std::string permissions;   ///< Octal mode string, e.g. "0644".
@@ -34,10 +34,6 @@ struct FileBaselineRow
     std::string hash_md5;      ///< Empty for symlinks, unreadable files, and files over the size cap.
     std::string hash_sha1;
     std::string hash_sha256;
-
-    // Container context, resolved once per container and shared across rows.
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Outcome of a walk, including what NFR3-style truncation happened.

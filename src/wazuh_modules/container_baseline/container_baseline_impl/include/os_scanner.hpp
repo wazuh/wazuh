@@ -18,7 +18,7 @@ namespace wazuh::container_baseline {
 /// what vulnerability detection needs to correlate the container's package rows
 /// against the right feed. `kernel` is the host's — containers share it — and
 /// is stamped from uname(2) so the row is self-contained for OS+kernel matching.
-struct OsBaselineRow
+struct OsBaselineRow : ContainerScoped
 {
     std::string name;      ///< NAME= ("Debian GNU/Linux").
     std::string full;      ///< PRETTY_NAME= ("Debian GNU/Linux 12 (bookworm)").
@@ -27,9 +27,6 @@ struct OsBaselineRow
     std::string platform;  ///< ID= ("debian").
     std::string family;    ///< ID_LIKE= first token ("debian" on ubuntu).
     std::string kernel;    ///< Host kernel release (shared with the container).
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Parse one os-release(5) "KEY=value" line. Values may be bare or

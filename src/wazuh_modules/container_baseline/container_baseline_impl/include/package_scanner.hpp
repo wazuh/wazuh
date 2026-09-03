@@ -16,7 +16,7 @@ namespace wazuh::container_baseline {
 /// emit (data_provider/src/packages/*.h) — those two helpers are reused
 /// verbatim, so this struct is just their common key set plus container
 /// context. `format` is "deb", "rpm" or "apk".
-struct PackageBaselineRow
+struct PackageBaselineRow : ContainerScoped
 {
     std::string name;
     std::string version;
@@ -28,9 +28,6 @@ struct PackageBaselineRow
     std::string category;
     std::string source;
     std::string format;
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Which package database(s) a rootfs carries. A normal image has

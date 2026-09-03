@@ -18,7 +18,7 @@ namespace wazuh::container_baseline {
 /// ExecStart binary, and enablement (from *.wants symlinks). `state` (running vs
 /// stopped) is left "unknown" — it needs the container's own systemd D-Bus,
 /// which only systemd-init images expose.
-struct ServiceBaselineRow
+struct ServiceBaselineRow : ContainerScoped
 {
     std::string name;        ///< Unit name without the ".service" suffix.
     std::string description; ///< [Unit] Description=.
@@ -27,9 +27,6 @@ struct ServiceBaselineRow
     std::string type;        ///< "systemd".
     std::string executable;  ///< [Service] ExecStart= binary (argv[0], exec prefixes stripped).
     std::string file_path;   ///< Unit file path as seen inside the container.
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Pull Description= and the ExecStart= binary (argv[0], with systemd's

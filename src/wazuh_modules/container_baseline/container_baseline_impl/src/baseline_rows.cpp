@@ -4,76 +4,10 @@
 
 namespace wazuh::container_baseline {
 
-void ApplyIdentity(FileBaselineRow& row, const ContainerIdentity& id)
+void ApplyIdentity(ContainerScoped& row, const ContainerIdentity& id)
 {
     row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(ProcessBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(PortBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(UserBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(GroupBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(ProtocolBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(ServiceBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
-}
-
-void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id)
-{
-    row.container_id = id.container_id;
-    row.container     = id.context;
+    row.container    = id.context;
 }
 
 namespace {

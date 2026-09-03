@@ -28,18 +28,12 @@ struct ContainerIdentity
     ContainerContextPtr context;
 };
 
-void ApplyIdentity(FileBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(ProcessBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(PortBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(UserBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(GroupBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(ProtocolBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(ServiceBaselineRow& row, const ContainerIdentity& id);
-void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id);
+/// @brief Stamp a container's identity onto any baseline row.
+///
+/// One overload covers every data class because the rows share a
+/// ContainerScoped base; there were previously twelve of these with identical
+/// bodies, one per row type.
+void ApplyIdentity(ContainerScoped& row, const ContainerIdentity& id);
 
 /// @brief Build the sync-protocol payload for one FIM file baseline row.
 ///
