@@ -204,10 +204,17 @@ class EXPORTED Syscollector final
         // alert decision — used to keep a container's first-ever sync quiet
         // (like today's one-shot baseline) even once later intervals have
         // already flipped m_notify to true for everything else.
+        // detectDeletions must be false when `values` is known to be an
+        // INCOMPLETE view of the scope (a container whose baseline scan was
+        // capped, or whose namespace could not be read): the scoped
+        // transaction would otherwise report every row the partial scan did
+        // not refresh as DELETED, turning a truncated scan into a flood of
+        // false deletions.
         void updateChanges(const std::string& table,
                            const nlohmann::json& values,
                            const std::string& containerId = "",
-                           std::optional<bool> notifyOverride = std::nullopt);
+                           std::optional<bool> notifyOverride = std::nullopt,
+                           bool detectDeletions = true);
         void notifyChange(ReturnTypeCallback result,
                           const nlohmann::json& data,
                           const std::string& table,

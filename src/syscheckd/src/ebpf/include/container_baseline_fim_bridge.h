@@ -30,8 +30,29 @@ void fim_free_container_monitored_paths(cb_monitored_path_t* paths);
 int fim_container_baseline_available(const char* socket_path);
 
 /* Logs the outcome of a container FIM baseline run: how many containers were
- * actually baselined (see cbaseline_run_fim()'s return value contract). */
-void fim_report_container_baseline_result(int baselined);
+ * actually baselined (see cbaseline_run_fim_dbsync()'s return value contract),
+ * plus how much of it was usable. */
+void fim_report_container_baseline_result(int baselined,
+                                          size_t rows,
+                                          size_t partial,
+                                          size_t stale,
+                                          size_t known);
+
+/* Logging shims. The C++ driver deliberately does not include shared.h (whose
+ * macros clash with the C++ headers it needs), so it routes its messages
+ * through these. */
+void fim_container_baseline_log_debug(const char* message);
+void fim_container_baseline_log_error(const char* message);
+
+/* Rate-limit hook handed to the baseline walker as its cb_rate_limit_fn:
+ * applies FIM's own files-per-second budget (check_max_fps, driven by
+ * syscheck.max_files_per_second). Its token bucket is process-global, so the
+ * container walk shares one budget with the host walk.
+ *
+ * This is a shim rather than passing check_max_fps directly because
+ * syscheck.h carries no extern "C" guards, so a C++ translation unit that
+ * included it would take the symbol with C++ linkage and fail to link. */
+void fim_container_baseline_rate_limit(void);
 
 void fim_persist_baseline_row(const char* id,
                               int operation,

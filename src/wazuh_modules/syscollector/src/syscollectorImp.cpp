@@ -387,7 +387,8 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 void Syscollector::updateChanges(const std::string& table,
                                  const nlohmann::json& values,
                                  const std::string& containerId,
-                                 std::optional<bool> notifyOverride)
+                                 std::optional<bool> notifyOverride,
+                                 bool detectDeletions)
 {
     const bool notify = notifyOverride.has_value() ? *notifyOverride : m_notify;
     const auto callback
@@ -439,11 +440,24 @@ void Syscollector::updateChanges(const std::string& table,
         {
             input["options"]["ignore"] = NET_IFACE_IGNORED_FIELDS;
         }
+        else if (table == PROCESSES_TABLE)
+        {
+            // The host processes scan applies this list on its own streaming
+            // transaction; container rows arrive through here instead, so
+            // without this branch every container process whose CPU time moved
+            // between scans produced a MODIFIED event carrying only
+            // utime/stime — by row count the largest source of churn in a
+            // multi-container baseline.
+            input["options"]["ignore"] = PROCESSES_IGNORED_FIELDS;
+        }
 
         txn.syncTxnRow(input);
     }
 
-    txn.getDeletedRows(callback);
+    if (detectDeletions)
+    {
+        txn.getDeletedRows(callback);
+    }
 }
 
 Syscollector::Syscollector()
@@ -2014,43 +2028,215 @@ void Syscollector::scanContainerBaseline()
 #if defined(__linux__)
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
 
-    // container_id -> table -> array of dbsync-format rows.
-    using BaselineRows = std::map<std::string, std::map<std::string, nlohmann::json>>;
-    BaselineRows baseline;
+    // Rows for one container arrive contiguously and are followed by that
+    // container's status callback, so a container can be flushed to the DB as
+    // soon as its status arrives. Peak memory is therefore ONE container's
+    // rows rather than the whole node's — previously every row of every table
+    // of every container was held as parsed nlohmann::json before the first
+    // write, which on a large node is hundreds of MB.
+    struct Accumulator
+    {
+        Syscollector* self{nullptr};
+        // table -> rows, for the container currently being received.
+        std::map<std::string, nlohmann::json> tables;
+        std::string current;
+        std::size_t rowCount{0};
+        std::size_t partialContainers{0};
+        std::size_t hostNetnsContainers{0};
+        std::size_t unreadableNetnsContainers{0};
+
+        // Why a data class can legitimately have produced no rows, which is
+        // never the same fact as "the state was removed".
+        struct Absence
+        {
+            bool partial{false};          // scan truncated / path missing
+            bool netnsHostScoped{false};  // shares the host netns; rows are the node's, not the container's
+            bool netnsUnreadable{false};  // could not enter the netns (CAP_SYS_ADMIN)
+        };
+
+        // Delete detection must be suppressed for exactly the tables whose rows
+        // were not collected, and no others. Suppressing all eleven whenever
+        // anything was missing would mean that on a host without CAP_SYS_ADMIN
+        // no container row could ever be deleted, so stale state would
+        // accumulate indefinitely.
+        static bool detectDeletionsFor(const std::string& table, const Absence& absence)
+        {
+            if (absence.partial)
+            {
+                return false;
+            }
+
+            const bool isNetnsScoped = (table == PORTS_TABLE || table == NET_IFACE_TABLE ||
+                                        table == NET_ADDRESS_TABLE || table == NET_PROTOCOL_TABLE);
+
+            if (absence.netnsHostScoped && isNetnsScoped)
+            {
+                return false;
+            }
+
+            const bool isInterfaceTable = (table == NET_IFACE_TABLE || table == NET_ADDRESS_TABLE);
+
+            if (absence.netnsUnreadable && isInterfaceTable)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        void flush(const Absence& absence)
+        {
+            if (current.empty())
+            {
+                return;
+            }
+
+            // A container's very first sync is forced quiet (no stateless
+            // alert), matching the original one-shot baseline's seed
+            // behaviour; every sync after that follows m_notify normally.
+            const bool isFirstSync = self->m_knownContainerIds.insert(current).second;
+            const std::optional<bool> notifyOverride =
+                isFirstSync ? std::optional<bool> {false} : std::nullopt;
+
+            for (const auto& table : CONTAINER_BASELINE_TABLES)
+            {
+                auto it = tables.find(table);
+                nlohmann::json tableRows =
+                    (it != tables.end()) ? std::move(it->second) : nlohmann::json::array();
+
+                for (auto& row : tableRows)
+                {
+                    sanitizeJsonValue(row);
+                    row["checksum"] = getItemChecksum(row);
+                }
+
+                self->updateChanges(table, tableRows, current, notifyOverride,
+                                    detectDeletionsFor(table, absence));
+            }
+
+            tables.clear();
+            current.clear();
+        }
+
+        void onRow(const char* containerId, const char* table, const char* rowJson)
+        {
+            if (!containerId || !table || !rowJson)
+            {
+                return;
+            }
+
+            if (current != containerId)
+            {
+                // Defensive: the scanner reports a status per container, so this
+                // only fires if a container produced rows without a status.
+                flush(Absence {});
+                current = containerId;
+            }
+
+            auto row = nlohmann::json::parse(rowJson, nullptr, false);
+
+            if (row.is_discarded() || !row.is_object())
+            {
+                return;
+            }
+
+            auto& tableRows = tables[table];
+
+            if (!tableRows.is_array())
+            {
+                tableRows = nlohmann::json::array();
+            }
+
+            tableRows.push_back(std::move(row));
+            ++rowCount;
+        }
+
+        void onStatus(const char* containerId, bool partial, bool hostNetns, bool unreadableNetns)
+        {
+            if (!containerId)
+            {
+                return;
+            }
+
+            if (current != containerId)
+            {
+                flush(Absence {});
+                current = containerId;
+            }
+
+            Absence absence;
+            absence.partial = partial;
+            absence.netnsHostScoped = hostNetns;
+            absence.netnsUnreadable = unreadableNetns;
+
+            if (partial)
+            {
+                ++partialContainers;
+            }
+
+            if (hostNetns)
+            {
+                ++hostNetnsContainers;
+            }
+
+            if (unreadableNetns)
+            {
+                ++unreadableNetnsContainers;
+            }
+
+            flush(absence);
+        }
+    };
+
+    Accumulator acc;
+    acc.self = this;
 
     const auto sink = [](const char* containerId, const char* table, const char* rowJson, void* userData)
     {
-        auto* acc = static_cast<BaselineRows*>(userData);
-
-        if (!acc || !containerId || !table || !rowJson)
+        if (auto* a = static_cast<Accumulator*>(userData))
         {
-            return;
+            a->onRow(containerId, table, rowJson);
         }
-
-        auto row = nlohmann::json::parse(rowJson, nullptr, false);
-
-        if (row.is_discarded() || !row.is_object())
-        {
-            return;
-        }
-
-        auto& rows = (*acc)[containerId][table];
-
-        if (!rows.is_array())
-        {
-            rows = nlohmann::json::array();
-        }
-
-        rows.push_back(std::move(row));
     };
 
-    const int baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, &baseline);
+    const auto statusSink = [](const char* containerId,
+                               int partial,
+                               int netnsHostScoped,
+                               int netnsUnreadable,
+                               void* userData)
+    {
+        if (auto* a = static_cast<Accumulator*>(userData))
+        {
+            a->onStatus(containerId, partial != 0, netnsHostScoped != 0, netnsUnreadable != 0);
+        }
+    };
+
+    const int baselined =
+        cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, statusSink, &acc);
+
+    acc.flush(Accumulator::Absence {}); // defensive: nothing should remain pending
+
+    if (acc.unreadableNetnsContainers > 0)
+    {
+        m_logFunction(LOG_DEBUG,
+                      "Container baseline: could not enter the network namespace of " +
+                      std::to_string(acc.unreadableNetnsContainers) +
+                      " container(s) (CAP_SYS_ADMIN missing?); their interface and address rows are absent.");
+    }
+
+    if (acc.hostNetnsContainers > 0)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                      std::to_string(acc.hostNetnsContainers) +
+                      " container(s) share the host network namespace; no container-scoped network rows "
+                      "were attributed to them.");
+    }
 
     // Every container currently known to container_instances, independent of
     // whether it has a resolvable live PID right now. A container that's
     // merely stopped is still reported here even though it produced no rows
-    // above (absent from `baseline`) — this is what lets the stale sweep
-    // below tell "stopped" apart from "gone" instead of conflating them.
+    // above — this is what lets the stale sweep below tell "stopped" apart
+    // from "gone" instead of conflating them.
     std::set<std::string> discoveredIds;
     const auto idSink = [](const char* containerId, void* userData)
     {
@@ -2062,34 +2248,6 @@ void Syscollector::scanContainerBaseline()
         }
     };
     cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
-
-    // Per-container scoped transactions: the same updateChanges/notifyChange/
-    // processEvent path host scans use computes the deltas (Option A). Every
-    // baseline table is synced even when a container produced no rows for it,
-    // so rows from a previous run age out as DELETED. A container's very
-    // first sync is forced quiet (no stateless alert) regardless of m_notify,
-    // matching the one-shot baseline's original seed behavior; every sync
-    // after that follows m_notify normally, same as host rows.
-    for (auto& [containerId, tables] : baseline)
-    {
-        const bool isFirstSyncForContainer = m_knownContainerIds.insert(containerId).second;
-        const std::optional<bool> notifyOverride =
-            isFirstSyncForContainer ? std::optional<bool> {false} : std::nullopt;
-
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
-        {
-            auto it = tables.find(table);
-            nlohmann::json rows = (it != tables.end()) ? std::move(it->second) : nlohmann::json::array();
-
-            for (auto& row : rows)
-            {
-                sanitizeJsonValue(row);
-                row["checksum"] = getItemChecksum(row);
-            }
-
-            updateChanges(table, rows, containerId, notifyOverride);
-        }
-    }
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
@@ -2115,10 +2273,13 @@ void Syscollector::scanContainerBaseline()
             }
         };
 
+        // DISTINCT so the engine returns at most one row per container instead
+        // of one row per stored inventory row.
         auto selectQuery = SelectQuery::builder()
                            .table(table)
                            .columnList({CONTAINER_ID_COLUMN})
                            .rowFilter("WHERE container_id != ''")
+                           .distinctOpt(true)
                            .build();
         m_spDBSync->selectRows(selectQuery.query(), selectCallback);
     }
@@ -2135,6 +2296,8 @@ void Syscollector::scanContainerBaseline()
 
     m_logFunction(LOG_DEBUG_VERBOSE,
                   "Container baseline scan finished (" + std::to_string(baselined) + " container(s), " +
+                  std::to_string(acc.rowCount) + " row(s), " +
+                  std::to_string(acc.partialContainers) + " partial scan(s), " +
                   std::to_string(staleIds.size()) + " stale container(s) cleaned).");
 #else
     // Container baseline acquisition (#37532) only runs on Linux - the same

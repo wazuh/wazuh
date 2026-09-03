@@ -1,5 +1,7 @@
 #pragma once
 
+#include "hash_helper.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -7,54 +9,19 @@
 
 namespace wazuh::container_baseline {
 
-/// @brief One row emitted to the sync-protocol layer. `operation` matches the
-/// sync_protocol Operation_t values (0 = CREATE) but is passed as a plain int
-/// so this header has no dependency on agent_sync_protocol_c_interface_types.h —
-/// callers translate to their own Operation_t/Operation enum at the call site.
-struct EmittedRow
-{
-    std::string id;
-    int         operation{0}; // OPERATION_CREATE
-    std::string index;
-    std::string json;
-    uint64_t    version{1};
-};
-
-using RowSink = std::function<void(const EmittedRow&)>;
-
-/// @brief A single `<directories type="kubernetes">`-style entry: an in-container
+/// @brief A single `<directories tags="container">`-style entry: an in-container
 /// path to walk, independent of any one syscheck.h type so this module has no
 /// compile-time dependency on syscheckd's config headers. The FIM call site
-/// (src/syscheckd/src/container_baseline_fim.c) is responsible for translating
-/// syscheck.k8s_directories (k8s_monitored_path_t) into a vector of these.
+/// (src/syscheckd/src/ebpf/src/container_baseline_fim_bridge.c) is responsible
+/// for translating syscheck.directories into a vector of these.
 struct MonitoredPath
 {
-    std::string internal_path;
-    int         recursion_level{-1};
-    size_t      max_files{20000};      // NFR3-style hard cap; see rootfs_file_walker.hpp.
-    size_t      max_hash_bytes{104857600}; // 100 MiB per file, mirrors FIM's own diff-size-limit spirit.
+    std::string   internal_path;
+    int           recursion_level{-1};
+    size_t        max_files{20000};      // NFR3-style hard cap; see rootfs_file_walker.hpp.
+    size_t        max_hash_bytes{104857600}; // Files LARGER than this are not hashed at all.
+    HashSelection hashes{};              // Which digests to compute (default: all three).
 };
-
-/// @brief Run the FIM file baseline for every container currently known to the
-/// container_instances, over every configured MonitoredPath, and hand each
-/// resulting row to `sink`.
-///
-/// @param connector_socket_path Unix socket path of the container_instances IPC
-///                                server (see container_instances_client.hpp).
-/// @param paths Monitored in-container paths (translated from syscheck.k8s_directories).
-/// @param sink Callback invoked once per file row; the caller (syscheckd) is
-///             responsible for actually persisting it via its own sync_handle.
-/// @return Number of containers that were baselined (i.e. had at least one live
-///         PID resolvable); containers with cgroup_id but no live PID are
-///         skipped and logged by the caller via the returned count mismatch.
-int RunFimBaseline(const std::string&          connector_socket_path,
-                    const std::vector<MonitoredPath>& paths,
-                    const RowSink&               sink);
-
-/// @brief Run the Syscollector process+network baseline for every container
-/// currently known to container_instances, and hand each resulting row to
-/// `sink`. See baseline_rows.hpp for the draft-schema caveat on the JSON shape.
-int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowSink& sink);
 
 /// @brief One baseline row rendered in syscollector's dbsync_* column format
 /// (Option A: baseline through the host event flow). `json` is a flat object of
@@ -72,21 +39,73 @@ struct DbsyncRow
 
 using DbsyncRowSink = std::function<void(const DbsyncRow&)>;
 
-/// @brief Same scan coverage as RunFimBaseline() but emitting raw file_entry
-/// dbsync rows (BuildFimFileDbsyncRow + checksum) instead of pre-shaped
-/// sync-protocol payloads. The consumer (syscheckd container_baseline_fim.cpp)
-/// groups rows per container and pushes them through per-container scoped
-/// fim_db_transaction_start transactions so the existing transaction_callback
-/// pipeline emits the deltas.
-/// @return Number of containers baselined (same semantics as RunFimBaseline).
+/// @brief Per-container outcome, reported after all of that container's rows
+/// have been emitted.
+///
+/// This exists because "produced no row for X" and "X is gone" are different
+/// facts, and conflating them makes a baseline emit false deletions. A scan
+/// that was capped, whose configured path is absent from the image, or whose
+/// namespace could not be entered, has produced a SUBSET of the container's
+/// true state — so the consumer must upsert what it received without treating
+/// the remainder as deleted.
+struct ContainerStatus
+{
+    std::string container_id;
+
+    /// The scan is known to be incomplete: a row cap was hit, a configured
+    /// path was missing, or a namespace could not be read. Consumers MUST NOT
+    /// derive deletions from absent rows for this container.
+    bool partial{false};
+
+    /// The container shares the host's network namespace, so no
+    /// network-namespace-scoped rows (ports, interfaces, addresses, routes)
+    /// were attributed to it. Not a failure — the rows genuinely are not the
+    /// container's — but the consumer must not read their absence as deletion
+    /// either.
+    bool netns_host_scoped{false};
+
+    /// The container's network namespace could not be entered (typically a
+    /// missing CAP_SYS_ADMIN). Worth logging: interface/address rows are absent
+    /// for an environmental reason, not because the container has none.
+    bool netns_unreadable{false};
+};
+
+using ContainerStatusSink = std::function<void(const ContainerStatus&)>;
+
+/// @brief Run the FIM file baseline for every container currently known to
+/// container_instances, over every configured MonitoredPath, emitting raw
+/// file_entry dbsync rows.
+///
+/// The consumer (syscheckd's container_baseline_fim.cpp) groups rows per
+/// container, opens a per-container scoped fim_db_transaction_start, and lets
+/// the existing transaction_callback compute deltas and emit events.
+///
+/// @param connector_socket_path Unix socket path of the container_instances IPC
+///                              server (see container_instances_client.hpp).
+/// @param paths Monitored in-container paths.
+/// @param sink Invoked once per row.
+/// @param status_sink Optional; invoked once per scanned container with its
+///                    completeness. Pass an empty function to ignore.
+/// @param rate_limit Optional; invoked once per file before it is hashed so the
+///                   caller can throttle (FIM passes check_max_fps()). This is
+///                   the NFR3 files-per-second bound; empty means no limit.
+/// @return Number of containers that were baselined (i.e. had at least one live
+///         PID resolvable). Containers known to the connector but with no live
+///         PID are skipped and NOT counted — compare against ListContainers()
+///         to tell "stopped" apart from "gone".
 int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
                           const std::vector<MonitoredPath>& paths,
-                          const DbsyncRowSink&              sink);
+                          const DbsyncRowSink&              sink,
+                          const ContainerStatusSink&        status_sink = {},
+                          const std::function<void()>&      rate_limit = {});
 
-/// @brief Same scan coverage as RunSyscollectorBaseline() but emitting raw
-/// dbsync rows (Build*DbsyncRow) instead of pre-shaped sync-protocol payloads.
-/// @return Number of containers baselined (same semantics as RunFimBaseline).
-int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, const DbsyncRowSink& sink);
+/// @brief Run the Syscollector inventory baseline (processes, ports, users,
+/// groups, packages, os, interfaces, addresses, routes, services, hardware) for
+/// every container currently known to container_instances, emitting raw dbsync
+/// rows. Same return semantics as RunFimDbsyncBaseline().
+int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
+                                  const DbsyncRowSink&       sink,
+                                  const ContainerStatusSink& status_sink = {});
 
 using ContainerIdSink = std::function<void(const std::string&)>;
 

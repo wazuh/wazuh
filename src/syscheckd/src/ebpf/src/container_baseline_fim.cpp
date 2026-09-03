@@ -8,18 +8,25 @@
  *
  * Option A: container FIM baseline through the host event flow (spike #37532).
  *
- * For each discovered container:
- *  1. Collect raw file_entry dbsync rows via cbaseline_run_fim_dbsync.
- *  2. Stamp a deterministic checksum (SHA1 of the row dump) onto each row.
- *  3. Open a per-container scoped fim_db_transaction_start so change detection
- *     is isolated to that container's rows (container_id = <id>).
- *  4. Sync every row via fim_db_transaction_sync_row_json — DBSync computes
- *     INSERTED/MODIFIED/DELETED and fires container_txn_callback.
- *  5. container_txn_callback calls fim_persist_baseline_row which normalises
- *     the flat dbsync row to the stateful ECS schema and persists it.
- *  6. After all active containers are processed, clean up stale containers
- *     (present in DB but absent from the current baseline) by running an empty
- *     scoped txn which marks and emits DELETED events for all their rows.
+ * Rows are STREAMED into a per-container scoped DBSync transaction as they
+ * arrive, rather than buffering the whole node's baseline in memory first: the
+ * scanner emits a container's rows contiguously and then reports that
+ * container's completeness, so the status callback is a natural container
+ * boundary. Peak memory is therefore one row, not one node.
+ *
+ * Per container:
+ *  1. First row opens a scoped fim_db_transaction_start (container_id = <id>),
+ *     isolating change detection to that container's rows.
+ *  2. Each row is checksummed and pushed with fim_db_transaction_sync_row_json.
+ *  3. On the container's status callback the transaction is finalised:
+ *       - complete scan -> fim_db_transaction_deleted_rows(), so rows that no
+ *         longer exist become DELETED events;
+ *       - INCOMPLETE scan -> plain close, deliberately skipping delete
+ *         detection, because a capped/partial walk produced only a SUBSET of
+ *         the container's files and absence must not be read as removal.
+ *  4. After all containers, containers still in the DB but no longer KNOWN to
+ *     container_instances (as opposed to merely stopped) have their rows aged
+ *     out as DELETED.
  */
 
 #include "container_baseline_fim.h"
@@ -28,14 +35,34 @@
 #include "db.h"
 #include "fimCommonDefs.h"
 
+#include "commonDefs.h"
+
 #include <json.hpp>
 
-#include <map>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
 #include <set>
 #include <string>
-#include <vector>
 
 namespace {
+
+/// printf-style wrapper over the bridge's logging shims.
+template <typename... Args>
+void LogDebug(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_debug(buffer);
+}
+
+template <typename... Args>
+void LogError(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_error(buffer);
+}
 
 struct ContainerTxnCtx {
     std::string container_id;
@@ -48,20 +75,24 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
     auto* ctx = static_cast<ContainerTxnCtx*>(user_data);
 
     const cJSON* row_data = result_json;
-    int op;
+    Operation_t op;
 
     switch (result_type) {
         case INSERTED:
-            op = 0; // OPERATION_CREATE
+            op = OPERATION_CREATE;
             break;
         case MODIFIED:
             row_data = cJSON_GetObjectItem(result_json, "new");
             if (!row_data) return;
-            op = 1; // OPERATION_MODIFY
+            op = OPERATION_MODIFY;
             break;
         case DELETED:
-            op = 2; // OPERATION_DELETE
+            op = OPERATION_DELETE;
             break;
+        case DB_ERROR:
+            LogDebug("Container FIM baseline: DBSync reported an error for container '%s'.",
+                    ctx->container_id.c_str());
+            return;
         default:
             return;
     }
@@ -78,52 +109,240 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 
     char* row_str = cJSON_PrintUnformatted(row_data);
     if (!row_str) return;
-    fim_persist_baseline_row(id.c_str(), op, "wazuh-states-fim-files", row_str, version);
+    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
     free(row_str);
 }
 
-// Wrapper passed as user_data for cbaseline_run_fim_dbsync.
-struct DbsyncSinkCtx {
-    std::map<std::string, std::vector<std::string>>* container_rows;
+/// Owns one container's scoped transaction for its lifetime.
+///
+/// The handle must be closed exactly once on every path, including an
+/// exception: fim_db_transaction_deleted_rows() is what closes it in the happy
+/// case, so a throw between start and that call previously leaked the handle
+/// (there was no RAII and no catch anywhere in this file, so the exception also
+/// escaped into syscheckd's main()).
+class ScopedContainerTxn {
+    public:
+        explicit ScopedContainerTxn(const std::string& container_id)
+            : m_ctx{container_id}
+        {
+            nlohmann::json txn_json;
+            txn_json["tables"] = nlohmann::json::array({"file_entry"});
+            txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
+                                  {"value",  container_id}};
+            const std::string txn_str = txn_json.dump();
+
+            m_txn = fim_db_transaction_start(txn_str.c_str(), container_txn_callback, &m_ctx);
+
+            if (!m_txn) {
+                LogDebug("Container FIM baseline: could not start a transaction for container '%s'.",
+                        container_id.c_str());
+            }
+        }
+
+        ~ScopedContainerTxn()
+        {
+            // Only reached if finish() was not called (i.e. an exception unwound
+            // past it); close without delete detection so a half-finished scan
+            // cannot delete rows.
+            if (m_txn) {
+                fim_db_transaction_close(m_txn);
+                m_txn = nullptr;
+            }
+        }
+
+        ScopedContainerTxn(const ScopedContainerTxn&) = delete;
+        ScopedContainerTxn& operator=(const ScopedContainerTxn&) = delete;
+
+        [[nodiscard]] bool valid() const { return m_txn != nullptr; }
+
+        void syncRow(const std::string& row_json)
+        {
+            if (!m_txn) return;
+
+            if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
+                LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
+                        m_ctx.container_id.c_str());
+            }
+        }
+
+        /// @param detect_deletions false for an incomplete scan: the rows this
+        ///        transaction did NOT refresh are missing because the walk was
+        ///        capped or a path was absent, not because the files are gone.
+        void finish(bool detect_deletions)
+        {
+            if (!m_txn) return;
+
+            if (detect_deletions) {
+                if (fim_db_transaction_deleted_rows(m_txn, container_txn_callback, &m_ctx) != FIMDB_OK) {
+                    LogDebug("Container FIM baseline: delete detection failed for container '%s'.",
+                            m_ctx.container_id.c_str());
+                }
+            } else {
+                fim_db_transaction_close(m_txn);
+            }
+
+            m_txn = nullptr; // closed either way
+        }
+
+    private:
+        ContainerTxnCtx m_ctx;
+        TXN_HANDLE      m_txn{nullptr};
 };
 
-void dbsync_sink(const char* container_id, const char* /*table*/,
-                 const char* row_json, void* user_data)
+/// Streams the baseline into per-container transactions.
+class BaselineDriver {
+    public:
+        void onRow(const char* container_id, const char* row_json)
+        {
+            if (!container_id || !row_json) return;
+
+            beginContainer(container_id);
+            if (!m_txn || !m_txn->valid()) return;
+
+            auto row = nlohmann::json::parse(row_json, nullptr, false);
+            if (row.is_discarded()) {
+                LogDebug("Container FIM baseline: discarded a malformed row for container '%s'.",
+                        container_id);
+                ++m_malformed_rows;
+                return;
+            }
+
+            // Stable checksum so DBSync can detect row-level changes between runs.
+            const std::string dump = row.dump();
+            char sha1[41] = {0};
+            fim_compute_row_checksum(dump.c_str(), sha1);
+            row["checksum"] = std::string(sha1);
+
+            m_txn->syncRow(row.dump());
+            ++m_rows;
+        }
+
+        void onStatus(const char* container_id, bool partial)
+        {
+            if (!container_id) return;
+
+            const std::string id{container_id};
+            m_scanned.insert(id);
+
+            // A complete scan that produced no rows still needs a transaction,
+            // so previously-stored rows for this container age out as DELETED.
+            beginContainer(id);
+
+            if (partial) {
+                LogDebug("Container FIM baseline: incomplete scan for container '%s' "
+                        "(row cap reached, path absent, or namespace unreadable); "
+                        "skipping delete detection to avoid false FIM deletions.",
+                        container_id);
+                ++m_partial;
+            }
+
+            finishCurrent(!partial);
+        }
+
+        /// Containers still holding rows in the DB but no longer known to
+        /// container_instances at all. A container that is merely STOPPED is
+        /// still known and must be left alone — its rows are the state to
+        /// resume diffing against when it restarts.
+        void sweepStale(const std::set<std::string>& known)
+        {
+            finishCurrent(true);
+
+            cJSON* db_ids = fim_db_get_distinct_container_ids("file_entry");
+            if (!db_ids) {
+                LogDebug("Container FIM baseline: could not read container ids from the database; "
+                        "skipping the stale-container sweep.");
+                return;
+            }
+
+            std::set<std::string> stale;
+
+            if (cJSON_IsArray(db_ids)) {
+                cJSON* item = nullptr;
+                cJSON_ArrayForEach(item, db_ids) {
+                    if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
+
+                    const std::string id{item->valuestring};
+                    if (known.find(id) == known.end()) {
+                        stale.insert(id);
+                    }
+                }
+            }
+            cJSON_Delete(db_ids);
+
+            for (const auto& id : stale) {
+                LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
+                        id.c_str());
+                ScopedContainerTxn txn{id};
+                txn.finish(true); // no rows synced -> every stored row becomes DELETED
+            }
+
+            m_stale = stale.size();
+        }
+
+        [[nodiscard]] size_t rows() const { return m_rows; }
+        [[nodiscard]] size_t scanned() const { return m_scanned.size(); }
+        [[nodiscard]] size_t partial() const { return m_partial; }
+        [[nodiscard]] size_t stale() const { return m_stale; }
+        [[nodiscard]] size_t malformedRows() const { return m_malformed_rows; }
+
+    private:
+        void beginContainer(const std::string& container_id)
+        {
+            if (m_txn && m_current == container_id) return;
+
+            // The scanner emits a container's rows contiguously, so a different
+            // id means the previous container is done.
+            finishCurrent(true);
+
+            m_current = container_id;
+            m_txn     = std::make_unique<ScopedContainerTxn>(container_id);
+        }
+
+        void finishCurrent(bool detect_deletions)
+        {
+            if (!m_txn) return;
+
+            m_txn->finish(detect_deletions);
+            m_txn.reset();
+            m_current.clear();
+        }
+
+        std::unique_ptr<ScopedContainerTxn> m_txn;
+        std::string                          m_current;
+        std::set<std::string>                m_scanned;
+        size_t                               m_rows{0};
+        size_t                               m_partial{0};
+        size_t                               m_stale{0};
+        size_t                               m_malformed_rows{0};
+};
+
+void dbsync_sink(const char* container_id, const char* /*table*/, const char* row_json, void* user_data)
 {
-    if (!container_id || !row_json || !user_data) return;
-    auto* sink_ctx = static_cast<DbsyncSinkCtx*>(user_data);
-
-    auto row = nlohmann::json::parse(row_json, nullptr, false);
-    if (row.is_discarded()) return;
-
-    // Compute a stable checksum so DBSync can detect row-level changes between runs.
-    const std::string dump = row.dump();
-    char sha1[41] = {0};
-    fim_compute_row_checksum(dump.c_str(), sha1);
-    row["checksum"] = std::string(sha1);
-
-    (*sink_ctx->container_rows)[container_id].push_back(row.dump());
+    if (!user_data) return;
+    static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
 }
 
-// Open a scoped txn for `container_id`, sync all `rows`, process deletions.
-void sync_container(const std::string& container_id,
-                    const std::vector<std::string>& rows)
+void status_sink(const char* container_id,
+                 int         partial,
+                 int         netns_host_scoped,
+                 int         netns_unreadable,
+                 void*       user_data)
 {
-    nlohmann::json txn_json;
-    txn_json["tables"] = nlohmann::json::array({"file_entry"});
-    txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
-                           {"value",  container_id}};
-    const std::string txn_str = txn_json.dump();
+    if (!user_data) return;
 
-    ContainerTxnCtx ctx{container_id};
-    TXN_HANDLE txn = fim_db_transaction_start(txn_str.c_str(), container_txn_callback, &ctx);
-    if (!txn) return;
+    // FIM baselines files only, so the netns flags carry no information here;
+    // they are reported by the Syscollector consumer, which does collect
+    // network-namespace-scoped rows.
+    (void)netns_host_scoped;
+    (void)netns_unreadable;
 
-    for (const auto& row_json : rows) {
-        fim_db_transaction_sync_row_json(txn, "file_entry", row_json.c_str());
-    }
+    static_cast<BaselineDriver*>(user_data)->onStatus(container_id, partial != 0);
+}
 
-    fim_db_transaction_deleted_rows(txn, container_txn_callback, &ctx);
+void container_id_sink(const char* container_id, void* user_data)
+{
+    if (!container_id || !user_data) return;
+    static_cast<std::set<std::string>*>(user_data)->insert(container_id);
 }
 
 } // namespace
@@ -141,45 +360,47 @@ extern "C" void fim_run_container_baseline(void)
         return;
     }
 
-    // Phase 1: collect rows grouped by container_id.
-    std::map<std::string, std::vector<std::string>> container_rows;
-    DbsyncSinkCtx sink_ctx{&container_rows};
+    // Nothing below may throw into main(): this runs on syscheckd's main
+    // thread, which has no handler of its own.
+    try {
+        BaselineDriver driver;
 
-    cbaseline_run_fim_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                             paths,
-                             static_cast<int>(path_count),
-                             dbsync_sink,
-                             &sink_ctx);
+        // check_max_fps() is FIM's own files-per-second token bucket, driven by
+        // syscheck.max_files_per_second. It is process-global, so the container
+        // walk shares one budget with the host walk rather than adding an
+        // unbounded second source of file I/O (NFR3).
+        const int baselined = cbaseline_run_fim_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                       paths,
+                                                       static_cast<int>(path_count),
+                                                       dbsync_sink,
+                                                       status_sink,
+                                                       fim_container_baseline_rate_limit,
+                                                       &driver);
+
+        // Every container container_instances still knows about, INCLUDING ones
+        // that are merely stopped and therefore produced no rows above. Without
+        // this distinction a container restart would delete all of its FIM
+        // state and re-create it — a false-positive flood on exactly the event
+        // that must be reported accurately.
+        std::set<std::string> known;
+        cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
+
+        driver.sweepStale(known);
+
+        if (driver.malformedRows() > 0) {
+            LogDebug("Container FIM baseline: discarded %zu malformed row(s).", driver.malformedRows());
+        }
+
+        fim_report_container_baseline_result(baselined,
+                                             driver.rows(),
+                                             driver.partial(),
+                                             driver.stale(),
+                                             known.size());
+    } catch (const std::exception& err) {
+        LogError("Container FIM baseline failed: %s", err.what());
+    } catch (...) {
+        LogError("Container FIM baseline failed with an unknown error.");
+    }
 
     fim_free_container_monitored_paths(paths);
-
-    // Phase 2: per-container scoped txns — computes deltas, emits events.
-    for (const auto& [container_id, rows] : container_rows) {
-        sync_container(container_id, rows);
-    }
-
-    // Phase 3: stale container cleanup — containers still in DB but gone from
-    // the current baseline get all their rows marked DELETED.
-    cJSON* db_rows = fim_db_get_every_element("file_entry", "WHERE container_id != ''");
-    if (db_rows && cJSON_IsArray(db_rows)) {
-        std::set<std::string> db_container_ids;
-        cJSON* db_row;
-        cJSON_ArrayForEach(db_row, db_rows) {
-            const cJSON* cid = cJSON_GetObjectItem(db_row, "container_id");
-            if (cid && cJSON_IsString(cid) && cid->valuestring && cid->valuestring[0] != '\0') {
-                db_container_ids.insert(cid->valuestring);
-            }
-        }
-        cJSON_Delete(db_rows);
-
-        for (const auto& stale_id : db_container_ids) {
-            if (container_rows.find(stale_id) == container_rows.end()) {
-                sync_container(stale_id, {}); // empty rows → all existing rows become DELETED
-            }
-        }
-    } else {
-        cJSON_Delete(db_rows);
-    }
-
-    fim_report_container_baseline_result(static_cast<int>(container_rows.size()));
 }

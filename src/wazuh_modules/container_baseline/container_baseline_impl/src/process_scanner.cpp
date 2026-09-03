@@ -1,6 +1,5 @@
 #include "process_scanner.hpp"
 
-#include "pid_resolver.hpp"
 #include "timeHelper.h"
 
 #include <unistd.h>
@@ -55,11 +54,19 @@ ProcStat ReadProcStat(pid_t pid)
     // starttime = field 22 -> fields[19].
     if (fields.size() <= 19) return out;
 
+    // strtoll rather than stoll: these come from the kernel and are well-formed
+    // in practice, but a throw here would propagate out of the C API and into
+    // syscheckd's main() (which has no handler), so a malformed field must
+    // degrade to 0 rather than abort the whole baseline.
+    const auto toInt = [](const std::string& s) noexcept -> int64_t {
+        return std::strtoll(s.c_str(), nullptr, 10);
+    };
+
     out.state           = fields[0].empty() ? '?' : fields[0][0];
-    out.ppid            = std::stoll(fields[1]);
-    out.utime           = std::stoll(fields[11]);
-    out.stime           = std::stoll(fields[12]);
-    out.starttime_ticks = std::stoll(fields[19]);
+    out.ppid            = toInt(fields[1]);
+    out.utime           = toInt(fields[11]);
+    out.stime           = toInt(fields[12]);
+    out.starttime_ticks = toInt(fields[19]);
     out.ok              = true;
     return out;
 }
@@ -92,7 +99,7 @@ int64_t BootTimeEpochSeconds()
     std::string line;
     while (std::getline(f, line)) {
         if (line.rfind("btime ", 0) == 0) {
-            return std::stoll(line.substr(6));
+            return std::strtoll(line.c_str() + 6, nullptr, 10);
         }
     }
     return 0;
@@ -116,12 +123,12 @@ std::string ProcessStateToString(char state)
 
 } // namespace
 
-std::vector<ProcessBaselineRow> ScanContainerProcesses(const std::string& container_id)
+std::vector<ProcessBaselineRow> ScanContainerProcesses(const std::string&        container_id,
+                                                        const std::vector<pid_t>& pids)
 {
     std::vector<ProcessBaselineRow> rows;
-    if (container_id.empty()) return rows;
+    if (container_id.empty() || pids.empty()) return rows;
 
-    const auto pids       = ResolvePidsForContainer(container_id);
     const auto clk_tck     = ::sysconf(_SC_CLK_TCK);
     const auto boot_epoch  = BootTimeEpochSeconds();
 
