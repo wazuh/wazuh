@@ -287,13 +287,36 @@ if ($msi_new_version -ne $null) {
 }
 
 # Read <block><sub><tag> from the agent configuration, taking the last match.
+# Strips commented-out lines before get_conf_value/xml_block_present extract anything, so a
+# tag an operator comments out (e.g. to fall back to the default) reads as absent here too,
+# matching OS_XML's own comment handling and pkg_installer.sh's strip_xml_comments() on the
+# Linux/macOS side. Same known trade-off as that one: a comment that opens and closes on the
+# same line is not stripped, since every comment actually shipped in this codebase's XML
+# wraps whole indented lines.
+function strip_xml_comments($conf_path) {
+    $in_comment = $false
+    $result = New-Object System.Collections.Generic.List[string]
+    foreach ($line in (Get-Content $conf_path)) {
+        if ($in_comment) {
+            if ($line -match '-->') { $in_comment = $false }
+            continue
+        }
+        if ($line -match '<!--' -and $line -notmatch '-->') {
+            $in_comment = $true
+            continue
+        }
+        $result.Add($line)
+    }
+    return ($result -join "`n")
+}
+
 function get_conf_value($block, $sub, $tag) {
     $conf_path = Join-Path $wazuhDir "ossec.conf"
     if (-Not (Test-Path $conf_path)) {
         return $null
     }
-    # Strip CR and LF separately: the shipped template is LF-only, and `.` never matches a newline.
-    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    # The shipped template is LF-only, and `.` never matches a newline.
+    $conf = (strip_xml_comments $conf_path) -replace "`n", ""
     $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
     if (-Not $block_match.Success) {
         return $null
@@ -423,7 +446,7 @@ function xml_block_present($block, $sub) {
     if (-Not (Test-Path $conf_path)) {
         return $false
     }
-    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    $conf = (strip_xml_comments $conf_path) -replace "`n", ""
     $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
     if (-Not $block_match.Success) {
         return $false
@@ -456,8 +479,15 @@ function pin_ca($ca_path) {
             }
         }
     } else {
+        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
+        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
+        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
+        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
+        # report success here while leaving the real parser's certificate_authorities
+        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
+        # instead of believing a CA it can't actually use is now pinned.
         foreach ($line in $lines) {
-            if ((-Not $inserted) -and ($line -match '^\s*<(agent|client)>\s*$')) {
+            if ((-Not $inserted) -and ($line -match '^\s*<agent>\s*$')) {
                 $output.Add($line)
                 $output.Add("    <ssl>")
                 $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
@@ -706,7 +736,7 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         if (pin_ca $default_ca_file) {
             write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
         } else {
-            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (unexpected <ssl> block formatting), interrupting upgrade." >> .\upgrade\upgrade.log
+            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> .\upgrade\upgrade.log
             abort_upgrade "2"
         }
     } else {
