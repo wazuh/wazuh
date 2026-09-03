@@ -8,7 +8,7 @@ import logging
 import re
 import threading
 from base64 import b64encode
-from json import dumps, loads
+from json import loads
 from os import listdir, path
 from shutil import rmtree
 
@@ -30,14 +30,10 @@ from wazuh.core.utils import (
     WazuhDBQueryGroupBy,
     WazuhDBBackend,
     get_utc_now,
-    get_utc_strptime,
     get_date_from_timestamp,
 )
-from wazuh.core.wazuh_socket import (
-    WazuhSocket,
-    WazuhSocketJSON,
-    create_wazuh_socket_message,
-)
+from wazuh.core.task_http import TaskManagerHTTPClient
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.rbac.utils import resource_cache
@@ -61,6 +57,19 @@ GROUP_FIELDS = ["name", "mergedSum", "configSum", "count"]
 GROUP_REQUIRED_FIELDS = ["name"]
 GROUP_FILES_FIELDS = ["filename", "hash"]
 GROUP_FILES_REQUIRED_FIELDS = ["filename"]
+
+# How long to wait for an upgrade request, in seconds.
+#
+# Three deadlines have to stay ordered, shortest first:
+#
+#     wazuh_modules.upgrade_batch_deadline  <  this  <  the route's response backstop
+#                    180 s                     240 s              300 s
+#
+# The module answering first is the point. A cold request fetches a repository index and a
+# 50-100 MB WPK before the first task is written, and the module's own deadline is what turns that
+# into a per-agent envelope this side can act on. Timing out here first would abandon a request the
+# manager was still correctly working on -- and leave its tasks created but unreported.
+UPGRADE_TIMEOUT = 240
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -1550,46 +1559,56 @@ def core_upgrade_agents(
     Returns
     -------
     dict
-        Message received from the socket (Task module)
+        The per-agent envelope from the Task Manager.
     """
-    msg = create_wazuh_socket_message(
-        origin={"module": "api"},
-        command=command,
-        parameters={
-            "agents": agents_chunk,
-            "version": unify_wazuh_upgrade_version_format(version),
-            "force_upgrade": force,
-            "use_http": use_http,
-            "package_type": package_type,
-            "wpk_repo": wpk_repo,
-            "file_path": file_path,
-            "installer": installer,
-            "request_time": request_time,
-        },
+    parameters = _upgrade_parameters(
+        agents_chunk=agents_chunk,
+        wpk_repo=wpk_repo,
+        version=version,
+        force=force,
+        use_http=use_http,
+        package_type=package_type,
+        file_path=file_path,
+        installer=installer,
+        request_time=request_time,
     )
 
-    msg["parameters"] = {k: v for k, v in msg["parameters"].items() if v is not None}
+    # UPGRADE_TIMEOUT, not the client's 10 s default. A cold cache means fetching a repository index
+    # and a 50-100 MB WPK before the first task is written, and the module's own batch deadline is
+    # what is meant to expire first -- so the caller has to wait longer than that, or every cold
+    # upgrade would time out here while the manager was still doing exactly what it was asked to.
+    with TaskManagerHTTPClient(timeout=UPGRADE_TIMEOUT) as client:
+        if command == "upgrade_custom":
+            return client.upgrade_agents_custom(parameters)
+        return client.upgrade_agents(parameters)
 
-    # Send upgrading command
-    s = WazuhSocket(common.UPGRADE_SOCKET)
-    s.send(dumps(msg).encode())
 
-    # Receive upgrade information from socket
-    data = loads(s.receive().decode())
-    s.close()
+def _upgrade_parameters(
+    agents_chunk: list,
+    wpk_repo: str = None,
+    version: str = None,
+    force: bool = False,
+    use_http: bool = False,
+    package_type: str = None,
+    file_path: str = None,
+    installer: str = None,
+    request_time: int = None,
+) -> dict:
+    """Build the request body, dropping every parameter the caller did not set.
 
-    [
-        agent_info.update(
-            (
-                k,
-                get_utc_strptime(v, "%Y/%m/%d %H:%M:%S", date_is_at_utc=False).strftime(
-                    DATE_FORMAT
-                ),
-            )
-            for k, v in agent_info.items()
-            if k in {"create_time", "update_time"}
-        )
-        for agent_info in data["data"]
-    ]
+    Unset parameters are omitted rather than sent as null: the module reads a present key of the
+    wrong type as a parse error, so sending ``"version": null`` would fail the whole request.
+    """
+    parameters = {
+        "agents": agents_chunk,
+        "version": unify_wazuh_upgrade_version_format(version),
+        "force_upgrade": force,
+        "use_http": use_http,
+        "package_type": package_type,
+        "wpk_repo": wpk_repo,
+        "file_path": file_path,
+        "installer": installer,
+        "request_time": request_time,
+    }
 
-    return data
+    return {k: v for k, v in parameters.items() if v is not None}

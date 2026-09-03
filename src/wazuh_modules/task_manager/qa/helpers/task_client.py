@@ -60,6 +60,35 @@ class TaskManagerClient:
     def take_pending(self, agent_id: str):
         return self.post('/v1/tasks/pending', {'agent_id': agent_id})
 
+    # ---- agent upgrades ----------------------------------------------------------------------
+
+    def upgrade(self, agents: list, create_time: int = None, **parameters):
+        """POST /v1/agents/upgrade.
+
+        `request_time` is mandatory on the wire; it is what makes the same request produce the same
+        task ids on every cluster node, so it defaults to now rather than being omitted.
+        """
+        body = {
+            'agents': agents,
+            'request_time': create_time if create_time is not None else int(time.time()),
+        }
+        body.update(parameters)
+        return self.post('/v1/agents/upgrade', body)
+
+    def upgrade_custom(self, agents: list, file_path: str, create_time: int = None, **parameters):
+        body = {
+            'agents': agents,
+            'request_time': create_time if create_time is not None else int(time.time()),
+            'file_path': file_path,
+        }
+        body.update(parameters)
+        return self.post('/v1/agents/upgrade-custom', body)
+
+    @staticmethod
+    def agent_errors(response) -> list:
+        """The per-agent codes out of an upgrade envelope, which is what the Server API reads."""
+        return [entry['error'] for entry in response.json()['data']]
+
     # ---- manager tasks -----------------------------------------------------------------------
 
     def create_manager_task(self, task_id: str, task_type: str, payload: dict = None,

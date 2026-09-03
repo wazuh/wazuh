@@ -31,6 +31,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -238,6 +239,15 @@ namespace task_manager::test
                 return std::nullopt;
             }
 
+            // A scripted row wins, so the upgrade tests can supply os_platform/os_arch/version.
+            // Wrapped in an ARRAY on purpose: that is the shape wazuh-db actually answers with and
+            // the shim passes through verbatim, and a double that quietly unwrapped it would let a
+            // caller that forgot host::agentRow() pass here and fail in production.
+            if (const auto scripted {agentRows.find(agentId)}; scripted != agentRows.end())
+            {
+                return nlohmann::json::array({scripted->second});
+            }
+
             return nlohmann::json {{"name", "agent-" + std::to_string(agentId)},
                                    {"last_keepalive", lastKeepalive}};
         }
@@ -266,6 +276,8 @@ namespace task_manager::test
         std::optional<std::vector<int>> disconnected {std::vector<int> {}};
         std::optional<std::vector<int>> candidates {std::vector<int> {}};
         std::set<int> missingInfoFor;
+        /// @brief Per-agent rows for callers that need real OS fields, keyed by agent id.
+        std::map<int, nlohmann::json> agentRows;
         Timestamp lastKeepalive {0};
         bool authdAnswers {true};
         int nextAuthdError {0};

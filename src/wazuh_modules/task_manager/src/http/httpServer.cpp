@@ -23,6 +23,11 @@ namespace
 
     constexpr auto SERVER_NAME {"task manager"};
     constexpr auto SERVER_HEADER {"wazuh-task-manager"};
+
+    /// @brief Concurrent connections the two upgrade routes may hold, over and above the class cap.
+    ///        Comfortably above the pool's queue depth, so shedding is decided by the module -- with
+    ///        a per-agent answer the Server API can retry -- rather than by the transport's 503.
+    constexpr std::size_t UPGRADE_MAX_SESSIONS {32};
 } // namespace
 
 namespace task_manager::http
@@ -118,6 +123,33 @@ namespace task_manager::http
               &ApiHandlers::getManagerTaskByAgent);
         route(Method::Post, "/v1/manager-tasks/list", RouteClass::Control, &ApiHandlers::listManagerTasks);
         route(Method::Post, "/v1/manager-tasks/count", RouteClass::Control, &ApiHandlers::countManagerTasks);
+
+        // Agent upgrades. Control class, and registered directly rather than through route()
+        // above: these are the only ASYNCHRONOUS routes on this socket -- the handler parses, hands
+        // the batch to a worker pool and returns without answering, and the reply is sent from that
+        // pool through the retained responder. route() cannot express that, and its error envelope
+        // is the wrong one besides: the Server API reads the retired module's per-agent shape.
+        //
+        // maxSessions bounds how many upgrade requests can hold a connection open at once,
+        // independently of the pool's own queue. Without it a client could park far more
+        // connections than there is work capacity, and they would all be waiting on the same
+        // handful of workers.
+        if (m_upgradeApi != nullptr)
+        {
+            m_server->addRoute(
+                Method::Post,
+                upgrade::UPGRADE_ROUTE,
+                [this](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+                { m_upgradeApi->handleUpgrade(std::move(request), std::move(responder)); },
+                RouteOptions {RouteClass::Control, 0, UPGRADE_MAX_SESSIONS});
+
+            m_server->addRoute(
+                Method::Post,
+                upgrade::UPGRADE_CUSTOM_ROUTE,
+                [this](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+                { m_upgradeApi->handleUpgradeCustom(std::move(request), std::move(responder)); },
+                RouteOptions {RouteClass::Control, 0, UPGRADE_MAX_SESSIONS});
+        }
 
         // Answered from resident state, so it stays available under any pressure -- which is the
         // whole point of a liveness probe.

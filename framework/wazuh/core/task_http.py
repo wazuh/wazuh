@@ -19,6 +19,26 @@ from wazuh.core.exception import WazuhError, WazuhInternalError
 #: a single database transaction, so this bounds the request body rather than the work.
 TASK_CHUNK_SIZE = 500
 
+# Per-agent code meaning "task manager communication error". framework/wazuh/agent.py reacts to it
+# by halving the chunk and retrying, which is the behaviour a shed request wants.
+TASK_MANAGER_ERROR = 4
+
+
+def _shed_envelope(parameters: dict) -> dict:
+    """Build the envelope a shed upgrade request should look like.
+
+    Shaped exactly like the module's own, so the caller cannot tell whether the module refused the
+    batch or the transport did — the correct response to both is the same smaller retry.
+    """
+    return {
+        'error': 0,
+        'data': [
+            {'error': TASK_MANAGER_ERROR, 'message': 'Task manager communication error', 'agent': agent}
+            for agent in parameters.get('agents', [])
+        ],
+        'message': 'Success',
+    }
+
 
 class TaskManagerHTTPClient:
     """Synchronous HTTP client for the Task Manager unix socket."""
@@ -43,7 +63,7 @@ class TaskManagerHTTPClient:
         """Close the Task Manager HTTP client."""
         self._client.close()
 
-    def _post(self, route: str, body: dict) -> dict:
+    def _post(self, route: str, body: dict, unavailable_result: dict = None) -> dict:
         """Send one request and return its parsed response.
 
         Parameters
@@ -52,6 +72,9 @@ class TaskManagerHTTPClient:
             Path on the Task Manager socket.
         body : dict
             Request body.
+        unavailable_result : dict
+            Returned instead of raising when the transport answers 503. Only the upgrade routes set
+            it, because only they have a caller that knows how to retry.
 
         Returns
         -------
@@ -77,6 +100,13 @@ class TaskManagerHTTPClient:
             raise WazuhInternalError(2021, extra_message=str(exc))
         except httpx.RequestError as exc:
             raise WazuhError(2013, extra_message=str(exc))
+
+        if response.status_code == 503 and unavailable_result is not None:
+            # The transport shed this request under pressure. The module's own shedding answers 200
+            # with error 4 per agent, precisely so the caller retries with a smaller chunk; a
+            # transport-level 503 means the same thing and should not be handled differently, but
+            # left alone it would raise here and lose the whole chunk instead.
+            return unavailable_result
 
         if response.is_error:
             raise WazuhError(2019, extra_message=response.text)
@@ -138,3 +168,39 @@ class TaskManagerHTTPClient:
         """
         response = self._post('/v1/tasks/bulk', {'tasks': tasks})
         return response.get('results', [])
+
+    def upgrade_agents(self, parameters: dict) -> dict:
+        """Ask the Task Manager to upgrade agents from a WPK repository.
+
+        The manager side of the agent-upgrade module now runs inside the Task Manager and is served
+        from its socket, so this replaces the framed protocol on ``task-upgrade.sock``.
+
+        Parameters
+        ----------
+        parameters : dict
+            What the ``upgrade`` command used to carry in its ``parameters`` member: ``agents``,
+            ``request_time`` (mandatory), and optionally ``version``, ``wpk_repo``, ``use_http``,
+            ``force_upgrade`` and ``package_type``.
+
+        Returns
+        -------
+        dict
+            The per-agent envelope, unchanged from the retired module:
+            ``{'error': N, 'data': [{'error': N, 'message': ..., 'agent': id}, ...], 'message': ...}``.
+        """
+        return self._post('/v1/agents/upgrade', parameters, _shed_envelope(parameters))
+
+    def upgrade_agents_custom(self, parameters: dict) -> dict:
+        """Ask the Task Manager to upgrade agents from a custom WPK already on the manager.
+
+        Parameters
+        ----------
+        parameters : dict
+            ``agents``, ``request_time`` (mandatory), ``file_path``, and optionally ``installer``.
+
+        Returns
+        -------
+        dict
+            The same per-agent envelope as :meth:`upgrade_agents`.
+        """
+        return self._post('/v1/agents/upgrade-custom', parameters, _shed_envelope(parameters))

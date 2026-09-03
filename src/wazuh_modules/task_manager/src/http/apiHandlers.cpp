@@ -27,13 +27,10 @@ namespace
         return static_cast<Timestamp>(std::time(nullptr));
     }
 
-    /// @brief How far into the future a create_time may sit. Small, because the only legitimate
-    ///        source of skew is a producer's clock being slightly ahead.
-    constexpr Timestamp MAX_FUTURE_SKEW {60};
-
-    /// @brief How far into the past. A year, matching the retired implementation, so an existing
-    ///        producer replaying an old request is rejected the same way it always was.
-    constexpr Timestamp MAX_AGE {31536000};
+    // MAX_FUTURE_SKEW and MAX_AGE now live in model/task.hpp so the upgrade routes admit agent tasks
+    // through exactly the same window this one does.
+    using task_manager::MAX_AGE;
+    using task_manager::MAX_FUTURE_SKEW;
 
     std::optional<std::string> optionalString(const nlohmann::json& body, const char* key)
     {

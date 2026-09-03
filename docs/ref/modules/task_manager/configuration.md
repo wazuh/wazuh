@@ -238,11 +238,124 @@ have no list to resume from.
 
 ---
 
+## Agent upgrades
+
+Remote agent upgrades are served by this module, on `POST /v1/agents/upgrade` and
+`POST /v1/agents/upgrade-custom`. It validates each agent, fetches and verifies the WPK, and writes
+one `remote_upgrade` agent task per agent.
+
+### XML options
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* |
+| `<wpk_repository>` | none | Overrides the default, which is derived from the target version as `packages.wazuh.com/<major>.x/wpk/` |
+
+```xml
+<task-manager>
+  <wpk_repository>https://packages.internal.company.com/wazuh/wpk/</wpk_repository>
+</task-manager>
+```
+
+**`<agent-upgrade>` is not a manager section, and the schema rejects it.** A manager configuration
+carrying one is refused with `Invalid configuration at '/agent-upgrade'`, and the manager will not
+start. That module and its settings exist only on an agent, where they control what that agent
+accepts; the two settings above are the manager's half.
+
+Two settings outside `<task-manager>` also matter: `remote.legacy.enabled` decides whether a pre-v5.0.0
+agent can be reached at all, and `remote.https.verification_mode` decides whether an agent that
+is about to become v5.x will be able to reconnect afterwards. Both are read **once, at start-up**,
+so changing either requires restarting `wazuh-modulesd` as well as `wazuh-remoted`.
+
+### Internal options the upgrade path adds
+
+All in the `wazuh_modules` namespace, all resolved before the daemon forks, so an out-of-range value
+fails `wazuh-modulesd -t` rather than aborting later.
+
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.upgrade_workers` | 2 | 1–16 | upgrade **batches** run at once |
+| `wazuh_modules.upgrade_queue_depth` | 8 | 1–1000 | batches queued before a request is refused |
+| `wazuh_modules.upgrade_batch_deadline` | 180 | 10–3600 | seconds one batch may take before its remaining agents are failed |
+| `wazuh_modules.upgrade_max_agents` | 500 | 1–100000 | largest batch accepted in one request |
+| `wazuh_modules.upgrade_download_attempts` | 3 | 1–10 | tries per WPK before giving up |
+| `wazuh_modules.upgrade_download_timeout` | 45000 | 1000–600000 | milliseconds per download attempt |
+| `wazuh_modules.upgrade_max_concurrent_downloads` | 2 | 1–32 | WPK downloads in flight across all batches |
+| `wazuh_modules.upgrade_versions_ttl` | 300 | 0–86400 | seconds a repository's `versions` file is cached |
+
+**`upgrade_workers` counts batches, not agents, and it is deliberately small.** Per-agent work is one
+wazuh-db query on a shared, mutex-guarded socket plus arithmetic; running agents in parallel would
+multiply contention on that mutex to buy nothing. What genuinely arrives in parallel is whole
+requests — the Server API chunks a fleet at 500, and every cluster node broadcasts. There is a second
+reason to keep it low: the shared HTTP client caches curl handlers in a process-wide queue of five
+entries, shared with the vulnerability scanner and the indexer connector, so a large pool here costs
+*them* connection reuse.
+
+**Three deadlines have to stay ordered**, shortest first:
+
+```
+upgrade_batch_deadline  <  the Server API's client timeout  <  the route's response backstop
+       180 s                          240 s                             300 s
+```
+
+The module answering first is what makes a slow repository produce a per-agent envelope the API can
+act on, instead of a connection the transport tore down.
+
+**`upgrade_versions_ttl` is what keeps a fleet-wide upgrade cheap.** Agents that resolve to the same
+package share one `versions` fetch and one download, so 500 agents on one platform cost one of each
+rather than 500. The TTL bounds how long a newly published release goes unnoticed; set it to `0` to
+fetch every time.
+
+### Monitoring agent upgrades
+
+Upgrade work logs under its own sub-tag:
+
+```bash
+tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep 'task-manager:upgrade'
+```
+
+Each request produces one `remote_upgrade` row per accepted agent, inspectable like any other task
+type. Whether the agent then picked it up, downloaded the WPK and ran the installer is visible in
+the agent's own log — the manager is never told the outcome.
+
+### Troubleshooting agent upgrades
+
+**Requests are rejected.** Check `<upgrade_enabled>`, then the per-agent code in the response: the
+version gates are listed under
+[Version constraints](agent-upgrades.md#version-constraints).
+
+**WPK downloads fail.** Confirm outbound HTTPS access to `<wpk_repository>`, or place the WPK under
+`/var/wazuh-manager/var/upgrade/` and use the custom-upgrade endpoint. A custom WPK **must** be
+inside that directory; anything else is refused with *The WPK file does not exist*.
+
+*A missing CA bundle fails every download, by design.* Peer verification is never disabled: the
+SHA-1 a WPK is checked against comes from the repository's own index over the same connection, so an
+unverified channel would let a man in the middle supply a matching pair and the integrity check
+would confirm his work rather than ours. The module says so once at start-up:
+
+```
+No CA bundle was found on this host. HTTPS requests to the WPK repository will fail;
+agent upgrades over https are unavailable until one is installed.
+```
+
+Install the distribution's CA certificates package. Do not work around it by pointing
+`<wpk_repository>` at an `http://` URL unless the repository is on a trusted network.
+
+**Requests are refused under load.** Every agent answered with *Task manager communication error*
+(`1814`) means the batch queue was full. The Server API halves the chunk and retries automatically,
+so this is usually self-correcting; if it persists the repository is likely slow, and
+`wazuh_modules.upgrade_queue_depth` or `upgrade_workers` can be raised.
+
+**A task never completes.** The manager only records that the task was created. If it stays
+`pending` past `task_ttl` it is marked `expired` by the cleanup thread.
+
+---
+
 ## See Also
 
 - [Manager tasks](manager-tasks.md) — the queue's own options, states and operator lookup
 - [Recurring manager tasks](schedules.md) — the three schedules and how they fire
+- [Agent upgrades](agent-upgrades.md) — the manager-side flow end to end
 - [Task Manager Module](README.md) — Module overview and architecture
-- [Agent Upgrade Configuration](../agent_upgrade/configuration.md) — main producer of `remote_upgrade` tasks
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) — persistence backend for `tasks.db`
 - [Manager Configuration Reference](../../configuration/manager/README.md)

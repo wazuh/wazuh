@@ -80,9 +80,54 @@ namespace
         return *out != nullptr ? 0 : -1;
     }
 
-    int agentInfo(int, char** out)
+    /*
+     * Agent rows, optionally scripted.
+     *
+     * The default answer carries no OS fields at all, which is right for the queue tests: the
+     * disconnection sweep only reads `name`. The upgrade routes need a real row -- platform,
+     * architecture, version -- and which row decides which repository path is resolved, so the
+     * suite supplies them with --agents.
+     *
+     * Wrapped in an ARRAY, because that is the shape wazuh-db answers with and modulesd's shim
+     * passes across the ABI verbatim. A tool that unwrapped it here would let a caller that forgot
+     * to handle the array pass in test and fail in production.
+     */
+    std::string gAgentRows;
+
+    int agentInfo(int agentId, char** out)
     {
-        *out = strdup(R"({"name":"stub","last_keepalive":0})");
+        if (!gAgentRows.empty())
+        {
+            // Scripted rows are a JSON object keyed by agent id, as a string. Rather than parse
+            // JSON here -- this tool deliberately links nothing but the module -- the suite writes
+            // one row per line as `<id> <json>` and the lookup is a scan.
+            const auto key {std::to_string(agentId) + " "};
+            std::size_t at {0};
+
+            while (at < gAgentRows.size())
+            {
+                const auto end {gAgentRows.find('\n', at)};
+                const auto line {gAgentRows.substr(at, end == std::string::npos ? std::string::npos : end - at)};
+
+                if (line.rfind(key, 0) == 0)
+                {
+                    const auto row {"[" + line.substr(key.size()) + "]"};
+                    *out = strdup(row.c_str());
+                    return *out != nullptr ? 0 : -1;
+                }
+
+                if (end == std::string::npos)
+                {
+                    break;
+                }
+                at = end + 1;
+            }
+
+            // Not scripted: report the agent as absent, which is UpgradeError::GlobalDbFailure.
+            return -1;
+        }
+
+        *out = strdup(R"([{"name":"stub","last_keepalive":0}])");
         return *out != nullptr ? 0 : -1;
     }
 
@@ -106,10 +151,40 @@ namespace
     {
         std::fprintf(stderr,
                      "usage: %s --socket <path> --db <path> [--consumer <path>] [--executor-threads N]\n"
+                     "          [--agents <file>] [--upgrade-dir <path>] [--wpk-repository <url>]\n"
+                     "          [--manager-version <version>] [--remoted-legacy 0|1]\n"
+                     "          [--remoted-verification <mode>] [--upgrade-enabled 0|1]\n"
                      "\n"
                      "Runs the task manager module against the given socket and database. Both are\n"
-                     "created if absent. Send SIGINT or SIGTERM to stop.\n",
+                     "created if absent. Send SIGINT or SIGTERM to stop.\n"
+                     "\n"
+                     "--agents names a file of `<agent id> <row json>` lines, which the scripted\n"
+                     "get_agent_info answers from. Without it every agent reports only a name, which\n"
+                     "is enough for the queue tests but not for the upgrade routes.\n"
+                     "\n"
+                     "--remoted-verification takes remoted's own numbering: -1 unset, 0 none,\n"
+                     "1 certificate, 2 full.\n",
                      argv0);
+    }
+
+    /// @brief Read a whole file, or return false. Used only for --agents.
+    bool readFile(const char* path, std::string& out)
+    {
+        std::FILE* file {std::fopen(path, "rb")};
+        if (file == nullptr)
+        {
+            return false;
+        }
+
+        char block[4096];
+        std::size_t read {0};
+        while ((read = std::fread(block, 1, sizeof(block), file)) > 0)
+        {
+            out.append(block, read);
+        }
+
+        std::fclose(file);
+        return true;
     }
 } // namespace
 
@@ -156,6 +231,40 @@ int main(int argc, char** argv)
         {
             config.executor_threads = std::atoi(value);
         }
+        else if (flag == "--agents")
+        {
+            if (!readFile(value, gAgentRows))
+            {
+                std::fprintf(stderr, "could not read the agent table at %s\n", value);
+                return 1;
+            }
+        }
+        else if (flag == "--upgrade-dir")
+        {
+            std::snprintf(config.upgrade_dir, sizeof(config.upgrade_dir), "%s", value);
+        }
+        else if (flag == "--wpk-repository")
+        {
+            std::snprintf(config.wpk_repository, sizeof(config.wpk_repository), "%s", value);
+        }
+        else if (flag == "--manager-version")
+        {
+            std::snprintf(config.manager_version, sizeof(config.manager_version), "%s", value);
+        }
+        else if (flag == "--upgrade-enabled")
+        {
+            config.upgrade_enabled = std::atoi(value);
+        }
+        else if (flag == "--remoted-legacy")
+        {
+            config.remoted_config_read = 1;
+            config.remoted_legacy_enabled = std::atoi(value);
+        }
+        else if (flag == "--remoted-verification")
+        {
+            config.remoted_config_read = 1;
+            config.remoted_verification_mode = std::atoi(value);
+        }
         else
         {
             usage(program);
@@ -183,6 +292,33 @@ int main(int argc, char** argv)
     config.sweep_interval = 1;
     config.cleanup_interval = 5;
     config.claim_grace = 1;
+
+    // Upgrades are ON unless the suite turns them off, matching a default deployment: the wodle is
+    // in default_modules[], so a manager with no <task-manager> block still has them.
+    // `--upgrade-enabled 0` is a real case to cover, so the flag has to be able to say zero, which
+    // means the default cannot simply be "whatever was parsed".
+    if (config.upgrade_enabled == 0)
+    {
+        bool disabled {false};
+        for (int i = 1; i + 1 < argc; ++i)
+        {
+            if (std::strcmp(argv[i], "--upgrade-enabled") == 0)
+            {
+                disabled = true;
+                break;
+            }
+        }
+        config.upgrade_enabled = disabled ? 0 : 1;
+    }
+
+    if (config.manager_version[0] == '\0')
+    {
+        std::snprintf(config.manager_version, sizeof(config.manager_version), "%s", "v5.0.0");
+    }
+
+    // Short, so a suite that stubs an unreachable repository does not wait out a production ladder.
+    config.upgrade_download_attempts = 1;
+    config.upgrade_versions_ttl = 1;
 
     task_manager_host_ops_t hostOps {};
     hostOps.is_worker = isWorker;

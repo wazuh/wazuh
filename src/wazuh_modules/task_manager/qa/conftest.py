@@ -10,6 +10,7 @@ tests exist to cover what unit tests structurally cannot: the socket, real concu
 threads, and recovery after the process is killed.
 """
 
+import json
 import os
 import signal
 import subprocess
@@ -22,6 +23,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 
 from helpers.task_client import StubConsumer, TaskManagerClient, wait_for_socket  # noqa: E402
+from helpers.wpk_repo import StubWpkRepository  # noqa: E402
 
 
 def pytest_addoption(parser):
@@ -59,6 +61,23 @@ class ModuleUnderTest:
         self.consumer_socket = consumer_socket
         self.process = None
         self.log_path = workdir / 'module.log'
+        # Extra argv for the upgrade routes. Empty for the queue tests, which do not use them.
+        self.extra_args = []
+
+    def script_agents(self, rows: dict):
+        """Give the scripted get_agent_info a table of `{agent id: row dict}`.
+
+        Written as `<id> <json>` lines because the testtool parses them without a JSON library --
+        it links the module and nothing else, deliberately.
+        """
+        table = self.workdir / 'agents.txt'
+        table.write_text(''.join(f'{agent_id} {json.dumps(row)}\n' for agent_id, row in rows.items()))
+        self.extra_args += ['--agents', str(table)]
+
+    def with_upgrade_options(self, **options):
+        """Append upgrade-related flags: `wpk_repository`, `upgrade_dir`, `remoted_legacy`, ..."""
+        for name, value in options.items():
+            self.extra_args += [f'--{name.replace("_", "-")}', str(value)]
 
     def start(self):
         log = open(self.log_path, 'ab')
@@ -68,7 +87,7 @@ class ModuleUnderTest:
                 '--socket', str(self.socket_path),
                 '--db', str(self.db_path),
                 '--consumer', str(self.consumer_socket),
-            ],
+            ] + self.extra_args,
             stdout=log,
             stderr=log,
             cwd=str(self.workdir),
@@ -125,6 +144,38 @@ def module(testtool_path, tmp_path, consumer) -> ModuleUnderTest:
 def client(module) -> TaskManagerClient:
     with module.client() as instance:
         yield instance
+
+
+@pytest.fixture
+def wpk_repository() -> StubWpkRepository:
+    """A stub WPK repository on loopback, counting every request the module makes."""
+    repository = StubWpkRepository()
+    repository.start()
+    yield repository
+    repository.stop()
+
+
+@pytest.fixture
+def upgrade_module(testtool_path, tmp_path, consumer, wpk_repository):
+    """A module configured for upgrades, but NOT yet started.
+
+    Deliberately not started: the agent table and the repository URL are start-up configuration, so
+    a test has to script them first. Every other fixture here hands back something already running;
+    this one hands back a builder.
+    """
+    instance = ModuleUnderTest(testtool_path, tmp_path, Path(consumer.socket_path))
+    upgrade_dir = tmp_path / 'upgrade'
+    upgrade_dir.mkdir()
+    instance.upgrade_dir = upgrade_dir
+    instance.with_upgrade_options(
+        upgrade_dir=f'{upgrade_dir}/',
+        wpk_repository=wpk_repository.base_url,
+        manager_version='v5.0.0',
+        remoted_legacy=1,
+        remoted_verification=0,
+    )
+    yield instance
+    instance.stop()
 
 
 @pytest.fixture

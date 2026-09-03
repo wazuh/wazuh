@@ -119,6 +119,40 @@ extern "C"
         /* ---- threading ------------------------------------------------------------------ */
         int io_threads;       ///< uds_http_server I/O threads.
         int executor_threads; ///< Task executor workers.
+
+        /* ---- agent upgrade --------------------------------------------------------------- */
+        /*
+         * Remote agent upgrades are served from this shared object, on this socket. There is no
+         * agent-upgrade module on a manager, so their two settings are the task manager's own: they
+         * come from the `task-manager` section of the effective document, alongside everything else
+         * above.
+         */
+        int upgrade_enabled;                  ///< <task-manager><upgrade_enabled>. 0 refuses every agent.
+        char wpk_repository[PATH_MAX];        ///< <task-manager><wpk_repository>, or empty.
+        char upgrade_dir[PATH_MAX];           ///< Absolute var/upgrade/. Custom WPKs must live here.
+        char manager_version[64];             ///< __wazuh_version, which the .so cannot link.
+        int upgrade_workers;                  ///< Concurrent upgrade BATCHES, not agents.
+        int upgrade_queue_depth;              ///< Queued batches before a request is shed.
+        int upgrade_batch_deadline;           ///< Seconds. MUST expire before the peer's timeout.
+        int upgrade_max_agents;               ///< Largest batch accepted in one request.
+        int upgrade_download_attempts;        ///< Tries per WPK before giving up.
+        int upgrade_download_timeout;         ///< Milliseconds per WPK download attempt.
+        int upgrade_max_concurrent_downloads; ///< Global cap; WPKs are 50-100 MB.
+        int upgrade_versions_ttl;             ///< Seconds a repository's `versions` file is cached.
+
+        /*
+         * remoted's delivery settings, read once pre-fork by the shim.
+         *
+         * remoted_config_read IS AN EXPLICIT EXCEPTION TO THE SENTINEL RULE ABOVE, and it has to be:
+         * REMOTED_HTTPS_VERIFY_UNSET is -1 and REMOTED_HTTPS_VERIFY_NONE is 0, so BOTH meaningful
+         * values of remoted_verification_mode are <= 0 and would otherwise read as "no opinion" --
+         * while meaning two different things remoted resolves differently. The flag is what keeps
+         * them apart. When it is 0 the two fields below are ignored entirely and the delivery gates
+         * fail OPEN, reproducing what the retired code did when its ReadConfig() failed.
+         */
+        int remoted_config_read;
+        int remoted_legacy_enabled;    ///< remote.legacy.enabled.
+        int remoted_verification_mode; ///< remote.https.verification_mode.
     } task_manager_config_t;
 
     /**

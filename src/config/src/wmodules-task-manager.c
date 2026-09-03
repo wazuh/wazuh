@@ -11,11 +11,17 @@
 #include "config.h"
 #include "global-config.h"
 #include "mconf-config.h"
+#include "remote-config.h" // the `remoted` struct and REMOTED_HTTPS_VERIFY_*, for the upgrade gates
 
 static const char *XML_TASK_TTL = "task_ttl";
 static const char *XML_CLEANUP_INTERVAL = "cleanup_interval";
 static const char *XML_MAX_PAYLOAD_BYTES = "max_payload_bytes";
 static const char *XML_MAX_TASKS_PER_POLL = "max_tasks_per_poll";
+
+/* Agent upgrade. This module serves remote agent upgrades, so it owns their configuration; the
+ * agent-upgrade module is agent-only and configures only what an agent accepts. */
+static const char *XML_UPGRADE_ENABLED = "upgrade_enabled";
+static const char *XML_WPK_REPOSITORY = "wpk_repository";
 
 /**
  * @brief Resolve every internal option.
@@ -85,6 +91,26 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     /* Threading. */
     data->io_threads = getDefine_Int_default("wazuh_modules", "manager_task_io_threads", 1, 64, 0);
     data->executor_threads = getDefine_Int_default("wazuh_modules", "manager_task_executor_threads", 1, 64, 0);
+
+    /* Agent upgrade.
+     *
+     * upgrade_workers bounds concurrent BATCHES, not agents: per-agent work is one wazuh-db call on
+     * a mutex-guarded socket plus pure CPU, so running agents in parallel would multiply contention
+     * on that mutex to buy nothing. The ceiling is deliberately low for a second reason too --
+     * shared_modules/http-request caches curl handlers in a process-wide queue of five, shared with
+     * vulnerability_scanner and indexer_connector, and a large pool here would evict theirs.
+     *
+     * upgrade_batch_deadline MUST expire before the Server API's own timeout, which must in turn be
+     * shorter than the transport's per-route backstop. The module answering first is what keeps a
+     * slow repository producing a per-agent envelope rather than a torn-down connection. */
+    data->upgrade_workers = getDefine_Int_default("wazuh_modules", "upgrade_workers", 1, 16, 0);
+    data->upgrade_queue_depth = getDefine_Int_default("wazuh_modules", "upgrade_queue_depth", 1, 1000, 0);
+    data->upgrade_batch_deadline = getDefine_Int_default("wazuh_modules", "upgrade_batch_deadline", 10, 3600, 0);
+    data->upgrade_max_agents = getDefine_Int_default("wazuh_modules", "upgrade_max_agents", 1, 100000, 0);
+    data->upgrade_download_attempts = getDefine_Int_default("wazuh_modules", "upgrade_download_attempts", 1, 10, 0);
+    data->upgrade_download_timeout = getDefine_Int_default("wazuh_modules", "upgrade_download_timeout", 1000, 600000, 0);
+    data->upgrade_max_concurrent_downloads = getDefine_Int_default("wazuh_modules", "upgrade_max_concurrent_downloads", 1, 32, 0);
+    data->upgrade_versions_ttl = getDefine_Int_default("wazuh_modules", "upgrade_versions_ttl", 0, 86400, 0);
 }
 
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from
@@ -95,6 +121,8 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute_
     if (!module->data) {
         os_calloc(1, sizeof(wm_task_manager), data);
         data->enabled = 1;
+        /* Upgrades are on by default */
+        data->upgrade_enabled = 1;
         // Every integer stays 0 here: 0 is the "use the module's default" sentinel.
         module->context = &WM_TASK_MANAGER_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -143,6 +171,53 @@ static int wm_task_manager_disconnection_time(void) {
     return global_config.agents_disconnection_time > 0 ? (int)global_config.agents_disconnection_time : 0;
 }
 
+/**
+ * @brief remoted's `legacy` and `https.verification_mode`, which decide whether an upgrade can
+ *        actually be DELIVERED once it is created.
+ *
+ * Read ONCE, here, rather than per request: the alternative is doing it once per agent in a batch
+ * that may hold five hundred. The consequence is real -- an operator who edits `remote` needs
+ * modulesd restarted, not just remoted, before upgrades see the change.
+ *
+ * Like the `global` read above, this cannot live in wm_task_manager_read(): there is no effective
+ * document until w_mconf_load(), which wm_config() calls afterwards.
+ *
+ * On failure the validity flag stays 0 and the module fails the delivery gates OPEN. A `remote`
+ * problem is remoted's to report; blocking every upgrade on it would turn one daemon's
+ * configuration error into a fleet-wide outage of an unrelated feature.
+ */
+static void wm_task_manager_read_remoted(wm_task_manager *data) {
+    remoted remoted_config;
+    cJSON *section = w_mconf_section("remote");
+
+    data->remoted_config_read = 0;
+    data->remoted_legacy_enabled = 0;
+    data->remoted_verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    memset(&remoted_config, 0, sizeof(remoted_config));
+    remoted_config.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    if (section != NULL && Read_Remote_JSON(section, &remoted_config) >= 0) {
+        data->remoted_config_read = 1;
+        data->remoted_legacy_enabled = remoted_config.legacy_enabled ? 1 : 0;
+        data->remoted_verification_mode = remoted_config.https.verification_mode;
+    } else {
+        mwarn("Cannot read the remote configuration; the agent upgrade delivery checks will be "
+              "skipped.");
+    }
+
+    cJSON_Delete(section);
+
+    /* The seven fields Read_Remote_JSON() can allocate. Everything else in the struct is scalar. */
+    os_free(remoted_config.lip);
+    os_free(remoted_config.https.bind_addr);
+    os_free(remoted_config.https.global_prefix);
+    os_free(remoted_config.https.certificate);
+    os_free(remoted_config.https.key);
+    os_free(remoted_config.https.ca);
+    os_free(remoted_config.https.ciphers);
+}
+
 /* Reader of the `task-manager` section of the effective document (etc/wazuh-manager.conf, see
  * mconf-config.h). `module` is the instance default_modules[] already initialised through
  * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
@@ -154,12 +229,26 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
     wm_task_manager *data = module->data;
 
-    /* Outside the section guard below: `global` is a different section, and the sweep still needs
-     * its interval when `task-manager` itself is absent. */
+    /* Outside the section guard below: `global` and `remote` are different sections, and both are
+     * still needed when `task-manager` itself is absent -- the sweep needs its interval, and the
+     * upgrade gates need remoted's delivery settings. */
     data->disconnection_time = wm_task_manager_disconnection_time();
+    wm_task_manager_read_remoted(data);
 
     if (section == NULL) {
         return 0;
+    }
+
+    data->upgrade_enabled =
+        w_mconf_json_bool(cJSON_GetObjectItem(section, XML_UPGRADE_ENABLED), data->upgrade_enabled ? 1 : 0);
+
+    /* No schema default on purpose: left NULL, the module picks the repository from the target
+     * agent version (upgrade/repoLayout.cpp). */
+    const cJSON *repository = cJSON_GetObjectItem(section, XML_WPK_REPOSITORY);
+
+    if (cJSON_IsString(repository) && repository->valuestring[0] != '\0') {
+        os_free(data->wpk_repository);
+        os_strdup(repository->valuestring, data->wpk_repository);
     }
 
     const struct {

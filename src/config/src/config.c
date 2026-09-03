@@ -221,9 +221,16 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+#ifdef CLIENT
             if ((modules & CWMODULE) && !(modules & CAGENT_CONFIG) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
                 goto fail;
             }
+#else
+            /* Agent only. A manager has no agent-upgrade module: it serves upgrades from the task
+             * manager and configures them in `task-manager`. Warned rather than rejected, matching
+             * how a manager-only section is treated on an agent. */
+            mwarn("%s configuration is only set in the agent.", node[i]->element);
+#endif
         }
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
         else if (chld_node && (strcmp(node[i]->element, github) == 0)) {

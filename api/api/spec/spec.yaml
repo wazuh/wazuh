@@ -2076,8 +2076,6 @@ components:
           type: object
         indexer:
           type: object
-        agent-upgrade:
-          type: object
         task-manager:
           type: object
         cluster:
@@ -2159,8 +2157,6 @@ components:
           wazuh-manager-db:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-modulesd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-manager-modulesd:agent-upgrade:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
@@ -2345,7 +2341,7 @@ components:
         <tr>
         <td>wmodules</td>
         <td>wmodules</td>
-        <td>module configuration reported by wazuh-manager-modulesd (<code>vulnerability-detection</code>, <code>agent-upgrade</code>, <code>task-manager</code>)</td>
+        <td>module configuration reported by wazuh-manager-modulesd (<code>vulnerability-detection</code>, <code>task-manager</code>)</td>
         </tr>
         </tbody>
         </table>
@@ -2850,7 +2846,6 @@ components:
         - wdb
         - vulnerability-detection
         - indexer
-        - agent-upgrade
         - task-manager
         - cluster
     field:

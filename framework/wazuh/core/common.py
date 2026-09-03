@@ -179,7 +179,6 @@ ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'engine-api-http
 VD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'vd-http.sock')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth.sock')
 CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control.sock')
-UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task-upgrade.sock')
 REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote.sock')
 REMOTED_ADMIN_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote-admin-http.sock')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task.sock')

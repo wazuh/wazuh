@@ -13,6 +13,7 @@
 #define _TASK_MANAGER_HTTP_HTTP_SERVER_HPP
 
 #include "apiHandlers.hpp"
+#include "upgrade/upgradeApi.hpp"
 
 #include <uds_http_server/IUdsHttpServer.hpp>
 
@@ -39,6 +40,13 @@ namespace task_manager::http
      * store operation measured in microseconds, so each answers synchronously -- the same trade
      * wazuh-db's HTTP endpoints make. Nothing on this surface waits for a task to RUN; that is
      * what the queue is for.
+     *
+     * THE UPGRADE ROUTES ARE THE ONE EXCEPTION, and they honour the rule rather than breaking it:
+     * their handler parses, hands the batch to a worker pool and returns, and the response is sent
+     * from that pool through a retained responder -- possibly minutes later. They are registered
+     * directly rather than through the `route()` helper below, which is synchronous by shape and
+     * imposes the module's own error envelope; the upgrade routes must reproduce the retired
+     * module's envelope byte for byte instead. See upgrade/upgradeApi.hpp.
      */
     class HttpServer
     {
@@ -54,6 +62,15 @@ namespace task_manager::http
 
         HttpServer(ApiHandlers& handlers, Options options);
         ~HttpServer();
+
+        /**
+         * @brief Attach the agent upgrade routes.
+         *
+         * Optional, and MUST be called before start(): the transport refuses addRoute() once bound.
+         * Left unset -- by the testtool, and by any build that does not want the surface -- the two
+         * routes simply do not exist and answer 404.
+         */
+        void setUpgradeApi(upgrade::UpgradeApi& api) noexcept { m_upgradeApi = &api; }
 
         HttpServer(const HttpServer&) = delete;
         HttpServer& operator=(const HttpServer&) = delete;
@@ -77,6 +94,8 @@ namespace task_manager::http
         ApiHandlers& m_handlers;
         Options m_options;
         std::unique_ptr<wazuh::uds_http::IUdsHttpServer> m_server;
+        /// @brief Non-owning; the facade outlives this. Null means the routes are not registered.
+        upgrade::UpgradeApi* m_upgradeApi {nullptr};
     };
 } // namespace task_manager::http
 

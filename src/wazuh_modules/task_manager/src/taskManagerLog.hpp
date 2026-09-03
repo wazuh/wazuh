@@ -29,6 +29,7 @@ namespace task_manager
     constexpr auto TASK_MANAGER_EXECUTOR_LOGTAG {"wazuh-manager-modulesd:task-manager:executor"};
     constexpr auto TASK_MANAGER_SCHEDULER_LOGTAG {"wazuh-manager-modulesd:task-manager:scheduler"};
     constexpr auto TASK_MANAGER_HTTP_LOGTAG {"wazuh-manager-modulesd:task-manager:http"};
+    constexpr auto TASK_MANAGER_UPGRADE_LOGTAG {"wazuh-manager-modulesd:task-manager:upgrade"};
 
     /// Not a member of anything: LogFn has hidden ELF visibility, so holding one as a field of a
     /// default-visibility class trips -Wattributes. A function-local static also costs one
@@ -54,6 +55,12 @@ namespace task_manager
     inline const LogFn& httpLogFn()
     {
         static const LogFn instance {TASK_MANAGER_HTTP_LOGTAG};
+        return instance;
+    }
+
+    inline const LogFn& upgradeLogFn()
+    {
+        static const LogFn instance {TASK_MANAGER_UPGRADE_LOGTAG};
         return instance;
     }
 } // namespace task_manager

@@ -7,6 +7,7 @@ on:
       - ".github/workflows/5_testunit_taskmanager.yml"
       - "src/shared_modules/metrics/**"
       - "src/shared_modules/uds_http_server/**"
+      - "src/shared_modules/http-request/**"
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/task_manager/**"
       - ".github/actions/build_external_deps/**"

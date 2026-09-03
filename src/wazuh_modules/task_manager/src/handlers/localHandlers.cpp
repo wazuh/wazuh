@@ -11,6 +11,7 @@
 
 #include "localHandlers.hpp"
 
+#include "host/agentRow.hpp"
 #include "taskManagerLog.hpp"
 
 #include <json.hpp>
@@ -61,16 +62,10 @@ namespace
         return it->get<Timestamp>();
     }
 
-    /// @brief Read a field from an agent row. The host returns either the row object or a
-    ///        single-element array holding it, matching wazuh-db's own shape.
-    const nlohmann::json* agentRow(const nlohmann::json& document)
-    {
-        if (document.is_array())
-        {
-            return document.empty() ? nullptr : &document.front();
-        }
-        return document.is_object() ? &document : nullptr;
-    }
+    // agentRow() moved to host/agentRow.hpp when the upgrade subsystem needed to read the same
+    // rows; a second private copy that forgot the array case would report every agent as missing
+    // from the database rather than failing visibly.
+    using task_manager::host::agentRow;
 } // namespace
 
 namespace task_manager::handlers

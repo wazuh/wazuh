@@ -95,7 +95,7 @@
 #define LEGACY_TASK_WPK_CHUNK_SIZE 32768
 
 /* Location on the manager filesystem where the agent_upgrade module downloads WPK files before
- * creating the task (matches WM_UPGRADE_WPK_DEFAULT_PATH in wm_agent_upgrade_manager.h).
+ * creating the task (matches upgrade_dir in the task manager's upgrade subsystem).
  * Duplicated as a plain constant here rather than pulled in from that module's header: this
  * poller only ever consumes a task's payload, it never touches task creation. */
 #define LEGACY_TASK_WPK_DEFAULT_PATH "var/upgrade/"

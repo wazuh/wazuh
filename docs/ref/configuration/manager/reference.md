@@ -23,7 +23,6 @@ with a unit suffix (`s`, `m`, `h`, `d`, `w`); sizes accept bytes or a `B`/`K`/`M
 - [`wdb`](#wdb)
 - [`vulnerability-detection`](#vulnerabilitydetection)
 - [`indexer`](#indexer)
-- [`agent-upgrade`](#agentupgrade)
 - [`task-manager`](#taskmanager)
 - [`cluster`](#cluster)
 
@@ -136,18 +135,9 @@ Wazuh indexer connection shared by modulesd, the engine and the cluster. Absent 
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
 | `ssl.key` | string | `""` |  | Client private key (PEM). |
 
-## `agent-upgrade`
-
-Agent upgrade module (manager side).
-
-| Option | Type | Default | Constraints | Description |
-|---|---|---|---|---|
-| `enabled` | boolean | `true` |  | Whether the agent-upgrade module runs (WPK upgrades requested through the API). |
-| `wpk_repository` | string |  | not empty | WPK repository (host/path, no scheme). No default: left unset, agent-upgrade picks the repository by the target agent version. |
-
 ## `task-manager`
 
-Task manager module.
+Task manager module. Also serves remote agent upgrades: there is no agent-upgrade module on a manager, so their two settings live here.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
@@ -155,6 +145,8 @@ Task manager module.
 | `cleanup_interval` | integer | `300` | >= 0 | Seconds between cleanup passes. |
 | `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. |
 | `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. |
+| `upgrade_enabled` | boolean | `true` |  | Whether the manager serves remote agent upgrades (WPK upgrades requested through the API). |
+| `wpk_repository` | string |  | not empty | WPK repository (host/path, no scheme). No default: left unset, the repository is picked from the target agent version. |
 
 ## `cluster`
 

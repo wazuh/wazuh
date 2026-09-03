@@ -24,6 +24,19 @@ namespace task_manager
     ///        in this module uses std::chrono::steady_clock instead.
     using Timestamp = std::int64_t;
 
+    /// @brief How far into the future a caller-supplied create_time may sit. Small, because the only
+    ///        legitimate source of skew is a producer's clock being slightly ahead.
+    constexpr Timestamp MAX_FUTURE_SKEW {60};
+
+    /// @brief How far into the past. A year, matching the retired implementation, so an existing
+    ///        producer replaying an old request is rejected the same way it always was.
+    ///
+    /// Shared rather than file-local: every path that mints an agent task from a caller-supplied
+    /// timestamp -- the create routes and the upgrade routes alike -- must accept exactly the same
+    /// window, or the same request would be admitted through one door and refused at the other while
+    /// resolving to the same deterministic task id.
+    constexpr Timestamp MAX_AGE {31536000};
+
     /**
      * @brief The lifecycle of a manager task.
      *

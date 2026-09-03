@@ -24,9 +24,18 @@
 #include "storage/sqliteTaskStore.hpp"
 #include "taskManagerLog.hpp"
 #include "task_manager.h"
+#include "upgrade/httpWpkRepository.hpp"
+#include "upgrade/upgradeApi.hpp"
+#include "upgrade/upgradeOrchestrator.hpp"
+#include "upgrade/upgradeService.hpp"
+#include "upgrade/versionsCache.hpp"
+#include "upgrade/wpkCache.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
+#include <algorithm>
+#include <chrono>
+#include <ctime>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -157,10 +166,18 @@ namespace task_manager
             m_executor->start();
             m_scheduler->start();
 
+            buildUpgradeSubsystem(config);
+
             http::HttpServer::Options httpOptions;
             httpOptions.socketPath = config.socket_path;
             httpOptions.ioThreads = valueOr(config.io_threads, 2);
             m_server = std::make_unique<http::HttpServer>(*m_api, httpOptions);
+
+            if (m_upgradeApi)
+            {
+                // Before start(): the transport refuses addRoute() once the socket is bound.
+                m_server->setUpgradeApi(*m_upgradeApi);
+            }
 
             // Bound LAST. Everything that executes a task must exist before a producer can create
             // one.
@@ -189,6 +206,23 @@ namespace task_manager
             {
                 m_server->stopAccepting();
             }
+            // Second, and the position matters at both ends. AFTER stopAccepting(), because until
+            // then a new batch can still arrive. BEFORE flushWrites() below, because a batch writes
+            // agent tasks through the store and those rows must be in the flushed transaction --
+            // and long before m_server->stop(), which is what ends a retained responder's ability
+            // to answer at all. Every parked request is answered here; none is dropped.
+            //
+            // The repository is stopped FIRST so a 100 MB download in flight is cut short rather
+            // than waited out; without it the service's join below would block for the remainder of
+            // the transfer, well past the shutdown budget modulesd allows every module to share.
+            if (m_wpkRepository)
+            {
+                m_wpkRepository->requestStop();
+            }
+            if (m_upgradeService)
+            {
+                m_upgradeService->stop();
+            }
             if (m_scheduler)
             {
                 m_scheduler->stop();
@@ -207,6 +241,14 @@ namespace task_manager
             }
 
             m_server.reset();
+            // Torn down in construction order reversed: the API points at the service, the service
+            // at the orchestrator, and the orchestrator at the caches and the store.
+            m_upgradeApi.reset();
+            m_upgradeService.reset();
+            m_upgradeOrchestrator.reset();
+            m_versionsCache.reset();
+            m_wpkCache.reset();
+            m_wpkRepository.reset();
             m_api.reset();
             m_cache.reset();
             m_scheduler.reset();
@@ -226,6 +268,142 @@ namespace task_manager
         static int valueOr(const int configured, const int fallback)
         {
             return configured > 0 ? configured : fallback;
+        }
+
+        static std::string stringOr(const char* configured, const char* fallback)
+        {
+            return (configured != nullptr && configured[0] != '\0') ? configured : fallback;
+        }
+
+        /**
+         * @brief Build the agent upgrade subsystem: repository client, caches, orchestrator, pool.
+         *
+         * Constructed AFTER the executor and scheduler and BEFORE the server binds, like everything
+         * else that has to be able to serve a request the moment the socket exists.
+         *
+         * Nothing here is conditional on `upgrade_enabled`. The routes are registered either way and
+         * the flag is checked per request, because the retired module expressed "disabled" by never
+         * binding its own socket -- and with the socket now shared there is nothing to leave unbound.
+         * A disabled module answering every agent with a clear code beats one whose route 404s.
+         */
+        void buildUpgradeSubsystem(const task_manager_config_t& config)
+        {
+            upgrade::HttpWpkRepository::Options repositoryOptions;
+            repositoryOptions.downloadTimeout =
+                std::chrono::milliseconds {valueOr(config.upgrade_download_timeout, 45000)};
+            m_wpkRepository = std::make_unique<upgrade::HttpWpkRepository>(repositoryOptions);
+
+            if (!m_wpkRepository->hasCaBundle())
+            {
+                // Reported once, loudly, rather than per request -- and NOT acted on: verification
+                // stays on and HTTPS to the repository will fail closed. The digest a WPK is checked
+                // against is fetched over that same channel, so relaxing it would make the integrity
+                // check confirm an attacker's work rather than ours.
+                LOGFN_WARN(moduleLogFn(),
+                           "No CA bundle was found on this host. HTTPS requests to the WPK repository "
+                           "will fail; agent upgrades over https are unavailable until one is installed.");
+            }
+
+            upgrade::WpkCache::Options wpkOptions;
+            wpkOptions.upgradeDir = stringOr(config.upgrade_dir, "var/upgrade/");
+            wpkOptions.downloadAttempts = valueOr(config.upgrade_download_attempts, 3);
+            wpkOptions.maxConcurrentDownloads = valueOr(config.upgrade_max_concurrent_downloads, 2);
+            m_wpkCache = std::make_unique<upgrade::WpkCache>(*m_wpkRepository, wpkOptions);
+
+            m_versionsCache = std::make_unique<upgrade::VersionsCache>(
+                *m_wpkRepository, std::chrono::seconds {valueOr(config.upgrade_versions_ttl, 300)});
+
+            upgrade::UpgradeOrchestrator::Options orchestratorOptions;
+            orchestratorOptions.configuredRepository = config.wpk_repository;
+            orchestratorOptions.managerVersion = config.manager_version;
+            orchestratorOptions.upgradeDir = wpkOptions.upgradeDir;
+            orchestratorOptions.batchDeadline =
+                std::chrono::seconds {valueOr(config.upgrade_batch_deadline, 180)};
+            orchestratorOptions.maxAgents =
+                static_cast<std::size_t>(valueOr(config.upgrade_max_agents, 500));
+            // The SAME PendingCache the pending-tasks route reads. A separate one would let an
+            // upgrade task be written while the route still believes the agent has nothing.
+            m_upgradeOrchestrator = std::make_unique<upgrade::UpgradeOrchestrator>(
+                *m_hostOps, *m_store, *m_cache, *m_wpkCache, *m_versionsCache, orchestratorOptions);
+
+            // Copied once here rather than re-read per request: the retired code re-read remoted's
+            // configuration once per AGENT, parsing the same file for every agent in a batch.
+            upgrade::RemotedSettings remoted;
+            remoted.valid = config.remoted_config_read != 0;
+            remoted.legacyEnabled = config.remoted_legacy_enabled != 0;
+            remoted.verificationMode = config.remoted_verification_mode;
+
+            upgrade::UpgradeService::Options serviceOptions;
+            serviceOptions.workers = valueOr(config.upgrade_workers, resolveUpgradeWorkers());
+            serviceOptions.queueDepth =
+                static_cast<std::size_t>(valueOr(config.upgrade_queue_depth, 8));
+            m_upgradeService = std::make_unique<upgrade::UpgradeService>(
+                *m_upgradeOrchestrator, [remoted] { return remoted; }, serviceOptions);
+            m_upgradeService->start();
+
+            m_upgradeApi = std::make_unique<upgrade::UpgradeApi>(
+                *m_upgradeService,
+                [] { return static_cast<Timestamp>(std::time(nullptr)); },
+                config.upgrade_enabled != 0);
+
+            if (config.upgrade_enabled == 0)
+            {
+                LOGFN_INFO(moduleLogFn(),
+                           "Agent upgrades are disabled by configuration; the upgrade routes will refuse "
+                           "every request.");
+            }
+
+            registerUpgradeMetrics();
+        }
+
+        /// @brief Half the cores, clamped to [1, 4]. Batches are mostly waiting on one wazuh-db
+        ///        socket and one download slot, so more workers buy contention rather than progress.
+        static int resolveUpgradeWorkers()
+        {
+            const auto cores {static_cast<int>(std::thread::hardware_concurrency())};
+            return std::max(1, std::min(cores > 0 ? cores / 2 : 1, 4));
+        }
+
+        void registerUpgradeMetrics()
+        {
+            // Pull metrics, like the queue gauges: the counters are already maintained, so reading
+            // them on demand costs nothing. Nothing the retired C module could publish at all.
+            m_metrics->registerPull(
+                "task_manager.upgrade.queue_depth",
+                [this] { return m_upgradeService ? static_cast<std::int64_t>(m_upgradeService->queueDepth()) : 0; },
+                "Upgrade batches waiting for a worker",
+                "batches");
+
+            m_metrics->registerPull(
+                "task_manager.upgrade.batches_shed",
+                [this] { return m_upgradeService ? static_cast<std::int64_t>(m_upgradeService->shedCount()) : 0; },
+                "Upgrade requests refused because the queue was full",
+                "requests");
+
+            m_metrics->registerPull(
+                "task_manager.upgrade.wpk_downloads",
+                [this] { return m_wpkCache ? static_cast<std::int64_t>(m_wpkCache->downloadCount()) : 0; },
+                "WPK downloads performed",
+                "downloads");
+
+            m_metrics->registerPull(
+                "task_manager.upgrade.wpk_cache_hits",
+                [this] { return m_wpkCache ? static_cast<std::int64_t>(m_wpkCache->memoHitCount()) : 0; },
+                "Upgrade requests answered from an already-verified WPK",
+                "requests");
+
+            m_metrics->registerPull(
+                "task_manager.upgrade.versions_fetches",
+                [this]
+                { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->fetchCount()) : 0; },
+                "Repository `versions` files fetched",
+                "requests");
+
+            m_metrics->registerPull(
+                "task_manager.upgrade.versions_cache_hits",
+                [this] { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->hitCount()) : 0; },
+                "Repository `versions` lookups answered from cache",
+                "requests");
         }
 
         static int resolveWorkerCount(const task_manager_config_t& config)
@@ -307,6 +485,17 @@ namespace task_manager
         std::unique_ptr<schedule::Scheduler> m_scheduler;
         std::unique_ptr<cache::PendingCache> m_cache;
         std::unique_ptr<http::ApiHandlers> m_api;
+
+        // The agent upgrade subsystem, declared in dependency order: each of these holds a
+        // reference to the one above it, so destruction runs bottom-up and stop() resets them in
+        // that order explicitly rather than relying on member order alone.
+        std::unique_ptr<upgrade::HttpWpkRepository> m_wpkRepository;
+        std::unique_ptr<upgrade::WpkCache> m_wpkCache;
+        std::unique_ptr<upgrade::VersionsCache> m_versionsCache;
+        std::unique_ptr<upgrade::UpgradeOrchestrator> m_upgradeOrchestrator;
+        std::unique_ptr<upgrade::UpgradeService> m_upgradeService;
+        std::unique_ptr<upgrade::UpgradeApi> m_upgradeApi;
+
         std::unique_ptr<http::HttpServer> m_server;
     };
 } // namespace task_manager

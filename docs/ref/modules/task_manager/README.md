@@ -1,6 +1,6 @@
 # Task Manager Module
 
-The Task Manager owns two kinds of work: **agent tasks**, which it stores for agents to pick up, and **manager tasks**, which it executes itself and retries until they reach an outcome.
+The Task Manager owns two kinds of work: **agent tasks**, which it stores for agents to pick up, and **manager tasks**, which it executes itself and retries until they reach an outcome. It also **serves remote agent upgrades**, whose output is an agent task — see [Agent upgrades](#agent-upgrades) below.
 
 **Daemon:** Part of `wazuh-manager-modulesd`
 
@@ -36,7 +36,7 @@ Key properties:
 | Type              | Purpose                                        | Created by                        |
 | ----------------- | ---------------------------------------------- | --------------------------------- |
 | `active_response` | Execute an Active Response script on the agent | Engine / Active Response pipeline |
-| `remote_upgrade`  | Trigger a WPK-based agent upgrade              | Agent Upgrade module              |
+| `remote_upgrade`  | Trigger a WPK-based agent upgrade              | This module's own upgrade routes  |
 | `agent_restart`   | Restart the `wazuh-agent` service              | Server API                        |
 | `agent_reload`    | Reload the agent configuration                 | Server API                        |
 
@@ -88,6 +88,38 @@ task type takes both from its own descriptor; a producer cannot contradict it. B
 honoured from the body only for a task type this build does not know, which is how a test fixture
 registers a synthetic one.
 
+### Agent upgrades
+
+| Route | Body | Answers |
+| --- | --- | --- |
+| `POST /v1/agents/upgrade` | `agents`, `request_time`, optional `version`, `wpk_repo`, `use_http`, `force_upgrade`, `package_type` | the per-agent envelope below |
+| `POST /v1/agents/upgrade-custom` | `agents`, `request_time`, `file_path`, optional `installer` | the same envelope |
+
+These two behave unlike every other route here, in two ways that are deliberate.
+
+**They are asynchronous.** The handler parses, hands the batch to a worker pool and returns without
+answering; the reply is sent later through a retained responder. Everything else on this socket is a
+bounded store operation measured in microseconds, but an upgrade batch reads wazuh-db once per agent
+and may download 100 MB — doing that on an I/O thread would head-of-line-block every agent's task
+polling.
+
+**They always answer `200`**, including for a body that could not be parsed. The response is a
+per-agent envelope, and the Server API turns each entry into an exception code by adding 1810:
+
+```json
+{"error": 0,
+ "data": [{"error": 0,  "message": "Success", "agent": 4},
+          {"error": 12, "message": "The repository is not reachable", "agent": 5}],
+ "message": "Success"}
+```
+
+A non-2xx would make that client raise before it ever read the entries, replacing a precise
+per-agent reason with a generic transport error. Refusing a batch under load is the same 200 with
+per-agent error 4, which is the one code the Server API answers by halving the chunk and retrying.
+
+See [Agent upgrades](agent-upgrades.md) for the flow, and
+[configuration](configuration.md#agent-upgrades) for the options.
+
 ### Operations
 
 | Route | Class | Purpose |
@@ -110,6 +142,9 @@ registers a synthetic one.
    (1 timer thread)    │      │                                  │
                        │      ├─▶ HttpHandler ──▶ consumers      │
                        │      └─▶ local handlers ──▶ host ops    │
+                       ├─────────────────────────────────────────┤
+                       │  UpgradeService  (2 batch workers)      │
+                       │      └─▶ WPK repository (outbound HTTPS)│
                        └─────────────────────────────────────────┘
 ```
 
@@ -125,8 +160,14 @@ registers a synthetic one.
   retention, runs the daily VACUUM and reports stalls. It sleeps until the earliest of those is due
   rather than polling.
 
-**Threads:** 2 HTTP I/O + 4–8 executor workers + 1 scheduler. The module's modulesd thread returns
-immediately after `start()`.
+- **The upgrade pool is separate from the executor**, and is the one place on this socket where a
+  request is answered later rather than inline. Its workers count *batches*, not agents: per-agent
+  work is one wazuh-db call on a shared socket plus arithmetic, so parallelising agents would only
+  multiply contention. It is also the only outbound connection this module makes to anything off
+  the machine.
+
+**Threads:** 2 HTTP I/O + 4–8 executor workers + 1 scheduler + 2 upgrade batch workers. The module's
+modulesd thread returns immediately after `start()`.
 
 ---
 
@@ -155,10 +196,13 @@ alter an existing table, any change to a table's shape needs a real step in the 
 | Client | Uses |
 | --- | --- |
 | `wazuh-manager-remoted` (C poller and C++ `TaskClient`) | `/v1/tasks/pending` |
-| Agent Upgrade module | `/v1/tasks` |
 | Server API / framework | `/v1/tasks`, `/v1/tasks/bulk` via `wazuh.core.task_http` |
+| Server API / framework, upgrades | `/v1/agents/upgrade`, `/v1/agents/upgrade-custom`, same client |
 | `wazuh-manager-authd` | `/v1/manager-tasks`, `/count`, `/by-agent` via `manager_task_op.h` |
 | Vulnerability scanner | `/v1/manager-tasks`, through a callback modulesd hands it at start |
+
+The upgrade routes are not in this table because they are part of this module: their agent tasks are
+written straight to the store, in one transaction per batch.
 
 ---
 
@@ -191,6 +235,7 @@ value fails `wazuh-modulesd -t` rather than aborting a module thread later.
 | `src/schedule/` | Cadence arithmetic and the timer thread |
 | `src/handlers/` | The routed handler, its UDS client, and the three local handlers |
 | `src/http/` | Route wiring and per-route request logic |
+| `src/upgrade/` | The manager side of the Agent Upgrade module: the two routes, the batch orchestrator, the WPK and repository-index caches |
 | `src/wazuh_modules/src/wm_task_manager.c` | modulesd's shim: loads the module, implements the host operations |
 
 ---
@@ -200,5 +245,5 @@ value fails `wazuh-modulesd -t` rather than aborting a module thread later.
 - [Task Manager Configuration Reference](configuration.md)
 - [Manager tasks](manager-tasks.md) — states, retry, concurrency groups, and finding what failed
 - [Recurring manager tasks](schedules.md) — the disconnection sweep, agent retention and log rotation
-- [Agent Upgrade Module](../agent_upgrade/README.md)
+- [Agent upgrades](agent-upgrades.md) — request validation, WPK resolution and task creation
 - [Inventory Sync Server](../inventory-sync-server/README.md) — executes the two routed task types

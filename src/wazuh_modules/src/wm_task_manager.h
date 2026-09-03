@@ -76,6 +76,36 @@ typedef struct wm_task_manager {
     /* Threading. */
     int io_threads;
     int executor_threads;
+
+    /* Agent upgrade.
+     *
+     * The manager side of the agent-upgrade module IS this module: there is no separate
+     * agent-upgrade module on a manager any more, so its two XML options are read here, from
+     * <task-manager>. On an agent the <wodle name="agent-upgrade"> block still exists and still
+     * configures the agent half; the two configurations are for different halves of a module that
+     * no longer shares any code between them. */
+    unsigned int upgrade_enabled:1;
+    char *wpk_repository;
+
+    int upgrade_workers;
+    int upgrade_queue_depth;
+    int upgrade_batch_deadline;
+    int upgrade_max_agents;
+    int upgrade_download_attempts;
+    int upgrade_download_timeout;
+    int upgrade_max_concurrent_downloads;
+    int upgrade_versions_ttl;
+
+    /* remoted's delivery settings, which the upgrade gates need.
+     *
+     * remoted_config_read is NOT the usual zero-means-default sentinel, and cannot be:
+     * REMOTED_HTTPS_VERIFY_UNSET is -1 and REMOTED_HTTPS_VERIFY_NONE is 0, so both meaningful
+     * values of remoted_verification_mode are <= 0 while meaning different things. This flag is
+     * what keeps them apart. Zero makes the module ignore both fields and fail the gates OPEN,
+     * which is what the retired code did when its own ReadConfig() failed. */
+    int remoted_config_read;
+    int remoted_legacy_enabled;
+    int remoted_verification_mode;
 } wm_task_manager;
 
 extern const wm_context WM_TASK_MANAGER_CONTEXT;

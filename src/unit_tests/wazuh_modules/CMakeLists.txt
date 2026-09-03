@@ -10,7 +10,6 @@ if(${TARGET} STREQUAL "manager")
   add_subdirectory(database)
   add_subdirectory(scheduling)
   add_subdirectory(vulnerability_detection)
-  add_subdirectory(agent_upgrade)
   add_subdirectory(wmodules)
 endif()
 

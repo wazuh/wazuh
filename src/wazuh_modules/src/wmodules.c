@@ -68,10 +68,10 @@ int wm_select_interruptible(int sock, fd_set *fdset) {
  * last position should be NULL
  * */
 static const void *default_modules[] = {
-    wm_agent_upgrade_read,
 #ifndef CLIENT
     wm_task_manager_read,
 #else
+    wm_agent_upgrade_read,
     wm_agent_info_read,
 #endif
 
@@ -135,14 +135,19 @@ int wm_config() {
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     // Read the manager configuration (etc/wazuh-manager.conf): loaded once (the helper logs the error),
-    // then each section of the effective document as cJSON. agent-upgrade and task-manager always exist
+    // then each section of the effective document as cJSON. task-manager always exists
     // (default_modules[]); vulnerability-detection is created only when its section is present.
+    //
+    // There is no `agent-upgrade` section here, and none in the schema: that module is agent-only.
+    // The manager serves upgrades from the task manager, which reads their two settings from its own
+    // section -- along with `global` and `remote`, which its recurring work and its delivery gates
+    // need and which it reads for itself.
 
     if (w_mconf_load(wm_config_path) < 0) {
         return OS_INVALID;
     }
 
-    static const char *manager_sections[] = { "vulnerability-detection", "indexer", "agent-upgrade", "task-manager" };
+    static const char *manager_sections[] = { "vulnerability-detection", "indexer", "task-manager" };
 
     for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
         cJSON *section = w_mconf_section(manager_sections[i]);
@@ -154,9 +159,6 @@ int wm_config() {
             break;
         case 1:
             rc = Read_Indexer_JSON(section);
-            break;
-        case 2:
-            rc = wm_agent_upgrade_read_json(section, wm_find_module(WM_AGENT_UPGRADE_CONTEXT.name));
             break;
         default:
             rc = wm_task_manager_read_json(section, wm_find_module(WM_TASK_MANAGER_CONTEXT.name));

@@ -337,6 +337,30 @@ static void wm_task_manager_fill_config(const wm_task_manager *data, task_manage
 
     config->io_threads = data->io_threads;
     config->executor_threads = data->executor_threads;
+
+    config->upgrade_workers = data->upgrade_workers;
+    config->upgrade_queue_depth = data->upgrade_queue_depth;
+    config->upgrade_batch_deadline = data->upgrade_batch_deadline;
+    config->upgrade_max_agents = data->upgrade_max_agents;
+    config->upgrade_download_attempts = data->upgrade_download_attempts;
+    config->upgrade_download_timeout = data->upgrade_download_timeout;
+    config->upgrade_max_concurrent_downloads = data->upgrade_max_concurrent_downloads;
+    config->upgrade_versions_ttl = data->upgrade_versions_ttl;
+
+    config->remoted_config_read = data->remoted_config_read;
+    config->remoted_legacy_enabled = data->remoted_legacy_enabled;
+    config->remoted_verification_mode = data->remoted_verification_mode;
+
+    config->upgrade_enabled = data->upgrade_enabled ? 1 : 0;
+    if (data->wpk_repository) {
+        snprintf(config->wpk_repository, sizeof(config->wpk_repository), "%s", data->wpk_repository);
+    }
+
+    snprintf(config->upgrade_dir, sizeof(config->upgrade_dir), "%s/", UPGRADE_DIR);
+    /* __wazuh_version is a libwazuh global, and the .so links none of libwazuh. It decides which
+     * version an upgrade targets by default and whether a requested one outruns the manager, so it
+     * has to cross the ABI rather than be looked up on the other side. */
+    snprintf(config->manager_version, sizeof(config->manager_version), "%s", __wazuh_version);
 }
 
 static void *wm_task_manager_main(wm_task_manager *data) {
@@ -414,6 +438,9 @@ static void wm_task_manager_destroy(wm_task_manager *data) {
         task_manager_module = NULL;
     }
 
+    if (data) {
+        os_free(data->wpk_repository);
+    }
     os_free(data);
     task_config = NULL;
 }
@@ -435,6 +462,15 @@ static cJSON *wm_task_manager_dump(const wm_task_manager *data) {
     cJSON_AddNumberToObject(wm_tm, "cleanup_interval", data->cleanup_interval);
     cJSON_AddNumberToObject(wm_tm, "max_payload_bytes", data->max_payload_bytes);
     cJSON_AddNumberToObject(wm_tm, "max_tasks_per_poll", data->max_tasks_per_poll);
+
+    /* The agent-upgrade options moved here when the manager side of that module did. Reported
+     * under this module because this is the module that now serves them. */
+    cJSON *upgrade = cJSON_CreateObject();
+    cJSON_AddStringToObject(upgrade, "enabled", data->upgrade_enabled ? "yes" : "no");
+    if (data->wpk_repository) {
+        cJSON_AddStringToObject(upgrade, "wpk_repository", data->wpk_repository);
+    }
+    cJSON_AddItemToObject(wm_tm, "agent_upgrade", upgrade);
 
     cJSON *recurring = cJSON_CreateObject();
     cJSON_AddNumberToObject(recurring, "agents_disconnection_time", data->disconnection_time);

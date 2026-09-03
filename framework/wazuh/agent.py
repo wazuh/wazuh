@@ -33,7 +33,7 @@ UPGRADE_CHUNK_SIZE = 500
 # 1821 -> Remote upgrade is not available for this agent version
 # 1822 -> Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first
 # 1823 -> Current agent version is greater or equal
-# 1828 -> Agent below v5.0.0 with '<remote><legacy>' delivery disabled on the manager: the
+# 1828 -> Agent below v5.0.0 with remote.legacy.enabled false on the manager: the
 # upgrade task could never be delivered. Per-agent (depends on that agent's own reported
 # version), unlike 1824/1826 below -- a mixed batch (5.x + 4.x agents, legacy off) must
 # still report the 5.x agents' already-created tasks instead of raising and discarding them.
