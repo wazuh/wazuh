@@ -62,6 +62,20 @@ struct ContainerScope
 /// routinely.
 [[nodiscard]] bool RootfsStillAddressable(pid_t pid);
 
+/// @brief The first PID in `pids` whose rootfs is addressable right now, or 0
+/// when none is.
+///
+/// A container's PID list is a point-in-time snapshot, so by the time it is
+/// used some entries may already have exited — and every rootfs-backed data
+/// class addresses the container through the chosen one. Picking blindly (the
+/// old `pids.front()`) meant an unlucky choice produced an empty or truncated
+/// scan for a container that was perfectly alive under a different PID.
+///
+/// `pids` is expected ascending (PidIndex guarantees it), so the lowest live
+/// PID wins — the best available proxy for the container's entrypoint and the
+/// longest-lived candidate.
+[[nodiscard]] pid_t SelectAddressablePid(const std::vector<pid_t>& pids);
+
 /// @brief True when `pid` and `other` share the namespace named by `ns_name`
 /// ("net", "pid", "mnt", ...), compared by namespace inode identity.
 ///

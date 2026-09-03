@@ -439,3 +439,55 @@ TEST(BaselineOrchestrator, DiscoveryIsInvokedExactlyOncePerRun)
 
     EXPECT_EQ(calls, 1);
 }
+
+TEST(BaselineOrchestrator, DeadPidsInTheSnapshotDoNotBlockAScannableContainer)
+{
+    // The PID index is a point-in-time snapshot, so by scan time some entries
+    // may have exited. Taking pids.front() blindly produced an empty scan for a
+    // container that was perfectly alive under a later PID.
+    TempTree tree;
+    tree.writeFile("a.txt", "x");
+
+    Recorder rec;
+    const auto discover = []() -> std::vector<ContainerIdentity>
+    {
+        return {MakeIdentity("c1")};
+    };
+
+    // PID 0 has no /proc entry, so it stands in for "listed in the snapshot but
+    // already gone"; getpid() is the live candidate further down the list.
+    const auto pids = PidIndex::FromMap({{"c1", {0, ::getpid()}}});
+
+    const int baselined = RunFimDbsyncBaselineFrom(discover, pids, {PathFor(tree.path())},
+                                                   rec.rowSink(), rec.statusSink());
+
+    EXPECT_EQ(baselined, 1);
+    EXPECT_FALSE(rec.rows.empty()) << "a live PID later in the list was not used";
+
+    const auto* status = rec.statusFor("c1");
+    ASSERT_NE(status, nullptr);
+    EXPECT_FALSE(status->partial);
+}
+
+TEST(BaselineOrchestrator, ContainerWhoseEveryPidIsGoneIsTreatedAsUnscanned)
+{
+    TempTree tree;
+    tree.writeFile("a.txt", "x");
+
+    Recorder rec;
+    const auto discover = []() -> std::vector<ContainerIdentity>
+    {
+        return {MakeIdentity("c1")};
+    };
+
+    const auto pids = PidIndex::FromMap({{"c1", {0}}}); // listed, but unusable
+
+    const int baselined = RunFimDbsyncBaselineFrom(discover, pids, {PathFor(tree.path())},
+                                                   rec.rowSink(), rec.statusSink());
+
+    // Same handling as "no live PID at all": no rows, no status, not counted —
+    // so the caller cannot read it as a complete empty scan.
+    EXPECT_EQ(baselined, 0);
+    EXPECT_TRUE(rec.rows.empty());
+    EXPECT_TRUE(rec.statuses.empty());
+}
