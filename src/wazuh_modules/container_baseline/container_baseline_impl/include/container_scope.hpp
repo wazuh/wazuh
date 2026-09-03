@@ -51,6 +51,17 @@ struct ContainerScope
 /// @return Both fields Unknown if /proc/<pid>/ns or /proc/1/ns cannot be read.
 [[nodiscard]] ContainerScope DetectContainerScope(pid_t pid);
 
+/// @brief True when `pid`'s rootfs is still addressable through
+/// /proc/<pid>/root.
+///
+/// Every rootfs-backed data class addresses the container through this path, so
+/// if the PID exits partway through a scan the remaining reads fail and the
+/// scan quietly returns whatever it had collected so far. Checking afterwards
+/// turns that into a reported incomplete scan, which is what stops the missing
+/// rows from being read as deletions. Short-lived and init containers hit this
+/// routinely.
+[[nodiscard]] bool RootfsStillAddressable(pid_t pid);
+
 /// @brief True when `pid` and `other` share the namespace named by `ns_name`
 /// ("net", "pid", "mnt", ...), compared by namespace inode identity.
 ///
