@@ -101,7 +101,9 @@ extern "C" int cbaseline_run_syscollector_dbsync(const char*                conn
 
 extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
 {
-    if (connector_socket_path == nullptr) return 0;
+    // -1, not 0: "no socket configured" is no more an authorisation to delete
+    // rows than "socket unreachable" is. See the header's contract.
+    if (connector_socket_path == nullptr) return -1;
     return ListContainers(
         connector_socket_path,
         [sink, user_data](const std::string& containerId) {
