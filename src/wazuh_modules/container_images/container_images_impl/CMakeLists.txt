@@ -21,6 +21,7 @@ link_directories(${CMAKE_BINARY_DIR}/lib)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/zlib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/zstd/lib/) # layer blob decompression
+include_directories(${SRC_FOLDER}/external/curl/include/) # registry transport
 include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper
 include_directories(${SRC_FOLDER}/external/sqlite/) # rpm sqlite database backend
 # The rpm header and database format readers are the shared agent package reading. They
@@ -43,13 +44,23 @@ endif()
 
 add_library(
   ContainerImagesImpl STATIC
+  src/agent_credential_store.cpp
   src/container_images_impl.cpp
   src/container_images_db.cpp
   src/archive_image_reader.cpp
+  src/auth_challenge.cpp
+  src/ca_bundle.cpp
   src/byte_stream.cpp
   src/layer_composer.cpp
   src/layer_reader.cpp
-  src/package_db_parser.cpp)
+  src/oci_metadata.cpp
+  src/package_db_parser.cpp
+  src/platform_selection.cpp
+  src/registry_byte_stream.cpp
+  src/registry_image_reader.cpp
+  src/registry_reference.cpp
+  src/registry_transport.cpp
+  src/retry_policy.cpp)
 
 set_target_properties(ContainerImagesImpl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

@@ -27,6 +27,7 @@ import os
 import shutil
 import sqlite3
 import struct
+import subprocess
 import tarfile
 import tempfile
 from pathlib import Path
@@ -437,3 +438,129 @@ def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: di
     yield layout_path
 
     shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------------------------
+# Remote references: a registry served locally, impersonating ghcr.io.
+# --------------------------------------------------------------------------------------------
+
+def _registry_image_layers(architecture: str) -> tuple:
+    """One gzip layer with a dpkg database, and the packages it declares."""
+    packages = [(f'demo-{architecture}', '1.0'), ('shared-package', '2.0')]
+
+    return _layer_blob({DPKG_STATUS_PATH: dpkg_status(packages)}), dict(packages)
+
+
+def populate_registry(local, name: str, private: bool, platforms: list) -> dict:
+    """Publish one image into the local registry and return the packages it carries.
+
+    A single platform is published as a bare image manifest, several as an image index, which
+    is what a real registry does and what makes the platform-selection cases meaningful.
+    """
+    repository = local.add_repository(name, private=private)
+    entries = []
+    packages = {}
+
+    for architecture in platforms:
+        layer, declared = _registry_image_layers(architecture)
+        layer_digest = repository.add_blob(layer, layer=True)
+        config_digest = repository.add_blob(
+            json.dumps({'os': 'linux', 'architecture': architecture}).encode())
+
+        manifest = json.dumps({
+            'schemaVersion': 2,
+            'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+            'config': {'mediaType': 'application/vnd.oci.image.config.v1+json',
+                       'digest': config_digest},
+            'layers': [{'mediaType': 'application/vnd.oci.image.layer.v1.tar+gzip',
+                        'digest': layer_digest, 'size': len(layer)}],
+        }).encode()
+
+        entries.append({'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+                        'digest': repository.add_manifest(manifest),
+                        'platform': {'os': 'linux', 'architecture': architecture}})
+
+        if architecture == 'amd64':
+            packages = declared
+
+    if len(entries) == 1:
+        repository.tags['1.0'] = entries[0]['digest']
+        if not packages:
+            packages = declared
+    else:
+        repository.add_manifest(json.dumps({
+            'schemaVersion': 2,
+            'mediaType': 'application/vnd.oci.image.index.v1+json',
+            'manifests': entries,
+        }).encode(), tag='1.0')
+
+    return packages
+
+
+@pytest.fixture()
+def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_configuration: dict):
+    """Serve the configured reference from a registry on this host, answering as ghcr.io.
+
+    The module accepts only `ghcr.io` and builds its URLs without a port, so the registry has
+    to be reachable under that name on 443. This fixture therefore:
+
+      - starts the registry on 127.0.0.1:443 with a certificate issued for `ghcr.io` by a
+        throwaway authority,
+      - adds a hosts entry so the name resolves locally, removing it afterwards,
+      - points `<ca_bundle>` at that authority, which also exercises the certificate
+        resolution the module performs at run time,
+      - deposits, corrupts or omits the credential in the agent store according to the case.
+
+    Requires root, like the rest of this suite: it binds a privileged port, edits `/etc/hosts`
+    and runs the agent's own keystore tool.
+    """
+    from framework_module.registry import LocalRegistry, REGISTRY_HOST
+
+    local = LocalRegistry()
+    packages = populate_registry(local, test_metadata['repository'],
+                                 test_metadata.get('private', False),
+                                 test_metadata.get('platforms', ['amd64']))
+
+    hosts = Path('/etc/hosts')
+    original_hosts = hosts.read_text()
+    hosts.write_text(original_hosts + f'\n127.0.0.1 {REGISTRY_HOST}\n')
+
+    # The generated authority is what the agent must trust, so the configuration is rewritten
+    # with its real path rather than the placeholder the template carries.
+    _point_ca_bundle_at(test_configuration, local.ca_certificate)
+
+    local.credential = ('an-owner', 'a-secret-token')
+    stored = _store_case_credential(test_metadata.get('credential', 'none'))
+
+    local.start()
+
+    yield local, packages
+
+    local.stop()
+    hosts.write_text(original_hosts)
+
+    for key in stored:
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+                        '-k', key, '-d'], capture_output=True)
+
+
+def _point_ca_bundle_at(test_configuration: dict, path: str) -> None:
+    """Replace the ca_bundle placeholder with the generated authority's path."""
+    for section in test_configuration.get('sections', []):
+        for element in section.get('elements', []):
+            if 'ca_bundle' in element:
+                element['ca_bundle']['value'] = path
+
+
+def _store_case_credential(kind: str) -> list:
+    """Put the credential the case asks for into the agent store. Returns the keys written."""
+    if kind == 'none' or kind == 'missing':
+        return []
+
+    passkey = 'a-secret-token' if kind == 'valid' else 'not-the-token'
+
+    for key, value in (('ghcr_user', 'an-owner'), ('ghcr_token', passkey)):
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+                        '-k', key], input=value, text=True, check=True, capture_output=True)
+
+    return ['ghcr_user', 'ghcr_token']

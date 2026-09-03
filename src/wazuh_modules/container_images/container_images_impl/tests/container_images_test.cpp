@@ -533,6 +533,88 @@ class ContainerImagesDBTest : public ContainerImagesTest
         std::string m_dbPath;
 };
 
+TEST_F(ContainerImagesDBTest, StoredTagsAreRecoveredByLoadStored)
+{
+    // Regression test. loadStored() brace-initialized the parsed json, which selected
+    // nlohmann's initializer-list constructor: ["1.4","latest"] was read as a key and a
+    // value and became the object {"1.4":"latest"}, so is_array() was false and every
+    // stored tag was dropped. Nothing covered the tag round trip, which is why it shipped.
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.tags = {"12", "12.4", "latest"};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto stored {db.loadStored("local", "debian:12")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->tags, std::vector<std::string>({"12", "12.4", "latest"}));
+}
+
+TEST_F(ContainerImagesDBTest, ASingleStoredTagIsRecovered)
+{
+    // A one-element array took a different wrong path than a two-element one: it was
+    // wrapped into a nested array rather than turned into an object. Both are covered.
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.tags = {"only"};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto stored {db.loadStored("local", "debian:12")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->tags, std::vector<std::string>({"only"}));
+}
+
+TEST_F(ContainerImagesDBTest, AReferenceWithNoTagsRoundTripsAsEmpty)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    const auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto stored {db.loadStored("local", "debian:12")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_TRUE(stored->tags.empty());
+}
+
+TEST_F(ContainerImagesDBTest, ReSyncingAStoredRecordDoesNotDropItsTags)
+{
+    // The consequence the defect actually had. An unchanged or unreadable reference is
+    // handed back to storage as whatever loadStored() returned, so an empty tag list
+    // overwrote the column and emitted a MODIFIED delta for a change that never
+    // happened. With the digest short-circuit, that was every rescan of every image.
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.tags = {"12", "latest"};
+
+    DeltaTally first;
+    db.syncReferences({reference}, first.callback());
+    ASSERT_EQ(first.created, 1);
+
+    const auto stored {db.loadStored("local", "debian:12")};
+    ASSERT_TRUE(stored.has_value());
+
+    DeltaTally second;
+    db.syncReferences({*stored}, second.callback());
+
+    EXPECT_EQ(second.modified, 0);
+    EXPECT_EQ(second.deleted, 0);
+
+    const auto reloaded {db.loadStored("local", "debian:12")};
+    ASSERT_TRUE(reloaded.has_value());
+    EXPECT_EQ(reloaded->tags, std::vector<std::string>({"12", "latest"}));
+}
+
 TEST_F(ContainerImagesDBTest, FirstSyncReportsAllRowsAsCreated)
 {
     ContainerImagesDB db(m_dbPath);
@@ -691,7 +773,7 @@ TEST_F(ContainerImagesDBTest, ImplNoSourcesScansNothing)
     ContainerImagesConfig config; // no references
 
     int factoryCalls = 0;
-    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&, const ReaderContext&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
@@ -769,7 +851,8 @@ TEST_F(ContainerImagesDBTest, AFailedReadKeepsTheInventoryAlreadyStored)
 
     bool readable {true};
     const auto factory = [&readable](const ConfiguredReference & reference,
-                                     const std::string&) -> std::unique_ptr<IImageReader>
+                                     const std::string&,
+                                     const ReaderContext&) -> std::unique_ptr<IImageReader>
     {
         return std::make_unique<OutcomeReader>(readable
                                                ? ImageReadResult::success({recordAt(reference.location, 3)})
@@ -834,7 +917,8 @@ TEST_F(ContainerImagesDBTest, AnUnchangedReferenceKeepsItsStoredInventory)
     std::string digestSeenByTheReader;
 
     const auto factory = [&](const ConfiguredReference & reference,
-                             const std::string & knownConfigDigest) -> std::unique_ptr<IImageReader>
+                             const std::string & knownConfigDigest,
+                             const ReaderContext&) -> std::unique_ptr<IImageReader>
     {
         digestSeenByTheReader = knownConfigDigest;
 
@@ -871,7 +955,7 @@ TEST_F(ContainerImagesDBTest, AStopMidScanStoresNothing)
     const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
 
     {
-        ContainerImagesImpl seed(config, [](const ConfiguredReference & reference, const std::string&)
+        ContainerImagesImpl seed(config, [](const ConfiguredReference & reference, const std::string&, const ReaderContext&)
         {
             return std::unique_ptr<IImageReader>(
                        std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 4)})));
@@ -883,7 +967,7 @@ TEST_F(ContainerImagesDBTest, AStopMidScanStoresNothing)
     ASSERT_EQ(storedPackages(m_dbPath), 8U);
 
     ContainerImagesImpl* self {nullptr};
-    auto stopping = [&](const ConfiguredReference & reference, const std::string&) -> std::unique_ptr<IImageReader>
+    auto stopping = [&](const ConfiguredReference & reference, const std::string&, const ReaderContext&) -> std::unique_ptr<IImageReader>
     {
         if (self != nullptr)
         {
@@ -908,7 +992,7 @@ TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
     ContainerImagesConfig config;
     config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [&factoryReferences](const ConfiguredReference & reference, const std::string&)
+    ContainerImagesImpl impl(config, [&factoryReferences](const ConfiguredReference & reference, const std::string&, const ReaderContext&)
     {
         factoryReferences.push_back(reference);
         return std::unique_ptr<IImageReader>(nullptr);
@@ -977,7 +1061,7 @@ TEST_F(ContainerImagesDBTest, ImplDisabledDoesNotScan)
     config.scanOnStart = true;
     config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&, const ReaderContext&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
@@ -996,7 +1080,7 @@ TEST_F(ContainerImagesDBTest, ImplFailingScanDoesNotEndTheModule)
     config.interval = 1;
     config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [](const ConfiguredReference&, const std::string&) -> std::unique_ptr<IImageReader>
+    ContainerImagesImpl impl(config, [](const ConfiguredReference&, const std::string&, const ReaderContext&) -> std::unique_ptr<IImageReader>
     {
         throw std::runtime_error("reader failure");
     }, std::make_shared<ContainerImagesDB>(m_dbPath));
@@ -1039,7 +1123,7 @@ TEST_F(ContainerImagesDBTest, ImplStopBeforeRunDoesNotScan)
     config.interval = 3600;
     config.references = {{ReferenceType::Archive, "/some/path"}};
 
-    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&)
+    ContainerImagesImpl impl(config, [&factoryCalls](const ConfiguredReference&, const std::string&, const ReaderContext&)
     {
         ++factoryCalls;
         return std::unique_ptr<IImageReader>(nullptr);
