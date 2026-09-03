@@ -492,6 +492,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.users,
                               sys->flags.services,
                               sys->flags.browser_extensions,
+                              sys->flags.container_baseline,
                               sys->flags.notify_first_scan);
 
         syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
@@ -668,6 +669,7 @@ void* wm_sys_main(wm_sys_t* sys)
                               sys->flags.users,
                               sys->flags.services,
                               sys->flags.browser_extensions,
+                              sys->flags.container_baseline,
                               sys->flags.notify_first_scan);
 
         // Set agentd query function for communication (AFTER init, BEFORE start)
@@ -878,6 +880,8 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
 
     if (sys->flags.browser_extensions) cJSON_AddStringToObject(wm_sys, "browser_extensions", "yes");
     else cJSON_AddStringToObject(wm_sys, "browser_extensions", "no");
+    if (sys->flags.container_baseline) cJSON_AddStringToObject(wm_sys, "container_baseline", "yes");
+    else cJSON_AddStringToObject(wm_sys, "container_baseline", "no");
 
 #ifdef WIN32
 

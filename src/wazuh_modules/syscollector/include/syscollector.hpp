@@ -74,6 +74,7 @@ class EXPORTED Syscollector final
                   const bool users = true,
                   const bool services = true,
                   const bool browserExtensions = true,
+                  const bool containerBaseline = true,
                   const bool notifyOnFirstScan = false);
 
         /**
@@ -243,6 +244,14 @@ class EXPORTED Syscollector final
         /// deltas and emits stateless + stateful events exactly as for host rows.
         /// See container_baseline_scanner.hpp.
         void scanContainerBaseline();
+
+        /// @brief Delete the rows of every container in the DB but absent from
+        /// `keep`, emitting DELETED events. `keep` is the set that still
+        /// EXISTS, never the set that produced rows — a stopped container
+        /// produces no rows yet must keep its state. An empty set removes all
+        /// container rows.
+        /// @return Number of containers swept.
+        std::size_t sweepContainerRowsNotIn(const std::set<std::string>& keep);
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& scan_lock);
         bool pause();
@@ -484,6 +493,12 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        // Per-container inventory baseline (Linux only). Previously ran
+        // unconditionally on every Linux agent, unlike every sibling collector.
+        bool                                                                     m_containerBaseline;
+        // One-shot guard so a disabled container baseline purges leftover
+        // container rows once, not on every scan interval.
+        bool                                                                     m_containerRowsPurged;
         std::atomic<unsigned int>                                                m_dataCleanRetries;
         std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;

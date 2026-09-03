@@ -37,6 +37,7 @@ typedef struct wm_sys_flags_t {
     unsigned int users:1;                   // Users inventory
     unsigned int services:1;                // Services inventory
     unsigned int browser_extensions:1;      // Browser extensions inventory
+    unsigned int container_baseline:1;      // Per-container inventory baseline (Linux only)
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {

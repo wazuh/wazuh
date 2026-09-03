@@ -482,6 +482,8 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_containerBaseline { false }
+    , m_containerRowsPurged { false }
     , m_vdSyncEnabled { false }
     , m_failedItems { nullptr }
     , m_itemsToUpdateSync { nullptr }
@@ -551,6 +553,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool users,
                         const bool services,
                         const bool browserExtensions,
+                        const bool containerBaseline,
                         const bool notifyOnFirstScan)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
@@ -577,6 +580,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_users = users;
     m_services = services;
     m_browserExtensions = browserExtensions;
+    m_containerBaseline = containerBaseline;
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -586,7 +590,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     // Initialize document counts from database
     initializeDocumentCounts();
 
-    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions);
+    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions || m_containerBaseline);
     m_dataCleanRetries = 1;  // Default retries for data clean
 
     // Check disabled collectors with existing data
@@ -2023,9 +2027,93 @@ namespace
 }
 #endif
 
+/// Deletes the rows of every container present in the database but absent from
+/// `keep`, emitting their DELETED events through the normal scoped-transaction
+/// path. Returns how many containers were swept.
+///
+/// Callers pass the set of containers that still EXIST (not the set that
+/// produced rows this scan) — a container that is merely stopped produces no
+/// rows but must keep its state so a restart resumes diffing against it rather
+/// than re-seeding from empty. Passing an empty set therefore removes ALL
+/// container rows, which is what the disabled-collector path wants.
+std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& keep)
+{
+#if defined(__linux__)
+    std::set<std::string> staleIds;
+
+    for (const auto& table : CONTAINER_BASELINE_TABLES)
+    {
+        const auto selectCallback = [&staleIds, &keep](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
+            {
+                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
+
+                if (!id.empty() && keep.find(id) == keep.end())
+                {
+                    staleIds.insert(id);
+                }
+            }
+        };
+
+        // DISTINCT so the engine returns at most one row per container instead
+        // of one row per stored inventory row.
+        auto selectQuery = SelectQuery::builder()
+                           .table(table)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter("WHERE container_id != ''")
+                           .distinctOpt(true)
+                           .build();
+        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+    }
+
+    for (const auto& staleId : staleIds)
+    {
+        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        {
+            updateChanges(table, nlohmann::json::array(), staleId);
+        }
+
+        m_knownContainerIds.erase(staleId);
+    }
+
+    return staleIds.size();
+#else
+    (void)keep;
+    return 0;
+#endif
+}
+
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)
+
+    // Gated like every sibling collector. Previously this ran unconditionally
+    // on every Linux agent with no way to turn it off, which also meant paying
+    // the connector's cold-start retry on hosts running no containers at all.
+    if (!m_containerBaseline)
+    {
+        // Turning a collector off must not leave its rows behind as permanently
+        // stale state, which is what every sibling collector's
+        // disabled-with-data cleanup achieves. Container rows share the host
+        // tables (scoped by container_id) rather than owning an index of their
+        // own, so they are removed here with a one-shot scoped sweep instead.
+        if (!m_containerRowsPurged)
+        {
+            const auto purged = sweepContainerRowsNotIn({});
+            m_containerRowsPurged = true;
+
+            if (purged > 0)
+            {
+                m_logFunction(LOG_DEBUG,
+                              "Container baseline is disabled; removed rows of " + std::to_string(purged) +
+                              " container(s) left in the database.");
+            }
+        }
+
+        return;
+    }
+
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
 
     // Rows for one container arrive contiguously and are followed by that
@@ -2256,49 +2344,13 @@ void Syscollector::scanContainerBaseline()
     // just has no live PID right now (stopped) is in `discoveredIds` and is
     // therefore left untouched here, so a later restart resumes diffing
     // against its retained rows instead of re-seeding from empty.
-    std::set<std::string> staleIds;
-
-    for (const auto& table : CONTAINER_BASELINE_TABLES)
-    {
-        const auto selectCallback = [&staleIds, &discoveredIds](ReturnTypeCallback result, const nlohmann::json & data)
-        {
-            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
-            {
-                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
-
-                if (!id.empty() && discoveredIds.find(id) == discoveredIds.end())
-                {
-                    staleIds.insert(id);
-                }
-            }
-        };
-
-        // DISTINCT so the engine returns at most one row per container instead
-        // of one row per stored inventory row.
-        auto selectQuery = SelectQuery::builder()
-                           .table(table)
-                           .columnList({CONTAINER_ID_COLUMN})
-                           .rowFilter("WHERE container_id != ''")
-                           .distinctOpt(true)
-                           .build();
-        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
-    }
-
-    for (const auto& staleId : staleIds)
-    {
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
-        {
-            updateChanges(table, nlohmann::json::array(), staleId);
-        }
-
-        m_knownContainerIds.erase(staleId);
-    }
+    const auto staleCount = sweepContainerRowsNotIn(discoveredIds);
 
     m_logFunction(LOG_DEBUG_VERBOSE,
                   "Container baseline scan finished (" + std::to_string(baselined) + " container(s), " +
                   std::to_string(acc.rowCount) + " row(s), " +
                   std::to_string(acc.partialContainers) + " partial scan(s), " +
-                  std::to_string(staleIds.size()) + " stale container(s) cleaned).");
+                  std::to_string(staleCount) + " stale container(s) cleaned).");
 #else
     // Container baseline acquisition (#37532) only runs on Linux - the same
     // Linux-only constraint as container_instances and the eBPF module it
