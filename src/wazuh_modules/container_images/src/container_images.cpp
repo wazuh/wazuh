@@ -82,6 +82,57 @@ void container_images_set_log_function(log_callback_t callback)
     }
 }
 
+namespace
+{
+    /// Registry options handed over before initialization.
+    ///
+    /// Held here rather than added to container_images_init()'s parameter list, which is
+    /// already long, and set before it so the configuration is complete by the time the
+    /// implementation is constructed.
+    std::vector<containerimages::RegistryCredentials> g_registryAuth;
+    std::string g_caBundle;
+} // namespace
+
+void container_images_set_registry_options(const char** registryHosts,
+                                           const char** registryUserKeys,
+                                           const char** registryPasskeyKeys,
+                                           const unsigned int registryAuthCount,
+                                           const char* caBundle)
+{
+    try
+    {
+        g_registryAuth.clear();
+        g_caBundle = caBundle != nullptr ? caBundle : "";
+
+        for (unsigned int i = 0; i < registryAuthCount; ++i)
+        {
+            if (registryHosts == nullptr || registryHosts[i] == nullptr)
+            {
+                continue;
+            }
+
+            containerimages::RegistryCredentials credentials;
+            credentials.host = registryHosts[i];
+
+            if (registryUserKeys != nullptr && registryUserKeys[i] != nullptr)
+            {
+                credentials.userKey = registryUserKeys[i];
+            }
+
+            if (registryPasskeyKeys != nullptr && registryPasskeyKeys[i] != nullptr)
+            {
+                credentials.passkeyKey = registryPasskeyKeys[i];
+            }
+
+            g_registryAuth.push_back(std::move(credentials));
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
+}
+
 void container_images_init(const unsigned int interval,
                            const bool scanOnStart,
                            const bool enabled,
@@ -95,6 +146,8 @@ void container_images_init(const unsigned int interval,
         config.interval = interval;
         config.scanOnStart = scanOnStart;
         config.enabled = enabled;
+        config.registryAuth = g_registryAuth;
+        config.caBundle = g_caBundle;
 
         for (unsigned int i = 0; i < referencesCount; ++i)
         {

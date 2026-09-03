@@ -56,6 +56,7 @@ const wm_context WM_CONTAINER_IMAGES_CONTEXT = {
 static void *container_images_module = NULL;
 static container_images_set_log_function_func container_images_set_log_function_ptr = NULL;
 static container_images_init_func container_images_init_ptr = NULL;
+static container_images_set_registry_options_func container_images_set_registry_options_ptr = NULL;
 static container_images_start_func container_images_start_ptr = NULL;
 static container_images_stop_func container_images_stop_ptr = NULL;
 static container_images_release_resources_func container_images_release_resources_ptr = NULL;
@@ -100,6 +101,13 @@ static void wm_container_images_log_config(const wm_container_images_t *data) {
     for (int i = 0; i < data->references_count; i++) {
         mdebug1("Reference configured: <%s>%s.", data->references[i].type, data->references[i].value);
     }
+
+    // The host and the key names, never the values: the values are read from the
+    // credential store at scan time and must not reach a log line at any level.
+    for (int i = 0; i < data->registries_count; i++) {
+        mdebug1("Registry credentials configured for '%s': user key '%s', passkey key '%s'.",
+                data->registries[i].host, data->registries[i].user_key, data->registries[i].passkey_key);
+    }
 }
 
 #ifdef WIN32
@@ -123,6 +131,7 @@ void *wm_container_images_main(wm_container_images_t *data) {
     if (container_images_module = so_get_module_handle("container_images"), container_images_module) {
         container_images_set_log_function_ptr = so_get_function_sym(container_images_module, "container_images_set_log_function");
         container_images_init_ptr = so_get_function_sym(container_images_module, "container_images_init");
+        container_images_set_registry_options_ptr = so_get_function_sym(container_images_module, "container_images_set_registry_options");
         container_images_start_ptr = so_get_function_sym(container_images_module, "container_images_start");
         container_images_stop_ptr = so_get_function_sym(container_images_module, "container_images_stop");
         container_images_release_resources_ptr = so_get_function_sym(container_images_module, "container_images_release_resources");
@@ -139,6 +148,7 @@ void *wm_container_images_main(wm_container_images_t *data) {
     }
 
     if (!container_images_set_log_function_ptr || !container_images_init_ptr ||
+        !container_images_set_registry_options_ptr ||
         !container_images_start_ptr || !container_images_stop_ptr ||
         !container_images_release_resources_ptr) {
         merror("Can't get required container_images module symbols.");
@@ -161,6 +171,31 @@ void *wm_container_images_main(wm_container_images_t *data) {
             reference_values[i] = data->references[i].value;
         }
     }
+
+    // Registry options are handed over before initialization, so the configuration is
+    // complete by the time the module builds its implementation.
+    const char **registry_hosts = NULL;
+    const char **registry_user_keys = NULL;
+    const char **registry_passkey_keys = NULL;
+
+    if (data->registries_count > 0) {
+        os_calloc((size_t)data->registries_count, sizeof(char *), registry_hosts);
+        os_calloc((size_t)data->registries_count, sizeof(char *), registry_user_keys);
+        os_calloc((size_t)data->registries_count, sizeof(char *), registry_passkey_keys);
+
+        for (int i = 0; i < data->registries_count; i++) {
+            registry_hosts[i] = data->registries[i].host;
+            registry_user_keys[i] = data->registries[i].user_key;
+            registry_passkey_keys[i] = data->registries[i].passkey_key;
+        }
+    }
+
+    container_images_set_registry_options_ptr(registry_hosts, registry_user_keys, registry_passkey_keys,
+                                              (unsigned int)data->registries_count, data->ca_bundle);
+
+    os_free(registry_hosts);
+    os_free(registry_user_keys);
+    os_free(registry_passkey_keys);
 
     container_images_init_ptr(data->interval, data->scan_on_start, data->enabled,
                               reference_types, reference_values, (unsigned int)data->references_count);
@@ -209,6 +244,15 @@ void wm_container_images_destroy(wm_container_images_t *data) {
             }
             os_free(data->references);
         }
+        if (data->registries) {
+            for (int i = 0; i < data->registries_count; i++) {
+                os_free(data->registries[i].host);
+                os_free(data->registries[i].user_key);
+                os_free(data->registries[i].passkey_key);
+            }
+            os_free(data->registries);
+        }
+        os_free(data->ca_bundle);
         os_free(data);
     }
 }
@@ -237,6 +281,27 @@ cJSON *wm_container_images_dump(const wm_container_images_t *data) {
         }
 
         cJSON_AddItemToObject(wm_wd, "references", references);
+    }
+
+    if (data->registries && data->registries_count > 0) {
+        cJSON *registry_auth = cJSON_CreateArray();
+
+        // Key names only. The dump is readable through the configuration API, so a
+        // credential value here would put the secret back where the store exists to
+        // keep it out of.
+        for (int i = 0; i < data->registries_count; i++) {
+            cJSON *registry = cJSON_CreateObject();
+            cJSON_AddStringToObject(registry, "host", data->registries[i].host);
+            cJSON_AddStringToObject(registry, "user_keystore_key", data->registries[i].user_key);
+            cJSON_AddStringToObject(registry, "passkey_keystore_key", data->registries[i].passkey_key);
+            cJSON_AddItemToArray(registry_auth, registry);
+        }
+
+        cJSON_AddItemToObject(wm_wd, "registry_auth", registry_auth);
+    }
+
+    if (data->ca_bundle) {
+        cJSON_AddStringToObject(wm_wd, "ca_bundle", data->ca_bundle);
     }
 
     cJSON_AddItemToObject(root, "container_images", wm_wd);

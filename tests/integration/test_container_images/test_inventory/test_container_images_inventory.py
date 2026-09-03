@@ -38,8 +38,8 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
-from wazuh_testing.modules.modulesd.container_images import patterns
-from wazuh_testing.modules.modulesd.container_images.db import query_table, PACKAGES_TABLE, REFERENCES_TABLE
+from framework_module import patterns
+from framework_module.db import query_table, PACKAGES_TABLE, REFERENCES_TABLE
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 

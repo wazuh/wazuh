@@ -81,6 +81,30 @@ Digest values and member names read from image metadata are validated before bei
 
 A saved archive is read twice: a tar is sequential, while the layer order comes from the metadata inside it. The first pass collects the metadata documents, the second reads the layers those documents named.
 
+### **Registry Reader**
+
+Reads an image from GitHub Container Registry. It implements the same reader interface as the archive reader, so the scan loop does not know which kind of source it is talking to.
+
+The sequence is the one the registry advertises rather than one assumed of it:
+
+1. An unauthenticated manifest request is answered with `401` and a `WWW-Authenticate` header naming the token endpoint, the service and the scope.
+2. A token is obtained from that endpoint: anonymously for a public repository, or with HTTP Basic and a credential read from the agent credential store for a private one.
+3. The image index is fetched and the matching variant is selected: the architecture is the agent's, and the operating system is always `linux`, because an image is a Linux image whatever runs the engine. Build attestation entries, which carry no image content, are skipped.
+4. The configuration digest is compared against the one already stored. When they match, nothing further is retrieved.
+5. The configuration blob supplies the platform metadata, and each layer is streamed.
+
+The transport owns its own cURL handle rather than using the shared HTTP wrapper, because the registry flow needs two things that wrapper does not provide: the response headers, without which the advertised authentication method and `Retry-After` cannot be read, and incremental delivery, without which a layer would have to be held in memory in full.
+
+Its security posture is set explicitly in one place: the peer and the host name are verified against a resolved certificate bundle, only `https` is allowed for a request and for anything it is redirected to, and the access token is not carried across a redirect to another host. That last one matters because a layer request is redirected off the registry to a content host which neither needs the token nor should receive it.
+
+### **Registry Byte Stream**
+
+Bridges libcurl, which pushes received bytes into a callback, to the byte-stream interface, which is pulled by the layer reader. The cURL multi interface is driven from inside `read()`, and the write callback answers `CURL_WRITEFUNC_PAUSE` once its buffer is full, suspending the transfer until the caller drains it. Everything happens on the caller's thread: no second thread and no locking.
+
+The consequence is that memory is bounded by the suspend threshold rather than by the image size. Reading a 68 MB image measured 17 MB of peak resident memory.
+
+A blob transfer carries no total wall-clock timeout, on purpose: the transfer is suspended whenever the caller is slower than the network, so a total ceiling would abort a healthy read of a large layer. It is bounded instead by a byte ceiling and by stall detection.
+
 ### **Layer Reader and Composition**
 
 The layer reader consumes an `IByteStream` rather than a path, so the same code reads a layer from a file, from inside an archive, and later from a remote blob. `LayerByteStream` decides the compression from the blob's own first bytes rather than from the media type the image declares, which is metadata the image itself supplies. It decompresses the gzip and zstd layers the OCI image specification defines, and passes a plain tar through unchanged.

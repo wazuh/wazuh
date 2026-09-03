@@ -9,6 +9,8 @@
  */
 
 #include "container_images_impl.hpp"
+
+#include "agent_credential_store.hpp"
 #include "archive_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
@@ -53,7 +55,8 @@ namespace
 namespace containerimages
 {
     std::unique_ptr<IImageReader> makeReader(const ConfiguredReference& reference,
-                                            const std::string& knownConfigDigest)
+                                            const std::string& knownConfigDigest,
+                                            const ReaderContext& context)
     {
         switch (reference.type)
         {
@@ -61,9 +64,7 @@ namespace containerimages
                 return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest);
 
             case ReferenceType::Registry:
-                logWarn("NOT IMPLEMENTED: the '<ref>' reference '" + reference.location +
-                        "' needs remote registry support, which is not available yet. Skipping it.");
-                return nullptr;
+                return std::make_unique<RegistryImageReader>(reference.location, knownConfigDigest, context);
 
             case ReferenceType::EngineStore:
                 logWarn("NOT IMPLEMENTED: the '<local>' reference '" + reference.location +
@@ -77,11 +78,12 @@ namespace containerimages
     }
 
     ContainerImagesImpl::ContainerImagesImpl(ContainerImagesConfig config,
-                                             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> readerFactory,
+                                             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&, const ReaderContext&)> readerFactory,
                                              std::shared_ptr<ContainerImagesDB> db)
         : m_config {std::move(config)}
         , m_readerFactory {std::move(readerFactory)}
         , m_db {db ? std::move(db) : std::make_shared<ContainerImagesDB>(m_config.dbPath)}
+        , m_credentials {std::make_shared<AgentCredentialStore>()}
     {
     }
 
@@ -114,6 +116,9 @@ namespace containerimages
 
         logInfo("Scan started.");
 
+        // Reset per scan: the ceiling bounds one scan, not the lifetime of the module.
+        m_scanBytes = 0;
+
         std::vector<ImageReferenceRecord> references;
 
         std::size_t unreadable {0};
@@ -140,7 +145,8 @@ namespace containerimages
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {})};
+            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag};
+            const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)
             {
@@ -291,6 +297,12 @@ namespace containerimages
 
     void ContainerImagesImpl::stop()
     {
+        // Set before the lock is taken, so a reader streaming a layer sees the request
+        // immediately rather than waiting on a mutex it must not take. The guarded flags
+        // below stay guarded: m_running is part of the condition the run loop waits on,
+        // and moving it out of the lock would risk a lost wake-up.
+        m_stopFlag.store(true);
+
         {
             std::lock_guard<std::mutex> lock {m_mutex};
             m_stopRequested = true;
