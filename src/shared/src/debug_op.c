@@ -368,6 +368,9 @@ void os_logging_config(){
 }
 #endif /* CLIENT */
 
+/* Agent-only in practice: the only callers are execd's wcom handlers (os_execd/src/wcom.c), and
+ * execd is built under IS_AGENT and is not one of the manager's DAEMONS. Kept -- not dead code --
+ * because the agent still answers `wcom getconfig logging` with it. */
 cJSON *getLoggingConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
