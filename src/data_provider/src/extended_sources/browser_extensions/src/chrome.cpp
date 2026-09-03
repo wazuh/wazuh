@@ -8,7 +8,6 @@
  */
 
 #include "chrome.hpp"
-#include <tuple>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -533,7 +532,7 @@ namespace chrome
         {
             // TODO: Improve handling this error.
             // std::cerr << "Extensions folder does not exist: " << extensionPath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         std::string preferencesFilePath = Utils::joinPaths(profilePath, PREFERENCES_FILE);
@@ -543,28 +542,28 @@ namespace chrome
         {
             // TODO: Improve handling this error.
             // std::cerr << "Preferences file does not exist: " << preferencesFilePath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         if (!Utils::existsRegular(securePreferencesFilePath))
         {
             // TODO: Improve handling this error.
             // std::cerr << "Preferences file does not exist: " << securePreferencesFilePath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         std::string profileName = getProfileFromPreferences(preferencesFilePath, securePreferencesFilePath);
         ChromeExtensionList extensions;
 
-        for (auto subDir : Utils::enumerateDir(extensionPath))
+        for (const auto& entry : Utils::enumerateDir(extensionPath))
         {
-            subDir = Utils::joinPaths(extensionPath, subDir);
+            const std::string subDir = Utils::joinPaths(extensionPath, entry);
 
             if (!Utils::existsDir(subDir)) continue;
 
-            for (auto subSubDir : Utils::enumerateDir(subDir))
+            for (const auto& subEntry : Utils::enumerateDir(subDir))
             {
-                subSubDir = Utils::joinPaths(subDir, subSubDir);
+                std::string subSubDir = Utils::joinPaths(subDir, subEntry);
 
                 if (!Utils::existsDir(subSubDir)) continue;
 
@@ -682,15 +681,14 @@ namespace chrome
 
 #if defined(_WIN32) || defined(_WIN64)
 
-            for (const auto& browser : WINDOWS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : WINDOWS_PATH_LIST)
 #elif defined(__APPLE__) && defined(__MACH__)
 
-            for (const auto& browser : MACOS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : MACOS_PATH_LIST)
 #elif defined(__linux__)
-            for (const auto& browser : LINUX_PATH_LIST)
+            for (const auto& [browserType, browserPath] : LINUX_PATH_LIST)
 #endif
             {
-                std::string browserPath = std::get<1>(browser);
                 const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
 
                 if (!Utils::existsDir(profilePath))
@@ -699,7 +697,7 @@ namespace chrome
                     continue;
                 }
 
-                m_currentBrowserType = CHROME_BROWSER_TYPES.at(std::get<0>(browser));
+                m_currentBrowserType = CHROME_BROWSER_TYPES.at(browserType);
 
                 // The profile path exists, now let's find the profile.
                 if (isValidChromeProfile(profilePath))
@@ -708,9 +706,9 @@ namespace chrome
                 }
                 else
                 {
-                    for (auto subDirectory : Utils::enumerateDir(profilePath))
+                    for (const auto& entry : Utils::enumerateDir(profilePath))
                     {
-                        subDirectory = Utils::joinPaths(profilePath, subDirectory);
+                        const std::string subDirectory = Utils::joinPaths(profilePath, entry);
 
                         if (Utils::existsDir(subDirectory) && isValidChromeProfile(subDirectory))
                         {
