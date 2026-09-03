@@ -47,6 +47,20 @@
 
 namespace {
 
+/// Plain pass-through for a message that needs no formatting. Preferred over
+/// the templates below by overload resolution, so a literal message skips
+/// snprintf entirely — no 512-byte truncation, and no -Wformat-security
+/// diagnostic for a "format" string that was never a format string.
+void LogDebug(const char* msg)
+{
+    fim_container_baseline_log_debug(msg);
+}
+
+void LogError(const char* msg)
+{
+    fim_container_baseline_log_error(msg);
+}
+
 /// printf-style wrapper over the bridge's logging shims.
 template <typename... Args>
 void LogDebug(const char* fmt, Args... args)
@@ -383,9 +397,20 @@ extern "C" void fim_run_container_baseline(void)
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
         std::set<std::string> known;
-        cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
 
-        driver.sweepStale(known);
+        // A negative count means the connector never answered, so `known` is
+        // empty for want of an answer rather than for want of containers.
+        // Sweeping against it would delete every container's FIM state. Skip
+        // the sweep and keep the rows: a stale row costs one cycle of accuracy,
+        // whereas deleting a live container's whole baseline costs a
+        // false-delete flood plus a full re-seed.
+        if (listed < 0) {
+            LogError("Container FIM baseline: container connector unavailable, "
+                     "skipping stale-container cleanup to avoid false deletions.");
+        } else {
+            driver.sweepStale(known);
+        }
 
         if (driver.malformedRows() > 0) {
             LogDebug("Container FIM baseline: discarded %zu malformed row(s).", driver.malformedRows());

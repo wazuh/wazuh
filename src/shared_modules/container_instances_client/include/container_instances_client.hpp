@@ -78,9 +78,26 @@ namespace wazuh::container_instances_client
                              R"(","container_id":")" + containerId + R"("})");
         }
 
-        [[nodiscard]] std::vector<ContainerRef> listContainers() const
+        /// @brief List every container the connector currently knows about.
+        ///
+        /// @param reachable Optional. Set to true only when the connector
+        ///        answered with a well-formed `status: ok` reply, false on any
+        ///        transport or protocol failure. This matters because EVERY
+        ///        failure mode below returns an empty vector, which is
+        ///        otherwise indistinguishable from a node that genuinely runs
+        ///        no containers — and callers that derive deletions from this
+        ///        list would then delete every stored row the moment the
+        ///        connector blips. Callers that only iterate what they got can
+        ///        keep ignoring it.
+        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr) const
         {
             std::vector<ContainerRef> result;
+
+            if (reachable != nullptr)
+            {
+                *reachable = false;
+            }
+
             const auto reply = roundTrip(R"({"version":1,"op":"list"})");
             if (reply.json.empty())
             {
@@ -97,6 +114,13 @@ namespace wazuh::container_instances_client
             if (containersIt == parsed.end() || !containersIt->is_array())
             {
                 return result;
+            }
+
+            // From here the reply is a well-formed `ok` list: an empty array now
+            // means "no containers", which is authoritative.
+            if (reachable != nullptr)
+            {
+                *reachable = true;
             }
 
             for (const auto& item : *containersIt)

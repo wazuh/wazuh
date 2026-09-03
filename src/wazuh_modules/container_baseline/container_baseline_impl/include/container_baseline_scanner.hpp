@@ -150,7 +150,13 @@ using ContainerIdSink = std::function<void(const std::string&)>;
 /// "stopped" apart from "gone" should compare this list against a
 /// Run*Baseline() call's output rather than treating "produced no rows" as
 /// "removed".
-/// @return Number of containers reported through `sink`.
+///
+/// @return Number of containers reported through `sink`, or **-1 when the
+///         connector could not be reached or answered malformed**. Callers
+///         MUST check for -1 before using the list to authorise deletions: a
+///         failed query yields an empty list, and treating that as "nothing
+///         exists" deletes every container's stored rows on a momentary
+///         connector blip.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink);
 
 } // namespace wazuh::container_baseline

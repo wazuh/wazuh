@@ -127,17 +127,32 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // connect/send/recv/close against a 2-worker server with a 1 s timeout, so
 // dropping the follow-ups takes a 100-container node from 101 connections per
 // baseline to 1.
-std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path)
+std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path, bool* reachable = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
+
+    if (reachable != nullptr)
+    {
+        *reachable = false;
+    }
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
     const int attempts = g_everSawContainers.load() ? 1 : kListRetryAttempts;
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
-        refs = client.listContainers();
-        if (!refs.empty() || attempt == attempts)
+        bool answered = false;
+        refs = client.listContainers(&answered);
+
+        if (reachable != nullptr)
+        {
+            *reachable = answered;
+        }
+
+        // Retry only while the connector has not answered at all. A well-formed
+        // empty list is authoritative — retrying it would just delay a scan on
+        // a node that legitimately runs no containers.
+        if (answered || attempt == attempts)
         {
             break;
         }
@@ -410,9 +425,22 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
 {
+    bool reachable = false;
+    const auto identities = DiscoverContainers(connector_socket_path, &reachable);
+
+    // -1, not 0. Callers use this list as the authority on what still exists
+    // and delete the rows of everything absent from it, so an unreachable
+    // connector must NOT present as "no containers exist" — that would delete
+    // every container's stored rows on a momentary blip and re-create them on
+    // the next cycle.
+    if (!reachable)
+    {
+        return -1;
+    }
+
     int count = 0;
 
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
+    for (const auto& identity : identities) {
         sink(identity.container_id);
         ++count;
     }
