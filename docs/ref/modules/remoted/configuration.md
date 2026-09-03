@@ -81,13 +81,12 @@ Enable IPv6 support for agent connections.
 
 Bind remoted to a specific local IP address.
 
-- **Default value:** `127.0.0.1` (loopback-only) when `ipv6` is `no`; all IPv6 interfaces (`::`)
-  when `ipv6` is `yes` (the `127.0.0.1` default only applies in IPv4 mode)
+- **Default value:** `0.0.0.0` (all IPv4 interfaces) when `ipv6` is `no`; all IPv6 interfaces (`::`)
+  when `ipv6` is `yes` (the `0.0.0.0` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on the specified interface. Set to `0.0.0.0` to
-  accept agent connections from any IPv4 interface. The shipped `wazuh-manager.conf` and
-  install-time template ship the loopback-only default as-is; an operator who wants
-  remote agents must add `<local_ip>0.0.0.0</local_ip>` after install.
+- **Note:** Restricts remoted to listen only on the specified interface. The shipped
+  `wazuh-manager.conf` and the install-time template write the `0.0.0.0` default explicitly; set a
+  specific address (or `127.0.0.1`) to accept agents only through that interface.
 
 ### legacy.rids_closing_time
 
@@ -125,7 +124,7 @@ HTTPS listening port.
 
 Address the HTTPS listener binds to.
 
-- **Default value:** `127.0.0.1`
+- **Default value:** `0.0.0.0` (all IPv4 interfaces)
 - **Allowed values:** Valid IPv4 or IPv6 address
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see

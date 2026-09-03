@@ -27,7 +27,7 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
 
 ## Transport and TLS
 
-- **Bind address / port:** `127.0.0.1:1517` by default. Both IPv4 and IPv6 literals are accepted
+- **Bind address / port:** `0.0.0.0:1517` by default. Both IPv4 and IPv6 literals are accepted
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
@@ -429,7 +429,7 @@ above).
 
 | Setting                                                                          | `<https>` tag       | Default                                                                                       |
 | -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `127.0.0.1`                                                                                   |
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `0.0.0.0`                                                                                     |
 | Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
 | Port                                                                             | `port`              | `1517`                                                                                        |
 | Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |

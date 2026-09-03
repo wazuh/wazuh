@@ -173,12 +173,10 @@ the RESTinio-based HTTPS listener (see
 `<agents>` is unchanged. Options placed directly under `<remote>` (the pre-5.0 flat layout) are
 rejected and the manager will not start; there is no automatic migration.
 
-> **Breaking change:** `local_ip`'s default also changed, not just its location. In 4.x, leaving
-> `local_ip` unset meant "accept agent connections from any interface." In 5.0, an absent
-> `<local_ip>` defaults to `127.0.0.1` (loopback-only) -- the manager will not accept connections
-> from agents on other hosts. **If your 4.x configuration did not set `<local_ip>`, add
-> `<local_ip>0.0.0.0</local_ip>` under `<legacy>` to keep accepting agents from other hosts**; if
-> it already set `<local_ip>`, just move that value under `<legacy>` as shown below. See
+> `local_ip` keeps its 4.x effective default: an absent `<local_ip>` means `0.0.0.0` (accept agent
+> connections from any IPv4 interface; with `<ipv6>yes</ipv6>` remoted listens on every IPv6
+> interface instead). If your 4.x configuration set `<local_ip>`, move that value under `<legacy>`
+> as shown below. See
 > [`legacy.local_ip`](../../ref/modules/remoted/configuration.md#legacylocal_ip) for details.
 
 **4.x:**
@@ -196,7 +194,7 @@ rejected and the manager will not start; there is no automatic migration.
   <legacy>
     <port>1514</port>
     <protocol>tcp</protocol>
-    <local_ip>127.0.0.1</local_ip>
+    <local_ip>0.0.0.0</local_ip>
   </legacy>
 </remote>
 ```

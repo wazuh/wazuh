@@ -34,7 +34,7 @@ int Read_Remote_JSON(const cJSON *remote, void *d1);
 static long s_mconf_queue_size = -1;
 
 /* The `remote` section w_mconf_section() returns for a default installation. No local_ip, so the
- * OS_IsValidIP wrap is not involved and the reader fills 127.0.0.1 itself. */
+ * OS_IsValidIP wrap is not involved and the reader fills 0.0.0.0 itself. */
 static cJSON *mock_remote_section(void) {
     char json[256];
 
@@ -435,7 +435,7 @@ static void test_Read_Remote_JSON_legacy_disabled_clears_listener(void **state) 
 
 static void test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip(void **state) {
     test_state *ts = *state;
-    /* No local_ip and an IPv6 listener: the reader must not fall back to 127.0.0.1 (P61) */
+    /* No local_ip and an IPv6 listener: the reader must not fall back to 0.0.0.0 (P61) */
     cJSON *remote = json_or_fail("{\"legacy\":{\"enabled\":true,\"protocol\":[\"tcp\",\"udp\"],\"ipv6\":true}}");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
