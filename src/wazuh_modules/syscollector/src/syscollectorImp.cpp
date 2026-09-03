@@ -2335,7 +2335,7 @@ void Syscollector::scanContainerBaseline()
             ids->insert(containerId);
         }
     };
-    cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
+    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
@@ -2344,7 +2344,24 @@ void Syscollector::scanContainerBaseline()
     // just has no live PID right now (stopped) is in `discoveredIds` and is
     // therefore left untouched here, so a later restart resumes diffing
     // against its retained rows instead of re-seeding from empty.
-    const auto staleCount = sweepContainerRowsNotIn(discoveredIds);
+    //
+    // Unless the connector never answered (listed < 0), in which case
+    // `discoveredIds` is empty for want of a reply rather than for want of
+    // containers — sweeping against it would delete every container's rows in
+    // every table and re-insert them next cycle. Keeping stale rows for one
+    // cycle is strictly cheaper than that false-delete flood.
+    std::size_t staleCount = 0;
+
+    if (listed < 0)
+    {
+        m_logFunction(LOG_WARNING,
+                      "Container connector unavailable; skipping stale-container cleanup "
+                      "to avoid deleting rows for containers that still exist.");
+    }
+    else
+    {
+        staleCount = sweepContainerRowsNotIn(discoveredIds);
+    }
 
     m_logFunction(LOG_DEBUG_VERBOSE,
                   "Container baseline scan finished (" + std::to_string(baselined) + " container(s), " +

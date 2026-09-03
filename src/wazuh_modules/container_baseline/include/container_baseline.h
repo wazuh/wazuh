@@ -153,7 +153,16 @@ typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data
  * their own database) MUST compare this list against the run_* functions'
  * output instead of treating "absent from a scan" as "removed".
  *
- * Returns the number of containers reported through `sink`.
+ * Returns the number of containers reported through `sink`, or -1 when the
+ * connector could not be reached or answered malformed.
+ *
+ * IMPORTANT: callers MUST check for -1 before using this list to authorise
+ * deletions. A failed query reports zero containers, so treating the result as
+ * authoritative would delete every container's stored rows whenever the
+ * connector is momentarily unavailable (agent startup ordering, a connector
+ * restart, a Docker daemon reload) and re-create them on the next cycle — a
+ * mass false-delete followed by a mass re-insert, on exactly the signal that
+ * must be reported accurately.
  */
 EXPORTED int cbaseline_list_containers(const char*            connector_socket_path,
                                        cb_container_id_sink_t sink,

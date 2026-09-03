@@ -491,3 +491,32 @@ TEST(BaselineOrchestrator, ContainerWhoseEveryPidIsGoneIsTreatedAsUnscanned)
     EXPECT_TRUE(rec.rows.empty());
     EXPECT_TRUE(rec.statuses.empty());
 }
+
+// --- ListContainers: unavailability must not present as "nothing exists" ----
+//
+// These pin the contract the deletion paths depend on. Both consumers
+// (syscollector's sweepContainerRowsNotIn, FIM's sweepStale) delete the rows of
+// every container absent from this list, so a failed query that reported zero
+// containers would delete every container's stored rows on a momentary
+// connector blip and re-insert them on the next cycle.
+
+TEST(ListContainers, UnreachableConnectorReportsFailureNotAnEmptyNode)
+{
+    int sinkCalls = 0;
+    const auto sink = [&sinkCalls](const std::string&) { ++sinkCalls; };
+
+    // A path with no listener: indistinguishable, at the wire level, from a
+    // connector that is starting up, restarting, or wedged.
+    const int listed = wazuh::container_baseline::ListContainers(
+        "/tmp/container-baseline-test-no-such-socket.sock", sink);
+
+    EXPECT_LT(listed, 0) << "an unreachable connector must not report 0 containers";
+    EXPECT_EQ(sinkCalls, 0);
+}
+
+TEST(ListContainers, EmptySocketPathReportsFailure)
+{
+    const auto sink = [](const std::string&) {};
+
+    EXPECT_LT(wazuh::container_baseline::ListContainers("", sink), 0);
+}
