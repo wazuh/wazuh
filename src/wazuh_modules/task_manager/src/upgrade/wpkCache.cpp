@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <thread>
 #include <utility>
@@ -73,11 +75,30 @@ namespace task_manager::upgrade
         return entry;
     }
 
-    void WpkCache::acquireDownloadSlot()
+    bool WpkCache::acquireDownloadSlot(const std::chrono::steady_clock::time_point deadline, const StopToken& stop)
     {
+        // Polled in short hops rather than waited on directly, because there are three things to
+        // wake for and only one of them signals this condition variable. releaseDownloadSlot()
+        // notifies it; the batch deadline and the stop token do not, and a StopToken is a bare
+        // atomic with nothing to notify. A slot wait is at most twice per batch and each hop is a
+        // predicate check, so the cost of polling is nothing next to the 100 MB transfer it is
+        // waiting for.
+        constexpr auto HOP {std::chrono::milliseconds {100}};
+
         std::unique_lock lock {m_slotMutex};
-        m_slotAvailable.wait(lock, [this] { return m_downloadsInFlight < m_options.maxConcurrentDownloads; });
+
+        while (m_downloadsInFlight >= m_options.maxConcurrentDownloads)
+        {
+            if (stop.stopRequested() || std::chrono::steady_clock::now() >= deadline)
+            {
+                return false;
+            }
+
+            m_slotAvailable.wait_for(lock, HOP);
+        }
+
         ++m_downloadsInFlight;
+        return true;
     }
 
     void WpkCache::releaseDownloadSlot()
@@ -149,13 +170,35 @@ namespace task_manager::upgrade
         // this keeps two DIFFERENT expected digests for one file name from colliding while staged.
         const auto stagingPath {stagingDir + request.sha1 + ".part"};
 
-        acquireDownloadSlot();
+        if (!acquireDownloadSlot(request.deadline, stop))
+        {
+            // Never got a slot. Shutting down is retryable (error 4, which the Server API halves the
+            // chunk on); otherwise the budget expired while we were queued behind other transfers,
+            // which is the same "still waiting on the repository" that materialise() reports for a
+            // group it skipped.
+            return stop.stopRequested() ? UpgradeError::TaskManagerCommunication : UpgradeError::UrlNotFound;
+        }
+
         UpgradeError result {UpgradeError::WpkFileDoesNotExist};
 
         for (int attempt = 1; attempt <= m_options.downloadAttempts; ++attempt)
         {
             if (stop.stopRequested())
             {
+                // Shutting down BEFORE a transfer started. Error 4, so the Server API halves the
+                // chunk and retries -- the same answer the queue-drain path gives for the same
+                // event, which is the point: a client must not be able to tell where in the module
+                // its request was when the manager began stopping.
+                result = UpgradeError::TaskManagerCommunication;
+                break;
+            }
+
+            // Checked between attempts, which is where it can be honoured: one transfer already in
+            // flight has to run out its own libcurl timeout, but starting ANOTHER one the caller has
+            // given up on is what turns a slow repository into a lost response.
+            if (std::chrono::steady_clock::now() >= request.deadline)
+            {
+                result = UpgradeError::UrlNotFound;
                 break;
             }
 
@@ -168,7 +211,10 @@ namespace task_manager::upgrade
 
             if (fetched.aborted)
             {
-                break; // Shutting down. Not a repository failure, and not worth another attempt.
+                // Cut short by the shutdown, mid-transfer. Same reasoning as above: retryable, not
+                // "the WPK does not exist".
+                result = UpgradeError::TaskManagerCommunication;
+                break;
             }
 
             if (fetched.ok)
@@ -206,10 +252,12 @@ namespace task_manager::upgrade
             if (attempt < m_options.downloadAttempts)
             {
                 // Linear backoff, as before, but interruptible: the retired sleep(attempts) ran on
-                // the module's only thread and could not be cut short by a shutdown.
-                const auto delay {m_options.retryBackoff * attempt};
-                const auto deadline {std::chrono::steady_clock::now() + delay};
-                while (std::chrono::steady_clock::now() < deadline && !stop.stopRequested())
+                // the module's only thread and could not be cut short by a shutdown. Bounded by the
+                // batch deadline as well, so the last thing a batch does is not sleep through the
+                // budget it had left.
+                const auto until {
+                    std::min(std::chrono::steady_clock::now() + (m_options.retryBackoff * attempt), request.deadline)};
+                while (std::chrono::steady_clock::now() < until && !stop.stopRequested())
                 {
                     std::this_thread::sleep_for(std::chrono::milliseconds {50});
                 }

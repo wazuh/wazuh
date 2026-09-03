@@ -14,7 +14,10 @@
 #include "taskManagerLog.hpp"
 
 #include <uds_http_server/udsHttpServerFactory.hpp>
+#include <wazuh_metrics/jsonDump.hpp>
 
+#include <algorithm>
+#include <memory>
 #include <utility>
 
 namespace
@@ -23,6 +26,16 @@ namespace
 
     constexpr auto SERVER_NAME {"task manager"};
     constexpr auto SERVER_HEADER {"wazuh-task-manager"};
+
+    /// @brief Concurrent connections `POST /v1/manager-tasks` may hold.
+    ///
+    /// A MEMORY bound, not a quality-of-service one, and it exists because that route's body cap is
+    /// raised to `max_payload_bytes` while Control stays budget-exempt: the class's own protection
+    /// is a small body cap AND a session cap together, so raising one without the other would leave
+    /// nothing bounding what the route can hold resident. Set far above what the two producers ever
+    /// generate -- authd creates deletion rows from one thread and the vulnerability scanner from a
+    /// single callback -- so it should never shed real traffic.
+    constexpr std::size_t CREATE_MAX_SESSIONS {128};
 
     /// @brief Concurrent connections the two upgrade routes may hold, over and above the class cap.
     ///        Comfortably above the pool's queue depth, so shedding is decided by the module -- with
@@ -54,7 +67,9 @@ namespace task_manager::http
             [this](Method method,
                    const std::string& path,
                    RouteClass cls,
-                   ApiResponse (ApiHandlers::*fn)(const nlohmann::json&))
+                   ApiResponse (ApiHandlers::*fn)(const nlohmann::json&),
+                   const std::size_t maxBodyBytes = 0,
+                   const std::size_t maxSessions = 0)
             {
                 m_server->addRoute(
                     method,
@@ -99,7 +114,7 @@ namespace task_manager::http
                                 500, R"({"error":"internal_error","message":"see the manager log"})"));
                         }
                     },
-                    RouteOptions {cls});
+                    RouteOptions {cls, maxBodyBytes, maxSessions});
             }};
 
         // Agent tasks. Data class: these carry producer-authored payloads and are the only routes
@@ -111,7 +126,23 @@ namespace task_manager::http
 
         // Manager tasks. Control class: other daemons depend on these -- authd's deletion record
         // is created here -- so they must never be shed by agent-task pressure.
-        route(Method::Post, "/v1/manager-tasks", RouteClass::Control, &ApiHandlers::createManagerTask);
+        //
+        // The CREATE route alone carries a producer-authored payload, so it alone gets the body cap
+        // raised to one `max_payload_bytes`; without that, configuring the option above the Control
+        // class default of 64 KB would silently do nothing, refused by the transport with a 413
+        // before the handler that owns the limit ever saw the body.
+        //
+        // Raised PER ROUTE rather than on the class, and that is the whole point of doing it here:
+        // Control is budget-exempt by design, so moving the class cap would have made 256 exempt
+        // sessions worth up to a megabyte each -- swapping a 16 MB worst case for a 280 MB one, on
+        // every Control route including the four that only ever carry a task id. The paired session
+        // cap bounds what this one route can hold resident.
+        route(Method::Post,
+              "/v1/manager-tasks",
+              RouteClass::Control,
+              &ApiHandlers::createManagerTask,
+              m_options.createMaxBodyBytes,
+              CREATE_MAX_SESSIONS);
         route(Method::Post, "/v1/manager-tasks/get", RouteClass::Control, &ApiHandlers::getManagerTask);
         route(Method::Post, "/v1/manager-tasks/by-agent", RouteClass::Control, &ApiHandlers::getManagerTaskByAgent);
         route(Method::Post, "/v1/manager-tasks/list", RouteClass::Control, &ApiHandlers::listManagerTasks);
@@ -153,10 +184,47 @@ namespace task_manager::http
             { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
             RouteOptions {RouteClass::Liveness});
 
+        // GET, and one of only two on this socket. Every other route is a POST because the C
+        // clients that call them speak POST only; this one has no C client and no body, so the verb
+        // that describes it is the one it gets -- the same choice inventory-sync's `GET /metrics`
+        // makes, which keeps one operator vocabulary across the two modules.
+        //
+        // Registered only when a registry was attached. Without this route the whole of
+        // metrics/taskMetrics.cpp writes into an object nothing can read: queue depth per type,
+        // executor occupancy, handler-duration histograms, outcome counters and the transport's own
+        // diagnostics were all collected and then unobservable, which was the ONE gap the C
+        // implementation could not close and therefore the one this module must.
+        if (const auto metrics {m_metricsManager.lock()}; metrics)
+        {
+            m_server->addRoute(
+                Method::Get,
+                "/v1/metrics",
+                [weak = m_metricsManager](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                {
+                    const auto manager {weak.lock()};
+                    if (!manager)
+                    {
+                        // Only reachable if the registry outlives its own teardown ordering. See
+                        // setMetricsManager().
+                        responder->send(
+                            HttpResponse::json(503, R"({"error":"unavailable","message":"metrics registry is gone"})"));
+                        return;
+                    }
+
+                    wazuh::metrics::DumpOptions options;
+                    options.daemonName = "task_manager";
+                    responder->send(HttpResponse::json(200, wazuh::metrics::dumpJson(*manager, options)));
+                },
+                RouteOptions {RouteClass::Control});
+        }
+
         UdsHttpServerConfig config;
         config.socketPath = m_options.socketPath;
         config.ioThreads = static_cast<std::size_t>(m_options.ioThreads);
-        config.maxBodySize = m_options.maxBodyBytes;
+        // Never below the largest single body any route admits: the server-wide cap is checked as
+        // well as the per-route one, so the smaller of the two wins and a per-route override above
+        // this value would achieve nothing.
+        config.maxBodySize = std::max(m_options.maxBodyBytes, m_options.createMaxBodyBytes);
         config.logTag = TASK_MANAGER_HTTP_LOGTAG;
         config.serverName = SERVER_NAME;
         config.serverHeader = SERVER_HEADER;

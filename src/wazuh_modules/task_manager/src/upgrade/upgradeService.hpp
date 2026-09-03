@@ -87,9 +87,13 @@ namespace task_manager::upgrade
          * well-formed envelope carrying error 4 per agent.
          *
          * In-flight batches are joined without a separate timeout, matching Executor::stop(). The
-         * bound is the StopToken, which every phase of a batch checks: between agents, between WPK
-         * groups, and inside libcurl's transfer callback. What remains unbounded is one wazuh-db
-         * call -- itself capped at ten seconds by the host -- and one file digest.
+         * bound is the StopToken, and it is only a real bound because EVERY phase of a batch
+         * observes it: between agents, between WPK groups, between download attempts, while queued
+         * for a download slot, and inside libcurl's transfer callback. A phase that waited on
+         * anything else -- the batch deadline alone, say, at up to three minutes -- would make this
+         * join as long as that wait, and modulesd runs every module's stop() under one shared
+         * budget. What remains genuinely unbounded is one wazuh-db call, itself capped at ten
+         * seconds by the host, and one file digest.
          */
         void stop();
 

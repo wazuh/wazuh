@@ -38,10 +38,48 @@ static const char *XML_WPK_REPOSITORY = "wpk_repository";
  * missing key, and none of these options ships in a file -- the manager reads only the overrides
  * file, so an option nobody has written is expected to be absent.
  *
- * Every value is passed through to the module as-is, zero included: zero is the "no opinion"
- * sentinel and the module resolves it against its own defaults. Deciding defaults here as well
- * would put them in two places, and they would drift.
+ * Every value is passed through to the module as-is: the module resolves the "no opinion" sentinel
+ * against its own defaults. Deciding defaults here as well would put them in two places, and they
+ * would drift.
+ *
+ * TWO SENTINELS, AND WHICH ONE A KEY USES IS DECIDED BY ITS DOMAIN.
+ *
+ * Most of these options start at one, so a `default_val` of 0 is unambiguous "absent" and the
+ * module's `<= 0` rule resolves it. Six of them have a MEANINGFUL zero -- "log no agent by name",
+ * "cache nothing", "no admission bound", "keep no rotated logs", "never rotate by size" -- and for
+ * those a plain 0 would be indistinguishable from the operator asking for exactly that, so the
+ * module would hand back the default they were trying to switch off. Those six go through
+ * wm_task_manager_zeroable(), which encodes the three states the ABI defines for them.
  */
+
+/**
+ * @brief Read an option whose ZERO is a real setting rather than an absence.
+ *
+ * Three states have to survive one int, and task_manager.h fixes the encoding: 0 means "no
+ * opinion", -1 means "the operator asked for zero", and anything positive is the value. This
+ * function is the only place the mapping happens.
+ *
+ * The direction matters. It would be simpler to pass -1 for "absent" and let 0 mean itself, but
+ * then a zero-initialised task_manager_config_t -- which is what every embedder produces, the
+ * testtool included -- would read as "log rotation off, every admission bound removed". Absence has
+ * to be the zero.
+ *
+ * Reading with a -1 fallback is safe because getDefine_Int_default() returns `default_val` VERBATIM
+ * when the key is absent and range-checks only a value it actually read from a file, so -1 never
+ * has to satisfy `min`.
+ *
+ * @return 0 when unset, -1 when explicitly zero, otherwise the configured value.
+ */
+static int wm_task_manager_zeroable(const char *key, int min, int max) {
+    const int value = getDefine_Int_default("wazuh_modules", key, min, max, -1);
+
+    if (value < 0) {
+        return 0;  /* Absent: the module applies its own default. */
+    }
+
+    return value == 0 ? -1 : value;
+}
+
 static void wm_task_manager_read_tunables(wm_task_manager *data) {
     /* Queue mechanics. */
     data->max_attempts = getDefine_Int_default("wazuh_modules", "manager_task_max_attempts", 1, 1000, 0);
@@ -63,8 +101,8 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     /* Per-type bounds. */
     data->vd_scan_timeout = getDefine_Int_default("wazuh_modules", "manager_task_vd_scan_timeout", 1, 3600, 0);
     data->delete_timeout = getDefine_Int_default("wazuh_modules", "manager_task_delete_timeout", 1, 7200, 0);
-    data->max_pending_deletes = getDefine_Int_default("wazuh_modules", "manager_task_max_pending_deletes", 0, 1000000, 0);
-    data->max_pending_scans = getDefine_Int_default("wazuh_modules", "manager_task_max_pending_scans", 0, 1000000, 0);
+    data->max_pending_deletes = wm_task_manager_zeroable("manager_task_max_pending_deletes", 0, 1000000);
+    data->max_pending_scans = wm_task_manager_zeroable("manager_task_max_pending_scans", 0, 1000000);
 
     /* Retention. */
     data->retention_days = getDefine_Int_default("wazuh_modules", "manager_task_retention_days", 1, 3650, 0);
@@ -72,17 +110,22 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->history_per_schedule = getDefine_Int_default("wazuh_modules", "manager_task_history_per_schedule", 1, 100000, 0);
     data->max_rows = getDefine_Int_default("wazuh_modules", "manager_task_max_rows", 1, 100000000, 0);
 
-    /* Recurring work. The monitord.* prefixes are historical and deliberately kept: _read_file()
-     * splits each line at the first '.' and compares BOTH halves, so the prefix is a real key
-     * component rather than cosmetic, and renaming these would silently ignore every deployment
-     * that already sets them. */
+    /* Recurring work. These carried `monitord.*` names while log rotation and agent monitoring
+     * belonged to wazuh-manager-monitord, and they are RENAMED here rather than aliased.
+     *
+     * That is a deliberate break, and it is silent: _read_file() splits each line at the first '.'
+     * and compares BOTH halves, so `monitord.rotate_log` does not answer a lookup for
+     * `wazuh_modules.manager_task_log_rotate` -- it is simply never read. An operator who set any of
+     * these on an earlier build has to rename the key, which is why the rename is called out in
+     * docs/ref/modules/task_manager/configuration.md rather than only living here. The AGENT keeps
+     * its `monitord.*` keys for its own rotation; only the manager's moved. */
     data->delete_old_agents = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_agents", 0, 9600, 0);
     data->monitor_agents = getDefine_Int_default("wazuh_modules", "manager_task_monitor_agents", 0, 1, 1);
-    data->disconnect_log_max = getDefine_Int_default("wazuh_modules", "manager_task_disconnect_log_max", 0, 1000000, 0);
+    data->disconnect_log_max = wm_task_manager_zeroable("manager_task_disconnect_log_max", 0, 1000000);
     data->rotate_log = getDefine_Int_default("wazuh_modules", "manager_task_log_rotate", 0, 1, 1);
     data->compress = getDefine_Int_default("wazuh_modules", "manager_task_log_compress", 0, 1, 1);
-    data->keep_log_days = getDefine_Int_default("wazuh_modules", "manager_task_log_keep_days", 0, 500, 0);
-    data->size_rotate_mb = getDefine_Int_default("wazuh_modules", "manager_task_log_size_rotate", 0, 4096, 0);
+    data->keep_log_days = wm_task_manager_zeroable("manager_task_log_keep_days", 0, 500);
+    data->size_rotate_mb = wm_task_manager_zeroable("manager_task_log_size_rotate", 0, 4096);
     data->daily_rotations = getDefine_Int_default("wazuh_modules", "manager_task_log_daily_rotations", 1, 256, 0);
     data->day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 0, 600, 0);
     data->delete_old_batch = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_batch", 1, 100000, 0);
@@ -96,9 +139,10 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
      *
      * upgrade_workers bounds concurrent BATCHES, not agents: per-agent work is one wazuh-db call on
      * a mutex-guarded socket plus pure CPU, so running agents in parallel would multiply contention
-     * on that mutex to buy nothing. The ceiling is deliberately low for a second reason too --
-     * shared_modules/http-request caches curl handlers in a process-wide queue of five, shared with
-     * vulnerability_scanner and indexer_connector, and a large pool here would evict theirs.
+     * on that mutex to buy nothing. The ceiling is deliberately low for a second reason too -- the
+     * WPK client is shared_modules/http-request, which caches curl handlers in a process-wide queue
+     * of five shared with vulnerability_scanner and indexer_connector, and a large pool here would
+     * evict theirs. Note that what bounds TRANSFERS is upgrade_max_concurrent_downloads, not this.
      *
      * upgrade_batch_deadline MUST expire before the Server API's own timeout, which must in turn be
      * shorter than the transport's per-route backstop. The module answering first is what keeps a
@@ -110,7 +154,7 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->upgrade_download_attempts = getDefine_Int_default("wazuh_modules", "upgrade_download_attempts", 1, 10, 0);
     data->upgrade_download_timeout = getDefine_Int_default("wazuh_modules", "upgrade_download_timeout", 1000, 600000, 0);
     data->upgrade_max_concurrent_downloads = getDefine_Int_default("wazuh_modules", "upgrade_max_concurrent_downloads", 1, 32, 0);
-    data->upgrade_versions_ttl = getDefine_Int_default("wazuh_modules", "upgrade_versions_ttl", 0, 86400, 0);
+    data->upgrade_versions_ttl = wm_task_manager_zeroable("upgrade_versions_ttl", 0, 86400);
 }
 
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from

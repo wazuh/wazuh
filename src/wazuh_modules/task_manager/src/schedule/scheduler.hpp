@@ -52,6 +52,12 @@ namespace task_manager::schedule
             std::chrono::seconds cleanupInterval {300};
             std::chrono::seconds vacuumInterval {86400};
             std::chrono::seconds sizeRotateInterval {60};
+            /// @brief Whether to signal the size-triggered rotation at all.
+            ///
+            /// Separate from the interval because `manager_task_log_rotate` turns BOTH rotations
+            /// off, and an interval of zero would mean "always due" rather than "never". The daily
+            /// rotation expresses the same switch as a disabled schedule; this is the other half.
+            bool sizeRotationEnabled {true};
 
             /// @brief Agent-task TTL. Agent tasks DO age out while pending; manager tasks do not.
             std::chrono::seconds agentTaskTtl {3600};

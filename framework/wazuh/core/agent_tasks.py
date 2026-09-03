@@ -93,6 +93,25 @@ def _create_agent_tasks(agents_chunk: list, task_type: str, request_time: int = 
             )
             continue
 
+        if not outcome.get('created', False):
+            # The Task Manager answered 200 with `created: false`, which is what a rolled-back bulk
+            # write looks like: a single non-duplicate SQLite error aborts the whole transaction, so
+            # every row in the chunk comes back unwritten.
+            #
+            # Reported as a failure, and reported per agent. Reading only `task_id` here would call
+            # the chunk a success and hand the operator an ID with no row behind it — the task would
+            # never be delivered and nothing would say so. Note that a DUPLICATE id is `created:
+            # true`, not false: IDs are deterministic, so the same logical request arriving twice is
+            # one task rather than an error.
+            results.append(
+                {
+                    'agent': agent_id,
+                    'error': TASK_MANAGER_ERROR,
+                    'message': 'The task manager did not store the task',
+                }
+            )
+            continue
+
         result_item = {'agent': agent_id, 'error': 0, 'message': ''}
 
         if 'task_id' in outcome:

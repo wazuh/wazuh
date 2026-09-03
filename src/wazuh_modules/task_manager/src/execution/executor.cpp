@@ -302,9 +302,17 @@ namespace task_manager::execution
 
     void Executor::publish(WorkerState& worker, const ClaimedTask& task, const std::chrono::seconds budget)
     {
+        publish(worker, task.taskId, task.taskType, budget);
+    }
+
+    void Executor::publish(WorkerState& worker,
+                           const std::string& inflightId,
+                           const std::string& inflightType,
+                           const std::chrono::seconds budget)
+    {
         std::lock_guard lock {worker.mutex};
-        worker.inflightTaskId = task.taskId;
-        worker.inflightTaskType = task.taskType;
+        worker.inflightTaskId = inflightId;
+        worker.inflightTaskType = inflightType;
         worker.lastProgressAt = nowSeconds();
         worker.budget = budget;
     }
@@ -366,12 +374,15 @@ namespace task_manager::execution
 
     void Executor::runAction(WorkerState& worker, const Selection& selection)
     {
-        static_cast<void>(worker);
-
         if (m_stopping.load(std::memory_order_acquire))
         {
             return;
         }
+
+        // Published like a task, so the watchdog can see it. An action holds a real executor slot
+        // and can take real time -- the size rotation gzips a file up to its threshold inline --
+        // and it has no row on which a stall could otherwise be noticed.
+        publish(worker, selection.action->name, selection.action->name, selection.action->watchdogBudget);
 
         try
         {
@@ -384,6 +395,18 @@ namespace task_manager::execution
             LOGFN_ERROR(
                 executorLogFn(), "Periodic action '%s' threw: %s", selection.action->name.c_str(), exception.what());
         }
+        catch (...)
+        {
+            // Nothing here throws anything but std::exception today, and this exists so that stays
+            // true of the PUBLISH/UNPUBLISH pairing rather than of the action: an escape past this
+            // point would leave the worker published forever, so the watchdog would report a stall
+            // that had already finished and the sweep would refuse to reclaim rows this worker no
+            // longer holds.
+            LOGFN_ERROR(
+                executorLogFn(), "Periodic action '%s' threw a non-standard exception", selection.action->name.c_str());
+        }
+
+        unpublish(worker);
     }
 
     void Executor::runTask(WorkerState& worker, const Selection& selection)

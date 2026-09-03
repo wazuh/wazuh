@@ -19,6 +19,52 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
 | Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
+| Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
+| Manager-side upgrade socket | Its own `task-upgrade.sock`, framed length-prefixed JSON | Served on the Task Manager's `task.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `task-upgrade.sock` no longer exists |
+
+---
+
+## Configuration changes
+
+The manager side of agent upgrades now runs inside the Task Manager, so its two settings moved with
+it. This is a **hard failure**, not a silent default: the manager configuration schema rejects an
+`<agent-upgrade>` section outright, so a file carrying one has to be edited before the manager will
+start.
+
+Before (4.x):
+
+```xml
+<agent-upgrade>
+  <enabled>yes</enabled>
+  <wpk_repository>packages.wazuh.com/5.x/wpk/</wpk_repository>
+</agent-upgrade>
+```
+
+After:
+
+```xml
+<task-manager>
+  <upgrade_enabled>yes</upgrade_enabled>
+  <wpk_repository>packages.wazuh.com/5.x/wpk/</wpk_repository>
+</task-manager>
+```
+
+`<agent-upgrade>` still exists **on an agent**, where it controls what that agent accepts — whether
+it can be upgraded remotely, and how it verifies the WPK signature. Only the manager's half moved;
+see the [Agent Upgrade configuration reference](../../ref/modules/agent_upgrade/configuration.md).
+
+The resolved values are reported under the Task Manager in `getconfig`, as
+`task-manager.agent_upgrade`, rather than under an `agent-upgrade` module of their own.
+
+### Renamed internal options
+
+The recurring manager work that used to belong to `wazuh-manager-monitord` — log rotation and agent
+monitoring — is now the Task Manager's, and its internal options were renamed from `monitord.*` to
+`wazuh_modules.manager_task_*`. An override left under the old name is **silently ignored**: the
+lookup compares the part before the first `.` as well as the part after it, so the old key simply
+never matches. The full list is in the
+[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-intervals-come-from).
+The agent keeps its own `monitord.*` keys.
 
 ---
 

@@ -19,6 +19,7 @@
 #include "storage/iTaskStore.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
@@ -86,6 +87,13 @@ namespace task_manager::execution
             std::string name;
             std::string concurrencyGroup;
             std::function<void(const StopToken&)> run;
+            /// @brief How long one run may take before the watchdog reports it. Zero is unwatched.
+            ///
+            /// An action has no row to record a stall on, which is exactly why this matters: with a
+            /// budget it appears in the worker snapshot like any task and the watchdog names it, and
+            /// without one a rotation gzipping a multi-gigabyte log holds an executor slot entirely
+            /// invisibly -- the one failure the watchdog exists to make visible.
+            std::chrono::seconds watchdogBudget {0};
         };
 
         /// @brief What one worker is doing, for the sweep and the watchdog.
@@ -185,6 +193,13 @@ namespace task_manager::execution
         void retireType(const std::string& taskType, std::uint64_t token);
 
         void publish(WorkerState& worker, const ClaimedTask& task, std::chrono::seconds budget);
+        /// @brief The same, for work that has no row: a periodic action publishes its own name.
+        ///        No MANAGER_TASKS.TASK_ID can collide with one, so the ownership sweep still reads
+        ///        the worker as "not running that row", which is true.
+        void publish(WorkerState& worker,
+                     const std::string& inflightId,
+                     const std::string& inflightType,
+                     std::chrono::seconds budget);
         void unpublish(WorkerState& worker);
 
         void recordOutcome(const registry::TaskTypeDescriptor& descriptor,

@@ -56,15 +56,21 @@ namespace task_manager::http
     class ApiHandlers
     {
     public:
-        /// @brief Called after a create so the scheduler and executor start work immediately
-        ///        rather than at the next backstop wake.
+        /**
+         * @brief Called after a manager task is created, so the executor claims it and the
+         *        scheduler recomputes its sleep immediately rather than at the next backstop wake.
+         *
+         * MANAGER TASKS ONLY. There is deliberately no agent-task equivalent: an agent task is not
+         * executed by this module at all -- it sits in TASKS until the agent polls for it -- so
+         * there is nothing to wake. The parameter used to exist and was wired to an empty lambda,
+         * which read as though agent creates fed the executor too.
+         */
         using NotifyFn = std::function<void(const std::string& taskType)>;
 
         ApiHandlers(storage::ITaskStore& store,
                     const registry::TaskRegistry& registry,
                     cache::PendingCache& cache,
                     NotifyFn notifyManagerTask,
-                    NotifyFn notifyAgentTask,
                     std::shared_ptr<metrics::TaskMetrics> metrics,
                     int maxPayloadBytes,
                     int maxTasksPerPoll);
@@ -91,7 +97,6 @@ namespace task_manager::http
         const registry::TaskRegistry& m_registry;
         cache::PendingCache& m_cache;
         NotifyFn m_notifyManagerTask;
-        NotifyFn m_notifyAgentTask;
         std::shared_ptr<metrics::TaskMetrics> m_metrics;
         int m_maxPayloadBytes;
         int m_maxTasksPerPoll;

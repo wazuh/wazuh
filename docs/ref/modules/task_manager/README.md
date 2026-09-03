@@ -125,7 +125,14 @@ See [Agent upgrades](agent-upgrades.md) for the flow, and
 | Route | Class | Purpose |
 | --- | --- | --- |
 | `GET /v1/health` | Liveness | Answered from resident state, so it survives any pressure |
-| `POST /v1/metrics` | Control | Queue depth per type, executor occupancy, handler durations, transport diagnostics |
+| `GET /v1/metrics` | Control | Queue depth per type, executor occupancy, handler durations, upgrade counters, transport diagnostics |
+
+These two are the only `GET`s on the socket. Every other route is a `POST`, including the reads,
+because the C clients that call them speak `POST` only; these two have no C client and no body.
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock http://localhost/v1/metrics
+```
 
 ---
 

@@ -219,13 +219,24 @@ the orphaned documents this feature exists to prevent.
 | --- | --- | --- |
 | `wazuh_modules.manager_task_delete_timeout` | 600 s | Deadline on one deletion call. Must exceed the scan timeout; asserted at startup |
 | `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | Deadline on one scan call |
-| `wazuh_modules.manager_task_max_pending_deletes` | 20000 | Admission bound on pending deletions |
-| `wazuh_modules.manager_task_max_pending_scans` | 64 | Admission bound on pending on-demand scans |
+| `wazuh_modules.manager_task_max_pending_deletes` | 20000 | Admission bound on pending deletions. `0` removes the bound |
+| `wazuh_modules.manager_task_max_pending_scans` | 64 | Admission bound on pending on-demand scans. `0` removes the bound |
 | `wazuh_modules.manager_task_create_timeout` | 2 s | Deadline on the scanner's own call to create a row |
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would
 expire while parked and be re-queued over work that was never its own fault.
+
+### Threading
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `wazuh_modules.manager_task_executor_threads` | `clamp(cores, 2, 8)` | Workers that claim and run manager tasks |
+| `wazuh_modules.manager_task_io_threads` | 2 | Reactor threads serving the socket. They never block |
+
+Raising `manager_task_executor_threads` does not raise throughput on its own: what a type may run at
+once is its own `maxConcurrent`, and those are code constants rather than operator knobs. More
+workers only help when several *different* types have work at the same time.
 
 Options governing the recurring tasks are listed in the
 [configuration reference](configuration.md#recurring-manager-tasks).

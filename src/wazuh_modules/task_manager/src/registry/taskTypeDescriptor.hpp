@@ -67,11 +67,16 @@ namespace task_manager::registry
         int maxDefer {USE_DEFAULT};
 
         /**
-         * @brief May a 4xx retire this row as `failed`?
+         * @brief May this row ever be retired as `failed`?
          *
          * False only for work whose obligation nobody will raise again. Setting the budgets to
-         * UNBOUNDED is not enough on its own: a 4xx maps to Terminal, which is just as final as
-         * dead_letter, so a type that must never be abandoned needs both.
+         * UNBOUNDED is not enough on its own: a Terminal outcome is just as final as dead_letter,
+         * so a type that must never be abandoned needs both.
+         *
+         * Enforced in TWO places, deliberately. httpResultMapper consults it when deciding what a
+         * 4xx means, which is where the distinction is most informative; and applyResult() enforces
+         * it again for ANY Terminal outcome, whatever produced it, so the guarantee is a property of
+         * the type rather than of the handler it happens to be wired to.
          */
         bool allowTerminalFailure {true};
 

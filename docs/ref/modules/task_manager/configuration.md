@@ -12,7 +12,10 @@ The Task Manager stores tasks addressed to agents (agent upgrades, active respon
 
 **XML Section:** `<task-manager>`
 
-**Internal Options:** None
+**Internal Options:** many — see [Recurring manager tasks](#recurring-manager-tasks),
+[Agent upgrades](#agent-upgrades) and [Manager tasks](manager-tasks.md#configuration). Everything in
+the `<task-manager>` block below is XML; everything that tunes the queue, the schedules or the
+upgrade path is an internal option.
 
 The `<task-manager>` block accepts the options below. All values are non-negative integers expressed in seconds (except where noted). A value of `0` — or omitting the option — makes the module fall back to its built-in default.
 
@@ -22,14 +25,12 @@ Time-to-live for a task, measured from `create_time`. Tasks whose age exceeds `t
 
 - **Default value:** `3600` (1 hour)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
-- **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default `900`s,
-  see [remoted configuration](../remoted/configuration.md)) must be configured comfortably smaller than
-  this value, or a `remote_upgrade` task created just after a poll cycle can expire before the next cycle
-  ever picks it up. At startup, the Task Manager reads `remoted.legacy_task_polling_interval` from
-  `internal_options.conf` (via `getDefine_Int_default`, the same generic lookup-by-section-name mechanism
-  `remoted` itself uses — it is not restricted to the daemon that defines the option) and logs an
-  `mtwarn` if `legacy_task_polling_interval >= task_ttl`. This is a startup-time check only; it does not
-  react to a config change made without restarting `wazuh-modulesd`.
+- **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default
+  `900`s, see [remoted configuration](../remoted/configuration.md)) must be configured comfortably
+  smaller than this value, or a `remote_upgrade` task created just after a poll cycle can expire
+  before the next cycle ever picks it up. Nothing checks this relationship for you — the two options
+  belong to different daemons and neither reads the other's — so it is worth confirming by hand
+  whenever either is changed.
 
 ### cleanup_interval
 
@@ -40,10 +41,15 @@ Interval between cleanup runs. Each run marks expired tasks and deletes rows tha
 
 ### max_payload_bytes
 
-Maximum accepted size of a single task payload, after JSON serialization. Requests exceeding this limit are rejected with a `create_failed` error and logged.
+Maximum accepted size of a single task payload, after JSON serialization. A request over the limit is
+rejected with HTTP `413` and an `payload_too_large` body.
 
 - **Default value:** `1048576` (1 MiB)
 - **Allowed values:** integer ≥ 0 (bytes). `0` means "use default".
+- **Note:** the manager-task routes are served in the transport's `Control` class, whose own body cap
+  defaults to 64 KiB. The module raises that cap to this value plus envelope overhead, so the limit
+  you configure is the one that applies — but a value raised far beyond the payloads a producer
+  actually sends only widens what one request can reserve.
 
 ### max_tasks_per_poll
 
@@ -58,7 +64,8 @@ Maximum number of tasks returned by a single `get_pending_tasks` call. Additiona
 
 ### Default Configuration
 
-The section can be omitted entirely — the module runs with all built-in defaults and is always started on the master node:
+The section can be omitted entirely — the module runs with all built-in defaults, on every manager
+node in the cluster:
 
 ```xml
 <task-manager>
@@ -120,12 +127,17 @@ The Task Manager runs on every manager node in the cluster (both master and work
 
 ### Inspect the tasks database
 
-Task rows live in the `tasks.db` database managed by Wazuh DB and can be inspected via the `task` protocol or directly:
+The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB no longer has a `task` actor, and
+there is no protocol to query it through. Read it directly, and only read it — the module holds the
+database open in WAL mode:
 
 ```bash
-sqlite3 /var/wazuh-manager/queue/db/tasks.db \
-  "SELECT status, COUNT(*) FROM tasks GROUP BY status;"
+sqlite3 -readonly /var/wazuh-manager/queue/tasks/tasks.db \
+  "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
 ```
+
+Manager tasks live in the same file and are better inspected through the module's own endpoints,
+which is what [Manager tasks](manager-tasks.md) documents.
 
 ### Monitor Logs
 
@@ -166,12 +178,12 @@ are configured through the internal options below, and their behaviour is descri
 | --- | --- | --- | --- |
 | `agents_disconnection_time` | `<global>` in `wazuh-manager.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
 | `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
-| `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | whether the retention sweep runs and whether disconnections are logged |
-| `wazuh_modules.manager_task_log_rotate` | internal option | 1 | whether either kind of log rotation happens |
+| `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | whether the disconnection sweep runs at all (the retention sweep is governed by `manager_task_delete_old_agents`) |
+| `wazuh_modules.manager_task_log_rotate` | internal option | 1 | whether either kind of log rotation happens — `0` disables the daily schedule *and* the size-triggered one |
 | `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | offset from local midnight for the daily rotation |
 | `wazuh_modules.manager_task_log_compress` | internal option | 1 | whether rotated logs are gzipped |
 | `wazuh_modules.manager_task_log_keep_days` | internal option | 31 | how long rotated logs are kept |
-| `wazuh_modules.manager_task_log_size_rotate` | internal option | 512 MB | threshold for size-based rotation |
+| `wazuh_modules.manager_task_log_size_rotate` | internal option | 512 MB | threshold for size-based rotation; `0` disables size rotation while leaving the daily one alone |
 | `wazuh_modules.manager_task_log_daily_rotations` | internal option | 12 | rotated slots per day per file |
 
 **None of these ships in a file.** The manager reads only
@@ -216,10 +228,10 @@ executor slot for the whole sweep.
 | `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds an attempt may hold its executor slot |
 | `wazuh_modules.manager_task_disconnect_log_max` | 200 | 0–1000000 | agents the disconnection sweep names individually per run |
 
-The time bound is the one that binds in practice: the send timeout on the connection to
-`wazuh-authd` is a fixed five seconds, so 200 agents against a wedged `wazuh-authd` would otherwise
-be a worst case measured in minutes while holding one executor slot. Counting agents bounds the work;
-counting seconds bounds the occupancy.
+The time bound is the one that binds in practice: the deadline on the connection to `wazuh-authd`
+is `wazuh_modules.manager_task_wdb_timeout` (default 10 s), so 200 agents against a wedged
+`wazuh-authd` would otherwise be a worst case measured in tens of minutes while holding one executor
+slot. Counting agents bounds the work; counting seconds bounds the occupancy.
 
 Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the
 executor re-claims the row and resumes where it stopped.
@@ -274,7 +286,7 @@ fails `wazuh-modulesd -t` rather than aborting later.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `wazuh_modules.upgrade_workers` | 2 | 1–16 | upgrade **batches** run at once |
+| `wazuh_modules.upgrade_workers` | `min(4, cores/2)` | 1–16 | upgrade **batches** run at once |
 | `wazuh_modules.upgrade_queue_depth` | 8 | 1–1000 | batches queued before a request is refused |
 | `wazuh_modules.upgrade_batch_deadline` | 180 | 10–3600 | seconds one batch may take before its remaining agents are failed |
 | `wazuh_modules.upgrade_max_agents` | 500 | 1–100000 | largest batch accepted in one request |
@@ -287,9 +299,13 @@ fails `wazuh-modulesd -t` rather than aborting later.
 wazuh-db query on a shared, mutex-guarded socket plus arithmetic; running agents in parallel would
 multiply contention on that mutex to buy nothing. What genuinely arrives in parallel is whole
 requests — the Server API chunks a fleet at 500, and every cluster node broadcasts. There is a second
-reason to keep it low: the shared HTTP client caches curl handlers in a process-wide queue of five
-entries, shared with the vulnerability scanner and the indexer connector, so a large pool here costs
-*them* connection reuse.
+reason to keep it low: the WPK client is `shared_modules/http-request`, which caches curl handlers in
+a process-wide queue of five entries shared with the vulnerability scanner and the indexer connector,
+so a large pool here costs *them* connection reuse.
+
+Note also that `upgrade_max_concurrent_downloads` — not `upgrade_workers` — is what bounds transfers.
+A batch that cannot get a download slot inside `upgrade_batch_deadline` reports *The repository is not
+reachable* for that package rather than waiting past the deadline.
 
 **Three deadlines have to stay ordered**, shortest first:
 
@@ -299,12 +315,17 @@ upgrade_batch_deadline  <  the Server API's client timeout  <  the route's respo
 ```
 
 The module answering first is what makes a slow repository produce a per-agent envelope the API can
-act on, instead of a connection the transport tore down.
+act on, instead of a connection the transport tore down. `upgrade_batch_deadline` is checked between
+download attempts and while queued for a download slot, not only between packages, so a batch cannot
+overrun it by `upgrade_download_attempts` × `upgrade_download_timeout` per package. One transfer
+already in flight still runs out its own timeout.
 
 **`upgrade_versions_ttl` is what keeps a fleet-wide upgrade cheap.** Agents that resolve to the same
 package share one `versions` fetch and one download, so 500 agents on one platform cost one of each
 rather than 500. The TTL bounds how long a newly published release goes unnoticed; set it to `0` to
-fetch every time.
+fetch every time. Within a single batch the dedup does not depend on the TTL at all — one fetch per
+distinct repository path is decided by grouping, not by caching — so `0` costs one request per batch,
+not one per agent.
 
 ### Monitoring agent upgrades
 
@@ -312,6 +333,13 @@ Upgrade work logs under its own sub-tag:
 
 ```bash
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep 'task-manager:upgrade'
+```
+
+The counters are also published on the module's metrics endpoint — `wpk_downloads`,
+`wpk_cache_hits`, `versions_fetches`, `versions_cache_hits`, `queue_depth` and `batches_shed`:
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock http://localhost/v1/metrics
 ```
 
 Each request produces one `remote_upgrade` row per accepted agent, inspectable like any other task
@@ -357,5 +385,5 @@ so this is usually self-correcting; if it persists the repository is likely slow
 - [Recurring manager tasks](schedules.md) — the three schedules and how they fire
 - [Agent upgrades](agent-upgrades.md) — the manager-side flow end to end
 - [Task Manager Module](README.md) — Module overview and architecture
-- [Wazuh DB Configuration](../wazuh_db/configuration.md) — persistence backend for `tasks.db`
+- [Wazuh DB](../wazuh_db/README.md) — no longer involved in `tasks.db`; the module owns it outright
 - [Manager Configuration Reference](../../configuration/manager/README.md)

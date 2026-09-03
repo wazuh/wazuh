@@ -48,7 +48,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/curl/include/curl/
   ${SRC_FOLDER}/external/libpcre2/include/

@@ -94,6 +94,23 @@ namespace task_manager::execution
         std::int64_t reclaimed {0};
         std::string cursor;
 
+        // Both of these were previously computed once PER ROW, inside the loop below, for values
+        // that do not vary across a page:
+        //
+        //  - selfIdentity(0) opens and parses /proc/self/stat. Any worker's identity carries this
+        //    process's pid and start time, so worker 0's is as good as any for deciding whether an
+        //    owner string is ours, and none of it changes while we run.
+        //  - the worker snapshot locks every worker's mutex and copies two strings out of each.
+        //
+        // At a hundred rows a page and eight workers that was a hundred file reads and eight hundred
+        // lock acquisitions per page, on a sweep that runs every sixty seconds. Hoisted, it is one
+        // of each. The snapshot going slightly stale across a page is harmless in the direction that
+        // matters: isReclaimable() only ever uses it to REFUSE to reclaim a row a worker says it is
+        // running, so a stale entry can delay a reclaim by one sweep, never cause one under a live
+        // handler.
+        const auto self {selfIdentity(0)};
+        const auto workers {m_executor.snapshot()};
+
         while (true)
         {
             const auto rows {m_store.claimedRows(owner, cursor, SWEEP_PAGE_SIZE)};
@@ -109,7 +126,7 @@ namespace task_manager::execution
                 cursor = row.taskId;
 
                 std::string inflight;
-                for (const auto& worker : m_executor.snapshot())
+                for (const auto& worker : workers)
                 {
                     if (worker.owner.toString() == row.owner)
                     {
@@ -125,10 +142,6 @@ namespace task_manager::execution
                 query.claimTime = row.claimTime;
                 query.now = nowSeconds();
                 query.claimGrace = m_options.claimGrace;
-
-                // Any worker's identity carries this process's pid and start time, so worker 0's
-                // is as good as any for deciding whether the owner is us.
-                const auto self {selfIdentity(0)};
 
                 if (!isReclaimable(query, self))
                 {
@@ -239,8 +252,10 @@ namespace task_manager::execution
             // Observation only. With no cancellation primitive available, making a hang visible
             // instead of silent is the whole of what is achievable here -- and this runs on the
             // scheduler's own cadence, so it is a periodic record rather than a live signal.
+            // "Work", not "manager task": periodic actions publish themselves here too, and they
+            // have no row -- for those, both names below are the action's own.
             LOGFN_WARN(schedulerLogFn(),
-                       "Manager task '%s' of type '%s' has been running for %lld s, past its %lld s budget. "
+                       "Executor work '%s' of type '%s' has been running for %lld s, past its %lld s budget. "
                        "It cannot be interrupted; this is a report, not a recovery.",
                        worker.inflightTaskId.c_str(),
                        worker.inflightTaskType.c_str(),

@@ -382,6 +382,48 @@ TEST_F(OrchestratorTest, StopsAskingWazuhDbAfterConsecutiveFailures)
     EXPECT_EQ(m_hostOps.infoCalls.load(), 5);
 }
 
+TEST_F(OrchestratorTest, AgentsThatDoNotExistDoNotTripTheCircuitBreaker)
+{
+    // The breaker counts UNREACHABLE, not UNKNOWN. wazuh-db answers an id that does not exist with
+    // an empty array -- a completed query about an absent agent -- and host::agentRow() reports
+    // that as no row, exactly as an unparseable answer does.
+    //
+    // Counting those toward the breaker meant a batch whose first few ids had been deleted tripped
+    // it and reported every REMAINING agent as a database failure. At the Server API's chunk size
+    // of 500 that is 495 healthy agents refused because five were gone.
+    std::vector<int> agentIds;
+    for (int index = 1; index <= 10; ++index)
+    {
+        agentIds.push_back(index);
+    }
+
+    // The first six do not exist -- more than agentInfoFailureLimit, which is the point.
+    for (int index = 1; index <= 6; ++index)
+    {
+        m_hostOps.noSuchAgentFor.insert(index);
+    }
+    for (int index = 7; index <= 10; ++index)
+    {
+        m_hostOps.agentRows[index] = ubuntuRow();
+    }
+    scriptRepo("linux/deb/amd64/", "wazuh_agent_v5.0.0_linux_amd64.deb.wpk");
+
+    const auto outcomes {m_orchestrator->process(requestFor(agentIds), permissive(), m_stop)};
+
+    ASSERT_EQ(outcomes.size(), 10U);
+    for (std::size_t index = 0; index < 6; ++index)
+    {
+        EXPECT_EQ(outcomes[index].error, UpgradeError::GlobalDbFailure) << "agent " << outcomes[index].agentId;
+    }
+    for (std::size_t index = 6; index < 10; ++index)
+    {
+        EXPECT_EQ(outcomes[index].error, UpgradeError::Success) << "agent " << outcomes[index].agentId;
+    }
+
+    // Every agent was asked about; nothing was short-circuited.
+    EXPECT_EQ(m_hostOps.infoCalls.load(), 10);
+}
+
 TEST_F(OrchestratorTest, RefusesABatchLargerThanTheCap)
 {
     UpgradeOrchestrator::Options options;

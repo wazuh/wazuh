@@ -88,6 +88,40 @@ namespace task_manager
                 return;
             }
 
+            // Anything already built is released before the failure leaves this function. Without
+            // it a throw past the first thread-starting step -- and the likeliest failure, the
+            // socket bind, is well past all of them -- would leak the executor, scheduler and
+            // upgrade threads: `m_running` would still be false, so stop() and the destructor would
+            // both take their early return and never join them. See teardownLocked().
+            try
+            {
+                startLocked(config, hostOps);
+            }
+            catch (...)
+            {
+                teardownLocked();
+                throw;
+            }
+        }
+
+        void stop()
+        {
+            std::lock_guard lock {m_mutex};
+
+            if (!m_running)
+            {
+                return;
+            }
+
+            teardownLocked();
+
+            m_running = false;
+            LOGFN_INFO(moduleLogFn(), "Task manager stopped.");
+        }
+
+    private:
+        void startLocked(const task_manager_config_t& config, const task_manager_host_ops_t& hostOps)
+        {
             m_hostOps = std::make_unique<host::CHostOps>(hostOps);
 
             if (const auto missing {m_hostOps->missingOperations()}; !missing.empty())
@@ -121,7 +155,20 @@ namespace task_manager
             executorOptions.claimGrace = std::chrono::seconds {valueOr(config.claim_grace, 30)};
             m_executor = std::make_unique<execution::Executor>(*m_store, *m_registry, executorOptions, m_metrics);
 
-            m_executor->registerPeriodicAction(registry::makeSizeRotationAction(*m_hostOps, localConfig));
+            // `manager_task_log_rotate` turns BOTH rotations off, and the two are expressed
+            // differently: the daily one is a schedule, so it is simply disabled
+            // (registry::buildBuiltinSchedules), while the size-triggered one is not a schedule at
+            // all -- so turning it off means not registering the action AND not signalling it. One
+            // flag decides both, computed once here so the two cannot drift apart. Registering it
+            // unconditionally left `rotate_log=0` still rewriting the log at its size threshold,
+            // which is not what the option says it does.
+            const bool sizeRotationEnabled {config.rotate_log != 0 &&
+                                            valueOrAllowingZero(config.size_rotate_mb, 512) > 0};
+
+            if (sizeRotationEnabled)
+            {
+                m_executor->registerPeriodicAction(registry::makeSizeRotationAction(*m_hostOps, localConfig));
+            }
 
             execution::Sweeper::Options sweeperOptions;
             sweeperOptions.claimGrace = executorOptions.claimGrace;
@@ -137,6 +184,7 @@ namespace task_manager
             schedulerOptions.deadLetterRetentionDays = valueOr(config.dead_letter_retention_days, 30);
             schedulerOptions.historyPerSchedule = valueOr(config.history_per_schedule, 20);
             schedulerOptions.maxRows = valueOr(config.max_rows, 100000);
+            schedulerOptions.sizeRotationEnabled = sizeRotationEnabled;
 
             m_scheduler = std::make_unique<schedule::Scheduler>(*m_store,
                                                                 *m_executor,
@@ -148,8 +196,9 @@ namespace task_manager
 
             m_cache = std::make_unique<cache::PendingCache>();
 
-            // Both notifications wake the machinery immediately, which is why a task created
-            // through the socket starts now rather than at some poll interval -- there is none.
+            // The notification wakes the machinery immediately, which is why a manager task
+            // created through the socket starts now rather than at some poll interval -- there is
+            // none. Agent tasks get no such callback: nothing here executes them.
             m_api = std::make_unique<http::ApiHandlers>(
                 *m_store,
                 *m_registry,
@@ -159,7 +208,6 @@ namespace task_manager
                     m_executor->notify(taskType);
                     m_scheduler->wake();
                 },
-                [](const std::string&) {},
                 m_metrics,
                 valueOr(config.max_payload_bytes, 1048576),
                 valueOr(config.max_tasks_per_poll, 100));
@@ -172,6 +220,11 @@ namespace task_manager
             http::HttpServer::Options httpOptions;
             httpOptions.socketPath = config.socket_path;
             httpOptions.ioThreads = valueOr(config.io_threads, 2);
+            // The manager-task create route must admit one whole max_payload_bytes, or configuring
+            // that option above the transport's 64 KB Control default would silently do nothing.
+            // Scoped to that one route rather than the class -- see the field.
+            httpOptions.createMaxBodyBytes =
+                static_cast<std::size_t>(valueOr(config.max_payload_bytes, 1048576)) + (64UL * 1024);
             m_server = std::make_unique<http::HttpServer>(*m_api, httpOptions);
 
             if (m_upgradeApi)
@@ -179,6 +232,10 @@ namespace task_manager
                 // Before start(): the transport refuses addRoute() once the socket is bound.
                 m_server->setUpgradeApi(*m_upgradeApi);
             }
+
+            // Likewise before start(). This is what makes everything metrics/taskMetrics.cpp
+            // records readable from outside the process.
+            m_server->setMetricsManager(m_metricsManager);
 
             // Bound LAST. Everything that executes a task must exist before a producer can create
             // one.
@@ -194,15 +251,23 @@ namespace task_manager
                        config.db_path);
         }
 
-        void stop()
+        /**
+         * @brief Stop and release everything that exists, in the order described on the class.
+         *
+         * Every step is guarded, because this runs from TWO callers with different amounts built:
+         * stop() on a fully started module, and start()'s own failure path on a partly built one.
+         *
+         * THAT SECOND CALLER IS THE POINT. `m_running` is set on the last line of start(), so a
+         * throw anywhere before it -- and the likeliest one by far is the socket bind, which fails
+         * on a stale path or a permissions problem -- used to leave `m_running` false with the
+         * executor, the scheduler and the upgrade pool already running their threads. stop() would
+         * then return immediately on the `!m_running` check and the destructor would call the same
+         * no-op, so those threads outlived the object holding what they point at. It was survivable
+         * only because the shim answers a failed start with mterror_exit(), which is to say it was
+         * masked by the process dying rather than actually handled.
+         */
+        void teardownLocked()
         {
-            std::lock_guard lock {m_mutex};
-
-            if (!m_running)
-            {
-                return;
-            }
-
             if (m_server)
             {
                 m_server->stopAccepting();
@@ -260,14 +325,34 @@ namespace task_manager
             m_metrics.reset();
             m_metricsManager.reset();
             m_hostOps.reset();
-
-            m_running = false;
-            LOGFN_INFO(moduleLogFn(), "Task manager stopped.");
         }
 
-    private:
         static int valueOr(const int configured, const int fallback)
         {
+            return configured > 0 ? configured : fallback;
+        }
+
+        /**
+         * @brief Resolve a field whose ZERO is a real setting rather than "no opinion".
+         *
+         * The ABI's ordinary sentinel is `<= 0`, which works for every value whose domain starts at
+         * one. It cannot work for the handful whose zero MEANS something -- "log nothing", "cache
+         * nothing", "no bound", "keep no rotated logs" -- because valueOr() would hand each of those
+         * straight back the default the operator was trying to turn off.
+         *
+         * Those fields carry three states, and -1 rather than 0 is the disabling one (see the
+         * sentinel note in task_manager.h): 0 still means "no opinion", so a zero-initialised config
+         * struct means every default, and the shim maps a configured zero to -1 on the way in.
+         *
+         * Documented at both ends deliberately: a field read with the wrong helper silently ignores
+         * configuration, which is the failure mode this pair exists to make impossible to miss.
+         */
+        static int valueOrAllowingZero(const int configured, const int fallback)
+        {
+            if (configured < 0)
+            {
+                return 0; // The operator asked for zero.
+            }
             return configured > 0 ? configured : fallback;
         }
 
@@ -311,8 +396,10 @@ namespace task_manager
             wpkOptions.maxConcurrentDownloads = valueOr(config.upgrade_max_concurrent_downloads, 2);
             m_wpkCache = std::make_unique<upgrade::WpkCache>(*m_wpkRepository, wpkOptions);
 
+            // Zero is meaningful here too: it means "fetch every time", which a TTL of zero
+            // expresses exactly -- an entry stamped `now + 0` is already expired when it is read.
             m_versionsCache = std::make_unique<upgrade::VersionsCache>(
-                *m_wpkRepository, std::chrono::seconds {valueOr(config.upgrade_versions_ttl, 300)});
+                *m_wpkRepository, std::chrono::seconds {valueOrAllowingZero(config.upgrade_versions_ttl, 300)});
 
             upgrade::UpgradeOrchestrator::Options orchestratorOptions;
             orchestratorOptions.configuredRepository = config.wpk_repository;
@@ -423,11 +510,13 @@ namespace task_manager
             local.disconnectionTime = std::chrono::seconds {valueOr(config.disconnection_time, 900)};
             local.deleteOldAgents = config.delete_old_agents;
             local.monitorAgents = config.monitor_agents != 0;
-            local.disconnectLogMax = valueOr(config.disconnect_log_max, 200);
+            // Zero is a setting for these three, not an absence: "name no agent individually",
+            // "keep no rotated logs", "never rotate by size".
+            local.disconnectLogMax = valueOrAllowingZero(config.disconnect_log_max, 200);
             local.compressRotatedLogs = config.compress != 0;
-            local.keepLogDays = valueOr(config.keep_log_days, 31);
+            local.keepLogDays = valueOrAllowingZero(config.keep_log_days, 31);
             local.dailyRotations = valueOr(config.daily_rotations, 12);
-            local.sizeRotateBytes = static_cast<long>(valueOr(config.size_rotate_mb, 512)) * 1024 * 1024;
+            local.sizeRotateBytes = static_cast<long>(valueOrAllowingZero(config.size_rotate_mb, 512)) * 1024 * 1024;
             local.deleteOldBatch = valueOr(config.delete_old_batch, 200);
             local.deleteOldBudget = std::chrono::seconds {valueOr(config.delete_old_budget, 30)};
             local.authdTimeout = std::chrono::seconds {valueOr(config.wdb_timeout, 10)};
@@ -439,6 +528,12 @@ namespace task_manager
         /// This is the half of the picture the retired implementation could not publish at all:
         /// wazuh_metrics is C++ with no C ABI, so a plain-C module could only ever report what
         /// wazuh-db counted, which described the database rather than the queue.
+        ///
+        /// Every getter below checks the member it reads, exactly as the upgrade getters do. The
+        /// ordering in stop() already makes that unnecessary -- stopAccepting() comes first and
+        /// guarantees no handler is still running before anything is reset -- but a pull metric is
+        /// read from an I/O thread the facade does not own, and a getter that assumes an ordering
+        /// somebody else maintains is one edit away from a use-after-free.
         void registerQueueMetrics()
         {
             for (const auto& descriptor : m_registry->all())
@@ -450,7 +545,9 @@ namespace task_manager
                     {
                         try
                         {
-                            return static_cast<std::uint64_t>(m_store->countManagerTasks(name, TaskStatus::Pending));
+                            return m_store ? static_cast<std::uint64_t>(
+                                                 m_store->countManagerTasks(name, TaskStatus::Pending))
+                                           : std::uint64_t {0};
                         }
                         catch (const std::exception&)
                         {
@@ -463,7 +560,7 @@ namespace task_manager
 
             m_metrics->registerPull(
                 "task_manager.agent_tasks.empty_cache_entries",
-                [this] { return static_cast<std::uint64_t>(m_cache->size()); },
+                [this] { return m_cache ? static_cast<std::uint64_t>(m_cache->size()) : std::uint64_t {0}; },
                 "Agents known to have no pending agent tasks",
                 "agents");
         }

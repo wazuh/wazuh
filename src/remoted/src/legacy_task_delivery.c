@@ -118,9 +118,15 @@
 
 /* Bounds for legacy_task_retry_list, the small in-memory list of tasks whose push got no response
  * at all and is deferred to a future poll cycle instead of blocking this one (see the file header
- * comment). Both deliberately mirror wm_task_manager.h's WM_TASK_DEFAULT_MAX_TASKS_PER_POLL /
- * WM_TASK_DEFAULT_TTL defaults rather than including that header: this poller only ever consumes a
- * task's payload, it never touches the Task Manager's own config. */
+ * comment).
+ *
+ * Both deliberately mirror the Task Manager's own `max_tasks_per_poll` (100) and `task_ttl` (3600)
+ * defaults, and both are duplicated rather than shared: those defaults now live inside
+ * libtask_manager.so (taskManagerFacade.hpp), not in a header this daemon could include, and this
+ * poller only ever consumes a task's payload -- it never touches the Task Manager's own config.
+ * Keeping them equal is a judgement, not a constraint: a retry list longer than one poll's worth of
+ * tasks would hold entries the next sweep re-reads anyway, and one older than the TTL would hold
+ * tasks the Task Manager has already expired. */
 #define LEGACY_TASK_RETRY_LIST_MAX_SIZE 100
 #define LEGACY_TASK_RETRY_MAX_AGE_SEC 3600
 

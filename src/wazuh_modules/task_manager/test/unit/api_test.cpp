@@ -61,7 +61,6 @@ namespace
                 *m_registry,
                 m_cache,
                 [this](const std::string& type) { m_notifiedManager.push_back(type); },
-                [this](const std::string& type) { m_notifiedAgent.push_back(type); },
                 nullptr,
                 1024,
                 10);
@@ -82,7 +81,6 @@ namespace
         cache::PendingCache m_cache;
         std::unique_ptr<ApiHandlers> m_api;
         std::vector<std::string> m_notifiedManager;
-        std::vector<std::string> m_notifiedAgent;
     };
 } // namespace
 

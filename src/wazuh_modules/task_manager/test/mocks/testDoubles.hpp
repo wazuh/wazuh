@@ -236,9 +236,22 @@ namespace task_manager::test
         {
             ++infoCalls;
 
+            // The query DID NOT COMPLETE: the callback failed, the socket was unreachable, or the
+            // answer did not parse. Distinct from noSuchAgentFor below, and callers are expected to
+            // treat them differently -- only this one says anything about wazuh-db's health.
             if (missingInfoFor.count(agentId) != 0)
             {
                 return std::nullopt;
+            }
+
+            // The query COMPLETED and there is no such agent. wazuh-db answers an unknown id with an
+            // empty array, and host::agentRow() reports that as no row. Scriptable separately
+            // because the two look identical to a caller that only checks for a null row, and
+            // conflating them is what made a batch whose first few ids had been deleted report every
+            // remaining agent as a database failure.
+            if (noSuchAgentFor.count(agentId) != 0)
+            {
+                return nlohmann::json::array();
             }
 
             // A scripted row wins, so the upgrade tests can supply os_platform/os_arch/version.
@@ -276,7 +289,12 @@ namespace task_manager::test
         int workerStateValue {0};
         std::optional<std::vector<int>> disconnected {std::vector<int> {}};
         std::optional<std::vector<int>> candidates {std::vector<int> {}};
+        /// @brief Agents whose lookup FAILS: agentInfo() answers nullopt, as it does for an
+        ///        unreachable or unparseable wazuh-db.
         std::set<int> missingInfoFor;
+        /// @brief Agents that simply DO NOT EXIST: agentInfo() answers the empty array wazuh-db
+        ///        returns for an unknown id. A healthy database, an absent agent.
+        std::set<int> noSuchAgentFor;
         /// @brief Per-agent rows for callers that need real OS fields, keyed by agent id.
         std::map<int, nlohmann::json> agentRows;
         Timestamp lastKeepalive {0};

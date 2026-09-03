@@ -111,6 +111,37 @@ def test_the_liveness_probe_answers(client):
     assert response.json()['status'] == 'ok'
 
 
+def test_the_metrics_endpoint_publishes_the_queue(client):
+    """The registry is reachable from outside the process, and reflects real work.
+
+    Worth a test of its own because the failure it guards against is silent: everything in
+    metrics/taskMetrics.cpp can be collected perfectly and still be unobservable if no route
+    exposes it, which is exactly what happened. Nothing else in this suite would notice.
+    """
+    before = client.metrics()
+    assert before.status_code == 200
+
+    body = before.json()
+    assert body['name'] == 'task_manager'
+    names = {metric['name'] for metric in body['metrics']}
+
+    # A representative metric from each of the three families the module registers: the counters it
+    # increments, the pull gauges it reads from the store, and the transport's own diagnostics.
+    assert 'task_manager.agent_tasks.created' in names
+    assert 'task_manager.queue.pending.agent_delete_indexer' in names
+    assert 'task_manager.http.live_sessions' in names
+
+    def created_count(response):
+        for metric in response.json()['metrics']:
+            if metric['name'] == 'task_manager.agent_tasks.created':
+                return metric['value']
+        raise AssertionError('task_manager.agent_tasks.created disappeared')
+
+    started = created_count(before)
+    client.create_agent_task('001')
+    assert created_count(client.metrics()) == started + 1
+
+
 def test_agent_tasks_survive_a_restart(module, client):
     client.create_agent_task('001')
     client.close()

@@ -25,6 +25,20 @@ namespace
         return configured > 0 ? configured : fallback;
     }
 
+    /// @brief Resolve a field whose ZERO is a real setting -- here, storage::UNBOUNDED.
+    ///
+    /// Three states in one int, with -1 as the disabling one so that a zero-initialised config
+    /// struct still means "every default"; see the sentinel note in task_manager.h. Using valueOr()
+    /// would hand an operator asking for "no bound" the default bound instead.
+    int valueOrAllowingZero(const int configured, const int fallback)
+    {
+        if (configured < 0)
+        {
+            return 0; // storage::UNBOUNDED.
+        }
+        return configured > 0 ? configured : fallback;
+    }
+
     constexpr int DEFAULT_MAX_ATTEMPTS {8};
     constexpr int DEFAULT_MAX_DEFER {48};
     constexpr int DEFAULT_BACKOFF_BASE {30};
@@ -112,7 +126,7 @@ namespace task_manager::registry
             descriptor.maxDefer = UNBOUNDED;
             descriptor.allowTerminalFailure = false;
             descriptor.coalesceByAgent = false;
-            descriptor.maxPending = valueOr(config.max_pending_deletes, DEFAULT_MAX_PENDING_DELETES);
+            descriptor.maxPending = valueOrAllowingZero(config.max_pending_deletes, DEFAULT_MAX_PENDING_DELETES);
             descriptor.watchdogBudget = std::chrono::seconds {deleteTimeout};
             descriptor.handler = std::make_shared<handlers::HttpHandler>(std::move(options));
             descriptors.push_back(std::move(descriptor));
@@ -136,7 +150,7 @@ namespace task_manager::registry
             descriptor.concurrencyGroup = TYPE_VD_SCAN;
             descriptor.maxConcurrent = 1;
             descriptor.coalesceByAgent = true;
-            descriptor.maxPending = valueOr(config.max_pending_scans, DEFAULT_MAX_PENDING_SCANS);
+            descriptor.maxPending = valueOrAllowingZero(config.max_pending_scans, DEFAULT_MAX_PENDING_SCANS);
             descriptor.watchdogBudget = std::chrono::seconds {vdScanTimeout};
             descriptor.handler = std::make_shared<handlers::HttpHandler>(std::move(options));
             descriptors.push_back(std::move(descriptor));
@@ -241,6 +255,9 @@ namespace task_manager::registry
         auto action {std::make_shared<execution::Executor::PeriodicAction>()};
         action->name = ACTION_LOG_ROTATE_SIZE;
         action->concurrencyGroup = GROUP_ROTATION;
+        // The same budget the daily rotation carries, and for the same reason: both gzip a file up
+        // to the size threshold inline, so both can hold their slot long enough to be worth naming.
+        action->watchdogBudget = std::chrono::seconds {ROTATE_WATCHDOG_SECONDS};
         action->run = [&hostOps, localConfig](const StopToken& stop)
         {
             if (stop.stopRequested())

@@ -116,6 +116,31 @@ TEST(UpgradeWpkCache, DownloadsOnceAndVerifiesTheDigest)
     EXPECT_EQ(dir.read(WPK_FILE), CONTENT_A);
 }
 
+TEST(UpgradeWpkCache, AnExpiredBatchDeadlineStopsBeforeTheFirstAttempt)
+{
+    // The batch deadline has to be honoured HERE, not only between packages in the orchestrator.
+    // Attempts multiply -- upgrade_download_attempts x upgrade_download_timeout plus backoff is
+    // ~138 s per package at the defaults -- so a batch spanning a few platforms could otherwise run
+    // past the transport's 300 s response backstop, at which point the connection is torn down and
+    // the per-agent envelope is discarded rather than delivered.
+    const TempDir dir;
+    FakeWpkRepository repository;
+    repository.scriptDownload(WPK_URL, {true, CONTENT_A, 200, 0, {}, false});
+
+    WpkCache cache {repository, optionsIn(dir)};
+    StopToken stop;
+
+    auto request {requestFor(SHA1_A)};
+    request.deadline = std::chrono::steady_clock::now() - std::chrono::seconds {1};
+
+    // "The repository is not reachable" -- the same code the orchestrator reports for a package it
+    // skipped for the same reason, so the caller sees one answer for one event.
+    EXPECT_EQ(cache.ensure(request, stop), UpgradeError::UrlNotFound);
+
+    // And nothing was attempted, which is the point: the deadline is not a post-hoc verdict.
+    EXPECT_EQ(repository.downloadCalls(WPK_URL), 0U);
+}
+
 TEST(UpgradeWpkCache, ConcurrentCallersForOneFileProduceOneDownload)
 {
     // THE TEST THIS CLASS EXISTS FOR. The retired implementation hashed -- and could re-download --
@@ -267,7 +292,7 @@ TEST(UpgradeWpkCache, AFailedDownloadIsNotRememberedAsAnAnswer)
     EXPECT_EQ(repository.downloadCalls(WPK_URL), 2U);
 }
 
-TEST(UpgradeWpkCache, AStopRequestEndsTheDownloadWithoutBurningTheBudget)
+TEST(UpgradeWpkCache, AStopRequestEndsTheDownloadAsRetryableWithoutBurningTheBudget)
 {
     const TempDir dir;
     FakeWpkRepository repository;
@@ -277,7 +302,12 @@ TEST(UpgradeWpkCache, AStopRequestEndsTheDownloadWithoutBurningTheBudget)
     StopToken stop;
     stop.requestStop();
 
-    EXPECT_EQ(cache.ensure(requestFor(SHA1_A), stop), UpgradeError::WpkFileDoesNotExist);
+    // RETRYABLE, not "the WPK file does not exist". Error 4 is the one code the Server API answers
+    // by halving the chunk and trying again, which is the right response to a manager that is going
+    // down -- and it has to be the SAME answer wherever the shutdown caught the request, whether
+    // that was in the pool's queue, part-way through resolving agents, or here. Reporting a missing
+    // file instead told the caller something untrue about the repository and lost the retry.
+    EXPECT_EQ(cache.ensure(requestFor(SHA1_A), stop), UpgradeError::TaskManagerCommunication);
     EXPECT_EQ(repository.downloadCalls(WPK_URL), 0U);
     EXPECT_FALSE(dir.exists(WPK_FILE));
 }

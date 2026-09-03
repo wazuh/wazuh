@@ -42,6 +42,28 @@
  *
  * SENTINEL RULE: an int <= 0 and an empty string both mean "no opinion, use the module default".
  * Defaults live in exactly one place (the C++ module); the shim always passes 0 fallbacks through.
+ *
+ * THE EXCEPTION, and every field that takes it is marked `[-1 disables]` below. A handful of
+ * options have a MEANINGFUL zero -- "log no agent by name", "cache nothing", "no admission bound",
+ * "keep no rotated logs", "never rotate by size" -- and for those the rule above is not merely
+ * imprecise, it is actively wrong: read as "no opinion", a configured zero hands back the very
+ * default the operator was switching off, so the option cannot be turned off at all.
+ *
+ * Those fields therefore carry THREE states in one int, and -1 rather than 0 is the disabling one:
+ *
+ *     0   no opinion, use the module default      (unchanged from every other field)
+ *    -1   the operator asked for zero: disabled / unbounded / nothing kept
+ *    >0   the configured value
+ *
+ * Encoded that way round on purpose. A zero-initialised task_manager_config_t must mean "every
+ * default", because that is what every embedder assumes -- the testtool memsets the struct and sets
+ * four fields -- and making 0 mean "disabled" for six of them would silently turn off log rotation
+ * and every admission bound in any caller that did not know better. The shim converts a configured
+ * zero to -1 on the way through (wm_task_manager_zeroable), and the module resolves these with
+ * valueOrAllowingZero() rather than valueOr().
+ *
+ * remoted_config_read is a third variant of the same problem, solved with an explicit validity flag
+ * because BOTH of its values are <= 0.
  */
 
 // Define EXPORTED for any platform
@@ -93,8 +115,8 @@ extern "C"
         /* ---- per-type bounds ------------------------------------------------------------ */
         int vd_scan_timeout;      ///< Deadline on one vd_scan call, seconds.
         int delete_timeout;       ///< Deadline on one deletion call. MUST exceed vd_scan_timeout.
-        int max_pending_deletes;  ///< Admission bound on pending agent_delete_indexer rows.
-        int max_pending_scans;    ///< Admission bound on pending vd_scan rows.
+        int max_pending_deletes;  ///< Admission bound on pending agent_delete_indexer rows. [-1 disables: unbounded]
+        int max_pending_scans;    ///< Admission bound on pending vd_scan rows. [-1 disables: unbounded]
 
         /* ---- retention ------------------------------------------------------------------ */
         int retention_days;             ///< Terminal rows older than this are removed.
@@ -106,11 +128,11 @@ extern "C"
         int disconnection_time; ///< <global><agents_disconnection_time>. Sweep interval AND window.
         int delete_old_agents;  ///< Minutes; 0 disables the retention deletion schedule.
         int monitor_agents;     ///< 0 disables the disconnection sweep schedule.
-        int disconnect_log_max; ///< Cap on per-agent diagnostic lookups in one sweep.
+        int disconnect_log_max; ///< Cap on per-agent diagnostic lookups in one sweep. [-1 disables: name none]
         int rotate_log;         ///< 0 disables both rotations.
         int compress;           ///< gzip rotated logs.
-        int keep_log_days;      ///< Days of rotated logs to keep.
-        int size_rotate_mb;     ///< Size-rotation threshold in MB.
+        int keep_log_days;      ///< Days of rotated logs to keep. [-1 disables: keep none]
+        int size_rotate_mb;     ///< Size-rotation threshold in MB. [-1 disables: no size rotation]
         int daily_rotations;    ///< Max rotations kept within one day.
         int day_wait;           ///< Seconds past local midnight for the daily slot.
         int delete_old_batch;   ///< Agents per agent_delete_old run.
@@ -139,6 +161,7 @@ extern "C"
         int upgrade_download_timeout;         ///< Milliseconds per WPK download attempt.
         int upgrade_max_concurrent_downloads; ///< Global cap; WPKs are 50-100 MB.
         int upgrade_versions_ttl;             ///< Seconds a repository's `versions` file is cached.
+                                              ///< [-1 disables: fetch every time]
 
         /*
          * remoted's delivery settings, read once pre-fork by the shim.

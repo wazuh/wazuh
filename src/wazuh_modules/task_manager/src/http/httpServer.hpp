@@ -16,11 +16,13 @@
 #include "upgrade/upgradeApi.hpp"
 
 #include <uds_http_server/IUdsHttpServer.hpp>
+#include <wazuh_metrics/iManager.hpp>
 
 #include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace task_manager::http
 {
@@ -58,6 +60,29 @@ namespace task_manager::http
             /// @brief Largest accepted body. Bulk agent-task creates are the reason this is not
             ///        simply the single-task payload cap.
             std::size_t maxBodyBytes {8UL * 1024 * 1024};
+
+            /**
+             * @brief Body cap for `POST /v1/manager-tasks` ALONE, which must admit one
+             *        `max_payload_bytes`.
+             *
+             * The transport's Control class defaults to a 64 KB declared-length cap, which is right
+             * for its usual traffic -- small requests other daemons depend on. But
+             * `/v1/manager-tasks` is the one Control route that carries a producer-authored payload,
+             * and `max_payload_bytes` defaults to 1 MiB: without an override the module advertises a
+             * 1 MiB limit that the transport refuses with a 413 at 64 KB, before the handler that
+             * owns the limit ever sees the body. Configuring the option above 64 KB would silently
+             * do nothing.
+             *
+             * PER ROUTE, never on the class. Control is budget-exempt by design -- that exemption is
+             * what stops agent-task pressure starving it -- and it is affordable only because
+             * Control bodies are small. Raising the class cap instead would let 256 exempt sessions
+             * hold a megabyte each, trading a 16 MB worst case for a 280 MB one across every Control
+             * route, including the four that carry nothing but a task id.
+             *
+             * Set from `max_payload_bytes` plus room for the rest of the envelope, so the handler's
+             * own check stays the one that decides.
+             */
+            std::size_t createMaxBodyBytes {1024UL * 1024 + 64UL * 1024};
         };
 
         HttpServer(ApiHandlers& handlers, Options options);
@@ -73,6 +98,23 @@ namespace task_manager::http
         void setUpgradeApi(upgrade::UpgradeApi& api) noexcept
         {
             m_upgradeApi = &api;
+        }
+
+        /**
+         * @brief Attach the metrics registry, which publishes it on GET /v1/metrics.
+         *
+         * Optional, and MUST be called before start(), like setUpgradeApi(). Left unset the route
+         * does not exist -- which is what the testtool wants, and what every build wanting no
+         * metrics surface gets.
+         *
+         * A WEAK reference on purpose. The route reads the registry from an I/O thread, and while
+         * stopAccepting() guarantees no handler can still be running by the time the facade tears
+         * the registry down, expressing that as a weak_ptr means a mistake in that ordering answers
+         * 503 rather than dereferencing freed memory.
+         */
+        void setMetricsManager(std::weak_ptr<wazuh::metrics::IManager> manager) noexcept
+        {
+            m_metricsManager = std::move(manager);
         }
 
         HttpServer(const HttpServer&) = delete;
@@ -99,6 +141,8 @@ namespace task_manager::http
         std::unique_ptr<wazuh::uds_http::IUdsHttpServer> m_server;
         /// @brief Non-owning; the facade outlives this. Null means the routes are not registered.
         upgrade::UpgradeApi* m_upgradeApi {nullptr};
+        /// @brief Expired or unset means GET /v1/metrics is not registered.
+        std::weak_ptr<wazuh::metrics::IManager> m_metricsManager;
     };
 } // namespace task_manager::http
 

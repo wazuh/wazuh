@@ -161,6 +161,27 @@ TEST(DisconnectSweep, TurningLoggingOffSkipsTheRoundTripsEntirely)
     EXPECT_EQ(hostOps.infoCalls.load(), 0);
 }
 
+TEST(DisconnectSweep, ABoundOfZeroTransitionsSilently)
+{
+    // `manager_task_disconnect_log_max = 0` is the documented way to transition without naming any
+    // agent, and it was unreachable until zero stopped being swallowed by the config ABI's "<= 0
+    // means no opinion" sentinel -- which handed back the default of 200 instead.
+    FakeHostOps hostOps;
+    hostOps.disconnected = std::vector<int> {1, 2, 3, 4, 5};
+
+    auto config {defaultLocalConfig()};
+    config.disconnectLogMax = 0;
+
+    StopToken stop;
+    DisconnectSweepHandler handler {hostOps, config};
+
+    EXPECT_EQ(handler.run(claimedTask(), stop).outcome, Outcome::Ok);
+
+    // Transitioned, and not one lookup spent on it.
+    EXPECT_EQ(hostOps.disconnectCalls.load(), 1);
+    EXPECT_EQ(hostOps.infoCalls.load(), 0);
+}
+
 TEST(DisconnectSweep, StopsLoggingWhenShutdownIsRequested)
 {
     FakeHostOps hostOps;

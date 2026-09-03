@@ -144,14 +144,35 @@ namespace task_manager::upgrade
             }
 
             const auto document {m_hostOps.agentInfo(candidate.agentId)};
-            const auto* row {document.has_value() ? host::agentRow(*document) : nullptr};
-            if (row == nullptr)
+
+            // THE BREAKER COUNTS UNREACHABLE, NOT UNKNOWN, and the two are different failures that
+            // agentRow() flattens into one null.
+            //
+            // A nullopt document is the query not completing: CHostOps returns it when the callback
+            // failed, the socket could not be reached or the answer did not parse. That is what the
+            // breaker is for -- a wedged wazuh-db would otherwise cost the batch ten seconds per
+            // remaining agent while holding a worker.
+            //
+            // A document that parsed but carries no row is a DIFFERENT answer: wazuh-db is healthy
+            // and this agent id does not exist. Counting those would trip the breaker on a batch
+            // whose first few ids happen to have been deleted, and then report the other 495 agents
+            // of a 500-agent chunk as a database failure they had nothing to do with.
+            if (!document.has_value())
             {
                 ++consecutiveDbFailures;
                 candidate.error = UpgradeError::GlobalDbFailure;
                 continue;
             }
             consecutiveDbFailures = 0;
+
+            const auto* row {host::agentRow(*document)};
+            if (row == nullptr)
+            {
+                // No such agent. Same code the retired module used, and the same one the Server API
+                // renders as "Agent information not found in database" -- which is accurate.
+                candidate.error = UpgradeError::GlobalDbFailure;
+                continue;
+            }
 
             AgentInfo agent;
             agent.agentId = candidate.agentId;
@@ -160,12 +181,6 @@ namespace task_manager::upgrade
             agent.minorVersion = host::agentField(*row, "os_minor");
             agent.architecture = host::agentField(*row, "os_arch");
             agent.wazuhVersion = host::agentField(*row, "version");
-
-            if (candidate.agentId <= 0)
-            {
-                candidate.error = UpgradeError::ParsingRequiredParameter;
-                continue;
-            }
 
             const auto platform {
                 resolvePackageType(agent.platform, agent.majorVersion, agent.minorVersion, agent.architecture)};
@@ -309,7 +324,14 @@ namespace task_manager::upgrade
                 continue;
             }
 
-            const auto fetched {m_wpkCache.ensure({first->wpkUrl, first->wpkFile, *sha1}, stop)};
+            // The deadline goes IN, rather than only being checked between groups above. Checking
+            // it per group bounds how many groups are attempted but not how long one takes, and one
+            // group is where the time actually goes: attempts x per-attempt timeout plus backoff is
+            // ~138 s at the defaults, so three groups could spend over 400 s -- past this module's
+            // 180 s budget and past the transport's 300 s backstop, which tears the connection down
+            // and discards the envelope. Handing the cache the same instant lets it stop between
+            // attempts instead.
+            const auto fetched {m_wpkCache.ensure({first->wpkUrl, first->wpkFile, *sha1, deadline}, stop)};
             for (auto* member : members)
             {
                 member->error = fetched;
@@ -461,6 +483,14 @@ namespace task_manager::upgrade
         std::vector<Candidate> candidates;
         candidates.reserve(request.agentIds.size());
 
+        // The same breaker the repository path runs, for the same reason: this loop makes one
+        // mutex-serialised wazuh-db call per agent, each bounded only by a ten-second socket
+        // deadline, so a wedged wazuh-db would cost a 500-agent batch well over an hour while
+        // holding a worker -- far past both this module's batch deadline and the transport's
+        // response backstop, which means the caller would get a torn-down connection rather than an
+        // envelope. Custom upgrades are smaller batches in practice, but nothing bounds them to be.
+        int consecutiveDbFailures {0};
+
         for (const int agentId : request.agentIds)
         {
             Candidate candidate;
@@ -477,8 +507,26 @@ namespace task_manager::upgrade
                 continue;
             }
 
+            if (consecutiveDbFailures >= m_options.agentInfoFailureLimit)
+            {
+                candidate.error = UpgradeError::GlobalDbFailure;
+                candidates.push_back(std::move(candidate));
+                continue;
+            }
+
             const auto document {m_hostOps.agentInfo(agentId)};
-            const auto* row {document.has_value() ? host::agentRow(*document) : nullptr};
+            if (!document.has_value())
+            {
+                // Query did not complete -- see the note in resolve(). Only these count toward the
+                // breaker; a healthy answer with no row does not.
+                ++consecutiveDbFailures;
+                candidate.error = UpgradeError::GlobalDbFailure;
+                candidates.push_back(std::move(candidate));
+                continue;
+            }
+            consecutiveDbFailures = 0;
+
+            const auto* row {host::agentRow(*document)};
             if (row == nullptr)
             {
                 candidate.error = UpgradeError::GlobalDbFailure;

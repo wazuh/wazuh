@@ -68,7 +68,20 @@ namespace task_manager::registry
         transition.deferCount = deferCount;
         transition.nextAttemptAt = now;
 
-        switch (outcome)
+        // A type that may not be abandoned does not get to be abandoned by ANY route to Terminal,
+        // not just the one its handler happens to take.
+        //
+        // The descriptor flag was previously enforced only inside classifyTransportResult(), which
+        // meant the guarantee held because agent_delete_indexer's handler is an HttpHandler
+        // constructed with the flag off -- an accident of wiring rather than a property of the type.
+        // Give that type a local handler, or any handler that returns Terminal for a reason of its
+        // own, and the row would retire as `failed`: the agent is already out of client.keys, nobody
+        // will ask again, and its indexer documents are orphaned forever. Downgrading here makes the
+        // invariant structural, and costs nothing for the types that do allow terminal failure.
+        const auto effective {(outcome == Outcome::Terminal && !descriptor.allowTerminalFailure) ? Outcome::Retryable
+                                                                                                 : outcome};
+
+        switch (effective)
         {
             case Outcome::Ok: transition.terminalStatus = TaskStatus::Completed; break;
 

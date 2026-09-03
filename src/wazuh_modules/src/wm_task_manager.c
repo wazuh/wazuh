@@ -9,7 +9,21 @@
  * Foundation.
  */
 
-#ifndef WIN32
+/* MANAGER ONLY, in its entirety -- and `CLIENT` rather than `WIN32` is the load-bearing part.
+ *
+ * wazuh_modules/CMakeLists.txt globs `src/*.c` for EVERY target, including the agent. This file
+ * used to live in `src/task_manager/`, a subdirectory the agent glob never matched, so it was never
+ * compiled there; moving it up one level put it in the agent's build. A `WIN32` guard covers
+ * winagent and misses the Linux agent, which would then compile manager-only code against
+ * manager-only functions -- w_is_worker(), the wazuh-db agent queries, the authd protocol, log
+ * rotation. That links today only because nothing on an agent references WM_TASK_MANAGER_CONTEXT
+ * (default_modules[] in wmodules.c is itself `#ifndef CLIENT`), so the object is never pulled out
+ * of the static archive. Relying on that is one --whole-archive away from an undefined-symbol
+ * failure in a build nobody was thinking about.
+ *
+ * Same shape as config/src/wmodules-agent-upgrade.c, which is `#ifdef CLIENT` for the mirror-image
+ * reason. */
+#ifndef CLIENT
 
 #include "wm_task_manager.h"
 #include "wmodules.h"
@@ -53,8 +67,6 @@ static int task_manager_wdb_sock = -1;
  * no timeouts of its own, so a wedged wazuh-db would otherwise hold an executor worker with
  * nothing able to interrupt it. */
 #define WM_TASK_MANAGER_WDB_TIMEOUT 10
-
-static wm_task_manager *task_config = NULL;
 
 static void *wm_task_manager_main(wm_task_manager *data);
 static void wm_task_manager_destroy(wm_task_manager *data);
@@ -367,8 +379,6 @@ static void *wm_task_manager_main(wm_task_manager *data) {
     task_manager_config_t config;
     task_manager_host_ops_t host_ops;
 
-    task_config = data;
-
     if (!data->enabled) {
         mtinfo(WM_TASK_MANAGER_LOGTAG, "Module disabled. Exiting.");
         return NULL;
@@ -442,7 +452,6 @@ static void wm_task_manager_destroy(wm_task_manager *data) {
         os_free(data->wpk_repository);
     }
     os_free(data);
-    task_config = NULL;
 }
 
 static cJSON *wm_task_manager_dump(const wm_task_manager *data) {
@@ -490,4 +499,4 @@ static cJSON *wm_task_manager_dump(const wm_task_manager *data) {
     return root;
 }
 
-#endif
+#endif /* CLIENT */

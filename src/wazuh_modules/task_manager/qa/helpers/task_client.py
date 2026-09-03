@@ -120,6 +120,9 @@ class TaskManagerClient:
     def health(self):
         return self._client.get('http://localhost/v1/health')
 
+    def metrics(self):
+        return self._client.get('http://localhost/v1/metrics')
+
     # ---- polling helpers ---------------------------------------------------------------------
 
     def wait_for_status(self, task_id: str, status: str, timeout: float = 30.0) -> dict:

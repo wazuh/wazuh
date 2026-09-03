@@ -146,7 +146,6 @@ namespace task_manager::http
                              const registry::TaskRegistry& registry,
                              cache::PendingCache& cache,
                              NotifyFn notifyManagerTask,
-                             NotifyFn notifyAgentTask,
                              std::shared_ptr<metrics::TaskMetrics> metrics,
                              const int maxPayloadBytes,
                              const int maxTasksPerPoll)
@@ -154,7 +153,6 @@ namespace task_manager::http
         , m_registry {registry}
         , m_cache {cache}
         , m_notifyManagerTask {std::move(notifyManagerTask)}
-        , m_notifyAgentTask {std::move(notifyAgentTask)}
         , m_metrics {std::move(metrics)}
         , m_maxPayloadBytes {maxPayloadBytes}
         , m_maxTasksPerPoll {maxTasksPerPoll}
@@ -240,11 +238,6 @@ namespace task_manager::http
             m_metrics->agentTaskCreated();
         }
 
-        if (m_notifyAgentTask)
-        {
-            m_notifyAgentTask(task.taskType);
-        }
-
         return ApiResponse::ok(nlohmann::json {{"task_id", task.taskId}});
     }
 
@@ -274,7 +267,27 @@ namespace task_manager::http
 
         // ONE transaction for the whole batch. The framework restarts a fleet in chunks of 500,
         // which used to be 500 separate socket connections.
-        const auto flags {m_store.createAgentTasks(rows)};
+        //
+        // A store failure is reported PER ROW rather than allowed out as a 500, and the difference
+        // is the caller's retry behaviour rather than tidiness. A single non-duplicate SQLite error
+        // rolls the whole transaction back, so every row is unwritten; letting the exception reach
+        // the route barrier would answer 500, which the framework raises as WazuhError(2019) and
+        // which discards the entire chunk. Answered as `created: false` per agent it becomes the
+        // per-agent error 4 that framework/wazuh/agent.py already halves the chunk and retries on.
+        // This is the same choice upgrade's persist() makes for the same store call.
+        std::vector<bool> flags;
+        try
+        {
+            flags = m_store.createAgentTasks(rows);
+        }
+        catch (const std::exception& exception)
+        {
+            LOGFN_ERROR(httpLogFn(),
+                        "Could not store a batch of %zu agent tasks: %s. Every row in the batch is "
+                        "reported as not created.",
+                        rows.size(),
+                        exception.what());
+        }
 
         for (std::size_t index = 0; index < rows.size(); ++index)
         {

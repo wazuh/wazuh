@@ -128,6 +128,39 @@ TEST(ApplyResult, TerminalFailsWithoutConsumingTheBudget)
     EXPECT_EQ(transition.attempts, 3);
 }
 
+TEST(ApplyResult, ATypeThatMayNotFailTerminallyIsRequeuedInstead)
+{
+    // The guarantee agent_delete_indexer depends on, enforced at the POLICY layer rather than only
+    // inside the HTTP result mapper. Once client.keys is written the agent is gone and nobody will
+    // ask again, so retiring the row as `failed` orphans its indexer documents permanently.
+    //
+    // Previously this held only because that type's handler happens to be an HttpHandler
+    // constructed with the flag off -- a property of the wiring, not of the type. Any handler
+    // returning Terminal for a reason of its own would have bypassed it.
+    auto descriptor {descriptorWith(UNBOUNDED, UNBOUNDED)};
+    descriptor.allowTerminalFailure = false;
+
+    const auto transition {applyResult(descriptor, defaultPolicy(), Outcome::Terminal, 3, 0, 1000)};
+
+    EXPECT_FALSE(transition.terminalStatus.has_value());
+
+    // Routed through the retry path, so it takes the backoff ladder and charges the attempt.
+    EXPECT_EQ(transition.attempts, 4);
+    EXPECT_EQ(transition.nextAttemptAt, 1000 + backoffFor(4, defaultPolicy()).count());
+}
+
+TEST(ApplyResult, ATypeThatMayNotFailTerminallyStillNeverDeadLetters)
+{
+    // Both halves are needed and this is the one that proves it: downgrading Terminal to Retryable
+    // would be no use if the attempt budget then dead-lettered the row a few tries later.
+    auto descriptor {descriptorWith(UNBOUNDED, UNBOUNDED)};
+    descriptor.allowTerminalFailure = false;
+
+    const auto transition {applyResult(descriptor, defaultPolicy(), Outcome::Terminal, 100000, 0, 1000)};
+
+    EXPECT_FALSE(transition.terminalStatus.has_value());
+}
+
 TEST(ApplyResult, NoFaultOutcomesCostADeferralNotAnAttempt)
 {
     for (const auto outcome : {Outcome::NotReady, Outcome::Busy})

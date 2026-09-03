@@ -75,16 +75,38 @@ namespace task_manager::upgrade
             std::string fileName;
             /// @brief Expected digest, from the repository's `versions` file.
             std::string sha1;
+
+            /**
+             * @brief When the caller's batch stops being worth finishing.
+             *
+             * CARRIED HERE, rather than as a parameter, so the field can default to "no deadline"
+             * for the unit tests without every one of them having to name a clock. Production has
+             * exactly one caller (UpgradeOrchestrator::materialise) and it always sets this.
+             *
+             * It matters because the alternative is not a slow batch, it is a LOST one. Attempts
+             * multiply: `upgrade_download_attempts` x `upgrade_download_timeout` plus linear
+             * backoff is ~138 s per distinct WPK at the defaults, so a batch spanning three
+             * platforms could spend over 400 s here -- past the 180 s batch deadline, and past the
+             * transport's 300 s response backstop, at which point the connection is torn down and
+             * the per-agent envelope this subsystem worked to produce is discarded. Honouring the
+             * deadline between attempts bounds the overrun to one in-flight transfer.
+             */
+            std::chrono::steady_clock::time_point deadline {std::chrono::steady_clock::time_point::max()};
         };
 
         /**
          * @brief Ensure the WPK is on disk with the expected digest.
          *
          * @return Success, or:
-         *         - WpkFileDoesNotExist  the download never produced a file (unreachable, 404,
-         *                                out of disk, or the stop token fired)
+         *         - WpkFileDoesNotExist  the download never produced a file (unreachable, 404 or
+         *                                out of disk)
          *         - WpkSha1DoesNotMatch  it produced one whose digest is wrong -- which, unlike the
          *                                above, means something served the wrong bytes
+         *         - UrlNotFound          the batch deadline expired while waiting on the repository
+         *         - TaskManagerCommunication  the stop token fired; the manager is going down, so
+         *                                the caller should retry rather than be told the WPK is
+         *                                missing. This is the one code the Server API answers by
+         *                                halving the chunk and trying again.
          */
         UpgradeError ensure(const Request& request, const StopToken& stop);
 
@@ -111,7 +133,18 @@ namespace task_manager::upgrade
         };
 
         std::shared_ptr<std::mutex> lockFor(const std::string& path);
-        void acquireDownloadSlot();
+        /**
+         * @brief Wait for one of the global download slots.
+         *
+         * Bounded by BOTH the batch deadline and the stop token, and it has to be both. A wait that
+         * honoured only the deadline would ignore a shutdown for up to the whole batch budget --
+         * blocking UpgradeService::stop(), and with it modulesd's teardown, for three minutes -- and
+         * a wait that honoured only the token would let a batch queue past the deadline it is about
+         * to be judged against.
+         *
+         * @return false if the deadline passed, or a stop was requested, before a slot came free.
+         */
+        bool acquireDownloadSlot(std::chrono::steady_clock::time_point deadline, const StopToken& stop);
         void releaseDownloadSlot();
         UpgradeError fetch(const Request& request, const std::string& destPath, const StopToken& stop);
 

@@ -71,8 +71,9 @@ typedef enum crypto_type {
 #include "wm_gcp.h"
 #ifdef CLIENT
 #include "wm_agent_upgrade.h" // agent only; the manager side of that module is the task manager
+#else
+#include "wm_task_manager.h" // manager only; there is no task manager on an agent
 #endif
-#include "wm_task_manager.h"
 #include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"

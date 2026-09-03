@@ -153,14 +153,23 @@ namespace task_manager::handlers
         int logged {0};
         int dropped {0};
 
+        // Decided ONCE, before the loop, rather than re-tested per agent. Both settings silence the
+        // per-agent line and nothing else -- the database transition above already ran for every
+        // agent -- so when neither will ever log there is nothing to walk the list for, and the
+        // whole cost of this loop is one wazuh-db round trip per entry.
+        //
+        // A `disconnectLogMax` of zero is the documented way to transition silently, and it only
+        // became reachable when zero stopped being swallowed by the ABI's sentinel (see
+        // valueOrAllowingZero in taskManagerFacade.hpp). Turning it off is not the same event as
+        // running out of budget, so it does not report agents as "dropped": there is nothing
+        // surprising to tell an operator who asked for silence.
+        const bool nameAgentsIndividually {m_config.monitorAgents && m_config.disconnectLogMax > 0};
+
         for (const auto agentId : *disconnected)
         {
-            // The flag silences this line and nothing else; the transition above ran regardless.
-            // With logging off there is no reason to pay a round trip per agent, which is the
-            // whole cost of this loop.
-            if (!m_config.monitorAgents)
+            if (!nameAgentsIndividually)
             {
-                continue;
+                break;
             }
 
             if (logged >= m_config.disconnectLogMax || nowSeconds() - started >= m_config.disconnectLogBudget.count() ||

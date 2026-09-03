@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <ctime>
+#include <limits>
 #include <utility>
 
 namespace
@@ -33,6 +34,11 @@ namespace
     ///        rather than reaped: a downgrade produces exactly this, and the behaviour is safe and
     ///        visible once a day, where a reaper would be more code than the noise justifies.
     constexpr Timestamp UNKNOWN_SCHEDULE_BACKOFF {86400};
+
+    /// @brief A due time that never arrives, for a timer the configuration turned off. Chosen so
+    ///        `now >= it` stays false and computeNextWake()'s future-only filter ignores it,
+    ///        without either place needing to know which timers are optional.
+    constexpr Timestamp NEVER_DUE {std::numeric_limits<Timestamp>::max()};
 } // namespace
 
 namespace task_manager::schedule
@@ -66,7 +72,7 @@ namespace task_manager::schedule
         const auto now {nowSeconds()};
         m_nextSweep = now + m_options.sweepInterval.count();
         m_nextCleanup = now + m_options.cleanupInterval.count();
-        m_nextSizeRotate = now + m_options.sizeRotateInterval.count();
+        m_nextSizeRotate = m_options.sizeRotationEnabled ? now + m_options.sizeRotateInterval.count() : NEVER_DUE;
 
         // The vacuum interval survives a restart, so a manager that is restarted daily still
         // compacts. Without this it would vacuum on every boot, or never.
@@ -320,9 +326,24 @@ namespace task_manager::schedule
     {
         auto next {now + m_options.wakeBackstop.count()};
 
-        const auto consider {[&next](const std::optional<Timestamp>& candidate)
+        // STRICTLY FUTURE candidates only, and that qualifier is the whole correctness of this
+        // function rather than a detail.
+        //
+        // Every candidate below that is already due has, by this point, either been handled by the
+        // pass that just ran (the four timers advance themselves) or belongs to somebody else --
+        // and minPendingNextAttemptAt() is routinely in the PAST for a reason that is normal rather
+        // than exceptional: a type whose concurrency group is saturated leaves its remaining rows
+        // pending and eligible. Deleting 5000 agents leaves ~4996 of them in exactly that state for
+        // the whole drain, because agent_delete_indexer runs four at a time.
+        //
+        // Admitting a past timestamp here would set `next` to it, the sleep would compute to zero,
+        // and this thread would spin -- re-running spawnDueRuns, four store queries and a
+        // notify_all() with no delay, for as long as the backlog lasted, serialised against the
+        // executor on the store's single mutex. Those rows need no wake from here: the executor
+        // holds them in its ready set and releaseGroup() wakes a worker the instant a slot frees.
+        const auto consider {[&next, now](const std::optional<Timestamp>& candidate)
                              {
-                                 if (candidate.has_value() && *candidate < next)
+                                 if (candidate.has_value() && *candidate > now && *candidate < next)
                                  {
                                      next = *candidate;
                                  }
@@ -337,7 +358,9 @@ namespace task_manager::schedule
         consider(m_nextVacuum);
         consider(m_nextSizeRotate);
 
-        return std::max(next, now);
+        // Never the past, and never `now` either: a zero-length wait is the spin this guards
+        // against, so the floor is one second.
+        return std::max(next, now + 1);
     }
 
     void Scheduler::loop()

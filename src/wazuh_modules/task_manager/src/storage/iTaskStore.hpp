@@ -128,9 +128,18 @@ namespace task_manager::storage
      * One interface rather than three because all of it shares one connection and one write
      * transaction; splitting it would make the transaction boundaries a caller's problem.
      *
-     * THREAD SAFETY: every method is safe to call concurrently. Writes serialize on one writer
-     * connection; pure reads run on their own connections, so an operator listing dead letters
-     * cannot queue behind the executor.
+     * THREAD SAFETY: every method is safe to call concurrently, and every one of them -- reads
+     * included -- serialises on a single connection behind one mutex. Reads do NOT have their own
+     * connections.
+     *
+     * That is a deliberate simplification, not an oversight, and the cost is worth stating plainly:
+     * an operator listing dead letters DOES queue behind whatever the executor is doing, and a poll
+     * from remoted queues behind an open group-commit batch. It is affordable because every
+     * statement here is a single indexed operation measured in microseconds, and because the one
+     * high-frequency route -- the pending-tasks poll -- is answered from cache::PendingCache without
+     * reaching the store at all for the fleet's idle majority. Per-connection readers are the
+     * obvious next step if that ever stops being true; until then one connection means one set of
+     * prepared statements and no reader-visibility question to reason about.
      *
      * DURABILITY, and the one thing a caller must know: createManagerTask() and claim() COMMIT
      * before returning, because a producer treats their return as durable and a claim must be
