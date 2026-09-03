@@ -4,6 +4,7 @@
 #include "container_instances_client.hpp"
 #include "container_scope.hpp"
 #include "hardware_scanner.hpp"
+#include "image_content_cache.hpp"
 #include "interface_scanner.hpp"
 #include "network_scanner.hpp"
 #include "os_scanner.hpp"
@@ -174,6 +175,7 @@ struct RunContext
 {
     PidIndex                        pids;
     std::unordered_set<std::string> shared_netns;
+    ImageContentCache               image_content;
 
     static RunContext Build()
     {
@@ -228,6 +230,13 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
             }
         }
 
+        // A PID that exited partway through the walk makes every subsequent
+        // read fail, so the row set is a subset of the container's files even
+        // though nothing reported an error. Treat that as an incomplete scan.
+        if (!RootfsStillAddressable(pid)) {
+            partial = true;
+        }
+
         if (status_sink) {
             status_sink(ContainerStatus{identity.container_id, partial});
         }
@@ -242,7 +251,7 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
 {
     int baselined = 0;
 
-    const auto run = RunContext::Build();
+    auto run = RunContext::Build();
 
     for (const auto& identity : DiscoverContainers(connector_socket_path)) {
         const auto& pids = run.pids.pidsFor(identity.container_id);
@@ -274,22 +283,54 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
             emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerUsers(pid)) {
+        // Users, groups, packages and the OS record are image-layer content, so
+        // replicas of one image would otherwise be parsed once per replica —
+        // and for RPM that means copying the whole rpmdb to a temp dir each
+        // time. Reuse is keyed by image digest AND validated by a stat()
+        // fingerprint of the backing files, so a container that modified any of
+        // them in its writable layer is still scanned for real.
+        const auto imageDigest = identity.context ? identity.context->image_digest : std::string {};
+        const auto fingerprint = FingerprintImageSources(pid);
+
+        // Holds the rows when this container is not cacheable (no resolved
+        // image digest), so there is exactly one scan path either way.
+        ImageContentCache::Entry standalone;
+
+        const auto* content = run.image_content.find(imageDigest, fingerprint);
+
+        if (content == nullptr) {
+            ImageContentCache::Entry fresh;
+            fresh.fingerprint = fingerprint;
+            fresh.users       = ScanContainerUsers(pid);
+            fresh.groups      = ScanContainerGroups(pid);
+            fresh.packages    = ScanContainerPackages(pid);
+            fresh.os          = ScanContainerOs(pid);
+
+            if (imageDigest.empty()) {
+                standalone = std::move(fresh);
+                content    = &standalone;
+            } else {
+                run.image_content.store(imageDigest, std::move(fresh));
+                content = run.image_content.find(imageDigest, fingerprint);
+            }
+        }
+
+        for (auto row : content->users) {
             ApplyIdentity(row, identity);
             emit("dbsync_users", BuildUserDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerGroups(pid)) {
+        for (auto row : content->groups) {
             ApplyIdentity(row, identity);
             emit("dbsync_groups", BuildGroupDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerPackages(pid)) {
+        for (auto row : content->packages) {
             ApplyIdentity(row, identity);
             emit("dbsync_packages", BuildPackageDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerOs(pid)) {
+        for (auto row : content->os) {
             ApplyIdentity(row, identity);
             emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
         }
@@ -327,13 +368,17 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
         if (status_sink) {
             ContainerStatus status{identity.container_id, false};
 
-            // `partial` stays false here: unlike the FIM walk there is no row
-            // cap on inventory, so nothing truncates. The two network flags
-            // below say precisely WHICH data classes are absent and why, which
-            // lets the consumer suppress delete detection for just those
-            // tables. Marking the whole container partial instead would stall
-            // deletions for all eleven tables — and on a host without
-            // CAP_SYS_ADMIN that would mean stale rows accumulating forever.
+            // The rootfs-backed classes (users, groups, packages, os, services)
+            // all read through /proc/<pid>/root, so a PID that exited mid-scan
+            // silently truncates them the same way it does the FIM walk.
+            status.partial = !RootfsStillAddressable(pid);
+
+            // The two network flags are reported separately rather than folded
+            // into `partial` because they say precisely WHICH data classes are
+            // absent, letting the consumer suppress delete detection for just
+            // those tables. Folding them in would stall deletions for all
+            // eleven — and on a host without CAP_SYS_ADMIN that would mean
+            // stale rows accumulating forever.
             status.netns_host_scoped = scope.netCollapsedToHost();
             status.netns_unreadable  = ifscan.setns_failed;
             status_sink(status);
