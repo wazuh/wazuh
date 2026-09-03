@@ -13,6 +13,7 @@
 #include "container_instances.h"
 #include "sym_load.h"
 #include "wmodules.h"
+#include "wm_container_instances.h"
 #include <cJSON.h>
 
 static void* wm_container_instances_main(wm_container_instances_t* data);
