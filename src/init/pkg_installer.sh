@@ -389,13 +389,20 @@ pin_ca() {
         ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
         PIN_OK=$?
     else
+        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
+        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
+        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
+        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
+        # report success here while leaving the real parser's certificate_authorities
+        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
+        # instead of believing a CA it can't actually use is now pinned.
         awk -v ca="${CA_PATH}" '
             in_comment {
                 if ($0 ~ /-->/) { in_comment = 0 }
                 print
                 next
             }
-            !inserted && /^[[:space:]]*<(agent|client)>[[:space:]]*$/ {
+            !inserted && /^[[:space:]]*<agent>[[:space:]]*$/ {
                 print
                 print "    <ssl>"
                 print "      <certificate_authorities>" ca "</certificate_authorities>"
@@ -557,7 +564,7 @@ case "${SSL_VERIFICATION_MODE}" in
             if pin_ca "${DEFAULT_CA_FILE}"; then
                 echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
             else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (unexpected <ssl> block formatting), interrupting upgrade." >> ./logs/upgrade.log
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> ./logs/upgrade.log
                 abort_upgrade "2"
             fi
         else

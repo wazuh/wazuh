@@ -113,7 +113,11 @@ int ClientConf(const char *cfgfile)
      * own inference (remote-config.c): a pinned CA without an explicit mode means the
      * operator wants it verified, not silently unused. */
     if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
-        if (agt->ssl.certificate_authorities != NULL) {
+        /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
+         * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will
+         * still fail closed on it either way, but resolving to 'certificate' here would
+         * warn that a CA is "configured" when none actually was. */
+        if (agt->ssl.certificate_authorities != NULL && *agt->ssl.certificate_authorities != '\0') {
             mwarn("The '<ssl><certificate_authorities>' option is configured but "
                   "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
             agt->ssl.verification_mode = AGENT_VERIFY_CERT;
