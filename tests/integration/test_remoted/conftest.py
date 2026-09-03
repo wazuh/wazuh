@@ -20,6 +20,12 @@ from time import sleep
 
 @pytest.fixture
 def restart_wazuh_expect_error() -> None:
+    # The invalid-configuration cases chain several failed starts in a row. Under systemd (the CI
+    # runners) that trips the unit's start limit and systemd refuses the next start WITHOUT running
+    # the control script at all -- so the 1244 verdict the tests wait for never reaches the log.
+    # Clear the failure counter first; harmless where systemd is absent (local containers).
+    subprocess.run(['systemctl', 'reset-failed', 'wazuh-manager'],
+                   capture_output=True, check=False)
     try:
         sleep(1)
         if any(v for _, v in check_all_daemon_status().items()):
