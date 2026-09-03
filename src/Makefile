@@ -194,9 +194,23 @@ endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
-		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 		CC=gcc
+ifeq (,$(filter ${DEBUG} ${TEST} ${CHECK_CENTOS5},YES yes y Y 1))
+		HARDENING_FLAGS := $(shell echo | $(CC) -fstack-protector-strong -xc -c -o /dev/null - > /dev/null 2>&1 && echo -fstack-protector-strong || echo -fstack-protector)
+		HARDENING_FLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
+		HARDENING_LDFLAGS := -Wl,-z,relro -Wl,-z,now
+ifeq (,$(filter ${uname_M},i386 i486 i586 i686))
+		HARDENING_FLAGS += -fPIC
+		OSSEC_LDFLAGS+=-pie
+		AR_LDFLAGS+=-pie
+		CMAKE_OPTS+=-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+endif
+		OSSEC_CFLAGS+=$(HARDENING_FLAGS)
+		OSSEC_LDFLAGS+=$(HARDENING_LDFLAGS)
+		AR_LDFLAGS+=$(HARDENING_LDFLAGS)
+		CMAKE_OPTS+=-DCMAKE_C_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_CXX_FLAGS="$(HARDENING_FLAGS)" -DCMAKE_EXE_LINKER_FLAGS="$(HARDENING_LDFLAGS)" -DCMAKE_SHARED_LINKER_FLAGS="$(HARDENING_LDFLAGS)"
+endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
@@ -1948,7 +1962,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -lm
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive $(HARDENING_LDFLAGS) ${OSSEC_LIBS}
 endif
 endif
 endif
@@ -2152,7 +2166,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@ -static-libgcc
 else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive $(HARDENING_LDFLAGS) ${OSSEC_LIBS}
 endif
 endif
 endif
@@ -2208,7 +2222,7 @@ librootcheck.a: ${rootcheck_o_lib}
 #### FIM ######
 
 wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
-	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
+	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} $(HARDENING_FLAGS) -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
 
 #### Monitor #######
 

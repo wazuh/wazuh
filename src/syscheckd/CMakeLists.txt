@@ -63,7 +63,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
+    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
 )
 
 if(APPLE)
@@ -112,6 +112,9 @@ if (UNIX)
         string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,@executable_path/../lib")
     endif(NOT APPLE)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        if(CMAKE_POSITION_INDEPENDENT_CODE)
+            set_property(TARGET wazuh-syscheckd APPEND_STRING PROPERTY LINK_FLAGS " -pie")
+        endif(CMAKE_POSITION_INDEPENDENT_CODE)
         if(NOT CMAKE_CHECK_CENTOS5)
             add_subdirectory("src/ebpf")
             target_link_libraries(wazuh-syscheckd fimebpf)
