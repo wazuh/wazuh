@@ -69,5 +69,12 @@ set_target_properties(
 
 if(UNIT_TEST)
   enable_testing()
-  add_subdirectory(ci_impl/tests)
+  # The test tree did not survive the rebase onto 5.0.0, and an unconditional
+  # add_subdirectory() on a missing directory is a hard CMake error — which made
+  # the whole agent unconfigurable with TEST=yes, not just this module's tests.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ci_impl/tests/CMakeLists.txt")
+    add_subdirectory(ci_impl/tests)
+  else()
+    message(WARNING "container_instances: ci_impl/tests is missing; its unit tests are not built.")
+  endif()
 endif()
