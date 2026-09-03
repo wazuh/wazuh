@@ -275,6 +275,7 @@ public function config()
     WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
     ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
     WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
+    SSL_VERIFICATION = Replace(args(17), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -426,6 +427,85 @@ public function config()
                 strText = Replace(strText, "    </enrollment>", "      <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
             End If
 
+        End If
+
+        ' Route SSL_VERIFICATION into <agent><ssl><verification_mode>, mirroring
+        ' register_configure_agent.sh's set_agent_verification_mode() on Linux/macOS. Runs
+        ' before the WAZUH_REGISTRATION_CA block below so its own "verification_mode is
+        ' 'system'" conflict check sees whatever this wrote, not a value from before this ran.
+        If SSL_VERIFICATION <> "" Then
+            If SSL_VERIFICATION <> "full" And SSL_VERIFICATION <> "certificate" And SSL_VERIFICATION <> "system" And SSL_VERIFICATION <> "none" Then
+                ' Matches Read_Agent_SSL()'s own case-sensitive strcmp (client-config.c): a
+                ' value that reads as valid to a human but not to the parser (e.g. 'System')
+                ' would install cleanly and only fail at agent startup, instead of here,
+                ' where the operator can still see and fix it immediately.
+                install_log home_dir, objFSO, "Invalid SSL_VERIFICATION '" & SSL_VERIFICATION & "': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset."
+            Else
+                Dim vmCheckText, vmTagRegex, vmSelfClosingRegex
+                vmCheckText = StrippedOfComments(strText)
+                Set vmTagRegex = New RegExp
+                vmTagRegex.Pattern = "<verification_mode(\s*/)?>"
+                Set vmSelfClosingRegex = New RegExp
+                vmSelfClosingRegex.Pattern = "<verification_mode\s*/>"
+
+                If vmTagRegex.Test(vmCheckText) Then
+                    ' Line by line, skipping commented-out lines, same technique as the
+                    ' certificate_authorities rewrite below.
+                    Dim vmLines, vmLineIdx, vmLine, vmInComment, vmRewritten
+                    vmLines = Split(strText, vbCrLf)
+                    vmInComment = False
+                    vmRewritten = False
+                    For vmLineIdx = 0 To UBound(vmLines)
+                        vmLine = vmLines(vmLineIdx)
+                        If vmInComment Then
+                            If InStr(vmLine, "-->") > 0 Then vmInComment = False
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") = 0 Then
+                            vmInComment = True
+                        ElseIf (Not vmRewritten) And InStr(vmLine, "<verification_mode>") > 0 And InStr(vmLine, "</verification_mode>") > 0 Then
+                            Set re = New RegExp
+                            re.Pattern = "<verification_mode>.*</verification_mode>"
+                            vmLines(vmLineIdx) = re.Replace(vmLine, "<verification_mode>" & SSL_VERIFICATION & "</verification_mode>")
+                            vmRewritten = True
+                        ElseIf (Not vmRewritten) And vmSelfClosingRegex.Test(vmLine) Then
+                            vmLines(vmLineIdx) = vmSelfClosingRegex.Replace(vmLine, "<verification_mode>" & SSL_VERIFICATION & "</verification_mode>")
+                            vmRewritten = True
+                        End If
+                    Next
+                    strText = Join(vmLines, vbCrLf)
+                    If Not vmRewritten Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into <ssl><verification_mode>: expected the tag alone on its own line."
+                    End If
+                ElseIf InStr(vmCheckText, "<ssl>") > 0 Then
+                    Dim vmSslLines, vmSslLineIdx, vmSslLine, vmSslInComment, vmSslInserted
+                    vmSslLines = Split(strText, vbCrLf)
+                    vmSslInComment = False
+                    vmSslInserted = False
+                    strText = ""
+                    For vmSslLineIdx = 0 To UBound(vmSslLines)
+                        vmSslLine = vmSslLines(vmSslLineIdx)
+                        If vmSslInComment Then
+                            If InStr(vmSslLine, "-->") > 0 Then vmSslInComment = False
+                        ElseIf InStr(vmSslLine, "<!--") > 0 And InStr(vmSslLine, "-->") = 0 Then
+                            vmSslInComment = True
+                        End If
+                        If vmSslLineIdx > 0 Then strText = strText & vbCrLf
+                        strText = strText & vmSslLine
+                        If (Not vmSslInserted) And (Not vmSslInComment) And (Trim(vmSslLine) = "<ssl>") Then
+                            strText = strText & vbCrLf & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>"
+                            vmSslInserted = True
+                        End If
+                    Next
+                    If Not vmSslInserted Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into an existing <ssl> block: expected the opening tag alone on its own line."
+                    End If
+                Else
+                    vm_ssl_block = "    <ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "    </ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "  </agent>" & vbCrLf
+                    strText = Replace(strText, "  </agent>", vm_ssl_block)
+                End If
+            End If
         End If
 
         ' Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>, mirroring
