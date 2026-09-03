@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(container_baseline_unit_test)
 
-file(GLOB CONTAINER_BASELINE_UNIT_TEST_SRC "*.cpp")
+# CONFIGURE_DEPENDS: without it a plain GLOB is evaluated only at configure
+# time, so adding a source file produced confusing "undefined reference"
+# failures until someone re-ran cmake by hand.
+file(GLOB CONTAINER_BASELINE_UNIT_TEST_SRC CONFIGURE_DEPENDS "*.cpp")
 
 add_executable(container_baseline_unit_test ${CONTAINER_BASELINE_UNIT_TEST_SRC})
 

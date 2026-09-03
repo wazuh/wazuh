@@ -31,7 +31,10 @@ include_directories(
 
 link_directories(${SRC_FOLDER}/external/openssl/)
 
-file(GLOB CONTAINER_BASELINE_IMPL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+# CONFIGURE_DEPENDS: without it a plain GLOB is evaluated only at configure
+# time, so adding a source file produced confusing "undefined reference"
+# failures until someone re-ran cmake by hand.
+file(GLOB CONTAINER_BASELINE_IMPL_SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 add_library(CONTAINER_BASELINE_IMPL STATIC ${CONTAINER_BASELINE_IMPL_SRC})
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hash_helper.hpp"
+#include "pid_resolver.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -106,6 +107,39 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
 int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
                                   const DbsyncRowSink&       sink,
                                   const ContainerStatusSink& status_sink = {});
+
+/// @brief Container identity as the orchestrator consumes it. Declared here
+/// (rather than only in baseline_rows.hpp) so the seam below can be described
+/// without pulling in the row builders.
+struct ContainerIdentity;
+
+/// @brief Seam replacing the IPC discovery step: returns the containers to
+/// baseline. Production code uses the socket-path entry points above, which
+/// supply a discoverer backed by container_instances; tests supply their own so
+/// the orchestrator's lifecycle behaviour can be exercised without a running
+/// connector.
+using ContainerDiscoverer = std::function<std::vector<ContainerIdentity>()>;
+
+/// @brief FIM baseline over an explicit container list and PID index.
+///
+/// Same behaviour as RunFimDbsyncBaseline(); exists so the ordering and
+/// completeness contracts the consumers depend on can be tested directly:
+/// a container's rows are emitted contiguously and are followed by exactly one
+/// status callback for that container, and a container with no live PID is
+/// skipped without a status and without being counted.
+int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
+                              const PidIndex&                   pids,
+                              const std::vector<MonitoredPath>& paths,
+                              const DbsyncRowSink&              sink,
+                              const ContainerStatusSink&        status_sink = {},
+                              const std::function<void()>&      rate_limit = {});
+
+/// @brief Syscollector inventory baseline over an explicit container list and
+/// PID index. See RunFimDbsyncBaselineFrom().
+int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
+                                       const PidIndex&            pids,
+                                       const DbsyncRowSink&       sink,
+                                       const ContainerStatusSink& status_sink = {});
 
 using ContainerIdSink = std::function<void(const std::string&)>;
 
