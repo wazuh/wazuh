@@ -277,12 +277,17 @@ insert_into_agent_block() {
 # and editing one leaves the setting the caller asked for unwritten.
 agent_option_is_set() {
 
+    # Matches both <tag> and the self-closing <tag/> -- OS_XML parses the two as
+    # equivalent (see test_simple_nodes3, src/unit_tests/os_xml, and xml_tag_present()'s
+    # identical convention in pkg_installer.sh), so a self-closing, present-but-empty tag
+    # must count as "set" here too, or set_agent_ssl_ca() would insert a second, duplicate
+    # <certificate_authorities> right alongside it.
     awk -v tag="$1" '
         in_comment {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
-        $0 ~ "^[ \t]*<" tag ">" { found = 1; exit }
+        $0 ~ "^[ \t]*<" tag "([ \t]*/)?>" { found = 1; exit }
         { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
         END { exit found ? 0 : 1 }
     ' "${CONF_FILE}"
@@ -293,18 +298,22 @@ agent_option_is_set() {
 # is absent or commented out.
 agent_option_value() {
 
-    awk -v tag="$1" '
+    # Strips comments and flattens newlines first, instead of matching one line ($0) at
+    # a time -- mirrors strip_xml_comments() + tr -d '\n\r' in pkg_installer.sh's
+    # xml_value(), so a value split across multiple lines is still seen (matching $0
+    # alone is blind to it, and set_agent_ssl_ca()'s system-mode guard depends on this
+    # returning the real value, not an empty string, to work at all). Takes the last
+    # match, not the first -- ReadConfig()'s own "last value wins" semantics, and what
+    # xml_value() already does.
+    awk '
         in_comment {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
-        match($0, "<" tag ">[^<]*</" tag ">") {
-            value = substr($0, RSTART + length(tag) + 2, RLENGTH - 2 * length(tag) - 5)
-            print value
-            exit
-        }
-        { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
-    ' "${CONF_FILE}"
+        $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
+        { print }
+    ' "${CONF_FILE}" | tr -d '\n\r' | grep -o "<$1>[^<]*</$1>" | tail -1 | \
+        sed -e "s|<$1>||" -e "s|</$1>||" -e 's|^ *||' -e 's| *$||'
 
 }
 
@@ -350,7 +359,13 @@ set_agent_ssl_ca() {
     fi
 
     if agent_option_is_set "certificate_authorities"; then
-        edit_value_tag "certificate_authorities" "${ca_path}"
+        # edit_value_tag() passes its second argument straight into a sed replacement
+        # (s#<tag>.*</tag>#<tag>VALUE</tag>#g), where a literal '&' means "the whole
+        # matched text" and '\' is sed's own escape character -- a CA path containing
+        # either would corrupt the written value (or the surrounding XML) instead of
+        # being written verbatim. Escape both before handing the path off.
+        ca_path_escaped="$(printf '%s' "${ca_path}" | sed -e 's/\\/\\\\/g' -e 's/&/\\\&/g')"
+        edit_value_tag "certificate_authorities" "${ca_path_escaped}"
         return
     fi
 
@@ -379,7 +394,13 @@ set_agent_ssl_ca() {
         echo "      <certificate_authorities>${ca_path}</certificate_authorities>"
         echo "    </ssl>"
     } > "${TMP_SERVER}"
-    insert_into_agent_block "${TMP_SERVER}"
+    # "agent" only, never the default agent|client: a pure 4.x-shaped <client> block is
+    # read by Read_Legacy_Client_Address(), which never looks at <ssl> -- same reasoning
+    # as pin_ca()'s <client>-rejection in pkg_installer.sh/do_upgrade.ps1. Pinning here
+    # would report success while the CA stays inert.
+    if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
+    fi
     rm -f "${TMP_SERVER}"
 
 }
