@@ -70,6 +70,7 @@
 #define FIM_EBPF_LSM_ACTIVE                 "(6051): BPF LSM is active in the running kernel; using LSM hooks for create/modify/delete events."
 #define FIM_EBPF_LSM_INACTIVE               "(6052): BPF LSM is not active (not present in /sys/kernel/security/lsm); falling back to kprobe hooks. To enable LSM-based capture append 'bpf' to the kernel boot parameter 'lsm=' and reboot."
 #define FIM_EBPF_LSM_DPATH_FALLBACK         "(6053): BPF LSM load failed with the bpf_d_path-based variants; retrying with the manual path walker (some kernels, e.g. Amazon Linux 2/2023, disallow bpf_d_path for these hooks)."
+#define FIM_EBPF_LSM_KPROBE_FALLBACK        "(6054): BPF LSM hooks failed to load or attach on this kernel; falling back to kprobe hooks."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
