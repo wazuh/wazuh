@@ -1,7 +1,5 @@
 #include "network_scanner.hpp"
 
-#include "pid_resolver.hpp"
-
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -75,6 +73,7 @@ void ParseNetFile(const std::string&               path,
                    const std::string&               transport,
                    bool                              is_ipv6,
                    const std::unordered_map<uint64_t, OwnerInfo>& owners,
+                   bool                              owned_only,
                    std::vector<PortBaselineRow>&    out)
 {
     std::ifstream f(path);
@@ -100,9 +99,15 @@ void ParseNetFile(const std::string&               path,
         row.interface_state = TcpStateToString(fields[3]);
         row.file_inode       = std::strtoull(fields[9].c_str(), nullptr, 10);
 
-        if (const auto it = owners.find(row.file_inode); it != owners.end()) {
+        const auto it = owners.find(row.file_inode);
+        if (it != owners.end()) {
             row.process_pid  = it->second.pid;
             row.process_name = it->second.name;
+        } else if (owned_only) {
+            // Shared (pod) netns: an unattributable socket belongs to a sibling
+            // container or to an already-exited process. Emitting it here would
+            // duplicate it across every container in the pod.
+            continue;
         }
 
         out.push_back(std::move(row));
@@ -172,27 +177,31 @@ std::string TcpStateToString(const std::string& hex_state)
     }
 }
 
-std::vector<PortBaselineRow> ScanContainerNetwork(const std::string& container_id)
+std::vector<PortBaselineRow> ScanContainerNetwork(const std::string&        container_id,
+                                                   const std::vector<pid_t>& pids,
+                                                   const ContainerScope&     scope,
+                                                   bool                      netns_shared)
 {
     std::vector<PortBaselineRow> rows;
-    if (container_id.empty()) return rows;
+    if (container_id.empty() || pids.empty()) return rows;
 
-    const auto pids = ResolvePidsForContainer(container_id);
-    if (pids.empty()) return rows;
+    // The container shares the host's network namespace: /proc/<pid>/net/* is
+    // the NODE's socket table. Reporting it as this container's would attribute
+    // every socket on the host to it (and to every other host-network
+    // container). Emit nothing rather than something false.
+    if (scope.netCollapsedToHost()) return rows;
 
     const auto owners = BuildInodeOwnerMap(pids);
 
-    // Any PID in the container sees the same net namespace (Docker: one per
-    // container; Kubernetes: shared across the pod but disambiguated here by
-    // only ever reading files under a PID we've already confirmed belongs to
-    // this container's cgroup).
-    const auto representative = pids.front();
-    const std::string net_dir = "/proc/" + std::to_string(representative) + "/net";
+    // Every PID in the container sees the same net namespace, so any of them
+    // addresses the right socket table; pids is ascending, so front() is the
+    // longest-lived candidate.
+    const std::string net_dir = "/proc/" + std::to_string(pids.front()) + "/net";
 
-    ParseNetFile(net_dir + "/tcp",  "tcp",  false, owners, rows);
-    ParseNetFile(net_dir + "/tcp6", "tcp6", true,  owners, rows);
-    ParseNetFile(net_dir + "/udp",  "udp",  false, owners, rows);
-    ParseNetFile(net_dir + "/udp6", "udp6", true,  owners, rows);
+    ParseNetFile(net_dir + "/tcp",  "tcp",  false, owners, netns_shared, rows);
+    ParseNetFile(net_dir + "/tcp6", "tcp6", true,  owners, netns_shared, rows);
+    ParseNetFile(net_dir + "/udp",  "udp",  false, owners, netns_shared, rows);
+    ParseNetFile(net_dir + "/udp6", "udp6", true,  owners, netns_shared, rows);
 
     for (auto& row : rows) row.container_id = container_id;
     return rows;

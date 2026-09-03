@@ -211,7 +211,13 @@ std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& r
     process["command_line"] = row.command_line;
     process["args"]         = row.args;
     process["args_count"]   = row.args_count;
-    SetNumericIfDigits(process, "start", row.start); // schema: process.start is `date` (epoch)
+    // process.start is a `date`. The scanner produces ISO-8601, which is never
+    // all-digits, so routing it through SetNumericIfDigits() silently dropped
+    // the field from every process row. Pass the ISO-8601 string through, and
+    // still accept a bare epoch if a caller supplies one.
+    if (!row.start.empty() && !SetNumericIfDigits(process, "start", row.start)) {
+        process["start"] = row.start;
+    }
     process["utime"]        = row.utime;
     process["stime"]        = row.stime;
     data["process"]  = process;
