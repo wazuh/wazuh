@@ -159,7 +159,7 @@ TEST_F(FileDecompressorTest, DeclaredWindowAtTheHardCeilingIsStillAccepted)
 {
     // windowLog 23 (8 MiB) is what zstd itself uses at its highest normal levels -- the ceiling
     // must not be tighter than that, or this feature's own legitimate 64 MiB merged.mg traffic
-    // would be refused (see fileDecompressor.cpp's kMaxDeclaredWindowSize comment).
+    // would be refused (see fileDecompressor.cpp's kMaxDeclaredWindowLog comment).
     const std::string plain(128, 'q');
     const std::string compressed = zstdCompressWithDeclaredWindowLog(plain, 23);
     const std::string path = writeTempFile("hc_fd_window_at.bin", compressed);
@@ -168,6 +168,35 @@ TEST_F(FileDecompressorTest, DeclaredWindowAtTheHardCeilingIsStillAccepted)
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain, readWholeFile(path));
+}
+
+TEST_F(FileDecompressorTest, DeclaredWindowOverTheCeilingIsRefusedInAConcatenatedSecondFrameToo)
+{
+    // ZSTD_decompressStream() decodes concatenated frames and re-allocates for each one, so a
+    // ceiling enforced by parsing only the first frame's header is no ceiling at all: without
+    // ZSTD_d_windowLogMax this ~100-byte input makes the decoder reserve 128 MiB.
+    const std::string compressed = zstdCompressWithDeclaredWindowLog(std::string(64, 'a'), 16) +
+                                   zstdCompressWithDeclaredWindowLog(std::string(64, 'b'), 27);
+    const std::string path = writeTempFile("hc_fd_window_second_frame.bin", compressed);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(compressed, readWholeFile(path));
+}
+
+TEST_F(FileDecompressorTest, AFrameDecodingToNoPlainBytesAtAllIsRefused)
+{
+    // A bare skippable frame (magic 0x184D2A50 + a 4-byte length + its payload). zstd consumes
+    // these silently and produces nothing, so without the zero-output check this would "succeed"
+    // and rename an empty file over the caller's download.
+    const std::string skippable {"\x50\x2A\x4D\x18\x04\x00\x00\x00\xDE\xAD\xBE\xEF", 12};
+    const std::string path = writeTempFile("hc_fd_skippable_only.bin", skippable);
+
+    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(skippable, readWholeFile(path));
 }
 
 TEST_F(FileDecompressorTest, OutputExceedingTheCapAbortsAsSoonAsItIsCrossed)
