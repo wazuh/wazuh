@@ -900,7 +900,7 @@ TEST_F(RetrySenderTest, CompressedFileBackedResponseIsDecompressedInPlaceOnSucce
 {
     MockFileDecompressor decompressor;
     RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                                  {}, &decompressor, "the-spool-dir"};
+                                  {}, &decompressor};
 
     const std::string path = writeTempFile("hc_rs_decompress_ok.bin", "compressed-bytes");
     HttpRequestSpec spec;
@@ -917,7 +917,7 @@ TEST_F(RetrySenderTest, CompressedFileBackedResponseIsDecompressedInPlaceOnSucce
         return value;
     }));
     EXPECT_CALL(decompressor,
-                decompress(path, 64ULL * 1024 * 1024, std::string {"the-spool-dir"}, NotNull()))
+                decompress(path, 64ULL * 1024 * 1024, NotNull()))
     .WillOnce(Return(std::optional<uint64_t> {123}));
 
     const auto result = withDecompressor.send(spec, m_waiter, 1);
@@ -929,7 +929,7 @@ TEST_F(RetrySenderTest, PlainResponseNeverCallsTheDecompressor)
 {
     MockFileDecompressor decompressor;
     RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                                  {}, &decompressor, "the-spool-dir"};
+                                  {}, &decompressor};
 
     const std::string path = writeTempFile("hc_rs_decompress_plain.bin", "plain-bytes");
     HttpRequestSpec spec;
@@ -937,7 +937,7 @@ TEST_F(RetrySenderTest, PlainResponseNeverCallsTheDecompressor)
     spec.responseFilePath = path;
 
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
-    EXPECT_CALL(decompressor, decompress(_, _, _, _)).Times(0);
+    EXPECT_CALL(decompressor, decompress(_, _, _)).Times(0);
 
     const auto result = withDecompressor.send(spec, m_waiter, 1);
 
@@ -950,7 +950,7 @@ TEST_F(RetrySenderTest, ContentEncodingHeaderOnAnInMemoryResponseIsIgnored)
     // says (only /download's fetchers ever set it today).
     MockFileDecompressor decompressor;
     RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                                  {}, &decompressor, "the-spool-dir"};
+                                  {}, &decompressor};
 
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Invoke(
@@ -960,7 +960,7 @@ TEST_F(RetrySenderTest, ContentEncodingHeaderOnAnInMemoryResponseIsIgnored)
         value.contentEncodingZstd = true;
         return value;
     }));
-    EXPECT_CALL(decompressor, decompress(_, _, _, _)).Times(0);
+    EXPECT_CALL(decompressor, decompress(_, _, _)).Times(0);
 
     const auto result = withDecompressor.send(makeSpec(), m_waiter, 1);
 
@@ -994,7 +994,7 @@ TEST_F(RetrySenderTest, DecompressionFailureDowngradesTheOutcomeToPermanentWitho
 {
     MockFileDecompressor decompressor;
     RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                                  {}, &decompressor, "the-spool-dir"};
+                                  {}, &decompressor};
 
     const std::string path = writeTempFile("hc_rs_decompress_fail.bin", "garbage");
     HttpRequestSpec spec;
@@ -1011,7 +1011,7 @@ TEST_F(RetrySenderTest, DecompressionFailureDowngradesTheOutcomeToPermanentWitho
         value.contentEncodingZstd = true;
         return value;
     }));
-    EXPECT_CALL(decompressor, decompress(_, _, _, _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).WillOnce(Return(std::nullopt));
 
     const auto result = withDecompressor.send(spec, m_waiter, 4);
 
@@ -1026,7 +1026,7 @@ TEST_F(RetrySenderTest, BackoffStillResetsOnTransportSuccessEvenWhenDecompressio
     // retroactively un-reset it.
     MockFileDecompressor decompressor;
     RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
-                                  {}, &decompressor, "the-spool-dir"};
+                                  {}, &decompressor};
 
     const std::string path = writeTempFile("hc_rs_decompress_backoff.bin", "garbage");
     HttpRequestSpec spec;
@@ -1041,7 +1041,7 @@ TEST_F(RetrySenderTest, BackoffStillResetsOnTransportSuccessEvenWhenDecompressio
         value.contentEncodingZstd = true;
         return value;
     }));
-    EXPECT_CALL(decompressor, decompress(_, _, _, _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).WillOnce(Return(std::nullopt));
 
     m_backoff.next(); // Pre-dirty the backoff to observe the reset.
     const auto result = withDecompressor.send(spec, m_waiter, 1);

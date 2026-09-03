@@ -75,8 +75,7 @@ class RetrySender final
                     CompressionGate* compressionGate = nullptr,
                     AuthGate* authGate = nullptr,
                     std::string serverEndpoint = {},
-                    IFileDecompressor* decompressor = nullptr,
-                    std::string spoolDir = {});
+                    IFileDecompressor* decompressor = nullptr);
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
@@ -118,7 +117,6 @@ class RetrySender final
         AuthGate* m_authGate;
         std::string m_serverEndpoint;
         IFileDecompressor* m_decompressor;
-        std::string m_spoolDir;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

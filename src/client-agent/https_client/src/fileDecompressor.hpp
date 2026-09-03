@@ -32,9 +32,13 @@ class IFileDecompressor
         /// Decompresses the zstd frame currently at `pathToReplace` and
         /// atomically replaces its content with the plain bytes -- same path
         /// throughout, so the caller's own file reference (a SpoolFile) never
-        /// needs to change. `maxDecompressedBytes` bounds the growing output
-        /// (0 = unlimited); each frame's declared window is capped
-        /// independently, before its allocation, regardless of that budget.
+        /// needs to change. The scratch file it decompresses into is created
+        /// alongside `pathToReplace`, in that file's own directory, so the
+        /// rename that swaps them can never cross a filesystem boundary --
+        /// the caller does not get to choose (or mis-resolve) a spool dir.
+        /// `maxDecompressedBytes` bounds the growing output (0 = unlimited);
+        /// each frame's declared window is capped independently, before its
+        /// allocation, regardless of that budget.
         /// abortFlag, when non-null, is checked between chunks -- a set flag
         /// aborts the decompression (the original file is left untouched)
         /// rather than running it to completion, so a large download's
@@ -51,21 +55,19 @@ class IFileDecompressor
         /// sibling temp file is gone; returns the decompressed byte count.
         virtual std::optional<uint64_t> decompress(const std::string& pathToReplace,
                                                    uint64_t maxDecompressedBytes,
-                                                   const std::string& spoolDir,
                                                    const std::atomic<bool>* abortFlag) = 0;
 };
 
 /// Real implementation: ZSTD_decompressStream under a ZSTD_d_windowLogMax
 /// ceiling, streamed in 64 KiB chunks (matches ZstdFileCompressor/
 /// cmacSigner.cpp::signFile()), decompressing into a new exclusively-created
-/// sibling file under spoolDir and renaming it over pathToReplace only once
-/// the whole frame has validated successfully.
+/// sibling file in pathToReplace's own directory and renaming it over
+/// pathToReplace only once the whole frame has validated successfully.
 class ZstdFileDecompressor final : public IFileDecompressor
 {
     public:
         std::optional<uint64_t> decompress(const std::string& pathToReplace,
                                            uint64_t maxDecompressedBytes,
-                                           const std::string& spoolDir,
                                            const std::atomic<bool>* abortFlag) override;
 };
 

@@ -21,7 +21,7 @@ class MockFileDecompressor : public IFileDecompressor
     public:
         MOCK_METHOD((std::optional<uint64_t>), decompress,
                     (const std::string& pathToReplace, uint64_t maxDecompressedBytes,
-                     const std::string& spoolDir, const std::atomic<bool>* abortFlag),
+                     const std::atomic<bool>* abortFlag),
                     (override));
 };
 
