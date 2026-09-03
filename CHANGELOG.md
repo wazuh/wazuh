@@ -157,3 +157,4 @@
 | [#38736](https://github.com/wazuh/wazuh/pull/38736) | Fixed two CIS Amazon Linux 2023 SCA checks (`gpgcheck`, `vsftpd`) reporting false-positives on compliant systems. |
 | [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
 | [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
+| [#38829](https://github.com/wazuh/wazuh/issues/38829) | Fixed Coverity findings across agent components (`syscheckd`, `sca`, `agent-info`, `https_client`, `agent-upgrade`, and `shared`). |
