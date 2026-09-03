@@ -36,6 +36,19 @@ namespace wazuh::container_instances_client
         std::string runtime;
         std::string containerId;
         std::uint64_t cgroupId {0};
+
+        /// The container's FULL record as the `list` reply carried it — the same
+        /// object a `resolve` would return in its "data" field (runtime, name,
+        /// image, image_digest, restart_count, labels, network, oci_mounts, and
+        /// the Kubernetes block when applicable).
+        ///
+        /// Keeping it means a consumer that needs the rich metadata for every
+        /// container does NOT have to follow up with one `resolve` round-trip per
+        /// container: `list` already sent all of it. Each round-trip is its own
+        /// connect/send/recv/close against a 2-worker server with a 1 s timeout,
+        /// so on a 100-container node this is the difference between 101
+        /// connections and 1.
+        nlohmann::json record;
     };
 
     /// Synchronous, connect-per-request client for the Container Instances query
@@ -117,6 +130,7 @@ namespace wazuh::container_instances_client
                 {
                     continue;
                 }
+                ref.record = item;
                 result.push_back(std::move(ref));
             }
 

@@ -154,6 +154,51 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "attributes");
 }
 
+/* Hard cap on rows produced per monitored path (NFR3). There is no dedicated
+ * config knob yet; when one is added it should replace this constant rather
+ * than another literal appearing at the call site. */
+#define CONTAINER_BASELINE_MAX_FILES_PER_PATH 20000
+
+/* True when `tags` — a COMMA-SEPARATED list, per the <directories tags="...">
+ * attribute — contains "container" as one of its tokens.
+ *
+ * A plain strcmp() against the whole attribute only matched when "container"
+ * was the sole tag, so an ordinary tags="container,prod" silently selected
+ * nothing and the whole container FIM baseline no-op'd with no warning. */
+static int fim_tags_contain_container(const char* tags)
+{
+    static const char TOKEN[] = "container";
+    static const size_t TOKEN_LEN = sizeof(TOKEN) - 1;
+
+    if (tags == NULL) {
+        return 0;
+    }
+
+    for (const char* cursor = tags; *cursor != '\0';) {
+        /* Skip leading separators and whitespace of this token. */
+        while (*cursor == ',' || *cursor == ' ' || *cursor == '\t') {
+            ++cursor;
+        }
+
+        const char* start = cursor;
+        while (*cursor != '\0' && *cursor != ',') {
+            ++cursor;
+        }
+
+        /* Trim trailing whitespace of this token. */
+        const char* end = cursor;
+        while (end > start && (end[-1] == ' ' || end[-1] == '\t')) {
+            --end;
+        }
+
+        if ((size_t)(end - start) == TOKEN_LEN && strncmp(start, TOKEN, TOKEN_LEN) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
 {
     if (out_paths == NULL || out_count == NULL) {
@@ -171,12 +216,13 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
          it = OSList_GetNext(syscheck.directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path != NULL && path->path != NULL && path->tag != NULL && strcmp(path->tag, "container") == 0) {
+        if (path != NULL && path->path != NULL && fim_tags_contain_container(path->tag)) {
             ++count;
         }
     }
 
     if (count == 0U) {
+        mdebug1("No <directories> entry is tagged \"container\"; skipping the container FIM baseline.");
         return 0;
     }
 
@@ -189,19 +235,31 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
          it = OSList_GetNext(syscheck.directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path == NULL || path->path == NULL || path->tag == NULL || strcmp(path->tag, "container") != 0) {
+        if (path == NULL || path->path == NULL || !fim_tags_contain_container(path->tag)) {
             continue;
         }
 
         paths[index].internal_path = path->path;
         paths[index].recursion_level = path->recursion_level;
-        paths[index].max_files = 20000;
-        paths[index].max_hash_bytes = 104857600;
+        paths[index].max_files = CONTAINER_BASELINE_MAX_FILES_PER_PATH;
+
+        /* Reuse FIM's own size limit rather than a private literal: files above
+         * it are not hashed at all, exactly as the host walk treats them. */
+        paths[index].max_hash_bytes = syscheck.file_max_size;
+
+        /* Honour the per-directory hash selection instead of always computing
+         * all three digests. */
+        paths[index].hash_md5 = (path->options & CHECK_MD5SUM) ? 1 : 0;
+        paths[index].hash_sha1 = (path->options & CHECK_SHA1SUM) ? 1 : 0;
+        paths[index].hash_sha256 = (path->options & CHECK_SHA256SUM) ? 1 : 0;
+
         ++index;
     }
 
     *out_paths = paths;
     *out_count = index;
+
+    mdebug1("Container FIM baseline will walk %zu monitored path(s).", index);
 
     return 0;
 }
@@ -240,9 +298,36 @@ int fim_container_baseline_available(const char* socket_path)
     return 1;
 }
 
-void fim_report_container_baseline_result(int baselined)
+void fim_report_container_baseline_result(int baselined, size_t rows, size_t partial, size_t stale, size_t known)
 {
-    minfo("Container FIM baseline finished (%d container(s) baselined).", baselined);
+    minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s), %zu partial scan(s), "
+          "%zu stale container(s) cleaned, %zu container(s) known.",
+          baselined, rows, partial, stale, known);
+
+    if (partial > 0) {
+        mdebug1("Container FIM baseline: %zu container(s) had an incomplete scan; delete detection was "
+                "skipped for those so absent files are not reported as removed.",
+                partial);
+    }
+}
+
+void fim_container_baseline_log_debug(const char* message)
+{
+    if (message != NULL) {
+        mdebug1("%s", message);
+    }
+}
+
+void fim_container_baseline_log_error(const char* message)
+{
+    if (message != NULL) {
+        merror("%s", message);
+    }
+}
+
+void fim_container_baseline_rate_limit(void)
+{
+    check_max_fps();
 }
 
 void fim_compute_row_checksum(const char* row_json, char out_sha1[41])

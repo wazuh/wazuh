@@ -1,6 +1,7 @@
 #pragma once
 
 #include "container_context.hpp"
+#include "container_scope.hpp"
 
 #include <sys/types.h>
 
@@ -51,6 +52,16 @@ struct InterfaceScan
 {
     std::vector<InterfaceBaselineRow>      interfaces;
     std::vector<NetworkAddressBaselineRow> addresses;
+
+    /// True when the scan produced nothing because the container shares the
+    /// host's network namespace — the interfaces visible there are the NODE's,
+    /// not this container's, so attributing them would be false.
+    bool host_collapsed{false};
+
+    /// True when entering the container's netns failed (typically a missing
+    /// CAP_SYS_ADMIN). Distinguishes "no interfaces" from "could not look",
+    /// which the caller must log rather than silently reporting an empty set.
+    bool setns_failed{false};
 };
 
 /// @brief Map getifaddrs() ifa_flags to the state string. Exposed for unit
@@ -69,12 +80,25 @@ struct InterfaceScan
 /// both answer for the *caller's* netns. So this scanner enters the target
 /// netns the way `ip netns exec` does: setns(/proc/<pid>/ns/net, CLONE_NEWNET)
 /// on a throw-away thread (netns is per-thread; the calling thread never
-/// moves), then plain getifaddrs() + SIOCGIFMTU inside. When the target netns
-/// is the caller's own (host-network container, or a unit test on itself) the
-/// setns hop is skipped entirely, so no privilege is needed for that path.
+/// moves), then plain getifaddrs() + SIOCGIFMTU inside.
 ///
-/// @return Empty scan if /proc/<pid>/ns/net cannot be opened or entered
-///         (PID died, or missing CAP_SYS_ADMIN) — empty result, not an error.
-[[nodiscard]] InterfaceScan ScanContainerInterfaces(pid_t pid);
+/// DOCUMENTED EXCEPTION to the feature-wide "no in-container execution"
+/// constraint (#37203-4): setns(CLONE_NEWNET) is what `nsenter --net` does.
+/// It is accepted here because it is strictly weaker than in-container exec —
+/// it enters ONLY the network namespace, executes no code inside the container,
+/// and requires nothing to be present in the image, so distroless is
+/// unaffected — and because no host-side alternative yields MAC, MTU and bound
+/// addresses (/proc/<pid>/net/dev gives names and counters only). It must never
+/// be extended to CLONE_NEWNS or CLONE_NEWPID without going back for review.
+/// It requires CAP_SYS_ADMIN; when that is absent the result reports
+/// `setns_failed` so the caller can log it instead of silently reporting no
+/// interfaces.
+///
+/// @param pid A live PID inside the container.
+/// @param scope Namespace scoping (DetectContainerScope()). When the network
+///              namespace is the host's, this returns an empty scan flagged
+///              `host_collapsed` rather than reporting the node's interfaces as
+///              the container's.
+[[nodiscard]] InterfaceScan ScanContainerInterfaces(pid_t pid, const ContainerScope& scope);
 
 } // namespace wazuh::container_baseline

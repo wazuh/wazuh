@@ -152,7 +152,10 @@ TEST(BuildProcessJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(id, "cid2:42");
 
     const auto j = nlohmann::json::parse(json_str);
-    EXPECT_EQ(j.at("process").at("pid"), "42");
+    // process.pid is typed `long` in the schema, so it is emitted as a JSON
+    // number, not a string (SetNumericIfDigits). The previous expectation of
+    // "42" asserted the opposite and had this suite failing on the branch.
+    EXPECT_EQ(j.at("process").at("pid"), 42);
     EXPECT_EQ(j.at("process").at("name"), "nginx");
     EXPECT_EQ(j.at("process").at("parent").at("pid"), 1);
     EXPECT_EQ(j.at("container").at("id"), "cid2");

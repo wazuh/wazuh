@@ -18,7 +18,7 @@
  *       -I../../data_provider/src -I../../data_provider/src/packages \
  *       -I../../shared_modules/utils -I../../external/nlohmann \
  *       -I../../external/libdb/build_unix -I../../external/sqlite \
- *       qa/m5_runner.cpp container_baseline_impl/src/{os_scanner,interface_scanner,pid_resolver,baseline_rows}.cpp \
+ *       qa/m5_runner.cpp container_baseline_impl/src/{os_scanner,interface_scanner,pid_resolver,container_scope,baseline_rows}.cpp \
  *       -lpthread -ldl -o m5_runner
  *
  * Usage:  m5_runner <container-id> [os|interfaces|networks|all]
@@ -68,7 +68,13 @@ int main(int argc, char** argv)
     }
 
     if (what != "os") {
-        const auto scan = ScanContainerInterfaces(pid);
+        const auto scan = ScanContainerInterfaces(pid, DetectContainerScope(pid));
+        if (scan.host_collapsed) {
+            std::fprintf(stderr, "container shares the host network namespace: no interface rows\n");
+        }
+        if (scan.setns_failed) {
+            std::fprintf(stderr, "could not enter container netns (CAP_SYS_ADMIN?)\n");
+        }
         if (what == "all" || what == "interfaces") {
             for (auto row : scan.interfaces) {
                 ApplyIdentity(row, identity);

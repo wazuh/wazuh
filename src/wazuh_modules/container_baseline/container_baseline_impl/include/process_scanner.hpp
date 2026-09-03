@@ -2,6 +2,8 @@
 
 #include "container_context.hpp"
 
+#include <sys/types.h>
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -28,15 +30,21 @@ struct ProcessBaselineRow
     ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
-/// @brief Enumerate every live process in a container's PID namespace, scoped
-/// by cgroup (via ResolvePidsForContainer), and build one baseline row per PID
-/// from /proc/<pid>/{stat,cmdline}.
+/// @brief Build one baseline row per PID from /proc/<pid>/{stat,cmdline}.
 ///
 /// No exec, no external tooling: this is the same class of host-side /proc read
-/// container_instances already relies on for cgroup_id
-/// resolution (Angle 2 in the spike). Processes that exit between
-/// ResolvePidsForContainer() and the /proc/<pid>/stat read are silently skipped
-/// (best-effort snapshot, same race window any /proc-based enumeration has).
-std::vector<ProcessBaselineRow> ScanContainerProcesses(const std::string& container_id);
+/// container_instances already relies on for cgroup_id resolution (Angle 2 in
+/// the spike). Processes that exit between the PID sweep and the
+/// /proc/<pid>/stat read are silently skipped (best-effort snapshot, the same
+/// race window any /proc-based enumeration has).
+///
+/// Scoping note: PIDs come from the caller's cgroup-based index, NOT from the
+/// pid namespace, so this stays correct under hostPID/--pid=host — where the
+/// pid namespace collapses to the host's but the cgroup does not.
+///
+/// @param container_id CRI container id, stamped onto every row.
+/// @param pids Live PIDs of this container (from PidIndex::pidsFor()).
+std::vector<ProcessBaselineRow> ScanContainerProcesses(const std::string&        container_id,
+                                                        const std::vector<pid_t>& pids);
 
 } // namespace wazuh::container_baseline

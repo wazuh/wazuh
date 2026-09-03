@@ -5,9 +5,11 @@
 
 #include <gtest/gtest.h>
 
+using wazuh::container_baseline::ContainerScope;
 using wazuh::container_baseline::FlagsToState;
 using wazuh::container_baseline::FormatMac;
 using wazuh::container_baseline::ScanContainerInterfaces;
+using wazuh::container_baseline::ScopeKind;
 
 TEST(FlagsToState, UpFlagMeansUp)
 {
@@ -34,7 +36,17 @@ TEST(FormatMac, EmptyForZeroLength)
 
 TEST(ScanContainerInterfaces, SelfScanFindsLoopback)
 {
-    const auto scan = ScanContainerInterfaces(getpid());
+    // Scope is supplied by the caller, so the test can ask for the
+    // "real container namespace" treatment on its own PID and exercise the
+    // same-netns fast path (no setns, no CAP_SYS_ADMIN needed).
+    ContainerScope scope;
+    scope.net = ScopeKind::Container;
+    scope.pid = ScopeKind::Container;
+
+    const auto scan = ScanContainerInterfaces(getpid(), scope);
+
+    EXPECT_FALSE(scan.host_collapsed);
+    EXPECT_FALSE(scan.setns_failed);
 
     bool lo_iface = false;
     for (const auto& iface : scan.interfaces)
@@ -60,4 +72,19 @@ TEST(ScanContainerInterfaces, SelfScanFindsLoopback)
         }
     }
     EXPECT_TRUE(lo_addr);
+}
+
+TEST(ScanContainerInterfaces, HostNetworkCollapseReportsNothing)
+{
+    // A container sharing the host's netns must not have the node's interfaces
+    // attributed to it — every host-network container would otherwise report
+    // the full host inventory.
+    ContainerScope scope;
+    scope.net = ScopeKind::HostCollapsed;
+
+    const auto scan = ScanContainerInterfaces(getpid(), scope);
+
+    EXPECT_TRUE(scan.host_collapsed);
+    EXPECT_TRUE(scan.interfaces.empty());
+    EXPECT_TRUE(scan.addresses.empty());
 }

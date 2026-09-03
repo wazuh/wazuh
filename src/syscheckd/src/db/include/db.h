@@ -260,6 +260,21 @@ EXPORTED void fim_db_update_last_sync_time(const char* table_name);
 EXPORTED cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter);
 
 /**
+ * @brief Get the distinct, non-empty container_id values present in a table.
+ *
+ * Purpose-built for the container-baseline stale sweep, which needs only "which
+ * containers have rows here". Doing that with fim_db_get_every_element() means
+ * materialising EVERY container row of the table as cJSON just to read one
+ * column off each — hundreds of MB on a node with many containers and monitored
+ * files. This projects a single column with DISTINCT applied in SQL instead.
+ *
+ * @param table_name Name of the table to query (e.g. "file_entry").
+ * @return cJSON array of container_id strings (must be freed with
+ *         cJSON_Delete), NULL on error.
+ */
+EXPORTED cJSON* fim_db_get_distinct_container_ids(const char* table_name);
+
+/**
  * @brief Calculate the checksum-of-checksums for a table.
  *
  * @param table_name The table to calculate checksum for.

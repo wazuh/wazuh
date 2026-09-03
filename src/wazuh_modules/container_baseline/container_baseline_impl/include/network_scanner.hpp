@@ -1,6 +1,9 @@
 #pragma once
 
 #include "container_context.hpp"
+#include "container_scope.hpp"
+
+#include <sys/types.h>
 
 #include <cstdint>
 #include <string>
@@ -26,18 +29,38 @@ struct PortBaselineRow
     ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
-/// @brief Baseline the container's network namespace: listening/established
-/// sockets read from /proc/<pid>/net/{tcp,tcp6,udp,udp6} for one representative
-/// PID in the container, with each socket attributed to its owning PID/process
-/// name via an inode -> (pid, comm) map built from /proc/<pid>/fd/ across every
-/// PID in the container (a Kubernetes pod's containers share one net namespace,
-/// so the representative-PID choice only affects *which* socket table is read,
-/// not which processes can own a given socket).
+/// @brief Baseline the container's sockets from /proc/<pid>/net/{tcp,tcp6,udp,udp6},
+/// attributing each to its owning PID via an inode -> (pid, comm) map built from
+/// /proc/<pid>/fd/ across the container's PIDs.
 ///
-/// @param container_id CRI container id.
-/// @return Empty if the container has no live PIDs, or its net/ files could not
-///         be read (e.g. permission denied — see CgroupResolver's hostPID note).
-std::vector<PortBaselineRow> ScanContainerNetwork(const std::string& container_id);
+/// Two scoping rules this function enforces, both of which a naive read gets
+/// wrong:
+///
+///  1. **Host-network collapse.** With hostNetwork (K8s) or --network=host
+///     (Docker), /proc/<pid>/net/* IS the host's socket table. Attributing it
+///     to the container would report every socket on the node as the
+///     container's, once per such container. When `scope.netCollapsedToHost()`
+///     this returns empty.
+///
+///  2. **Pod-shared network namespace.** Containers in a Kubernetes pod share
+///     one netns, so the socket table is identical for all of them. Reading it
+///     "through" a container-owned PID does not disambiguate anything — the
+///     file's contents are namespace-wide. When `netns_shared` is true, only
+///     sockets whose inode resolves to a PID in THIS container are emitted, so
+///     an N-container pod no longer reports each socket N times. When the netns
+///     is exclusive to this container (the Docker default), unattributed
+///     sockets are still emitted, since they can only belong here.
+///
+/// @param container_id CRI container id, stamped onto every row.
+/// @param pids Live PIDs of this container (from PidIndex::pidsFor()).
+/// @param scope Namespace scoping for this container (DetectContainerScope()).
+/// @param netns_shared True when another container shares this network namespace.
+/// @return Empty if the container has no live PIDs, the net/ files are
+///         unreadable, or the network namespace is the host's.
+std::vector<PortBaselineRow> ScanContainerNetwork(const std::string&        container_id,
+                                                   const std::vector<pid_t>& pids,
+                                                   const ContainerScope&     scope,
+                                                   bool                      netns_shared);
 
 /// @brief Decode a /proc/net/{tcp,udp} "AABBCCDD:PPPP" hex address into a
 /// dotted-decimal (or colon-hex for v6) address string and a host-order port.

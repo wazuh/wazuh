@@ -6,8 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread"
+# APPEND, don't overwrite: a bare set() here discarded the optimisation and
+# hardening flags the parent project configured, so this module built with
+# different -O/_FORTIFY_SOURCE/stack-protector settings than the rest of the agent.
+string(APPEND CMAKE_CXX_FLAGS
+    " -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread"
 )
 
 include_directories(

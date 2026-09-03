@@ -668,6 +668,89 @@ cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter)
     return result_array;
 }
 
+cJSON* fim_db_get_distinct_container_ids(const char* table_name)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return nullptr;
+    }
+
+    cJSON* result_array = nullptr;
+
+    try
+    {
+        std::vector<std::string> ids;
+
+        auto callback = [&ids](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (ReturnTypeCallback::SELECTED != result)
+            {
+                return;
+            }
+
+            const auto it = data.find(FIMDB_FILE_CONTAINER_ID_COLUMN);
+
+            if (it != data.end() && it->is_string())
+            {
+                auto id = it->get<std::string>();
+
+                if (!id.empty())
+                {
+                    ids.push_back(std::move(id));
+                }
+            }
+        };
+
+        // One projected column with DISTINCT, so the engine returns at most one
+        // row per container instead of one row per file.
+        auto selectQuery = SelectQuery::builder()
+                           .table(table_name)
+                           .columnList({FIMDB_FILE_CONTAINER_ID_COLUMN})
+                           .rowFilter(std::string("WHERE ") + FIMDB_FILE_CONTAINER_ID_COLUMN + " != ''")
+                           .orderByOpt("")
+                           .distinctOpt(true)
+                           .build();
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+        result_array = cJSON_CreateArray();
+
+        if (!result_array)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
+            return nullptr;
+        }
+
+        for (const auto& id : ids)
+        {
+            cJSON* item = cJSON_CreateString(id.c_str());
+
+            if (!item)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON string");
+                cJSON_Delete(result_array);
+                return nullptr;
+            }
+
+            cJSON_AddItemToArray(result_array, item);
+        }
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
+        if (result_array)
+        {
+            cJSON_Delete(result_array);
+        }
+
+        return nullptr;
+    }
+
+    return result_array;
+}
+
 char* fim_db_calculate_table_checksum(const char* table_name)
 {
     char* result = nullptr;
