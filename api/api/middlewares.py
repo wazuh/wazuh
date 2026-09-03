@@ -42,6 +42,9 @@ HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 # Allowed upper bound for auth_context payload
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
+# Written to the access log in place of the run_as authorization context below debug level
+AUTH_CONTEXT_NOT_LOGGED = '<authorization context not logged; see hash_auth_context>'
+
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -75,12 +78,9 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     body = await request.json() if hasattr(request, '_json') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
 
-    if 'password' in query:
-        query['password'] = '****'
-    if 'password' in body:
-        body['password'] = '****'
-    if 'key' in body and '/agents' in path:
-        body['key'] = '****'
+    # Neither the query nor the body is masked here. `custom_logging` redacts both, recursively
+    # and against a set of sensitive names, on a copy -- which leaves the body below untouched for
+    # the authorization-context hash.
 
     # Get the username from the request. If it is not found in the context, try
     # to get it from the headers using basic or bearer authentication methods.
@@ -112,8 +112,19 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
+        # Hash the context exactly as received. `api/api/authentication.py` stamps the issued token
+        # with the hash of the same unredacted object, and the log line and the token only
+        # correlate if the two hash the same bytes.
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
+
+    # The authorization context is arbitrary third-party JSON: whatever the identity provider put
+    # in it, under names no list of sensitive fields can be expected to know, plus whatever PII the
+    # claims carry. It is not written out at INFO -- `hash_auth_context` on the same line
+    # identifies it -- and stays available to an operator who raises the level to debug in order to
+    # inspect a role-mapping decision.
+    if path == RUN_AS_LOGIN_ENDPOINT and not logger.isEnabledFor(logging.DEBUG):
+        body = AUTH_CONTEXT_NOT_LOGGED
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)

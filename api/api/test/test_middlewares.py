@@ -2,9 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from copy import deepcopy
 from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock, call
 import binascii
+import hashlib
+import json
 import jwt
 import pytest
 
@@ -18,7 +21,8 @@ from freezegun import freeze_time
 
 from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_attempt, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
+    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, \
+    AUTH_CONTEXT_NOT_LOGGED
 from api.api_exception import ExpectFailedException
 
 @pytest.fixture
@@ -313,12 +317,13 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
         if not hash and endpoint == RUN_AS_LOGIN_ENDPOINT:
             mock_blacke2b.assert_called_once()
             hash = f"blackeb2 {hash}"
-        mock_req.query_params.update({'password': '****'} if q_password else {})
-        body.update({'password': '****'} if b_key else {})
-        body.update({'key': '****'} if b_key and endpoint == '/agents' else {})
+        # `access_log` no longer masks anything itself: `custom_logging` redacts the query and
+        # the body, recursively and on a copy. The one substitution left here is the run_as
+        # authorization context, which is not written out below debug level.
+        expected_body = AUTH_CONTEXT_NOT_LOGGED if endpoint == RUN_AS_LOGIN_ENDPOINT else body
         mock_custom_logging.assert_called_once_with(
             expected_user, mock_req.client.host, mock_req.method,
-            endpoint, mock_req.query_params, body, 0.0, response.status_code,
+            endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
             hash_auth_context=hash, headers=mock_req.headers
         )
         if status_code == 403 and \
@@ -326,6 +331,118 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                 method in {'GET', 'POST'}:
             mock_log_warning.assert_called_once_with(
                 f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('body', [
+    {'nested': {'password': 'SuperSecret123'}, 'username': 'x'},
+    {'password': 'SuperSecret123'},
+    {'id': '001', 'key': 'agent_key'},
+    None,
+    [],
+    'password',
+    0,
+    False,
+])
+async def test_access_log_passes_the_body_through_untouched(body, mock_req):
+    """Check that `access_log` neither masks nor mutates the parsed body.
+
+    Redaction moved into `custom_logging`, which works on a copy. `access_log` must hand it the
+    body exactly as the request parsed it, whatever its JSON type: `null`, a list and bare scalars
+    are all valid bodies, and testing membership on one of them used to raise a `TypeError` here
+    that turned the validator's 400 into an unhandled 500.
+    """
+    response = MagicMock()
+    response.status_code = 400
+    original = deepcopy(body)
+
+    mock_req._json = MagicMock()
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {'password': 'q_secret'}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh', 'token_info': {'hash_auth_context': 'hash'}}
+    mock_req.scope = {'path': '/security/users'}
+    mock_req.headers = {'content-type': 'None'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+        mock_custom_logging.assert_called_once_with(
+            'wazuh', mock_req.client.host, 'POST', '/security/users',
+            {'password': 'q_secret'}, body, 0.0, 400,
+            hash_auth_context='hash', headers=mock_req.headers
+        )
+    assert body == original
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_hashes_the_unredacted_auth_context(mock_req):
+    """Check that the run_as fallback hash is taken over the context as received.
+
+    `api/api/authentication.py` stamps the issued token with the blake2b of the raw authorization
+    context. The access log's fallback hash is the only thing that correlates a run_as log line
+    with the token it produced, so it has to hash the same bytes. It did not: the redaction used
+    to rewrite the body in place before this point, so a context carrying a `password` was hashed
+    as `****`.
+    """
+    response = MagicMock()
+    response.status_code = 200
+    auth_context = {'user_name': 'wazuh-admin', 'password': 'SuperSecret123'}
+    expected_hash = hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()
+
+    mock_req._json = MagicMock()
+    mock_req.json = AsyncMock(return_value=auth_context)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'None'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.kwargs['hash_auth_context'] == expected_hash
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('debug_enabled', [False, True])
+async def test_access_log_run_as_context_only_logged_at_debug(debug_enabled, mock_req):
+    """Check that the run_as authorization context is not written out below debug level.
+
+    The context is arbitrary third-party JSON under names no list of sensitive fields can know.
+    `hash_auth_context` identifies it on the same line, and the hash must not depend on the level.
+
+    Parameters
+    ----------
+    debug_enabled : bool
+        Whether the logger is enabled for the debug level.
+    """
+    response = MagicMock()
+    response.status_code = 200
+    auth_context = {'user_name': 'wazuh-admin', 'saml_assertion': 'not-a-known-field-name'}
+    expected_hash = hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()
+
+    mock_req._json = MagicMock()
+    mock_req.json = AsyncMock(return_value=auth_context)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'None'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+            patch('api.middlewares.logger.isEnabledFor', return_value=debug_enabled):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    logged_body = mock_custom_logging.call_args.args[5]
+    assert logged_body == (auth_context if debug_enabled else AUTH_CONTEXT_NOT_LOGGED)
+    assert mock_custom_logging.call_args.kwargs['hash_auth_context'] == expected_hash
 
 
 @pytest.mark.asyncio

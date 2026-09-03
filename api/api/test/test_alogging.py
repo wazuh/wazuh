@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-from copy import copy
+from copy import copy, deepcopy
 from unittest.mock import patch, call, MagicMock
 
 import pytest
@@ -117,3 +117,188 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
                                       call(json_info, extra={'log_type': 'json'})])
 
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
+
+
+@pytest.mark.parametrize('name, sensitive', [
+    # Exact names.
+    ('password', True),
+    ('Password', True),
+    ('PASSWORD', True),
+    ('passwd', True),
+    ('pwd', True),
+    ('key', True),
+    ('token', True),
+    ('secret', True),
+    ('credentials', True),
+    ('authorization', True),
+    ('cookie', True),
+    # `<prefix>_<name>` tails, in the three spellings a client may send them in.
+    ('api_key', True),
+    ('API_KEY', True),
+    ('x-api-key', True),
+    ('apiKey', True),
+    ('private_key', True),
+    ('client_secret', True),
+    ('clientSecret', True),
+    ('access_token', True),
+    ('accessToken', True),
+    ('refresh_token', True),
+    ('old_password', True),
+    ('proxy-authorization', True),
+    ('set-cookie', True),
+    # Names that merely contain a sensitive word. Masking these would make the log unreadable
+    # without protecting anything, and they are what a plain substring test would get wrong.
+    ('keyword', False),
+    ('monkey', False),
+    ('tokenizer', False),
+    ('keys', False),
+    ('passwords', False),
+    ('secretary', False),
+    ('username', False),
+    ('id', False),
+])
+def test_is_sensitive_field(name, sensitive):
+    """Check which field names `is_sensitive_field` designates as secret-bearing.
+
+    Parameters
+    ----------
+    name : str
+        Field or header name.
+    sensitive : bool
+        Whether the name is expected to be matched.
+    """
+    assert alogging.is_sensitive_field(name) is sensitive
+
+
+@pytest.mark.parametrize('value, expected', [
+    # The reported bug: a password one level down was logged verbatim.
+    ({'nested': {'password': 'SuperSecret123'}, 'username': 'x'},
+     {'nested': {'password': '****'}, 'username': 'x'}),
+    # Any depth, not just one.
+    ({'a': {'b': {'c': {'password': 'S'}}}},
+     {'a': {'b': {'c': {'password': '****'}}}}),
+    # Inside a list of objects, and inside a list nested in an object.
+    ({'users': [{'password': 'S'}, {'password': 'T'}]},
+     {'users': [{'password': '****'}, {'password': '****'}]}),
+    ([{'token': 'S'}, {'safe': 1}],
+     [{'token': '****'}, {'safe': 1}]),
+    ({'a': [[{'secret': 'S'}]]},
+     {'a': [[{'secret': '****'}]]}),
+    # A sensitive key masks its whole value, not just a scalar one.
+    ({'credentials': {'user': 'u', 'password': 'p'}},
+     {'credentials': '****'}),
+    ({'key': ['a', 'b']},
+     {'key': '****'}),
+    # `key` is masked with no path in play at all: the old `/agents` condition is gone.
+    ({'id': '001', 'key': 'MDAxIGFnZW50...'},
+     {'id': '001', 'key': '****'}),
+    # Top level, the case that already worked.
+    ({'username': 'x', 'password': 'S'},
+     {'username': 'x', 'password': '****'}),
+    # Nothing to mask.
+    ({'username': 'x', 'keyword': 'k'},
+     {'username': 'x', 'keyword': 'k'}),
+    ({}, {}),
+    ([], []),
+    # A JSON body is not necessarily an object. None of these may raise.
+    (None, None),
+    ('password', 'password'),
+    (0, 0),
+    (False, False),
+    (1.5, 1.5),
+])
+def test_redact_sensitive_fields(value, expected):
+    """Check that `redact_sensitive_fields` masks every sensitive field at any depth.
+
+    Parameters
+    ----------
+    value : any
+        Parsed JSON value to redact.
+    expected : any
+        Expected result.
+    """
+    assert alogging.redact_sensitive_fields(value) == expected
+
+
+def test_redact_sensitive_fields_does_not_mutate_input():
+    """Check that the value handed to `redact_sensitive_fields` is left untouched.
+
+    The body the access log redacts is the request's own cached `_json`, and `access_log` hashes
+    the run_as authorization context after this call and expects it as it was received.
+    """
+    body = {'nested': {'password': 'SuperSecret123'}, 'users': [{'key': 'k'}]}
+    original = deepcopy(body)
+
+    redacted = alogging.redact_sensitive_fields(body)
+
+    assert body == original
+    assert redacted is not body
+    assert redacted['nested'] is not body['nested']
+    assert redacted['nested']['password'] == '****'
+
+
+def test_redact_sensitive_fields_deeply_nested_body():
+    """Check that a deeply nested body does not exhaust the stack.
+
+    `tests/integration/test_api/test_miscs/test_recursion.py` asserts that a body 500 levels deep
+    is answered with a 200, so `access_log` must be able to redact one at the default recursion
+    limit. A recursive walker fails this at a fraction of the depth.
+    """
+    depth = 500
+    body = {'password': 'SuperSecret123'}
+    for _ in range(depth - 1):
+        body = {'nested': body}
+
+    redacted = alogging.redact_sensitive_fields(body)
+
+    innermost = redacted
+    for _ in range(depth - 1):
+        innermost = innermost['nested']
+    assert innermost == {'password': '****'}
+
+
+def test_custom_logging_redacts_sensitive_fields():
+    """Check that `custom_logging` masks the body, the query and the headers before writing them."""
+    user, remote, method, path = ('wazuh', '1.1.1.1', 'POST', '/security/users')
+    body = {'username': 'x', 'nested': {'password': 'SuperSecret123'}, 'key': 'agent_key'}
+    query = {'pretty': True, 'password': 'q_secret'}
+    elapsed_time, status = 1.01, 400
+    expected_body = {'username': 'x', 'nested': {'password': '****'}, 'key': '****'}
+    expected_query = {'pretty': True, 'password': '****'}
+
+    with patch('api.alogging.logger') as log_mock:
+        log_mock.info = MagicMock()
+        log_mock.debug2 = MagicMock()
+        alogging.custom_logging(user=user, remote=remote, method=method, path=path, query=query,
+                                body=body, elapsed_time=elapsed_time, status=status,
+                                headers=REQUEST_HEADERS_TEST)
+
+    plain_call, json_call = log_mock.info.call_args_list
+    assert 'SuperSecret123' not in plain_call.args[0]
+    assert 'agent_key' not in plain_call.args[0]
+    assert 'q_secret' not in plain_call.args[0]
+    assert json.dumps(expected_body) in plain_call.args[0]
+    assert json.dumps(expected_query) in plain_call.args[0]
+    assert json_call.args[0]['body'] == expected_body
+    assert json_call.args[0]['parameters'] == expected_query
+
+    # The caller's objects are not rewritten on its behalf.
+    assert body['nested']['password'] == 'SuperSecret123'
+    assert query['password'] == 'q_secret'
+
+
+def test_custom_logging_redacts_authorization_header():
+    """Check that the `debug2` header line does not write the basic-auth credential out.
+
+    `REQUEST_HEADERS_TEST` is `Basic d2F6dWg6cGFzc3dvcmQxMjM=`, which decodes to `wazuh:password123`.
+    """
+    with patch('api.alogging.logger') as log_mock:
+        log_mock.info = MagicMock()
+        log_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='GET', path='/agents',
+                                query={}, body={}, elapsed_time=1.01, status=200,
+                                headers=REQUEST_HEADERS_TEST)
+
+    header_line = log_mock.debug2.call_args.args[0]
+    assert 'd2F6dWg6cGFzc3dvcmQxMjM=' not in header_line
+    assert header_line == f"Receiving headers {{'authorization': '****'}}"

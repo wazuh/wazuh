@@ -255,5 +255,9 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
   - Store rotated logs in a dedicated directory
 
 ### API Access Logging (`api/alogging.py`)
-- Every API request generates an access log entry
-- Passwords and sensitive data are **sanitized** from query strings and request bodies before logging
+- Every API request generates an access log entry, including one for a request the API rejected: the entry is written after the response, so a body the OpenAPI validator refused has still been recorded
+- The entry carries the request body and query string in full, with sensitive values **masked** as `****` by `redact_sensitive_fields`, at any depth of the body and inside arrays
+- A field is masked when its name matches `password`, `passwd`, `pwd`, `key`, `token`, `secret`, `credential`, `credentials`, `authorization` or `cookie`, case-insensitively, either exactly or as the tail of a compound name — `api_key`, `x-api-key`, `clientSecret` and `accessToken` all match, `keyword` and `monkey` do not. Hyphens and camelCase boundaries are folded before matching, so the same rule serves header names
+- This is a denylist: a secret sent under a field name outside that set is still written to the log
+- The `run_as` authorization context is **not** written out at `info` level. It is arbitrary third-party JSON under names the denylist cannot anticipate, so the entry carries only its `hash_auth_context`; raise `logs.level` to `debug` to see the context itself
+- At `debug2` the request headers are logged, with `Authorization` and `Cookie` masked

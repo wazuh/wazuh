@@ -13,6 +13,99 @@ from api.api_exception import APIError
 
 logger = logging.getLogger('wazuh-api')
 
+# Field names whose value is masked before a request is written to the access log. Matched
+# case-insensitively against the whole name and against a `<prefix>_<name>` tail, so `api_key`,
+# `client_secret`, `x-api-key` and `accessToken` are all covered without the false positives
+# (`keyword`, `monkey`, `tokenizer`) a plain substring test would bring.
+SENSITIVE_FIELD_NAMES = frozenset({
+    'authorization', 'cookie', 'credential', 'credentials', 'key', 'passwd', 'password',
+    'pwd', 'secret', 'token',
+})
+SENSITIVE_FIELD_SUFFIXES = tuple(f'_{name}' for name in SENSITIVE_FIELD_NAMES)
+
+# Value written in place of a sensitive one.
+REDACTED_VALUE = '****'
+
+# Fold a camelCase boundary to the `_` the suffix rule is written against. Identity-provider
+# claims are routinely `accessToken`, `apiKey` or `clientSecret`. Hyphens, which header names
+# use, are folded the same way.
+_WORD_BOUNDARY = re.compile(r'(?<=[a-z0-9])(?=[A-Z])')
+
+
+def is_sensitive_field(name: str) -> bool:
+    """Check whether a field or header name designates a value that must not be logged.
+
+    Parameters
+    ----------
+    name : str
+        Field or header name.
+
+    Returns
+    -------
+    bool
+        True if the value behind this name must be masked before it is logged.
+    """
+    normalized = _WORD_BOUNDARY.sub('_', name).lower().replace('-', '_')
+    return normalized in SENSITIVE_FIELD_NAMES or normalized.endswith(SENSITIVE_FIELD_SUFFIXES)
+
+
+def redact_sensitive_fields(value):
+    """Return a copy of a parsed JSON value with every sensitive field masked, at any depth.
+
+    A sensitive key masks its whole value, object or scalar. Lists are walked too, so a secret
+    inside an array of objects is reached. Anything that is not a mapping or a list -- `None`, a
+    bare scalar, a string -- is returned unchanged: a JSON body is not necessarily an object.
+
+    The input is never modified. The body handed to the access log is the request's own cached
+    `_json`, and `api/api/middlewares.py` hashes the `run_as` authorization context as received,
+    so redaction must not reach back into it.
+
+    The walk is iterative on purpose. A body nested 500 levels deep is accepted today
+    (`tests/integration/test_api/test_miscs/test_recursion.py` asserts a 200 for it); a recursive
+    walker would spend several Python frames per level on top of an already deep ASGI stack and
+    raise `RecursionError` after the response had been built.
+
+    Parameters
+    ----------
+    value : any
+        Parsed JSON value: a mapping, a list, or a scalar.
+
+    Returns
+    -------
+    any
+        A copy of `value` with the value of every sensitive field replaced by `REDACTED_VALUE`.
+    """
+    if isinstance(value, dict):
+        root = {}
+    elif isinstance(value, list):
+        root = []
+    else:
+        return value
+
+    stack = [(value, root)]
+    while stack:
+        source, target = stack.pop()
+        items = source.items() if isinstance(source, dict) else enumerate(source)
+
+        for name, item in items:
+            if isinstance(target, dict) and is_sensitive_field(name):
+                child = REDACTED_VALUE
+            elif isinstance(item, dict):
+                child = {}
+                stack.append((item, child))
+            elif isinstance(item, list):
+                child = []
+                stack.append((item, child))
+            else:
+                child = item
+
+            if isinstance(target, list):
+                target.append(child)
+            else:
+                target[name] = child
+
+    return root
+
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -223,8 +316,9 @@ def custom_logging(user, remote, method, path, query,
         Endpoint used in the request.
     query : dict
         Dictionary with the request parameters.
-    body : dict
-        Dictionary with the request body.
+    body : any
+        Parsed request body. A JSON body is not necessarily an object: `null`, a list and bare
+        scalars are all valid, and all of them reach this function as they were parsed.
     elapsed_time : float
         Required time to compute the request.
     status : int
@@ -234,6 +328,12 @@ def custom_logging(user, remote, method, path, query,
     headers: dict
         Optional dictionary of request headers.
     """
+    # Redact here rather than at the call site: the function that writes the log is the one that
+    # masks, so no caller can forget to. `redact_sensitive_fields` returns a copy, which is what
+    # lets `access_log` keep hashing the `run_as` authorization context as it was received.
+    query = redact_sensitive_fields(query)
+    body = redact_sensitive_fields(body)
+
     json_info = {
         'user': user,
         'ip': remote,
@@ -256,4 +356,6 @@ def custom_logging(user, remote, method, path, query,
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
-    logger.debug2(f'Receiving headers {headers}')
+    # `Authorization` carries the basic-auth credential or the bearer token verbatim, so the
+    # header line is masked the same way the body is.
+    logger.debug2(f'Receiving headers {redact_sensitive_fields(dict(headers)) if headers else headers}')
