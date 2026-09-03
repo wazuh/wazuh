@@ -114,14 +114,6 @@ InterfaceScan CollectCurrentNetns()
     return out;
 }
 
-bool SameNetns(pid_t pid)
-{
-    struct stat self_st, target_st;
-    if (stat("/proc/self/ns/net", &self_st) != 0) return false;
-    if (stat(("/proc/" + std::to_string(pid) + "/ns/net").c_str(), &target_st) != 0) return false;
-    return self_st.st_ino == target_st.st_ino && self_st.st_dev == target_st.st_dev;
-}
-
 } // namespace
 
 std::string FlagsToState(unsigned int flags)
@@ -142,23 +134,49 @@ std::string FormatMac(const unsigned char* bytes, size_t len)
     return out;
 }
 
-InterfaceScan ScanContainerInterfaces(pid_t pid)
+InterfaceScan ScanContainerInterfaces(pid_t pid, const ContainerScope& scope)
 {
-    if (SameNetns(pid)) return CollectCurrentNetns(); // host-network container / self-test: no setns needed.
+    // Host-network container: the netns we would enter is the node's, so its
+    // interfaces are not this container's. Report the collapse instead of
+    // attributing the host's inventory to every host-network container.
+    if (scope.netCollapsedToHost())
+    {
+        InterfaceScan collapsed;
+        collapsed.host_collapsed = true;
+        return collapsed;
+    }
+
+    // The target netns is already the calling thread's: collect directly. No
+    // setns hop, so this path needs no privilege at all. (Reached by a unit
+    // test scanning its own PID; a host-network container is caught by the
+    // scope check above before getting here.)
+    if (SharesNamespace(pid, ::getpid(), "net")) return CollectCurrentNetns();
 
     const int ns_fd = open(("/proc/" + std::to_string(pid) + "/ns/net").c_str(), O_RDONLY | O_CLOEXEC);
-    if (ns_fd < 0) return {};
+    if (ns_fd < 0)
+    {
+        InterfaceScan failed;
+        failed.setns_failed = true;
+        return failed;
+    }
 
     // setns(CLONE_NEWNET) moves only the calling thread, so a joined
     // throw-away thread leaves the rest of the process untouched — no
     // restore step, the thread just exits inside the container netns.
     InterfaceScan result;
-    std::thread worker([&]
+    bool          entered = false;
+    std::thread   worker([&]
     {
-        if (setns(ns_fd, CLONE_NEWNET) == 0) result = CollectCurrentNetns();
+        if (setns(ns_fd, CLONE_NEWNET) == 0)
+        {
+            entered = true;
+            result  = CollectCurrentNetns();
+        }
     });
     worker.join();
     close(ns_fd);
+
+    result.setns_failed = !entered;
     return result;
 }
 

@@ -1,5 +1,7 @@
 #include "network_scanner.hpp"
 
+#include <unistd.h>
+
 #include <gtest/gtest.h>
 
 using wazuh::container_baseline::DecodeHexAddress;
@@ -63,5 +65,26 @@ TEST(TcpStateToString, UnknownStateFallsBack)
 
 TEST(ScanContainerNetwork, EmptyContainerIdReturnsEmpty)
 {
-    EXPECT_TRUE(wazuh::container_baseline::ScanContainerNetwork("").empty());
+    wazuh::container_baseline::ContainerScope scope;
+    scope.net = wazuh::container_baseline::ScopeKind::Container;
+
+    EXPECT_TRUE(wazuh::container_baseline::ScanContainerNetwork("", {}, scope, false).empty());
+}
+
+TEST(ScanContainerNetwork, NoPidsReturnsEmpty)
+{
+    wazuh::container_baseline::ContainerScope scope;
+    scope.net = wazuh::container_baseline::ScopeKind::Container;
+
+    EXPECT_TRUE(wazuh::container_baseline::ScanContainerNetwork("abc", {}, scope, false).empty());
+}
+
+TEST(ScanContainerNetwork, HostNetworkCollapseReturnsEmpty)
+{
+    // Even with live PIDs, a container on the host's netns must report no
+    // sockets: /proc/<pid>/net/* there is the whole node's socket table.
+    wazuh::container_baseline::ContainerScope scope;
+    scope.net = wazuh::container_baseline::ScopeKind::HostCollapsed;
+
+    EXPECT_TRUE(wazuh::container_baseline::ScanContainerNetwork("abc", {::getpid()}, scope, false).empty());
 }

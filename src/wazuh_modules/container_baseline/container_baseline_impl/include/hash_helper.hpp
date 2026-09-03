@@ -1,12 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 
 namespace wazuh::container_baseline {
 
-/// @brief One file's md5/sha1/sha256 digests, lowercase hex, matching the exact
-/// wire format of FIM's os_md5/os_sha1/os_sha256 (32/40/64 hex chars) so baseline
-/// rows are drop-in compatible with fim_file_data's hash fields.
+/// @brief Hex digests of a file. A field is empty when that digest was not
+/// requested, or when the file could not be read.
 struct FileHashes
 {
     std::string md5;
@@ -14,18 +14,32 @@ struct FileHashes
     std::string sha256;
 };
 
-/// @brief Hash a file's contents with MD5+SHA1+SHA256 in a single read pass.
+/// @brief Which digests to compute. Mirrors FIM's CHECK_MD5SUM / CHECK_SHA1SUM
+/// / CHECK_SHA256SUM options, so a container walk pays for exactly the digests
+/// the configuration asked for instead of always computing all three.
+struct HashSelection
+{
+    bool md5{true};
+    bool sha1{true};
+    bool sha256{true};
+
+    [[nodiscard]] bool any() const noexcept { return md5 || sha1 || sha256; }
+};
+
+/// @brief Compute the requested digests over the WHOLE file, in a single pass.
 ///
-/// Reused algorithm (not the exact os_crypto binary — see rootfs_file_walker.hpp
-/// for why this module hashes via OpenSSL EVP directly instead of linking the
-/// `wazuh` static lib): read in fixed-size chunks, feed all three EVP_MD_CTX
-/// digests per chunk, hex-encode at the end.
+/// There is deliberately no byte limit here. A digest of a file prefix is not a
+/// weaker version of the file's hash — it is a different value that matches no
+/// other reader's, and that collides for any two files sharing that prefix,
+/// which in a file-integrity feature is worse than reporting no hash. Callers
+/// that must bound I/O decide NOT TO HASH a file (leaving the digests empty),
+/// exactly as host FIM does with syscheck.file_max_size; they do not ask for a
+/// partial digest.
 ///
-/// @param path Host-visible path to read (e.g. /proc/<pid>/root/<rel>).
-/// @param max_bytes Stop hashing after this many bytes (0 = no limit). Mirrors
-///                   FIM's own size-capped hashing behavior for huge files.
-/// @return true on success; false if the file could not be opened for reading.
-///         On failure `out` is left with empty strings.
-bool HashFile(const std::string& path, size_t max_bytes, FileHashes& out);
+/// @param path Host-side path to read (for containers, under /proc/<pid>/root).
+/// @param out Receives the hex digests; requested-but-uncomputable digests stay empty.
+/// @param selection Which digests to compute.
+/// @return false if the file could not be opened, or no digest was requested.
+bool HashFile(const std::string& path, FileHashes& out, const HashSelection& selection = {});
 
 } // namespace wazuh::container_baseline

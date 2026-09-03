@@ -2,6 +2,7 @@
 
 #include "baseline_rows.hpp"
 #include "container_instances_client.hpp"
+#include "container_scope.hpp"
 #include "hardware_scanner.hpp"
 #include "interface_scanner.hpp"
 #include "network_scanner.hpp"
@@ -19,12 +20,12 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <unordered_set>
+#include <utility>
 
 namespace wazuh::container_baseline {
 
 namespace {
-
-constexpr int kOperationCreate = 0;
 
 // The container_instances IPC socket binds before its connectors finish their
 // first snapshot (list is a pure store read with no cold-cache refresh), so a
@@ -39,12 +40,12 @@ constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
 std::atomic<bool> g_everSawContainers{false};
 
-/// Parses container_instances' "resolve" reply "data" object (see
-/// wire_protocol.hpp's recordToJson()) into the shared runtime context. Pod/
-/// namespace/node/annotations/owner_refs are only ever present when the
-/// module reports runtime == "kubernetes"; a Docker-origin container leaves
-/// `kubernetes` unset entirely (event_schema.md's two-block rule).
-ContainerContextPtr ContextFromResolveData(const nlohmann::json& data)
+/// Parses one container_instances record (see wire_protocol.hpp's
+/// recordToJson()) into the shared runtime context. Pod/namespace/node/
+/// annotations/owner_refs are only ever present when the module reports
+/// runtime == "kubernetes"; a Docker-origin container leaves `kubernetes` unset
+/// entirely (event_schema.md's two-block rule).
+ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 {
     auto ctx = std::make_shared<ContainerContext>();
     ctx->runtime       = data.value("runtime", "");
@@ -115,31 +116,16 @@ ContainerContextPtr ContextFromResolveData(const nlohmann::json& data)
     return ctx;
 }
 
-ContainerIdentity IdentityFromResolveJson(const std::string& container_id, const std::string& reply_json)
-{
-    ContainerIdentity id;
-    id.container_id = container_id;
-
-    const auto j = nlohmann::json::parse(reply_json, nullptr, false);
-    if (j.is_discarded() || !j.is_object() || j.value("status", "") != "resolved")
-    {
-        return id;
-    }
-
-    const auto dataIt = j.find("data");
-    if (dataIt == j.end() || !dataIt->is_object())
-    {
-        return id;
-    }
-
-    id.context = ContextFromResolveData(*dataIt);
-    return id;
-}
-
 // Every container currently tracked by the container_instances store, paired
-// with its resolved identity. One IPC round trip to list, then one lookup per
-// listed container. The list call gives us cgroup ids, so the lookup can resolve
-// the richer metadata in the same module that owns it.
+// with its resolved identity.
+//
+// ONE IPC round trip total: the `list` reply already carries each container's
+// full record (wire_protocol.hpp builds it with the same recordToJson() that
+// `resolve` uses for its "data" object), so there is no reason to follow up
+// with a per-container `resolve`. Each round trip is its own
+// connect/send/recv/close against a 2-worker server with a 1 s timeout, so
+// dropping the follow-ups takes a 100-container node from 101 connections per
+// baseline to 1.
 std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
@@ -162,178 +148,110 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         g_everSawContainers.store(true);
     }
 
+    out.reserve(refs.size());
     for (const auto& ref : refs)
     {
-        const auto lookup = client.resolveByCgroupId(ref.cgroupId, ref.containerId);
-        if (lookup.status != wazuh::container_instances_client::LookupStatus::resolved)
+        ContainerContextPtr ctx;
+        if (ref.record.is_object())
         {
-            out.push_back(ContainerIdentity{ref.containerId, nullptr});
-            continue;
+            ctx = ContextFromRecord(ref.record);
         }
-        out.push_back(IdentityFromResolveJson(ref.containerId, lookup.json));
+        out.push_back(ContainerIdentity{ref.containerId, std::move(ctx)});
     }
     return out;
 }
 
+/// Everything one baseline run needs to know about the host, computed once
+/// instead of once per container per scanner.
+///
+/// Before this existed, resolving a container's PIDs meant a full /proc walk
+/// (reading /proc/<pid>/cgroup for every PID), and it was done once by the
+/// orchestrator plus once inside ScanContainerProcesses plus once inside
+/// ScanContainerNetwork — three walks per container. On a node with 100
+/// containers and 2000 processes that is 300 walks and ~600k file reads per
+/// baseline cycle, none of which produces a row. One sweep replaces all of it.
+struct RunContext
+{
+    PidIndex                        pids;
+    std::unordered_set<std::string> shared_netns;
+
+    static RunContext Build()
+    {
+        RunContext rc;
+        rc.pids         = PidIndex::Build();
+        rc.shared_netns = SharedNetnsContainers(rc.pids.all());
+        return rc;
+    }
+
+    [[nodiscard]] bool netnsShared(const std::string& container_id) const
+    {
+        return shared_netns.find(container_id) != shared_netns.end();
+    }
+};
+
 } // namespace
-
-int RunFimBaseline(const std::string&                connector_socket_path,
-                    const std::vector<MonitoredPath>& paths,
-                    const RowSink&                     sink)
-{
-    int baselined = 0;
-
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto pids = ResolvePidsForContainer(identity.container_id);
-        if (pids.empty()) continue; // no live PID — nothing to address the rootfs with (yet).
-
-        ++baselined;
-        const auto pid = pids.front();
-
-        for (const auto& path : paths) {
-            const auto walk = WalkContainerPath(pid, path.internal_path, path.recursion_level,
-                                                 path.max_files, path.max_hash_bytes);
-            for (auto row : walk.rows) {
-                ApplyIdentity(row, identity);
-                auto [id, json] = BuildFimFileJson(row);
-                sink(EmittedRow{id, kOperationCreate, "wazuh-states-fim-files", json, 1});
-            }
-        }
-    }
-
-    return baselined;
-}
-
-int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowSink& sink)
-{
-    int baselined = 0;
-
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto pids = ResolvePidsForContainer(identity.container_id);
-        if (pids.empty()) continue;
-
-        ++baselined;
-
-        for (auto row : ScanContainerProcesses(identity.container_id)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildProcessJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-processes", json, 1});
-        }
-
-        for (auto row : ScanContainerNetwork(identity.container_id)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildPortJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-ports", json, 1});
-        }
-
-        // M4 data classes (users/groups + packages) address the rootfs through
-        // /proc/<pid>/root, so they need the live PID rather than the cgroup.
-        const auto pid = pids.front();
-
-        for (auto row : ScanContainerUsers(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildUserJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-users", json, 1});
-        }
-
-        for (auto row : ScanContainerGroups(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildGroupJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-groups", json, 1});
-        }
-
-        for (auto row : ScanContainerPackages(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildPackageJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-packages", json, 1});
-        }
-
-        // Image OS identity (rootfs os-release via the /proc/<pid>/root family).
-        for (auto row : ScanContainerOs(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildOsJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-system", json, 1});
-        }
-
-        // Container netns interfaces/addresses (setns hop — see interface_scanner.hpp).
-        auto ifscan = ScanContainerInterfaces(pid);
-        for (auto row : ifscan.interfaces) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildInterfaceJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-interfaces", json, 1});
-        }
-        for (auto row : ifscan.addresses) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildNetworkAddressJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-networks", json, 1});
-        }
-
-        // Default routes (protocols) from the container netns' /proc/<pid>/net/route.
-        for (auto row : ScanContainerProtocols(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildProtocolJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-protocols", json, 1});
-        }
-
-        // systemd services from the rootfs unit files (static view; runtime state
-        // needs the container's own systemd over D-Bus — see service_scanner.hpp).
-        for (auto row : ScanContainerServices(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildServiceJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-services", json, 1});
-        }
-
-        // Virtual hardware: the container's cgroup resource envelope (memory.max /
-        // cpu.max) mapped onto the hardware schema; cpu name/speed are the shared
-        // host silicon. Hotfixes (Windows-only) and browser-extensions (no browser
-        // in a server container) are the only host collectors left uncovered.
-        for (auto row : ScanContainerHardware(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildHardwareJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-hardware", json, 1});
-        }
-    }
-
-    return baselined;
-}
 
 int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
                           const std::vector<MonitoredPath>& paths,
-                          const DbsyncRowSink&              sink)
+                          const DbsyncRowSink&              sink,
+                          const ContainerStatusSink&        status_sink,
+                          const std::function<void()>&      rate_limit)
 {
     int baselined = 0;
 
+    const auto run = RunContext::Build();
+
     for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto pids = ResolvePidsForContainer(identity.container_id);
-        if (pids.empty()) continue;
+        const auto& pids = run.pids.pidsFor(identity.container_id);
+        if (pids.empty()) continue; // no live PID — nothing to address the rootfs with (yet).
 
         ++baselined;
         const auto pid = pids.front();
         const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
 
+        // A walk that hit its row cap, or whose configured path doesn't exist in
+        // this image, produces a SUBSET of the container's files. Absence must
+        // not then be read as deletion, so the incompleteness is reported to the
+        // caller rather than discarded.
+        bool partial = false;
+
         for (const auto& mp : paths) {
             const auto walk = WalkContainerPath(pid, mp.internal_path, mp.recursion_level,
-                                                 mp.max_files, mp.max_hash_bytes);
+                                                 mp.max_files, mp.max_hash_bytes,
+                                                 identity.context, mp.hashes, rate_limit);
+            partial = partial || walk.truncated || walk.root_missing;
+
             for (auto row : walk.rows) {
                 ApplyIdentity(row, identity);
                 sink(DbsyncRow{identity.container_id, "file_entry",
                                BuildFimFileDbsyncRow(row, containerJson)});
             }
         }
+
+        if (status_sink) {
+            status_sink(ContainerStatus{identity.container_id, partial});
+        }
     }
 
     return baselined;
 }
 
-int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, const DbsyncRowSink& sink)
+int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
+                                  const DbsyncRowSink&       sink,
+                                  const ContainerStatusSink& status_sink)
 {
     int baselined = 0;
 
+    const auto run = RunContext::Build();
+
     for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto pids = ResolvePidsForContainer(identity.container_id);
+        const auto& pids = run.pids.pidsFor(identity.container_id);
         if (pids.empty()) continue;
 
         ++baselined;
+
+        const auto pid   = pids.front();
+        const auto scope = DetectContainerScope(pid);
 
         // Context blob serialized once per container; every row carries it in
         // its container_json column so DELETED events stay self-contained.
@@ -342,17 +260,19 @@ int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, cons
             sink(DbsyncRow{identity.container_id, table, std::move(json)});
         };
 
-        for (auto row : ScanContainerProcesses(identity.container_id)) {
+        for (auto row : ScanContainerProcesses(identity.container_id, pids)) {
             ApplyIdentity(row, identity);
             emit("dbsync_processes", BuildProcessDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerNetwork(identity.container_id)) {
+        // Network-namespace-scoped classes. ScanContainerNetwork itself declines
+        // to report anything when the netns is the host's, and reports only
+        // attributable sockets when a pod shares the netns.
+        for (auto row : ScanContainerNetwork(identity.container_id, pids, scope,
+                                             run.netnsShared(identity.container_id))) {
             ApplyIdentity(row, identity);
             emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
         }
-
-        const auto pid = pids.front();
 
         for (auto row : ScanContainerUsers(pid)) {
             ApplyIdentity(row, identity);
@@ -374,7 +294,7 @@ int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, cons
             emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
         }
 
-        auto ifscan = ScanContainerInterfaces(pid);
+        auto ifscan = ScanContainerInterfaces(pid, scope);
         for (auto row : ifscan.interfaces) {
             ApplyIdentity(row, identity);
             emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row, containerJson));
@@ -384,9 +304,14 @@ int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, cons
             emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row, containerJson));
         }
 
-        for (auto row : ScanContainerProtocols(pid)) {
-            ApplyIdentity(row, identity);
-            emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+        // Routes come from /proc/<pid>/net/route, which is netns-relative — so
+        // on a host-network container it is the NODE's routing table and must
+        // not be attributed here either.
+        if (!scope.netCollapsedToHost()) {
+            for (auto row : ScanContainerProtocols(pid)) {
+                ApplyIdentity(row, identity);
+                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+            }
         }
 
         for (auto row : ScanContainerServices(pid)) {
@@ -397,6 +322,21 @@ int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, cons
         for (auto row : ScanContainerHardware(pid)) {
             ApplyIdentity(row, identity);
             emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row, containerJson));
+        }
+
+        if (status_sink) {
+            ContainerStatus status{identity.container_id, false};
+
+            // `partial` stays false here: unlike the FIM walk there is no row
+            // cap on inventory, so nothing truncates. The two network flags
+            // below say precisely WHICH data classes are absent and why, which
+            // lets the consumer suppress delete detection for just those
+            // tables. Marking the whole container partial instead would stall
+            // deletions for all eleven tables — and on a host without
+            // CAP_SYS_ADMIN that would mean stale rows accumulating forever.
+            status.netns_host_scoped = scope.netCollapsedToHost();
+            status.netns_unreadable  = ifscan.setns_failed;
+            status_sink(status);
         }
     }
 
