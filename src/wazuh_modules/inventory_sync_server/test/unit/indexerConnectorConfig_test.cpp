@@ -212,8 +212,10 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_sync_request_timeout_seconds = 0;
     config.indexer_async_request_timeout_seconds = -4;
     config.indexer_monitoring_interval_seconds = -5;
+    // The retry bounds treat 0 as a real setting ("disable this bound"), so only a NEGATIVE value is
+    // "no opinion" for them; a 0 here would be forwarded, not dropped.
     config.indexer_sync_max_retry_attempts = -6;
-    config.indexer_sync_max_retry_duration_seconds = 0;
+    config.indexer_sync_max_retry_duration_seconds = -8;
     config.indexer_sync_connector_max_bulk_size = -7;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
@@ -247,6 +249,23 @@ TEST(IndexerConnectorConfigTest, ThePipelineGroupCommitThresholdNeverReachesTheC
     EXPECT_FALSE(result.contains("max_bulk_size"))
         << "indexer_sync_max_bulk_size is the pipeline's threshold; absent the connector option, the "
            "connector keeps its own default";
+}
+
+/// The retry-budget bounds read `0` as "disable this bound", so unlike every other numeric key a
+/// `0` here must reach the connector VERBATIM -- dropping it would silently restore the default cap
+/// rather than remove it.
+TEST(IndexerConnectorConfigTest, AZeroRetryBoundIsForwardedAsExplicitZero)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_retry_attempts = 0;
+    config.indexer_sync_max_retry_duration_seconds = 0;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+
+    ASSERT_TRUE(result.contains("max_retry_attempts"));
+    ASSERT_TRUE(result.contains("max_retry_duration_seconds"));
+    EXPECT_EQ(0U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(0U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 /// `0` for max_queue_bytes is the connector's own legitimate "unlimited", so it must reach the

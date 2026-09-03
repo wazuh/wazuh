@@ -337,22 +337,45 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         3600,
         10);
 
-    /* Retry budget of the sync connector. Minimum 1 on both: the connector reads 0 as "no bound",
-     * which is the unbounded-blocking bug these options exist to prevent, so 0 is rejected here
-     * rather than forwarded. The duration default stays below remoted's downstream response
-     * window (20 s), so a flush fails while its caller is still listening. */
+    /* Retry budget of the sync connector. Minimum 0, NOT 1: the connector reads 0 as "disable this
+     * bound", and getDefine_Int_default() calls merror_exit() on an out-of-range value, so a
+     * minimum of 1 would turn that documented setting into a fatal abort. 0 is forwarded verbatim
+     * and warned about below, because disabling a bound lets a persistent 429 or an unreachable
+     * indexer pin a flushing worker -- and the shard behind it -- past the caller's response
+     * window. The duration default stays below remoted's downstream response window (20 s), so a
+     * flush fails while its caller is still listening. */
     config->indexer_sync_max_retry_attempts =
         getDefine_Int_default("wazuh_modules",
                               "inventory_sync_server_indexer_sync_max_retry_attempts", /* -> max_retry_attempts */
-                              1,
+                              0,
                               1000,
                               5);
     config->indexer_sync_max_retry_duration_seconds = getDefine_Int_default(
         "wazuh_modules",
         "inventory_sync_server_indexer_sync_max_retry_duration_seconds", /* -> max_retry_duration_seconds */
-        1,
+        0,
         3600,
         15);
+    if (config->indexer_sync_max_retry_attempts == 0 && config->indexer_sync_max_retry_duration_seconds == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "Both sync retry bounds are disabled (max_retry_attempts=0, max_retry_duration_seconds=0); a "
+               "persistent indexer failure can pin a flush worker indefinitely.");
+    }
+    else if (config->indexer_sync_max_retry_attempts == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "The sync retry attempts bound is disabled (max_retry_attempts=0); retries are limited only by "
+               "max_retry_duration_seconds=%d.",
+               config->indexer_sync_max_retry_duration_seconds);
+    }
+    else if (config->indexer_sync_max_retry_duration_seconds == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "The sync retry duration bound is disabled (max_retry_duration_seconds=0); retries are limited only "
+               "by max_retry_attempts=%d.",
+               config->indexer_sync_max_retry_attempts);
+    }
 }
 
 void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
