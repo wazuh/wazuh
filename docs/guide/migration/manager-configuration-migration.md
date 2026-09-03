@@ -101,8 +101,9 @@ daemons apply). Constructs the 4.x parser tolerated are now rejected at startup,
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
 - **`<cluster><key>` is required**: the section cannot be written without it (the installer always
   generates one).
-- An **empty configuration file is valid**: every option takes its schema default
-  (`bin/wazuh-manager-conf dump` prints the resulting effective document).
+- The **minimal valid document is the bare root, `<wazuh_config/>`**: every option then takes its
+  schema default (`bin/wazuh-manager-conf dump` prints the resulting effective document). A genuinely
+  empty (zero-byte) file is NOT valid — it is rejected as malformed XML at startup.
 
 ### `<global>` section
 
