@@ -39,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Fixed whodata (audit) holding the audisp socket undrained at startup when the manager is unreachable, starving other audit plugins. ([#38382](https://github.com/wazuh/wazuh/pull/38382))
 - Fixed the `disable-account` active response reporting success when the account was not disabled, and stopped `is_valid_username()` from rejecting valid usernames containing consecutive dots. ([#38637](https://github.com/wazuh/wazuh/pull/38637))
 - Fixed the `disable-account` active response returning success when the account command was missing or the system was not supported. ([#38645](https://github.com/wazuh/wazuh/pull/38645))
+- Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
 
 ## [v4.14.8]
 
