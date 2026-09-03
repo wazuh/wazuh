@@ -162,49 +162,19 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     return out;
 }
 
-/// Everything one baseline run needs to know about the host, computed once
-/// instead of once per container per scanner.
-///
-/// Before this existed, resolving a container's PIDs meant a full /proc walk
-/// (reading /proc/<pid>/cgroup for every PID), and it was done once by the
-/// orchestrator plus once inside ScanContainerProcesses plus once inside
-/// ScanContainerNetwork — three walks per container. On a node with 100
-/// containers and 2000 processes that is 300 walks and ~600k file reads per
-/// baseline cycle, none of which produces a row. One sweep replaces all of it.
-struct RunContext
-{
-    PidIndex                        pids;
-    std::unordered_set<std::string> shared_netns;
-    ImageContentCache               image_content;
-
-    static RunContext Build()
-    {
-        RunContext rc;
-        rc.pids         = PidIndex::Build();
-        rc.shared_netns = SharedNetnsContainers(rc.pids.all());
-        return rc;
-    }
-
-    [[nodiscard]] bool netnsShared(const std::string& container_id) const
-    {
-        return shared_netns.find(container_id) != shared_netns.end();
-    }
-};
-
 } // namespace
 
-int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
-                          const std::vector<MonitoredPath>& paths,
-                          const DbsyncRowSink&              sink,
-                          const ContainerStatusSink&        status_sink,
-                          const std::function<void()>&      rate_limit)
+int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
+                              const PidIndex&                   pidIndex,
+                              const std::vector<MonitoredPath>& paths,
+                              const DbsyncRowSink&              sink,
+                              const ContainerStatusSink&        status_sink,
+                              const std::function<void()>&      rate_limit)
 {
     int baselined = 0;
 
-    const auto run = RunContext::Build();
-
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto& pids = run.pids.pidsFor(identity.container_id);
+    for (const auto& identity : discover()) {
+        const auto& pids = pidIndex.pidsFor(identity.container_id);
         if (pids.empty()) continue; // no live PID — nothing to address the rootfs with (yet).
 
         ++baselined;
@@ -245,16 +215,20 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
     return baselined;
 }
 
-int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
-                                  const DbsyncRowSink&       sink,
-                                  const ContainerStatusSink& status_sink)
+int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
+                                       const PidIndex&            pidIndex,
+                                       const DbsyncRowSink&       sink,
+                                       const ContainerStatusSink& status_sink)
 {
     int baselined = 0;
 
-    auto run = RunContext::Build();
+    // Per-run state that is not the PID index: the image-content cache, and the
+    // shared-netns grouping derived from the index.
+    ImageContentCache  imageContent;
+    const auto         sharedNetns = SharedNetnsContainers(pidIndex.all());
 
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto& pids = run.pids.pidsFor(identity.container_id);
+    for (const auto& identity : discover()) {
+        const auto& pids = pidIndex.pidsFor(identity.container_id);
         if (pids.empty()) continue;
 
         ++baselined;
@@ -277,8 +251,9 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
         // Network-namespace-scoped classes. ScanContainerNetwork itself declines
         // to report anything when the netns is the host's, and reports only
         // attributable sockets when a pod shares the netns.
-        for (auto row : ScanContainerNetwork(identity.container_id, pids, scope,
-                                             run.netnsShared(identity.container_id))) {
+        const bool netnsShared = sharedNetns.find(identity.container_id) != sharedNetns.end();
+
+        for (auto row : ScanContainerNetwork(identity.container_id, pids, scope, netnsShared)) {
             ApplyIdentity(row, identity);
             emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
         }
@@ -296,7 +271,7 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
         // image digest), so there is exactly one scan path either way.
         ImageContentCache::Entry standalone;
 
-        const auto* content = run.image_content.find(imageDigest, fingerprint);
+        const auto* content = imageContent.find(imageDigest, fingerprint);
 
         if (content == nullptr) {
             ImageContentCache::Entry fresh;
@@ -310,8 +285,8 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
                 standalone = std::move(fresh);
                 content    = &standalone;
             } else {
-                run.image_content.store(imageDigest, std::move(fresh));
-                content = run.image_content.find(imageDigest, fingerprint);
+                imageContent.store(imageDigest, std::move(fresh));
+                content = imageContent.find(imageDigest, fingerprint);
             }
         }
 
@@ -386,6 +361,37 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
     }
 
     return baselined;
+}
+
+// The production entry points: one /proc sweep, then the shared core.
+//
+// The sweep is what the per-container /proc walks used to be — the orchestrator,
+// the process scanner and the network scanner each walked all of /proc for every
+// container, so a node with 100 containers and 2000 processes did 300 walks
+// (~600k file reads) per cycle without producing a row.
+
+int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
+                          const std::vector<MonitoredPath>& paths,
+                          const DbsyncRowSink&              sink,
+                          const ContainerStatusSink&        status_sink,
+                          const std::function<void()>&      rate_limit)
+{
+    const auto pids = PidIndex::Build();
+
+    return RunFimDbsyncBaselineFrom(
+        [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
+        pids, paths, sink, status_sink, rate_limit);
+}
+
+int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
+                                  const DbsyncRowSink&       sink,
+                                  const ContainerStatusSink& status_sink)
+{
+    const auto pids = PidIndex::Build();
+
+    return RunSyscollectorDbsyncBaselineFrom(
+        [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
+        pids, sink, status_sink);
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
