@@ -20,7 +20,8 @@ from freezegun import freeze_time
 from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_attempt, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, \
     CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
-    CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body
+    CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
+    CACHED_BODY_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -533,9 +534,10 @@ async def test_wazuh_access_logger_middleware():
     ('0', 0),
     (None, None),
     ('not-a-number', None),
+    ('-1', None),
 ])
 def test_get_declared_content_length(content_length, expected):
-    """Check that the declared body length is read from the header and malformed values ignored."""
+    """Check that the declared body length is read from the header and unusable values ignored."""
     request = MagicMock()
     request.headers = {'content-length': content_length} if content_length is not None else {}
 
@@ -709,6 +711,66 @@ async def test_check_auth_context_size_middleware_allowed(path, content_length, 
 
     assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
     assert (receive.await_count if receive else 0) == receive_chunks
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_publishes_the_capped_body():
+    """Check that the body read here is published for the access logger, which sits above."""
+    body = b'{"auth": "context"}'
+    dispatch_mock = AsyncMock(return_value=MagicMock())
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, receive=chunked_receive(body, 1))
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    await middleware.dispatch(request=request, call_next=dispatch_mock)
+
+    assert request.scope['extensions'][CACHED_BODY_KEY] == body
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_adopts_a_body_read_below():
+    """Check that a body only an inner middleware could read still reaches the log.
+
+    A chunked run_as auth context is read by `CheckAuthContextSizeMiddleware`, below this layer,
+    and a body cached in one `BaseHTTPMiddleware` request is replayed downwards but is invisible
+    upwards. Without the hand-off through the scope, the attempt would be logged as an empty body.
+    """
+    body = b'{"auth": "context"}'
+    response = MagicMock()
+    response.status_code = 200
+
+    async def call_next(request):
+        # What `CheckAuthContextSizeMiddleware` does with the chunked body it caps.
+        request.scope['extensions'][CACHED_BODY_KEY] = body
+        return response
+
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT)
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=call_next)
+
+    with patch('api.middlewares.access_log') as mock_access_log:
+        assert await middleware.dispatch(request=request, call_next=call_next) == response
+
+    assert request._body == body
+    assert await mock_access_log.call_args.args[0].json() == {'auth': 'context'}
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_keeps_the_body_it_read_itself():
+    """Check that a published body never overwrites the bytes this layer already read."""
+    body = b'{"a": "b"}'
+    response = MagicMock()
+
+    async def call_next(request):
+        request.scope['extensions'][CACHED_BODY_KEY] = b'{"other": "body"}'
+        return response
+
+    request = build_request(content_length=len(body), receive=chunked_receive(body, 1))
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=call_next)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=call_next) == response
+
+    assert request._body == body
 
 
 @pytest.mark.parametrize('context, status_code, path, expected_body', [

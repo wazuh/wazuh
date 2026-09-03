@@ -45,6 +45,10 @@ HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 # logged without its auth context hash.
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
+# Scope extensions key under which a middleware leaves a body it has already read, for the layers
+# above it -- which never see the stream -- to report
+CACHED_BODY_KEY = 'wazuh_cached_body'
+
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -77,12 +81,16 @@ def get_declared_content_length(request: Request) -> Optional[int]:
     Returns
     -------
     Optional[int]
-        Declared body length, or None when the header is absent or not a valid integer.
+        Declared body length, or None when the header is absent, malformed or negative.
     """
     try:
-        return int(request.headers.get('content-length'))
+        declared_length = int(request.headers.get('content-length'))
     except (TypeError, ValueError):
         return None
+
+    # A negative length is not a length at all: treating it as unknown sends the request down the
+    # capped-read path instead of letting it slip past an upper-bound comparison it cannot fail.
+    return declared_length if declared_length >= 0 else None
 
 
 async def read_capped_body(request: Request, limit: int, detail: str) -> bytes:
@@ -93,7 +101,9 @@ async def read_capped_body(request: Request, limit: int, detail: str) -> bytes:
     chunk by chunk and stops reading from the socket at the limit instead.
 
     A body that fits is cached in the request the same way `Request.body()` caches it, so it is
-    still replayed to the rest of the middleware stack.
+    still replayed to the middleware stack below. That cache is per `Request` object and travels
+    downwards only, so a caller that also needs the bytes read here to be visible to an outer
+    middleware has to publish them with `set_cached_body`.
 
     Parameters
     ----------
@@ -130,6 +140,41 @@ async def read_capped_body(request: Request, limit: int, detail: str) -> bytes:
     return request._body
 
 
+def set_cached_body(request: Request, body: bytes):
+    """Publish a body already read for this request to the middlewares above.
+
+    Every `BaseHTTPMiddleware` layer builds its own `Request`, and the body one of them caches is
+    replayed downwards but is invisible upwards: the outer layer holds a different object, and by
+    the time it runs again the stream is gone. The ASGI scope is the one thing both layers share,
+    so the bytes travel up through the `extensions` dict the access logger creates before
+    dispatching -- the same channel that carries the authenticated identity back out.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    body : bytes
+        Body already read for this request.
+    """
+    request.scope.setdefault('extensions', {})[CACHED_BODY_KEY] = body
+
+
+def get_cached_body(request: Request) -> Optional[bytes]:
+    """Get the body an inner middleware published for this request.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    Optional[bytes]
+        Body read below, or None when no layer published one and the stream was left to the endpoint.
+    """
+    return request.scope.get('extensions', {}).get(CACHED_BODY_KEY)
+
+
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
 
@@ -157,8 +202,9 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # already cached, never by reading the stream again. This runs after the response has been
     # produced, so a payload that will not parse degrades to an empty body rather than turning a
     # served response into a 500.
+    body_read = hasattr(request, '_body')
     body = {}
-    if hasattr(request, '_body') and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
+    if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
         try:
             body = await request.json()
         except RecursionError:
@@ -203,8 +249,10 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             )
         user = user.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
 
-    # Create hash if run_as login
-    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
+    # Create hash if run_as login. Only from an auth context that was actually read: hashing the
+    # empty body that stands in for a payload no layer cached would stamp every such attempt with
+    # the same constant, valid-looking digest instead of leaving the field empty.
+    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT and body_read:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
 
@@ -382,7 +430,11 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
                      f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes."
             declared_length = get_declared_content_length(request)
             if declared_length is None:
-                await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, detail)
+                # This is the only layer that reads a chunked auth context, and the access logger
+                # above it will never see the stream, so the bytes are handed over explicitly.
+                # Without this, a chunked run_as attempt is logged with an empty body.
+                set_cached_body(request,
+                                await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, detail))
             elif declared_length > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
                 raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
         return await call_next(request)
@@ -444,6 +496,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
             await request.body()
 
         response = await call_next(request)
+
+        # A chunked run_as auth context is read by `CheckAuthContextSizeMiddleware`, which caps it
+        # while reading because there is no length to check. That happens below this layer, and a
+        # body cached in one `BaseHTTPMiddleware` request travels downwards only, so adopt the
+        # bytes it published; otherwise the attempt is logged, and hashed, as an empty body.
+        if not hasattr(request, '_body') and (cached_body := get_cached_body(request)) is not None:
+            request._body = cached_body
+
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
         return response
 
