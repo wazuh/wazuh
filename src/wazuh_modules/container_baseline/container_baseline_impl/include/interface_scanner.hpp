@@ -14,7 +14,7 @@ namespace wazuh::container_baseline {
 /// @brief One network interface inside the container's own network namespace.
 /// Field names mirror syscollector's dbsync_network_iface columns, minus the
 /// host-only adapter/gateway notions.
-struct InterfaceBaselineRow
+struct InterfaceBaselineRow : ContainerScoped
 {
     std::string name;
     std::string mac;   ///< Empty for interfaces without link-layer address.
@@ -29,23 +29,17 @@ struct InterfaceBaselineRow
     uint64_t    tx_packets{0};
     uint64_t    tx_errors{0};
     uint64_t    tx_dropped{0};
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief One IP address bound inside the container's network namespace.
 /// Mirrors dbsync_network_address (iface, proto, address, netmask, broadcast).
-struct NetworkAddressBaselineRow
+struct NetworkAddressBaselineRow : ContainerScoped
 {
     std::string interface_name;
     std::string protocol; ///< "ipv4" / "ipv6".
     std::string address;
     std::string netmask;
     std::string broadcast; ///< Empty when the interface has none (lo, v6).
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 struct InterfaceScan

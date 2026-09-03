@@ -13,7 +13,7 @@ namespace wazuh::container_baseline {
 
 /// @brief One socket baseline row. Field names mirror syscollector's
 /// PORTS_SQL_STATEMENT (dbsync_ports) column-for-column, plus container context.
-struct PortBaselineRow
+struct PortBaselineRow : ContainerScoped
 {
     std::string network_transport;  ///< "tcp", "tcp6", "udp", "udp6".
     std::string source_ip;
@@ -24,9 +24,6 @@ struct PortBaselineRow
     int64_t     process_pid{0};     ///< 0 if the owning process could not be attributed.
     std::string process_name;
     uint64_t    file_inode{0};
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Baseline the container's sockets from /proc/<pid>/net/{tcp,tcp6,udp,udp6},

@@ -20,7 +20,7 @@ namespace wazuh::container_baseline {
 /// map onto memory_total and cpu_cores so the manager — which knows the row is a
 /// container's via the container_id block — can treat it as virtual hardware
 /// distinct from the node's real hardware row.
-struct HardwareBaselineRow
+struct HardwareBaselineRow : ContainerScoped
 {
     std::string cpu_name;        ///< Physical CPU model (shared host silicon).
     int64_t     cpu_cores{0};    ///< Effective cores from cpu.max (quota/period); host logical count if unlimited.
@@ -28,9 +28,6 @@ struct HardwareBaselineRow
     int64_t     memory_total{0}; ///< bytes — memory.max, or host MemTotal when unlimited.
     int64_t     memory_free{0};  ///< bytes — memory_total − memory_used.
     int64_t     memory_used{0};  ///< bytes — memory.current.
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Effective core count from a cgroup v2 cpu.max value ("<quota> <period>"

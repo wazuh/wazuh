@@ -14,16 +14,13 @@ namespace wazuh::container_baseline {
 /// wazuh-states-inventory-protocols row (interface + gateway + metric). One row
 /// per default route; the host equivalent is built from /proc/net/route the same
 /// way (see data_provider NetworkLinuxInterface).
-struct ProtocolBaselineRow
+struct ProtocolBaselineRow : ContainerScoped
 {
     std::string interface_name; ///< Route's outgoing interface (Iface column).
     std::string type;           ///< "ipv4".
     std::string gateway;        ///< Default gateway; empty for a gateway-less (0.0.0.0) route.
     std::string dhcp;           ///< "unknown" — a container rootfs rarely carries distro ifcfg files.
     int64_t     metric{0};      ///< Route metric.
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Decode a /proc/net/route hex gateway (the __be32 printed as

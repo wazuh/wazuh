@@ -25,7 +25,7 @@ namespace wazuh::container_baseline {
 /// path parameter on UsersProvider::collectLocalUsers() — kept standalone for
 /// the spike so the module stays free of the sysinfo link; flag for
 /// consolidation when the schema lands (#37203-4).
-struct UserBaselineRow
+struct UserBaselineRow : ContainerScoped
 {
     std::string name;
     int64_t     uid{0};
@@ -33,9 +33,6 @@ struct UserBaselineRow
     std::string description; ///< GECOS field.
     std::string home;
     std::string shell;
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief One group read from a container's own /etc/group. Same userns
@@ -45,14 +42,11 @@ struct UserBaselineRow
 /// containers — it enumerates via NSS (getgrent/getgrgid_r, groups_linux.cpp),
 /// which libc always resolves against the host's own databases and cannot be
 /// pointed at another rootfs. A stream parser is the only host-side option.
-struct GroupBaselineRow
+struct GroupBaselineRow : ContainerScoped
 {
     std::string name;
     int64_t     gid{0};
     std::vector<std::string> members;
-
-    std::string        container_id;
-    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Parse one passwd(5) line ("name:passwd:uid:gid:gecos:home:shell").
