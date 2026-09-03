@@ -451,7 +451,7 @@ function xml_block_present($block, $sub) {
     if (-Not $block_match.Success) {
         return $false
     }
-    return $block_match.Groups[1].Value.Contains("<$sub>")
+    return [regex]::IsMatch($block_match.Groups[1].Value, "<$sub>|<$sub\s*/>")
 }
 
 # Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block

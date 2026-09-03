@@ -374,6 +374,13 @@ set_agent_ssl_ca() {
     ca_path="$(xml_escape "${ca_path}")"
 
     if agent_option_is_set "certificate_authorities"; then
+        # agent_option_is_set() also matches a self-closing <certificate_authorities/>,
+        # but edit_value_tag() only recognizes the paired <tag>...</tag> form -- left
+        # as-is, it would find nothing to substitute and silently drop
+        # WAZUH_REGISTRATION_CA. Normalize the self-closing form to its paired, empty
+        # equivalent first, so edit_value_tag() always has something to rewrite.
+        ${sed} "s#<certificate_authorities[ \t]*/>#<certificate_authorities></certificate_authorities>#" "${CONF_FILE}"
+
         # edit_value_tag() passes its second argument straight into a sed replacement
         # (s#<tag>.*</tag>#<tag>VALUE</tag>#g), where a literal '&' means "the whole
         # matched text" and '\' is sed's own escape character -- on top of the

@@ -108,10 +108,13 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    /* verification_mode is still UNSET whenever neither ossec.conf nor the shared
-     * remote config set <ssl><verification_mode> explicitly. Mirrors the manager's
-     * own inference (remote-config.c): a pinned CA without an explicit mode means the
-     * operator wants it verified, not silently unused. */
+    /* verification_mode is still UNSET whenever ossec.conf didn't set it explicitly --
+     * the shared remote config never reaches this point at all: Read_Agent_Shared()
+     * (dispatched above for AGENTCONFIG) only recognizes <batch>/force_reconnect_interval
+     * under <agent> and rejects everything else, <ssl> included, so a centrally-managed
+     * fleet cannot set verification_mode/certificate_authorities via shared config today.
+     * Mirrors the manager's own inference (remote-config.c): a pinned CA without an
+     * explicit mode means the operator wants it verified, not silently unused. */
     if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
         /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
          * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will

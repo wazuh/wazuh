@@ -359,7 +359,7 @@ probe_server_verified() {
 # pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
 # <ssl> block instead of creating a second, duplicate one.
 xml_block_present() {
-    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -q "<$2>"
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -qE "<$2>|<$2[ \t]*/>"
 }
 
 # Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block

@@ -434,12 +434,17 @@ public function config()
         ' its TLS material instead of a CA path of its own.
         If WAZUH_REGISTRATION_CA <> "" Then
             checkText = StrippedOfComments(strText)
+            Dim caTagRegex, selfClosingCaRegex
+            Set caTagRegex = New RegExp
+            caTagRegex.Pattern = "<certificate_authorities(\s*/)?>"
+            Set selfClosingCaRegex = New RegExp
+            selfClosingCaRegex.Pattern = "<certificate_authorities\s*/>"
             If InStr(checkText, "<verification_mode>system</verification_mode>") > 0 Then
                 ' 'system' trusts the OS store, not a configured CA: the agent refuses to
                 ' start with both set (validateTls() in moduleConfig.cpp), so writing a CA
                 ' here would just trade a silently-unused CA for a daemon that won't boot.
                 install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together."
-            ElseIf InStr(checkText, "<certificate_authorities>") > 0 Then
+            ElseIf caTagRegex.Test(checkText) Then
                 ' Line by line, skipping commented-out lines, instead of a single global
                 ' regex.Replace over the raw text -- a Global replace would rewrite every
                 ' literal <certificate_authorities>...</certificate_authorities>, commented
@@ -458,6 +463,14 @@ public function config()
                         Set re = new regexp
                         re.Pattern = "<certificate_authorities>.*</certificate_authorities>"
                         caLines(caLineIdx) = re.Replace(caLine, "<certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
+                        caRewritten = True
+                    ElseIf (Not caRewritten) And selfClosingCaRegex.Test(caLine) Then
+                        ' Same tag, self-closing form (<certificate_authorities/>, OS_XML's
+                        ' equivalent of an empty paired tag) -- rewrite it into the paired,
+                        ' populated form instead of leaving it and falling through to the
+                        ' <ssl>-exists branch below, which would insert a second, duplicate
+                        ' <certificate_authorities> line right alongside this one.
+                        caLines(caLineIdx) = selfClosingCaRegex.Replace(caLine, "<certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
                         caRewritten = True
                     End If
                 Next
