@@ -197,6 +197,8 @@ void test_is_valid_username_invalid_with_whitespace(void **state) {
     (void) state;
     assert_int_equal(is_valid_username("test user"), 0);
     assert_int_equal(is_valid_username("test\tuser"), 0);
+    assert_int_equal(is_valid_username("test\nuser"), 0);
+    assert_int_equal(is_valid_username("test\ruser"), 0);
 }
 
 void test_is_valid_username_invalid_with_slash(void **state) {
@@ -205,18 +207,73 @@ void test_is_valid_username_invalid_with_slash(void **state) {
     assert_int_equal(is_valid_username("test\\user"), 0);
 }
 
-void test_is_valid_username_invalid_path_traversal(void **state) {
+// Traversal sequences are rejected by the separator rule, not by a dedicated guard
+void test_is_valid_username_invalid_separators_in_traversal(void **state) {
     (void) state;
     assert_int_equal(is_valid_username("../root"), 0);
     assert_int_equal(is_valid_username("test/../user"), 0);
+    assert_int_equal(is_valid_username("..\\root"), 0);
 }
 
-void test_is_valid_username_invalid_too_long(void **state) {
+void test_is_valid_username_valid_with_consecutive_dots(void **state) {
     (void) state;
-    char long_username[300];
-    memset(long_username, 'a', 257);
-    long_username[257] = '\0';
-    assert_int_equal(is_valid_username(long_username), 0);
+    assert_int_equal(is_valid_username("john..doe"), 1);
+    assert_int_equal(is_valid_username("a..b"), 1);
+    assert_int_equal(is_valid_username(".."), 1);
+    assert_int_equal(is_valid_username("."), 1);
+}
+
+// The 256 bound is the current contract, not a settled one: LOGIN_NAME_MAX counts
+// the NUL, so the real maximum is 255. Confirm before changing.
+void test_is_valid_username_length_boundary(void **state) {
+    (void) state;
+    char username[300];
+
+    memset(username, 'a', 256);
+    username[256] = '\0';
+    assert_int_equal(is_valid_username(username), 1);
+
+    memset(username, 'a', 257);
+    username[257] = '\0';
+    assert_int_equal(is_valid_username(username), 0);
+}
+
+// Tests for get_username_from_json (the getter must apply is_valid_username)
+
+void test_get_username_from_json_accepts_valid(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"alice\"}}}}");
+    assert_non_null(input);
+    const char *username = get_username_from_json(input);
+    assert_non_null(username);
+    assert_string_equal(username, "alice");
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_rejects_invalid(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"--help\"}}}}");
+    assert_non_null(input);
+    assert_null(get_username_from_json(input));
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_accepts_consecutive_dots(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"john..doe\"}}}}");
+    assert_non_null(input);
+    const char *username = get_username_from_json(input);
+    assert_non_null(username);
+    assert_string_equal(username, "john..doe");
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_rejects_root(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"parameters\":{\"alert\":{\"data\":{\"dstuser\":\"root\"}}}}");
+    assert_non_null(input);
+    assert_null(get_username_from_json(input));
+    cJSON_Delete(input);
 }
 
 int main(void) {
@@ -245,8 +302,15 @@ int main(void) {
         cmocka_unit_test(test_is_valid_username_invalid_with_comma),
         cmocka_unit_test(test_is_valid_username_invalid_with_whitespace),
         cmocka_unit_test(test_is_valid_username_invalid_with_slash),
-        cmocka_unit_test(test_is_valid_username_invalid_path_traversal),
-        cmocka_unit_test(test_is_valid_username_invalid_too_long),
+        cmocka_unit_test(test_is_valid_username_invalid_separators_in_traversal),
+        cmocka_unit_test(test_is_valid_username_valid_with_consecutive_dots),
+        cmocka_unit_test(test_is_valid_username_length_boundary),
+
+        // get_username_from_json tests
+        cmocka_unit_test(test_get_username_from_json_accepts_valid),
+        cmocka_unit_test(test_get_username_from_json_rejects_invalid),
+        cmocka_unit_test(test_get_username_from_json_accepts_consecutive_dots),
+        cmocka_unit_test(test_get_username_from_json_rejects_root),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

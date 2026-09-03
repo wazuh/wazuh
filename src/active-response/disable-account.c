@@ -15,6 +15,7 @@ int main (int argc, char **argv) {
     char *cmd_path = NULL;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
+    int end_of_options = 0;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
@@ -41,6 +42,7 @@ int main (int argc, char **argv) {
 
         action2 = send_keys_and_check_message(argv, keys);
 
+        os_free(keys[0]);
         os_free(keys);
 
         // If necessary, abort execution
@@ -63,6 +65,9 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
+        // passwd parses options with getopt, so the username must be delimited
+        end_of_options = 1;
+
         // Checking if passwd is present
         if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
@@ -106,7 +111,16 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    char *exec_cmd1[4] = { cmd_path, args, (char *)user, NULL };
+    char *exec_cmd1[5];
+    int argc_cmd = 0;
+
+    exec_cmd1[argc_cmd++] = cmd_path;
+    exec_cmd1[argc_cmd++] = args;
+    if (end_of_options) {
+        exec_cmd1[argc_cmd++] = "--";
+    }
+    exec_cmd1[argc_cmd++] = (char *)user;
+    exec_cmd1[argc_cmd] = NULL;
 
     wfd_t *wfd = wpopenv(cmd_path, exec_cmd1, W_BIND_STDERR);
     if (!wfd) {
@@ -117,7 +131,39 @@ int main (int argc, char **argv) {
         os_free(cmd_path);
         return OS_INVALID;
     }
-    wpclose(wfd);
+    // Keep the first diagnostic line, then drain to EOF: wpclose() closes the read
+    // end before waiting, so output left buffered would give the child a SIGPIPE
+    // and make a successful command look like a failure. The drain runs
+    // unconditionally, since the first read may fail without reaching EOF.
+    char cmd_output[OS_SIZE_1024];
+    char discarded[OS_SIZE_1024];
+    memset(cmd_output, '\0', OS_SIZE_1024);
+    if (fgets(cmd_output, OS_SIZE_1024, wfd->file_out)) {
+        char *newline = strchr(cmd_output, '\n');
+        if (newline) {
+            *newline = '\0';
+        }
+    }
+    while (fgets(discarded, OS_SIZE_1024, wfd->file_out)) {
+        continue;
+    }
+
+    int wp_closefd = wpclose(wfd);
+    if (!WIFEXITED(wp_closefd) || WEXITSTATUS(wp_closefd) != 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        if (WIFEXITED(wp_closefd)) {
+            snprintf(log_msg, OS_MAXSTR -1, "Command '%s' failed to %s the account '%s' (exit code %d): %s",
+                     cmd_path, action == ADD_COMMAND ? "disable" : "enable", user,
+                     WEXITSTATUS(wp_closefd), cmd_output);
+        } else {
+            snprintf(log_msg, OS_MAXSTR -1, "Command '%s' terminated abnormally while trying to %s the account '%s': %s",
+                     cmd_path, action == ADD_COMMAND ? "disable" : "enable", user, cmd_output);
+        }
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        os_free(cmd_path);
+        return OS_INVALID;
+    }
 
     write_debug_file(argv[0], "Ended");
 

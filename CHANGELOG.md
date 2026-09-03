@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - Bounded the `snort-full` log record appends to the available buffer space and sized the queued preprocessor message from its own line in `wazuh-logcollector`. ([#38472](https://github.com/wazuh/wazuh/pull/38472))
 - Restricted the GitHub, Office 365 and MS Graph wodles pagination and content retrieval to the configured API host, so the authentication token is not sent to another host. ([#38688](https://github.com/wazuh/wazuh/pull/38688))
 - Fixed whodata (audit) holding the audisp socket undrained at startup when the manager is unreachable, starving other audit plugins. ([#38382](https://github.com/wazuh/wazuh/pull/38382))
+- Fixed the `disable-account` active response reporting success when the account was not disabled, and stopped `is_valid_username()` from rejecting valid usernames containing consecutive dots. ([#38637](https://github.com/wazuh/wazuh/pull/38637))
 
 ## [v4.14.8]
 

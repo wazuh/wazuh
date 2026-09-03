@@ -307,6 +307,8 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     return NULL;
 }
 
+// The rejected set assumes the username is passed as a discrete argv element,
+// never interpolated into a path or a shell command line.
 int is_valid_username(const char *username) {
     if (!username || !*username) {
         return 0;
@@ -352,11 +354,6 @@ int is_valid_username(const char *username) {
         if (c == '/' || c == '\\') {
             return 0;
         }
-    }
-
-    // Reject directory traversal sequence
-    if (strstr(username, "..") != NULL) {
-        return 0;
     }
 
     return 1;
