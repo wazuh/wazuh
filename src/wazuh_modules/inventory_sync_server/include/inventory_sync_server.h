@@ -176,7 +176,7 @@ extern "C"
         int vd_feed_retry_after_seconds; ///< Value of the `Retry-After` header attached to the 503
                                          ///< returned for vulnerability-detection sessions while
                                          ///< the CVE feed is still downloading.
-                                         ///< Range 10..1800. <=0 -> 60.
+                                         ///< Range 10..1800. <=0 -> 10.
         int vd_workers;                  ///< Workers of the vulnerability-detection scan lane
                                          ///< (scan -> index -> respond, one connector each). The
                                          ///< scanner has its own matching per-slot pool, so

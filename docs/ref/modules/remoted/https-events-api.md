@@ -404,16 +404,17 @@ notes).
 | Max header value size                 | `8192 B`              | `remoted.http_max_header_value_size`    |
 | Max header count                      | `64`                  | `remoted.http_max_header_count`         |
 | Max pipelined requests per connection | `4`                   | `remoted.http_max_pipelined_requests`   |
-| Concurrent TCP accepts                | `2`                   | `remoted.http_concurrent_accepts`       |
+| Concurrent TCP accepts                | `cpp_get_nproc()`, floored at `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size               | `8192 B`              | `remoted.http_buffer_size`              |
 | Accept `Content-Encoding: zstd`       | enabled               | `remoted.http_content_encoding_enabled` |
 
-I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
-set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
+I/O threads, handler worker threads, and concurrent TCP accepts are count settings: a `<=0` value
+(including "not set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
 (`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed constant, so the pool
 sizes track the host/container's available CPUs. The handler worker pool is oversubscribed (`2x`)
 because that work can block (token verification, `client.keys` file I/O), unlike the purely
-async I/O threads.
+async I/O threads. Concurrent TCP accepts is additionally floored at `2` regardless of core count,
+so a single-vCPU host or cgroup does not regress below the historical fixed default.
 
 Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
 ciphers, client verification mode) are **not** internal options -- they are regular, user-facing

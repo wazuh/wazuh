@@ -247,6 +247,28 @@ namespace
         }
     }
 
+    // Opens a raw TCP connection and closes it immediately without writing a single byte -- no
+    // TLS ClientHello, nothing. The moment the OS completes the three-way handshake, RESTinio's
+    // async_accept fires and the connection is "accepted" at the RESTinio level regardless of
+    // what the client does next; abandoning it here is what leaves it sitting in the
+    // accepted-but-not-yet-fully-set-up window the #38741 fix closes.
+    void connectAndAbandon(std::uint16_t port)
+    {
+        try
+        {
+            asio::io_context ioc;
+            asio::ip::tcp::socket socket {ioc};
+            asio::ip::tcp::resolver resolver {ioc};
+            const auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port));
+            asio::connect(socket, endpoints);
+            // Falls out of scope immediately, closing the socket -- best-effort: what matters is
+            // what the SERVER does with the accept, not whether our own connect() fully succeeds.
+        }
+        catch (const std::exception&)
+        {
+        }
+    }
+
     // Removes a fixed set of scratch files on scope exit. Never copied/moved/returned, unlike
     // TestCertificate -- safe to give this one a destructor.
     class ScratchFileCleanup final
@@ -448,4 +470,40 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightStream)
         std::this_thread::sleep_for(std::chrono::milliseconds {20});
     }
     EXPECT_TRUE(destroyed->load()) << "the byte source outlived server teardown";
+}
+
+TEST(ShutdownRace, StopSequenceSurvivesConnectionsAcceptedButNeverWritten)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_shutdown_race_abandoned");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup certCleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    constexpr int kIterations = 10;
+    constexpr int kBurstPerIteration = 32;
+
+    for (int iteration = 0; iteration < kIterations; ++iteration)
+    {
+        auto server = makeHttpServer();
+
+        HttpServerConfig config;
+        config.port = static_cast<std::uint16_t>(26000 + ((::getpid() + iteration) % 5000));
+        config.certificatePath = certOpt->certPath;
+        config.privateKeyPath = certOpt->keyPath;
+        server->start(config);
+
+        // Fire a burst right before stopping: widens the chance that at least one connection
+        // lands in the accepted-but-not-yet-processed window right as stop() runs.
+        for (int i = 0; i < kBurstPerIteration; ++i)
+        {
+            connectAndAbandon(config.port);
+        }
+
+        server->stopAccepting();
+        server->stop();
+    }
+
+    SUCCEED();
 }

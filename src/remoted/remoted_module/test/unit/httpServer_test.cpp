@@ -202,7 +202,9 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxHeaderValueSize, 8192U);
     EXPECT_EQ(config.maxHeaderCount, 64U);
     EXPECT_EQ(config.maxPipelinedRequests, 4U);
-    EXPECT_EQ(config.concurrentAccepts, 2U);
+    // nproc, floored at 2 (a single-vCPU host/cgroup must not regress below the old fixed
+    // default) -- see MIN_CONCURRENT_ACCEPTS in httpServerConfig.cpp.
+    EXPECT_EQ(config.concurrentAccepts, std::max<std::size_t>(static_cast<std::size_t>(cpp_get_nproc()), 2U));
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);

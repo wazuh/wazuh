@@ -97,7 +97,7 @@ namespace invsync
     /// Group-commit flush threshold fallback; mirrors the sync connector's own max_bulk_size default.
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
-    constexpr int DEFAULT_VD_RETRY_AFTER_SECS {60};
+    constexpr int DEFAULT_VD_RETRY_AFTER_SECS {10};
     /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
     /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
     /// that failed would have no responder to report to.
