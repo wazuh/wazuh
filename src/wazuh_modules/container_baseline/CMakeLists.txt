@@ -34,7 +34,10 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/container_instances_client/include
 )
 
-file(GLOB CONTAINER_BASELINE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+# CONFIGURE_DEPENDS: without it a plain GLOB is evaluated only at configure
+# time, so adding a source file produced confusing "undefined reference"
+# failures until someone re-ran cmake by hand.
+file(GLOB CONTAINER_BASELINE_SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 add_library(container_baseline SHARED ${CONTAINER_BASELINE_SRC})
 

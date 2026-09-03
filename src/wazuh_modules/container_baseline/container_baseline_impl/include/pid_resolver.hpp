@@ -26,6 +26,13 @@ class PidIndex
         /// @brief Perform the single /proc sweep and build the index.
         static PidIndex Build();
 
+        /// @brief Build an index from a supplied mapping instead of sweeping
+        /// /proc, so the orchestrator can be exercised against containers that
+        /// do not exist on the test host. PIDs are sorted, exactly as Build()
+        /// leaves them, since callers rely on `pidsFor().front()` being the
+        /// lowest.
+        static PidIndex FromMap(std::unordered_map<std::string, std::vector<pid_t>> byContainer);
+
         /// @brief Live PIDs belonging to `container_id`, ascending, so
         /// `.front()` is the lowest PID — the one most likely to be the
         /// container's entrypoint and the longest-lived. Returns a reference to
