@@ -60,6 +60,16 @@ ContainerScope DetectContainerScope(pid_t pid)
     return scope;
 }
 
+bool RootfsStillAddressable(pid_t pid)
+{
+    struct stat st {};
+
+    // stat() rather than lstat(): /proc/<pid>/root is a magic symlink, and what
+    // matters is whether it still RESOLVES to the container's root, not whether
+    // the link itself is present.
+    return ::stat(("/proc/" + std::to_string(pid) + "/root").c_str(), &st) == 0;
+}
+
 std::unordered_set<std::string>
 SharedNetnsContainers(const std::unordered_map<std::string, std::vector<pid_t>>& pids_by_container)
 {

@@ -62,3 +62,15 @@ TEST(DetectContainerScope, DeadPidIsUnknownNotCollapsed)
     EXPECT_EQ(scope.pid, ScopeKind::Unknown);
     EXPECT_FALSE(scope.netCollapsedToHost());
 }
+
+TEST(RootfsStillAddressable, TrueForALiveProcess)
+{
+    EXPECT_TRUE(wazuh::container_baseline::RootfsStillAddressable(::getpid()));
+}
+
+TEST(RootfsStillAddressable, FalseForADeadPid)
+{
+    // The signal that turns "the PID exited partway through the scan" from a
+    // silent partial row set into a reported incomplete scan.
+    EXPECT_FALSE(wazuh::container_baseline::RootfsStillAddressable(0));
+}
