@@ -14,6 +14,7 @@
 #include "container_images_config.hpp"
 #include "container_images_db.hpp"
 #include "iimage_reader.hpp"
+#include "registry_image_reader.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -21,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <atomic>
 #include <mutex>
 
 namespace containerimages
@@ -32,7 +34,8 @@ namespace containerimages
     /// report themselves here and yield no reader, so the configuration grammar does not
     /// change when one of them is implemented.
     std::unique_ptr<IImageReader> makeReader(const ConfiguredReference& reference,
-                                            const std::string& knownConfigDigest);
+                                            const std::string& knownConfigDigest,
+                                            const ReaderContext& context);
 
     /// @brief Orchestrates the module: owns the configuration, the scan loop and the local
     /// database.
@@ -43,7 +46,7 @@ namespace containerimages
             /// @param readerFactory Factory used to build a reader (overridable for tests).
             /// @param db Optional database layer (overridable for tests).
             ContainerImagesImpl(ContainerImagesConfig config,
-                                std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> readerFactory = makeReader,
+                                std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&, const ReaderContext&)> readerFactory = makeReader,
                                 std::shared_ptr<ContainerImagesDB> db = nullptr);
 
             /// @brief Run the scan loop until stop() is called. Blocks the caller.
@@ -86,11 +89,20 @@ namespace containerimages
                          std::uint64_t version);
 
             ContainerImagesConfig m_config;
-            std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> m_readerFactory;
+            std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&, const ReaderContext&)> m_readerFactory;
             std::shared_ptr<ContainerImagesDB> m_db;
+            std::shared_ptr<ICredentialProvider> m_credentials;
+            std::uint64_t m_scanBytes {0};
             bool m_running {false};
             bool m_stopRequested {false};
             std::mutex m_mutex;
+
+            /// @brief The same request as @ref m_stopRequested, readable without the lock.
+            ///
+            /// A reader streaming a layer has to be able to notice a stop between two
+            /// reads, and it cannot take the scan mutex to do it. Both are set in stop();
+            /// the flag is what a long-running read polls.
+            std::atomic<bool> m_stopFlag {false};
             std::condition_variable m_condition;
     };
 } // namespace containerimages

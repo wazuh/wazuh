@@ -23,6 +23,12 @@ endif(APPLE)
 
 add_subdirectory(container_images_impl)
 
+# The credential store CLI. Not built for Windows: registry support is not offered there
+# and the store refuses to write a credential it cannot restrict the permissions of.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_subdirectory(agent_keystore)
+endif()
+
 include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/zlib/)

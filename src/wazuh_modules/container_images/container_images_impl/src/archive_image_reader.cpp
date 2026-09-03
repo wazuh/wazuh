@@ -14,6 +14,7 @@
 #include "container_images_config.hpp"
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
+#include "oci_metadata.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -139,71 +140,14 @@ namespace
     /// @brief Reads the package databases of one layer, by key.
     using LayerFetch = std::function<containerimages::LayerSnapshot(const std::string&)>;
 
-    /// @brief Parse a metadata document, returning an empty object on failure.
-    nlohmann::json parseJson(const std::string& content)
-    {
-        if (content.empty())
-        {
-            return nlohmann::json::object();
-        }
-
-        // Non-throwing parse: a discarded value is returned on malformed input, and it is
-        // not an object, so it would fail every accessor below. Copy-initialized on purpose:
-        // brace-initializing a json from a json selects its initializer-list constructor,
-        // which would wrap the document in an array.
-        auto document = nlohmann::json::parse(content, nullptr, false);
-
-        return document.is_object() ? document : nlohmann::json::object();
-    }
-
-    /// @brief Read a string field, or an empty string when the node is not an object, the
-    /// field is missing, or the field is not a string.
-    ///
-    /// Every field below comes from image metadata that may be attacker-influenced, so no
-    /// accessor may assume a type: nlohmann::json::value() throws on both counts.
-    std::string stringField(const nlohmann::json& node, const std::string& key)
-    {
-        if (!node.is_object())
-        {
-            return {};
-        }
-
-        const auto field {node.find(key)};
-
-        return (field != node.end() && field->is_string()) ? field->get<std::string>() : std::string {};
-    }
-
-    /// @brief Read an array field, or an empty array when it is missing or not an array.
-    nlohmann::json arrayField(const nlohmann::json& node, const std::string& key)
-    {
-        if (!node.is_object())
-        {
-            return nlohmann::json::array();
-        }
-
-        const auto field {node.find(key)};
-
-        return (field != node.end() && field->is_array()) ? *field : nlohmann::json::array();
-    }
-
-    /// @brief True if a digest algorithm matches the OCI character set `[a-z0-9]+`.
-    bool isSafeDigestAlgorithm(const std::string& algorithm)
-    {
-        return !algorithm.empty() && std::all_of(algorithm.begin(), algorithm.end(), [](const char character)
-        {
-            return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9');
-        });
-    }
-
-    /// @brief True if a digest encoded part matches the OCI character set `[a-zA-Z0-9=_-]+`.
-    bool isSafeDigestEncoded(const std::string& encoded)
-    {
-        return !encoded.empty() && std::all_of(encoded.begin(), encoded.end(), [](const char character)
-        {
-            return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
-                   (character >= '0' && character <= '9') || character == '=' || character == '_' || character == '-';
-        });
-    }
+    // The metadata accessors and the digest character-set checks are shared with the
+    // registry reader, which parses the same documents served over HTTP rather than read
+    // from disk. They live in oci_metadata so the two readers cannot drift.
+    using containerimages::oci::arrayField;
+    using containerimages::oci::isSafeDigestAlgorithm;
+    using containerimages::oci::isSafeDigestEncoded;
+    using containerimages::oci::parseJson;
+    using containerimages::oci::stringField;
 
     /// @brief Resolve a digest ("sha256:abc...") to its blob key under the layout.
     /// Returns an empty key for malformed or unsafe digests.
@@ -306,34 +250,8 @@ namespace
         return {};
     }
 
-    /// @brief Fill platform metadata from a parsed configuration blob.
-    void applyConfigMetadata(const nlohmann::json& config, containerimages::ImageReferenceRecord& record)
-    {
-        record.os = stringField(config, "os");
-        record.architecture = stringField(config, "architecture");
-        record.variant = stringField(config, "variant");
-        record.osVersion = stringField(config, "os.version");
-    }
-
-    /// @brief True when an index entry's platform marks it as an attestation or
-    /// provenance manifest rather than a real image: buildx and containerd both write
-    /// "unknown"/"unknown" as the platform of those, since they carry no image content.
-    bool isAttestationManifest(const nlohmann::json& entry)
-    {
-        if (!entry.is_object())
-        {
-            return false;
-        }
-
-        const auto platform {entry.find("platform")};
-
-        if (platform == entry.end() || !platform->is_object())
-        {
-            return false;
-        }
-
-        return stringField(*platform, "os") == "unknown" || stringField(*platform, "architecture") == "unknown";
-    }
+    using containerimages::oci::applyConfigMetadata;
+    using containerimages::oci::isAttestationManifest;
 
     /// @brief Collect the descriptors an OCI manifest, or an index of manifests, points to.
     ///

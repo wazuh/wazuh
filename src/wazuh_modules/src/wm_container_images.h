@@ -25,12 +25,23 @@ typedef struct wm_container_images_reference_t {
     char *value;                        // Path or image reference
 } wm_container_images_reference_t;
 
+// Credentials for one registry, named by keystore key rather than by value: no
+// credential is ever written into ossec.conf.
+typedef struct wm_container_images_registry_t {
+    char *host;                         // Registry host, e.g. "ghcr.io"
+    char *user_key;                     // Keystore key holding the user name
+    char *passkey_key;                  // Keystore key holding the access token
+} wm_container_images_registry_t;
+
 typedef struct wm_container_images_t {
     unsigned int enabled:1;             // Main switch
     unsigned int scan_on_start:1;       // Scan on module start
     unsigned int interval;              // Time interval between scans (seconds)
     wm_container_images_reference_t *references; // Configured image sources
     int references_count;               // Number of configured image sources
+    wm_container_images_registry_t *registries;  // Per-registry credential key names
+    int registries_count;               // Number of configured registries
+    char *ca_bundle;                    // Certificate bundle path; detected when unset
 } wm_container_images_t;
 
 // Parse XML configuration
