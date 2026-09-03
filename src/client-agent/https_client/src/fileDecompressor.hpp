@@ -20,11 +20,10 @@
 /// Streams a zstd frame back out of a file into plain bytes, one chunk at a
 /// time -- the mirror of IFileCompressor/ZstdFileCompressor (#38308), reading
 /// instead of writing zstd. Unlike that class, the input here is untrusted
-/// (a manager response, #38514): the declared window size is capped before
-/// any decoder state is allocated, and the growing output is capped against
-/// the caller's own byte budget, mirroring the manager's own request-body
-/// decoder (remoted_module's zstdDecoder.cpp). Injected so tests can force
-/// decompression failures without touching zstd or the filesystem.
+/// (a manager response, #38514): every frame's declared window size is
+/// capped before that frame's decoder state is allocated, and the growing
+/// output is capped against the caller's own byte budget. Injected so tests
+/// can force decompression failures without touching zstd or the filesystem.
 class IFileDecompressor
 {
     public:
@@ -34,15 +33,16 @@ class IFileDecompressor
         /// atomically replaces its content with the plain bytes -- same path
         /// throughout, so the caller's own file reference (a SpoolFile) never
         /// needs to change. `maxDecompressedBytes` bounds the growing output
-        /// (0 = unlimited); the frame's declared window is capped
-        /// independently, before any allocation, regardless of that budget.
+        /// (0 = unlimited); each frame's declared window is capped
+        /// independently, before its allocation, regardless of that budget.
         /// abortFlag, when non-null, is checked between chunks -- a set flag
         /// aborts the decompression (the original file is left untouched)
         /// rather than running it to completion, so a large download's
         /// decompression can't stall agent shutdown.
         ///
         /// On any failure (malformed frame, truncated frame, over-cap window,
-        /// output exceeding maxDecompressedBytes, disk/zstd error, abort):
+        /// output exceeding maxDecompressedBytes, a frame yielding no plain
+        /// bytes at all, disk/zstd error, abort):
         /// returns nullopt, deletes only its own sibling temp file, and never
         /// touches `pathToReplace` -- the caller discards that file itself
         /// (the same RAII/SpoolFile path already used for a hash mismatch).
@@ -55,11 +55,11 @@ class IFileDecompressor
                                                    const std::atomic<bool>* abortFlag) = 0;
 };
 
-/// Real implementation: ZSTD_decompressStream, streamed in 64 KiB chunks
-/// (matches ZstdFileCompressor/cmacSigner.cpp::signFile()/the manager's
-/// zstdDecoder.cpp), decompressing into a new exclusively-created sibling
-/// file under spoolDir and renaming it over pathToReplace only once the
-/// whole frame has validated successfully.
+/// Real implementation: ZSTD_decompressStream under a ZSTD_d_windowLogMax
+/// ceiling, streamed in 64 KiB chunks (matches ZstdFileCompressor/
+/// cmacSigner.cpp::signFile()), decompressing into a new exclusively-created
+/// sibling file under spoolDir and renaming it over pathToReplace only once
+/// the whole frame has validated successfully.
 class ZstdFileDecompressor final : public IFileDecompressor
 {
     public:

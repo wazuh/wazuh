@@ -13,10 +13,6 @@
 
 #include "exclusiveTempFile.hpp"
 
-// ZSTD_getFrameHeader() lives behind this opt-in (same as ZstdFileCompressor's own test and the
-// manager's zstdDecoder.cpp) -- used to read a frame's declared window size before allocating any
-// decoder state, so an untrusted response can be refused up front rather than after the fact.
-#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 #ifdef WIN32
@@ -32,15 +28,32 @@ namespace
     constexpr size_t FILE_CHUNK = 64 * 1024; // Matches ZstdFileCompressor/cmacSigner.cpp/zstdDecoder.cpp.
 
     // Hard ceiling on the window size a frame may DECLARE, independent of maxDecompressedBytes.
-    // Mirrors the manager's kMaxDeclaredWindowSize (remoted_module's zstdDecoder.cpp) exactly: the
-    // window size is attacker-chosen in a ~50-byte frame header and drives the decoder's up-front
-    // allocation, so without this a tiny crafted response could make the agent reserve zstd's own
-    // limit (windowLog 27 = 128 MiB) regardless of how large a real merged.mg is. 8 MiB is not
-    // tighter than what this feature's own legitimate traffic ever needs: zstd level 3 (the fixed
-    // level used throughout this feature, see bodyCompressor.cpp/fileCompressor.cpp) never
-    // requests a window above 8 MiB (windowLog 23) regardless of input size, so a manager-produced
-    // frame for even a 64 MiB merged.mg still declares a window at or under this bound.
-    constexpr unsigned long long kMaxDeclaredWindowSize = 8ULL * 1024ULL * 1024ULL;
+    // The window size is attacker-chosen in a ~50-byte frame header and drives the decoder's
+    // up-front allocation, so without this a tiny crafted response could make the agent reserve
+    // zstd's own default limit (windowLog 27 = 128 MiB) regardless of how large a real merged.mg
+    // is. 8 MiB is not tighter than what this feature's own legitimate traffic ever needs: zstd
+    // level 3 (the fixed level used throughout this feature, see bodyCompressor.cpp/
+    // fileCompressor.cpp) never requests a window above 8 MiB regardless of input size, so a
+    // manager-produced frame for even a 64 MiB merged.mg still declares a window at or under this
+    // bound.
+    //
+    // Handed to ZSTD_d_windowLogMax rather than checked against a parsed frame header: the decoder
+    // then enforces it on EVERY frame it meets, before each allocation. A header parsed here could
+    // only ever describe the FIRST frame, and ZSTD_decompressStream() goes on to decode
+    // concatenated frames, re-allocating for each one -- so a ~100-byte response whose first frame
+    // declares a small window and whose second declares windowLog 27 would sail past a header
+    // check and still reserve 128 MiB.
+    //
+    // The value is a base-2 EXPONENT, not a byte count -- 2^23 = 8388608 bytes = 8 MiB -- because
+    // that is the only form the wire format offers: a frame header stores the window as a 5-bit
+    // exponent plus a 3-bit mantissa, never as a size. zstd converts it straight back to bytes
+    // (zstd_decompress.c: `dctx->maxWindowSize = ((size_t)1) << value`) and compares the frame's
+    // own decoded windowSize against that, so this stays byte-for-byte the `windowSize > 8 MiB`
+    // rejection it replaces, inclusive edge and all. The mantissa is why windowSize is not always
+    // a power of two, and why "exponent 23" is not by itself a pass: a header declaring exponent
+    // 23 with a non-zero mantissa asks for 9-15 MiB and is refused, exactly as before. zstd's own
+    // compressor always emits mantissa 0, so only a hand-crafted frame ever reaches that case.
+    constexpr int kMaxDeclaredWindowLog = 23; // 2^23 bytes = 8 MiB.
 
     using FilePtr = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
 
@@ -93,24 +106,6 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
         return std::nullopt;
     }
 
-    // Read the frame header FIRST, before allocating any decoder state or creating the output
-    // file: it tells us how much memory this specific frame will make the decoder reserve up
-    // front. A real merged.mg zstd frame's header is a few dozen bytes at most, so a header that
-    // doesn't fully resolve within the first 64 KiB chunk is truncated/malformed, not merely
-    // "needs more input".
-    ZSTD_FrameHeader header {};
-    const size_t headerResult = ZSTD_getFrameHeader(&header, inChunk.data(), bytesRead);
-
-    if (headerResult != 0 || header.frameType != ZSTD_frame)
-    {
-        return std::nullopt;
-    }
-
-    if (header.windowSize > kMaxDeclaredWindowSize)
-    {
-        return std::nullopt;
-    }
-
     std::string destPath;
     const int destFd = createExclusiveTempFile(spoolDir, "hc_zstd_dec_", destPath);
 
@@ -146,6 +141,12 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
     {
         (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: cannot fail right after ZSTD_createDStream().
+    }
+
+    if (ZSTD_isError(ZSTD_DCtx_setParameter(dstream, ZSTD_d_windowLogMax, kMaxDeclaredWindowLog)))
+    {
+        (void)std::remove(destPath.c_str());
+        return std::nullopt; // LCOV_EXCL_LINE: a stable, in-range parameter cannot be rejected.
     }
 
     std::array<uint8_t, FILE_CHUNK> outChunk {};
@@ -228,6 +229,16 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
     // frameRemaining != 0 after all input has been fed means the frame is incomplete (more input
     // would be required to finish it) -- a truncated transfer.
     if (frameRemaining != 0)
+    {
+        (void)std::remove(destPath.c_str());
+        return std::nullopt;
+    }
+
+    // Zero plain bytes out of a non-empty input is not a config: it means the response carried no
+    // real frame at all, only zstd frames that decode to nothing (skippable frames, which
+    // ZSTD_decompressStream() consumes silently, or an empty-payload frame). Refuse rather than
+    // rename an empty file over the caller's download.
+    if (totalOut == 0)
     {
         (void)std::remove(destPath.c_str());
         return std::nullopt;
