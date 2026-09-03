@@ -76,6 +76,7 @@ EXPORTED void syscollector_init(const unsigned int inverval,
                                 const bool users,
                                 const bool services,
                                 const bool browserExtensions,
+                                const bool containerBaseline,
                                 const bool notifyOnFirstScan);
 
 EXPORTED void syscollector_stop();
@@ -135,6 +136,7 @@ typedef void(*syscollector_init_func)(const unsigned int inverval,
                                       const bool users,
                                       const bool services,
                                       const bool browserExtensions,
+                                      const bool containerBaseline,
                                       const bool notifyOnFirstScan);
 
 typedef void(*syscollector_start_func)();
