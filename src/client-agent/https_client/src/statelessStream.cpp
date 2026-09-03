@@ -310,7 +310,10 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         return;
     }
 
-    // BackPressure/Retryable/AuthFail/Interrupted: keep the batch for the next tick.
+    // BackPressure/Retryable/AuthFail/RouteNotFound/Interrupted: keep the batch for
+    // the next tick. A 404 belongs here rather than with the drop above: it says the
+    // target does not exist, nothing about the payload, so the events are still good
+    // and a routing mistake must not consume them.
 }
 
 void StatelessStream::drain(Waiter& waiter)

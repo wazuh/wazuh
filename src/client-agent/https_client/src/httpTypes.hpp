@@ -46,6 +46,9 @@ enum class OutcomeClass
     BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
     AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
+    RouteNotFound,   ///< 404: the target names no route the manager serves (an
+    ///< endpoint/global_prefix mismatch), or -- on /download alone -- no such
+    ///< resource. Which one it is depends on the endpoint, so the consumer decides.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
@@ -76,6 +79,9 @@ inline const char* outcomeName(OutcomeClass outcome)
 
         case OutcomeClass::Permanent:
             return "Permanent";
+
+        case OutcomeClass::RouteNotFound:
+            return "RouteNotFound";
 
         case OutcomeClass::PayloadTooLarge:
             return "PayloadTooLarge";
@@ -123,6 +129,9 @@ inline int toHcResult(OutcomeClass outcome)
             return HC_RESULT_AUTH_FAIL;
 
         case OutcomeClass::Permanent:
+            return HC_RESULT_PERMANENT;
+
+        case OutcomeClass::RouteNotFound:
             return HC_RESULT_PERMANENT;
 
         case OutcomeClass::PayloadTooLarge:

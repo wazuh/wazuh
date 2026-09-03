@@ -1241,6 +1241,24 @@ TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
     EXPECT_TRUE(reported.empty());
 }
 
+TEST_F(ControlStreamTest, RouteNotFoundPausesProducers)
+{
+    // A 404 on /control can only mean the configured path and the manager's global
+    // prefix disagree, which no amount of retrying clears -- and every event produced
+    // meanwhile would be undeliverable. Not retryable, so a step is one attempt and no
+    // script is needed.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 404)));
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 404: 1/2.
+    m_stream.step(m_waiter); // 404: 2/2 -> pause.
+    m_stream.step(m_waiter); // Still 404: announced once only.
+}
+
 TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
 {
     // WillRepeatedly, so the one-shot fresh-timestamp retry gets a 401 too and

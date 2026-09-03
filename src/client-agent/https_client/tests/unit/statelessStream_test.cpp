@@ -527,6 +527,24 @@ TEST_F(StatelessStreamTest, Non413PermanentStillDropsTheBatch)
     m_stream.tick(m_waiter, false);
 }
 
+TEST_F(StatelessStreamTest, A404KeepsTheBatch)
+{
+    // The counterpart to the 400 above, and the reason 404 is not Permanent: an
+    // endpoint/global_prefix mismatch rejects every batch this agent will ever
+    // send, so dropping them would discard the whole event stream for as long as
+    // the misconfiguration lasts.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 404)));
+    submit("event-aaaa");
+    submit("event-bbbb");
+    m_stream.tick(m_waiter, false);
+    EXPECT_EQ(0u, m_stream.droppedEvents());
+
+    // Still there once the route is corrected.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+    m_stream.tick(m_waiter, true);
+    EXPECT_EQ(0u, m_stream.droppedEvents());
+}
+
 TEST_F(StatelessStreamTest, RetryableKeepsTheBatch)
 {
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));

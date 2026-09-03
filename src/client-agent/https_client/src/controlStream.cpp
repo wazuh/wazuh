@@ -13,6 +13,7 @@
 
 #include "digest.hpp"
 #include "loggerHelper.h"
+#include "requestTarget.hpp"
 #include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -607,6 +608,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     if (outcome == OutcomeClass::Ok)
     {
         m_undeliverableStreak = 0;
+        m_routeNotFoundReported = false; // The route works again: a later 404 is a new incident.
 
         if (m_producersPaused)
         {
@@ -623,11 +625,12 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     // Undeliverable with nothing already in motion to change it. AuthFail only
     // surfaces once the timestamp-corrected retry has also failed, so the key is
     // genuinely bad and only re-enrollment can recover it; VersionRejected needs
-    // one side upgraded. Excluded: answers that clear on their own (5xx,
-    // 429/503, 413) and a plain 400.
+    // one side upgraded, RouteNotFound one side reconfigured. Excluded: answers
+    // that clear on their own (5xx, 429/503, 413) and a plain 400.
     const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
                                 outcome == OutcomeClass::AuthFail ||
-                                outcome == OutcomeClass::VersionRejected;
+                                outcome == OutcomeClass::VersionRejected ||
+                                outcome == OutcomeClass::RouteNotFound;
 
     if (!blocksDelivery)
     {
@@ -635,6 +638,20 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         // pause: only a success does.
         m_undeliverableStreak = 0;
         return;
+    }
+
+    // /control is only ever sent to the one target, so a 404 here can only mean the
+    // configured path and the manager's global prefix disagree -- the one failure the
+    // log had no trace of at any verbosity. Reported ahead of the already-paused
+    // return below: stopping the manager to change its prefix arms the pause on
+    // Unreachable first, and the 404s that follow it would otherwise never be seen.
+    if (outcome == OutcomeClass::RouteNotFound && !m_routeNotFoundReported)
+    {
+        m_routeNotFoundReported = true;
+        const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
+        LOGFN_ERROR(m_logFn, "The manager answered HTTP 404 to the request target '%s': it "
+                    "serves no such route. The path in <endpoint> must match the global "
+                    "prefix the manager serves.", target.c_str());
     }
 
     if (m_producersPaused)
@@ -645,7 +662,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
-    // Only Unreachable has a transport reason behind it: the other two mean the
+    // Only Unreachable has a transport reason behind it: the others mean the
     // manager answered, so a stored curl error there is from an earlier and
     // unrelated incident -- and the auth-gate path reaches here having sent
     // nothing at all.
