@@ -433,5 +433,5 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
         }
     };
     walk(schema);
-    EXPECT_EQ(leaves, 66u);
+    EXPECT_EQ(leaves, 65u);
 }

@@ -52,15 +52,26 @@ namespace manager_config::detail
 
     } // namespace
 
-    std::optional<Error> checkSemantics(const rapidjson::Document& doc, const LoadOptions& options)
+    std::optional<Error> checkSemantics(const rapidjson::Document& doc,
+                                        const rapidjson::Document& raw,
+                                        const LoadOptions& options)
     {
-        // remote.https: certificate/key pairing
-        const std::string cert = str(get(doc, "/remote/https/certificate"));
-        const std::string key = str(get(doc, "/remote/https/key"));
-        if (cert.empty() != key.empty())
+        // certificate/key pairs must be EXPLICITLY set together (or not at all). Checked on the raw
+        // document: both halves carry non-empty schema defaults, so on the effective document they
+        // are always "set" and the rule could never fire (a custom certificate silently paired with
+        // the default key would only fail later, as a TLS handshake error in production).
+        constexpr std::pair<const char*, const char*> certKeyPairs[] = {
+            {"/remote/https/certificate", "/remote/https/key"},
+            {"/auth/ssl_manager_cert", "/auth/ssl_manager_key"},
+        };
+        for (const auto& [certPointer, keyPointer] : certKeyPairs)
         {
-            return Error {cert.empty() ? "/remote/https/certificate" : "/remote/https/key",
-                          "certificate and key must be set together"};
+            const bool certSet = !str(get(raw, certPointer)).empty();
+            const bool keySet = !str(get(raw, keyPointer)).empty();
+            if (certSet != keySet)
+            {
+                return Error {certSet ? keyPointer : certPointer, "certificate and key must be set together"};
+            }
         }
 
         // remote.https.global_prefix: no dot segments (the schema already rejects '//' and bad characters)

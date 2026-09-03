@@ -87,9 +87,14 @@ namespace manager_config
         {
             return *error;
         }
+        // The paired-option rules need to see what the operator actually wrote: both halves of every
+        // certificate/key pair carry non-empty schema defaults, so once fillDefaults() runs they are
+        // always "set". Keep a copy of the validated raw document for checkSemantics().
+        rapidjson::Document raw;
+        raw.CopyFrom(impl->effective, raw.GetAllocator());
         detail::fillDefaults(
             detail::schemaDocument(), detail::schemaDocument(), impl->effective, impl->effective.GetAllocator());
-        if (auto error = detail::checkSemantics(impl->effective, options))
+        if (auto error = detail::checkSemantics(impl->effective, raw, options))
         {
             return *error;
         }

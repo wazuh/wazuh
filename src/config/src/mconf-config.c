@@ -16,7 +16,9 @@
 #include "manager_config/manager_config_c.h"
 
 /* One document per process (RF-7): loaded by the daemon's *Config() entry point, read by every
- * section reader and by the getconfig handlers. */
+ * section reader and by the getconfig handlers. No lock on purpose: the load happens before the
+ * daemon spawns threads, and a loaded mconf_t is immutable (see manager_config_c.h), so the later
+ * concurrent w_mconf_section() calls (modulesd worker threads) only ever read a stable pointer. */
 static mconf_t *g_mconf = NULL;
 static char g_mconf_file[PATH_MAX + 1];
 

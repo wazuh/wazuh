@@ -32,7 +32,13 @@ extern "C"
     /** Same as mconf_load without keeping the document (bin/<daemon> -t). 0 = valid. */
     int mconf_validate(const char* path, const char* home, char* err, size_t errlen);
 
-    /** JSON of one section of the effective document (cJSON_Parse-able). NULL if unknown. free() it. */
+    /** JSON of one section of the effective document (cJSON_Parse-able). NULL if unknown. free() it.
+     *
+     * Thread-safety: an mconf_t is IMMUTABLE after mconf_load_ex() returns — the readers only
+     * serialize it — so concurrent mconf_section_json()/mconf_document_json() calls on one handle
+     * are safe without locking. Keep it that way: any future mutation of a loaded document on the
+     * C++ side would silently break the lock-free callers (modulesd threads read sections at
+     * arbitrary runtime points). */
     char* mconf_section_json(const mconf_t* conf, const char* section);
 
     /** JSON of the whole effective document. free() it. */
