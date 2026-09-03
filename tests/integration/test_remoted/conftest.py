@@ -9,8 +9,10 @@ import os
 import subprocess
 
 import pytest
+import requests
 
 from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.modules.api.utils import get_api_details_dict
 from wazuh_testing.utils import services
 from wazuh_testing.utils.services import check_all_daemon_status
 from time import sleep
@@ -61,6 +63,26 @@ def get_real_configuration(test_configuration):
         return None
 
     effective = json.loads(cli.stdout)
+
+    # The comparison starts at GET /cluster/local/info, which needs clusterd's internal socket:
+    # right after a restart (and noticeably after a failed-start test left systemd backing off,
+    # as the CI runners do) that socket can lag behind the control script's return, and the API
+    # answers 500 (WazuhInternalError) instead of the node info. Wait for the cluster API to be
+    # ready before comparing, and surface the API's last error body if it never becomes ready.
+    last_error = None
+    for _ in range(30):
+        try:
+            api_details = get_api_details_dict()
+            response = requests.get(f"{api_details['base_url']}/cluster/local/info",
+                                    headers=api_details['auth_headers'], verify=False, timeout=10)
+            if response.status_code == 200:
+                break
+            last_error = f"HTTP {response.status_code}: {response.text}"
+        except Exception as request_error:
+            last_error = str(request_error)
+        sleep(2)
+    else:
+        pytest.fail(f"The cluster API never became ready for the configuration comparison: {last_error}")
 
     for element in test_configuration.get("sections", {})[0]["elements"]:
         for key, content in element.items():
