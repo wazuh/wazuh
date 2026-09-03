@@ -130,6 +130,19 @@ PidIndex PidIndex::Build()
     return index;
 }
 
+PidIndex PidIndex::FromMap(std::unordered_map<std::string, std::vector<pid_t>> byContainer)
+{
+    PidIndex index;
+    index.m_byContainer = std::move(byContainer);
+
+    for (auto& [id, pids] : index.m_byContainer) {
+        std::sort(pids.begin(), pids.end());
+        index.m_processCount += pids.size();
+    }
+
+    return index;
+}
+
 const std::vector<pid_t>& PidIndex::pidsFor(const std::string& container_id) const
 {
     if (container_id.empty()) return kNoPids;
