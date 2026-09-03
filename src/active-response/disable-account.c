@@ -75,7 +75,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(cmd_path);
-            return OS_SUCCESS;
+            return OS_INVALID;
         }
 
         memset(args, '\0', COMMANDSIZE_4096);
@@ -93,7 +93,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(cmd_path);
-            return OS_SUCCESS;
+            return OS_INVALID;
         }
 
         // Disabling an account
@@ -105,9 +105,11 @@ int main (int argc, char **argv) {
         }
 
     } else {
-        write_debug_file(argv[0], "Invalid system");
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Invalid system: '%s'", uname_buffer.sysname);
+        write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
-        return OS_SUCCESS;
+        return OS_INVALID;
     }
 
     // Execute the command
