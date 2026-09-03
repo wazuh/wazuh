@@ -272,6 +272,15 @@ insert_into_agent_block() {
 
 }
 
+# Escapes the three characters that are structurally significant in XML content --
+# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+# particular) can never be mistaken for markup or break the file's well-formedness.
+# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
+# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
+xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
 # True when the option is really set, as opposed to appearing inside a comment.
 # Commented-out options are exactly how the shipped files used to show an example,
 # and editing one leaves the setting the caller asked for unwritten.
@@ -358,12 +367,18 @@ set_agent_ssl_ca() {
         return
     fi
 
+    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
+    # containing any of them (e.g. a literal '&') would leave ossec.conf malformed and
+    # unparseable, not just carry the wrong value. Every branch below writes this
+    # escaped form, never the raw path.
+    ca_path="$(xml_escape "${ca_path}")"
+
     if agent_option_is_set "certificate_authorities"; then
         # edit_value_tag() passes its second argument straight into a sed replacement
         # (s#<tag>.*</tag>#<tag>VALUE</tag>#g), where a literal '&' means "the whole
-        # matched text" and '\' is sed's own escape character -- a CA path containing
-        # either would corrupt the written value (or the surrounding XML) instead of
-        # being written verbatim. Escape both before handing the path off.
+        # matched text" and '\' is sed's own escape character -- on top of the
+        # XML-escaping above (which itself introduces '&' as part of "&amp;"/"&lt;"/
+        # "&gt;"), this second, independent layer keeps sed from reinterpreting them.
         ca_path_escaped="$(printf '%s' "${ca_path}" | sed -e 's/\\/\\\\/g' -e 's/&/\\\&/g')"
         edit_value_tag "certificate_authorities" "${ca_path_escaped}"
         return

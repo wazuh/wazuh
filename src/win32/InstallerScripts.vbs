@@ -60,6 +60,15 @@ private sub install_log(home_dir, objFSO, message)
     objLog.Close
 end sub
 
+' Escapes the three characters that are structurally significant in XML content --
+' '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+' particular) can never be mistaken for markup or break the file's well-formedness.
+' '&' first: escaping '<'/'>' introduces new literal '&' characters (as part of
+' "&lt;"/"&gt;") that must not themselves be re-escaped by a later Replace() call.
+Function XmlEscape(text)
+    XmlEscape = Replace(Replace(Replace(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+End Function
+
 ' Strips XML comments from a working copy so the WAZUH_REGISTRATION_CA checks below
 ' don't match tag content that's still inside a "<!-- ... -->" wrapper -- mirrors
 ' strip_xml_comments() in pkg_installer.sh and its port in do_upgrade.ps1. "[\s\S]*?"
@@ -259,7 +268,7 @@ public function config()
     WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
     WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
     WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
+    WAZUH_REGISTRATION_CA = XmlEscape(Replace(args(10), Chr(34), ""))
     WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
     WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
     WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")

@@ -61,6 +61,15 @@ else
     abort_upgrade "2"
 fi
 
+# Escapes the three characters that are structurally significant in XML content --
+# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+# particular) can never be mistaken for markup or break the file's well-formedness.
+# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
+# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
+xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
 # Strips commented-out lines before xml_value/xml_tag_present/xml_block_present extract
 # anything, so a tag an operator comments out (e.g. to fall back to the default) reads as
 # absent here too, matching OS_XML's own comment handling -- same in_comment
@@ -364,7 +373,7 @@ xml_block_present() {
 # found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
 # rather than silently reporting success with nothing actually pinned.
 pin_ca() {
-    CA_PATH="${1}"
+    CA_PATH="$(xml_escape "${1}")"
     TMP_PIN_CONF="$(mktemp)"
     PIN_OK=1
 
@@ -528,7 +537,7 @@ DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
 case "${SSL_VERIFICATION_MODE}" in
     full|certificate)
-        if [ -z "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
+        if [ -z "${SSL_CA}" ] || [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
@@ -560,7 +569,7 @@ case "${SSL_VERIFICATION_MODE}" in
             # there is nothing this script can safely fix on the operator's behalf.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
-        elif [ -r "${DEFAULT_CA_FILE}" ]; then
+        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
             if pin_ca "${DEFAULT_CA_FILE}"; then
                 echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
             else

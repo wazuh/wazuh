@@ -465,6 +465,12 @@ function xml_block_present($block, $sub) {
 # found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
 # rather than silently reporting success with nothing actually pinned.
 function pin_ca($ca_path) {
+    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
+    # containing any of them would leave ossec.conf malformed and unparseable, not
+    # just carry the wrong value. '&' first: escaping '<'/'>' introduces new literal
+    # '&' characters (as part of "&lt;"/"&gt;") that must not be re-escaped after.
+    $ca_path = $ca_path.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+
     $conf_path = Join-Path $wazuhDir "ossec.conf"
     $lines = Get-Content $conf_path
     $output = New-Object System.Collections.Generic.List[string]
