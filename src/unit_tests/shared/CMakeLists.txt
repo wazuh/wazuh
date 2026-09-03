@@ -59,7 +59,9 @@ list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,syscom_dispatch 
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS}")
+# The getDefine_Int_default cases assert the merror_exit an invalid value raises; the winagent
+# branch above already links these wrappers.
+list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_string_op")
