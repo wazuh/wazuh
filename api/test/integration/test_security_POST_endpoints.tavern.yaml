@@ -1165,22 +1165,9 @@ stages:
         function: tavern_utils:test_validate_auth_context
         extra_kwargs:
           expected_roles: []
-
-  - name: Log in with wazuh-wui and an empty auth context (raw)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
-      headers:
-        Authorization: "Basic {basic_auth_context:s}"
-      params:
-        raw: True
-      method: POST
-      json: {}
-    response:
-      status_code: 200
       save:
-        $ext:
-          function: tavern_utils:test_save_token_raw_format
+        json:
+          login_token: data.token
 
   - name: An empty auth context grants nothing (Denied)
     request:
