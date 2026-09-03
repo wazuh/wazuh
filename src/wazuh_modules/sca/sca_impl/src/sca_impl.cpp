@@ -1635,10 +1635,12 @@ bool SecurityConfigurationAssessment::updateMetadataValue(const std::string& key
 int64_t SecurityConfigurationAssessment::getLastIntegrityCheckTime()
 {
     int64_t timestamp = 0;
+
     if (!getMetadataValue(SCA_LAST_INTEGRITY_CHECK_METADATA_KEY, timestamp))
     {
         LoggingHelper::getInstance().log(LOG_WARNING, "Failed to get last integrity check time from metadata");
     }
+
     return timestamp;
 }
 

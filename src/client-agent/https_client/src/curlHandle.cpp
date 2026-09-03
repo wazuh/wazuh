@@ -337,10 +337,12 @@ namespace
                     }
 
                     char* url = nullptr;
+
                     if (curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url) != CURLE_OK)
                     {
                         url = nullptr;
                     }
+
                     LOGFN_DEBUG1(handleLogFn(),
                                  "libcurl failed on %s: %s",
                                  url != nullptr ? url : "unknown URL",
@@ -352,6 +354,7 @@ namespace
                 if (errorBufferSet)
                 {
                     const auto resetResult = curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr);
+
                     if (resetResult != CURLE_OK)
                     {
                         LOGFN_DEBUG1(handleLogFn(),
@@ -359,26 +362,31 @@ namespace
                                      curl_easy_strerror(resetResult));
                     }
                 }
+
                 return statusFromCurlCode(code);
             }
 
             long responseCode() override
             {
                 long code = 0;
+
                 if (curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code) != CURLE_OK)
                 {
                     code = 0;
                 }
+
                 return code;
             }
 
             std::string localIp() override
             {
                 char* ip = nullptr;
+
                 if (curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip) != CURLE_OK)
                 {
                     ip = nullptr;
                 }
+
                 return ip != nullptr ? std::string(ip) : std::string();
             }
 
