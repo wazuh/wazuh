@@ -64,8 +64,12 @@ def clean_pid_files(daemon: str) -> None:
                 predates_file = process.create_time() <= path.getmtime(full_path)
 
                 if pid != own_pid and belongs_to_daemon and predates_file:
-                    os.kill(pid, SIGKILL)
-                    print(f"{daemon}: Orphan child process {pid} was terminated.")
+                    try:
+                        os.kill(pid, SIGKILL)
+                        print(f"{daemon}: Orphan child process {pid} was terminated.")
+                    except OSError as kill_error:
+                        print(f"{daemon}: Orphan child process {pid} was identified but could not "
+                              f"be terminated ({kill_error}), removing from {common.WAZUH_PATH}/var/run...")
                 elif pid == own_pid:
                     print(f"{daemon}: Process {pid} is this process's own PID, recycled from a stale "
                           f"pidfile, removing from {common.WAZUH_PATH}/var/run...")

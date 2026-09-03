@@ -534,6 +534,33 @@ def test_clean_pid_files_handles_empty_cmdline(mock_process, mock_kill):
         assert not os.path.exists(pid_file)
 
 
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_kill_failure(mock_process, mock_kill, capsys):
+    """A confirmed orphan whose SIGKILL itself fails must be reported as a kill failure,
+    not folded into the generic 'could not identify' message used for identification
+    failures (psutil errors raised before the process is confirmed to be a stale owner).
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-654.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('654\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+        mock_kill.side_effect = OSError('No such process')
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(654, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+        output = capsys.readouterr().out
+        assert 'identified but could not be terminated' in output
+        assert 'Could not identify process' not in output
+
+
 @patch('wazuh.core.utils.chmod')
 def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""

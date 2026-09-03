@@ -173,7 +173,6 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
             - Race to detect the freshly started apid process and plant a stale pidfile naming
               its own PID, before it reaches its own pidfile cleanup.
             - Wait for 'wazuh-manager-apid' to report running.
-            - Assert every daemon 'wazuh-manager-control status' reports is running.
         - teardown:
             - Bring every daemon back up ('wazuh_running' fixture), regardless of outcome.
 
@@ -185,7 +184,8 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
     assertions:
         - The restarted 'wazuh-manager-apid' process is not killed by 'clean_pid_files()' due to
           the planted PID collision.
-        - 'wazuh-manager-control status' reports every daemon as running once the race completes.
+        - The planted pidfile no longer exists afterwards, proving 'clean_pid_files()' actually
+          processed it instead of the plant losing its race against the restart.
 
     input_description:
         No external test cases. The collision target is the real PID of the process spawned by
@@ -201,32 +201,133 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
     assert killed_pids, "Precondition failed: no 'wazuh_manager_apid.py' process was running to kill"
 
     before_pids = {proc.pid for proc in psutil.process_iter()}
-    start = subprocess.Popen([WAZUH_CONTROL_PATH, 'start'],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    collision_file = None
     try:
-        collided_pid, collision_file = _race_and_plant_collision(before_pids)
-        start.wait(timeout=60)
+        start = subprocess.Popen([WAZUH_CONTROL_PATH, 'start'],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            collided_pid, collision_file = _race_and_plant_collision(before_pids)
+            start.wait(timeout=60)
+        finally:
+            # A wait() timeout (or any other failure in this block) must not leave
+            # 'wazuh-manager-control start' running in the background: it holds the control
+            # script's own start-script-lock and would race the 'wazuh_running' fixture's
+            # teardown, which also calls 'wazuh-manager-control start'.
+            if start.poll() is None:
+                start.kill()
+                start.wait()
+
+        assert collided_pid is not None, (
+            "Timed out waiting for the restarted 'wazuh-manager-apid' process to appear; "
+            "could not plant the PID collision this test depends on"
+        )
+
+        wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,
+                                     timeout=STATUS_TIMEOUT_SECONDS)
+
+        status = check_all_daemon_status()
+        assert status.get(API_DAEMON) is True, (
+            f"'{API_DAEMON}' did not survive the PID collision with its own stale pidfile "
+            f"(collided PID {collided_pid}, planted at '{collision_file}') — #38695 regression: {status}"
+        )
+
+        assert not os.path.exists(collision_file), (
+            f"Planted pidfile '{collision_file}' was never processed by 'clean_pid_files()' "
+            "(lost the race against the restart) — this run did not actually test the PID collision"
+        )
     finally:
-        # A wait() timeout (or any other failure in this block) must not leave
-        # 'wazuh-manager-control start' running in the background: it holds the control
-        # script's own start-script-lock and would race the 'wazuh_running' fixture's
-        # teardown, which also calls 'wazuh-manager-control start'.
-        if start.poll() is None:
-            start.kill()
-            start.wait()
+        # Any assertion above can fail before 'clean_pid_files()' gets a chance to remove the
+        # plant itself, which would otherwise leave a root-owned stale pidfile naming a PID that
+        # was live when it was written -- the exact precondition #38695 needs, left behind by
+        # the test instead of deliberately reproduced by it.
+        if collision_file and os.path.exists(collision_file):
+            os.remove(collision_file)
 
-    assert collided_pid is not None, (
-        "Timed out waiting for the restarted 'wazuh-manager-apid' process to appear; "
-        "could not plant the PID collision this test depends on"
+
+def test_apid_spares_unrelated_process_with_recycled_pid(wazuh_running):
+    '''
+    description:
+        Plants a stale pidfile that names the PID of an unrelated live decoy process (not
+        'wazuh-manager-apid' itself), backdated so the decoy's own creation time is after the
+        file's mtime -- a recycled PID, the general case 'clean_pid_files()' docstring describes.
+        Restarts 'wazuh-manager-apid' after an unclean stop and checks the decoy survives.
+
+        This targets the 'predates_file' half of the fix specifically: 'test_apid_survives_pid_
+        collision_after_unclean_stop' can only ever collide a stale pidfile against the
+        restarted launcher's own PID, which is spared by the separate 'own_pid' check regardless
+        of what 'predates_file' computes. Here the colliding PID belongs to a different process,
+        so only a correct 'predates_file' result keeps it alive.
+
+    wazuh_min_version:
+        5.0.0
+
+    tier: 0
+
+    test_phases:
+        - setup:
+            - Ensure every manager daemon is running ('wazuh_running' fixture).
+        - test:
+            - SIGKILL every live 'wazuh_manager_apid.py' process, leaving pidfiles on disk.
+            - Spawn a decoy process whose cmdline names the apid script but is not apid.
+            - Plant a stale pidfile naming the decoy's PID, with its mtime backdated by an hour
+              so the decoy (created just now) reads as having recycled that PID.
+            - Trigger 'wazuh-manager-control start' and wait for 'wazuh-manager-apid' to report
+              running.
+            - Assert the decoy is still alive and the planted pidfile was removed.
+        - teardown:
+            - Kill the decoy process.
+            - Bring every daemon back up ('wazuh_running' fixture), regardless of outcome.
+
+    parameters:
+        - wazuh_running:
+            type: fixture
+            brief: Ensures the manager is fully up before the test and after it.
+
+    assertions:
+        - 'clean_pid_files()' does not kill a live, unrelated process just because its PID
+          matches a stale pidfile and its cmdline happens to name the daemon.
+        - The planted pidfile no longer exists afterwards, proving 'clean_pid_files()' actually
+          evaluated it instead of the restart finishing before it was ever read.
+
+    input_description:
+        No external test cases. The collision target is a decoy process this test spawns itself.
+
+    expected_output:
+        - r'wazuh-manager-apid is running...' (from 'wazuh-manager-control status')
+
+    tags:
+        - manager_control
+    '''
+    decoy = subprocess.Popen(
+        ['python3', '-c', 'import time; time.sleep(120)', APID_SCRIPT_MARKER],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
+    collision_file = None
+    try:
+        collision_file = os.path.join(VAR_RUN_PATH, f'wazuh-manager-apid_auth-{decoy.pid}.pid')
+        with open(collision_file, 'w') as fp:
+            fp.write(f'{decoy.pid}\n')
 
-    wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,
-                                 timeout=STATUS_TIMEOUT_SECONDS)
+        backdated = time.time() - 3600
+        os.utime(collision_file, (backdated, backdated))
 
-    status = check_all_daemon_status()
-    assert status.get(API_DAEMON) is True, (
-        f"'{API_DAEMON}' did not survive the PID collision with its own stale pidfile "
-        f"(collided PID {collided_pid}, planted at '{collision_file}') — #38695 regression: {status}"
-    )
-    not_running = [daemon for daemon, running in status.items() if not running]
-    assert not not_running, f"Daemon(s) not running after the restart: {not_running} (full status: {status})"
+        killed_pids = _kill_apid_family_uncleanly()
+        assert killed_pids, "Precondition failed: no 'wazuh_manager_apid.py' process was running to kill"
+
+        control_service('start')
+        wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,
+                                     timeout=STATUS_TIMEOUT_SECONDS)
+
+        assert decoy.poll() is None, (
+            f"Decoy process {decoy.pid} was killed: 'predates_file' wrongly treated a live, "
+            "unrelated process as the stale pidfile's owner"
+        )
+        assert not os.path.exists(collision_file), (
+            f"Planted pidfile '{collision_file}' was never processed by 'clean_pid_files()' "
+            "— this run did not actually test the recycled-PID case"
+        )
+    finally:
+        decoy.kill()
+        decoy.wait()
+        if collision_file and os.path.exists(collision_file):
+            os.remove(collision_file)
