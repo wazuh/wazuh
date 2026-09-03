@@ -52,11 +52,15 @@ def test_load_manager_conf_missing_file_is_1101():
 
 
 def test_load_manager_conf_syntax_error_is_1131():
-    stderr = "(1244): Invalid configuration at 'etc/wazuh-manager.conf': invalid XML: Start-end tags mismatch (line 2).\n"
+    # The real CLI renders a structural error with the bare root '/' as the subject (no pointer,
+    # no file path) -- reportInvalid() defaults the empty pointer to "/".
+    stderr = "(1244): Invalid configuration at '/': invalid XML: Start-end tags mismatch (line 2).\n"
     with patch('wazuh.core.manager_conf.subprocess.run', return_value=_completed(1, stderr=stderr)):
         with pytest.raises(WazuhError, match='.* 1131 .*') as exc:
             manager_conf.load_manager_conf()
     assert 'line 2' in exc.value.message
+    # The meaningless '/' subject is dropped, not kept as a fake pointer prefix.
+    assert '/: ' not in exc.value.message
 
 
 def test_load_manager_conf_schema_error_is_1130_with_the_pointer():

@@ -14,7 +14,7 @@ from typing import Union
 
 from api import configuration
 from wazuh import WazuhError, WazuhInternalError
-from wazuh.core import common
+from wazuh.core import common, manager_conf
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_manager_conf
 from wazuh.core.utils import get_utc_strptime, tail
@@ -184,8 +184,10 @@ def validate_manager_conf(conf_file: str = None) -> dict:
     if not exists(conf_file):
         raise WazuhInternalError(1020)
 
-    command = [os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-conf'), '-H', common.WAZUH_PATH,
-               '-f', conf_file, 'validate']
+    # cli_path() rather than a hardcoded installed path: on a source checkout the CLI lives in
+    # src/build/bin, and hardcoding here made every valid upload fail its post-write validation
+    # (the pre-write check in update_manager_conf() already resolves through cli_path()).
+    command = [manager_conf.cli_path(), '-H', common.WAZUH_PATH, '-f', conf_file, 'validate']
     try:
         completed = subprocess.run(command, capture_output=True, text=True, timeout=30)  # nosec B603
     except (OSError, subprocess.SubprocessError) as e:

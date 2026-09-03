@@ -146,7 +146,9 @@ def test_validate_manager_conf(mock_run, mock_exists):
 
     mock_exists.assert_called_with(common.MANAGER_CONF)
     command = mock_run.call_args[0][0]
-    assert command[0] == os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-conf')
+    # Resolved through manager_conf.cli_path() so a source checkout falls back to src/build/bin
+    # instead of failing the post-write validation with a missing installed binary.
+    assert command[0] == manager_conf.cli_path()
     assert command[1:] == ['-H', common.WAZUH_PATH, '-f', common.MANAGER_CONF, 'validate']
 
     validate_manager_conf('/tmp/other.yml')

@@ -77,7 +77,11 @@ def _error_detail(completed: subprocess.CompletedProcess) -> str:
         end = rest.find("': ")
         if end != -1:
             subject, message = rest[:end], rest[end + 3:]
-            detail = f'{subject}: {message}' if subject.startswith('/') else message
+            # A validation error carries the option's JSON pointer as the subject; syntax and file
+            # problems carry the file path (dropped), and a structural error with no pointer is
+            # rendered by the CLI as the bare root '/', which is just as meaningless to keep.
+            is_pointer = subject.startswith('/') and subject != '/'
+            detail = f'{subject}: {message}' if is_pointer else message
     return detail.rstrip('.')
 
 
