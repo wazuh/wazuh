@@ -52,7 +52,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_executable(verify-agent-conf
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/verify-agent-conf.c")
   set_target_properties(
-    verify-agent-conf PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+    verify-agent-conf PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                    ${SRC_FOLDER}/build/bin)
   target_link_libraries(verify-agent-conf PRIVATE config wazuh_modulesd_lib
                                                   wazuhext pthread wazuh)
@@ -78,6 +78,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     wazuh-manager-service-control PRIVATE WAZUH_RUNTIME_USER="wazuh-manager")
   set_target_properties(
     wazuh-manager-service-control
-    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+    PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                  ${SRC_FOLDER}/build/bin)
 endif()

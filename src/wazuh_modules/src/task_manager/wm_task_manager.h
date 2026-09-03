@@ -101,6 +101,10 @@ struct _wm_manager_task_dispatcher* wm_task_manager_dispatcher(void);
 // Parse XML configuration
 int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
+// Reader of the `task-manager` section of the effective document (etc/wazuh-manager.conf); `module`
+// must already be initialised by wm_task_manager_read(NULL, NULL, module). A NULL section keeps the defaults.
+int wm_task_manager_read_json(const cJSON *section, wmodule *module);
+
 /**
  * Set tasks status to TIMEOUT after they are IN PROGRESS for a long period of time.
  * Delete entries older than a configurable period of time from the tasks DB.

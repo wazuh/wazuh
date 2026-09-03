@@ -26,7 +26,7 @@ namespace remoted::enrollment
      * @brief Resolved /enroll configuration, translated from the C ABI.
      *
      * The behavioral flags (enrollmentEnabled/usePassword/useSourceIp/allowHigherVersions) are
-     * copied verbatim from authd's own <auth> block (see remoted_module.h's comment on the ABI
+     * copied verbatim from authd's own auth section (see remoted_module.h's comment on the ABI
      * fields this reads) -- they are not remoted-owned tuning knobs, so /enroll and legacy port
      * 1515 can never disagree on whether password auth is required or which agent versions are
      * acceptable.

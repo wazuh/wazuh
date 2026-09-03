@@ -27,16 +27,15 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.core.cluster import client, worker, common as cluster_common
-        from wazuh.core.cluster.utils import get_cluster_items
         from wazuh.core import common as core_common
         from wazuh.core.wdb import AsyncWazuhDBConnection
-
-logger = logging.getLogger("wazuh")
+        from wazuh.core.cluster.utils import get_cluster_items
 
 # The confinement tests must reject the file the product really excludes, so the list comes from
 # cluster.json instead of a hardcoded 4.x name.
 EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
+logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
                                           "sync_agent_info": 5, "sync_agent_groups": 5,
@@ -1391,10 +1390,10 @@ async def test_worker_init(api_request_queue, event_loop):
 @patch("wazuh.core.cluster.client.AbstractClientManager.add_tasks", return_value=["task"])
 @patch("wazuh.core.cluster.worker.IndexerTaskManager.manage_indexer_tasks", new_callable=MagicMock,
          return_value=("True", ()))
-@patch("wazuh.core.cluster.worker.get_ossec_conf", return_value={"enabled": True})
+@patch("wazuh.core.cluster.worker.get_manager_conf", return_value={"indexer": {"hosts": ["https://localhost:9200"]}})
 @patch("wazuh.core.cluster.worker.dapi.APIRequestQueue", return_value="APIRequestQueue object")
 @patch("wazuh.core.cluster.worker.ActiveResponseFetchTask", return_value="ActiveResponseFetchTask object")
-async def test_worker_add_tasks(ar_task, api_request_queue, get_ossec_conf_mock, manage_indexer_tasks_mock,
+async def test_worker_add_tasks(ar_task, api_request_queue, get_manager_conf_mock, manage_indexer_tasks_mock,
                                 acm_mock, event_loop):
     """Check if the tasks that the worker will run are defined."""
 
@@ -1431,7 +1430,7 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_ossec_conf_mock,
     assert tasks[:4] == ['task', ('0101', ()), ('info', ()), ('True', ())]
     assert callable(tasks[4][0])
     assert tasks[4][1] == ()
-    get_ossec_conf_mock.assert_called_once_with(section="indexer")
+    get_manager_conf_mock.assert_called_once_with(section="indexer")
 
     # Indexer tasks are lazily executed through the callable added to tasks.
     run_active_response_job = tasks[4][0]

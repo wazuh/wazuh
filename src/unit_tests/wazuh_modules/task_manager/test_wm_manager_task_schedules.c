@@ -29,26 +29,24 @@ static int group_setup(void **state) {
     return 0;
 }
 
-int __wrap_ReadConfig(__attribute__((unused)) int modules,
-                      __attribute__((unused)) const char *cfgfile,
-                      void *d1,
-                      __attribute__((unused)) void *d2) {
+cJSON *__wrap_w_mconf_section(__attribute__((unused)) const char *section) {
     long value = mock_type(long);
 
-    // A negative queued value stands for "the file could not be parsed", which is the case the
-    // loader has to survive without exiting.
+    // A negative queued value stands for "the effective document could not be read", which is the
+    // case the loader has to survive without exiting.
     if (value < 0) {
-        return -1;
+        return NULL;
     }
 
-    if (d1 && value > 0) {
-        // The struct is _Config, whose first member is agents_disconnection_time. Written through a
-        // long* rather than including the header, so this wrapper does not have to know the rest of
-        // a configuration structure it is not testing.
-        *(long *)d1 = value;
+    cJSON *global = cJSON_CreateObject();
+
+    if (value > 0) {
+        // The real Read_Global_JSON parses this section, so the schedule loader is exercised
+        // against the reader it ships with rather than against a hand-written struct.
+        cJSON_AddNumberToObject(global, "agents_disconnection_time", (double)value);
     }
 
-    return 0;
+    return global;
 }
 
 /* The built-in table */
@@ -113,7 +111,7 @@ void test_the_three_recurring_schedules_are_present(void **state) {
 void test_load_reads_each_schedules_own_source(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
-    will_return(__wrap_ReadConfig, 1800);      // <global><agents_disconnection_time>
+    will_return(__wrap_w_mconf_section, 1800); // global agents_disconnection_time
     will_return(__wrap_getDefine_Int_default, 120); // manager_task_delete_old_agents, minutes
     will_return(__wrap_getDefine_Int_default, 1);   // manager_task_monitor_agents
     will_return(__wrap_getDefine_Int_default, 1);   // manager_task_log_rotate
@@ -141,7 +139,7 @@ void test_load_reads_each_schedules_own_source(void **state) {
 void test_retention_is_disabled_when_its_interval_is_zero(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
-    will_return(__wrap_ReadConfig, 900);
+    will_return(__wrap_w_mconf_section, 900);
     will_return(__wrap_getDefine_Int_default, 0);   // delete_old_agents, the shipping default
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
@@ -162,7 +160,7 @@ void test_retention_is_disabled_when_its_interval_is_zero(void **state) {
 void test_monitor_agents_zero_disables_retention_only(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
-    will_return(__wrap_ReadConfig, 900);
+    will_return(__wrap_w_mconf_section, 900);
     will_return(__wrap_getDefine_Int_default, 60);  // delete_old_agents set...
     will_return(__wrap_getDefine_Int_default, 0);   // ...but monitor_agents off
     will_return(__wrap_getDefine_Int_default, 1);
@@ -188,7 +186,7 @@ void test_monitor_agents_zero_disables_retention_only(void **state) {
 void test_rotate_log_zero_disables_the_daily_rotation(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
-    will_return(__wrap_ReadConfig, 900);
+    will_return(__wrap_w_mconf_section, 900);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 0);   // rotate_log off
@@ -206,7 +204,7 @@ void test_rotate_log_zero_disables_the_daily_rotation(void **state) {
 void test_load_survives_an_unreadable_global_section(void **state) {
     wm_manager_task_schedule schedules[8] = {0};
 
-    will_return(__wrap_ReadConfig, -1);            // the file will not parse
+    will_return(__wrap_w_mconf_section, -1);   // the effective document is unavailable
     expect_any(__wrap__mtwarn, tag);
     expect_any(__wrap__mtwarn, formatted_msg);
     will_return(__wrap_getDefine_Int_default, 0);

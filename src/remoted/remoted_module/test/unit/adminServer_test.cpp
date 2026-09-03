@@ -98,9 +98,9 @@ protected:
         // ctest invoked from /var/wazuh-manager), this would wipe a real keystore. A fresh temp
         // directory can also never contain a leftover, real etc/authd.pass from the host.
         m_originalCwd = std::filesystem::current_path();
-        m_scratchDir = std::filesystem::temp_directory_path() /
-                       ("admin_server_test_" + std::to_string(::getpid()) + "_" +
-                        std::to_string(reinterpret_cast<std::uintptr_t>(this)));
+        m_scratchDir =
+            std::filesystem::temp_directory_path() / ("admin_server_test_" + std::to_string(::getpid()) + "_" +
+                                                      std::to_string(reinterpret_cast<std::uintptr_t>(this)));
         std::filesystem::create_directories(m_scratchDir);
         std::filesystem::current_path(m_scratchDir);
 

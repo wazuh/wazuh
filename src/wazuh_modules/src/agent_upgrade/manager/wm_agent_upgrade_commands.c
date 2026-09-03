@@ -22,6 +22,7 @@
 #include "wm_agent_upgrade_validate.h"
 #include "wazuhdb_queries_op.h"
 #include "remote-config.h"
+#include "mconf-config.h"
 
 /**
  * Analyze agent information and returns a JSON to be sent to the task manager
@@ -59,13 +60,13 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
 
 /**
  * Gate remote_upgrade task creation on two independent remoted settings that both live in the
- * same <remote> config block: (1) <remote><legacy> delivery being enabled, when the agent is
+ * same `remote` section: (1) remote.legacy delivery being enabled, when the agent is
  * still below v5.0.0 (with it disabled there is no way to deliver the task to that agent at
- * all), and (2) <remote><https><verification_mode> being 'none' when the target is v5.0.0+ (no
- * 5.x agent can speak HTTPS yet, so it may be unable to reconnect). Reads remoted's config
- * independently off disk (ReadConfig(CREMOTE, ...), same as remoted itself) -- no IPC, no
- * shared live config between the two daemons -- but only once per call, since a separate
- * ReadConfig() per gate would parse the same file twice for every agent in a batch upgrade.
+ * all), and (2) remote.https.verification_mode being 'none' when the target is v5.0.0+ (no
+ * 5.x agent can speak HTTPS yet, so it may be unable to reconnect). Reads the `remote` section of
+ * the manager configuration wm_config() loaded (etc/wazuh-manager.conf, the same document remoted
+ * reads) -- no IPC, no shared live config between the two daemons -- but only once per call, since a
+ * separate read per gate would decode the same section twice for every agent in a batch upgrade.
  * @param current_version Agent's current wazuh_version, or NULL if unknown.
  * @param target_version Resolved target version (e.g. "v5.0.0"), or NULL if unresolvable.
  * @param force_upgrade Caller requested 'force' (repo-based path only; always false for the
@@ -286,8 +287,8 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
 
     // Legacy delivery / HTTPS verification_mode gates: repo-based path has its target version
     // resolved through the repository itself; custom-WPK cannot trust its filename for the same
-    // purpose (see the WM_UPGRADE_UPGRADE_CUSTOM branch below). Both gates read remoted's config
-    // in one shared ReadConfig() call.
+    // purpose (see the WM_UPGRADE_UPGRADE_CUSTOM branch below). Both gates read remoted's `remote`
+    // section in one shared call.
     if (agent_task->task_info->command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
 
@@ -346,12 +347,11 @@ STATIC int wm_agent_upgrade_validate_remoted_delivery(const char *current_versio
     memset(&tmp_remoted_cfg, 0, sizeof(tmp_remoted_cfg));
     tmp_remoted_cfg.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
 
-    if (ReadConfig(CREMOTE, WAZUHCONF, &tmp_remoted_cfg, NULL) < 0) {
-        // Can't determine legacy_enabled/verification_mode (e.g. a transient config-parse issue
-        // remoted will surface itself) -- fail open rather than block the upgrade on this
-        // unrelated read failing.
-        return WM_UPGRADE_SUCCESS;
-    }
+    // `remote` section of the effective document: legacy.enabled and https.verification_mode are
+    // always present there.
+    cJSON *remote = w_mconf_section("remote");
+    int read_result = remote ? Read_Remote_JSON(remote, &tmp_remoted_cfg) : OS_INVALID;
+    cJSON_Delete(remote);
 
     bool legacy_enabled = tmp_remoted_cfg.legacy_enabled;
     int verification_mode = tmp_remoted_cfg.https.verification_mode;
@@ -363,6 +363,13 @@ STATIC int wm_agent_upgrade_validate_remoted_delivery(const char *current_versio
     os_free(tmp_remoted_cfg.https.key);
     os_free(tmp_remoted_cfg.https.ca);
     os_free(tmp_remoted_cfg.https.ciphers);
+
+    if (read_result < 0) {
+        // Can't determine legacy_enabled/verification_mode (no document loaded, or a config issue
+        // remoted will surface itself) -- fail open rather than block the upgrade on this
+        // unrelated read failing.
+        return WM_UPGRADE_SUCCESS;
+    }
 
     if (check_legacy_delivery && !legacy_enabled) {
         return WM_UPGRADE_LEGACY_DELIVERY_DISABLED;

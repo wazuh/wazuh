@@ -740,7 +740,7 @@ namespace invsync
                 case FailureStage::Configuration:
                     return {"module configuration", "the 'wazuh_modules.inventory_sync_server_*' settings"};
                 case FailureStage::IndexerSession:
-                    return {"indexer session", "the <indexer> configuration block (hosts, ssl.*)"};
+                    return {"indexer session", "indexer.hosts and indexer.ssl.* in etc/wazuh-manager.conf"};
                 case FailureStage::SyncIndexerConnector:
                     return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
                 case FailureStage::AsyncIndexerConnector:

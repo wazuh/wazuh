@@ -231,10 +231,10 @@ ERROR: SSL context setup failed. Exiting.
 
 Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
 
-`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an invalid element and blocks the manager from starting:
+`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an unknown option (the manager configuration is validated against its schema) and blocks the manager from starting:
 
 ```console
-ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.
+ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
 ```
 
 Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.

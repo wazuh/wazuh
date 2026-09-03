@@ -71,6 +71,13 @@ case "$1" in
             echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
             exit 1
         fi
+        # The generated file must validate against the embedded schema (file existence is not
+        # checked: the certificates it references are generated later).
+        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${DIR}/etc/wazuh-manager.conf; then
+            rm -f ${DIR}/etc/wazuh-manager.conf
+            echo "ERROR: the generated ${DIR}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
+            exit 1
+        fi
 
         passlist="${DIR}/agentless/.passlist"
 

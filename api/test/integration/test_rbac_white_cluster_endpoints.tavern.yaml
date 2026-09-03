@@ -23,7 +23,7 @@ stages:
               port: !anyint
               bind_addr: !anystr
               nodes: !anything
-              hidden: !anystr
+              hidden: !anybool
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -309,6 +309,9 @@ stages:
               logging: !anything
               vulnerability-detection: !anything
               indexer: !anything
+              wdb: !anything
+              task-manager: !anything
+              agent-upgrade: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

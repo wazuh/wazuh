@@ -25,6 +25,7 @@
 
 #include "shared.h"
 #include "auth.h"
+#include "mconf-config.h"
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert_op.h"
@@ -482,6 +483,10 @@ int main(int argc, char **argv)
 
     /* Exit here if test config is set */
     if (test_config) {
+        /* Start-up does not require the certificate files to exist; the test run does. */
+        if (w_mconf_validate(WAZUHCONF) < 0) {
+            merror_exit(CONFIG_ERROR, WAZUHCONF);
+        }
         exit(0);
     }
 

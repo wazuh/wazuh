@@ -169,6 +169,14 @@ def load_wazuh_basic_configuration():
     # Load wazuh configuration file with all disabled settings
     minimal_configuration = configuration.get_minimal_configuration()
 
+    # The framework's template still points auth at etc/certs/authd.pem, which no 5.x installation
+    # creates (the installer generates etc/certs/remoted.pem and reuses it for authd). The strict
+    # loader checks the files at service start, so the stale path would abort the whole restart.
+    # Fix it here until the template is updated in qa-integration-framework.
+    minimal_configuration = [line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
+                                 .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem')
+                             for line in minimal_configuration]
+
     # Make a backup from current configuration
     backup_ossec_configuration = configuration.get_wazuh_conf()
 

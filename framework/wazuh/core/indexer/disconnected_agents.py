@@ -8,7 +8,7 @@ from typing import Dict, Generator, List
 import wazuh.core.utils as core_utils
 from wazuh.core.agent import WazuhDBQueryAgents, get_agents_info
 from wazuh.core.cluster import master
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import (
     WazuhError,
     WazuhException,
@@ -94,7 +94,7 @@ class DisconnectedAgentSyncTasks:
         # missing section or an unreadable configuration file must not prevent the task
         # from being created. Report it through this task's logger and carry on.
         try:
-            wazuh_config = get_ossec_conf(section="indexer")
+            wazuh_config = get_manager_conf(section="indexer")
         except WazuhException as e:
             wazuh_config = {}
             if e.code == 1106:
@@ -396,7 +396,7 @@ class DisconnectedAgentSyncTasks:
                 return
             # Read cluster name from wazuh-manager.conf
             try:
-                conf = get_ossec_conf(section="cluster")
+                conf = get_manager_conf(section="cluster")
                 cluster_name = conf.get("cluster", {}).get("name")
             except Exception as e:
                 self.logger.error(f"Failed reading cluster name from wazuh-manager.conf: {e}")
