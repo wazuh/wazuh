@@ -228,6 +228,9 @@ delete_blank_lines() {
 #
 # Written back through the existing file rather than moved over it, so the
 # permissions and ownership ossec.conf was installed with survive.
+#
+# [ \t] not [[:space:]]: Debian 10's mawk 1.3.3 lacks POSIX bracket expressions and
+# silently fails to match them.
 insert_into_agent_block() {
 
     awk -v payload_file="$1" '
@@ -242,7 +245,7 @@ insert_into_agent_block() {
             print
             next
         }
-        !inserted && /^[[:space:]]*<(agent|client)>[[:space:]]*$/ {
+        !inserted && /^[ \t]*<(agent|client)>[ \t]*$/ {
             print
             printf "%s", payload
             inserted = 1
@@ -268,7 +271,7 @@ agent_option_is_set() {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
-        $0 ~ "^[[:space:]]*<" tag ">" { found = 1; exit }
+        $0 ~ "^[ \t]*<" tag ">" { found = 1; exit }
         { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
         END { exit found ? 0 : 1 }
     ' "${CONF_FILE}"
