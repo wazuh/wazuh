@@ -66,10 +66,32 @@ namespace
         }
     };
 
+    // The directory `path` lives in -- where the scratch file has to be created for the rename
+    // below to stay within one filesystem. Derived from the target rather than taken from the
+    // caller: a caller-supplied spool dir only matches by convention (it would have to be resolved
+    // exactly the way TempSpoolFactory resolved it when it made the file, through a SEPARATE copy
+    // of the same defaultTempDir() fallback), and if the two ever disagreed every rename would
+    // fail with EXDEV and every compressed download would be discarded as "failed to decompress".
+    std::string directoryOf(const std::string& path)
+    {
+        const auto separator = path.find_last_of("/\\");
+
+        if (separator == std::string::npos)
+        {
+            return "."; // A bare filename: the file is in the working directory, so the scratch is too.
+        }
+
+        if (separator == 0)
+        {
+            return "/"; // The file sits in the root directory.
+        }
+
+        return path.substr(0, separator);
+    }
+
     // Atomically replaces targetPath's content with sourcePath's, keeping targetPath's own name.
-    // Both files must already be closed. Requires sourcePath and targetPath to live on the same
-    // filesystem for the POSIX branch's atomicity to actually hold -- true here, since the caller
-    // always creates sourcePath under the same spoolDir that produced targetPath.
+    // Both files must already be closed. sourcePath and targetPath are always siblings (see
+    // directoryOf above), so the POSIX branch's atomicity holds by construction.
     bool replaceFile(const std::string& sourcePath, const std::string& targetPath)
     {
 #ifdef WIN32
@@ -82,7 +104,7 @@ namespace
 
 std::optional<uint64_t>
 ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxDecompressedBytes,
-                                 const std::string& spoolDir, const std::atomic<bool>* abortFlag)
+                                 const std::atomic<bool>* abortFlag)
 {
     FilePtr source {std::fopen(pathToReplace.c_str(), "rb"), std::fclose};
 
@@ -107,7 +129,7 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
     }
 
     std::string destPath;
-    const int destFd = createExclusiveTempFile(spoolDir, "hc_zstd_dec_", destPath);
+    const int destFd = createExclusiveTempFile(directoryOf(pathToReplace), "hc_zstd_dec_", destPath);
 
     if (destFd < 0)
     {

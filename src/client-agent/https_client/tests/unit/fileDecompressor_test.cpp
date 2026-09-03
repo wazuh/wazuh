@@ -132,7 +132,7 @@ namespace
     {
         protected:
             ZstdFileDecompressor m_decompressor;
-            std::string m_spoolDir = ::testing::TempDir();
+            std::string m_tempDir = ::testing::TempDir();
     };
 } // namespace
 
@@ -142,7 +142,7 @@ TEST_F(FileDecompressorTest, RoundTripDecompressesBackToTheSourceAndReplacesTheF
     const std::string compressed = zstdCompress(plain);
     const std::string path = writeTempFile("hc_fd_roundtrip.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain.size(), *result);
@@ -154,7 +154,7 @@ TEST_F(FileDecompressorTest, MalformedHeaderReturnsNulloptAndLeavesTheOriginalUn
     const std::string garbage = "not a zstd frame at all";
     const std::string path = writeTempFile("hc_fd_malformed.bin", garbage);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(garbage, readWholeFile(path)); // Untouched: the caller discards it itself.
@@ -165,13 +165,13 @@ TEST_F(FileDecompressorTest, AFailedDecompressionLeavesNoTempFileBehind)
     // Passes on POSIX either way -- an open file unlinks fine there. It is Windows that refuses to
     // delete a file with a live handle, so this only ever fails on the winagent build, and only if
     // a failure path removes the temp file before closing it.
-    const std::size_t before = countDecompressorTempFiles(m_spoolDir);
+    const std::size_t before = countDecompressorTempFiles(m_tempDir);
     const std::string path = writeTempFile("hc_fd_leak.bin", "not a zstd frame at all");
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(before, countDecompressorTempFiles(m_spoolDir));
+    EXPECT_EQ(before, countDecompressorTempFiles(m_tempDir));
 }
 
 TEST_F(FileDecompressorTest, TruncatedFrameReturnsNullopt)
@@ -182,7 +182,7 @@ TEST_F(FileDecompressorTest, TruncatedFrameReturnsNullopt)
     const std::string truncated = compressed.substr(0, compressed.size() / 2);
     const std::string path = writeTempFile("hc_fd_truncated.bin", truncated);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -195,7 +195,7 @@ TEST_F(FileDecompressorTest, DeclaredWindowOverTheHardCeilingIsRefused)
     const std::string compressed = zstdCompressWithDeclaredWindowLog(plain, 24);
     const std::string path = writeTempFile("hc_fd_window_over.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -209,7 +209,7 @@ TEST_F(FileDecompressorTest, DeclaredWindowAtTheHardCeilingIsStillAccepted)
     const std::string compressed = zstdCompressWithDeclaredWindowLog(plain, 23);
     const std::string path = writeTempFile("hc_fd_window_at.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain, readWholeFile(path));
@@ -224,7 +224,7 @@ TEST_F(FileDecompressorTest, DeclaredWindowOverTheCeilingIsRefusedInAConcatenate
                                    zstdCompressWithDeclaredWindowLog(std::string(64, 'b'), 27);
     const std::string path = writeTempFile("hc_fd_window_second_frame.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(compressed, readWholeFile(path));
@@ -238,7 +238,7 @@ TEST_F(FileDecompressorTest, AFrameDecodingToNoPlainBytesAtAllIsRefused)
     const std::string skippable {"\x50\x2A\x4D\x18\x04\x00\x00\x00\xDE\xAD\xBE\xEF", 12};
     const std::string path = writeTempFile("hc_fd_skippable_only.bin", skippable);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(skippable, readWholeFile(path));
@@ -250,7 +250,7 @@ TEST_F(FileDecompressorTest, OutputExceedingTheCapAbortsAsSoonAsItIsCrossed)
     const std::string compressed = zstdCompress(plain);
     const std::string path = writeTempFile("hc_fd_overcap.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 100, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 100, nullptr);
 
     EXPECT_FALSE(result.has_value());
     // The original (still-compressed) file is left in place for the caller to discard.
@@ -263,7 +263,7 @@ TEST_F(FileDecompressorTest, OutputExactlyAtTheCapSucceeds)
     const std::string compressed = zstdCompress(plain);
     const std::string path = writeTempFile("hc_fd_exactcap.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, plain.size(), m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, plain.size(), nullptr);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain.size(), *result);
@@ -275,7 +275,7 @@ TEST_F(FileDecompressorTest, ZeroCapMeansUnlimited)
     const std::string compressed = zstdCompress(plain);
     const std::string path = writeTempFile("hc_fd_nocap.bin", compressed);
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain.size(), *result);
@@ -284,38 +284,34 @@ TEST_F(FileDecompressorTest, ZeroCapMeansUnlimited)
 TEST_F(FileDecompressorTest, UnreadableSourceReturnsNullopt)
 {
     const auto result =
-        m_decompressor.decompress("/nonexistent/hc-spool/response.bin", 0, m_spoolDir, nullptr);
+        m_decompressor.decompress("/nonexistent/hc-spool/response.bin", 0, nullptr);
     EXPECT_FALSE(result.has_value());
 }
 
-TEST_F(FileDecompressorTest, UnwritableSpoolDirReturnsNullopt)
+TEST_F(FileDecompressorTest, ABareFilenameDecompressesInTheWorkingDirectory)
 {
-    const std::string compressed = zstdCompress(std::string(100, 'f'));
-    const std::string path = writeTempFile("hc_fd_unwritable_dir.bin", compressed);
-
-    const auto result = m_decompressor.decompress(path, 0, "/nonexistent/hc-spool-dir", nullptr);
-
-    EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(compressed, readWholeFile(path)); // Untouched.
-}
-
-TEST_F(FileDecompressorTest, EmptySpoolDirFallsBackToADefaultTempDirectory)
-{
+    // The scratch file now follows the target instead of a caller-supplied spool dir, so a target
+    // with no directory component has to resolve to "." rather than to the system temp dir.
     const std::string plain(500, 'g');
     const std::string compressed = zstdCompress(plain);
-    const std::string path = writeTempFile("hc_fd_empty_dir.bin", compressed);
+    const std::string path = "hc_fd_bare_name.bin";
+    {
+        std::ofstream file {path, std::ios::binary};
+        file << compressed;
+    }
 
-    const auto result = m_decompressor.decompress(path, 0, "", nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(plain, readWholeFile(path));
+    std::remove(path.c_str());
 }
 
 TEST_F(FileDecompressorTest, EmptySourceFileReturnsNullopt)
 {
     const std::string path = writeTempFile("hc_fd_empty_src.bin", "");
 
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, nullptr);
+    const auto result = m_decompressor.decompress(path, 0, nullptr);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -327,7 +323,7 @@ TEST_F(FileDecompressorTest, AbortFlagStopsDecompressionAndReturnsNullopt)
     const std::string path = writeTempFile("hc_fd_abort.bin", compressed);
 
     const std::atomic<bool> abortFlag {true}; // Already set before the first chunk is read.
-    const auto result = m_decompressor.decompress(path, 0, m_spoolDir, &abortFlag);
+    const auto result = m_decompressor.decompress(path, 0, &abortFlag);
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(compressed, readWholeFile(path)); // Untouched.

@@ -38,8 +38,7 @@ RetrySender::RetrySender(IHttpPerformer& performer,
                          CompressionGate* compressionGate,
                          AuthGate* authGate,
                          std::string serverEndpoint,
-                         IFileDecompressor* decompressor,
-                         std::string spoolDir)
+                         IFileDecompressor* decompressor)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -49,7 +48,6 @@ RetrySender::RetrySender(IHttpPerformer& performer,
     , m_authGate(authGate)
     , m_serverEndpoint(std::move(serverEndpoint))
     , m_decompressor(decompressor)
-    , m_spoolDir(std::move(spoolDir))
 {
 }
 
@@ -158,7 +156,7 @@ void RetrySender::decompressResponseIfNeeded(const HttpRequestSpec& spec, Result
     // Accept-Encoding (#38514 decision log #7) -- decompression already runs before any
     // hash/signature check either way, so the integrity chain is unaffected.
     const auto decompressedBytes =
-        m_decompressor->decompress(spec.responseFilePath, spec.maxResponseBytes, m_spoolDir, abortFlag);
+        m_decompressor->decompress(spec.responseFilePath, spec.maxResponseBytes, abortFlag);
 
     if (!decompressedBytes)
     {
