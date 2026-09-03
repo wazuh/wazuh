@@ -42,21 +42,39 @@ keep-alives, enriches and batches events, and forwards them to the engine.
 
 ## Local admin socket
 
-The C++ module serves its own metrics over a manager-local Unix socket,
+The C++ module serves its own metrics and readiness status over a manager-local Unix socket,
 `queue/sockets/remote-admin-http.sock` (fixed path, mode `0660`), separate by design from the
-agent-facing HTTPS endpoint — statistics are never exposed on the public listener.
+agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 
 | Route | Response |
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
+| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}` (`enrollment_password` is omitted entirely unless both flags are on). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. This is what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
-keeps serving agents without it. The legacy `getstate` control socket is unaffected.
+keeps serving agents without it. The legacy `getstate` control socket is unaffected. When the
+admin socket is unreachable while remoted itself is running, `GET /cluster/{node_id}/status`
+falls back to plain liveness (`ready: true`) with a `reason: "admin socket unreachable"` field,
+rather than reporting the node not ready — the admin plane failing to come up is not the same as
+remoted being unready.
+
+A caller that needs Password-mode enrollment to be usable — not just remoted to be alive — should
+poll `/status` (or `/cluster/{node_id}/status`) until `ready: true` with a bounded timeout before
+proceeding, rather than assuming readiness the moment the process starts. On a joining worker,
+`ready` typically converges within ~10-20 seconds, as the initial `cluster.json` sync lands the
+`etc/` file group (`client.keys`, `authd.pass`).
+
+This is a first-join side effect of both files travelling in the same `cluster.json` block, not a
+synchronization check: `authd.pass` never changes after that first sync, and `client.keys` changes
+on every subsequent enrollment, so a later `ready: true` does not mean `client.keys` is currently
+in sync with the master — only `enrollment_password.ready` gates `ready`, and `keystore` stays
+purely informational for exactly that reason (see above).
 
 ## Related Modules
 

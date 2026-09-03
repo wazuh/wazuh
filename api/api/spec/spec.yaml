@@ -5590,7 +5590,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node readiness"
-      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. remoted embeds enrollment_password/keystore readiness, and reports a reason: \"admin socket unreachable\" field instead of ready: false when its own admin socket cannot be reached while the daemon itself keeps running. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -5652,7 +5652,7 @@ paths:
                           inventory-sync: { available: true }
                           content-manager: { available: true }
                           task-manager: { available: true }
-                      wazuh-manager-remoted: { ready: true, running: true }
+                      wazuh-manager-remoted: { ready: true, running: true, enrollment_password: { ready: true }, keystore: { readable: true, agents_loaded: 12, entries_skipped: 0 } }
                       wazuh-manager-db: { ready: true, running: true }
                       wazuh-manager-authd: { ready: false, running: false }
                       wazuh-manager-clusterd: { ready: true, running: true }

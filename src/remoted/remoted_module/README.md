@@ -1676,14 +1676,60 @@ catalogs consume.
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
-brought up by `startAdminServer()` right after the public server. It serves exactly two
-read-only routes, both **Liveness** class (answered inline from resident state, exempt from the
+brought up by `startAdminServer()` right after the public server. It serves exactly three
+read-only routes, all **Liveness** class (answered inline from resident state, exempt from the
 byte budget):
 
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
+| `GET /status` | Readiness, not bare liveness — see below |
+
+### `GET /status`: readiness, not liveness
+
+Unlike `/` and `/metrics`, this route answers a business-logic question: can this node
+currently do Password-mode enrollment, and did its `client.keys` mirror last reload
+successfully. It reads two pieces of state the module already owns in-process — no I/O, no
+KDF, nothing that can block the admin socket's fixed 2-reactor-thread "never block" contract:
+
+- `Keystore::lastLoadOk()`/`agentsLoaded()`/`entriesSkipped()` (plain atomics, see the
+  `remoted.auth.keystore.*` pulls above) through the same `m_keystoreDiagMutex`/
+  `m_keystoreDiagTarget` weak_ptr pair `/metrics`'s pulls already use.
+- `PasswordKeySource::currentKey().has_value()` (a mutex-guarded check of an already-derived,
+  cached key — see `#### PasswordKeySource` above; `currentKey()` does make a transient,
+  wiped-on-destroy copy internally, but that copy is never serialized into the response or
+  logged) through a sibling `m_passwordKeySourceDiagMutex`/`m_passwordKeySourceDiagTarget`
+  weak_ptr pair, populated right after `EnrollmentAuthenticator` construction and permanently
+  expired when Password-mode enrollment is disabled.
+
+Response shape:
+
+```json
+{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}
+```
+
+- **`ready`** is the AND of the *gating* components only, and `enrollment_password` (when
+  present) is the sole gating component. With Password-mode disabled, `ready` is `true`
+  whenever the handler answers at all.
+- **`enrollment_password`** is present only when enrollment is administratively enabled
+  **and** Password-mode enrollment is on (the diag weak_ptr resolves); omitted entirely if
+  either is off, not reported as a distinct not-applicable state. Its `ready` is raw current
+  state — never grace-window masked.
+- **`keystore`** is always present and always informational — `readable` (not `ready`, to
+  avoid reading as a readiness claim) reflects `Keystore::lastLoadOk()`; `agents_loaded`/
+  `entries_skipped` mirror the pull metrics. It never gates the top-level `ready`: the module
+  cannot distinguish an empty-but-fine `client.keys` from a stale one still serving the old
+  table, and gating on either would flap a healthy node in and out of `ready`.
+- If the `Keystore` diag weak_ptr is expired (only reachable during facade teardown, since
+  `Keystore` is otherwise unconditionally constructed), the handler answers `503`, mirroring
+  `/metrics`'s `weakManager.lock()` fallback exactly.
+
+The unreachable-admin-socket fallback (an `httpx.ConnectError` on the framework side falls
+back to plain liveness with a surfaced reason, rather than reporting the node not ready) lives
+entirely in `framework/wazuh/manager.py`'s `_remoted_status()`, not in this handler — from
+this route's own perspective, the socket either answers or it doesn't come up at all (the
+warn-and-continue policy below).
 
 Contract points:
 
@@ -1706,6 +1752,7 @@ Contract points:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 ```
 
 ## Integration in remoted
@@ -1763,9 +1810,13 @@ exercise directly).
 Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
 the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
 metric family in the catalog (one representative name per family, plus live — not quiesced —
-values for the public-transport pulls), 404/405 exact-match routing, the warn-and-continue
-policy when the bind fails with the public listener unaffected, and `stop()` unlinking the
-socket with a restart cycle bringing the plane back).
+values for the public-transport pulls), `GET /status` reporting `enrollment_password` as the
+sole gate on top-level `ready` (present only when Password-mode enrollment is enabled) and
+`keystore.readable` as purely informational — including the case where `client.keys` fails to
+load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{readable:false,...}`
+to prove a keystore failure alone never drags `ready` down, 404/405 exact-match routing, the
+warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
+unlinking the socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V
