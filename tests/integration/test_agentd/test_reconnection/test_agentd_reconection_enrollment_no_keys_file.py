@@ -53,7 +53,7 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -136,7 +136,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     remoted_server = None
     try:
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator()
+        remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -153,7 +153,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         # and drives the agent back to requesting a new key. The same
         # instance still serves /enroll normally, so the agent's
         # re-enrollment attempt below succeeds.
-        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
+        remoted_server = RemotedSimulator(mode='REJECT_AUTH', prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
@@ -162,7 +162,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         # Reset simulator
         remoted_server.destroy()
 
-        remoted_server = RemotedSimulator()
+        remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
         # Wait until Agent is connected
         wait_connect()

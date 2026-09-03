@@ -57,7 +57,7 @@ from wazuh_testing.modules.agentd.configuration import (AGENTD_DEBUG, AGENTD_WIN
                                                         AGENTD_ENROLLMENT_RETRY_DELTA)
 from wazuh_testing.modules.agentd.patterns import AGENTD_ENROLLMENT_RETRY_BACKOFF
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils import callbacks
 
@@ -144,7 +144,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     remoted_server = None
     try:
         # Start Remoted simulador
-        remoted_server = RemotedSimulator()
+        remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
 
         # Wait succesfull enrollment

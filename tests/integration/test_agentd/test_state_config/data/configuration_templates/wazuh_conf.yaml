@@ -4,4 +4,4 @@
             - manager:
                 elements:
                 - endpoint:
-                    value: '127.0.0.1:1517/'
+                    value: '127.0.0.1:1517'
