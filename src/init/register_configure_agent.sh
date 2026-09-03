@@ -335,6 +335,10 @@ agent_option_value() {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
+        # A self-contained one-line comment ("<!-- ... -->") must be dropped here too --
+        # the grep -o chain below does unanchored substring matching on the flattened
+        # result, so a commented-out example left in would otherwise be read as live.
+        $0 ~ /<!--/ && $0 ~ /-->/ { next }
         $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
         { print }
     ' "${CONF_FILE}" | tr -d '\n\r')"
@@ -348,9 +352,10 @@ agent_option_value() {
     fi
 
     # Takes the last match, not the first -- ReadConfig()'s own "last value wins"
-    # semantics, and what xml_value() already does.
+    # semantics, and what xml_value() already does. [[:space:]], not a literal space:
+    # a tab-indented, multi-line value would otherwise keep a leading tab after trim.
     printf '%s' "${scoped}" | grep -o "<${tag}>[^<]*</${tag}>" | tail -1 | \
-        sed -e "s|<${tag}>||" -e "s|</${tag}>||" -e 's|^ *||' -e 's| *$||'
+        sed -e "s|<${tag}>||" -e "s|</${tag}>||" -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||'
 
 }
 
@@ -386,9 +391,21 @@ replace_agent_ssl_tag() {
     tag="$1"
     value="$2"
 
-    # awk's sub()/gsub() replacement text follows the same '&' (whole match) / '\&'
-    # (literal '&') convention as sed's -- callers pass the same sed-escaped value
-    # already computed for the old edit_value_tag() call.
+    # Plain string concatenation throughout below (match()+substr(), never sub()'s
+    # replacement-text argument) -- deliberately, not an oversight: gawk's own -v
+    # assignment already strips a literal backslash out of "\&" before the awk program
+    # even runs (confirmed empirically: `awk -v v='A\&B' 'BEGIN{print v}'` prints "A&B"
+    # with a warning), so a caller-side sed escape meant to survive sub()'s '&'/'\&'
+    # convention never survives to reach it -- and a bare, unescaped '&' in `value`
+    # (which XML-escaping itself introduces, as part of "&amp;"/"&lt;"/"&gt;") is
+    # completely inert in a plain concatenation, so no escaping of `value` is needed here.
+    # Collects (drops) every occurrence of <tag> found inside <agent><ssl> -- self-closing,
+    # single-line-paired, or multi-line-paired -- and inserts exactly one, correct
+    # occurrence right before </ssl> once the block ends. Rather than stopping at the
+    # first match: the real parser applies last-tag-wins (ReadConfig()'s own semantics,
+    # the same reasoning agent_option_value() above already honors via tail -1), so a
+    # leftover duplicate (e.g. from an interrupted prior install run) sitting after the
+    # first, updated one would silently win at runtime if only the first were touched.
     awk -v tag="${tag}" -v value="${value}" '
         in_comment {
             if ($0 ~ /-->/) { in_comment = 0 }
@@ -409,37 +426,24 @@ replace_agent_ssl_tag() {
         $0 ~ /^[ \t]*<\/agent>[ \t]*$/ { in_agent = 0; print; next }
         !in_agent { print; next }
         $0 ~ /^[ \t]*<ssl>[ \t]*$/ { in_ssl = 1; print; next }
-        $0 ~ /^[ \t]*<\/ssl>[ \t]*$/ { in_ssl = 0; print; next }
+        $0 ~ /^[ \t]*<\/ssl>[ \t]*$/ {
+            in_ssl = 0
+            if (found) {
+                print "      <" tag ">" value "</" tag ">"
+                done = 1
+            }
+            print
+            next
+        }
         !in_ssl { print; next }
         collecting {
-            if ($0 ~ ("</" tag ">")) {
-                if (!done) {
-                    print "      <" tag ">" value "</" tag ">"
-                    done = 1
-                }
-                collecting = 0
-                next
-            }
+            found = 1
+            if ($0 ~ ("</" tag ">")) { collecting = 0 }
             next
         }
-        !done && $0 ~ ("<" tag "[ \t]*/>") {
-            line = $0
-            sub(("<" tag "[ \t]*/>"), "<" tag ">" value "</" tag ">", line)
-            print line
-            done = 1
-            next
-        }
-        !done && $0 ~ ("<" tag ">.*</" tag ">") {
-            line = $0
-            sub(("<" tag ">.*</" tag ">"), "<" tag ">" value "</" tag ">", line)
-            print line
-            done = 1
-            next
-        }
-        !done && $0 ~ ("<" tag ">") && $0 !~ ("</" tag ">") {
-            collecting = 1
-            next
-        }
+        match($0, "<" tag "[ \t]*/>") { found = 1; next }
+        match($0, "<" tag ">.*</" tag ">") { found = 1; next }
+        $0 ~ ("<" tag ">") && $0 !~ ("</" tag ">") { collecting = 1; found = 1; next }
         { print }
         END { if (!done) { exit 1 } }
     ' "${CONF_FILE}" > "${TMP_SERVER}"
@@ -475,6 +479,15 @@ set_agent_ssl_ca() {
         return
     fi
 
+    # Same file-type/readability check as the WPK upgrade gate (pkg_installer.sh's
+    # SSL_CA check) -- without it, a path that's a directory (or missing/unreadable)
+    # installs cleanly here and the failure only surfaces later, at agent startup, via
+    # w_agent_validate_ssl_ca().
+    if [ ! -f "${ca_path}" ] || [ ! -r "${ca_path}" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA ('${ca_path}') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset." >> "${INSTALLDIR}/logs/ossec.log"
+        return
+    fi
+
     # '&', '<', '>' are structurally significant in XML content -- a raw CA path
     # containing any of them (e.g. a literal '&') would leave ossec.conf malformed and
     # unparseable, not just carry the wrong value. Every branch below writes this
@@ -482,12 +495,13 @@ set_agent_ssl_ca() {
     ca_path="$(xml_escape "${ca_path}")"
 
     if agent_option_is_set "certificate_authorities" "ssl"; then
-        # replace_agent_ssl_tag()'s awk sub() replacement text follows the same '&'
-        # (whole match) / '\&' (literal '&') convention as sed's -- on top of the
-        # XML-escaping above (which itself introduces '&' as part of "&amp;"/"&lt;"/
-        # "&gt;"), this second, independent layer keeps it from reinterpreting them.
-        ca_path_escaped="$(printf '%s' "${ca_path}" | sed -e 's/\\/\\\\/g' -e 's/&/\\\&/g')"
-        if ! replace_agent_ssl_tag "certificate_authorities" "${ca_path_escaped}"; then
+        # No extra escaping needed here beyond the XML-escaping above:
+        # replace_agent_ssl_tag() builds the new line with plain string concatenation
+        # (match()+substr()), never sub()'s '&'/'\&' replacement-text convention, so a
+        # bare '&' (which XML-escaping itself introduces, as part of "&amp;"/"&lt;"/
+        # "&gt;") passes through inert -- see that function's own comment for why a
+        # sed-side pre-escape here would be actively wrong, not just redundant.
+        if ! replace_agent_ssl_tag "certificate_authorities" "${ca_path}"; then
             echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating certificate_authorities with variable ${ca_path}." >> "${INSTALLDIR}/logs/ossec.log"
         fi
         return

@@ -84,6 +84,11 @@ strip_xml_comments() {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
+        # A self-contained one-line comment ("<!-- ... -->", both on this line) must be
+        # dropped whole here too, not just a comment that opens on this line and closes
+        # later -- xml_value()/xml_tag_present() do unanchored substring matching on the
+        # output, so a commented-out example left in would be read as live.
+        $0 ~ /<!--/ && $0 ~ /-->/ { next }
         $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
         { print }
     ' ./etc/ossec.conf 2>/dev/null
@@ -91,9 +96,12 @@ strip_xml_comments() {
 
 # Read <block><sub><tag> from the agent configuration, taking the last match.
 xml_value() {
+    # [[:space:]], not a literal space: tr -d '\n\r' above collapses a multi-line,
+    # tab-indented value onto one line, and a leading tab that survived would make a
+    # perfectly valid path fail [ -f ] right after (confirmed empirically).
     strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | \
         grep -o "<$2>.*</$2>" | grep -o "<$3>[^<]*</$3>" | tail -1 | \
-        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
+        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||'
 }
 
 # True (exit 0) if <block><sub><tag> exists in the config at all, even with empty
@@ -378,22 +386,44 @@ pin_ca() {
     PIN_OK=1
 
     if xml_block_present agent ssl; then
+        # SSL_CA (xml_value agent ssl certificate_authorities) is empty both when the tag
+        # is absent AND when it's present-but-empty (a self-closed <certificate_authorities/>,
+        # or leftover from an interrupted prior run) -- callers reach pin_ca() in both cases.
+        # Drop any such existing occurrence within this <ssl> block instead of inserting a
+        # second, sibling one: the real parser applies last-tag-wins, and the newly inserted
+        # tag lands BEFORE (not after) an existing one here, so the stale/empty tag would
+        # otherwise silently win over the CA this function was just asked to pin.
         awk -v ca="${CA_PATH}" '
             in_comment {
                 if ($0 ~ /-->/) { in_comment = 0 }
                 print
                 next
             }
+            # A self-contained one-line comment ("<!-- ... -->", both on this line) must
+            # be recognized here too, ahead of every rule below -- otherwise a
+            # commented-out example matches the unanchored certificate_authorities check
+            # further down and gets stripped as if it were the live tag.
+            $0 ~ /<!--/ {
+                print
+                if ($0 !~ /-->/) { in_comment = 1 }
+                next
+            }
             !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
                 print
                 print "      <certificate_authorities>" ca "</certificate_authorities>"
                 inserted = 1
+                in_ssl = 1
                 next
             }
-            {
-                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+            inserted && in_ssl && /^[[:space:]]*<\/ssl>[[:space:]]*$/ {
+                in_ssl = 0
                 print
+                next
             }
+            inserted && in_ssl && (/<certificate_authorities[[:space:]]*\/>/ || /<certificate_authorities>[^<]*<\/certificate_authorities>/) {
+                next
+            }
+            { print }
             END { if (!inserted) { exit 1 } }
         ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
         PIN_OK=$?
@@ -411,6 +441,11 @@ pin_ca() {
                 print
                 next
             }
+            $0 ~ /<!--/ {
+                print
+                if ($0 !~ /-->/) { in_comment = 1 }
+                next
+            }
             !inserted && /^[[:space:]]*<agent>[[:space:]]*$/ {
                 print
                 print "    <ssl>"
@@ -419,10 +454,7 @@ pin_ca() {
                 inserted = 1
                 next
             }
-            {
-                if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
-                print
-            }
+            { print }
             END { if (!inserted) { exit 1 } }
         ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
         PIN_OK=$?

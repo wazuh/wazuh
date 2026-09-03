@@ -157,7 +157,11 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
      * one layer up so a bad config is caught before the module ever spins up threads. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
-        if (ca) {
+        /* A present-but-empty <certificate_authorities/> is not a real CA -- ClientConf()'s
+         * own UNSET-resolution above already treats it that way (resolving to 'system'
+         * instead of 'certificate'), so this check has to agree, or that exact shape
+         * resolves to 'system' and then refuses to start over a CA that isn't really set. */
+        if (ca && *ca != '\0') {
             merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
             return false;
         }

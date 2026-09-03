@@ -441,12 +441,20 @@ public function config()
                 ' where the operator can still see and fix it immediately.
                 install_log home_dir, objFSO, "Invalid SSL_VERIFICATION '" & SSL_VERIFICATION & "': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset."
             Else
-                Dim vmCheckText, vmTagRegex, vmSelfClosingRegex
+                Dim vmCheckText, vmTagRegex, vmSelfClosingRegex, vmReplacementValue
                 vmCheckText = StrippedOfComments(strText)
                 Set vmTagRegex = New RegExp
                 vmTagRegex.Pattern = "<verification_mode(\s*/)?>"
                 Set vmSelfClosingRegex = New RegExp
                 vmSelfClosingRegex.Pattern = "<verification_mode\s*/>"
+                ' RegExp.Replace()'s replacement-string argument treats '$' specially
+                ' ($&, $$, $1-$9, $`, $') -- doubling every '$' first, per that same
+                ' convention, makes it inert (confirmed empirically: Replace("$&", "$",
+                ' "$$") round-trips through RegExp.Replace as the literal text "$&").
+                ' SSL_VERIFICATION is enum-validated (full/certificate/system/none) so
+                ' this can never actually fire, but applied uniformly with the CA path
+                ' below rather than relying on that constraint holding forever.
+                vmReplacementValue = Replace(SSL_VERIFICATION, "$", "$$")
 
                 If vmTagRegex.Test(vmCheckText) Then
                     ' Line by line, skipping commented-out lines, same technique as the
@@ -459,15 +467,20 @@ public function config()
                         vmLine = vmLines(vmLineIdx)
                         If vmInComment Then
                             If InStr(vmLine, "-->") > 0 Then vmInComment = False
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") > 0 Then
+                            ' Self-contained one-line comment ("<!-- ... -->", both on
+                            ' this line) -- left untouched, not treated as live: the
+                            ' checks below are unanchored substring matches that would
+                            ' otherwise match a commented-out example just as well.
                         ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") = 0 Then
                             vmInComment = True
                         ElseIf (Not vmRewritten) And InStr(vmLine, "<verification_mode>") > 0 And InStr(vmLine, "</verification_mode>") > 0 Then
                             Set re = New RegExp
                             re.Pattern = "<verification_mode>.*</verification_mode>"
-                            vmLines(vmLineIdx) = re.Replace(vmLine, "<verification_mode>" & SSL_VERIFICATION & "</verification_mode>")
+                            vmLines(vmLineIdx) = re.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
                             vmRewritten = True
                         ElseIf (Not vmRewritten) And vmSelfClosingRegex.Test(vmLine) Then
-                            vmLines(vmLineIdx) = vmSelfClosingRegex.Replace(vmLine, "<verification_mode>" & SSL_VERIFICATION & "</verification_mode>")
+                            vmLines(vmLineIdx) = vmSelfClosingRegex.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
                             vmRewritten = True
                         End If
                     Next
@@ -512,13 +525,28 @@ public function config()
         ' register_configure_agent.sh on Linux/macOS: <enrollment><server_ca_path> above is
         ' parsed-but-ignored by the 5.x agent, since enrollment now reuses <agent><ssl> for
         ' its TLS material instead of a CA path of its own.
+        If WAZUH_REGISTRATION_CA <> "" And Not objFSO.FileExists(WAZUH_REGISTRATION_CA) Then
+            ' FileExists returns False for a directory too (unlike a bare existence
+            ' check), matching pkg_installer.sh's [ -f ] on the WPK upgrade side --
+            ' without this, a bad path installs cleanly here and the failure only
+            ' surfaces later, at agent startup, via w_agent_validate_ssl_ca().
+            install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA ('" & WAZUH_REGISTRATION_CA & "') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset."
+            WAZUH_REGISTRATION_CA = ""
+        End If
+
         If WAZUH_REGISTRATION_CA <> "" Then
             checkText = StrippedOfComments(strText)
-            Dim caTagRegex, selfClosingCaRegex
+            Dim caTagRegex, selfClosingCaRegex, caReplacementValue
             Set caTagRegex = New RegExp
             caTagRegex.Pattern = "<certificate_authorities(\s*/)?>"
             Set selfClosingCaRegex = New RegExp
             selfClosingCaRegex.Pattern = "<certificate_authorities\s*/>"
+            ' RegExp.Replace()'s replacement-string argument treats '$' specially ($&,
+            ' $$, $1-$9, $`, $') -- doubling every '$' first makes it inert (confirmed
+            ' empirically). A CA path is an arbitrary operator-supplied filesystem path,
+            ' unlike SSL_VERIFICATION, so this one is a real, reachable risk, not just
+            ' applied for symmetry.
+            caReplacementValue = Replace(WAZUH_REGISTRATION_CA, "$", "$$")
             If InStr(checkText, "<verification_mode>system</verification_mode>") > 0 Then
                 ' 'system' trusts the OS store, not a configured CA: the agent refuses to
                 ' start with both set (validateTls() in moduleConfig.cpp), so writing a CA
@@ -537,12 +565,16 @@ public function config()
                     caLine = caLines(caLineIdx)
                     If caInComment Then
                         If InStr(caLine, "-->") > 0 Then caInComment = False
+                    ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") > 0 Then
+                        ' Self-contained one-line comment -- left untouched, not treated
+                        ' as live: the checks below are unanchored substring matches that
+                        ' would otherwise match a commented-out example just as well.
                     ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") = 0 Then
                         caInComment = True
                     ElseIf (Not caRewritten) And InStr(caLine, "<certificate_authorities>") > 0 And InStr(caLine, "</certificate_authorities>") > 0 Then
                         Set re = new regexp
                         re.Pattern = "<certificate_authorities>.*</certificate_authorities>"
-                        caLines(caLineIdx) = re.Replace(caLine, "<certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
+                        caLines(caLineIdx) = re.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
                         caRewritten = True
                     ElseIf (Not caRewritten) And selfClosingCaRegex.Test(caLine) Then
                         ' Same tag, self-closing form (<certificate_authorities/>, OS_XML's
@@ -550,7 +582,7 @@ public function config()
                         ' populated form instead of leaving it and falling through to the
                         ' <ssl>-exists branch below, which would insert a second, duplicate
                         ' <certificate_authorities> line right alongside this one.
-                        caLines(caLineIdx) = selfClosingCaRegex.Replace(caLine, "<certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>")
+                        caLines(caLineIdx) = selfClosingCaRegex.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
                         caRewritten = True
                     End If
                 Next

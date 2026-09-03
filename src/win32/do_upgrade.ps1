@@ -290,15 +290,20 @@ if ($msi_new_version -ne $null) {
 # Strips commented-out lines before get_conf_value/xml_block_present extract anything, so a
 # tag an operator comments out (e.g. to fall back to the default) reads as absent here too,
 # matching OS_XML's own comment handling and pkg_installer.sh's strip_xml_comments() on the
-# Linux/macOS side. Same known trade-off as that one: a comment that opens and closes on the
-# same line is not stripped, since every comment actually shipped in this codebase's XML
-# wraps whole indented lines.
+# Linux/macOS side.
 function strip_xml_comments($conf_path) {
     $in_comment = $false
     $result = New-Object System.Collections.Generic.List[string]
     foreach ($line in (Get-Content $conf_path)) {
         if ($in_comment) {
             if ($line -match '-->') { $in_comment = $false }
+            continue
+        }
+        # A self-contained one-line comment ("<!-- ... -->", both on this line) must be
+        # dropped here too, not just one that opens on this line and closes later --
+        # get_conf_value/xml_block_present do unanchored regex matching on the result, so
+        # a commented-out example left in would otherwise be read as live.
+        if ($line -match '<!--' -and $line -match '-->') {
             continue
         }
         if ($line -match '<!--' -and $line -notmatch '-->') {
