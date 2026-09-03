@@ -402,7 +402,11 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >
 
 if [ -f "./bin/wazuh-control" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
-    ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
+    if [[ "$OS" == "Darwin" ]]; then
+        launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+    else
+        ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
+    fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed: wazuh-control not found." >> ./logs/upgrade.log
     abort_upgrade "2"
