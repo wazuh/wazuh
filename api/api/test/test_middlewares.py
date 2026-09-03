@@ -381,10 +381,9 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
         mock_req.query_params.update({'password': '****'} if q_password else {})
         body.update({'password': '****'} if b_key else {})
         body.update({'key': '****'} if b_key and endpoint == '/agents' else {})
-        # A 403 on a login endpoint is a blocked IP, refused before any credential was checked, so
-        # the body is not logged.
-        expected_body = {} if status_code == 403 and endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
-            else body
+        # The body is logged only for a caller the security handler accepted, which the fixture
+        # signals through the request context.
+        expected_body = body if c_user else {}
         mock_custom_logging.assert_called_once_with(
             expected_user, mock_req.client.host, mock_req.method,
             endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
@@ -712,69 +711,70 @@ async def test_check_auth_context_size_middleware_allowed(path, content_length, 
     assert (receive.await_count if receive else 0) == receive_chunks
 
 
-@pytest.mark.parametrize('status_code, path, expected_body', [
-    # The request reached the endpoint, so its body is worth auditing.
-    (200, '/agents', {'field': 'value'}),
-    (400, '/agents', {'field': 'value'}),
-    # An authenticated caller denied by RBAC: still worth auditing.
-    (403, '/agents', {'field': 'value'}),
-    # Refused before, or instead of, authenticating. Nobody vouched for these payloads, so they
-    # must not reach api.log or api.json.
-    (401, '/agents', {}),
-    (404, '/agents', {}),
-    (405, '/agents', {}),
-    (413, '/agents', {}),
-    (429, '/agents', {}),
-    # A 403 on a login endpoint is a blocked IP, refused before any credential was checked.
-    (403, LOGIN_ENDPOINT, {}),
-    (403, RUN_AS_LOGIN_ENDPOINT, {}),
+@pytest.mark.parametrize('context, status_code, path, expected_body', [
+    # The security handler accepted the caller, so the payload is worth auditing -- whatever status
+    # the request ends up with. 404 (a group that does not exist), 413 (above max_upload_size) and
+    # 417 (a rejected Expect header) are all reachable only from below the security handler, and
+    # were previously misread as unauthenticated because they were judged by status code alone.
+    ({'user': 'wazuh', 'token_info': {}}, 200, '/agents', {'field': 'value'}),
+    ({'user': 'wazuh', 'token_info': {}}, 400, '/agents', {'field': 'value'}),
+    ({'user': 'wazuh', 'token_info': {}}, 403, '/agents', {'field': 'value'}),
+    ({'user': 'wazuh', 'token_info': {}}, 404, '/groups/x/configuration', {'field': 'value'}),
+    ({'user': 'wazuh', 'token_info': {}}, 413, '/agents', {'field': 'value'}),
+    ({'user': 'wazuh', 'token_info': {}}, 417, '/agents', {'field': 'value'}),
+    ({'token_info': {'rbac_policies': {}}}, 200, '/agents', {'field': 'value'}),
+    # Nobody vouched for these payloads, so they must not reach api.log or api.json.
+    ({}, 401, '/agents', {}),
+    ({}, 405, '/agents', {}),
+    ({}, 429, '/agents', {}),
+    ({}, 413, RUN_AS_LOGIN_ENDPOINT, {}),
+    ({}, 403, LOGIN_ENDPOINT, {}),
 ])
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_access_log_omits_unauthenticated_body(status_code, path, expected_body, mock_req):
-    """Check that the body of a request that never authenticated is not logged."""
-    response = MagicMock()
-    response.status_code = status_code
-    mock_req._json = MagicMock()
-    mock_req.json = AsyncMock(return_value={'field': 'value'})
-    mock_req.query_params = {}
-    mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh', 'token_info': {'hash_auth_context': 'h'}}
-    mock_req.scope = {'path': path}
-    mock_req.headers = {'content-type': 'application/json'}
-
-    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
-         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
-               return_value=('basic', 'wazuh:pwd')), \
-         patch('api.middlewares.base64.b64decode', return_value=b'wazuh:pwd'):
-        await access_log(request=mock_req, response=response,
-                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
-
-    assert mock_custom_logging.call_args.args[5] == expected_body
-
-
-@pytest.mark.parametrize('status_code, path, should_parse', [
-    # Reached the endpoint: the body is logged, so it has to be parsed.
-    (200, '/agents', True),
-    # Never authenticated: nothing will use the body, so it is not deserialised at all. This is
-    # what keeps an unauthenticated caller from paying for `json.loads` on a payload nobody
-    # vouched for.
-    (401, '/agents', False),
-    (429, '/agents', False),
-    # A failed run_as is still hashed into an auth context identifier, which needs the parse.
-    (401, RUN_AS_LOGIN_ENDPOINT, True),
-])
-@pytest.mark.asyncio
-@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_access_log_only_parses_the_body_it_uses(status_code, path, should_parse, mock_req):
-    """Check that the body is deserialised only where the result is actually used."""
+async def test_access_log_omits_unauthenticated_body(context, status_code, path, expected_body,
+                                                     mock_req):
+    """Check that the body is logged for an authenticated caller and omitted otherwise."""
     response = MagicMock()
     response.status_code = status_code
     mock_req._body = b'{"field": "value"}'
     mock_req.json = AsyncMock(return_value={'field': 'value'})
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {}
+    mock_req.context = context
+    mock_req.scope = {'path': path}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+               side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == expected_body
+
+
+@pytest.mark.parametrize('context, path, should_parse', [
+    # Reached the endpoint: the body is logged, so it has to be parsed.
+    ({'user': 'wazuh'}, '/agents', True),
+    # Never authenticated: nothing will use the body, so it is not deserialised at all. This is
+    # what keeps an unauthenticated caller from paying for `json.loads` on a payload nobody
+    # vouched for.
+    ({}, '/agents', False),
+    # A failed run_as is still hashed into an auth context identifier, which needs the parse.
+    ({}, RUN_AS_LOGIN_ENDPOINT, True),
+])
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_only_parses_the_body_it_uses(context, path, should_parse, mock_req):
+    """Check that the body is deserialised only where the result is actually used."""
+    response = MagicMock()
+    response.status_code = 200
+    mock_req._body = b'{"field": "value"}'
+    mock_req.json = AsyncMock(return_value={'field': 'value'})
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = context
     mock_req.scope = {'path': path}
     mock_req.headers = {'content-type': 'application/json'}
 

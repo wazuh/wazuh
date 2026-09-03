@@ -45,14 +45,6 @@ HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 # logged without its auth context hash.
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
-# Status codes the API can answer with before the security handler has accepted the caller: routing
-# and every middleware above security produce these on their own. A request body is
-# caller-controlled content written to both api.log and api.json, so for any of these it must not
-# reach the logs. The request context cannot answer this question in `access_log`: connexion keeps
-# it in the ASGI scope's `extensions`, which the middlewares below this one do not share upwards,
-# which is also why the username there has to be recovered from the authorization header.
-PRE_AUTHENTICATION_STATUS_CODES = frozenset({401, 404, 405, 413, 417, 429})
-
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -151,11 +143,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     query = dict(request.query_params) if hasattr(request, 'query_params') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
 
-    # Only a caller the security handler accepted gets its payload recorded. A 403 on a login
-    # endpoint is a blocked IP, refused before any credential was checked; a 403 anywhere else is an
-    # authenticated caller denied by RBAC, whose body is worth auditing.
-    log_body = not (response.status_code in PRE_AUTHENTICATION_STATUS_CODES or
-                    (response.status_code == 403 and path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT}))
+    # Only a caller the security handler accepted gets its payload recorded. connexion writes the
+    # identity into the request context once, and only once, authentication has succeeded, so its
+    # presence is the answer -- not the response status, which cannot distinguish a rejection issued
+    # above the security handler from the same code returned to an authenticated caller further
+    # down. `WazuhAccessLoggerMiddleware` is what makes the context readable from out here.
+    log_body = bool(context.get('user', None) or context.get('token_info', None))
 
     # The body is deserialised here, after the response, and no longer in the middleware before the
     # request was dispatched: nothing should build an object graph out of a payload for a caller
@@ -425,6 +418,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
             Returned response.
         """
         prev_time = time.time()
+
+        # connexion's routing middleware passes a shallow copy of the scope downwards, so the
+        # request context that the security handler writes into the copy's `extensions` is invisible
+        # from out here -- which is why the username below has to be recovered from the authorization
+        # header. Creating `extensions` before the request is dispatched makes the copy share this
+        # very dict, so `access_log` can read the identity the security handler settled on and does
+        # not have to guess it from the response status.
+        request.scope.setdefault('extensions', {})
 
         # This is the outermost middleware, so reading every body here handed an unauthenticated
         # caller a max_upload_size buffer plus the object graph deserialised from it, once per
