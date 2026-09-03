@@ -74,3 +74,23 @@ TEST(RootfsStillAddressable, FalseForADeadPid)
     // silent partial row set into a reported incomplete scan.
     EXPECT_FALSE(wazuh::container_baseline::RootfsStillAddressable(0));
 }
+
+TEST(SelectAddressablePid, PicksTheFirstLivePid)
+{
+    // 0 is never addressable, so a snapshot whose earliest entries have already
+    // exited must not make the whole container unscannable.
+    const auto self = ::getpid();
+    EXPECT_EQ(wazuh::container_baseline::SelectAddressablePid({0, 0, self}), self);
+}
+
+TEST(SelectAddressablePid, PrefersTheEarliestCandidate)
+{
+    const auto self = ::getpid();
+    EXPECT_EQ(wazuh::container_baseline::SelectAddressablePid({self, 0}), self);
+}
+
+TEST(SelectAddressablePid, ZeroWhenNothingIsAddressable)
+{
+    EXPECT_EQ(wazuh::container_baseline::SelectAddressablePid({}), 0);
+    EXPECT_EQ(wazuh::container_baseline::SelectAddressablePid({0}), 0);
+}

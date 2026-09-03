@@ -177,8 +177,13 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         const auto& pids = pidIndex.pidsFor(identity.container_id);
         if (pids.empty()) continue; // no live PID — nothing to address the rootfs with (yet).
 
+        // The PID list is a snapshot, so some entries may already have exited.
+        // Pick one whose rootfs is addressable rather than whichever happened to
+        // be first.
+        const auto pid = SelectAddressablePid(pids);
+        if (pid == 0) continue; // every candidate has gone; same as "no live PID"
+
         ++baselined;
-        const auto pid = pids.front();
         const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
 
         // A walk that hit its row cap, or whose configured path doesn't exist in
@@ -200,9 +205,16 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
             }
         }
 
-        // A PID that exited partway through the walk makes every subsequent
-        // read fail, so the row set is a subset of the container's files even
-        // though nothing reported an error. Treat that as an incomplete scan.
+        // A PID that exited partway through makes every subsequent read fail,
+        // so the row set is a subset of the container's files even though
+        // nothing reported an error.
+        //
+        // Deliberately NOT retried on another PID: doing so means buffering the
+        // whole container before emitting anything (otherwise a retry would
+        // republish rows already sent), and one container's files can be tens of
+        // thousands of rows — which is the node-scale buffering that streaming
+        // exists to avoid. Reporting the scan as partial is already safe (the
+        // consumer suppresses delete detection) and the next cycle completes it.
         if (!RootfsStillAddressable(pid)) {
             partial = true;
         }
@@ -231,9 +243,11 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         const auto& pids = pidIndex.pidsFor(identity.container_id);
         if (pids.empty()) continue;
 
+        const auto pid = SelectAddressablePid(pids);
+        if (pid == 0) continue; // every candidate has gone; same as "no live PID"
+
         ++baselined;
 
-        const auto pid   = pids.front();
         const auto scope = DetectContainerScope(pid);
 
         // Context blob serialized once per container; every row carries it in

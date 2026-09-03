@@ -70,6 +70,16 @@ bool RootfsStillAddressable(pid_t pid)
     return ::stat(("/proc/" + std::to_string(pid) + "/root").c_str(), &st) == 0;
 }
 
+pid_t SelectAddressablePid(const std::vector<pid_t>& pids)
+{
+    for (const auto pid : pids)
+    {
+        if (RootfsStillAddressable(pid)) return pid;
+    }
+
+    return 0;
+}
+
 std::unordered_set<std::string>
 SharedNetnsContainers(const std::unordered_map<std::string, std::vector<pid_t>>& pids_by_container)
 {
