@@ -127,26 +127,36 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
         return std::nullopt; // LCOV_EXCL_LINE: fdopen() on a just-opened fd doesn't fail in practice.
     }
 
+    // Every failure from here on must close `dest` BEFORE removing it: Windows refuses to delete a
+    // file that still has an open handle (createExclusiveTempFile opens _SH_DENYRW, which never
+    // grants FILE_SHARE_DELETE), so returning while the FILE* was still open left the temp file in
+    // the spool directory permanently -- once per malformed/truncated/over-cap response, and once
+    // per agent shutdown that aborted a download. POSIX unlinks an open file happily, which is why
+    // only Windows ever leaked and why no test on this host can see the difference.
+    const auto fail = [&dest, &destPath]() -> std::optional<uint64_t>
+    {
+        dest.reset();
+        (void)std::remove(destPath.c_str());
+        return std::nullopt;
+    };
+
     ZSTD_DStream* dstream = ZSTD_createDStream();
 
     if (dstream == nullptr)
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt; // LCOV_EXCL_LINE: allocation failure only.
+        return fail(); // LCOV_EXCL_LINE: allocation failure only.
     }
 
     const DStreamGuard guard {dstream};
 
     if (ZSTD_isError(ZSTD_initDStream(dstream)))
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt; // LCOV_EXCL_LINE: cannot fail right after ZSTD_createDStream().
+        return fail(); // LCOV_EXCL_LINE: cannot fail right after ZSTD_createDStream().
     }
 
     if (ZSTD_isError(ZSTD_DCtx_setParameter(dstream, ZSTD_d_windowLogMax, kMaxDeclaredWindowLog)))
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt; // LCOV_EXCL_LINE: a stable, in-range parameter cannot be rejected.
+        return fail(); // LCOV_EXCL_LINE: a stable, in-range parameter cannot be rejected.
     }
 
     std::array<uint8_t, FILE_CHUNK> outChunk {};
@@ -201,37 +211,32 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
 
     if (!feedChunk(inChunk.data(), bytesRead))
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt;
+        return fail();
     }
 
     while ((bytesRead = std::fread(inChunk.data(), 1, inChunk.size(), source.get())) > 0)
     {
         if (abortFlag != nullptr && abortFlag->load())
         {
-            (void)std::remove(destPath.c_str());
-            return std::nullopt;
+            return fail();
         }
 
         if (!feedChunk(inChunk.data(), bytesRead))
         {
-            (void)std::remove(destPath.c_str());
-            return std::nullopt;
+            return fail();
         }
     }
 
     if (std::ferror(source.get()))
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt;
+        return fail();
     }
 
     // frameRemaining != 0 after all input has been fed means the frame is incomplete (more input
     // would be required to finish it) -- a truncated transfer.
     if (frameRemaining != 0)
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt;
+        return fail();
     }
 
     // Zero plain bytes out of a non-empty input is not a config: it means the response carried no
@@ -240,8 +245,7 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
     // rename an empty file over the caller's download.
     if (totalOut == 0)
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt;
+        return fail();
     }
 
     dest.reset();   // Close (flush to disk) before the rename.
@@ -249,8 +253,7 @@ ZstdFileDecompressor::decompress(const std::string& pathToReplace, uint64_t maxD
 
     if (!replaceFile(destPath, pathToReplace))
     {
-        (void)std::remove(destPath.c_str());
-        return std::nullopt; // LCOV_EXCL_LINE: rename failure (cross-device, permissions) not reproducible in tests.
+        return fail(); // LCOV_EXCL_LINE: rename failure (cross-device, permissions) not reproducible in tests.
     }
 
     return totalOut;
