@@ -2563,7 +2563,7 @@ static void test_fim_checker_fim_directory(void **state) {
     snprintf(pattern, OS_MAXSTR, "%s\\*", expanded_path);
     MultiByteToWideChar(CP_UTF8, 0, pattern, -1, w_pattern, OS_MAXSTR);
 
-    expect_string(wrap_FindFirstFile, lpFileName, w_pattern);
+    expect_memory(wrap_FindFirstFile, lpFileName, w_pattern, (wcslen(w_pattern) + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, "test");
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
     will_return(wrap_FindFirstFile, (HANDLE)1);
@@ -2632,7 +2632,7 @@ static void expect_win_empty_dir(const char *dir, wchar_t *wpat, size_t wpat_len
     char pattern[OS_SIZE_1024];
     snprintf(pattern, sizeof(pattern), "%s\\*", dir);
     MultiByteToWideChar(CP_UTF8, 0, pattern, -1, wpat, wpat_len);
-    expect_string(wrap_FindFirstFile, lpFileName, wpat);
+    expect_memory(wrap_FindFirstFile, lpFileName, wpat, (wcslen(wpat) + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, ".");
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_DIRECTORY);
     will_return(wrap_FindFirstFile, (HANDLE)1);
@@ -3131,7 +3131,7 @@ static void test_fim_directory(void **state) {
     strcpy(fim_data->entry->d_name, "test");
 
 #ifdef TEST_WINAGENT
-    expect_string(wrap_FindFirstFile, lpFileName, L"test\\*");
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, "test");
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
     will_return(wrap_FindFirstFile, (HANDLE)1);
@@ -3156,6 +3156,38 @@ static void test_fim_directory(void **state) {
     assert_int_equal(ret, 0);
 }
 
+#ifdef TEST_WINAGENT
+// Regression test for issue #34878: an entry whose name has characters outside
+// the process ANSI code page (Turkish) must be enumerated wide and reported as
+// UTF-8, lowercasing ASCII only and preserving the non-ASCII bytes.
+static void test_fim_directory_non_ascii_name(void **state) {
+    (void) state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, "A" "\xc5\x9f" ".txt");   // "Aş.txt" in UTF-8
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+
+    // 'A' is lowercased to 'a'; the non-ASCII 'ş' (0xc5 0x9f) is left untouched.
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6319): No configuration found for (file):'test\\a" "\xc5\x9f" ".txt'");
+
+    ret = fim_directory("test", &evt_data, NULL, NULL, NULL);
+    assert_int_equal(ret, 0);
+}
+#endif
+
 static void test_fim_directory_ignore(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
@@ -3164,7 +3196,7 @@ static void test_fim_directory_ignore(void **state) {
     strcpy(fim_data->entry->d_name, ".");
 
 #ifdef TEST_WINAGENT
-    expect_string(wrap_FindFirstFile, lpFileName, L".\\*");
+    expect_memory(wrap_FindFirstFile, lpFileName, L".\\*", (wcslen(L".\\*") + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, ".");
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
     will_return(wrap_FindFirstFile, (HANDLE)1);
@@ -3197,7 +3229,7 @@ static void test_fim_directory_opendir_error(void **state) {
     int ret;
 
 #ifdef TEST_WINAGENT
-    expect_string(wrap_FindFirstFile, lpFileName, L"test\\*");
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, NULL);
     will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
     will_return(__wrap_win_strerror, "Permission denied");
@@ -4533,6 +4565,9 @@ int main(void) {
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_directory_non_ascii_name),
+#endif
         cmocka_unit_test_setup_teardown(test_fim_directory_ignore, setup_struct_dirent, teardown_struct_dirent),
         cmocka_unit_test(test_fim_directory_nodir),
         cmocka_unit_test(test_fim_directory_opendir_error),
