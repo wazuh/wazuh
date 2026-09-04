@@ -72,6 +72,13 @@ bool ReporterStream::anyEnabled() const
     return m_stats.enabled || m_config_.enabled;
 }
 
+void ReporterStream::forceConfigReportNow()
+{
+    // Path::nextDue's own convention (see reporterStream.hpp): default-constructed = epoch =>
+    // due immediately, picked up by the next tick() without disturbing m_stats' own cadence.
+    m_config_.nextDue = std::chrono::steady_clock::time_point {};
+}
+
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 {
     // Skip entirely (without advancing nextDue) when not registered or paused,

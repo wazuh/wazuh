@@ -54,6 +54,11 @@ class ReporterStream final
         /// Returns the delay until the next tick should run.
         std::chrono::milliseconds tick(Waiter& waiter, bool registered);
 
+        /// #38840: make the /config path due on the next tick instead of waiting out its full
+        /// interval (default 3600s) -- called when the agent applies a new shared configuration,
+        /// so the manager's view of it does not lag behind what the agent already runs.
+        void forceConfigReportNow();
+
     private:
         struct Path
         {
