@@ -583,15 +583,15 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-@pytest.mark.parametrize("username_with_special_chars,expected_escaped", [
-    ('user\nname', 'user\\nname'),
-    ('user\r\nname', 'user\\r\\nname'),
-    ('user\tname', 'user\\tname'),
-    ('multi\n\r\tline', 'multi\\n\\r\\tline'),
-    ('normal_user', 'normal_user'),
+@pytest.mark.parametrize("username_with_special_chars", [
+    'user\nname',
+    'user\r\nname',
+    'user\tname',
+    'multi\n\r\tline',
+    'normal_user',
 ])
-async def test_access_log_escapes_control_characters_basic_auth(username_with_special_chars, expected_escaped, mock_req):
-    """Test that access_log properly escapes control characters in usernames from Basic auth."""
+async def test_access_log_forwards_raw_username_basic_auth(username_with_special_chars, mock_req):
+    """Test that access_log forwards the Basic auth username untouched: custom_logging escapes it."""
     response = MagicMock()
     response.status_code = 401
 
@@ -618,18 +618,18 @@ async def test_access_log_escapes_control_characters_basic_auth(username_with_sp
 
         mock_custom_logging.assert_called_once()
         logged_username = mock_custom_logging.call_args[0][0]
-        assert logged_username == expected_escaped
+        assert logged_username == username_with_special_chars
 
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-@pytest.mark.parametrize("username_with_special_chars,expected_escaped", [
-    ('user\nname', 'user\\nname'),
-    ('user\r\nname', 'user\\r\\nname'),
-    ('user\tname', 'user\\tname'),
+@pytest.mark.parametrize("username_with_special_chars", [
+    'user\nname',
+    'user\r\nname',
+    'user\tname',
 ])
-async def test_access_log_escapes_control_characters_jwt(username_with_special_chars, expected_escaped, mock_req):
-    """Test that access_log properly escapes control characters in usernames from JWT tokens."""
+async def test_access_log_forwards_raw_username_jwt(username_with_special_chars, mock_req):
+    """Test that access_log forwards the JWT username untouched: custom_logging escapes it."""
     response = MagicMock()
     response.status_code = 200
 
@@ -656,7 +656,7 @@ async def test_access_log_escapes_control_characters_jwt(username_with_special_c
 
         mock_custom_logging.assert_called_once()
         logged_username = mock_custom_logging.call_args[0][0]
-        assert logged_username == expected_escaped
+        assert logged_username == username_with_special_chars
 
 
 @pytest.mark.asyncio
@@ -665,9 +665,10 @@ async def test_access_log_escapes_control_characters_jwt(username_with_special_c
     'user\nname',
     'user\r\nname',
     'user\tname',
+    'user\x1b[2Jname',
 ])
 async def test_access_log_warns_on_control_characters(username_with_special_chars, mock_req):
-    """Test that access_log logs a warning when usernames contain control characters."""
+    """Test that access_log logs a one-line warning when usernames contain control characters."""
     response = MagicMock()
     response.status_code = 200
 
@@ -679,7 +680,7 @@ async def test_access_log_warns_on_control_characters(username_with_special_char
     mock_req.query_params = {}
     mock_req.method = 'GET'
     mock_req.context = {}
-    mock_req.scope = {'path': '/agents'}
+    mock_req.scope = {'path': '/agents\nforged'}
     mock_req.headers = {'content-type': 'None'}
 
     encoded_creds = f'{username_with_special_chars}:password'
@@ -696,6 +697,8 @@ async def test_access_log_warns_on_control_characters(username_with_special_char
         mock_warning.assert_called_once()
         warning_message = mock_warning.call_args[0][0]
         assert 'Username contains control characters' in warning_message
+        assert 'Path: /agents\\nforged.' in warning_message
+        assert '\n' not in warning_message
 
 
 @pytest.mark.asyncio
