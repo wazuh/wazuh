@@ -53,7 +53,7 @@ global get-agent-info 5
 | Database | Path | Purpose |
 |----------|------|---------|
 | `global.db` | `queue/db/global.db` | Agent registry, groups, connection status |
-| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK reference data |
+| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py` |
 | `{id}.db` | `queue/db/{id}.db` | Per-agent inventory (legacy — 4.x only; see note below) |
 
 > **Note on {id}.db (4.x legacy):** In Wazuh 4.x, each agent had a dedicated SQLite database at `queue/db/{agent_id}.db` storing per-agent inventory data (FIM events, packages, processes, network interfaces). In Wazuh 5.0 this data is shipped directly to OpenSearch indices via the Indexer Connector (e.g. `wazuh-states-fim-files`, `wazuh-states-inventory-packages`). The per-agent SQLite databases are no longer created or used; existing files from a 4.x installation can be removed after migration.
