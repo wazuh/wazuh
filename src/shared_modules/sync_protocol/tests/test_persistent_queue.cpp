@@ -222,6 +222,68 @@ TEST(PersistentQueueTest, DestructorMakesFinalDrainAttemptForPendingRetryItems)
     EXPECT_TRUE(finalDrainSucceeded);
 }
 
+TEST(PersistentQueueTest, PendingRetryCoalescesCreateThenDeleteIntoNoOp)
+{
+    // A CREATE then a DELETE_ for the same id, both failing, must cancel out entirely once
+    // storage recovers -- not replay as a lone DELETE_ for an id storage never saw created.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    std::vector<std::pair<std::string, Operation>> submitted;
+
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillRepeatedly(::testing::Invoke([&submitted](const PersistedData & d) { submitted.emplace_back(d.id, d.operation); throw std::runtime_error("Simulated transient storage error"); }));
+
+    PersistentQueue queue(":memory:", logger, mockStorage);
+
+    queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+    queue.submit("id1", "idx", "{}", Operation::DELETE_, 2);
+
+    // 3 failed attempts so far: initial CREATE, its retry-drain, and the DELETE_.
+    ASSERT_EQ(submitted.size(), 3u);
+
+    // Storage "recovers": further calls succeed.
+    testing::Mock::VerifyAndClearExpectations(mockStorage.get());
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillRepeatedly(::testing::Invoke([&submitted](const PersistedData & d) { submitted.emplace_back(d.id, d.operation); }));
+
+    queue.submit("id2", "idx2", "{}", Operation::CREATE, 3);
+
+    // Only "id2" gets submitted -- the canceled CREATE+DELETE_ pair never resurfaces.
+    ASSERT_EQ(submitted.size(), 4u);
+    EXPECT_EQ(submitted[3].first, "id2");
+}
+
+TEST(PersistentQueueTest, PendingRetryCoalescesCreateThenModifyKeepingCreateOperation)
+{
+    // CREATE then MODIFY, both failing, must still persist as CREATE -- storage never saw
+    // this id, so sending MODIFY instead would desync its createStatus tracking.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    std::vector<PersistedData> submitted;
+
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error"))) // initial CREATE
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error"))) // retry-drain of the CREATE
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error"))) // the MODIFY itself
+    .WillRepeatedly(::testing::Invoke([&submitted](const PersistedData & d) { submitted.push_back(d); }));
+
+    PersistentQueue queue(":memory:", logger, mockStorage);
+
+    queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+    queue.submit("id1", "idx2", "{updated}", Operation::MODIFY, 2);
+    queue.submit("id2", "idx3", "{}", Operation::CREATE, 3); // drains id1 successfully this time, then submits id2
+
+    ASSERT_EQ(submitted.size(), 2u);
+    EXPECT_EQ(submitted[0].id, "id1");
+    EXPECT_EQ(submitted[0].operation, Operation::CREATE);
+    EXPECT_EQ(submitted[0].index, "idx2");
+    EXPECT_EQ(submitted[0].data, "{updated}");
+    EXPECT_EQ(submitted[0].version, 2u);
+    EXPECT_EQ(submitted[1].id, "id2");
+}
+
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();

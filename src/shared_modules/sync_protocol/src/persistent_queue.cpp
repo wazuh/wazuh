@@ -116,9 +116,28 @@ void PersistentQueue::submit(const std::string& id,
     {
         m_logger(LOG_ERROR, std::string("PersistentQueue: Error submitting item to storage: ") + ex.what() + " (will retry on next call)");
 
-        // An id already pending retry is always updated in place (never grows the map);
-        // only a brand-new failing id is subject to the capacity check below.
-        if (m_pendingRetry.find(id) == m_pendingRetry.end() && m_pendingRetry.size() >= MAX_PENDING_RETRY_ITEMS)
+        auto pending = m_pendingRetry.find(id);
+
+        // Coalesce with an id already pending retry instead of raw-overwriting it: since
+        // storage never received this id, a CREATE later canceled by a DELETE_ must be
+        // dropped entirely rather than replayed as a lone DELETE_ once storage recovers.
+        if (pending != m_pendingRetry.end())
+        {
+            if (pending->second.operation == Operation::CREATE && newItem.operation == Operation::DELETE_)
+            {
+                m_pendingRetry.erase(pending);
+                return;
+            }
+
+            // Keep CREATE if that's what it started as, so storage still sees it as one.
+            const Operation mergedOperation = (pending->second.operation == Operation::CREATE) ? Operation::CREATE : newItem.operation;
+            newItem.operation = mergedOperation;
+            pending->second = std::move(newItem);
+            return;
+        }
+
+        // A brand-new failing id is subject to the capacity check.
+        if (m_pendingRetry.size() >= MAX_PENDING_RETRY_ITEMS)
         {
             m_logger(LOG_ERROR,
                      "PersistentQueue: Retry list is at capacity (" + std::to_string(MAX_PENDING_RETRY_ITEMS) +

@@ -695,3 +695,26 @@ TEST(InMemoryQueueStorageCapacityTest, CoalescedUpdatesDoNotLeakIntoTheByteBudge
     EXPECT_TRUE(sameIdPresent);
     EXPECT_TRUE(newIdPresent);
 }
+
+TEST(InMemoryQueueStorageCapacityTest, SubmitBatchRollsBackFullyOnMidBatchFailure)
+{
+    // submitBatch() must persist atomically: a mid-batch failure must not leave earlier
+    // items in the batch applied.
+    InMemoryQueueStorage storage(":memory:", silentLogger());
+
+    // Bigger than the whole queue byte cap alone, so it's rejected no matter how much room
+    // the first two items left.
+    const std::string oversizedPayload(9 * 1024 * 1024, 'x');
+
+    const std::vector<PersistedData> batch =
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 1},
+        PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 1},
+        PersistedData{0, "id3", "idx", oversizedPayload, Operation::CREATE, 1},
+    };
+
+    EXPECT_THROW(storage.submitBatch(batch), std::runtime_error);
+
+    // Nothing remains -- not even "id1"/"id2", applied before "id3" triggered the rejection.
+    EXPECT_TRUE(storage.fetchAll().empty());
+}

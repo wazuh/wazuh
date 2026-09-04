@@ -93,8 +93,10 @@ class PersistentQueue : public IPersistentQueue
 
         /// @brief Items that failed to persist on a previous call, keyed by id so repeated
         ///        failures (or a newer submit() for the same id arriving before the older
-        ///        failed attempt is retried) coalesce to just the latest attempt instead of
-        ///        accumulating stale duplicates. Retried opportunistically at the start of
+        ///        failed attempt is retried) coalesce instead of accumulating stale
+        ///        duplicates or being raw-overwritten -- a CREATE canceled by a later
+        ///        DELETE_ is dropped entirely rather than replayed as a lone DELETE_.
+        ///        Retried opportunistically at the start of
         ///        submit(), fetchAndMarkForSync(), and fetchPendingItems() -- i.e. every entry
         ///        point that touches m_storage, not just submit() -- so a transient storage
         ///        failure does not silently and permanently lose the event even if no further

@@ -94,6 +94,12 @@ void InMemoryQueueStorage::loadFromDisk()
     {
         try
         {
+            // Discard any partial rows from a previous failed attempt before re-reading the
+            // same on-disk snapshot, otherwise they end up duplicated (addRow() has no guard).
+            m_rows.clear();
+            m_index.clear();
+            m_totalEstimatedBytes = 0;
+
             PersistentQueueStorage onDiskSnapshot(m_dbPath, m_logger, m_fileSystemWrapper);
 
             for (auto& row : onDiskSnapshot.fetchAll())
@@ -213,10 +219,9 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
             // the moment the cap is hit -- turning "silently dropped forever" into "retried
             // until the queue has room," which is not a full fix (the caller still gets no
             // synchronous success/failure signal) but is a materially better failure mode.
-            const std::string message = "InMemoryQueueStorage: Queue is at capacity (~" +
-                                         std::to_string(m_totalEstimatedBytes) + " of " +
-                                         std::to_string(MAX_QUEUE_BYTES) + " B); rejecting new item id=" +
-                                         newData.id + ". The sync peer may be unreachable for an extended period.";
+            std::string message = "InMemoryQueueStorage: Queue is at capacity (~" + std::to_string(m_totalEstimatedBytes);
+            message += " of " + std::to_string(MAX_QUEUE_BYTES) + " B); rejecting new item id=" + newData.id;
+            message += ". The sync peer may be unreachable for an extended period.";
             m_logger(LOG_ERROR, message);
             throw std::runtime_error(message);
         }
@@ -285,9 +290,20 @@ void InMemoryQueueStorage::submitOrCoalesce(const PersistedData& data)
 
 void InMemoryQueueStorage::submitBatch(const std::vector<PersistedData>& batch)
 {
-    for (const auto& item : batch)
+    // Snapshot and restore on failure so a mid-batch throw can't leave a partial batch applied.
+    const std::vector<QueueRow> rowsBeforeBatch(m_rows.begin(), m_rows.end());
+
+    try
     {
-        applyCoalesceLogic(item);
+        for (const auto& item : batch)
+        {
+            applyCoalesceLogic(item);
+        }
+    }
+    catch (...)
+    {
+        saveAll(rowsBeforeBatch);
+        throw;
     }
 }
 
