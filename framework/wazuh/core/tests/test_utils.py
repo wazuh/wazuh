@@ -586,6 +586,31 @@ def test_clean_pid_files_kills_stale_orphan_started_with_debug_flag(mock_process
         assert not os.path.exists(pid_file)
 
 
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_tolerates_vanished_pidfile(mock_process, mock_kill):
+    """A pidfile removed by someone else while it is being inspected must not abort the startup."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-135.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('135\n')
+
+        def vanish(_path):
+            os.remove(pid_file)
+            raise FileNotFoundError(pid_file)
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = 0
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir), \
+                patch('wazuh.core.utils.path.getmtime', side_effect=vanish):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
 @patch('wazuh.core.utils.chmod')
 def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""

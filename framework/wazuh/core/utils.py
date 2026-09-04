@@ -85,7 +85,12 @@ def clean_pid_files(daemon: str) -> None:
                 # original owner is still around, so it's still safe to drop it.
                 print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(full_path)
+                try:
+                    os.remove(full_path)
+                except OSError as remove_error:
+                    # The owner's exit handler or the control script may have removed it meanwhile;
+                    # a leftover pidfile is never a reason to abort the startup.
+                    print(f'{daemon}: Could not remove {full_path} ({remove_error}).')
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
