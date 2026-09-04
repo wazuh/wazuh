@@ -127,6 +127,45 @@ static void test_agent_limit_is_checked_before_generating(void **state) {
     assert_int_equal(OS_AddNewAgent(&keys, NULL, "agent2", "any", NULL, 1), OS_ADDAGENT_LIMIT_REACHED);
 }
 
+static void test_id_counter_at_int_max_fails_instead_of_wrapping(void **state) {
+    (void) state;
+    keys.id_counter = INT_MAX;
+
+    /* Refused before the CSPRNG or OS_AddKey are ever reached: no will_return()/expect_*() set up
+     * for them, so cmocka fails the test if either gets called. */
+    int index = OS_AddNewAgent(&keys, NULL, "agent1", "any", NULL, 0);
+    assert_int_equal(index, OS_ADDAGENT_LIMIT_REACHED);
+    assert_int_equal(keys.keysize, 0);
+    assert_int_equal(keys.id_counter, INT_MAX);
+}
+
+/* --- OS_IsValidAgentInsertID --------------------------------------------------------------------- */
+
+static void test_valid_agent_insert_id_accepts_the_full_int32_range(void **state) {
+    (void) state;
+    assert_true(OS_IsValidAgentInsertID("1"));
+    assert_true(OS_IsValidAgentInsertID("003"));
+    assert_true(OS_IsValidAgentInsertID("99999999")); /* past OS_IsValidID()'s unrelated 8-char cap */
+    assert_true(OS_IsValidAgentInsertID("2147483647")); /* INT32_MAX */
+}
+
+static void test_valid_agent_insert_id_rejects_out_of_range_or_reserved(void **state) {
+    (void) state;
+    assert_false(OS_IsValidAgentInsertID(NULL));
+    assert_false(OS_IsValidAgentInsertID(""));
+    assert_false(OS_IsValidAgentInsertID("abc"));
+    assert_false(OS_IsValidAgentInsertID("-5"));
+    assert_false(OS_IsValidAgentInsertID("1.5"));
+    assert_false(OS_IsValidAgentInsertID("0")); /* reserved for the manager */
+    assert_false(OS_IsValidAgentInsertID("000"));
+    assert_false(OS_IsValidAgentInsertID("2147483648")); /* INT32_MAX + 1 */
+    assert_false(OS_IsValidAgentInsertID("4294967296")); /* 2^32: wraps to 0 pre-fix */
+    assert_false(OS_IsValidAgentInsertID("10000000000"));
+    assert_false(OS_IsValidAgentInsertID("1000000000000000000"));
+    /* Long enough to overflow even strtol()'s 64-bit long: must not be misread as in range. */
+    assert_false(OS_IsValidAgentInsertID("999999999999999999999999999999999999999999"));
+}
+
 /* --- OS_IsValidAgentKey ------------------------------------------------------------------------ */
 
 static void test_valid_agent_key_accepts_exactly_64_lowercase_hex(void **state) {
@@ -162,6 +201,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_csprng_failure_adds_nothing_and_reports_error, setup_keys, teardown_keys),
         cmocka_unit_test_setup_teardown(test_explicit_key_is_stored_verbatim, setup_keys, teardown_keys),
         cmocka_unit_test_setup_teardown(test_agent_limit_is_checked_before_generating, setup_keys, teardown_keys),
+        cmocka_unit_test_setup_teardown(test_id_counter_at_int_max_fails_instead_of_wrapping, setup_keys, teardown_keys),
+        cmocka_unit_test(test_valid_agent_insert_id_accepts_the_full_int32_range),
+        cmocka_unit_test(test_valid_agent_insert_id_rejects_out_of_range_or_reserved),
         cmocka_unit_test(test_valid_agent_key_accepts_exactly_64_lowercase_hex),
         cmocka_unit_test(test_valid_agent_key_rejects_other_shapes),
     };

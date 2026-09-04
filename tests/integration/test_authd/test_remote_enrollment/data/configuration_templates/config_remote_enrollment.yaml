@@ -53,5 +53,3 @@
               value: 127.0.0.1
       - hidden:
           value: CLUSTER_DISABLED
-      - disabled:
-          value: CLUSTER_DISABLED

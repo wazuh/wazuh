@@ -45,8 +45,12 @@ class SCARecoveryTest : public ::testing::Test
             m_logOutput.clear();
 
             // Create directory for shared memory file (required on Unix/macOS)
-            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path
-            std::filesystem::create_directories("var/run");
+            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path.
+            // #38601: in its own directory, because the id published below is now read by
+            // checkAgentIdentity() on every syncModule() -- including the other SCA test
+            // binaries', which share this relative path and do not expect an id to appear.
+            std::filesystem::create_directories("sca_recovery_test_workdir/var/run");
+            std::filesystem::current_path("sca_recovery_test_workdir");
 
             // Initialize metadata provider manually to ensure it's available before initSyncProtocol
             agent_metadata_t metadata = {};
@@ -85,6 +89,8 @@ class SCARecoveryTest : public ::testing::Test
             m_sca.reset();
             m_mockDBSync.reset();
             m_mockFileSystem.reset();
+            // Back out of the per-binary directory entered in SetUp.
+            std::filesystem::current_path("..");
         }
 
         // Helper method to initialize sync protocol with specific integrity interval

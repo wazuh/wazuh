@@ -58,7 +58,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
-        bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
+        SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                         Option option = Option::SYNC,
+                                         bool trackConsecutiveFailures = false) override;
 
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
@@ -80,6 +82,23 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
+
+        /// @brief Returns the agent id this process is currently synchronizing under.
+        ///
+        /// Reads the shared-memory metadata provider -- the same source, through the same call,
+        /// that stamps every outgoing session's `Start.agentid` (see buildFullSessionBuffer).
+        /// A module comparing against this value can therefore never force a resync stamped with
+        /// an id different from the one it compared against.
+        ///
+        /// Static, not a member of IAgentSyncProtocol: the agent id is process-global state
+        /// rather than per-instance, and keeping it off the interface leaves every existing mock
+        /// untouched. The C counterpart is asp_get_agent_id().
+        ///
+        /// @return The agent id as a positive integer, or 0 when the provider has published
+        ///         nothing yet or holds a value that is not a plain number. Callers must treat 0
+        ///         as "unknown", never as "changed": an unavailable provider, or one still
+        ///         holding the previous id, must not look like a new identity.
+        static long currentAgentId();
 
         /// @copydoc IAgentSyncProtocol::stop
         void stop() override;
@@ -129,9 +148,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// module-local socket to reach this wait - a hop that can silently drop it (no
         /// route for the session, a full module socket, a send() failure). Without a
         /// ceiling here that drop wedges this module's sync forever. The value is set well
-        /// above https_client's own worst case for one /stateful session (5 attempts *
-        /// 120s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~14 minutes) so it only
-        /// fires on an actual delivery failure, never on a slow-but-alive manager.
+        /// above https_client's own worst case for one /stateful session at the defaults (5
+        /// attempts * 90s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~11.5 minutes) so it
+        /// only fires on an actual delivery failure, never on a slow-but-alive manager. Both
+        /// operands are configurable and neither is compared against this constant, so a raised
+        /// https_stateful_attempts or _timeout can still cross it.
         static constexpr auto SESSION_RESPONSE_TIMEOUT = std::chrono::minutes(15);
 
         /// @brief Total attempts for a module integrity check (requiresFullSync()) before

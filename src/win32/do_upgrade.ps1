@@ -287,13 +287,41 @@ if ($msi_new_version -ne $null) {
 }
 
 # Read <block><sub><tag> from the agent configuration, taking the last match.
+# Strips commented-out lines before get_conf_value/xml_block_present extract anything, so a
+# tag an operator comments out (e.g. to fall back to the default) reads as absent here too,
+# matching OS_XML's own comment handling and pkg_installer.sh's strip_xml_comments() on the
+# Linux/macOS side.
+function strip_xml_comments($conf_path) {
+    $in_comment = $false
+    $result = New-Object System.Collections.Generic.List[string]
+    foreach ($line in (Get-Content $conf_path)) {
+        if ($in_comment) {
+            if ($line -match '-->') { $in_comment = $false }
+            continue
+        }
+        # A self-contained one-line comment ("<!-- ... -->", both on this line) must be
+        # dropped here too, not just one that opens on this line and closes later --
+        # get_conf_value/xml_block_present do unanchored regex matching on the result, so
+        # a commented-out example left in would otherwise be read as live.
+        if ($line -match '<!--' -and $line -match '-->') {
+            continue
+        }
+        if ($line -match '<!--' -and $line -notmatch '-->') {
+            $in_comment = $true
+            continue
+        }
+        $result.Add($line)
+    }
+    return ($result -join "`n")
+}
+
 function get_conf_value($block, $sub, $tag) {
     $conf_path = Join-Path $wazuhDir "ossec.conf"
     if (-Not (Test-Path $conf_path)) {
         return $null
     }
-    # Strip CR and LF separately: the shipped template is LF-only, and `.` never matches a newline.
-    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    # The shipped template is LF-only, and `.` never matches a newline.
+    $conf = (strip_xml_comments $conf_path) -replace "`n", ""
     $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
     if (-Not $block_match.Success) {
         return $null
@@ -331,9 +359,28 @@ public static class WazuhProbeTrust {
 "@
 }
 
+function probe_tcp($server, $port) {
+    # Match the socket family to the resolved address so an IPv6-only manager is still reachable.
+    $family = [System.Net.Sockets.AddressFamily]::InterNetwork
+    try {
+        $addr = [System.Net.Dns]::GetHostAddresses($server) | Select-Object -First 1
+        if ($addr) { $family = $addr.AddressFamily }
+    } catch { }
+    $client = New-Object System.Net.Sockets.TcpClient($family)
+    try {
+        $result = $client.BeginConnect($server, $port, $null, $null)
+        return $result.AsyncWaitHandle.WaitOne(5000) -and $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
 # Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
-# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s.
-# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
+# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s. A TLS
+# handshake failure falls back to a TCP-only check, since older hosts can't negotiate the
+# manager's TLS 1.3 minimum (#38607); any non-TLS error is a real "not reachable".
 function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
@@ -351,10 +398,124 @@ function probe_server($server, $port, $endpoint) {
         $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
+        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+            write-output "$(Get-Date -format u) - HTTPS handshake failed (host may lack TLS 1.3), falling back to a TCP connectivity check (manager endpoint not verified)." >> .\upgrade\upgrade.log
+            return probe_tcp $server $port
+        }
         return $false
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
     }
+}
+
+# Same target as probe_server(), but with the OS's own certificate validation instead
+# of WazuhProbeTrust::Always: succeeds only if the system trust store actually
+# verifies the manager's certificate. probe_server() cannot tell us this, since it
+# deliberately accepts any certificate so a plain reachability check never depends on
+# TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work post-upgrade.
+function probe_server_verified($server, $port, $endpoint) {
+    $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+        $path = if ([string]::IsNullOrEmpty($endpoint)) { "/" } else { "/$endpoint/" }
+
+        $host_part = $server
+        if ($host_part.Contains(":") -And -Not $host_part.StartsWith("[")) {
+            $host_part = "[$host_part]"
+        }
+
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+        return ($response.StatusCode -eq 200)
+    } catch {
+        # Both a real cert-trust failure and an unrelated hiccup (DNS, timeout) land here as
+        # the same $false, since probe_server() already confirmed reachability moments ago
+        # and this function's only job is the trust decision -- but log which one it was, so
+        # upgrade.log doesn't read "certificate not trusted" for a transient network blip.
+        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+            write-output "$(Get-Date -format u) - Certificate trust check failed: the system trust store does not verify the manager's certificate ($($_.Exception.Message))." >> .\upgrade\upgrade.log
+        } else {
+            write-output "$(Get-Date -format u) - Certificate trust check failed for a reason other than certificate trust ($($_.Exception.GetType().Name): $($_.Exception.Message)); treating as not verified." >> .\upgrade\upgrade.log
+        }
+        return $false
+    } finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
+    }
+}
+
+# True if <block><sub> exists at all, regardless of what it contains -- distinct from
+# get_conf_value/a specific-tag check, which look for one leaf tag. Needed so pin_ca()
+# inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only) <ssl> block
+# instead of creating a second, duplicate one.
+function xml_block_present($block, $sub) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    if (-Not (Test-Path $conf_path)) {
+        return $false
+    }
+    $conf = (strip_xml_comments $conf_path) -replace "`n", ""
+    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
+    if (-Not $block_match.Success) {
+        return $false
+    }
+    return [regex]::IsMatch($block_match.Groups[1].Value, "<$sub>|<$sub\s*/>")
+}
+
+# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
+# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
+# register_configure_agent.sh / pin_ca() in pkg_installer.sh; duplicated because this
+# script ships inside the WPK and runs standalone, with nothing to source. Only called
+# when certificate_authorities is not already configured, so it never overwrites an
+# operator-configured CA.
+#
+# Returns $false (and leaves ossec.conf untouched) if the insertion point was never
+# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
+# rather than silently reporting success with nothing actually pinned.
+function pin_ca($ca_path) {
+    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
+    # containing any of them would leave ossec.conf malformed and unparseable, not
+    # just carry the wrong value. '&' first: escaping '<'/'>' introduces new literal
+    # '&' characters (as part of "&lt;"/"&gt;") that must not be re-escaped after.
+    $ca_path = $ca_path.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    $lines = Get-Content $conf_path
+    $output = New-Object System.Collections.Generic.List[string]
+    $inserted = $false
+
+    if (xml_block_present "agent" "ssl") {
+        foreach ($line in $lines) {
+            $output.Add($line)
+            if ((-Not $inserted) -and ($line -match '^\s*<ssl>\s*$')) {
+                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
+                $inserted = $true
+            }
+        }
+    } else {
+        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
+        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
+        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
+        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
+        # report success here while leaving the real parser's certificate_authorities
+        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
+        # instead of believing a CA it can't actually use is now pinned.
+        foreach ($line in $lines) {
+            if ((-Not $inserted) -and ($line -match '^\s*<agent>\s*$')) {
+                $output.Add($line)
+                $output.Add("    <ssl>")
+                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
+                $output.Add("    </ssl>")
+                $inserted = $true
+            } else {
+                $output.Add($line)
+            }
+        }
+    }
+
+    if (-Not $inserted) {
+        return $false
+    }
+
+    Set-Content -Path $conf_path -Value $output
+    return $true
 }
 
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
@@ -502,11 +663,107 @@ write-output "$(Get-Date -format u) - Checking connectivity to $($server_address
 
 if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
     write-output "$(Get-Date -format u) - Manager connectivity check skipped (test mode)." >> .\upgrade\upgrade.log
-} elseif (-Not (probe_server $server_address $server_port $server_endpoint)) {
-    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
-    abort_upgrade "2"
 } else {
-    write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
+    $probe_ok = $false
+    for ($i = 0; $i -lt 3; $i++) {
+        if (probe_server $server_address $server_port $server_endpoint) {
+            $probe_ok = $true
+            break
+        }
+        Start-Sleep -Seconds 1
+    }
+    if (-Not $probe_ok) {
+        write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)'), interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } else {
+        write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port) (endpoint: '$($server_endpoint)')." >> .\upgrade\upgrade.log
+    }
+}
+
+# The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
+# posture the new agent boots under is exactly what's on disk now. A verifying mode
+# with no readable CA can never connect -- mirrors
+# w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
+# is gone, rather than leaving a freshly-upgraded host silently offline.
+$ssl_verification_mode = get_conf_value "agent" "ssl" "verification_mode"
+$ssl_ca = get_conf_value "agent" "ssl" "certificate_authorities"
+$ssl_verification_mode_explicit = ($null -ne $ssl_verification_mode)
+
+if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
+    if ($ssl_verification_mode_explicit) {
+        # <verification_mode/> (or <verification_mode></verification_mode>) is present but
+        # carries no value -- get_conf_value already distinguishes this from "absent" ($null
+        # vs ""), but Read_Agent_SSL() rejects empty content as an unrecognized value
+        # (XML_VALUEERR) same as any other typo. Treat it the same way here instead of
+        # silently substituting the default on a config the new binary is about to refuse
+        # to parse.
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is present but empty, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } elseif ([string]::IsNullOrEmpty($ssl_ca)) {
+        $ssl_verification_mode = "system"
+    } else {
+        $ssl_verification_mode = "certificate"
+    }
+}
+
+# Default drop-in location for the manager's CA (mirrored on Linux in
+# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf.
+$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
+
+if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certificate") {
+    if ([string]::IsNullOrEmpty($ssl_ca) -or -Not (Test-Path -PathType Leaf $ssl_ca)) {
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)' but <certificate_authorities> ('$($ssl_ca)') is missing or unreadable, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+} elseif ($ssl_verification_mode -ceq "system") {
+    # verification_mode=system with a certificate_authorities also set is rejected
+    # outright at runtime (validateTls() in moduleConfig.cpp) regardless of whether
+    # the manager's certificate happens to verify against the OS store -- catch the
+    # config error itself here rather than let a live probe that happens to pass mask
+    # a daemon that will refuse to start.
+    if (-Not [string]::IsNullOrEmpty($ssl_ca)) {
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is 'system' but <certificate_authorities> ('$($ssl_ca)') is also set; 'system' trusts the OS store, not a configured CA, and the agent refuses to start with both set. Remove <certificate_authorities>, or switch to <verification_mode>certificate</verification_mode>, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+
+    # 'system' trusts the OS store, not a configured CA -- probe_server() above cannot
+    # tell us whether that store actually trusts THIS manager's certificate, since it
+    # deliberately accepts any certificate so the plain reachability check never
+    # depends on TLS trust. Find out for real before assuming the freshly-upgraded
+    # agent will still be able to connect.
+    if ($env:WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK -eq "1") {
+        write-output "$(Get-Date -format u) - System CA trust check skipped (test mode)." >> .\upgrade\upgrade.log
+    } elseif (probe_server_verified $server_address $server_port $server_endpoint) {
+        write-output "$(Get-Date -format u) - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> .\upgrade\upgrade.log
+    } elseif ($ssl_verification_mode_explicit) {
+        # <verification_mode>system</verification_mode> was set explicitly: pinning a
+        # CA here would be rejected at runtime (validateTls() in moduleConfig.cpp
+        # refuses system+certificate_authorities together), so there is nothing this
+        # script can safely fix on the operator's behalf.
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    } elseif (Test-Path -PathType Leaf $default_ca_file) {
+        if (pin_ca $default_ca_file) {
+            write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
+        } else {
+            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> .\upgrade\upgrade.log
+            abort_upgrade "2"
+        }
+    } else {
+        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+} elseif ($ssl_verification_mode -ceq "none") {
+    # Explicitly disabled -- nothing for this gate to check.
+} else {
+    # Neither ReadConfig() nor this gate's own default-resolution above can produce
+    # anything but full/certificate/system/none, so getting here means ossec.conf carries
+    # something else (a typo, hand-edited garbage). Read_Agent_SSL() rejects that value
+    # too, so letting the upgrade proceed would just trade this loud failure for the new
+    # binary refusing to start after the old one is already gone.
+    write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)', which is not a value this agent recognizes (full, certificate, system, or none); interrupting upgrade." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
 }
 
 # Ensure no other instance of msiexec is running by stopping them

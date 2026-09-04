@@ -11,6 +11,11 @@ from unittest.mock import AsyncMock, patch, mock_open, call
 
 import pytest
 
+# Imported here rather than relied on from `wazuh.core.agent import *`. That module used to pull in
+# `dumps` for the upgrade socket; the upgrade path is HTTP now and no longer needs it, so this file
+# has to name its own dependency.
+from json import dumps
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.agent import *
@@ -650,6 +655,9 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
     (WazuhError(9008, cmd_error=True), ".* 1705 .*"),
     (WazuhError(9007, cmd_error=True), ".* 1706 .*"),
     (WazuhError(9012, cmd_error=True), ".* 1708 .*"),
+    (WazuhError(9018, cmd_error=True), ".* 1763 .*"),
+    (WazuhError(9020, cmd_error=True), ".* 1765 .*"),
+    (WazuhError(9021, cmd_error=True), ".* 1766 .*"),
     (WazuhError(9000, cmd_error=True), ".* None")
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')

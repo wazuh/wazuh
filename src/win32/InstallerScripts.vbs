@@ -50,6 +50,38 @@ private sub mep_log(home_dir, objFSO, raw, reason)
     objLog.Close
 end sub
 
+' Same sink as mep_log, generic message -- used by the WAZUH_REGISTRATION_CA routing
+' below so a silently-skipped CA is discoverable, matching set_agent_ssl_ca()'s
+' equivalent log line in register_configure_agent.sh.
+private sub install_log(home_dir, objFSO, message)
+    Dim objLog
+    Set objLog = objFSO.OpenTextFile(home_dir & "ossec.log", 8, True)
+    objLog.WriteLine Now & " " & message
+    objLog.Close
+end sub
+
+' Escapes the three characters that are structurally significant in XML content --
+' '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+' particular) can never be mistaken for markup or break the file's well-formedness.
+' '&' first: escaping '<'/'>' introduces new literal '&' characters (as part of
+' "&lt;"/"&gt;") that must not themselves be re-escaped by a later Replace() call.
+Function XmlEscape(text)
+    XmlEscape = Replace(Replace(Replace(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+End Function
+
+' Strips XML comments from a working copy so the WAZUH_REGISTRATION_CA checks below
+' don't match tag content that's still inside a "<!-- ... -->" wrapper -- mirrors
+' strip_xml_comments() in pkg_installer.sh and its port in do_upgrade.ps1. "[\s\S]*?"
+' spans a multi-line comment (VBScript's regexp "." does not match newline); non-greedy
+' so two separate comments don't merge into one.
+Function StrippedOfComments(text)
+    Dim reComment
+    Set reComment = New RegExp
+    reComment.Pattern = "<!--[\s\S]*?-->"
+    reComment.Global = True
+    StrippedOfComments = reComment.Replace(text, "")
+End Function
+
 ' Validates WAZUH_MANAGER_ENDPOINT against the <endpoint> grammar (#38624). <endpoint>
 ' takes this same language, so an accepted value is written into the config verbatim
 ' and this only decides whether to write it at all. MEP_HOST / MEP_PORT / MEP_ENDPOINT
@@ -236,13 +268,14 @@ public function config()
     WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
     WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
     WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
+    WAZUH_REGISTRATION_CA = XmlEscape(Replace(args(10), Chr(34), ""))
     WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
     WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
     WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
     WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
     ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
     WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
+    SSL_VERIFICATION = Replace(args(17), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -394,6 +427,202 @@ public function config()
                 strText = Replace(strText, "    </enrollment>", "      <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
             End If
 
+        End If
+
+        ' Route SSL_VERIFICATION into <agent><ssl><verification_mode>, mirroring
+        ' register_configure_agent.sh's set_agent_verification_mode() on Linux/macOS. Runs
+        ' before the WAZUH_REGISTRATION_CA block below so its own "verification_mode is
+        ' 'system'" conflict check sees whatever this wrote, not a value from before this ran.
+        If SSL_VERIFICATION <> "" Then
+            If SSL_VERIFICATION <> "full" And SSL_VERIFICATION <> "certificate" And SSL_VERIFICATION <> "system" And SSL_VERIFICATION <> "none" Then
+                ' Matches Read_Agent_SSL()'s own case-sensitive strcmp (client-config.c): a
+                ' value that reads as valid to a human but not to the parser (e.g. 'System')
+                ' would install cleanly and only fail at agent startup, instead of here,
+                ' where the operator can still see and fix it immediately.
+                install_log home_dir, objFSO, "Invalid SSL_VERIFICATION '" & SSL_VERIFICATION & "': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset."
+            Else
+                Dim vmCheckText, vmTagRegex, vmSelfClosingRegex, vmReplacementValue
+                vmCheckText = StrippedOfComments(strText)
+                Set vmTagRegex = New RegExp
+                vmTagRegex.Pattern = "<verification_mode(\s*/)?>"
+                Set vmSelfClosingRegex = New RegExp
+                vmSelfClosingRegex.Pattern = "<verification_mode\s*/>"
+                ' RegExp.Replace()'s replacement-string argument treats '$' specially
+                ' ($&, $$, $1-$9, $`, $') -- doubling every '$' first, per that same
+                ' convention, makes it inert (confirmed empirically: Replace("$&", "$",
+                ' "$$") round-trips through RegExp.Replace as the literal text "$&").
+                ' SSL_VERIFICATION is enum-validated (full/certificate/system/none) so
+                ' this can never actually fire, but applied uniformly with the CA path
+                ' below rather than relying on that constraint holding forever.
+                vmReplacementValue = Replace(SSL_VERIFICATION, "$", "$$")
+
+                If vmTagRegex.Test(vmCheckText) Then
+                    ' Line by line, skipping commented-out lines, same technique as the
+                    ' certificate_authorities rewrite below.
+                    Dim vmLines, vmLineIdx, vmLine, vmInComment, vmRewritten
+                    vmLines = Split(strText, vbCrLf)
+                    vmInComment = False
+                    vmRewritten = False
+                    For vmLineIdx = 0 To UBound(vmLines)
+                        vmLine = vmLines(vmLineIdx)
+                        If vmInComment Then
+                            If InStr(vmLine, "-->") > 0 Then vmInComment = False
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") > 0 Then
+                            ' Self-contained one-line comment ("<!-- ... -->", both on
+                            ' this line) -- left untouched, not treated as live: the
+                            ' checks below are unanchored substring matches that would
+                            ' otherwise match a commented-out example just as well.
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") = 0 Then
+                            vmInComment = True
+                        ElseIf (Not vmRewritten) And InStr(vmLine, "<verification_mode>") > 0 And InStr(vmLine, "</verification_mode>") > 0 Then
+                            Set re = New RegExp
+                            re.Pattern = "<verification_mode>.*</verification_mode>"
+                            vmLines(vmLineIdx) = re.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
+                            vmRewritten = True
+                        ElseIf (Not vmRewritten) And vmSelfClosingRegex.Test(vmLine) Then
+                            vmLines(vmLineIdx) = vmSelfClosingRegex.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
+                            vmRewritten = True
+                        End If
+                    Next
+                    strText = Join(vmLines, vbCrLf)
+                    If Not vmRewritten Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into <ssl><verification_mode>: expected the tag alone on its own line."
+                    End If
+                ElseIf InStr(vmCheckText, "<ssl>") > 0 Then
+                    Dim vmSslLines, vmSslLineIdx, vmSslLine, vmSslInComment, vmSslInserted
+                    vmSslLines = Split(strText, vbCrLf)
+                    vmSslInComment = False
+                    vmSslInserted = False
+                    strText = ""
+                    For vmSslLineIdx = 0 To UBound(vmSslLines)
+                        vmSslLine = vmSslLines(vmSslLineIdx)
+                        If vmSslInComment Then
+                            If InStr(vmSslLine, "-->") > 0 Then vmSslInComment = False
+                        ElseIf InStr(vmSslLine, "<!--") > 0 And InStr(vmSslLine, "-->") = 0 Then
+                            vmSslInComment = True
+                        End If
+                        If vmSslLineIdx > 0 Then strText = strText & vbCrLf
+                        strText = strText & vmSslLine
+                        If (Not vmSslInserted) And (Not vmSslInComment) And (Trim(vmSslLine) = "<ssl>") Then
+                            strText = strText & vbCrLf & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>"
+                            vmSslInserted = True
+                        End If
+                    Next
+                    If Not vmSslInserted Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into an existing <ssl> block: expected the opening tag alone on its own line."
+                    End If
+                Else
+                    vm_ssl_block = "    <ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "    </ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "  </agent>" & vbCrLf
+                    strText = Replace(strText, "  </agent>", vm_ssl_block)
+                End If
+            End If
+        End If
+
+        ' Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>, mirroring
+        ' register_configure_agent.sh on Linux/macOS: <enrollment><server_ca_path> above is
+        ' parsed-but-ignored by the 5.x agent, since enrollment now reuses <agent><ssl> for
+        ' its TLS material instead of a CA path of its own.
+        If WAZUH_REGISTRATION_CA <> "" And Not objFSO.FileExists(WAZUH_REGISTRATION_CA) Then
+            ' FileExists returns False for a directory too (unlike a bare existence
+            ' check), matching pkg_installer.sh's [ -f ] on the WPK upgrade side --
+            ' without this, a bad path installs cleanly here and the failure only
+            ' surfaces later, at agent startup, via w_agent_validate_ssl_ca().
+            install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA ('" & WAZUH_REGISTRATION_CA & "') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset."
+            WAZUH_REGISTRATION_CA = ""
+        End If
+
+        If WAZUH_REGISTRATION_CA <> "" Then
+            checkText = StrippedOfComments(strText)
+            Dim caTagRegex, selfClosingCaRegex, caReplacementValue
+            Set caTagRegex = New RegExp
+            caTagRegex.Pattern = "<certificate_authorities(\s*/)?>"
+            Set selfClosingCaRegex = New RegExp
+            selfClosingCaRegex.Pattern = "<certificate_authorities\s*/>"
+            ' RegExp.Replace()'s replacement-string argument treats '$' specially ($&,
+            ' $$, $1-$9, $`, $') -- doubling every '$' first makes it inert (confirmed
+            ' empirically). A CA path is an arbitrary operator-supplied filesystem path,
+            ' unlike SSL_VERIFICATION, so this one is a real, reachable risk, not just
+            ' applied for symmetry.
+            caReplacementValue = Replace(WAZUH_REGISTRATION_CA, "$", "$$")
+            If InStr(checkText, "<verification_mode>system</verification_mode>") > 0 Then
+                ' 'system' trusts the OS store, not a configured CA: the agent refuses to
+                ' start with both set (validateTls() in moduleConfig.cpp), so writing a CA
+                ' here would just trade a silently-unused CA for a daemon that won't boot.
+                install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together."
+            ElseIf caTagRegex.Test(checkText) Then
+                ' Line by line, skipping commented-out lines, instead of a single global
+                ' regex.Replace over the raw text -- a Global replace would rewrite every
+                ' literal <certificate_authorities>...</certificate_authorities>, commented
+                ' example included, not just the live one checkText found.
+                Dim caLines, caLineIdx, caLine, caInComment, caRewritten
+                caLines = Split(strText, vbCrLf)
+                caInComment = False
+                caRewritten = False
+                For caLineIdx = 0 To UBound(caLines)
+                    caLine = caLines(caLineIdx)
+                    If caInComment Then
+                        If InStr(caLine, "-->") > 0 Then caInComment = False
+                    ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") > 0 Then
+                        ' Self-contained one-line comment -- left untouched, not treated
+                        ' as live: the checks below are unanchored substring matches that
+                        ' would otherwise match a commented-out example just as well.
+                    ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") = 0 Then
+                        caInComment = True
+                    ElseIf (Not caRewritten) And InStr(caLine, "<certificate_authorities>") > 0 And InStr(caLine, "</certificate_authorities>") > 0 Then
+                        Set re = new regexp
+                        re.Pattern = "<certificate_authorities>.*</certificate_authorities>"
+                        caLines(caLineIdx) = re.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
+                        caRewritten = True
+                    ElseIf (Not caRewritten) And selfClosingCaRegex.Test(caLine) Then
+                        ' Same tag, self-closing form (<certificate_authorities/>, OS_XML's
+                        ' equivalent of an empty paired tag) -- rewrite it into the paired,
+                        ' populated form instead of leaving it and falling through to the
+                        ' <ssl>-exists branch below, which would insert a second, duplicate
+                        ' <certificate_authorities> line right alongside this one.
+                        caLines(caLineIdx) = selfClosingCaRegex.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
+                        caRewritten = True
+                    End If
+                Next
+                strText = Join(caLines, vbCrLf)
+                If Not caRewritten Then
+                    install_log home_dir, objFSO, "Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: expected the tag alone on its own line."
+                End If
+            ElseIf InStr(checkText, "<ssl>") > 0 Then
+                ' Line by line as well: insert right after the opening <ssl> tag whatever
+                ' its indentation, instead of matching a hardcoded 4-space prefix, and log
+                ' instead of silently dropping the CA if no live <ssl> line is found.
+                Dim sslLines, sslLineIdx, sslLine, sslInComment, sslInserted
+                sslLines = Split(strText, vbCrLf)
+                sslInComment = False
+                sslInserted = False
+                strText = ""
+                For sslLineIdx = 0 To UBound(sslLines)
+                    sslLine = sslLines(sslLineIdx)
+                    If sslInComment Then
+                        If InStr(sslLine, "-->") > 0 Then sslInComment = False
+                    ElseIf InStr(sslLine, "<!--") > 0 And InStr(sslLine, "-->") = 0 Then
+                        sslInComment = True
+                    End If
+                    If sslLineIdx > 0 Then strText = strText & vbCrLf
+                    strText = strText & sslLine
+                    If (Not sslInserted) And (Not sslInComment) And (Trim(sslLine) = "<ssl>") Then
+                        strText = strText & vbCrLf & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>"
+                        sslInserted = True
+                    End If
+                Next
+                If Not sslInserted Then
+                    install_log home_dir, objFSO, "Could not pin WAZUH_REGISTRATION_CA into an existing <ssl> block: expected the opening tag alone on its own line."
+                End If
+            Else
+                ssl_block = "    <ssl>" & vbCrLf
+                ssl_block = ssl_block & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>" & vbCrLf
+                ssl_block = ssl_block & "    </ssl>" & vbCrLf
+                ssl_block = ssl_block & "  </agent>" & vbCrLf
+                strText = Replace(strText, "  </agent>", ssl_block)
+            End If
         End If
 
         ' Writing the ossec.conf file

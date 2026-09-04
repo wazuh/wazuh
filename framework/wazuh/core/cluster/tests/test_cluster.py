@@ -25,10 +25,18 @@ with patch('wazuh.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         import wazuh.core.cluster.cluster as cluster
+        from wazuh.core.cluster.utils import get_cluster_items
         from wazuh import WazuhException
         from wazuh.core.exception import WazuhError, WazuhInternalError
 
 agent_groups = b"default,windows-servers"
+
+# The synchronization keeps every node's own configuration out of the cluster, and the guard that
+# does it matches on a file name. Both the name and the list come from production sources so these
+# tests break if either side stops covering the real file (see
+# test_cluster_json_excludes_the_manager_configuration below).
+MANAGER_CONF_FILENAME = os.path.basename(common.MANAGER_CONF)
+EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
 # Valid configurations
 default_cluster_configuration = {
@@ -82,7 +90,12 @@ custom_incomplete_configuration = {
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
+    # get_manager_conf() returns the effective section: every option the case omits carries its schema default
+    effective_defaults = {'name': 'wazuh', 'node_name': 'node01', 'node_type': 'master', 'key': 'a' * 32, 'port': 1516,
+                          'bind_addr': '127.0.0.1', 'nodes': ['127.0.0.1'], 'hidden': False}
+    read_config = {'cluster': {**effective_defaults, **read_config['cluster']}}
+    wazuh.core.cluster.utils.read_config.cache_clear()  # never reuse a section cached by another test
+    with patch('wazuh.core.cluster.utils.get_manager_conf', return_value=read_config) as m:
         with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
             configuration = wazuh.core.cluster.utils.read_config()
             for key in m.return_value["cluster"]:
@@ -209,6 +222,33 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
                          {'/foo/bar/': {'mod_time': False}})
 
 
+def test_cluster_json_excludes_the_manager_configuration():
+    """Check that cluster.json keeps the node's own configuration out of the synchronization.
+
+    The guards in `walk_dir`, `Master.process_files_from_worker` and
+    `WorkerHandler.update_master_files_in_worker` all match a file name against this list, so the
+    entry is the contract those tests exercise: without it a node would ship its own configuration
+    to the rest of the cluster.
+    """
+    assert MANAGER_CONF_FILENAME in EXCLUDED_FILES
+
+
+@patch('wazuh.core.cluster.cluster.blake2b', return_value='hash')
+@patch('os.path.getmtime', return_value=45)
+@patch('wazuh.core.cluster.cluster.walk')
+def test_walk_dir_skips_the_manager_configuration(walk_mock, getmtime_mock, blake2b_mock):
+    """Check that walk_dir does not collect the file cluster.json excludes."""
+    walk_mock.return_value = [(os.path.join(common.WAZUH_PATH, 'etc'), (), [MANAGER_CONF_FILENAME, 'client.keys'])]
+
+    walk_files, _ = cluster.walk_dir(dirname='etc', recursive=False, files=['all'],
+                                     excluded_files=EXCLUDED_FILES, excluded_extensions=[],
+                                     get_cluster_item_key='etc/')
+
+    collected = {os.path.basename(file_path) for file_path in walk_files}
+    assert MANAGER_CONF_FILENAME not in collected
+    assert 'client.keys' in collected
+
+
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
     "files": {
         "etc/": {
@@ -223,10 +263,7 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
             "extra_valid": False,
             "description": "client keys file database"
         },
-        "excluded_files": [
-            "ar.conf",
-            "ossec.conf"
-        ],
+        "excluded_files": EXCLUDED_FILES,
         "excluded_extensions": [
             "~",
             ".tmp",
@@ -610,8 +647,8 @@ def test_unmerge_info():
     ("..\\etc", "payload.merged", True),
     (".hidden", "payload.merged", True),
     ("valid/path", "payload.merged", True),
-    ("valid", "../../../etc/ossec.conf", True),
-    ("valid", "..\\..\\..\\etc\\ossec.conf", True),
+    ("valid", "../../../etc/wazuh-manager.conf", True),
+    ("valid", "..\\..\\..\\etc\\wazuh-manager.conf", True),
     ("valid", ".hidden", True),
     ("valid", "file/with/slash", True),
 ])
@@ -629,8 +666,8 @@ def test_unmerge_info_path_validation(merge_type, filename, expected_exception):
 
 
 @pytest.mark.parametrize('header_name, should_skip', [
-    ("../../../etc/ossec.conf", False),
-    ("..\\..\\..\\etc\\ossec.conf", True),
+    ("../../../etc/wazuh-manager.conf", False),
+    ("..\\..\\..\\etc\\wazuh-manager.conf", True),
     (".hidden", True),
     ("valid_file.txt", False),
 ])

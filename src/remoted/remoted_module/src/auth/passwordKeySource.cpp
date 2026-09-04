@@ -126,9 +126,21 @@ namespace remoted::auth
 
     } // namespace
 
-    PasswordKeySource::PasswordKeySource(std::string path, int refreshIntervalSeconds)
+    bool PasswordKeySource::shouldWarnAboutMissingPassword(bool isWorkerNode,
+                                                           std::chrono::steady_clock::duration elapsedSinceConstruction)
+    {
+        if (!isWorkerNode)
+        {
+            return true;
+        }
+        return elapsedSinceConstruction >= std::chrono::seconds(kWorkerJoinGraceSeconds);
+    }
+
+    PasswordKeySource::PasswordKeySource(std::string path, int refreshIntervalSeconds, bool isWorkerNode)
         : m_path(std::move(path))
         , m_refreshIntervalSeconds(refreshIntervalSeconds > 0 ? refreshIntervalSeconds : kDefaultRefreshIntervalSeconds)
+        , m_isWorkerNode(isWorkerNode)
+        , m_constructedAt(std::chrono::steady_clock::now())
     {
         // Report the initial state unconditionally: if Password mode is selected but this file
         // isn't readable yet (e.g. not synced from the master to a worker), every enrollment
@@ -137,12 +149,19 @@ namespace remoted::auth
         {
             LOGFN_INFO(logFn(), "Enrollment password loaded from '%s'.", m_path.c_str());
         }
-        else
+        else if (shouldWarnAboutMissingPassword(m_isWorkerNode, std::chrono::steady_clock::duration::zero()))
         {
             LOGFN_WARN(logFn(),
                        "Could not load a usable enrollment password from '%s' at startup; "
                        "Password-mode enrollment requests will be rejected until it is available.",
                        m_path.c_str());
+        }
+        else
+        {
+            LOGFN_DEBUG1(logFn(),
+                         "Waiting for the enrollment password to be synchronized from the master node to '%s'; "
+                         "Password-mode enrollment requests will be rejected until it is available.",
+                         m_path.c_str());
         }
 
         m_inotifyFd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
@@ -158,11 +177,29 @@ namespace remoted::auth
             m_watchDescriptor = inotify_add_watch(m_inotifyFd, m_path.c_str(), kWatchMask);
             if (m_watchDescriptor < 0)
             {
-                LOGFN_WARN(logFn(),
-                           "Could not watch '%s' for changes (errno=%d); hot-reload falls back to the %d s poll only.",
-                           m_path.c_str(),
-                           errno,
-                           m_refreshIntervalSeconds);
+                const int watchErrno = errno;
+                // ENOENT here is the same "file not synced yet" condition as the reload() branch
+                // above -- gate it the same way. Any OTHER errno (EACCES, hitting
+                // fs.inotify.max_user_watches, ...) is a real, unrelated problem and must keep
+                // warning regardless of node role or timing.
+                if (watchErrno == ENOENT &&
+                    !shouldWarnAboutMissingPassword(m_isWorkerNode, std::chrono::steady_clock::duration::zero()))
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Cannot watch '%s' for changes yet (not synchronized from the master node); "
+                                 "hot-reload falls back to the %d s poll only until it is available.",
+                                 m_path.c_str(),
+                                 m_refreshIntervalSeconds);
+                }
+                else
+                {
+                    LOGFN_WARN(
+                        logFn(),
+                        "Could not watch '%s' for changes (errno=%d); hot-reload falls back to the %d s poll only.",
+                        m_path.c_str(),
+                        watchErrno,
+                        m_refreshIntervalSeconds);
+                }
             }
         }
 
@@ -338,13 +375,26 @@ namespace remoted::auth
                 }
                 else if (const auto d = m_unreadableThrottle.record())
                 {
-                    LOGFN_WARN(logFn(),
-                               "'%s' is not readable or its content is invalid (errno=%d); Password-mode "
-                               "enrollment requests will be rejected. %llu failed attempt(s) in the last %d s.",
-                               m_path.c_str(),
-                               errno,
-                               static_cast<unsigned long long>(d.total),
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    const auto elapsed = std::chrono::steady_clock::now() - m_constructedAt;
+                    if (shouldWarnAboutMissingPassword(m_isWorkerNode, elapsed))
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "'%s' is not readable or its content is invalid (errno=%d); Password-mode "
+                                   "enrollment requests will be rejected. %llu failed attempt(s) in the last %d s.",
+                                   m_path.c_str(),
+                                   errno,
+                                   static_cast<unsigned long long>(d.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    else
+                    {
+                        LOGFN_DEBUG1(logFn(),
+                                     "Still waiting for '%s' to be synchronized from the master node (%llu check(s) "
+                                     "in the last %d s).",
+                                     m_path.c_str(),
+                                     static_cast<unsigned long long>(d.total),
+                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                 }
             }
         }

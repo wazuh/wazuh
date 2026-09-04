@@ -54,7 +54,7 @@ import time
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.agentd.utils import parse_state_file
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -82,7 +82,7 @@ daemons_handler_configuration = {'all_daemons': True}
 def start_remoted_server(test_metadata) -> None:
     """"Start RemotedSimulator if test case need it"""
     if 'remoted' in test_metadata and test_metadata['remoted']:
-        remoted_server = RemotedSimulator()
+        remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
     else:
         remoted_server = None

@@ -7,6 +7,7 @@ This program is free software; you can redistribute it and/or modify it under th
 from time import sleep
 
 import pytest
+import requests
 
 from wazuh_testing.constants.paths.logs import (
     WAZUH_API_LOG_FILE_PATH,
@@ -115,9 +116,10 @@ def wait_for_api_start(test_configuration: dict) -> None:
         return
 
     last_exception = None
+    authentication_headers = None
     for _ in range(15):
         try:
-            login(
+            authentication_headers, _ = login(
                 host="localhost",
                 port=str(port),
                 protocol=protocol,
@@ -125,12 +127,48 @@ def wait_for_api_start(test_configuration: dict) -> None:
                 login_attempts=1,
                 backoff_factor=0,
             )
-            return
+            break
         except Exception as exception:
             last_exception = exception
             sleep(1)
 
-    if last_exception is not None:
-        raise last_exception
+    if authentication_headers is None:
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError("The API was not ready to accept logins.")
 
-    raise RuntimeError("The API was not ready to accept logins.")
+    # A working login does not mean the cluster DAPI is up: every /cluster/* controller resolves
+    # the system nodes over clusterd's internal socket before anything else (RBAC included), and
+    # right after a restart that path lags the API itself, answering connexion's generic 500 to
+    # the first request. Wait for it here so no test eats that warm-up 500, and surface the last
+    # body if it never comes up. The token can expire mid-wait (the jwt_token_exp_timeout cases
+    # configure TTLs as low as 5s), so a 401 renews the login instead of spinning on a dead token.
+    last_error = None
+    for _ in range(30):
+        try:
+            response = requests.get(
+                f"{protocol}://localhost:{port}/cluster/local/info",
+                headers=authentication_headers,
+                verify=False,
+                timeout=10,
+            )
+            if response.status_code == 200:
+                return
+            if response.status_code == 401:
+                try:
+                    authentication_headers, _ = login(
+                        host="localhost",
+                        port=str(port),
+                        protocol=protocol,
+                        timeout=2,
+                        login_attempts=1,
+                        backoff_factor=0,
+                    )
+                except Exception:
+                    pass
+            last_error = f"HTTP {response.status_code}: {response.text}"
+        except Exception as exception:
+            last_error = str(exception)
+        sleep(2)
+
+    raise RuntimeError(f"The cluster DAPI never became ready after the API start: {last_error}")

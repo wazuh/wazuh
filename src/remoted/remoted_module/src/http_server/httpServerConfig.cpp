@@ -13,17 +13,21 @@
 
 #include "proc.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 
 namespace
 {
-    constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
+    constexpr auto DEFAULT_BIND_ADDRESS {"0.0.0.0"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {1517};
     // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
     // work here can block (token verification, client.keys file I/O), so it is oversubscribed.
     constexpr unsigned int WORKER_THREADS_NPROC_MULTIPLIER {2};
+    // Floor applied to the nproc-derived fallback only (an explicit config value is never
+    // floored): a single-vCPU host/cgroup must not regress below the old fixed default of 2.
+    constexpr std::size_t MIN_CONCURRENT_ACCEPTS {2};
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
@@ -36,7 +40,6 @@ namespace
     constexpr std::size_t DEFAULT_MAX_HEADER_VALUE_SIZE {8192};
     constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {64};
     constexpr std::size_t DEFAULT_MAX_PIPELINED_REQUESTS {4};
-    constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
     // Bytes per chunk for a streamed response body. Agreed default; tunable through
     // remoted.http_stream_chunk_size because the CPU cost per byte moves noticeably with it.
@@ -67,7 +70,7 @@ namespace
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 
-    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular <remote>
+    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular remote
     // setting rather than an internal option, but resolved the same way: positive wins).
     std::size_t resolveUnsigned(const long configValue, const std::size_t defaultValue)
     {
@@ -164,7 +167,10 @@ namespace remoted::http
         result.maxHeaderCount = resolveUnsigned(config.http_max_header_count, DEFAULT_MAX_HEADER_COUNT);
         result.maxPipelinedRequests =
             resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
-        result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
+        result.concurrentAccepts =
+            config.http_concurrent_accepts > 0
+                ? static_cast<std::size_t>(config.http_concurrent_accepts)
+                : std::max<std::size_t>(static_cast<std::size_t>(cpp_get_nproc()), MIN_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
         result.streamChunkSize = resolveUnsigned(config.http_stream_chunk_size, DEFAULT_STREAM_CHUNK_SIZE);
 

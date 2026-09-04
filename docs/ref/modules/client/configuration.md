@@ -131,7 +131,10 @@ Path to the CA bundle used to verify the manager's certificate.
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `none`
+- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
+  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
+  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
+  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
 - **Allowed values:**
   - `full` — verify the certificate against `<certificate_authorities>` AND check that it
     matches the manager's hostname (strictest).
@@ -366,7 +369,10 @@ agent.state_interval=5
 These control the agent's half of the HTTPS timing contract with the manager. Each one pairs with
 a manager-side deadline, so they should be changed together with the corresponding
 `remoted.*` option rather than on their own — see
-[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module).
+[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module) for the
+manager half, and
+[connection timing tuning](../remoted/timing-tuning.md) for which pairs must move together and
+what measurably breaks when only one does.
 
 An attempt count is the **total** number of tries, not retries after the first: `1` means "send
 once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;
@@ -424,6 +430,11 @@ next talks to the manager.
 agent.enrollment_retry_delta=5
 agent.enrollment_retry_max=60
 ```
+
+Both values are resolved once, when the agent starts, and the loops use the resolved value for the
+life of the process. Editing either one on a running agent has no effect until it restarts, and an
+out-of-range value refuses the start rather than terminating the agent later, at its first failed
+re-enrollment.
 
 ### Buffer Settings
 

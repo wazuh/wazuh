@@ -17,10 +17,16 @@ list(APPEND os_auth_names "test_auth")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
                            -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time -Wl,--wrap,wfopen \
                            -Wl,--wrap,fprintf -Wl,--wrap,popen -Wl,--wrap,pclose")
-list(APPEND os_auth_names "test_purge_queue")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_auth_names "test_purge_journal")
+# The one wazuh-db call auth.c makes. Wrapped rather than reached: what these tests are about is how
+# its ANSWERS are interpreted, and a real socket would make "outstanding" and "the query failed" the
+# same case.
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,manager_task_agent_status")
 list(APPEND os_auth_names "test_authd-config")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+# authd_read_config()/getAuthdConfig() over the YAML document (w_mconf_* wrapped, Read_Authd_JSON real)
+list(APPEND os_auth_names "test_authd-getconfig")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,getDefine_Int_default -Wl,--wrap,w_mconf_load -Wl,--wrap,w_mconf_section")
 list(APPEND os_auth_names "test_local-server")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered")
 

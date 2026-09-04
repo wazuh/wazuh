@@ -9,61 +9,34 @@
  */
 
 #include "shared.h"
-#include "os_net.h"
 #include "global-config.h"
 #include "config.h"
 #include "string_op.h"
 
-int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+#ifndef CLIENT
+#include "mconf-config.h"
+
+/* Reader of the `global` section of the effective document (mconf-config.h). The schema already
+ * fixed the types and filled the defaults; only the value rules it cannot express are re-checked. */
+int Read_Global_JSON(const struct cJSON *global, void *configp)
 {
-    int i = 0;
+    _Config *Config = (_Config *)configp;
+    const cJSON *item = NULL;
 
-    /* XML definitions */
-    const char *xml_agents_disconnection_time = "agents_disconnection_time";
-    const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+    if (Config == NULL || global == NULL) {
+        return (0);
+    }
 
-    _Config *Config;
-    Config = (_Config *)configp;
+    if (item = cJSON_GetObjectItem(global, "agents_disconnection_time"), item != NULL) {
+        long time = w_mconf_json_time(item);
 
-    while (node[i]) {
-        if (!node[i]->element) {
-            merror(XML_ELEMNULL);
-            return (OS_INVALID);
-        } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+        if (time < 1) {
+            w_mconf_json_invalid("agents_disconnection_time", item);
             return (OS_INVALID);
         }
-        /* Agent's disconnection time parameter */
-        if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
-            if (Config) {
-                long time = w_parse_time(node[i]->content);
-
-                if (time < 1) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                } else {
-                    Config->agents_disconnection_time = time;
-                }
-            }
-        }
-        /* Agent's disconnection alert time parameter */
-        else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
-            if (Config) {
-                long time = w_parse_time(node[i]->content);
-
-                if (time < 0) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                } else {
-                    Config->agents_disconnection_alert_time = time;
-                }
-            }
-        } else {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
-        }
-        i++;
+        Config->agents_disconnection_time = time;
     }
 
     return (0);
 }
+#endif /* CLIENT */

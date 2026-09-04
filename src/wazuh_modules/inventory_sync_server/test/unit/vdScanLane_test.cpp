@@ -636,3 +636,143 @@ TEST(VdScanLaneTest, NonVdSessionIgnoresFeedOffsetMismatch)
     EXPECT_EQ("scan", std::get<0>(ops[0]));
     EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
 }
+
+// --- On-demand scan requests (Kind::VdScanRequest) --------------------------------------------
+//
+// The other thing this lane carries: a rescan of ONE agent, with no session and no inventory. It
+// shares everything up to the scan -- shutdown, indexer health, the feed gate, the per-agent
+// registry -- and nothing after it, because there is no inventory to index.
+
+namespace
+{
+    /// What the Task Manager's dispatcher enqueues: an agent id, a responder, and nothing else.
+    SyncPipeline::Item makeScanRequest(std::shared_ptr<FutureResponder> responder, const char* agentId = "001")
+    {
+        SyncPipeline::Item item;
+        item.request = std::make_shared<HttpRequest>();
+        item.responder = std::move(responder);
+        item.kind = SyncPipeline::Item::Kind::VdScanRequest;
+        item.session.agentId = agentId;
+        return item;
+    }
+} // namespace
+
+TEST(VdScanLaneTest, AnOnDemandScanAnswers200AndIndexesNothing)
+{
+    LaneUnderTest fixture;
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ(R"({"status":"ok"})", response.body);
+
+    // Exactly one op, and it is the scan. A `bulkIndex` here would mean the branch fell through
+    // into the session path, whose stageBulk() would be reading a null FlatBuffer.
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("scanAgent", std::get<0>(ops[0]));
+    EXPECT_EQ("001", std::get<1>(ops[0]));
+}
+
+/// Each outcome maps to the status its caller needs, and the mapping is the whole contract: the
+/// dispatcher retries a 5xx, gives up on a 4xx, and records a 200 as done.
+TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
+{
+    const std::vector<std::pair<invsync::vd::AgentScanOutcome, int>> expected {
+        {invsync::vd::AgentScanOutcome::Ok, 200},
+        // 503, not 200. No scan ran, and 200 would be recorded as `completed`, i.e. as a scan that
+        // was performed. Retrying is bounded: vd_scan carries the default attempt budget, so this
+        // dead-letters rather than looping forever, and a scanner that comes back still does the
+        // work in the meantime.
+        {invsync::vd::AgentScanOutcome::Skipped, 503},
+        {invsync::vd::AgentScanOutcome::NotReady, 503},
+        // The one non-retryable failure: the agent has no record to scan.
+        {invsync::vd::AgentScanOutcome::NotFound, 404},
+        {invsync::vd::AgentScanOutcome::Failed, 500},
+    };
+
+    for (const auto& [outcome, status] : expected)
+    {
+        LaneUnderTest fixture;
+        fixture.events->m_vdAgentScanOutcome.store(outcome);
+
+        auto responder = std::make_shared<FutureResponder>();
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+        EXPECT_EQ(status, responder->get().status) << "outcome " << static_cast<int>(outcome);
+    }
+}
+
+/**
+ * THE interlock (§7.2). A client-side timeout does not cancel server-side work: the dispatcher
+ * gives up at its own deadline and re-posts while the first scan is still running. Without this,
+ * the second request either parks until the transport's backstop fires or starts a concurrent scan
+ * of the same agent.
+ */
+TEST(VdScanLaneTest, ASecondScanOfAnAgentAlreadyScanningIsRefusedAtAdmission)
+{
+    LaneUnderTest fixture;
+    fixture.events->closeScanGate();
+
+    auto first = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(first)));
+
+    // Not a race: the worker is demonstrably parked inside the scan, so it holds the agent in the
+    // registry. m_scanEntered is bumped at the gate, before the op is recorded, which is exactly
+    // what makes this observable while the gate is still shut.
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    auto second = std::make_shared<FutureResponder>();
+    EXPECT_EQ(VdScanLane::Admission::AgentBusy, fixture.lane->tryEnqueue(makeScanRequest(second)));
+    EXPECT_FALSE(second->answered()) << "the refusal is the endpoint's to answer, not the lane's";
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, first->get().status);
+
+    // Only ONE scan ever ran. A second would have been the concurrent scan the interlock exists to
+    // prevent, and it would have been invisible to the pipeline's own per-agent ordering.
+    EXPECT_EQ(1U, fixture.events->syncOps().size());
+}
+
+/// A SESSION of a busy agent still parks, exactly as before. The two callers want opposite things,
+/// and the interlock above must not have changed the one that was already right.
+TEST(VdScanLaneTest, ASessionOfABusyAgentIsStillQueuedRatherThanRefused)
+{
+    VdScanLaneConfig config;
+    config.queueSlots = 4;
+    LaneUnderTest fixture {config};
+    fixture.events->closeScanGate();
+
+    auto scan = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(scan, "001")));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    // Agent "1" and agent id "001" are the SAME agent: validateFullSession() pads, and so does the
+    // endpoint that builds a scan request. That shared padded form is what makes the per-agent
+    // exclusion work across the two lanes at all.
+    auto session = std::make_shared<FutureResponder>();
+    EXPECT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), session, "1")));
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, scan->get().status);
+    EXPECT_EQ(200, session->get().status) << "the parked session runs once the agent is released";
+}
+
+/// The feed gate covers an on-demand scan too: it is the same feed, and scanning against one that
+/// is still loading is what D17 exists to prevent.
+TEST(VdScanLaneTest, AnOnDemandScanWaitsForTheFeedLikeASession)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdFeedReady.store(false);
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may reach the scanner while the feed is loading";
+}

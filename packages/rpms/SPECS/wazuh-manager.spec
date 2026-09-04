@@ -98,8 +98,6 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/suse
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/sles
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-suse.init
@@ -326,6 +324,13 @@ if [ "$1" -eq 1 ]; then
   if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf; then
     rm -f %{_localstatedir}/etc/wazuh-manager.conf
     echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.conf." >&2
+    exit 1
+  fi
+  # The generated file must validate against the embedded schema (file existence is not
+  # checked: the certificates it references are generated later).
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f %{_localstatedir}/etc/wazuh-manager.conf; then
+    rm -f %{_localstatedir}/etc/wazuh-manager.conf
+    echo "ERROR: the generated %{_localstatedir}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
     exit 1
   fi
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
@@ -567,9 +572,9 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-analysisd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
 %attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
@@ -584,6 +589,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
@@ -620,6 +626,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync_server.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libkeystore_server.so
+%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libtask_manager.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libvulnerability_scanner.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libremoted_module.so

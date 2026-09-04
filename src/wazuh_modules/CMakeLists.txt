@@ -62,8 +62,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/keystore_server/include
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
-  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager)
+  ${SRC_FOLDER}/wazuh_modules/task_manager/include)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -99,6 +98,7 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Modules - Server only
   add_subdirectory(inventory_sync_server)
   add_subdirectory(keystore_server)
+  add_subdirectory(task_manager)
   add_subdirectory(vulnerability_scanner)
 else()
   # Modules - Agent only
@@ -111,10 +111,7 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   file(
     GLOB
     WAZUH_MODULES_SRC
-    "${SRC_FOLDER}/wazuh_modules/src/*.c"
-    "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
-    "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager/*.c"
-    "${SRC_FOLDER}/wazuh_modules/src/task_manager/*.c")
+    "${SRC_FOLDER}/wazuh_modules/src/*.c")
 else()
   file(GLOB WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
@@ -137,6 +134,7 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
     wazuh_modulesd_lib
     PUBLIC inventory_sync_server
            keystore_server
+           task_manager
            vulnerability_scanner
            wazuhext
            pthread

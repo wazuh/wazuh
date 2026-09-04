@@ -32,7 +32,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager/
   ${SRC_FOLDER}/wazuh_db/include/
   ${SRC_FOLDER}/shared_modules/agent_metadata/include/
   ${SRC_FOLDER}/shared_modules/common/
@@ -92,7 +91,7 @@ endif(UNIX)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-remoted "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+    wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                        ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-remoted PRIVATE remoted_lib)
   wazuh_link_jemalloc(wazuh-manager-remoted)

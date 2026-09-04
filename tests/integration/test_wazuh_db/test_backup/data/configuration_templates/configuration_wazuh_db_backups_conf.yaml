@@ -11,17 +11,3 @@
             value: INTERVAL
         - max_files:
             value: MAX_FILES
-  - section: sca
-    elements:
-    - enabled:
-        value: 'no'
-  - section: rootcheck
-    elements:
-    - disabled:
-        value: 'yes'
-  - section: wodle
-    attributes:
-      - name: 'syscollector'
-    elements:
-      - disabled:
-          value: 'yes'

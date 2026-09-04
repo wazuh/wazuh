@@ -30,7 +30,20 @@
 #endif
 
 // Global variables
-syscheck_config syscheck;
+// The synchronization primitives are initialized here rather than in fim_initialize(): the
+// shutdown waiter and the syscom thread both start before it runs.
+syscheck_config syscheck = {
+    .fim_scan_mutex = PTHREAD_MUTEX_INITIALIZER,
+    .fim_realtime_mutex = PTHREAD_MUTEX_INITIALIZER,
+#ifdef WIN32
+    .fim_registry_scan_mutex = PTHREAD_MUTEX_INITIALIZER,
+#else
+    .fim_symlink_mutex = PTHREAD_MUTEX_INITIALIZER,
+#endif
+    .fim_pause_requested = ATOMIC_INT_INITIALIZER(0),
+    .fim_pausing_is_allowed = ATOMIC_INT_INITIALIZER(0),
+    .fim_first_sync_completed = ATOMIC_INT_INITIALIZER(0),
+};
 int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
@@ -492,15 +505,6 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
-    // Initialize the coordination atomics first, before any early return below.
-    // On Windows (winpthreads) PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel,
-    // so a zero-initialized global mutex is invalid: if fim_db_init() fails and we
-    // return early, the disabled path in start_daemon() would call atomic_int_set()
-    // on an uninitialized mutex and abort. They are also read by the syscom thread.
-    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
@@ -546,16 +550,9 @@ void fim_initialize() {
         return;
     }
 
-    // Initialize locks before sync handle creation
+    // Initialize directories_lock before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
     syscheck_set_directories_lock_ready();
-    w_mutex_init(&syscheck.fim_scan_mutex, NULL);
-    w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
-#ifdef WIN32
-    w_mutex_init(&syscheck.fim_registry_scan_mutex, NULL);
-#else
-    w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
-#endif
 
     notify_scan = syscheck.notify_first_scan;
 

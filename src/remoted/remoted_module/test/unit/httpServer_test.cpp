@@ -68,7 +68,7 @@ namespace
 
     // Zero-initialized C-ABI config, like remoted's `= {0}`. verification_mode is set to
     // UNSET (not left at the memset 0) because that's what remoted actually sends when
-    // <https><verification_mode> was never configured -- RemotedConfig() pre-initializes
+    // https.verification_mode was never configured -- RemotedConfig() pre-initializes
     // it to REMOTED_HTTPS_VERIFY_UNSET before parsing, and secure.c copies it through
     // unconditionally. 0 is reserved for an explicit <verification_mode>none</verification_mode>.
     remoted_module_config_t zeroedConfig()
@@ -187,7 +187,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
 {
     const auto config = buildHttpServerConfig(zeroedConfig());
 
-    EXPECT_EQ(config.bindAddress, "127.0.0.1");
+    EXPECT_EQ(config.bindAddress, "0.0.0.0");
     // Empty C-ABI buffer -> "" == no prefix, today's behavior (D3: an absent tag changes nothing).
     EXPECT_EQ(config.globalPrefix, "");
     EXPECT_EQ(config.port, 1517);
@@ -202,7 +202,9 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxHeaderValueSize, 8192U);
     EXPECT_EQ(config.maxHeaderCount, 64U);
     EXPECT_EQ(config.maxPipelinedRequests, 4U);
-    EXPECT_EQ(config.concurrentAccepts, 2U);
+    // nproc, floored at 2 (a single-vCPU host/cgroup must not regress below the old fixed
+    // default) -- see MIN_CONCURRENT_ACCEPTS in httpServerConfig.cpp.
+    EXPECT_EQ(config.concurrentAccepts, std::max<std::size_t>(static_cast<std::size_t>(cpp_get_nproc()), 2U));
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);

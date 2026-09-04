@@ -10,8 +10,9 @@
 
 #include "shared.h"
 #include "remoted.h"
-#include <openssl/crypto.h>
+#include "mconf-config.h"
 #include "generate_cert.h"
+#include <openssl/crypto.h>
 #include <unistd.h>
 
 /* Prototypes */
@@ -286,6 +287,10 @@ int main(int argc, char **argv)
 
     /* Exit if test_config is set */
     if (test_config) {
+        /* Start-up does not require the certificate files to exist; the test run does. */
+        if (w_mconf_validate(cfg) < 0) {
+            merror_exit(CONFIG_ERROR, cfg);
+        }
         /* The http_*, downstream_* and control_* options are resolved in secure.c, on the daemon
          * path only, so without this '-t' accepts every one of them whatever the value. */
         w_remoted_validate_module_config();

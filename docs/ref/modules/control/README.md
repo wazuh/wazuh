@@ -72,7 +72,7 @@ Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Win
 **For agents running version 5.0.0 or higher**, restart and reload operations use the **Task Manager** instead of direct control messages:
 
 1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or `PUT /agents/{agent_id}/reload`
-2. **Framework**: Creates a task via Task Manager socket (`/queue/sockets/task.sock`)
+2. **Framework**: Creates a task via Task Manager socket (`/queue/sockets/task-http.sock`)
    - Task type: `agent_restart` or `agent_reload`
    - Payload: `{}`
    - Task stored in Task Manager database with status `pending`

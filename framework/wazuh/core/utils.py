@@ -17,17 +17,14 @@ from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
-from pyexpat import ExpatError
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 from xml.etree.ElementTree import Element  # nosec B405
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
-from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
-from api import configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -43,29 +40,57 @@ t_cache = TTLCache(maxsize=4500, ttl=60)
 def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
+    A PID file only proves that some process had that PID at the time the file was
+    written. If the PID has since been recycled by an unrelated process (or by this
+    same daemon's own new instance), killing it blindly can terminate the wrong
+    process. A process is only treated as the stale owner of the file when it was
+    already alive before the file's mtime.
+
     Parameters
     ----------
     daemon : str
         Daemon's name.
     """
+    own_pid = os.getpid()
     regex = rf'{daemon}[\w_]*-(\d+).pid'
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
+            pid = int(match.group(1))
+            full_path = path.join(common.OSSEC_PIDFILE_PATH, pid_file)
             try:
-                pid = int(match.group(1))
                 process = psutil.Process(pid)
-                command = process.cmdline()[-1]
+                command = ' '.join(process.cmdline())
+                belongs_to_daemon = daemon.replace('-', '_') in command
+                predates_file = process.create_time() <= path.getmtime(full_path)
 
-                if daemon.replace('-', '_') in command:
-                    os.kill(pid, SIGKILL)
-                    print(f"{daemon}: Orphan child process {pid} was terminated.")
-                else:
+                if pid != own_pid and belongs_to_daemon and predates_file:
+                    try:
+                        os.kill(pid, SIGKILL)
+                        print(f"{daemon}: Orphan child process {pid} was terminated.")
+                    except OSError as kill_error:
+                        print(f"{daemon}: Orphan child process {pid} was identified but could not "
+                              f"be terminated ({kill_error}), removing from {common.WAZUH_PATH}/var/run...")
+                elif pid == own_pid:
+                    print(f"{daemon}: Process {pid} is this process's own PID, recycled from a stale "
+                          f"pidfile, removing from {common.WAZUH_PATH}/var/run...")
+                elif not belongs_to_daemon:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                else:
+                    print(f"{daemon}: Process {pid} belongs to {daemon} but was created after its stale "
+                          f"pidfile (PID recycled), removing from {common.WAZUH_PATH}/var/run...")
 
-            except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+            except (OSError, psutil.Error):
+                # psutil.Error also covers AccessDenied (the PID was recycled by a process
+                # owned by another user) and ZombieProcess. Neither means the file's
+                # original owner is still around, so it's still safe to drop it.
+                print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                try:
+                    os.remove(full_path)
+                except OSError as remove_error:
+                    # The owner's exit handler or the control script may have removed it meanwhile;
+                    # a leftover pidfile is never a reason to abort the startup.
+                    print(f'{daemon}: Could not remove {full_path} ({remove_error}).')
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
@@ -720,142 +745,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     nested_dict.update(non_nested_dict)
 
     return nested_dict
-
-
-def xml_to_dict(root, section_path: list):
-    """Extract configuration sections from an XML tree using dotted paths.
-
-    Parameters
-    ----------
-    root : Element
-        Root element containing one or more wazuh_config nodes.
-    section_path : list
-        List of strings representing the path to the desired section.
-
-    Returns
-    -------
-    list
-        Dictionaries with the configuration.
-    """
-    def element_to_dict(element):
-        """Convert an XML element into a nested dictionary."""
-        result = {}
-
-        if len(element):
-            for child in element:
-                result[child.tag.lower()] = element_to_dict(child)
-        else:
-            result = {
-                'attrib': element.attrib,
-                'value': element.text.strip() if element.text else None
-            }
-
-        return result
-
-    matched_configurations = []
-    current_nodes = [root]
-
-    for part in section_path:
-        next_nodes = []
-        for node in current_nodes:
-            next_nodes.extend(node.findall(part))
-        current_nodes = next_nodes
-
-    for section in current_nodes:
-        section_dict = {
-            section.tag: element_to_dict(section)
-        }
-        matched_configurations.append(section_dict)
-
-    return matched_configurations
-
-
-def normalize(data, preserve_root_order=True):
-    """Normalize data structures for comparison.
-
-    Parameters
-    ----------
-    data : Any
-        Data to normalize.
-    preserve_root_order : bool, optional
-        Preserve the order of root-level lists.
-    """
-    def _normalize(value, is_root):
-        if isinstance(value, list):
-            items = [_normalize(i, False) for i in value]
-
-            if preserve_root_order and is_root:
-                return items
-
-            return sorted(items, key=str)
-
-        if isinstance(value, dict):
-            return {
-                k: _normalize(v, False)
-                for k, v in sorted(value.items())
-            }
-
-        return value
-
-    return _normalize(data, True)
-
-
-def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
-    """Check if higher version agents are allowed.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    ------
-    WazuhError(1129)
-        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
-    """
-
-    AUTH_HIERARCHY = ['wazuh_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'agents', 'allow_higher_versions']
-    upload_configuration = configuration.api_conf['upload_configuration']
-
-    if not upload_configuration['agents']['allow_higher_versions']['allow']:
-        new_auth = xml_to_dict(new_conf, AUTH_HIERARCHY)
-        original_auth = xml_to_dict(original_conf, AUTH_HIERARCHY)
-        if normalize(new_auth) != normalize(original_auth):
-            raise WazuhError(1129, extra_message='auth > allow_higher_versions')
-
-        new_remote = xml_to_dict(new_conf, REMOTE_HIERARCHY)
-        original_remote = xml_to_dict(original_conf, REMOTE_HIERARCHY)
-        if normalize(new_remote) != normalize(original_remote):
-            raise WazuhError(1129, extra_message='remote > allow_higher_versions')
-
-
-def check_indexer(new_conf, original_conf):
-    """Check if modifying the indexer configuration is allowed.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    -------
-    WazuhError(1127)
-        Raised if the indexer section is modified in the configuration to upload.
-    """
-
-    CONFIG_INDEXER_HIERARCHY = ['wazuh_config', 'indexer']
-    upload_configuration = configuration.api_conf['upload_configuration']
-
-    if not upload_configuration['indexer']['allow']:
-        new_indexer = xml_to_dict(new_conf, CONFIG_INDEXER_HIERARCHY)
-        original_indexer = xml_to_dict(original_conf, CONFIG_INDEXER_HIERARCHY)
-        if normalize(new_indexer) != normalize(original_indexer):
-            raise WazuhError(1127, extra_message='indexer')
 
 
 def load_wazuh_xml(xml_path, data=None):
@@ -1757,60 +1646,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                 'fields': set(self.filter_fields)
             }
         self.select = self.select & self.filter_fields['fields']
-
-
-def validate_wazuh_xml(content: str):
-    """Validate Wazuh XML files (wazuh-manager.conf)
-
-    Parameters
-    ----------
-    content : str
-        File content.
-
-    Raises
-    ------
-    WazuhError(1113)
-        XML syntax error.
-    """
-    # -- characters are not allowed in XML comments
-    content = replace_in_comments(content, '--', '%wildcard%')
-
-    # Create temporary file for parsing xml input
-    try:
-        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
-        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-        indent = '  '  # indent parameter for toprettyxml function
-        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-        # Revert xml.dom replacings
-        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
-        # Delete two first spaces of each line
-        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
-
-        # Check xml format
-        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
-        current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
-        # Check if configuration changes are allowed
-        check_agents_allow_higher_versions(incoming_xml, current_xml)
-        check_indexer(incoming_xml, current_xml)
-
-    except ExpatError:
-        raise WazuhError(1113)
-    except WazuhError as e:
-        raise e
-    except Exception as e:
-        raise WazuhError(1113, str(e))
-
-
-def replace_in_comments(original_content, to_be_replaced, replacement):
-    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
-    for comment in xml_comment.finditer(original_content):
-        good_comment = comment.group(2).replace(to_be_replaced, replacement)
-        original_content = original_content.replace(comment.group(2), good_comment)
-    return original_content
 
 
 def to_relative_path(full_path: str, prefix: str = common.WAZUH_PATH) -> str:

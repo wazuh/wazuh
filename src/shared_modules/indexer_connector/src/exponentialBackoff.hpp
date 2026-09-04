@@ -105,4 +105,38 @@ private:
     std::mt19937_64 m_rng;
 };
 
+/**
+ * @brief Bounds one operation's retry loop by attempts and by wall-clock time.
+ *
+ * exhausted() is called after each failed request with the delay the next retry would sleep;
+ * it returns true once the failure count reaches the attempts cap, or when sleeping that delay
+ * would cross the deadline. A cap of 0 disables that bound, so {0, 0} retries forever.
+ */
+class IndexerRetryBudget final
+{
+public:
+    IndexerRetryBudget(size_t maxAttempts, std::chrono::milliseconds maxDuration)
+        : m_maxAttempts(maxAttempts)
+        , m_deadline(std::chrono::steady_clock::now() + maxDuration)
+        , m_timeBounded(maxDuration.count() > 0)
+    {
+    }
+
+    bool exhausted(std::chrono::milliseconds nextDelay)
+    {
+        ++m_failedAttempts;
+        if (m_maxAttempts > 0 && m_failedAttempts >= m_maxAttempts)
+        {
+            return true;
+        }
+        return m_timeBounded && (std::chrono::steady_clock::now() + nextDelay >= m_deadline);
+    }
+
+private:
+    size_t m_maxAttempts;
+    std::chrono::steady_clock::time_point m_deadline;
+    bool m_timeBounded;
+    size_t m_failedAttempts {0};
+};
+
 #endif // INDEXER_EXPONENTIAL_BACKOFF_HPP

@@ -3,7 +3,7 @@
 - [Active Response](active-response/index.html) - Automated security response actions triggered by detected events
 - [Agent Info](agent_info/index.html) - Agent metadata collection and reporting
 - [Agent Management](agent-management/index.html) - Centralized configuration and group management for agents
-- [Agent Upgrade](agent_upgrade/index.html) - Remote agent upgrade via WPK distribution
+- [Agent Upgrade](agent_upgrade/index.html) - Agent-side WPK verification and install (the manager side is in [Task Manager](task_manager/index.html))
 - [Authd](authd/index.html) - Agent enrollment service (TLS, key generation)
 - [Client](client/index.html) - Agent daemon (wazuh-agentd) managing agent-manager communication
 - [Cluster](cluster/index.html) - Manages the Wazuh server cluster
@@ -19,7 +19,6 @@
 - [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB), served over UDS by the `keystore_server` module
 - [Logcollector](logcollector/index.html) - Log ingestion
 - [Logging](logging/index.html) - Log format configuration (plain text, JSON, or dual output)
-- [Monitord](monitord/index.html) - Agent disconnection monitoring and log rotation
 - [RBAC](rbac/index.html) - Role-based access control for the API
 - [Remoted](remoted/index.html) - Agent communication daemon
 - [Rootcheck](rootcheck/index.html) - Rootkit and anomaly detection

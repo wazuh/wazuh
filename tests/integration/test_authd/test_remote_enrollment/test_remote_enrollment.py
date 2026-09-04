@@ -173,15 +173,16 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         expected_log = ".*Port 1515 was set as disabled.*"
         expectation = pytest.raises(ConnectionRefusedError)
 
-    file_monitor.FileMonitor(WAZUH_LOG_PATH).start(timeout=5,
-                                     callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    log_monitor.start(timeout=5, callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
+    assert log_monitor.callback_result, f'Expected log not found: {expected_log}'
     with expectation:
         ssl_socket = SocketController(remote_enrollment_address, family='AF_INET', connection_protocol='ssl_tls')
 
         ssl_socket.open()
 
         if test_metadata['node_type'] == 'worker':
-            expected_answer = 'ERROR: Cannot comunicate with master'
+            expected_answer = 'ERROR: Cannot communicate with master'
         global AGENT_ID
         ssl_socket.send(INPUT_MESSAGE.format(AGENT_NAME, AGENT_ID), size=False)
         AGENT_ID = AGENT_ID + 1
