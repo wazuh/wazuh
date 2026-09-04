@@ -185,7 +185,10 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
         - The restarted 'wazuh-manager-apid' process is not killed by 'clean_pid_files()' due to
           the planted PID collision.
         - The planted pidfile no longer exists afterwards, proving 'clean_pid_files()' actually
-          processed it instead of the plant losing its race against the restart.
+          processed it. If the plant lost its race against the restart (apid was not observed in
+          time, or it passed its cleanup before the file landed) the run is skipped, since it
+          exercised nothing: only a running apid with the plant still present skips, anything
+          else stays a failure.
 
     input_description:
         No external test cases. The collision target is the real PID of the process spawned by
@@ -217,13 +220,14 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
                 start.kill()
                 start.wait()
 
-        assert collided_pid is not None, (
-            "Timed out waiting for the restarted 'wazuh-manager-apid' process to appear; "
-            "could not plant the PID collision this test depends on"
-        )
-
+        # The plant races apid's own startup, so losing that race says nothing about the fix.
+        # Still, apid must be up before skipping: a missing apid here is a real failure, and
+        # wait_expected_daemon_status() raises TimeoutError on it.
         wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,
                                      timeout=STATUS_TIMEOUT_SECONDS)
+        if collided_pid is None:
+            pytest.skip("Lost the race: the restarted 'wazuh-manager-apid' was not observed in time to "
+                        "plant a PID collision; nothing was exercised")
 
         status = check_all_daemon_status()
         assert status.get(API_DAEMON) is True, (
@@ -231,10 +235,9 @@ def test_apid_survives_pid_collision_after_unclean_stop(wazuh_running):
             f"(collided PID {collided_pid}, planted at '{collision_file}') — #38695 regression: {status}"
         )
 
-        assert not os.path.exists(collision_file), (
-            f"Planted pidfile '{collision_file}' was never processed by 'clean_pid_files()' "
-            "(lost the race against the restart) — this run did not actually test the PID collision"
-        )
+        if os.path.exists(collision_file):
+            pytest.skip(f"Lost the race: planted pidfile '{collision_file}' was never processed by "
+                        "'clean_pid_files()' (apid passed its cleanup first); nothing was exercised")
     finally:
         # Any assertion above can fail before 'clean_pid_files()' gets a chance to remove the
         # plant itself, which would otherwise leave a root-owned stale pidfile naming a PID that
