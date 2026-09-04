@@ -169,8 +169,20 @@ endif()
 add_dependencies(rt_engine rt_file_bpf_object)
 
 if(UNIT_TEST)
-  # No unit tests yet for this newly-extracted engine. The dispatch table is
-  # already function-pointer based, so a fake libbpf is cheap — that suite, plus
-  # the sizeof(struct rt_file_event) == 12416 ABI pin, is the next addition
-  # (11-ebpf-provider-import-plan.md, §11.9 item 9 / §11.10).
+  # Contract tests: plain C, no gtest, no BPF object, no kernel, no root. They
+  # pin the event ABI — which is exchanged by raw memory reinterpretation and so
+  # has nothing else checking it — plus rt_open's filter validation, the log
+  # seam and the NULL-handle contracts.
+  #
+  # Deliberately not gtest: these must run wherever the tree builds, and the
+  # vendored googletest cannot configure under CMake 4.x (it still declares
+  # cmake_minimum_required(2.8.12)). A dependency-free binary sidesteps that
+  # entirely.
+  #
+  # Still missing, and needing a fake libbpf: every rt_open path past the filter
+  # check, the per-event ABI rejection inside the ring-buffer callback, and link
+  # teardown accounting (11-ebpf-provider-import-plan.md §11.9 item 9, §11.10).
+  add_executable(rt_engine_contract_test test/rt_engine_contract_test.c)
+  target_link_libraries(rt_engine_contract_test rt_engine)
+  add_test(NAME rt_engine_contract_test COMMAND rt_engine_contract_test)
 endif()
