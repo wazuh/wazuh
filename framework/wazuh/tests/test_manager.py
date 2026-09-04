@@ -34,6 +34,15 @@ def mock_wazuh_path():
         yield
 
 
+@pytest.fixture(scope='module', autouse=True)
+def installed_schema():
+    """The schema the installer copies to etc/wazuh-manager.schema.json, from its source in the repository."""
+    schema_path = os.path.join(test_data_path, '..', '..', '..', '..', 'src', 'shared_modules', 'manager_config', 'schema',
+                               'wazuh-manager.schema.json')
+    with patch('wazuh.core.common.MANAGER_CONF_SCHEMA', new=schema_path):
+        yield
+
+
 class InitManager:
     def __init__(self):
         """Sets up necessary environment to test manager functions"""
@@ -49,7 +58,7 @@ def test_manager():
 
 
 manager_status = {'wazuh-manager-analysisd': 'running', 'wazuh-manager-authd': 'running',
- 'wazuh-manager-monitord': 'running', 'wazuh-manager-remoted': 'running',
+ 'wazuh-manager-remoted': 'running',
  'wazuh-manager-clusterd': 'running', 'wazuh-manager-modulesd': 'running',
  'wazuh-manager-db': 'running', 'wazuh-manager-apid': 'running'}
 
@@ -69,6 +78,12 @@ VD_STATUS_READY = {
     'last_successful_update': 1719878400,
 }
 
+REMOTED_STATUS_READY = {
+    'ready': True,
+    'keystore': {'readable': True, 'agents_loaded': 5, 'entries_skipped': 0},
+    'enrollment_password': {'ready': True},
+}
+
 
 def _make_modulesd_mock(vd_status=None, side_effect=None):
     """Return a (mock_cls, mock_instance) pair for VdHTTPClient."""
@@ -82,15 +97,17 @@ def _make_modulesd_mock(vd_status=None, side_effect=None):
     return mock_cls, mock_instance
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
-    """Node ready: all daemons running, analysisd engine ready, modulesd VD ready."""
+def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """Node ready: all daemons running, analysisd engine ready, modulesd VD ready, remoted keystore/password ready."""
     mock_engine = MagicMock()
     mock_engine.get_status.return_value = ENGINE_STATUS_READY
     mock_engine_cls.return_value = mock_engine
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     result = get_status()
     assert isinstance(result, AffectedItemsWazuhResult)
@@ -110,47 +127,56 @@ def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
     assert modules['inventory-sync'] == {'available': True}
     assert modules['content-manager'] == {'available': True}
     assert modules['task-manager'] == {'available': True}
-    # plain daemon: ready iff running, no extra resources
-    assert data['wazuh-manager-remoted'] == {'ready': True, 'running': True}
+    # remoted embeds keystore/enrollment_password readiness from its admin GET /status
+    assert data['wazuh-manager-remoted']['running'] is True
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert data['wazuh-manager-remoted']['keystore'] == REMOTED_STATUS_READY['keystore']
+    assert data['wazuh-manager-remoted']['enrollment_password'] == REMOTED_STATUS_READY['enrollment_password']
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_analysisd_not_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_analysisd_not_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """analysisd engine not ready → node not ready."""
     mock_engine = MagicMock()
     mock_engine.get_status.return_value = {'ready': False, 'spaces': {}, 'ioc': {}, 'geo': {}}
     mock_engine_cls.return_value = mock_engine
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-analysisd']['ready'] is False
     assert data['ready'] is False
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_engine_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_engine_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """Engine unreachable → analysisd not ready → node not ready."""
     from wazuh.core.exception import WazuhInternalError
     mock_engine = MagicMock()
     mock_engine.get_status.side_effect = WazuhInternalError(2021)
     mock_engine_cls.return_value = mock_engine
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-analysisd']['ready'] is False
     assert data['ready'] is False
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-analysisd': 'stopped'})
-def test_get_status_analysisd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_analysisd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """analysisd stopped → not running, not ready, engine not queried."""
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-analysisd']['running'] is False
@@ -159,15 +185,17 @@ def test_get_status_analysisd_stopped(mock_status, mock_engine_cls, mock_modules
     mock_engine_cls.assert_not_called()
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_updating(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_updating(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """A background VD update keeps the previous feed available but the node is not ready."""
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{
         'get_status.return_value': {**VD_STATUS_READY, 'status': 'updating'},
     })
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['ready'] is False
@@ -175,14 +203,16 @@ def test_get_status_modulesd_updating(mock_status, mock_engine_cls, mock_modules
     assert data['ready'] is False
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """modulesd socket unreachable → modulesd not ready → node not ready."""
     from wazuh.core.exception import WazuhInternalError
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{'get_status.side_effect': WazuhInternalError(2026)})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['ready'] is False
@@ -194,12 +224,14 @@ def test_get_status_modulesd_unreachable(mock_status, mock_engine_cls, mock_modu
     assert data['ready'] is False
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-modulesd': 'stopped'})
-def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """modulesd stopped → not running, not ready, socket not queried."""
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['running'] is False
@@ -208,10 +240,11 @@ def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd
     mock_modulesd_cls.assert_not_called()
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """VD disabled → modulesd ready (disabled VD is not a readiness blocker)."""
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{
@@ -220,16 +253,18 @@ def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modu
             'last_successful_update': 0,
         },
     })
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['ready'] is True
     assert data['ready'] is True
 
 
+@patch('wazuh.manager.RemotedHTTPClient')
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_modulesd_cls):
+def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
     """VD feed error → modulesd not ready."""
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{
@@ -238,12 +273,146 @@ def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_module
             'last_successful_update': 0,
         },
     })
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
 
     data = get_status().affected_items[0]
     assert data['wazuh-manager-modulesd']['ready'] is False
     assert data['wazuh-manager-modulesd']['modules']['vulnerability-detector']['available'] is True
     assert data['wazuh-manager-modulesd']['modules']['vulnerability-detector']['status'] == 'failed'
     assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """remoted running, keystore and enrollment password both ready → remoted (and node) ready."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert data['wazuh-manager-remoted']['keystore'] == REMOTED_STATUS_READY['keystore']
+    assert data['wazuh-manager-remoted']['enrollment_password'] == REMOTED_STATUS_READY['enrollment_password']
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_keystore_failure_does_not_gate_ready(
+    mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls
+):
+    """client.keys' last reload failed but Password-mode is disabled → keystore never gates `ready`."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': {
+        'ready': True,
+        'keystore': {'readable': False, 'agents_loaded': 5, 'entries_skipped': 0},
+    }})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert data['wazuh-manager-remoted']['keystore']['readable'] is False
+    assert 'enrollment_password' not in data['wazuh-manager-remoted']
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_password_unavailable_not_ready(
+    mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls
+):
+    """Password-mode enabled, key unavailable → not ready regardless of `keystore.readable`."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': {
+        'ready': False,
+        'keystore': {'readable': True, 'agents_loaded': 5, 'entries_skipped': 0},
+        'enrollment_password': {'ready': False},
+    }})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert data['wazuh-manager-remoted']['enrollment_password']['ready'] is False
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_password_mode_disabled(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """Password-mode enrollment disabled → `enrollment_password` is absent from the entry, not a not-applicable state."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': {
+        'ready': True,
+        'keystore': {'readable': True, 'agents_loaded': 5, 'entries_skipped': 0},
+    }})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['ready'] is True
+    assert 'enrollment_password' not in data['wazuh-manager-remoted']
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_admin_socket_unreachable(
+    mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls
+):
+    """Admin socket unreachable (ConnectError, code 2031) → falls back to plain liveness, reason surfaced."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.side_effect': WazuhInternalError(2031)})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted'] == {
+        'ready': True, 'running': True, 'reason': 'admin socket unreachable',
+    }
+    assert data['ready'] is True
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_remoted_timeout_still_not_ready(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """A request timeout (code 2030, not a ConnectError) keeps today's `ready: false` -- the admin-socket-
+    unreachable fallback is scoped to code 2031 only, not any `RemotedHTTPClient` failure."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+    mock_remoted_cls.return_value = MagicMock(**{'get_status.side_effect': WazuhInternalError(2030)})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['running'] is True
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert 'reason' not in data['wazuh-manager-remoted']
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-remoted': 'stopped'})
+def test_get_status_remoted_stopped(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls):
+    """remoted stopped → not running, not ready, admin socket never queried."""
+    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
+    mock_modulesd_cls.return_value = MagicMock(**{'get_status.return_value': VD_STATUS_READY})
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-remoted']['running'] is False
+    assert data['wazuh-manager-remoted']['ready'] is False
+    assert data['ready'] is False
+    mock_remoted_cls.assert_not_called()
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [
@@ -443,8 +612,8 @@ def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
         "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
 ])
-@patch('wazuh.manager.validate_ossec_conf')
-def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
+@patch('wazuh.manager.validate_manager_conf')
+def test_validation(mock_validate_manager_conf, error_flag, error_msg):
     """Test validation() method works as expected
 
     Tests configuration validation function with multiple scenarios:
@@ -461,10 +630,10 @@ def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
     """
     if error_flag == 0:
         # Success case - validation passes
-        mock_validate_ossec_conf.return_value = {'status': 'OK'}
+        mock_validate_manager_conf.return_value = {'status': 'OK'}
     else:
         # Error case - validation fails
-        mock_validate_ossec_conf.side_effect = WazuhError(1908, extra_message=error_msg)
+        mock_validate_manager_conf.side_effect = WazuhError(1908, extra_message=error_msg)
 
     result = validation()
 
@@ -478,7 +647,7 @@ def test_validation(mock_validate_ossec_conf, error_flag, error_msg):
     WazuhError(1113),  # XML validation error
     WazuhError(1908)  # General validation error
 ])
-@patch('wazuh.manager.validate_ossec_conf')
+@patch('wazuh.manager.validate_manager_conf')
 def test_validation_ko(mock_validate, exception):
     mock_validate.side_effect = exception
 
@@ -508,10 +677,16 @@ def test_get_config_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1307
 
 
+_EFFECTIVE_STUB = {'cluster': {'name': 'wazuh', 'node_name': 'master-node', 'node_type': 'master',
+                               'key': '9d273b53510fef702b54a92e9cffc82e'},
+                   'logging': {'log_format': ['plain']}}
+
+
 @pytest.mark.parametrize('raw', [True, False])
-def test_read_ossec_conf(raw):
-    """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf(raw=raw)
+@patch('wazuh.core.configuration.load_manager_conf', return_value=_EFFECTIVE_STUB)
+def test_read_manager_conf(load_mock, raw):
+    """Tests read_manager_conf() function works as expected"""
+    result = read_manager_conf(raw=raw)
 
     if raw:
         assert isinstance(result, str), 'No expected result type'
@@ -520,35 +695,35 @@ def test_read_ossec_conf(raw):
         assert result.render()['data']['total_failed_items'] == 0
 
 
-def test_read_ossec_con_ko():
-    """Tests read_ossec_conf() function returns an error"""
-    result = read_ossec_conf(section='test')
+@patch('wazuh.core.configuration.load_manager_conf', return_value=_EFFECTIVE_STUB)
+def test_read_manager_conf_ko(load_mock):
+    """Tests read_manager_conf() function returns an error"""
+    result = read_manager_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
 # ---------------------------------------------------------------------------
-# Tests for cluster.key masking in read_ossec_conf (CVE fix)
+# Tests for cluster.key masking in read_manager_conf (CVE fix)
 # ---------------------------------------------------------------------------
 
-_OSSEC_CONF_WITH_CLUSTER_KEY = """\
-<ossec_config>
+_MANAGER_CONF_WITH_CLUSTER_KEY = """\
+<wazuh_config>
   <cluster>
     <name>wazuh</name>
     <node_name>master-node</node_name>
     <key>REAL_CLUSTER_SECRET</key>
     <port>1516</port>
-    <disabled>no</disabled>
   </cluster>
-</ossec_config>"""
+</wazuh_config>"""
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
-    result = read_ossec_conf(raw=True)
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
+    """read_manager_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' not in result
@@ -556,20 +731,20 @@ def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perm
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_no_masking_for_admin(mock_file, mock_perms):
-    """read_ossec_conf(raw=True) returns the real cluster key for admin users with update_config."""
-    result = read_ossec_conf(raw=True)
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_no_masking_for_admin(mock_file, mock_perms):
+    """read_manager_conf(raw=True) returns the real cluster key for admin users with update_config."""
+    result = read_manager_conf(raw=True)
 
     assert isinstance(result, str), 'No expected result type'
     assert 'REAL_CLUSTER_SECRET' in result
 
 
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
-@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
-def test_read_ossec_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
+@patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
+def test_read_manager_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
     """Masking cluster.key must not corrupt other fields in the configuration."""
-    result = read_ossec_conf(raw=True)
+    result = read_manager_conf(raw=True)
 
     assert '<name>wazuh</name>' in result
     assert '<node_name>master-node</node_name>' in result
@@ -589,44 +764,62 @@ def test_get_basic_info(mock_uid, mock_gid, mock_open_file, mock_exists, mock_ch
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.remove')
-@patch('wazuh.manager.exists', return_value=True)
-@patch('wazuh.manager.full_copy')
-@patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
-def test_update_ossec_conf(validate_conf_mock, write_mock, validate_xml_mock, full_copy_mock, exists_mock,
-                           remove_mock, move_mock):
-    """Test update_ossec_conf works as expected."""
-    result = update_ossec_conf(new_conf="placeholder config")
-    write_mock.assert_called_once()
-    validate_conf_mock.assert_called_once()
+_UPDATE_PATCHES = [
+    ('wazuh.manager.safe_move', {}),
+    ('wazuh.manager.remove', {}),
+    ('wazuh.manager.exists', {'return_value': True}),
+    ('wazuh.manager.full_copy', {}),
+    ('wazuh.manager.load_manager_conf_text', {'return_value': {'cluster': {'name': 'wazuh'}}}),
+    ('wazuh.manager.load_manager_conf', {'return_value': {'cluster': {'name': 'wazuh'}}}),
+    ('wazuh.manager.check_protected_sections', {}),
+    ('wazuh.manager.write_manager_conf', {}),
+    ('wazuh.manager.validate_manager_conf', {'return_value': {'status': 'OK'}}),
+]
+
+
+@pytest.fixture
+def update_mocks():
+    """Every collaborator of update_manager_conf() mocked, keyed by function name."""
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        yield {target.rsplit('.', 1)[1]: stack.enter_context(patch(target, **kwargs)) for target, kwargs in _UPDATE_PATCHES}
+
+
+def test_update_manager_conf(update_mocks):
+    """update_manager_conf() validates the new text (syntax, schema, protected sections), writes it and validates the file."""
+    new_conf = "<wazuh_config>\n  <cluster>\n    <name>wazuh</name>\n  </cluster>\n</wazuh_config>\n"
+    result = update_manager_conf(new_conf=new_conf)
+
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
-    remove_mock.assert_called_once()
+    update_mocks['load_manager_conf_text'].assert_called_once_with(new_conf)
+    update_mocks['check_protected_sections'].assert_called_once()
+    update_mocks['write_manager_conf'].assert_called_once_with(new_conf)
+    update_mocks['validate_manager_conf'].assert_called_once()
+    update_mocks['remove'].assert_called_once()
 
 
-@pytest.mark.parametrize('new_conf', [
-    None,
-    "invalid configuration"
+@pytest.mark.parametrize('new_conf, failing, error, expected_code', [
+    (None, None, None, 1125),
+    ("<wazuh_config>\n  <cluster>\n", 'load_manager_conf_text', WazuhError(1131), 1131),
+    ("<wazuh_config><auth><use_password>maybe</use_password></auth></wazuh_config>", 'load_manager_conf_text',
+     WazuhError(1130, '/auth/use_password'), 1130),
+    ("<wazuh_config><indexer><hosts></hosts></indexer></wazuh_config>", 'check_protected_sections',
+     WazuhError(1127, '/indexer'), 1127),
+    ("<wazuh_config><cluster><name>wazuh</name></cluster></wazuh_config>", 'validate_manager_conf', None, 1125),
 ])
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.remove')
-@patch('wazuh.manager.exists', return_value=True)
-@patch('wazuh.manager.full_copy')
-@patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.validate_ossec_conf')
-def test_update_ossec_conf_ko(validate_conf_mock, write_mock, validate_xml_mock, full_copy_mock, exists_mock,
-                              remove_mock, move_mock, new_conf):
-    """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
-    is not valid."""
-    # For invalid configuration case, make validate_ossec_conf return invalid status
-    if new_conf == "invalid configuration":
-        validate_conf_mock.return_value = {'status': 'ERROR'}
+def test_update_manager_conf_ko(update_mocks, new_conf, failing, error, expected_code):
+    """update_manager_conf() reports the first failing check, never writes when the text is rejected and restores the
+    backup when the written file is refused by the validator."""
+    if failing == 'validate_manager_conf':
+        update_mocks[failing].return_value = {'status': 'ERROR'}
+    elif failing:
+        update_mocks[failing].side_effect = error
 
-    result = update_ossec_conf(new_conf=new_conf)
+    result = update_manager_conf(new_conf=new_conf)
+
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
-    move_mock.assert_called_once()
+    assert result.render()['data']['failed_items'][0]['error']['code'] == expected_code
+    if failing != 'validate_manager_conf':
+        update_mocks['write_manager_conf'].assert_not_called()
+    update_mocks['safe_move'].assert_called_once()

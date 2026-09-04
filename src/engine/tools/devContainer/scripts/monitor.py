@@ -46,7 +46,6 @@ import psutil
 # ---------------------------------------------------------------------------
 DEFAULT_EXECUTABLES = [
     "/var/wazuh-manager/bin/wazuh-manager-analysisd",
-    "/var/wazuh-manager/bin/wazuh-manager-monitord",
     "/var/wazuh-manager/api/scripts/wazuh_manager_apid.py",
     "/var/wazuh-manager/framework/scripts/wazuh_manager_clusterd.py",
     "/var/wazuh-manager/bin/wazuh-manager-db",

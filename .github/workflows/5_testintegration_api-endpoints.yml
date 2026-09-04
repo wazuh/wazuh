@@ -23,6 +23,23 @@ on:
       - "framework/requirements*.txt"
       - "framework/scripts/**"
       - "framework/wazuh/**"
+      # The environment builds the manager and the 5.x agent from the PR branch with
+      # install.sh, so changes to the pieces the agents need to enroll, connect and
+      # be managed have to run these tests too.
+      - "install.sh"
+      - "etc/**"
+      - "src/Makefile"
+      - "src/CMakeLists.txt"
+      - "src/init/**"
+      - "src/config/**"
+      - "src/shared/**"
+      - "src/shared_modules/manager_config/**"
+      - "src/client-agent/**"
+      - "src/os_auth/**"
+      - "src/os_execd/**"
+      - "src/remoted/**"
+      - "src/wazuh_db/**"
+      - "src/wazuh_modules/agent_info/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

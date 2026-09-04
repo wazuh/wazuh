@@ -66,4 +66,25 @@ struct SyncModuleResult
     /// a caller that records something about the session that was sent must not do so for a
     /// call that sent nothing.
     bool sessionSkipped{false};
+
+    /// @brief True when at least one block of queued items was actually sent to the manager.
+    ///
+    /// @ref success alone cannot distinguish "the manager accepted everything" from "there was
+    /// nothing queued, so no session was opened at all": an empty queue takes an early break and
+    /// returns the initial `true`. That is the intended contract -- a routine "nothing changed"
+    /// cycle is not a failure -- so this field carries the distinction instead, letting a module
+    /// log "nothing to send" rather than "finished successfully".
+    ///
+    /// It must NOT be used to gate durable state. A marker that records "the manager has this
+    /// agent's data" has to be gated on something that proves a round trip, such as
+    /// @ref IAgentSyncProtocol::notifyDataClean; gating it on a sync result instead is what lets
+    /// an untransmitted cycle be recorded as a completed one.
+    ///
+    /// Distinct from @ref sessionSkipped: that one means no session ran at all because another
+    /// was already in flight, while this one is about whether the session that did run carried
+    /// anything.
+    ///
+    /// Always false for metadata and group synchronizations, which send no queued items by
+    /// construction.
+    bool sentAnything{false};
 };

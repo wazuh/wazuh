@@ -15,6 +15,9 @@
 #include "sha1_op.h"
 #include "sha256_op.h"
 #include "os_net.h"
+#ifndef CLIENT
+#include "mconf-config.h"
+#endif
 #include <sys/types.h>
 
 #ifdef WIN32
@@ -28,6 +31,9 @@ static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
+#ifndef CLIENT
+const char *wm_config_path = WAZUHCONF;   // Manager configuration (etc/wazuh-manager.conf), -c overrides it.
+#endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
 void wm_sleep_interruptible(int seconds) {
@@ -62,10 +68,10 @@ int wm_select_interruptible(int sock, fd_set *fdset) {
  * last position should be NULL
  * */
 static const void *default_modules[] = {
-    wm_agent_upgrade_read,
 #ifndef CLIENT
     wm_task_manager_read,
 #else
+    wm_agent_upgrade_read,
     wm_agent_info_read,
 #endif
 
@@ -96,7 +102,9 @@ void wm_setGroupID(const gid_t gid)
 
 int wm_config() {
 
+#ifdef CLIENT
     int agent_cfg = 0;
+#endif
 
     // Get defined values from internal_options
 
@@ -115,17 +123,55 @@ int wm_config() {
     }
 
 
-    // Read configuration
+#ifdef CLIENT
+    // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, WAZUHCONF, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 
-#ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
+    // Read the manager configuration (etc/wazuh-manager.conf): loaded once (the helper logs the error),
+    // then each section of the effective document as cJSON. task-manager always exists
+    // (default_modules[]); vulnerability-detection is created only when its section is present.
+    //
+    // There is no `agent-upgrade` section here, and none in the schema: that module is agent-only.
+    // The manager serves upgrades from the task manager, which reads their two settings from its own
+    // section -- along with `global` and `remote`, which its recurring work and its delivery gates
+    // need and which it reads for itself.
+
+    if (w_mconf_load(wm_config_path) < 0) {
+        return OS_INVALID;
+    }
+
+    static const char *manager_sections[] = { "vulnerability-detection", "indexer", "task-manager" };
+
+    for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
+        cJSON *section = w_mconf_section(manager_sections[i]);
+        int rc;
+
+        switch (i) {
+        case 0:
+            rc = Read_Vulnerability_Detection_JSON(section, &wmodules);
+            break;
+        case 1:
+            rc = Read_Indexer_JSON(section);
+            break;
+        default:
+            rc = wm_task_manager_read_json(section, wm_find_module(WM_TASK_MANAGER_CONTEXT.name));
+            break;
+        }
+
+        cJSON_Delete(section);
+
+        if (rc < 0) {
+            return OS_INVALID;
+        }
+    }
+
     wmodule *module;
 
     if ((module = wm_content_manager_read())) {
@@ -137,7 +183,7 @@ int wm_config() {
     if ((module = wm_keystore_server_read()))
         wm_add(module);
 
-    // Inventory sync server: the POST /stateful ingestion pipeline plus DELETE /agents.
+    // Inventory sync server: the POST /stateful ingestion pipeline plus the agent-deletion route.
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
 
@@ -296,6 +342,35 @@ char* wm_read_http_header_element(char *header, char *regex) {
 
     OSRegex_FreePattern(&os_regex);
     return element;
+}
+
+bool wm_url_is_allowed(const char *url, const char *host) {
+    if (!url || strncasecmp(url, "https://", 8)) {
+        return false;
+    }
+
+    if (!host) {
+        return true;
+    }
+
+    size_t host_len = strlen(host);
+
+    if (strncasecmp(url + 8, host, host_len)) {
+        return false;
+    }
+
+    const char *end = url + 8 + host_len;
+
+    if (*end == ':') {
+        if (!isdigit((unsigned char)*++end)) {
+            return false;
+        }
+        while (isdigit((unsigned char)*end)) {
+            end++;
+        }
+    }
+
+    return (*end == '/') || (*end == '?') || (*end == '#') || (*end == '\0');
 }
 
 void wm_free(wmodule * config) {

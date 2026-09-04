@@ -50,6 +50,14 @@ jobs:
           python -m pip install --upgrade pip wheel setuptools
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
+      - name: Build the manager configuration CLI
+        # wazuh.core.manager_conf consumes bin/wazuh-manager-conf (the daemons' loader); in a
+        # repository checkout it falls back to src/build/bin, so the suites need it built.
+        run: |
+          make -C src deps TARGET=manager -j$(nproc)
+          cmake -S src -B src/build -DTARGET=manager
+          cmake --build src/build --target wazuh-manager-conf -j$(nproc)
+
       - name: Run Framework tests
         run: |
           set -o pipefail

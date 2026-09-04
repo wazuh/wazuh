@@ -30,6 +30,7 @@
 #include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
+#include "endpoints/vdScanEndpoint.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
@@ -96,10 +97,14 @@ namespace invsync
     /// Group-commit flush threshold fallback; mirrors the sync connector's own max_bulk_size default.
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
-    constexpr int DEFAULT_VD_RETRY_AFTER_SECS {60};
-    /// The demoted flush timer of the pipeline's connectors -- see the overlay in
-    /// tryStartHttpServer() for why this is a correctness requirement rather than tuning.
-    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {3600};
+    constexpr int DEFAULT_VD_RETRY_AFTER_SECS {10};
+    /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
+    /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
+    /// that failed would have no responder to report to.
+    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {0};
+    /// modulesd's default for the ignored flush-interval option, mirrored here so start() can
+    /// tell "left alone" from "an operator tuned a knob that does nothing" and warn on the latter.
+    constexpr int IGNORED_SYNC_FLUSH_INTERVAL_DEFAULT_SECS {20};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -169,6 +174,16 @@ namespace invsync
             ++m_startGeneration;
 
             LOGFN_INFO(moduleLogFn(), "Starting inventory sync server (cluster='%s').", m_config.cluster_name);
+
+            if (m_config.indexer_sync_flush_interval_seconds > 0 &&
+                m_config.indexer_sync_flush_interval_seconds != IGNORED_SYNC_FLUSH_INTERVAL_DEFAULT_SECS)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds' (%d) has no "
+                           "effect and is slated for removal: the ingestion workers own every flush, so the "
+                           "connector's periodic flush is always disabled.",
+                           m_config.indexer_sync_flush_interval_seconds);
+            }
 
             // The UDS server itself is started from run() (see tryStartHttpServer()), which keeps
             // start() fast and gives the retry loop for free. m_running is set only AFTER the
@@ -429,17 +444,20 @@ namespace invsync
                                    invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
-            // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
-            // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
-            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST. CONTROL class (signed
-            // decision): the agent id travels in a header and the body is empty, so a saturated
-            // ingest budget must never fail deletions that cost it no payload memory; their real
-            // capacity control stays in the pipeline.
+            // Whole-agent deletion (design doc 04): UDS-local, manager-internal, deferred to the
+            // agent's pipeline shard and ANSWERED AT COMPLETION -- the item carries its responder,
+            // so the pipeline answers only once the purge has flushed. That is what lets the Task
+            // Manager write a row `completed` and have it mean purged, rather than "inventory-sync
+            // accepted it". Its caller is the dispatcher, which drives the deletion's retries.
+            //
+            // CONTROL class (signed decision): the agent id is a few bytes of body, so a saturated
+            // ingest budget must never fail deletions that cost it no payload memory. Its capacity
+            // bound is the dispatcher's delete-lane depth rather than a queue of its own.
             {
                 // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
-                // name): the deletion plane answers at admission, so all of its responses -- the
-                // inline 400/503 rejections and the 200 that accepts -- count into the same
-                // sync.requests.total.* cells the sync route already uses.
+                // name). The handler counts only what IT answers -- the inline 400/503 rejections;
+                // the terminal response is counted by the pipeline, the site that sends it, so an
+                // accepted deletion is counted exactly once.
                 //
                 // The async connector is in here because the deletion has a half that belongs to
                 // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
@@ -450,15 +468,39 @@ namespace invsync
                     m_indexerConnectorSync,
                     m_indexerConnectorAsync,
                     invsync::metrics::RequestCounters::make(*m_metricsManager)};
-                m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
-                                       invsync::endpoints::delete_agent::path(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
-                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
-                m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
-                                       invsync::endpoints::delete_agent::altPath(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
-                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
+
+                // Its own response backstop, because this is the one route whose peer waits LONGER
+                // than the server-wide 300 s -- see responseTimeoutSeconds() for what the inverted
+                // pair costs. The zeroes before it keep the class policy's body and session caps.
+                m_httpServer->addRoute(
+                    invsync::endpoints::delete_agent::method(),
+                    invsync::endpoints::delete_agent::path(),
+                    invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control,
+                                                   0,
+                                                   0,
+                                                   invsync::endpoints::delete_agent::responseTimeoutSeconds()});
             }
+
+            // On-demand vulnerability rescan of one agent (design doc 04's sibling): UDS-local,
+            // manager-internal, executed on the VD scan lane and ANSWERED AT COMPLETION, so the
+            // Task Manager row behind it means scanned rather than accepted. Its caller is the
+            // dispatcher; the scanner's own admission route is untouched.
+            //
+            // CONTROL class for the same reason as the deletion route: the agent id is a few bytes
+            // of body, so a saturated ingest budget must never fail a scan that costs it no payload
+            // memory. Its capacity control is the lane's bounded queue, which is what the class
+            // contract asks of a route doing real work.
+            //
+            // And its own response backstop: its peer waits 300 s, which is exactly the
+            // server-wide value -- see responseTimeoutSeconds() for what that tie costs.
+            m_httpServer->addRoute(
+                invsync::endpoints::vd_scan::method(),
+                invsync::endpoints::vd_scan::path(),
+                invsync::endpoints::vd_scan::makeHandler(invsync::endpoints::vd_scan::Dependencies {
+                    m_vdScanLane, invsync::metrics::RequestCounters::make(*m_metricsManager)}),
+                wazuh::uds_http::RouteOptions {
+                    wazuh::uds_http::RouteClass::Control, 0, 0, invsync::endpoints::vd_scan::responseTimeoutSeconds()});
 
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
             // most valuable exactly when the byte budget is under pressure.
@@ -471,7 +513,7 @@ namespace invsync
             registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s, %s and %s; "
                        "%zu sync worker(s)).",
                        config.socketPath.c_str(),
                        invsync::endpoints::metrics::path(),
@@ -479,6 +521,7 @@ namespace invsync
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
+                       invsync::endpoints::vd_scan::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 
@@ -560,6 +603,26 @@ namespace invsync
                 },
                 "Sessions classified on liveness-class routes",
                 "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_BUDGET,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedBudgetExhausted); },
+                "Requests answered 503 because the in-flight payload budget was exhausted",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_SESSION_CAP,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedSessionCap); },
+                "Requests answered 503 because their class session cap was reached",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_SHUTDOWN,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedShutdown); },
+                "Requests answered 503 because the server was already stopping",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_REJECTED_NO_RESPONSE,
+                [snapshot] { return static_cast<uint64_t>(snapshot().rejectedNoResponse); },
+                "Requests answered 503 because their handler produced no response",
+                "requests");
         }
 
         /**
@@ -710,7 +773,7 @@ namespace invsync
                 case FailureStage::Configuration:
                     return {"module configuration", "the 'wazuh_modules.inventory_sync_server_*' settings"};
                 case FailureStage::IndexerSession:
-                    return {"indexer session", "the <indexer> configuration block (hosts, ssl.*)"};
+                    return {"indexer session", "indexer.hosts and indexer.ssl.* in etc/wazuh-manager.conf"};
                 case FailureStage::SyncIndexerConnector:
                     return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
                 case FailureStage::AsyncIndexerConnector:
@@ -881,25 +944,19 @@ namespace invsync
                 pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
-                if (needSession || needSync || needAsync || needPipeline)
+                if (needSession || needSync || needAsync || needPipeline || needLane)
                 {
                     logIndexerSummary();
-                    sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
-                    syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
-                    asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
-
-                    /*
-                     * The pipeline workers own EVERY flush (group commit: flush on queue-drain or
-                     * on the byte threshold), so the connector's own flush timer is demoted to a
-                     * last-resort safety net. That is a correctness requirement, not tuning: when
-                     * the TIMER's flush fails, the connector drops the staged buffer and swallows
-                     * the failure inside its background thread -- a worker that later flushed an
-                     * emptied buffer would answer 200 for data that was silently lost. The one-hour
-                     * interval keeps the timer from ever finding data in practice (a worker never
-                     * sleeps on a non-empty buffer) while still bounding a leak if one does.
-                     */
-                    syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
                 }
+
+                // Built on every attempt: any slot below -- the lane included -- may consume these
+                // on a retry where every other slot already succeeded.
+                sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
+                syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
+                asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+
+                // Correctness, not tuning: see PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS.
+                syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
             }
             catch (const std::exception& e)
             {

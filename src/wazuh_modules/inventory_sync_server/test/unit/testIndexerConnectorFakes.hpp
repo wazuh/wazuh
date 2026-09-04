@@ -29,6 +29,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -62,7 +63,7 @@ namespace invsync::test
         /// EVERY async operation, in call order: (op, id, index). `op` is the seam method name
         /// ("index"/"indexDataStream"/"bulkDelete"). Separate from m_writes because ORDER across
         /// the two kinds is what matters: the real connector's queue is FIFO, so a delete queued
-        /// behind a document's index() is applied after it -- that is what keeps DELETE /agents from
+        /// behind a document's index() is applied after it -- that is what keeps the deletion route from
         /// being outrun by a report this connector had not pushed yet. Guarded by m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string>> m_asyncOps;
         /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
@@ -71,6 +72,9 @@ namespace invsync::test
         /// m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
+        /// What the sync fake hands out from takeBulkRequestStats(), once (taking resets them).
+        std::atomic<std::uint64_t> m_bulkStatsRequests {0};
+        std::atomic<std::uint64_t> m_bulkStatsBytes {0};
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
         nlohmann::json m_searchResponse = nlohmann::json::object();
         /// When non-empty, executeSearchQuery() pops from here instead (front first) -- lets a test
@@ -97,6 +101,9 @@ namespace invsync::test
         /// What the VD scanner fake reports from scannerRunning(). Defaults to true: the offset
         /// gate applies, as it does on a node with vulnerability detection enabled.
         std::atomic<bool> m_vdScannerRunning {true};
+        /// What the scanner fake's scanAgent() reports -- the ON-DEMAND scan, which reports its
+        /// failures by value rather than by exception. Defaults to Ok.
+        std::atomic<invsync::vd::AgentScanOutcome> m_vdAgentScanOutcome {invsync::vd::AgentScanOutcome::Ok};
         /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
@@ -167,9 +174,18 @@ namespace invsync::test
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_syncThrowOn == op)
             {
+                if (m_syncThrowCause)
+                {
+                    throw invsync::indexer::ConnectorError {std::string {"injected failure in "} + op,
+                                                            *m_syncThrowCause};
+                }
                 throw std::runtime_error {std::string {"injected failure in "} + op};
             }
         }
+
+        /// When set, throwIfInjected() throws the seam's typed ConnectorError with this cause
+        /// instead of a plain runtime_error. Guarded by m_mutex.
+        std::optional<invsync::indexer::ConnectorError::Cause> m_syncThrowCause;
 
         void closeFlushGate()
         {
@@ -349,6 +365,15 @@ namespace invsync::test
             }
         }
 
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            if (!m_events)
+            {
+                return {};
+            }
+            return {m_events->m_bulkStatsRequests.exchange(0), m_events->m_bulkStatsBytes.exchange(0)};
+        }
+
     private:
         std::shared_ptr<ConnectorEvents> m_events;
         const char* m_name;
@@ -453,6 +478,16 @@ namespace invsync::test
             m_events->throwIfInjected("scan");
             m_events->recordSyncOp("scan", session.agentId, {}, {}, {});
             return m_events->m_vdScanSkip.load() ? invsync::vd::ScanVerdict::Skipped : invsync::vd::ScanVerdict::Ok;
+        }
+
+        invsync::vd::AgentScanOutcome scanAgent(const std::string& agentId) override
+        {
+            // Through the SAME gate and the same op log as scan(): a test that parks a session
+            // mid-scan has to be able to park an on-demand scan the same way, and the ordering
+            // tests read both from one timeline.
+            m_events->waitAtScanGate();
+            m_events->recordSyncOp("scanAgent", agentId, {}, {}, {});
+            return m_events->m_vdAgentScanOutcome.load();
         }
 
     private:

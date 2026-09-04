@@ -44,6 +44,8 @@ public:
             if (event->cwd) free(event->cwd);
             if (event->audit_name) free(event->audit_name);
             if (event->audit_uid) free(event->audit_uid);
+            if (event->audit_gid) free(event->audit_gid);
+            if (event->audit_group_name) free(event->audit_group_name);
             if (event->effective_name) free(event->effective_name);
             if (event->effective_uid) free(event->effective_uid);
             if (event->group_id) free(event->group_id);
@@ -95,6 +97,7 @@ bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, bpf_pro
 }
 int mock_bpf_program_attach_success([[maybe_unused]] void* prog) { return 1; }
 int mock_bpf_program_attach_failure([[maybe_unused]] void* prog) { return 0; }
+void mock_bpf_link_destroy([[maybe_unused]] struct bpf_link* link) {}
 int mock_bpf_program_set_autoload([[maybe_unused]] void* prog, [[maybe_unused]] bool autoload) { return 0; }
 bool mock_bpf_program_autoload_true([[maybe_unused]] const void* prog) { return true; }
 bool mock_bpf_program_autoload_false([[maybe_unused]] const void* prog) { return false; }

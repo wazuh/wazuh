@@ -450,6 +450,7 @@ namespace remoted::auth
                 // here: reload() is called both once at startup and repeatedly by the watcher, which
                 // need different messages and different throttling. Both call sites report it.
                 m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
+                m_lastLoadOk.store(false, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
@@ -457,6 +458,7 @@ namespace remoted::auth
             if (!file.is_open())
             {
                 m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
+                m_lastLoadOk.store(false, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
@@ -559,6 +561,7 @@ namespace remoted::auth
                 m_agentsLoaded.store(static_cast<std::size_t>(count), std::memory_order_relaxed);
                 m_entriesSkipped.store(static_cast<std::size_t>(skipped), std::memory_order_relaxed);
                 m_reloadsTotal.fetch_add(1, std::memory_order_relaxed);
+                m_lastLoadOk.store(true, std::memory_order_relaxed);
                 return count;
             }
 
@@ -575,6 +578,7 @@ namespace remoted::auth
         LOGFN_WARN(
             logFn(), "client.keys kept changing across %d attempts; keeping the previous table.", kMaxReadAttempts);
         m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
+        m_lastLoadOk.store(false, std::memory_order_relaxed);
         return kReloadUnstable;
     }
 

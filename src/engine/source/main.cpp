@@ -15,6 +15,7 @@
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
+#include <base/managerConfig.hpp>
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
@@ -160,26 +161,36 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
+        const auto wazuhHome = base::process::getWazuhHome();
+        if (chdir(wazuhHome.string().c_str()) == -1)
         {
             fprintf(stderr, "chdir to Wazuh home failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
 
+        // Manager configuration (etc/wazuh-manager.conf). -t validates it, including the files it
+        // references; a normal start loads it once (no file checks) and registers it as the section
+        // provider of libwazuhshared.so before the first log, so the logging format and the cluster
+        // getters inside the shared library read the same document.
         if (opts.testConfig)
         {
-
-            try
+            if (const auto error = base::managerConfig::validate(wazuhHome))
             {
-                const auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
-                ReadXML();
-            }
-            catch (const std::exception& e)
-            {
-                fprintf(stderr, "Error loading configuration: %s\n", e.what());
+                fprintf(stderr, "Error loading configuration: %s\n", error->c_str());
                 return EXIT_FAILURE;
             }
             return EXIT_SUCCESS;
+        }
+
+        try
+        {
+            base::managerConfig::load(wazuhHome);
+            base::managerConfig::registerSharedHook();
+        }
+        catch (const std::exception& e)
+        {
+            fprintf(stderr, "Error loading configuration: %s\n", e.what());
+            return EXIT_FAILURE;
         }
 
         try
@@ -422,10 +433,10 @@ int main(int argc, char* argv[])
 
             try
             {
-                // Get base configuration (from standalone or wazuh-manager.conf)
+                // Get base configuration (from standalone or the `indexer` section of etc/wazuh-manager.conf)
                 const auto baseJsonCnf = base::process::isStandaloneModeEnable()
                                              ? standAloneConfig()
-                                             : base::libwazuhshared::getJsonIndexerCnf();
+                                             : base::managerConfig::sectionJson("indexer");
 
                 // Parse JSON and add max_queue_bytes from engine configuration
                 json::Json jsonCnf(baseJsonCnf);

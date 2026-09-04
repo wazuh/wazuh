@@ -109,13 +109,6 @@ static bool bridge_stopping(void)
     return stopping;
 }
 
-/* Same incremental back-off as the initial-enrollment loop (start_agent.c's
- * w_agentd_keys_init). Both read the same two internal options, so the two
- * loops can no longer drift apart -- which is what the duplicated file-local
- * constants used to risk. */
-#define BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT 5
-#define BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT 60
-
 /* Runs off the dispatcher thread (spawned by bridge_on_reenroll_required):
  * the module's callback contract forbids blocking it, and enrollment can
  * take anywhere from seconds to (against a down manager) indefinitely.
@@ -145,12 +138,10 @@ void *bridge_reenroll_thread(void *arg)
         enroll_result = try_enroll_to_server();
 
         if (enroll_result != 0) {
-            const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
-                                                       BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT);
-            const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
-                                                         BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT);
-            if (delay_sleep < retry_max) {
-                delay_sleep += retry_delta;
+            /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
+             * ClientConf() resolved, so the two cannot drift apart. */
+            if (delay_sleep < agt->enrollment.retry_max) {
+                delay_sleep += agt->enrollment.retry_delta;
             }
             mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
             sleep((unsigned int)delay_sleep);
@@ -176,11 +167,29 @@ void *bridge_reenroll_thread(void *arg)
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
      * now associates with this key). Both move together, never just the key. */
-    if (!hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key)) {
+    const bool identity_ok = hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key);
+
+    if (!identity_ok) {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
     }
 
     w_mutex_unlock(&g_https_client_lock);
+
+    /* Republish the agent metadata. The sync protocol stamps every session's
+     * Start.agentid from the shared-memory provider, and each module compares against that
+     * same value to notice its own id changed. Without this the provider keeps the
+     * pre-enrollment id until the next /startup response or agent-info cycle happens to
+     * rewrite it: sessions sent inside that window carry an id the manager answers with 403
+     * (identity mismatch), and identity detection stays blind for as long as it lasts.
+     *
+     * Published after unlocking: w_agentd_populate_metadata() takes a mutex of its own, and
+     * nesting it inside g_https_client_lock would introduce a lock order nothing else in this
+     * file establishes. Only on a valid identity -- when validation failed the module keeps
+     * traffic paused, so there is nothing to stamp yet. */
+    if (identity_ok) {
+        w_agentd_populate_metadata();
+    }
+
     return NULL;
 }
 
@@ -1520,6 +1529,15 @@ static int bridge_map_verify_mode(int agent_verify_mode)
         return HC_VERIFY_NONE;
     case AGENT_VERIFY_SYSTEM:
         return HC_VERIFY_SYSTEM;
+    case AGENT_VERIFY_UNSET:
+        // ClientConf() always resolves this to system or certificate before returning;
+        // reaching here means some other path built agt->ssl without going through that
+        // resolution step. Fail closed the same as an unrecognized value would, but say
+        // so loudly instead of silently blending into the FULL default below.
+        merror("https_client: verification_mode was still UNSET when the transport config was "
+               "built; defaulting to 'full'. This should never happen -- ClientConf() is supposed "
+               "to resolve it first.");
+        return HC_VERIFY_FULL;
     case AGENT_VERIFY_FULL:
     default:
         return HC_VERIFY_FULL;

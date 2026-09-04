@@ -120,7 +120,7 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
-        /// On the seam for DELETE /agents' sake, never called by this endpoint -- recorded so a
+        /// On the seam for the deletion route's sake, never called by this endpoint -- recorded so a
         /// regression that made /stats delete something would fail a test instead of passing.
         void bulkDelete(std::string_view id, std::string_view index) override
         {
@@ -210,7 +210,7 @@ TEST(StatsEndpointTest, AgentIdHeaderNameIsLowerCase)
 }
 
 /// The index name is a contract with whoever reads it, from another codebase entirely -- and with
-/// DELETE /agents, which wipes this index by that same name.
+/// the deletion route, which wipes this index by that same name.
 TEST(StatsEndpointTest, IndexNameIsStable)
 {
     EXPECT_EQ("wazuh-agent-stats", invsync::endpoints::stats::indexName());
@@ -259,11 +259,10 @@ TEST(StatsEndpointTest, StoresEachModuleBodyVerbatim)
 
 /**
  * "Verbatim" is about this endpoint, NOT about what survives to the index. The `wazuh-agent-stats`
- * mapping is `dynamic: strict` with every leaf declared, so a module or a metric it does not declare
- * makes the indexer reject the WHOLE document with `strict_dynamic_mapping_exception` -- silently,
- * since the write is fire-and-forget and the agent already has its 200.
+ * mapping is `dynamic: true`: an undeclared module or metric is indexed like any other field, not
+ * rejected.
  *
- * Pinned so the asymmetry is visible here rather than discovered in production: modulesd passes an
+ * Pinned because this endpoint's contract does not depend on the mapping: modulesd passes an
  * undeclared module through untouched, and adding one is a change to the index template, not to this
  * file.
  */

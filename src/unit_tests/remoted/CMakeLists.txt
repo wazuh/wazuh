@@ -64,7 +64,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
-                            -Wl,--wrap,ReadConfig")
+                            -Wl,--wrap,w_mconf_section")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -92,7 +92,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
                             -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name \
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_mconf_load -Wl,--wrap,w_mconf_section -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name \
                             -Wl,--wrap,get_cluster_name -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd -Wl,--wrap,OS_IsValidIP")
 
 list(APPEND remoted_names "test_remote-state")
@@ -112,7 +112,9 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2
 list(APPEND remoted_names "test_legacy_task_delivery")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getpid -Wl,--wrap,sleep \
                            ${STDIO_OP_WRAPPERS} -Wl,--wrap,popen \
-                           -Wl,--wrap,wfopen -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,uhttp_client_new -Wl,--wrap,uhttp_client_free \
+                           -Wl,--wrap,uhttp_client_set_response_buffer -Wl,--wrap,uhttp_post \
                            -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,agent_meta_snapshot_str \
                            -Wl,--wrap,req_send_and_wait -Wl,--wrap,key_lock_read -Wl,--wrap,key_unlock \
                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")

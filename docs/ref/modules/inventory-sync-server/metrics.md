@@ -78,7 +78,7 @@ in this family** (see [Accounting boundaries](#accounting-boundaries)).
 | `403` | Identity rejection: the session's agent id does not match the authenticated one | diagnostic |
 | `409` | Checksum or feed-offset mismatch (the agent retries with a fresh session) | diagnostic |
 | `500` | Scan or apply failed server-side | diagnostic — check the indexer and the logs |
-| `503` | Shed or unavailable: any of the admission gates | the gate counters below say which: [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots); transport gates have no counter, only the `server.*` levels |
+| `503` | Shed or unavailable: any of the admission gates | the gate counters below say which: [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots); the transport's own gates are counted in [`server.rejected.*`](#transport--server), except the accept-time connection cap, which shows only in the `server.sessions.*` levels |
 | `other` | Any status outside the set (structurally zero today) | diagnostic — a bug signal |
 
 ### Sync pipeline — `sync.pipeline.*`, `sync.shard.<i>.*`, `sync.session.duration.*`
@@ -100,17 +100,25 @@ histograms.
 ### Group commit — `sync.bulk.*`
 
 A worker flushes its open batch when the accumulated **request payload bytes** reach the
-group-commit threshold, or when its queue drains. The threshold is fed from the same option as
-the connector's own serialized-bulk cap, so
-[`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size)
-plays two roles against two **different** byte measures — see its entry in the configuration
-reference.
+group-commit threshold, or when its queue drains. The threshold
+([`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size))
+and the connector's own serialized-bulk request cap
+([`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size))
+are separate options against **different** byte measures, so one group commit can produce several
+real `_bulk` requests (auto-flushes while staging, `413` splits, retries). `sync.bulk.*` counts the
+group commits; `sync.indexer.bulk.*` counts the real requests those commits produced.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `sync.bulk.flushes` | counter | count | **Successful** pipeline group-commit flushes (immediate-session and lane flushes are not counted here) | [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) |
 | `sync.bulk.bytes.total` | counter | bytes | Request payload bytes (wire FlatBuffer size) of the sessions flushed by group commits — NOT the serialized indexer bytes (that is `sync.bytes.ingested`) | as above |
 | `sync.bulk.sessions.total` | counter | count | Sessions answered by group-commit flushes | as above |
+| `sync.indexer.bulk.requests` | counter | count | `_bulk` HTTP requests the sync connectors actually sent — attempts, splits and retries included, successful or not | [`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size) |
+| `sync.indexer.bulk.bytes.total` | counter | bytes | Serialized NDJSON payload bytes those `_bulk` requests carried | as above |
+| `sync.bulk.flush.failures.documents` | counter | count | Group-commit flushes that failed because the indexer rejected documents, left deletions unconfirmed, or answered with a body that confirms nothing | — |
+| `sync.bulk.flush.failures.exhausted` | counter | count | Group-commit flushes that failed by an exhausted retry budget (persistent `429` or transport failures) | [`…indexer_sync_max_retry_attempts`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_attempts), [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
+| `sync.bulk.flush.failures.other` | counter | count | Group-commit flushes that failed for any other reason (hard rejections, unexpected state) | — |
+| `sync.bulk.sessions.failed` | counter | count | Sessions answered `500`/`503` by a failed or poisoned group commit — the blast radius: one bad flush punishes every session in its batch. Compare against `sync.bulk.sessions.total` to size the amplification | — |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 
@@ -143,9 +151,17 @@ are diagnostic **from this module's side**.
 
 ### Transport — `server.*`
 
-The shared UDS transport's own backpressure state, published as pull metrics (levels, read at
-dump time). These are the only visibility into the two transport-side 503 gates — the byte
-budget and the connection caps have **no cumulative shed counter** in this module.
+The shared UDS transport's own backpressure state, published as pull metrics (read at dump time).
+The `server.sessions.*` and `server.budget.*` families are levels; the `server.rejected.*` family
+is cumulative since start, one counter per transport-side 503 gate. That family is the only
+attributable record of a shed: the answer comes from the transport rather than from a handler, so
+nothing shed here ever reaches `sync.requests.total.*`, and the throttled WARN in the log reports
+only the occurrences of its own window. A throttled line is a floor, not a census: it reports only
+what is pending when it is emitted, so a burst that starts and ends inside one window is reported
+as `1` and the rest is never printed. Where a cumulative counter exists it is the figure to trust;
+where it does not, as with the wazuh-db error throttles in the control plane, the line's own total
+is all there is and it under-reports. Three of the four are decided before any route runs;
+`server.rejected.no_response` is the exception, counted after a handler returned without answering.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
@@ -156,6 +172,10 @@ budget and the connection caps have **no cumulative shed counter** in this modul
 | `server.sessions.data` | pull | connections | Sessions on data-class routes (`/stateful`, `/stats`, `/config`) | effective cap = `max_parallel_connections` − [`…reserved_control_connections`](configuration.md#wazuh_modulesinventory_sync_server_reserved_control_connections) |
 | `server.sessions.control` | pull | connections | Sessions on control-class routes (agent deletion) | [`…control_max_sessions`](configuration.md#wazuh_modulesinventory_sync_server_control_max_sessions) |
 | `server.sessions.liveness` | pull | connections | Sessions on liveness-class routes (`GET /`, `GET /metrics`) | diagnostic — the liveness cap is fixed in the shared transport |
+| `server.rejected.budget` | pull | requests | Requests answered `503` because the in-flight byte budget could not admit them | [`…max_inflight_bytes`](configuration.md#wazuh_modulesinventory_sync_server_max_inflight_bytes) |
+| `server.rejected.session_cap` | pull | requests | Requests answered `503` because their class session cap was reached | the class caps above |
+| `server.rejected.shutdown` | pull | requests | Requests answered `503` because the server was already stopping | expected during a stop, not a capacity signal |
+| `server.rejected.no_response` | pull | requests | Requests answered `503` because their handler returned without answering | a handler bug; any non-zero value is worth a look |
 
 ## Accounting boundaries
 
@@ -163,9 +183,11 @@ These rules say what sums to what — read them before comparing families:
 
 - **Handler-sent responses only.** `sync.requests.total.*` counts what the `/stateful` and
   deletion handlers (endpoint, pipeline, scan lane) answered. Responses the shared transport
-  sends on its own — `413` declared-bytes-over-budget, `503` byte-budget or connection-cap
-  shed, `504` response timeout, malformed-HTTP `400`/`431` — appear in **no counter**; the
-  transport gates are visible only as the `server.*` levels.
+  sends on its own never reach it. Four of them are counted separately, as
+  [`server.rejected.*`](#transport--server): the byte-budget shed, the class session cap, the
+  shutdown answer and the handler that returned without answering. The rest appear in **no
+  counter**: `413` declared-bytes-over-budget, the accept-time connection cap, `504` response
+  timeout and malformed-HTTP `400`/`431`.
 - **Shed counters are cause counters.** `sync.pipeline.shed.total` and
   `vd.capacity.503.total` count the *refusal decision*; the corresponding `503` response is
   counted once by the endpoint. So `sync.requests.total.503 ≥ shed + capacity` (the remainder

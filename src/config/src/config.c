@@ -14,19 +14,8 @@
 #include "os_xml.h"
 #include "config.h"
 
-#ifdef CLIENT
-#define IS_AGENT_BUILD 1
-#else
-#define IS_AGENT_BUILD 0
-#endif
-
-/* Where an element stopped being valid */
-#define OBS_ALWAYS      0   /* Everywhere it can appear */
-#define OBS_SERVER_CONF 1   /* Only in the manager's own configuration file */
-
 typedef struct obsolete_element_t {
     const char *element;
-    int scope;
     const char *hint;
 } obsolete_element_t;
 
@@ -38,52 +27,53 @@ typedef struct obsolete_element_t {
  * still distributes agent.conf files written for 4.x, so these are accepted and
  * ignored with a warning instead of rejected. Anything not listed here is still
  * fatal: the point is to be lenient with settings that were removed on purpose,
- * not with typos.
- *
- * <active-response> is the one element whose validity depends on who is reading
- * it. It is live configuration on an agent -- execd reads it straight from the
- * file, see os_execd/src/config.c -- and the manager parses agent.conf on the
- * agent's behalf, so it is obsolete only when the manager reads its own file. */
+ * not with typos. The manager's own configuration is not XML anymore
+ * (etc/wazuh-manager.conf, read through libconfig's w_mconf_*()), so this table only
+ * ever applies to agent files: ossec.conf on the agent and agent.conf everywhere. */
 static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
-    {"active-response", OBS_SERVER_CONF, "Active Response is not configured on the manager. This block only applies to agents."},
-    {"agent-key-polling", OBS_ALWAYS,    "The agent key polling module was removed in 5.0.0."},
-    {"agentless",       OBS_ALWAYS,      "The wazuh-agentlessd daemon was removed in 5.0.0."},
-    {"alerts",          OBS_ALWAYS,      "Alert output is not configured in the configuration file."},
-    {"command",         OBS_ALWAYS,      "Active Response commands are not defined in the configuration file."},
-    {"database_output", OBS_ALWAYS,      "The wazuh-dbd daemon was removed in 5.0.0."},
-    {"email_alerts",    OBS_ALWAYS,      "The wazuh-maild daemon was removed in 5.0.0."},
-    {"fluent-forward",  OBS_ALWAYS,      "The fluent forwarder module was removed in 5.0.0."},
-    {"integration",     OBS_ALWAYS,      "The wazuh-integratord daemon was removed in 5.0.0."},
-    {"labels",          OBS_ALWAYS,      "Agent labels were removed in 5.0.0."},
-    {"reports",         OBS_ALWAYS,      "The wazuh-reportd daemon was removed in 5.0.0."},
-    {"rule_test",       OBS_ALWAYS,      "Rule testing is provided by the engine."},
-    {"ruleset",         OBS_ALWAYS,      "Rules and decoders are managed by the engine."},
-    {"syslog_output",   OBS_ALWAYS,      "The wazuh-csyslogd daemon was removed in 5.0.0."},
-    {NULL,              0,               NULL}
+    {"agent-key-polling", "The agent key polling module was removed in 5.0.0."},
+    {"agentless", "The wazuh-agentlessd daemon was removed in 5.0.0."},
+    {"alerts", "Alert output is not configured in the configuration file."},
+    {"command", "Active Response commands are not defined in the configuration file."},
+    {"database_output", "The wazuh-dbd daemon was removed in 5.0.0."},
+    {"email_alerts", "The wazuh-maild daemon was removed in 5.0.0."},
+    {"fluent-forward", "The fluent forwarder module was removed in 5.0.0."},
+    {"integration", "The wazuh-integratord daemon was removed in 5.0.0."},
+    {"labels", "Agent labels were removed in 5.0.0."},
+    {"reports", "The wazuh-reportd daemon was removed in 5.0.0."},
+    {"rule_test", "Rule testing is provided by the engine."},
+    {"ruleset", "Rules and decoders are managed by the engine."},
+    {"syslog_output", "The wazuh-csyslogd daemon was removed in 5.0.0."},
+    {NULL, NULL}
 };
 
-/* Return the explanation for an element that is obsolete in this context, or NULL
- * if the element is either still valid here or not one we know about. */
-static const char *get_obsolete_hint(const char *element, int modules)
+/* Return the explanation for an element that is obsolete, or NULL if the element is
+ * either still valid or not one we know about. */
+static const char *get_obsolete_hint(const char *element)
 {
-    /* True only while reading the manager's own configuration: an agent build
-     * never qualifies, and neither does a manager reading a remote agent.conf. */
-    const int server_conf = !IS_AGENT_BUILD && !(modules & CAGENT_CONFIG);
     int i;
 
     for (i = 0; OBSOLETE_ELEMENTS[i].element != NULL; i++) {
-        if (strcmp(element, OBSOLETE_ELEMENTS[i].element) != 0) {
-            continue;
+        if (strcmp(element, OBSOLETE_ELEMENTS[i].element) == 0) {
+            return OBSOLETE_ELEMENTS[i].hint;
         }
-
-        if (OBSOLETE_ELEMENTS[i].scope == OBS_SERVER_CONF && !server_conf) {
-            return NULL;
-        }
-
-        return OBSOLETE_ELEMENTS[i].hint;
     }
 
     return NULL;
+}
+
+/* True when `element` is a section of the manager's own configuration file. */
+static int w_is_manager_section(const char *element, const char **sections)
+{
+    int i;
+
+    for (i = 0; sections[i] != NULL; i++) {
+        if (strcmp(element, sections[i]) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /* Read the main elements of the configuration */
@@ -93,11 +83,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
                               void *d2)
 {
     int i = 0;
-    const char *osglobal = "global";                            /* Server Config */
     const char *ossyscheck = "syscheck";                        /* Agent Config  */
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
-    const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
     const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
     const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
@@ -108,18 +96,16 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                            /* Socket Config */
     const char *ossca = "sca";                                  /* Security Configuration Assessment */
     const char* osagent_info = "agent-info";                    /* Agent Info Module */
-    const char *osvulndetection = "vulnerability-detection";    /* Vulnerability Detection Config */
-    const char *osvulndetector = "vulnerability-detector";      /* Old Vulnerability Detector Config */
-    const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
-    const char *task_manager = "task-manager";                  /* Task Manager Module */
-    const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
-    const char *osauthd = "auth";                               /* Authd Config */
 #endif
+    /* Sections of the manager's own configuration (etc/wazuh-manager.conf). They have no XML
+     * parser anymore: an agent file that carries one is told so and the block is ignored. */
+    const char *manager_sections[] = { "global", "remote", "auth", "wdb", "indexer", "vulnerability-detection",
+                                       "vulnerability-detector", "task-manager", NULL };
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
     const char *office365 = "office365";                /* Office365 Module */
@@ -137,7 +123,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         /* Checked before anything else so a removed element is never mistaken for
          * an unknown one, which is fatal further down. */
-        obsolete_hint = get_obsolete_hint(node[i]->element, modules);
+        obsolete_hint = get_obsolete_hint(node[i]->element);
 
         if (obsolete_hint != NULL) {
             mwarn(XML_OBSOLETE, node[i]->element, obsolete_hint);
@@ -147,10 +133,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
-        if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
-            if ((modules & CGLOBAL) && (Read_Global(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
+        if (w_is_manager_section(node[i]->element, manager_sections)) {
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -161,10 +145,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
             if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
-            if ((modules & CREMOTE) && (Read_Remote(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
@@ -225,40 +205,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
 #endif
         }
-        else if (strcmp(node[i]->element, osvulndetection) == 0)
-        {
-#if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1, false) < 0)) {
-                goto fail;
-            }
-#else
-            mwarn("%s configuration is only set in the manager.", node[i]->element);
-#endif
-        } else if (strcmp(node[i]->element, osvulndetector) == 0) {
-#if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE)) {
-                mwarn(
-                    "The '%s' configuration is deprecated, please update your settings to use the new '%s' instead "
-                    "(default values will be used based on your previous configurations). "
-                    "See https://documentation.wazuh.com",
-                    osvulndetector,
-                    osvulndetection);
-                if (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0) {
-                    goto fail;
-                }
-            }
-#else
-            mwarn("%s configuration is only set in the manager.", node[i]->element);
-#endif
-        } else if (strcmp(node[i]->element, osindexer) == 0) {
-#if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Indexer(WAZUHCONF) < 0)) {
-                goto fail;
-            }
-#else
-            mwarn("%s configuration is only set in the manager.", node[i]->element);
-#endif
-        } else if (strcmp(node[i]->element, osgcp_pub) == 0) {
+        else if (strcmp(node[i]->element, osgcp_pub) == 0) {
             if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
@@ -267,12 +214,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
-#ifndef WIN32
-        }  else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-#endif
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (strcmp(node[i]->element, oscluster) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
@@ -280,25 +221,16 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+#ifdef CLIENT
             if ((modules & CWMODULE) && !(modules & CAGENT_CONFIG) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-#if !defined(WIN32) && !defined(CLIENT)
-                if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
-                    goto fail;
-                }
-            #else
-                mwarn("%s configuration is only set in the manager.", node[i]->element);
-            #endif
-        }  else if (chld_node && (strcmp(node[i]->element, wazuh_db) == 0)) {
-#if !defined(CLIENT)
-                if ((modules & WAZUHDB) && (Read_WazuhDB(xml, chld_node) < 0)) {
-                    goto fail;
-                }
-            #else
-                mwarn("%s configuration is only set in the manager.", node[i]->element);
-            #endif
+#else
+            /* Agent only. A manager has no agent-upgrade module: it serves upgrades from the task
+             * manager and configures them in `task-manager`. Warned rather than rejected, matching
+             * how a manager-only section is treated on an agent. */
+            mwarn("%s configuration is only set in the agent.", node[i]->element);
+#endif
         }
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
         else if (chld_node && (strcmp(node[i]->element, github) == 0)) {

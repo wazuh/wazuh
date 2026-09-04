@@ -20,7 +20,7 @@ from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
@@ -731,7 +731,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 item_key = data_['cluster_item_key']
                 if item_key not in cluster_items['files']:
-                    raise exception.WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
+                    raise exception.WazuhClusterError(3061, extra_message=item_key)
 
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
@@ -741,7 +741,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     full_unmerged_name = safe_join(common.WAZUH_PATH, name)
                     expected_base = safe_join(common.WAZUH_PATH, item_key)
                     if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
-                        raise exception.WazuhClusterError(3022,
+                        raise exception.WazuhClusterError(3062,
                             extra_message=f"File path outside allowed directory: {name}")
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
@@ -753,10 +753,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             else:
                 item_key = data_['cluster_item_key']
                 if item_key not in cluster_items['files']:
-                    raise exception.WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
+                    raise exception.WazuhClusterError(3061, extra_message=item_key)
                 expected_base = safe_join(common.WAZUH_PATH, item_key)
                 if not os.path.commonpath([full_filename_path, expected_base]).startswith(expected_base):
-                    raise exception.WazuhClusterError(3022,
+                    raise exception.WazuhClusterError(3062,
                         extra_message=f"File path outside allowed directory: {filename_}")
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
@@ -790,12 +790,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
                         item_key = file_data['cluster_item_key']
                         if item_key not in cluster_items['files']:
-                            raise exception.WazuhClusterError(3022,
-                                extra_message=f"Invalid cluster_item_key: {item_key}")
+                            raise exception.WazuhClusterError(3061, extra_message=item_key)
                         file_path = safe_join(common.WAZUH_PATH, file_to_remove)
                         expected_base = safe_join(common.WAZUH_PATH, item_key)
                         if not os.path.commonpath([file_path, expected_base]).startswith(expected_base):
-                            raise exception.WazuhClusterError(3022,
+                            raise exception.WazuhClusterError(3062,
                                 extra_message=f"File path outside allowed directory: {file_to_remove}")
                         try:
                             os.remove(file_path)
@@ -889,7 +888,7 @@ class Worker(client.AbstractClientManager):
                                       (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
         try:
-            _indexer_conf = get_ossec_conf(section="indexer")
+            _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
         except Exception:
             _indexer_conf = {}
 
@@ -899,7 +898,7 @@ class Worker(client.AbstractClientManager):
             )
         else:
             self.logger.warning(
-                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer is not configured in etc/wazuh-manager.conf (indexer.hosts is empty) or it is unavailable; "
                 "Indexer tasks will not be started."
             )
         if self.run_active_response_job:

@@ -66,11 +66,28 @@ class IAgentSyncProtocol
         ///
         /// This method sends DataClean messages for each index in the provided vector.
         /// Sent as one FullSession carrying Start, a DataClean per index, and End.
-        /// Upon receiving Ok, it clears the local database and returns true.
+        /// Upon receiving Ok, it clears the local database. Reports the same detail
+        /// synchronizeModule() does (manager-not-ready / local-transport-unavailable /
+        /// consecutive-failure streak), so a caller that needs to distinguish a transient
+        /// hiccup from a real failure -- to decide log severity or apply the same retry
+        /// tolerance used elsewhere -- doesn't have to guess from a bare bool.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
-        /// @return true if notification completed successfully and database was cleared, false otherwise
-        virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
+        /// @param trackConsecutiveFailures Whether a *failure* of this call should grow the same
+        /// consecutive-failure streaks synchronizeModule() tracks on this instance -- both the
+        /// manager-conversation one and the local-transport one. Pass true only from a periodic-sync
+        /// path where a DataClean failure genuinely represents "this cycle failed"; leave false (the
+        /// default) for ad hoc DataClean calls (e.g. policy-removal cleanup) that aren't part of that
+        /// cycle and would otherwise skew either streak's tolerance window. Does not gate a
+        /// *success*: reaching past checkStatus() always resets the local-transport streak
+        /// regardless of this flag, since that streak's own contract (see
+        /// AgentSyncProtocol::m_consecutiveLocalTransportFailures) is "reset the moment it succeeds
+        /// again" -- checkStatus() succeeding is an objective fact about the instance, true no
+        /// matter which caller happened to observe it.
+        /// @return SyncModuleResult with success flag and failure detail if unsuccessful
+        virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                                 Option option = Option::SYNC,
+                                                 bool trackConsecutiveFailures = false) = 0;
 
         /// @brief Fetches pending DataValue items from the persistent queue without marking them.
         /// @param onlyDataValues If true, only returns items with is_data_context=false

@@ -33,11 +33,22 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
     check_expected(version);
 }
 
+static bool s_asp_sync_module_use_full_result = false;
+
+void __wrap_asp_sync_module_use_full_result(bool enable) {
+    s_asp_sync_module_use_full_result = enable;
+}
+
 SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                             int mode) {
     check_expected_ptr(handle);
     check_expected(mode);
     __wrap_asp_sync_module_hook();
+
+    if (s_asp_sync_module_use_full_result) {
+        return *(SyncModuleResult_t *)mock_type(SyncModuleResult_t *);
+    }
+
     SyncModuleResult_t result = {0};
     result.success = mock_type(bool);
     return result;
@@ -50,6 +61,10 @@ bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
     check_expected_ptr(index);
     check_expected_ptr(checksum);
     return mock_type(bool);
+}
+
+long __wrap_asp_get_agent_id(void) {
+    return mock_type(long);
 }
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length) {

@@ -16,13 +16,14 @@
 #include "shared.h"
 #include "os_xml.h"
 #include "config.h"
+#include "global-config.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../external/cJSON/cJSON.h"
 
 static const char *TEST_CONF_PATH = "test_config-elements.conf";
 
-/* The root element and the treatment of <active-response> both depend on whether
- * the config library under test was built for an agent, and the test cannot ask
- * CLIENT: the unit-test build never defines it, while the library it links does
+/* The root element depends on whether the config library under test was built
+ * for an agent, and the test cannot ask CLIENT: the unit-test build never defines it, while the library it links does
  * for agent targets. WAZUHCONFIG is derived from CLIENT, so it is unusable here
  * for the same reason -- it would expand to the manager's root element in a
  * binary linked against an agent library. TEST_AGENT_TARGET comes from
@@ -71,7 +72,7 @@ static void test_obsolete_element_is_ignored(void **state) {
                   "(1223): 'command' is no longer supported and will be ignored. "
                   "Active Response commands are not defined in the configuration file.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
 /* Every entry of the table warns with its own explanation, and one obsolete
@@ -93,7 +94,7 @@ static void test_several_obsolete_elements_are_ignored(void **state) {
                   "(1223): 'syslog_output' is no longer supported and will be ignored. "
                   "The wazuh-csyslogd daemon was removed in 5.0.0.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
 /* An empty obsolete element has no children, so it takes a different path
@@ -107,7 +108,7 @@ static void test_empty_obsolete_element_is_ignored(void **state) {
                   "(1223): 'agentless' is no longer supported and will be ignored. "
                   "The wazuh-agentlessd daemon was removed in 5.0.0.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
 /* <client_buffer> was removed in 5.0.0, but to preserve smooth upgrades from
@@ -125,7 +126,7 @@ static void test_client_buffer_is_ignored_with_info(void **state) {
                   "'client_buffer' is no longer used and will be ignored. "
                   "Event batching is configured under <agent><batch>.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
 /* Leniency is limited to the elements that were removed on purpose. An element
@@ -140,14 +141,13 @@ static void test_unknown_element_is_still_fatal(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "(1202): Configuration error at 'test_config-elements.conf'.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
 }
 
-#ifdef TEST_AGENT_TARGET
-
 /* <active-response> is live configuration on an agent -- execd reads it from the
- * file itself -- so it must be accepted without a word. */
-static void test_active_response_is_valid_on_agent(void **state) {
+ * file itself -- and the manager parses agent.conf on the agents' behalf, so both
+ * builds accept it without a word. */
+static void test_active_response_is_valid(void **state) {
     if (write_conf("<active-response>"
                    "<disabled>no</disabled>"
                    "<ca_verification>yes</ca_verification>"
@@ -155,53 +155,62 @@ static void test_active_response_is_valid_on_agent(void **state) {
         fail();
     }
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
-#else
-
-/* Nothing on the manager reads <active-response>. It used to be dropped without
- * a word, which left an operator with a block that parses, looks configured and
- * never fires. It is obsolete here, and says so. */
-static void test_active_response_is_obsolete_on_manager(void **state) {
-    if (write_conf("<active-response>"
-                   "<disabled>no</disabled>"
-                   "<command>ar-test</command>"
-                   "<location>local</location>"
-                   "</active-response>") != 0) {
+/* The manager's own sections have no XML reader anymore (etc/wazuh-manager.conf):
+ * an agent file that still carries one is told so and the block is ignored. */
+static void test_manager_section_is_ignored_with_warning(void **state) {
+    if (write_conf("<global>"
+                   "<agents_disconnection_time>10m</agents_disconnection_time>"
+                   "</global>"
+                   "<remote>"
+                   "<legacy><enabled>yes</enabled></legacy>"
+                   "</remote>") != 0) {
         fail();
     }
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(1223): 'active-response' is no longer supported and will be ignored. "
-                  "Active Response is not configured on the manager. This block only applies to agents.");
+    expect_string(__wrap__mwarn, formatted_msg, "global configuration is only set in the manager.");
+    expect_string(__wrap__mwarn, formatted_msg, "remote configuration is only set in the manager.");
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
-/* Both halves of the 4.x Active Response configuration behave the same way now:
- * the block that defined a response and the block that referenced it are both
- * ignored with a warning, instead of one being fatal and the other silent. */
-static void test_active_response_pair_is_symmetric(void **state) {
-    if (write_conf("<command>"
-                   "<name>ar-test</name>"
-                   "<executable>block-ip</executable>"
-                   "</command>"
-                   "<active-response>"
-                   "<command>ar-test</command>"
-                   "<location>local</location>"
-                   "</active-response>") != 0) {
-        fail();
-    }
+#ifndef TEST_AGENT_TARGET
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(1223): 'command' is no longer supported and will be ignored. "
-                  "Active Response commands are not defined in the configuration file.");
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(1223): 'active-response' is no longer supported and will be ignored. "
-                  "Active Response is not configured on the manager. This block only applies to agents.");
+/* Read_Global_JSON(): the `global` section of the effective document (manager only). */
+static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
+    _Config config = { .agents_disconnection_time = 900 };
+    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":\"15m\"}");
+    assert_non_null(global);
 
-    assert_int_equal(ReadConfig(CGLOBAL, TEST_CONF_PATH, NULL, NULL), 0);
+    assert_int_equal(Read_Global_JSON(global, &config), 0);
+    assert_int_equal(config.agents_disconnection_time, 900);
+
+    cJSON_Delete(global);
+}
+
+static void test_Read_Global_JSON_absent_keeps_defaults(void **state) {
+    _Config config = { .agents_disconnection_time = 600 };
+    cJSON *global = cJSON_Parse("{}");
+    assert_non_null(global);
+
+    assert_int_equal(Read_Global_JSON(global, &config), 0);
+    assert_int_equal(config.agents_disconnection_time, 600);
+
+    cJSON_Delete(global);
+}
+
+static void test_Read_Global_JSON_rejects_zero_disconnection_time(void **state) {
+    _Config config = { .agents_disconnection_time = 900 };
+    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":0}");
+    assert_non_null(global);
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'agents_disconnection_time': 0.");
+    assert_int_equal(Read_Global_JSON(global, &config), OS_INVALID);
+    assert_int_equal(config.agents_disconnection_time, 900);
+
+    cJSON_Delete(global);
 }
 
 #endif
@@ -213,11 +222,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_empty_obsolete_element_is_ignored, teardown_conf_file),
         cmocka_unit_test_teardown(test_client_buffer_is_ignored_with_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_unknown_element_is_still_fatal, teardown_conf_file),
-#ifdef TEST_AGENT_TARGET
-        cmocka_unit_test_teardown(test_active_response_is_valid_on_agent, teardown_conf_file),
-#else
-        cmocka_unit_test_teardown(test_active_response_is_obsolete_on_manager, teardown_conf_file),
-        cmocka_unit_test_teardown(test_active_response_pair_is_symmetric, teardown_conf_file),
+        cmocka_unit_test_teardown(test_active_response_is_valid, teardown_conf_file),
+        cmocka_unit_test_teardown(test_manager_section_is_ignored_with_warning, teardown_conf_file),
+#ifndef TEST_AGENT_TARGET
+        cmocka_unit_test(test_Read_Global_JSON_accepts_int_and_duration),
+        cmocka_unit_test(test_Read_Global_JSON_absent_keeps_defaults),
+        cmocka_unit_test(test_Read_Global_JSON_rejects_zero_disconnection_time),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

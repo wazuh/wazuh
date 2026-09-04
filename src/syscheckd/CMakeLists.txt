@@ -39,7 +39,6 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include)
 include_directories(${SRC_FOLDER}/wazuh_modules/include)
 include_directories(${SRC_FOLDER}/wazuh_modules/src)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade)
-include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/ebpf/include/)
@@ -70,7 +69,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread"
+    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread"
 )
 
 if(APPLE)

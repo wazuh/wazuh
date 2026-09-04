@@ -20,15 +20,11 @@ RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 -
     autoconf libtool libaudit-dev \
     libdb5.3 libdb5.3 libssl1.0.2 gawk libsigsegv2
 
-# Add Debian's source repository and, Install NodeJS 12
+# Add Debian's source repository (python3 build dependencies)
 RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 600 -- \
     apt-get update
 RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 900 -- \
     apt-get build-dep python3.5 -y --allow-change-held-packages
-RUN /usr/local/bin/retry.sh --attempts 4 --delay 10 --backoff 2 --max-delay 40 --timeout 300 -- \
-    bash -lc 'curl -fsSL --connect-timeout 20 --max-time 180 https://deb.nodesource.com/setup_12.x | bash -'
-RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 600 -- \
-    apt-get install --allow-change-held-packages -y nodejs
 
 RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
     curl -fsSL --connect-timeout 20 --max-time 300 -o /tmp/gcc_14.3-1_arm64.deb \

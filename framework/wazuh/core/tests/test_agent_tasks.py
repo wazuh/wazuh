@@ -3,10 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from json import dumps
-from unittest.mock import patch, MagicMock, call
-
-import pytest
+from unittest.mock import patch, MagicMock
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -19,178 +16,138 @@ with patch('wazuh.core.common.wazuh_uid'):
         )
 
 
+def _client_returning(outcomes):
+    """Build a patched TaskManagerHTTPClient whose create_tasks() answers with `outcomes`.
+
+    The functions under test use the client as a context manager, so the mock has to answer
+    __enter__ rather than being the client itself.
+    """
+    client = MagicMock()
+    client.create_tasks.return_value = outcomes
+
+    context = MagicMock()
+    context.__enter__.return_value = client
+    context.__exit__.return_value = False
+
+    return context, client
+
+
 class TestCoreRestartAgents:
     """Test cases for core_restart_agents function."""
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_restart_agents_success(self, mock_socket_class):
-        """Test successful restart task creation for multiple agents."""
-        # Arrange
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_restart_agents_success(self, mock_client_class):
+        """A chunk of agents is created in ONE request, and every agent gets its task id back."""
         agents = ['001', '002', '003']
         request_time = 1234567890
 
-        # Mock socket responses for each agent
-        mock_socket_instance = MagicMock()
-        mock_socket_class.return_value = mock_socket_instance
+        context, client = _client_returning([
+            {'agent_id': '001', 'task_id': 'task-001', 'created': True},
+            {'agent_id': '002', 'task_id': 'task-002', 'created': True},
+            {'agent_id': '003', 'task_id': 'task-003', 'created': True},
+        ])
+        mock_client_class.return_value = context
 
-        responses = [
-            dumps({"error": 0, "message": "Task created", "task_id": "restart_001_1234567890"}),
-            dumps({"error": 0, "message": "Task created", "task_id": "restart_002_1234567890"}),
-            dumps({"error": 0, "message": "Task created", "task_id": "restart_003_1234567890"})
-        ]
-        mock_socket_instance.receive.side_effect = [
-            MagicMock(decode=lambda: responses[0]),
-            MagicMock(decode=lambda: responses[1]),
-            MagicMock(decode=lambda: responses[2])
-        ]
-
-        # Act
         result = core_restart_agents(agents, request_time)
 
-        # Assert
         assert result['data'] == [
-            {"agent": "001", "error": 0, "message": "Task created", "task_id": "restart_001_1234567890"},
-            {"agent": "002", "error": 0, "message": "Task created", "task_id": "restart_002_1234567890"},
-            {"agent": "003", "error": 0, "message": "Task created", "task_id": "restart_003_1234567890"}
+            {'agent': '001', 'error': 0, 'message': '', 'task_id': 'task-001'},
+            {'agent': '002', 'error': 0, 'message': '', 'task_id': 'task-002'},
+            {'agent': '003', 'error': 0, 'message': '', 'task_id': 'task-003'},
         ]
 
-        # Verify socket calls
-        assert mock_socket_instance.send.call_count == 3
-        assert mock_socket_instance.receive.call_count == 3
-        assert mock_socket_instance.close.call_count == 3
+        # The point of the bulk route: one call for the whole chunk, not one per agent.
+        client.create_tasks.assert_called_once()
 
-        # Verify message format
-        expected_msg_001 = dumps({
-            "action": "create_task",
-            "agent_id": "001",
-            "task_type": "agent_restart",
-            "create_time": request_time,
-            "payload": {}
-        })
-        mock_socket_instance.send.assert_any_call(expected_msg_001.encode())
+        sent = client.create_tasks.call_args[0][0]
+        assert sent == [
+            {'agent_id': '001', 'task_type': 'agent_restart', 'create_time': request_time, 'payload': {}},
+            {'agent_id': '002', 'task_type': 'agent_restart', 'create_time': request_time, 'payload': {}},
+            {'agent_id': '003', 'task_type': 'agent_restart', 'create_time': request_time, 'payload': {}},
+        ]
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_restart_agents_with_error(self, mock_socket_class):
-        """Test restart task creation when some agents fail."""
-        # Arrange
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_restart_agents_missing_result(self, mock_client_class):
+        """An agent the Task Manager did not answer for is reported, not assumed successful."""
         agents = ['001', '002']
         request_time = 1234567890
 
-        mock_socket_instance = MagicMock()
-        mock_socket_class.return_value = mock_socket_instance
+        context, _ = _client_returning([{'agent_id': '001', 'task_id': 'task-001', 'created': True}])
+        mock_client_class.return_value = context
 
-        responses = [
-            dumps({"error": 0, "message": "Task created", "task_id": "restart_001_1234567890"}),
-            dumps({"error": 1, "message": "Agent not found"})
-        ]
-        mock_socket_instance.receive.side_effect = [
-            MagicMock(decode=lambda: responses[0]),
-            MagicMock(decode=lambda: responses[1])
-        ]
-
-        # Act
         result = core_restart_agents(agents, request_time)
 
-        # Assert
         assert len(result['data']) == 2
         assert result['data'][0]['error'] == 0
-        assert result['data'][1]['error'] == 1
-        assert result['data'][1]['message'] == "Agent not found"
+        assert result['data'][1]['agent'] == '002'
+        assert result['data'][1]['error'] == 4
+        assert 'did not report a result' in result['data'][1]['message']
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_restart_agents_socket_exception(self, mock_socket_class):
-        """Test restart task creation when socket communication fails."""
-        # Arrange
-        agents = ['001']
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_restart_agents_request_exception(self, mock_client_class):
+        """A failed request fails EVERY agent in the chunk: the batch is written or it is not."""
+        agents = ['001', '002']
         request_time = 1234567890
 
-        mock_socket_instance = MagicMock()
-        mock_socket_class.return_value = mock_socket_instance
-        mock_socket_instance.send.side_effect = Exception("Connection refused")
+        mock_client_class.side_effect = Exception('Connection refused')
 
-        # Act
         result = core_restart_agents(agents, request_time)
 
-        # Assert
-        assert len(result['data']) == 1
-        assert result['data'][0]['agent'] == '001'
-        assert result['data'][0]['error'] == 4  # Task manager communication error
-        assert "Connection refused" in result['data'][0]['message']
+        assert len(result['data']) == 2
+        for item, agent_id in zip(result['data'], agents):
+            assert item['agent'] == agent_id
+            assert item['error'] == 4  # Task manager communication error
+            assert 'Connection refused' in item['message']
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_restart_agents_empty_list(self, mock_socket_class):
-        """Test restart task creation with empty agent list."""
-        # Arrange
-        agents = []
-        request_time = 1234567890
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_restart_agents_empty_list(self, mock_client_class):
+        """No agents, no results -- but the request still goes out unconditionally today."""
+        context, client = _client_returning([])
+        mock_client_class.return_value = context
 
-        # Act
-        result = core_restart_agents(agents, request_time)
+        result = core_restart_agents([], 1234567890)
 
-        # Assert
         assert result['data'] == []
-        mock_socket_class.assert_not_called()
 
 
 class TestCoreReloadAgents:
     """Test cases for core_reload_agents function."""
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_reload_agents_success(self, mock_socket_class):
-        """Test successful reload task creation for multiple agents."""
-        # Arrange
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_reload_agents_success(self, mock_client_class):
+        """Reload differs from restart only in the task type written into every entry."""
         agents = ['001', '002']
         request_time = 1234567890
 
-        mock_socket_instance = MagicMock()
-        mock_socket_class.return_value = mock_socket_instance
+        context, client = _client_returning([
+            {'agent_id': '001', 'task_id': 'task-001', 'created': True},
+            {'agent_id': '002', 'task_id': 'task-002', 'created': True},
+        ])
+        mock_client_class.return_value = context
 
-        responses = [
-            dumps({"error": 0, "message": "Task created", "task_id": "reload_001_1234567890"}),
-            dumps({"error": 0, "message": "Task created", "task_id": "reload_002_1234567890"})
-        ]
-        mock_socket_instance.receive.side_effect = [
-            MagicMock(decode=lambda: responses[0]),
-            MagicMock(decode=lambda: responses[1])
-        ]
-
-        # Act
         result = core_reload_agents(agents, request_time)
 
-        # Assert
         assert len(result['data']) == 2
-        assert result['data'][0]['task_id'] == "reload_001_1234567890"
-        assert result['data'][1]['task_id'] == "reload_002_1234567890"
+        assert result['data'][0]['task_id'] == 'task-001'
+        assert result['data'][1]['task_id'] == 'task-002'
 
-        # Verify message format
-        expected_msg_001 = dumps({
-            "action": "create_task",
-            "agent_id": "001",
-            "task_type": "agent_reload",
-            "create_time": request_time,
-            "payload": {}
-        })
-        mock_socket_instance.send.assert_any_call(expected_msg_001.encode())
+        sent = client.create_tasks.call_args[0][0]
+        assert [entry['task_type'] for entry in sent] == ['agent_reload', 'agent_reload']
 
-    @patch('wazuh.core.agent_tasks.WazuhSocket')
-    def test_core_reload_agents_with_error(self, mock_socket_class):
-        """Test reload task creation when agent task fails."""
-        # Arrange
+    @patch('wazuh.core.agent_tasks.TaskManagerHTTPClient')
+    def test_core_reload_agents_request_exception(self, mock_client_class):
+        """A refusal from the Task Manager is reported per agent rather than raised."""
         agents = ['001']
-        request_time = 1234567890
 
-        mock_socket_instance = MagicMock()
-        mock_socket_class.return_value = mock_socket_instance
+        context, client = _client_returning(None)
+        client.create_tasks.side_effect = Exception('Invalid agent version')
+        mock_client_class.return_value = context
 
-        response = dumps({"error": 2, "message": "Invalid agent version"})
-        mock_socket_instance.receive.return_value = MagicMock(decode=lambda: response)
+        result = core_reload_agents(agents, 1234567890)
 
-        # Act
-        result = core_reload_agents(agents, request_time)
-
-        # Assert
-        assert result['data'][0]['error'] == 2
-        assert result['data'][0]['message'] == "Invalid agent version"
+        assert result['data'][0]['agent'] == '001'
+        assert result['data'][0]['error'] == 4
+        assert 'Invalid agent version' in result['data'][0]['message']
 
 
 class TestCreateRestartTasks:

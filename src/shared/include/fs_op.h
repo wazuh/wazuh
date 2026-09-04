@@ -18,11 +18,11 @@
 
 #ifndef WIN32
 
-#ifdef Linux
+#ifdef __linux__
 #include <sys/vfs.h>
 #endif
 
-#ifdef FreeBSD
+#ifdef __FreeBSD__
 #include <sys/param.h>
 #include <sys/mount.h>
 #endif

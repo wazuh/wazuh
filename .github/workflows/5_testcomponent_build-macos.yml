@@ -14,7 +14,6 @@ on:
       - "!src/shared_modules/indexer_connector/**"
       - "!src/shared_modules/keystore/**"
       # Only src/ for these server trees: agent modules compile against their include/
-      - "!src/monitord/src/**"
       - "!src/os_auth/src/**"
       - "!src/wazuh_db/src/**"
       - "!src/wazuh_db/schemas/**"
