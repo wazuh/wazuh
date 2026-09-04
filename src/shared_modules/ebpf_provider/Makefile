@@ -6,7 +6,13 @@
 #   make        -> builds the BPF object + engine + test harness
 #   make run    -> requires root (BPF load/attach)
 #   make check  -> builds and runs the contract tests (no kernel, no root)
+#   make check-kernel -> teardown test; needs the BPF object and root
 #   make clean
+#
+# On a host whose /usr/sbin/bpftool is the Debian kernel-version dispatch stub
+# (it exits non-zero with "bpftool not found for kernel ..."), point BPFTOOL at
+# a real one, e.g.
+#   make BPFTOOL=/usr/lib/linux-hwe-7.0-tools-7.0.0-29/bpftool
 
 CC      ?= cc
 CLANG   ?= clang
@@ -38,7 +44,15 @@ rt_engine_contract_test: rt_engine.o test/rt_engine_contract_test.c
 check: rt_engine_contract_test
 	./rt_engine_contract_test
 
+# Teardown test: needs a real kernel, the BPF object and root, so it is a
+# separate target from `check` and exits 77 (skipped) when it cannot load.
+rt_engine_leak_test: rt_engine.o test/rt_engine_leak_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_leak_test.c rt_engine.o -ldl
+
+check-kernel: rt_engine_leak_test rt_file.bpf.o
+	sudo ./rt_engine_leak_test ./rt_file.bpf.o
+
 clean:
-	rm -f rt_engine_harness rt_engine_contract_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+	rm -f rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
 
 .PHONY: all check clean
