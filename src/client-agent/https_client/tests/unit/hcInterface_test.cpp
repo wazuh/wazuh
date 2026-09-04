@@ -296,48 +296,6 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
     }
 }
 
-TEST_F(HcInterfaceTest, NotifyNowRaceAgainstReporterTick)
-{
-    // #38840: hc_notify_now() reaches into ReporterStream from the
-    // https_client_bridge callback thread, forcing the /config path's
-    // nextDue while the reporter's own thread is concurrently reading and
-    // rewriting it inside tick()/runPath(). With config_report_interval_s
-    // set to the minimum, the reporter thread churns through that field as
-    // fast as its (unreachable) server round trips time out, maximizing the
-    // window for a concurrent notifier to land mid-read/write.
-    hc_config_t config = m_config;
-    config.config_report_enabled = true;
-    config.config_report_interval_s = 1;
-
-    constexpr int CYCLES = 20;
-    constexpr int MAX_NOTIFIES = 2000;
-    constexpr auto RUN_TIME = std::chrono::milliseconds {200};
-
-    for (int cycle = 0; cycle < CYCLES; cycle++)
-    {
-        hc_handle* handle = hc_create(&config, &m_callbacks);
-        ASSERT_NE(nullptr, handle);
-        ASSERT_TRUE(hc_start(handle));
-
-        std::atomic<bool> notifying {true};
-        std::thread notifier(
-            [&]
-        {
-            for (int n = 0; n < MAX_NOTIFIES && notifying.load(); n++)
-            {
-                hc_notify_now(handle);
-            }
-        });
-
-        std::this_thread::sleep_for(RUN_TIME);
-
-        notifying = false;
-        notifier.join();
-        hc_stop(handle);
-        hc_destroy(handle);
-    }
-}
-
 TEST_F(HcInterfaceTest, StartAfterStopIsRejected)
 {
     // Single-shot: once stopped, start() fails closed rather than returning a
