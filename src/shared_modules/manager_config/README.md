@@ -47,7 +47,7 @@ the language).
   (`invalid XML: … (line N)`, computed from pugixml's byte offset).
 - **Validate the raw document, then fill defaults, then check semantics.** The effective document may therefore contain
   values the schema would reject on input for an optional section a consumer treats as non-fatal when absent (e.g.
-  `remote.legacy` disabled and unconfigured): the schema's own root `required` (`cluster`, `indexer`, issue #38638)
+  `remote.legacy` disabled and unconfigured): the schema's own root `required` (`cluster`, `indexer`)
   covers the sections that are never optional in practice, so a `validate` failure at PUT time replaces a startup
   crash for those; there is no more general re-validation of the effective document.
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
@@ -58,8 +58,8 @@ the language).
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
   off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
-  always generates one. `cluster` and `indexer` are the only `required` properties at the document root (issue
-  #38638): every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
+  always generates one. `cluster` and `indexer` are the only `required` properties at the document root:
+  every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
   so a document that omits either section, or one whose `<cluster>` omits `<key>`, fails with `required` at
   `validate` time instead of leaving the effective document with a gap that only breaks a daemon on restart.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
@@ -67,6 +67,30 @@ the language).
 - **An empty file is invalid** (XML needs a root); the minimal valid document is
   `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host>
   </hosts></indexer></wazuh_config>` — every other option keeps its schema default.
+
+## Architecture
+
+`Document::parse()` (`src/manager_config.cpp`) runs the pipeline in one direction, stopping at the
+first error:
+
+```mermaid
+flowchart LR
+    A[XML text] --> B["xmlToJson<br/>strict pass + canonical JSON"]
+    B -->|"invalid XML"| X1[reject]
+    B --> C["validateAgainstSchema<br/>raw document"]
+    C -->|"schema: pointer + keyword"| X2[reject]
+    C --> D["fillDefaults<br/>recurse into every object"]
+    D --> E["checkSemantics<br/>raw + effective"]
+    E -->|"semantics"| X3[reject]
+    E --> F["Document<br/>effective JSON"]
+```
+
+Semantics rules read from the **raw** document where a schema default would otherwise mask the
+operator's intent (certificate/key pairing — see Design decisions), and from the **effective** one
+everywhere else (port collisions, file existence). The effective document is never re-validated
+against the schema after `fillDefaults`: a `required` property with no default (`cluster`, `indexer`,
+`cluster.key`, `indexer.hosts`) is what makes an absent section fail at the `validateAgainstSchema`
+step instead of silently defaulting into a broken effective document.
 
 ## Layout
 
@@ -81,6 +105,31 @@ manager_config/
     ├── vectors/{valid,invalid}/*.conf + expected/*.json   # shared with parity.py
     └── parity.py                     # jsonschema Draft4 must agree with the library on every vector
 ```
+
+## Consumer contract
+
+- **Two APIs, one implementation**: C++ (`manager_config.hpp`, `Document::load`/`Document::parse`) for
+  the engine and `bin/wazuh-manager-conf`; a C ABI (`manager_config_c.h`, `mconf_load`/`mconf_load_ex`/
+  `mconf_validate`) for the C daemons through libconfig's `w_mconf_*()` wrappers
+  (`src/config/src/mconf-config.c`). Both call the same `Document::parse()` pipeline — there is no
+  second validator to keep in sync.
+- **Link**: `target_link_libraries(<your_target> PRIVATE manager_config)`. STATIC + PIC (RNF-1/RNF-2);
+  the schema is embedded in **your** binary at build time (`generated/embeddedSchema.hpp`) — a schema
+  change (e.g. a new `required` entry) only takes effect for a consumer after it is rebuilt and
+  reinstalled, not merely after `bin/wazuh-manager-conf` is.
+- **File checks**: `LoadOptions::checkFiles` / `mconf_load_ex`'s `check_files` (default on) resolve
+  certificate/key paths against `home` and fail if they don't exist. Daemon start-up loads with
+  `check_files == 0` (P44) — file existence is `-t`'s and `wazuh-manager-conf validate`'s job, not the
+  plain loader's, so a daemon can come up with an as-yet-uncreated certificate and let `-t` catch it.
+- **`mconf_t` is immutable** after `mconf_load_ex()` returns: concurrent `mconf_section_json()` /
+  `mconf_document_json()` calls on one handle need no external locking. Do not add mutation on the C++
+  side without re-checking every caller that relies on this (modulesd reads sections from arbitrary
+  threads at arbitrary times).
+- **Errors**: C++ callers get `Error{pointer, message}` (`what()` renders `"<pointer>: <message>"`, or
+  just the message when `pointer` is empty); C callers get -1 and a filled `err` buffer. Render the
+  pointer to the operator as-is — it is the schema location of the offending option, not a bug.
+- **Ownership**: `mconf_section_json()`/`mconf_document_json()` return a `malloc`'d C string the caller
+  `free()`s; `mconf_free()` releases the handle.
 
 ## Tests
 

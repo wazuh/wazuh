@@ -99,11 +99,14 @@ daemons apply). Constructs the 4.x parser tolerated are now rejected at startup,
   (`/remote/connection: unknown option`), as are duplicated elements the schema declares unique.
 - **Booleans are `yes`/`no`**, checked strictly; numbers must be digits; every option is typed by the
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
-- **`<cluster><key>` is required**: the section cannot be written without it (the installer always
-  generates one).
-- The **minimal valid document is the bare root, `<wazuh_config/>`**: every option then takes its
-  schema default (`bin/wazuh-manager-conf dump` prints the resulting effective document). A genuinely
-  empty (zero-byte) file is NOT valid — it is rejected as malformed XML at startup.
+- **`<cluster>` and `<indexer>` are required sections**, and `<cluster><key>` and `<indexer><hosts>`
+  cannot be omitted within them: every manager runs as a cluster node and needs at least one indexer
+  host to start `wazuh-manager-analysisd` (the installer always generates both).
+- The **minimal valid document** is
+  `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host></hosts></indexer></wazuh_config>`:
+  every other option then takes its schema default (`bin/wazuh-manager-conf dump` prints the resulting
+  effective document). A genuinely empty (zero-byte) file is NOT valid — it is rejected as malformed
+  XML at startup.
 
 ### `<global>` section
 
