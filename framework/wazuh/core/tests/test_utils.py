@@ -422,6 +422,195 @@ def test_tail():
     assert len(result) == 20
 
 
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan(mock_process, mock_kill):
+    """A pidfile whose PID predates the file and matches the daemon's cmdline is killed."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-123.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('123\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(123, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_recycled_pid(mock_process, mock_kill):
+    """Regression for wazuh/wazuh#38695.
+
+    A live process whose PID matches a stale pidfile but was created after the file
+    was written recycled that PID from the kernel; it is not the process that wrote
+    the file (for example, it can be the daemon's own freshly started instance) and
+    must not be killed.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-456.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('456\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_itself(mock_process, mock_kill):
+    """The calling process must never be treated as its own orphan child."""
+    with TemporaryDirectory() as tmp_dir:
+        own_pid = os.getpid()
+        pid_file = os.path.join(tmp_dir, f'wazuh-manager-apid_auth-{own_pid}.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write(f'{own_pid}\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_access_denied(mock_process, mock_kill):
+    """A PID recycled by a process owned by another user must not crash the daemon's startup.
+
+    psutil.AccessDenied is not an OSError subclass, so it needs its own coverage: reading
+    cmdline() for a process this daemon can't introspect must be treated the same as not
+    being able to identify it, not left to propagate and abort the caller's startup.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-789.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('789\n')
+
+        mock_process.return_value.cmdline.side_effect = utils.psutil.AccessDenied(pid=789)
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_empty_cmdline(mock_process, mock_kill):
+    """A PID recycled by a process with no argv (e.g. a kernel thread) must not crash startup.
+
+    cmdline() can legitimately return an empty list; joined into an empty string it never
+    matches the daemon name, so the process is treated as not belonging to the daemon.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-321.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('321\n')
+
+        mock_process.return_value.cmdline.return_value = []
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_kill_failure(mock_process, mock_kill, capsys):
+    """A confirmed orphan whose SIGKILL itself fails must be reported as a kill failure,
+    not folded into the generic 'could not identify' message used for identification
+    failures (psutil errors raised before the process is confirmed to be a stale owner).
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-654.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('654\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+        mock_kill.side_effect = OSError('No such process')
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(654, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+        output = capsys.readouterr().out
+        assert 'identified but could not be terminated' in output
+        assert 'Could not identify process' not in output
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan_started_with_debug_flag(mock_process, mock_kill):
+    """A stale orphan started with '-d' (persisted debug mode) is still recognized and killed.
+
+    cmdline()'s last argument is '-d' in that case, not the script path; matching against
+    the joined cmdline instead of only its last element is what keeps this case working.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-987.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('987\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py', '-d']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(987, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_tolerates_vanished_pidfile(mock_process, mock_kill):
+    """A pidfile removed by someone else while it is being inspected must not abort the startup."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-135.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('135\n')
+
+        def vanish(_path):
+            os.remove(pid_file)
+            raise FileNotFoundError(pid_file)
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = 0
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir), \
+                patch('wazuh.core.utils.path.getmtime', side_effect=vanish):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
 @patch('wazuh.core.utils.chmod')
 def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""
@@ -1636,42 +1825,6 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@patch('wazuh.core.utils.check_agents_allow_higher_versions')
-@patch('wazuh.core.utils.check_indexer')
-@patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_check_indexer, mock_agents_versions):
-    """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
-
-    with open(os.path.join(test_files_path, 'test_config.xml')) as f:
-        xml_file = f.read()
-
-    m = mock_open(read_data=xml_file)
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file)
-    mock_agents_versions.assert_called_once()
-    mock_check_indexer.assert_called_once()
-
-
-@pytest.mark.parametrize('effect, expected_exception', [
-    (utils.ExpatError, 1113)
-])
-def test_validate_wazuh_xml_ko(effect, expected_exception):
-    """Tests validate_wazuh_xml function works when open function raises an exception.
-    Parameters
-    ----------
-    effect : Exception
-        Exception to be triggered.
-    expected_exception
-        Expected code when triggering the exception.
-    """
-    input_file = os.path.join(test_files_path, 'test_config.xml')
-
-    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            utils.validate_wazuh_xml(input_file)
-
-
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/wazuh-manager.conf'
@@ -1776,111 +1929,3 @@ def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
         if wazuh_localtime is not None
         else system_localtime or timezone.utc
     )
-
-@pytest.mark.parametrize("new_conf, original_conf, agents_conf, should_raise", [
-    ("<wazuh_config><auth></auth></wazuh_config>",
-     "<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
-     {'allow_higher_versions': {'allow': False}},
-     True),
-
-    ("<wazuh_config><remote></remote></wazuh_config>",
-     "<wazuh_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></wazuh_config>",
-     {'allow_higher_versions': {'allow': False}},
-     True),
-
-    ("<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
-     "<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
-     {'allow_higher_versions': {'allow': True}},
-     False),
-
-    ("<wazuh_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></wazuh_config>",
-     "<wazuh_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote></wazuh_config>",
-     {'allow_higher_versions': {'allow': True}},
-     False),
-])
-def test_check_agents_allow_higher_versions(new_conf, original_conf, agents_conf, should_raise):
-    """Check if wazuh-manager.conf agents versions are protected by the API."""
-    api_conf = utils.configuration.api_conf.copy()
-    api_conf['upload_configuration']['agents'].update(agents_conf)
-
-    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
-    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if should_raise:
-            with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
-                utils.check_agents_allow_higher_versions(xml_new_conf, xml_original_conf)
-        else:
-            utils.check_agents_allow_higher_versions(xml_new_conf, xml_original_conf)
-
-
-@pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
-    (
-        "<wazuh_config><indexer></indexer></wazuh_config>",
-        "<wazuh_config><indexer></indexer></wazuh_config>",
-        False,
-    ),
-    (
-        "<wazuh_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></wazuh_config>",
-        "<wazuh_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></wazuh_config>",
-        True,
-    ),
-    (
-        "<wazuh_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/server-key.pem</key></ssl>" \
-        "</indexer></wazuh_config>",
-        "<wazuh_config><indexer></indexer></wazuh_config>",
-        True,
-    ),
-    (
-        "<wazuh_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/server-key.pem</key></ssl>" \
-        "</indexer></wazuh_config>",
-        "<wazuh_config><indexer><ssl><key>server-key.pem</key></ssl></indexer></wazuh_config>",
-        True,
-    ),
-    (
-        "<wazuh_config><auth><disabled>no</disabled></auth></wazuh_config>",
-        "<wazuh_config><auth><disabled>yes</disabled></auth></wazuh_config>",
-        False,
-    ),
-    (
-        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>"
-        "<wazuh_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></wazuh_config>",
-        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>",
-        False,
-    ),
-    (
-        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>",
-        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>"
-        "<wazuh_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></wazuh_config>",
-        False,
-    )
-])
-@pytest.mark.parametrize("indexer_allowed", [
-    True,
-    False,
-])
-def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed):
-    """Check if the wazuh-manager.conf indexer section is protected by the API.
-
-    Parameters
-    ----------
-    new_conf : str
-        New wazuh-manager.conf to be uploaded.
-    original_conf : str
-        Original wazuh-manager.conf.
-    indexer_changed : bool
-        Whether the indexer section of the original and new configurations is equal or not.
-    indexer_allowed : bool
-        Whether it is allowed to modify the indexer API configuration section.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        xml_new_conf = utils.load_wazuh_xml(None, new_conf)
-        xml_original_conf = utils.load_wazuh_xml(None, original_conf)
-        if indexer_allowed:
-            utils.check_indexer(xml_new_conf, xml_original_conf)
-        elif indexer_changed:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_indexer(xml_new_conf, xml_original_conf)

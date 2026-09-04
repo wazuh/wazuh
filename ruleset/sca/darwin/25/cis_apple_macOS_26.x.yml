@@ -2160,7 +2160,7 @@ checks:
           - "Account Discovery"
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
+      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 policyAttributeMaximumFailedAuthentications" -> n:>(\d+)< compare <= 5'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
   - id: 41051
@@ -2212,7 +2212,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare >= 15'
+      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 minimumLength" -> n:>(\d+)< compare >= 15'
 
   # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured. (Manual)
   - id: 41052
@@ -2368,9 +2368,8 @@ checks:
           - "Domain Controller Authentication"
           - "Application Access Token"
           - "Pass the Hash"
-    condition: any
+    condition: all
     rules:
-      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one special character"
       - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 minimumSymbols" -> n:>(\d+)< compare >= 1'
 
   # 5.2.6 Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured. (Manual)
@@ -2475,7 +2474,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare <= 525601'
+      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 policyAttributeDaysUntilExpiration" -> n:>(\d+)< compare <= 365'
 
   # 5.2.8 Ensure Password History Is Set to at least 24. (Automated)
   - id: 41057

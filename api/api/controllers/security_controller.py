@@ -88,6 +88,9 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
         Raw or JSON response with the generated access token.
     """
     await settle_login_attempt(request)
+    # The request body validator rejects anything that is not a JSON object, so this is always a
+    # dict. It must never be None: `remove_nones_to_dict` would drop the key and `get_permissions`
+    # would fall back to the account's statically linked roles instead of resolving the context.
     auth_context = await request.json()
     f_kwargs = {'user_id': user, 'auth_context': auth_context}
 

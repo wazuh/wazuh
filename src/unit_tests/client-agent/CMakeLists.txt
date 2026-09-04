@@ -44,7 +44,8 @@ set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl
                             -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                             -Wl,--wrap=_imp__dbsync_initialize \
-                            -Wl,--wrap,metadata_provider_update -Wl,--wrap,get_unix_version -Wl,--wrap,get_win_version -Wl,--wrap,free_osinfo")
+                            -Wl,--wrap,metadata_provider_update -Wl,--wrap,metadata_provider_get \
+                            -Wl,--wrap,get_unix_version -Wl,--wrap,get_win_version -Wl,--wrap,free_osinfo")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,w_query_agentd")
 else()
@@ -100,6 +101,11 @@ list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundl
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
+list(APPEND client-agent_flags " ")
+
+# ClientConf() itself, run end to end against real temp files: no wrappers, needs a
+# real etc/internal_options.conf at the working directory instead (see below).
+list(APPEND client-agent_names "test_client_conf_ssl_resolution")
 list(APPEND client-agent_flags " ")
 
 # w_enrollment_build_request()/w_enrollment_process_response() (#38465): pure

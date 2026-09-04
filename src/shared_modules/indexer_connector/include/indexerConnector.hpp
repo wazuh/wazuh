@@ -151,6 +151,17 @@ public:
 };
 
 /**
+ * @brief Snapshot of the `_bulk` HTTP requests a sync connector actually sent -- every attempt
+ *        counts, splits and retries included, so a caller can compare its own logical flushes
+ *        against the real request traffic those flushes produced.
+ */
+struct IndexerBulkRequestStats
+{
+    uint64_t requests {0}; ///< `_bulk` POSTs sent (full buffers and split chunks alike).
+    uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+};
+
+/**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
@@ -167,7 +178,8 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
-     *               the health monitor this constructor builds.
+     *               the health monitor this constructor builds. `flush_interval_seconds` = 0 starts
+     *               NO background flush thread at all: the caller owns every flush().
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
@@ -185,7 +197,9 @@ public:
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
      *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`,
-     *               `request_timeout_seconds`). `monitoring_interval_seconds` is IGNORED here --
+     *               `request_timeout_seconds`). `flush_interval_seconds` = 0 starts NO background
+     *               flush thread at all: the caller owns every flush(). `monitoring_interval_seconds`
+     *               is IGNORED here --
      *               the shared session's monitor was already built with the session's own value --
      *               just like the `ssl.*` and credential keys, which the session also supplies. Its
      *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
@@ -388,6 +402,11 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
+     */
+    IndexerBulkRequestStats takeBulkRequestStats();
 };
 
 /**
@@ -601,18 +620,39 @@ public:
 
 class IndexerConnectorException : public std::exception
 {
+public:
+    /**
+     * @brief Coarse failure cause, for callers that aggregate failures into metrics. It changes
+     *        what the operator should look at, not what the caller does: every category is still
+     *        a failed operation whose recovery is the caller re-staging.
+     */
+    enum class Category
+    {
+        Other,            ///< Hard rejection or unexpected state (non-retryable status, bad split).
+        DocumentRejected, ///< The indexer answered but rejected documents, left them undeleted, or
+                          ///< returned a body that confirms nothing.
+        RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+    };
+
 private:
     std::string m_message;
+    Category m_category {Category::Other};
 
 public:
-    explicit IndexerConnectorException(std::string message)
+    explicit IndexerConnectorException(std::string message, Category category = Category::Other)
         : m_message(std::move(message))
+        , m_category(category)
     {
     }
 
     const char* what() const noexcept override
     {
         return m_message.c_str();
+    }
+
+    Category category() const noexcept
+    {
+        return m_category;
     }
 };
 

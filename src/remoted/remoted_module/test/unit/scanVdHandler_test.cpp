@@ -53,12 +53,14 @@ namespace
     /// One test's whole rig: fake VD + real VdClient + metrics + the handler under test.
     struct Rig
     {
-        explicit Rig(const std::string& tag)
+        explicit Rig(const std::string& tag,
+                     long readTimeout = ScanVdHandlerImpl::VD_SCAN_READ_TIMEOUT_SECONDS,
+                     long writeTimeout = ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS)
             : socketPath(makeUniqueVdSocketPath(tag))
             , server(socketPath)
             , vdClient(std::make_shared<VdClient>(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY))
             , metrics(makeScanVdMetrics(metricsManager))
-            , handler(vdClient, metrics, socketPath)
+            , handler(vdClient, metrics, socketPath, readTimeout, writeTimeout)
         {
             server.setOffset(100);
         }
@@ -71,6 +73,33 @@ namespace
         ScanVdHandlerImpl handler;
     };
 } // namespace
+
+/**
+ * The facade checks this budget against remoted.http_request_timeout at startup, so it has to cover
+ * every deadline the request can actually pay -- including getOffset()'s, which runs synchronously
+ * before the scan POST and, on a stale cache, is a round trip with its own two.
+ */
+TEST(ScanVdHandlerTest, TheStartupBudgetCoversTheOffsetQueryToo)
+{
+    EXPECT_GT(ScanVdHandlerImpl::budgetMsFor(ScanVdHandlerImpl::VD_SCAN_READ_TIMEOUT_SECONDS,
+                                             ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS),
+              (ScanVdHandlerImpl::VD_SCAN_READ_TIMEOUT_SECONDS + ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS) *
+                  1000)
+        << "the offset query's deadlines are part of the request path, not free";
+}
+
+TEST(ScanVdHandlerTest, TheBudgetFollowsTheConfiguredTimeouts)
+{
+    Rig configured {"configured-budget", 30, 40};
+    Rig unset {"unset-budget", 0, 0};
+
+    EXPECT_EQ(configured.handler.getBudgetMs(), ScanVdHandlerImpl::budgetMsFor(30, 40))
+        << "the startup check must see remoted.vd_scan_*_timeout, not the compiled-in defaults";
+    EXPECT_EQ(unset.handler.getBudgetMs(),
+              ScanVdHandlerImpl::budgetMsFor(ScanVdHandlerImpl::VD_SCAN_READ_TIMEOUT_SECONDS,
+                                             ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS))
+        << "a <=0 timeout falls back to the default instead of disabling the deadline";
+}
 
 TEST(ScanVdHandlerTest, VersionMismatchRejectsWithoutEverTriggeringAScan)
 {

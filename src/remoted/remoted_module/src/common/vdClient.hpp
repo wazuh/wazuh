@@ -50,6 +50,13 @@ namespace remoted::common
         /// caller behind it.
         static constexpr std::chrono::milliseconds DEFAULT_FAILURE_RETRY_INTERVAL {5000};
 
+        /// Per-query socket deadlines for the offset request. Named rather than inlined at the call
+        /// site because they are part of the budget of every request that gates on an offset: a
+        /// stale cache makes getOffset() pay them synchronously before the caller's own downstream
+        /// work starts (see ScanVdHandlerImpl::budgetMsFor()).
+        static constexpr long OFFSET_READ_TIMEOUT_SECONDS = 1;
+        static constexpr long OFFSET_WRITE_TIMEOUT_SECONDS = 1;
+
         /**
          * @param socketPath VD module UDS endpoint, as a raw filesystem path (e.g.
          * "/queue/sockets/vd-http.sock") -- NOT a "unix://" URI; httplib::Client's single-string

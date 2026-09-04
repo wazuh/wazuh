@@ -10,6 +10,7 @@
  */
 
 #include "IURLRequest.hpp"
+#include "defer.hpp"
 #include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
@@ -157,11 +158,12 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
         // Parse response - nlohmann::json handles large documents efficiently
         auto responseJson = nlohmann::json::parse(response);
 
-        // Check if response has errors flag
+        // A _bulk answer always carries `errors`; a 200 body without it is not a bulk result and
+        // confirms nothing, so treating it as success would report unindexed documents as indexed.
         if (!responseJson.contains("errors"))
         {
-            logDebug2(tag, "Bulk response missing 'errors' field, treating as success");
-            return true;
+            logWarn(tag, "Bulk response missing 'errors' field, treating as failure");
+            return false;
         }
 
         // If no errors reported, success
@@ -336,6 +338,23 @@ class IndexerConnectorSyncImpl final
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallbacks for the retry budget ('max_retry_attempts' / 'max_retry_duration_seconds';
+    /// 0 disables the corresponding bound). Every retry loop is bounded by both: without a
+    /// budget, a persistent 429 or an unreachable indexer blocks the flushing worker -- and the
+    /// shard behind it -- forever, long after the caller's response window closed. Sized to fail
+    /// a flush before that window (remoted's downstream response timeout, default 20 s) closes;
+    /// the cross-team sizing of the whole timeout chain is decided elsewhere.
+    static constexpr size_t DEFAULT_MAX_RETRY_ATTEMPTS {5};
+    static constexpr size_t DEFAULT_MAX_RETRY_DURATION_SECONDS {15};
+    size_t m_maxRetryAttempts {DEFAULT_MAX_RETRY_ATTEMPTS};
+    std::chrono::milliseconds m_maxRetryDuration {std::chrono::seconds {DEFAULT_MAX_RETRY_DURATION_SECONDS}};
+    /// The `_bulk` requests actually sent (attempts, splits and retries included), for callers
+    /// whose own flush accounting would otherwise under-count the real request traffic. Atomics:
+    /// bumped under m_mutex by the flushing thread but drained by takeBulkRequestStats() from any
+    /// thread.
+    std::atomic<uint64_t> m_bulkRequestsSent {0};
+    std::atomic<uint64_t> m_bulkBytesSent {0};
+
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
     /// Upper bound in milliseconds for one data request against the indexer
@@ -356,19 +375,31 @@ class IndexerConnectorSyncImpl final
             throw IndexerConnectorException("No data to process");
         }
 
-        auto serverUrl = m_selector->getNext();
+        // No success callback below may throw: THttpRequest::post() invokes them inside its own
+        // try block and remaps anything thrown there to onError(statusCode = -1), which the error
+        // handlers read as a transport outage to retry -- resending a buffer that no longer
+        // matches what the callback saw. Callbacks report through these flags; the throw happens
+        // after post() returns, from this frame.
+        bool deleteByQueryLeftDocuments = false;
+        bool indexingFailures = false;
 
         // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
         // errors come back in a `failures` array inside the body. Reporting that run as success is
         // how documents survive a deletion that everyone upstream believes worked, so the failures
         // are raised like a transport error and the caller decides whether to retry.
-        const auto onSuccessDeleteByQuery = [this](const std::string& response)
+        const auto onSuccessDeleteByQuery = [this, &deleteByQueryLeftDocuments](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             const auto parsed = nlohmann::json::parse(response, nullptr, false);
             if (parsed.is_discarded())
             {
+                // An unparseable 200 confirms nothing; passing it would report a deletion that
+                // may never have happened.
+                LOGFN_WARN(m_logFn,
+                           "deleteByQuery response could not be parsed, cannot confirm the deletion. Response: %s",
+                           response.c_str());
+                deleteByQueryLeftDocuments = true;
                 return;
             }
 
@@ -398,11 +429,13 @@ class IndexerConnectorSyncImpl final
                        failures,
                        conflicts,
                        response.c_str());
-            throw IndexerConnectorException("deleteByQuery did not delete every matching document");
+            deleteByQueryLeftDocuments = true;
         };
 
-        const auto onErrorDeleteByQuery =
-            [this](const std::string& error, const long statusCode, const std::string& responseBody)
+        bool deleteByQueryNeedsRetry = false;
+        const auto onErrorDeleteByQuery = [this, &deleteByQueryNeedsRetry](const std::string& error,
+                                                                           const long statusCode,
+                                                                           const std::string& responseBody)
         {
             if (statusCode == HTTP_NOT_FOUND)
             {
@@ -410,21 +443,18 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
                 return;
             }
-            else if (statusCode == HTTP_VERSION_CONFLICT)
-            {
-                LOGFN_DEBUG2(m_logFn, "Document version conflict for deleteByQuery - continuing.");
-                // For deleteByQuery, we don't retry - just log and continue
-                return;
-            }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                LOGFN_DEBUG2(m_logFn, "Too many requests for deleteByQuery - continuing.");
-                // For deleteByQuery, we don't retry - just log and continue
-                return;
+                // Rate-limited before anything ran: retry with backoff like the bulk loops.
+                // Confirming it instead reports a deletion that never happened.
+                deleteByQueryNeedsRetry = true;
+                LOGFN_DEBUG2(m_logFn, "Too many requests for deleteByQuery, retrying with exponential backoff.");
             }
             else
             {
-                // Includes transport-level failures (timeout, connection refused: statusCode <= 0).
+                // Includes request-level 409 (with conflicts=proceed staged in the query, a 409
+                // means the run was refused, not that one document moved) and transport-level
+                // failures (timeout, connection refused: statusCode <= 0).
                 // Raise it and let the catch around the post drop the staged queries -- the caller
                 // retries by re-staging them. The staged BULK data is deliberately left alone: it
                 // has not been attempted yet (deletes go out before the bulk POST) and the next
@@ -440,19 +470,52 @@ class IndexerConnectorSyncImpl final
 
         for (const auto& [index, query] : m_deleteByQuery)
         {
-            std::string url;
-            url += serverUrl;
-            url += "/";
-            url += index;
-            url += "/_delete_by_query";
-            LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
             try
             {
-                m_httpRequest->post(
-                    RequestParameters {
-                        .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
-                    PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                        std::chrono::seconds {m_maxRetryDelay}};
+                IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+                do
+                {
+                    if (m_stopping.load())
+                    {
+                        LOGFN_DEBUG2(m_logFn, "Stopping requested, aborting deleteByQuery");
+                        return;
+                    }
+                    deleteByQueryNeedsRetry = false;
+                    // Resolved per attempt, like every other request in this file: a host is
+                    // consumed only by the request actually sent to it, and a retry rotates to
+                    // the next healthy host.
+                    std::string url;
+                    url += m_selector->getNext();
+                    url += "/";
+                    url += index;
+                    url += "/_delete_by_query";
+                    LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
+                    m_httpRequest->post(
+                        RequestParameters {
+                            .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
+                        PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
+                        ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                    if (deleteByQueryLeftDocuments)
+                    {
+                        throw IndexerConnectorException("deleteByQuery did not delete every matching document",
+                                                        IndexerConnectorException::Category::DocumentRejected);
+                    }
+                    if (deleteByQueryNeedsRetry)
+                    {
+                        const auto retryDelay = retryBackoff.nextDelay();
+                        if (retryBudget.exhausted(retryDelay))
+                        {
+                            throw IndexerConnectorException("deleteByQuery retry budget exhausted",
+                                                            IndexerConnectorException::Category::RetryExhausted);
+                        }
+                        LOGFN_DEBUG2(
+                            m_logFn, "Retrying deleteByQuery in %lld ms.", static_cast<long long>(retryDelay.count()));
+                        std::unique_lock<std::mutex> lock(m_retryMutex);
+                        m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
+                    }
+                } while (deleteByQueryNeedsRetry);
             }
             catch (...)
             {
@@ -466,26 +529,27 @@ class IndexerConnectorSyncImpl final
             }
         }
 
-        const auto onSuccess = [this, &needToRetry](const std::string& response)
+        const auto onSuccess = [this, &needToRetry, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                m_bulkData.clear();
-                m_boundaries.clear();
-                m_lastBulkTime = std::chrono::steady_clock::now();
-                throw IndexerConnectorException("Bulk operation had indexing failures");
+                indexingFailures = true;
+                return;
             }
 
             m_shouldNotifyAfterBulk = true;
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error,
-                                                  const long statusCode,
-                                                  const std::string& responseBody) -> void
+        // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
+        // included, draw from it too, so a split cannot multiply what a flush may spend.
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
+                                                                const long statusCode,
+                                                                const std::string& responseBody) -> void
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
@@ -501,7 +565,7 @@ class IndexerConnectorSyncImpl final
                     m_boundaries.clear();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
                 }
-                splitAndProcessBulk();
+                splitAndProcessBulk(retryBudget);
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -552,6 +616,7 @@ class IndexerConnectorSyncImpl final
                     return;
                 }
                 needToRetry = false;
+                indexingFailures = false;
 
                 std::string url;
                 url += m_selector->getNext();
@@ -559,14 +624,32 @@ class IndexerConnectorSyncImpl final
                 LOGFN_DEBUG2(m_logFn, "Sending bulk data to: %s", url.c_str());
                 LOGFN_DEBUG2(m_logFn, "Bulk data: %s", m_bulkData.c_str());
 
+                m_bulkRequestsSent.fetch_add(1);
+                m_bulkBytesSent.fetch_add(m_bulkData.size());
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = m_bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                     ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                if (indexingFailures)
+                {
+                    m_bulkData.clear();
+                    m_boundaries.clear();
+                    m_lastBulkTime = std::chrono::steady_clock::now();
+                    throw IndexerConnectorException("Bulk operation had indexing failures",
+                                                    IndexerConnectorException::Category::DocumentRejected);
+                }
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
+                    if (retryBudget.exhausted(retryDelay))
+                    {
+                        m_bulkData.clear();
+                        m_boundaries.clear();
+                        m_lastBulkTime = std::chrono::steady_clock::now();
+                        throw IndexerConnectorException("Bulk retry budget exhausted",
+                                                        IndexerConnectorException::Category::RetryExhausted);
+                    }
                     LOGFN_DEBUG2(
                         m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
                     std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -586,8 +669,18 @@ class IndexerConnectorSyncImpl final
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
-    void splitAndProcessBulk()
+    void splitAndProcessBulk(IndexerRetryBudget& retryBudget)
     {
+        // Clear on every exit path: on failure the caller re-stages, so bytes kept here would be
+        // re-sent by whoever flushes next.
+        DEFER(
+            [this]()
+            {
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+            });
+
         const size_t totalOperations = m_boundaries.size();
         if (totalOperations <= 1)
         {
@@ -610,7 +703,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(firstHalf, firstBoundaries);
+                processBulkChunk(firstHalf, firstBoundaries, retryBudget);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -623,7 +716,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(secondHalf, secondBoundaries);
+                processBulkChunk(secondHalf, secondBoundaries, retryBudget);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -636,26 +729,27 @@ class IndexerConnectorSyncImpl final
         {
             m_shouldNotifyAfterBulk = true;
         }
-        m_bulkData.clear();
-        m_boundaries.clear();
-        m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
-    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
+    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries, IndexerRetryBudget& retryBudget)
     {
         bool needToRetry = false;
+        // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
+        // Throwing here additionally livelocked -- the remapped onError(-1) retried the same
+        // chunk, whose 200 answer carried the same failing items, forever.
+        bool indexingFailures = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, &indexingFailures](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Chunk processed successfully: %s", response.c_str());
 
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+                indexingFailures = true;
             }
         };
-        const auto onError = [this, &needToRetry, boundaries](
+        const auto onError = [this, &needToRetry, &retryBudget, boundaries, data](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -666,14 +760,21 @@ class IndexerConnectorSyncImpl final
                     const size_t midPoint = boundaries.size() / 2;
                     std::span<size_t> firstBoundaries(boundaries.begin(),
                                                       boundaries.begin() + static_cast<long>(midPoint));
-                    const size_t firstEndPos = boundaries[midPoint - 1];
-                    std::string_view firstHalf(m_bulkData.data(), firstEndPos);
                     std::span<size_t> secondBoundaries(boundaries.begin() + static_cast<long>(midPoint),
                                                        boundaries.end());
-                    const size_t secondStartPos = boundaries[midPoint - 1];
-                    std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
-                    processBulkChunk(firstHalf, firstBoundaries);
-                    processBulkChunk(secondHalf, secondBoundaries);
+                    // Boundaries are absolute offsets into m_bulkData, but this chunk may start
+                    // anywhere in it: both halves must be subviews of `data`, never rebuilt from
+                    // the whole buffer, or a nested split resends other chunks' operations.
+                    const size_t chunkStart = static_cast<size_t>(data.data() - m_bulkData.data());
+                    const size_t splitPos = boundaries[midPoint - 1];
+                    if (splitPos <= chunkStart || splitPos - chunkStart >= data.size())
+                    {
+                        throw IndexerConnectorException("Bulk split boundary falls outside its chunk");
+                    }
+                    const std::string_view firstHalf = data.substr(0, splitPos - chunkStart);
+                    const std::string_view secondHalf = data.substr(splitPos - chunkStart);
+                    processBulkChunk(firstHalf, firstBoundaries, retryBudget);
+                    processBulkChunk(secondHalf, secondBoundaries, retryBudget);
                     return;
                 }
                 LOGFN_WARN(m_logFn, "Single operation too large for server limits");
@@ -720,6 +821,7 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            indexingFailures = false;
             // Resolved inside the loop so a retry rotates to the next healthy host -- and throws
             // (batch retained, resent by a later flush) once the monitor marks every host down,
             // instead of hammering the same dead host forever while holding m_mutex.
@@ -727,14 +829,26 @@ class IndexerConnectorSyncImpl final
             url += m_selector->getNext();
             url += "/_bulk";
             LOGFN_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
+            m_bulkRequestsSent.fetch_add(1);
+            m_bulkBytesSent.fetch_add(data.size());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
+            if (indexingFailures)
+            {
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures",
+                                                IndexerConnectorException::Category::DocumentRejected);
+            }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Bulk chunk retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
+                }
                 LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -847,7 +961,33 @@ public:
             throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
+        const auto maxRetryAttempts =
+            config.contains("max_retry_attempts") && config.at("max_retry_attempts").is_number_integer()
+                ? config.at("max_retry_attempts").get<long>()
+                : static_cast<long>(DEFAULT_MAX_RETRY_ATTEMPTS);
+        if (maxRetryAttempts < 0)
+        {
+            throw IndexerConnectorException("max_retry_attempts must be >= 0 (0 disables the bound)");
+        }
+        m_maxRetryAttempts = static_cast<size_t>(maxRetryAttempts);
+
+        const auto maxRetryDurationSeconds =
+            config.contains("max_retry_duration_seconds") && config.at("max_retry_duration_seconds").is_number_integer()
+                ? config.at("max_retry_duration_seconds").get<long>()
+                : static_cast<long>(DEFAULT_MAX_RETRY_DURATION_SECONDS);
+        if (maxRetryDurationSeconds < 0)
+        {
+            throw IndexerConnectorException("max_retry_duration_seconds must be >= 0 (0 disables the bound)");
+        }
+        m_maxRetryDuration = std::chrono::seconds {maxRetryDurationSeconds};
+
         m_lastBulkTime = std::chrono::steady_clock::now();
+
+        // 0 = no background flush thread; the caller owns every flush.
+        if (m_flushInterval == 0)
+        {
+            return;
+        }
         m_bulkThread = std::thread(
             [this]()
             {
@@ -972,61 +1112,65 @@ public:
         }
 
         bool needToRetry = false;
+        // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
+        bool updateByQueryFailed = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, &updateByQueryFailed](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Update by query response: %s", response.c_str());
 
-            // Parse response to extract update statistics and check for failures
             try
             {
-                auto responseJson = nlohmann::json::parse(response);
+                const auto responseJson = nlohmann::json::parse(response);
 
-                // Check for failures first
-                if (responseJson.contains("failures") && !responseJson["failures"].empty())
+                // Same contract as _delete_by_query's 200: per-shard errors are tallied in
+                // `failures` and conflicts=proceed skips in `version_conflicts` -- either way,
+                // documents the caller asked to update were left untouched.
+                const auto failures = (responseJson.contains("failures") && responseJson.at("failures").is_array())
+                                          ? responseJson.at("failures").size()
+                                          : 0;
+                const auto conflicts = (responseJson.contains("version_conflicts") &&
+                                        responseJson.at("version_conflicts").is_number_integer())
+                                           ? responseJson.at("version_conflicts").get<std::size_t>()
+                                           : 0;
+                if (failures > 0 || conflicts > 0)
                 {
-                    auto failures = responseJson["failures"];
-                    LOGFN_WARN(m_logFn, "Update by query completed with %zu failures", failures.size());
-
-                    // Log first few failures for debugging
-                    size_t logCount = std::min<size_t>(failures.size(), 3);
-                    for (size_t i = 0; i < logCount; ++i)
-                    {
-                        LOGFN_DEBUG1(m_logFn, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
-                    }
+                    LOGFN_WARN(m_logFn,
+                               "Update by query left documents behind: %zu failure(s), %zu version conflict(s). "
+                               "Response: %s",
+                               failures,
+                               conflicts,
+                               response.c_str());
+                    updateByQueryFailed = true;
+                    return;
                 }
 
-                if (responseJson.contains("updated") && responseJson.contains("total"))
-                {
-                    auto updated = responseJson["updated"].get<int>();
-                    auto total = responseJson["total"].get<int>();
-                    auto noops = responseJson.contains("noops") ? responseJson["noops"].get<int>() : 0;
-                    auto failures = responseJson.contains("failures") ? responseJson["failures"].size() : 0;
+                const auto updated = responseJson.at("updated").get<int>();
+                const auto total = responseJson.at("total").get<int>();
+                const auto noops = responseJson.contains("noops") ? responseJson.at("noops").get<int>() : 0;
 
-                    if (updated > 0)
-                    {
-                        LOGFN_INFO(m_logFn,
-                                   "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
-                                   "failures)",
-                                   updated,
-                                   total,
-                                   noops,
-                                   failures);
-                    }
-                    else
-                    {
-                        LOGFN_DEBUG2(
-                            m_logFn,
-                            "Update by query completed: no documents needed updating (all %d documents already "
-                            "up-to-date, %zu failures)",
-                            total,
-                            failures);
-                    }
+                if (updated > 0)
+                {
+                    LOGFN_INFO(m_logFn,
+                               "Update by query completed: %d documents updated out of %d total (%d unchanged)",
+                               updated,
+                               total,
+                               noops);
+                }
+                else
+                {
+                    LOGFN_DEBUG2(m_logFn,
+                                 "Update by query completed: no documents needed updating (all %d documents already "
+                                 "up-to-date)",
+                                 total);
                 }
             }
             catch (const std::exception& e)
             {
-                LOGFN_DEBUG2(m_logFn, "Could not parse update by query response: %s", e.what());
+                // Unparseable body or one without the documented fields confirms nothing.
+                LOGFN_WARN(m_logFn, "Update by query response could not be validated: %s", e.what());
+                updateByQueryFailed = true;
+                return;
             }
 
             m_shouldNotifyAfterBulk = true;
@@ -1071,6 +1215,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1081,6 +1226,7 @@ public:
             }
 
             needToRetry = false;
+            updateByQueryFailed = false;
             auto serverUrl = m_selector->getNext();
             std::string url;
             url += serverUrl;
@@ -1094,9 +1240,21 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
+            if (updateByQueryFailed)
+            {
+                m_notify.clear();
+                throw IndexerConnectorException("Update by query did not confirm every requested update",
+                                                IndexerConnectorException::Category::DocumentRejected);
+            }
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    m_notify.clear();
+                    throw IndexerConnectorException("Update by query retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
+                }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1149,6 +1307,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1175,6 +1334,11 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Search query retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
+                }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
@@ -1454,6 +1618,7 @@ public:
 
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())
@@ -1475,6 +1640,11 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
+                if (retryBudget.exhausted(retryDelay))
+                {
+                    throw IndexerConnectorException("Search request retry budget exhausted",
+                                                    IndexerConnectorException::Category::RetryExhausted);
+                }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying search request in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1683,5 +1853,13 @@ public:
     bool isAvailable() const
     {
         return m_selector->isAvailable();
+    }
+
+    /**
+     * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
+     */
+    IndexerBulkRequestStats takeBulkRequestStats()
+    {
+        return {m_bulkRequestsSent.exchange(0), m_bulkBytesSent.exchange(0)};
     }
 };

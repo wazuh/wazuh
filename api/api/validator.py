@@ -211,7 +211,6 @@ WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
 WAZUH_MANAGER_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'auth': {"auth"},
-        'monitor': {"global", "internal"},
         'request': {"global", "remote", "internal"},
         'wazuh-manager-db': {"wdb", "internal"},
         'wmodules': {"wmodules"}
@@ -345,6 +344,11 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
+
+
+@Draft4Validator.FORMAT_CHECKER.checks("agent_id")
+def format_agent_id(value):
+    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= 2147483647
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("path")

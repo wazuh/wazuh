@@ -176,3 +176,50 @@ class VdHTTPClient:
 
             code = self._SCAN_REJECTION_CODES.get(reason, 8007)
             raise WazuhError(code, extra_message=reason)
+
+class RemotedHTTPClient:
+    """Synchronous HTTP client for remoted's local admin unix socket."""
+
+    API_URL = 'http://localhost'
+
+    def __init__(self, timeout: float = 10):
+        self.socket_path = str(common.REMOTED_ADMIN_SOCKET)
+        try:
+            transport = httpx.HTTPTransport(uds=self.socket_path)
+            self._client = httpx.Client(transport=transport, timeout=timeout)
+        except Exception as exc:
+            raise WazuhInternalError(2028, extra_message=str(exc)) from exc
+
+    def close(self) -> None:
+        """Close the remoted admin HTTP client."""
+        self._client.close()
+
+    def get_status(self) -> dict:
+        """Retrieve remoted's readiness status from its local admin socket.
+
+        Returns
+        -------
+        dict
+            `ready` (bool), `keystore` ({readable, agents_loaded, entries_skipped}),
+            and `enrollment_password` ({ready}) when Password-mode enrollment
+            is enabled (omitted entirely when it is not).
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/status',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise WazuhError(2029, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')

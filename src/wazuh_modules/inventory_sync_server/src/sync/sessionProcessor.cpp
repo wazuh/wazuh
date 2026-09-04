@@ -350,7 +350,7 @@ namespace invsync::sync
         // The BY-QUERY half of a whole-agent deletion, and only that half: this connector is the one
         // that writes state documents, so it is the one that can delete them in order (on the
         // agent's own shard, behind that agent's in-flight sessions). The agent's `/config` and
-        // `/stats` documents are written by the ASYNC connector, and DELETE /agents deletes them by
+        // `/stats` documents are written by the ASYNC connector, and the deletion route deletes them by
         // document id on that connector's own queue instead -- see AGENT_DELETION_SCOPE_BY_ID and
         // deleteAgentEndpoint.hpp for why a by-query pass from here could not order against a report
         // that queue had accepted but not yet pushed.

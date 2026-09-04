@@ -42,4 +42,4 @@
   metadata:
     input: '{"version": 1, "origin": {"module": "api"}, "command": "getconfig", "module": "api", "parameters": {
               "section": "wdb"}}'
-    output: '"data":{"wdb":{"backup":[{"database":"global","enabled":true,"interval":86400,"max_files":3}]}'
+    output: '"data":{"wdb":{"backup":{"global":{"enabled":true,"interval":"1d","max_files":3}}}}'

@@ -20,6 +20,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.databases import FIM_DB_PATH, FIM_SYNC_DB_DIR, FIM_SYNC_DB_FILES
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
+from wazuh_testing.logger import logger
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
 from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -41,15 +42,16 @@ def file_to_monitor(test_metadata: dict) -> Any:
     yield path
 
     if sys.platform == WINDOWS:
-        max_retries = 10
-        retry_delay = 0.5
+        max_retries = 15
+        retry_delay = 1
         for attempt in range(max_retries):
             try:
                 file.remove_file(path)
                 break
-            except PermissionError:
+            except OSError as exception:
                 if attempt == max_retries - 1:
                     raise
+                logger.debug(f"Retrying deletion of {path}: {exception}")
                 sleep(retry_delay)
     else:
         file.remove_file(path)
@@ -57,6 +59,9 @@ def file_to_monitor(test_metadata: dict) -> Any:
 
 @pytest.fixture()
 def folder_to_monitor(test_metadata: dict) -> None:
+    # test_files/test_report_changes/test_large_changes.py depends on this fixture too, so the
+    # retry below also covers its intermittent Windows teardown failure reported in #38675 --
+    # that failure's traceback was never captured, but it shares this same teardown call.
     path = test_metadata.get("folder_to_monitor")
     path = os.path.abspath(path)
 
@@ -64,7 +69,20 @@ def folder_to_monitor(test_metadata: dict) -> None:
 
     yield path
 
-    file.delete_path_recursively(path)
+    if sys.platform == WINDOWS:
+        max_retries = 15
+        retry_delay = 1
+        for attempt in range(max_retries):
+            try:
+                file.delete_path_recursively(path)
+                break
+            except OSError as exception:
+                if attempt == max_retries - 1:
+                    raise
+                logger.debug(f"Retrying deletion of {path}: {exception}")
+                sleep(retry_delay)
+    else:
+        file.delete_path_recursively(path)
 
 
 @pytest.fixture()
@@ -72,8 +90,6 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get("folder_to_monitor")
     amount = test_metadata.get("files_amount")
     amount = 2 if not amount else amount
-    max_retries = 3
-    retry_delay = 1
 
     if not file.exists(path):
         file.recursive_directory_creation(path)
@@ -83,20 +99,21 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     yield
 
     for i in range(amount):
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                file.remove_file(Path(path, f"test{i}.log"))
-                break
-            except Exception as e:
-                print(f"Error deleting file {i}: {e}")
-                retry_count += 1
-                if retry_count == max_retries:
-                    print(f"Failed to delete file {i} after {max_retries} attempts.")
+        target = Path(path, f"test{i}.log")
+        if sys.platform == WINDOWS:
+            max_retries = 15
+            retry_delay = 1
+            for attempt in range(max_retries):
+                try:
+                    file.remove_file(target)
                     break
-                else:
-                    print(f"Retrying in {retry_delay} seconds...")
+                except OSError as exception:
+                    if attempt == max_retries - 1:
+                        raise
+                    logger.debug(f"Retrying deletion of {target}: {exception}")
                     sleep(retry_delay)
+        else:
+            file.remove_file(target)
 
 
 @pytest.fixture()
@@ -121,16 +138,20 @@ def set_agent_config(request: pytest.FixtureRequest):
             {
                 "manager": {
                     "elements": [
-                        # Trailing '/' on purpose: it is the explicit opt-out from the default
-                        # /wazuh-manager/ prefix, which RemotedSimulator does not serve. The
-                        # empty <endpoint> that used to spell this opt-out is now rejected while
-                        # the configuration is parsed ("a manager address is required"), so the
-                        # daemons never start and every case here times out waiting for a line
-                        # that is never logged.
-                        {"endpoint": {"value": "127.0.0.1:1517/"}},
+                        {"endpoint": {"value": "127.0.0.1:1517"}},
                     ]
                 }
-            }
+            },
+            {
+                # The agent's default verification_mode is now 'system', which
+                # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+                # suite is not testing TLS trust.
+                "ssl": {
+                    "elements": [
+                        {"verification_mode": {"value": "none"}},
+                    ]
+                }
+            },
         ],
     }
 

@@ -34,6 +34,32 @@ USER_AUTO_START="n" \
 ./install.sh
 ```
 
+### Installing into a Sandbox Directory
+
+`install.sh` registers the system service (`systemctl start wazuh-manager`, or
+`service wazuh-manager start` on SysV hosts) for the directory it installs into.
+When a service definition already exists and names a *different* directory, the
+installer leaves it alone and warns instead of repointing it, so a throwaway
+install cannot take over the service of the real installation.
+
+For a sandbox install next to an existing one, skip the boot integration
+explicitly and drive the sandbox through its own control script:
+
+```bash
+USER_LANGUAGE="en" \
+USER_INSTALL_TYPE="manager" \
+USER_DIR="/tmp/clean_env/wazuh-manager" \
+USER_CLEANINSTALL="y" \
+USER_DELETE_DIR="y" \
+USER_REGISTER_SERVICE="n" \
+./install.sh
+
+/tmp/clean_env/wazuh-manager/bin/wazuh-manager-control start
+```
+
+To move the system service to the new directory on purpose, pass
+`USER_TAKEOVER_SERVICE="y"` instead.
+
 ### Starting the Server
 
 After installation, start the manager:

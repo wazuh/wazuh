@@ -125,6 +125,14 @@ that are transient accept races). A Control route that does real work still shed
 capacity module-side (bounded queue → 503); the class only guarantees the data plane cannot
 starve it.
 
+`RouteOptions` overrides the class policy per route: `maxBodyBytes`, `maxSessions` and
+`responseTimeoutSec`, each `0` meaning "defer to the policy". The last one is the response backstop
+(dispatch → `send()`), and it exists because that backstop is written around the peer's own deadline
+being the SHORTER one. A route whose peer waits longer than the server-wide value inverts that: the
+504 fires while the work is still succeeding, so the peer retries and hits the same wall every time.
+Raising the server-wide value to suit one such route would weaken the leak backstop for every other
+one, so it is raised per route instead.
+
 Threading: one shared `asio::io_context` wrapped in a `Runtime` co-owned by the server, every
 session and every responder (that shared ownership is what makes a posthumous `send()` defined);
 N I/O threads (`ioThreads`, default nproc) in a resume-on-exception loop; the acceptor on its
@@ -170,7 +178,7 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 
 | File | Pins |
 |---|---|
-| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
+| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
 | `udsShutdown_test.cpp` | S1/S2/S3 verbatim: replies between the two phases, `send()` after stop AND after destruction, drain window, force-close as EOF, concurrent stop races |
 | `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411 |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |

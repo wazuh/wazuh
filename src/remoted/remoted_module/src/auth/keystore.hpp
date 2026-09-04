@@ -135,6 +135,13 @@ namespace remoted::auth
             return m_agentsLoaded.load(std::memory_order_relaxed);
         }
 
+        /// @brief Did the *last* reload() attempt succeed? Distinguishes "loaded, file is
+        /// empty" (true) from "never successfully loaded" (false) -- agentsLoaded()==0 can't.
+        bool lastLoadOk() const noexcept
+        {
+            return m_lastLoadOk.load(std::memory_order_relaxed);
+        }
+
         /// @brief Successful reloads since construction (startup load included).
         /**
          * @brief client.keys lines the last adopted load could not use.
@@ -232,6 +239,7 @@ namespace remoted::auth
         std::atomic<std::size_t> m_entriesSkipped {0};
         std::atomic<std::uint64_t> m_reloadsTotal {0};
         std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
+        std::atomic<bool> m_lastLoadOk {false}; ///< Did the *last* reload() call succeed?
     };
 
 } // namespace remoted::auth

@@ -274,9 +274,11 @@ static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    /* The parser never invents a verification mode, which is what lets ClientConf
-     * own the agent's own default of NONE: with no <ssl> block the value the
-     * caller came in with is still there afterwards. */
+    /* The parser never invents a verification mode -- with no <ssl> block, the
+     * value the caller came in with is still there afterwards. This is what lets
+     * ClientConf() own the actual default (resolved from AGENT_VERIFY_UNSET to
+     * system or certificate once parsing finishes) instead of the parser guessing
+     * one on its own. */
     const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     memset(&cfg, 0, sizeof(cfg));

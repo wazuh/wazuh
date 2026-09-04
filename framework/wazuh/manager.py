@@ -10,13 +10,15 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
-from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
-from wazuh.core.engine_http import EngineHTTPClient, VdHTTPClient
+from wazuh.core.configuration import get_manager_conf
+from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
-    get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
+    get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
+from wazuh.core.manager_conf import load_manager_conf, load_manager_conf_text, write_manager_conf
+from wazuh.core.manager_conf_policy import check_protected_sections
+from wazuh.core.utils import process_array, safe_move, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
 logger = logging.getLogger('wazuh')
@@ -96,6 +98,42 @@ def _modulesd_status(running: bool) -> dict:
     }
 
 
+def _remoted_status(running: bool) -> dict:
+    """Build the status entry for remoted from its local admin GET /status endpoint.
+
+    `ready` reflects only `enrollment_password` readiness when Password-mode
+    enrollment is enabled (never grace-window masked); `keystore` is always
+    informational, never gating. If the admin socket itself is unreachable while
+    remoted is running, that is not the same as remoted being unready: the admin
+    plane is optional and can fail to come up independently of the daemon, so this
+    falls back to plain liveness and surfaces why, instead of reporting `ready: false`.
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = RemotedHTTPClient()
+        remoted = client.get_status()
+    except WazuhInternalError as exc:
+        if exc.code == 2031:
+            # ConnectError specifically: the admin socket never came up. Every other
+            # failure (timeout, bad response, malformed JSON, client construction)
+            # keeps today's `ready: false`.
+            return {'ready': running, 'reason': 'admin socket unreachable'}
+        return {'ready': False}
+    except WazuhException:
+        return {'ready': False}
+    finally:
+        if client is not None:
+            client.close()
+
+    entry = {'ready': bool(remoted.get('ready', False)), 'keystore': remoted.get('keystore', {})}
+    if 'enrollment_password' in remoted:
+        entry['enrollment_password'] = remoted['enrollment_password']
+    return entry
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
@@ -127,6 +165,8 @@ def get_status() -> AffectedItemsWazuhResult:
             entry.update(_analysisd_status(running))
         elif daemon == 'wazuh-manager-modulesd':
             entry.update(_modulesd_status(running))
+        elif daemon == 'wazuh-manager-remoted':
+            entry.update(_remoted_status(running))
 
         node_ready = node_ready and bool(entry['ready'])
         node_status[daemon] = entry
@@ -343,7 +383,7 @@ def validation() -> AffectedItemsWazuhResult:
     result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
 
     try:
-        response = validate_ossec_conf()
+        response = validate_manager_conf()
         result.affected_items.append({'name': node_id, **response})
         result.total_affected_items += 1
     except WazuhError as e:
@@ -389,9 +429,9 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 @mask_sensitive_config()
 @expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
-def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
+def read_manager_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Wrapper for get_ossec_conf.
+    """Wrapper for get_manager_conf.
 
     Parameters
     ----------
@@ -418,9 +458,9 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
 
     try:
         if raw:
-            with open(common.OSSEC_CONF) as f:
+            with open(common.MANAGER_CONF) as f:
                 return f.read()
-        result.affected_items.append(get_ossec_conf(section=section, field=field, distinct=distinct))
+        result.affected_items.append(get_manager_conf(section=section, field=field))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
@@ -454,8 +494,12 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
-def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
-    """Replace wazuh configuration (wazuh-manager.conf) with the provided configuration.
+def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
+    """Replace the manager configuration (etc/wazuh-manager.conf) with the provided one.
+
+    The new text is checked before anything is written (XML syntax, schema, protected sections); the file is then
+    replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure restores the
+    previous file.
 
     Parameters
     ----------
@@ -473,33 +517,36 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_file = f'{common.OSSEC_CONF}.backup'
+    backup_file = f'{common.MANAGER_CONF}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
             raise WazuhError(1125)
 
-        # Check if the configuration is valid
-        validate_wazuh_xml(new_conf)
+        # XML syntax (1131), schema (1130) and protected sections (1127/1129), before touching the file.
+        # One CLI call parses, validates and applies the defaults (the certificate files it names are
+        # not required to exist yet: validate_manager_conf() checks them against the written file).
+        new_document = load_manager_conf_text(new_conf)
+        check_protected_sections(new_document, load_manager_conf())
 
         # Create a backup of the current configuration before attempting to replace it
         try:
-            full_copy(common.OSSEC_CONF, backup_file)
+            full_copy(common.MANAGER_CONF, backup_file)
         except IOError:
             raise WazuhError(1019)
 
-        # Write the new configuration and validate it
-        write_ossec_conf(new_conf)
-        is_valid = validate_ossec_conf()
-
+        # Write the new configuration and validate it with the daemons' loader (cross-field semantics)
+        write_manager_conf(new_conf)
+        is_valid = validate_manager_conf()
         if is_valid.get('status') != 'OK':
             raise WazuhError(1125)
+
         result.affected_items.append(node_id)
         exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, common.OSSEC_CONF)
+        exists(backup_file) and safe_move(backup_file, common.MANAGER_CONF)
 
     result.total_affected_items = len(result.affected_items)
     return result

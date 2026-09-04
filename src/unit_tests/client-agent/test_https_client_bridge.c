@@ -173,10 +173,19 @@ int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     return 0;
 }
 
-/* bridge_on_startup_result republishes the agent metadata; the real one
- * (start_agent.c) would touch the metadata shared memory, out of scope here. */
+/* bridge_on_startup_result, bridge_on_control_response and bridge_reenroll_thread all
+ * republish the agent metadata; the real one (start_agent.c) would touch the metadata
+ * shared memory, out of scope here.
+ *
+ * Counted rather than turned into function_called(): three call sites reach this, and
+ * scripting an expectation into every test that touches any of them would be noise for
+ * the ones that do not care. Tests that do assert on g_populate_metadata_calls, which
+ * setup_test() resets. */
+unsigned int g_populate_metadata_calls = 0;
+
 void __wrap_w_agentd_populate_metadata(void)
 {
+    g_populate_metadata_calls++;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -203,12 +212,20 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return 0;
 }
 
+/* Trail of what the bridge resolved, as "name:min:max;" entries. Needed for the two
+ * enrollment-retry options: their range is enforced by the real getDefine_Int_default(), not by
+ * this wrapper, so the only thing observable here is that the read happens with the right bounds. */
+static char g_resolved_options[512] = {0};
+
 int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
 {
     (void)high_name;
-    (void)low_name;
-    (void)min;
-    (void)max;
+
+    if (low_name) {
+        char entry[80];
+        snprintf(entry, sizeof(entry), "%s:%d:%d;", low_name, min, max);
+        strncat(g_resolved_options, entry, sizeof(g_resolved_options) - strlen(g_resolved_options) - 1);
+    }
 
     return default_val;
 }
@@ -337,6 +354,12 @@ static int setup_test(void **state)
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
     g_https_client_stopping = false;
+    g_populate_metadata_calls = 0;
+    g_resolved_options[0] = '\0';
+
+    /* What ClientConf() resolves in production; the loops read it from agt. */
+    agt->enrollment.retry_max = 60;
+    agt->enrollment.retry_delta = 5;
 
     add_server_config("10.0.0.1", 8443);
     /* A syntactically valid 64-hex-char (32-byte, AES-256) key by default;
@@ -482,6 +505,30 @@ static void test_compression_defaults_to_enabled(void **state)
 
     assert_true(g_captured_config_valid);
     assert_true(g_captured_config.https_compression_enabled);
+
+    w_https_client_stop();
+}
+
+/* ClientConf() resolves the ramp once at startup; a read reintroduced here would be one per
+ * iteration again, and an out-of-range value would stop refusing the start. */
+static void test_bridge_does_not_resolve_the_enrollment_retry_ramp(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_null(strstr(g_resolved_options, "enrollment_retry_max"));
+    assert_null(strstr(g_resolved_options, "enrollment_retry_delta"));
 
     w_https_client_stop();
 }
@@ -923,6 +970,11 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
                   "https_client: re-enrollment succeeded; reloading the signing identity.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: the new id has to reach the metadata provider here. Every outgoing session is
+     * stamped from it, and each module compares against it to notice its own id changed, so
+     * leaving it stale means 403s and blind detection until something else republishes. */
+    assert_int_equal(g_populate_metadata_calls, 1);
 }
 
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
@@ -942,6 +994,44 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
     /* Second pass succeeds. */
     will_return(__wrap_try_enroll_to_server, 0);
 
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, true);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
+
+    bridge_reenroll_thread(FAKE_HANDLE);
+}
+
+/* Driven with values that are not the shipped defaults on purpose: a reintroduced
+ * getDefine_Int_default() gets the default back from the wrapper, so the steps would come out
+ * 5, 10 and 15 instead of 7, 14 and 14. */
+static void test_reenroll_thread_backoff_follows_the_resolved_ramp(void **state)
+{
+    (void)state;
+    enable_enrollment();
+
+    agt->enrollment.retry_delta = 7;
+    agt->enrollment.retry_max = 14;
+
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 7 seconds.");
+    expect_value(__wrap_sleep, seconds, 7);
+
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
+    expect_value(__wrap_sleep, seconds, 14);
+
+    /* At the ceiling the delay stops growing rather than being clamped afterwards. */
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
+    expect_value(__wrap_sleep, seconds, 14);
+
+    will_return(__wrap_try_enroll_to_server, 0);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -982,6 +1072,10 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
                   "https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: no republish when the identity failed validation -- the module keeps traffic
+     * paused, so there is no session to stamp and nothing for a module to act on yet. */
+    assert_int_equal(g_populate_metadata_calls, 0);
 }
 
 /* on_state_change -> .state (M7 partial): exercised through the real
@@ -2411,6 +2505,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_system_verify_mode_maps_to_hc_verify_system, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bridge_does_not_resolve_the_enrollment_retry_ramp, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_configured_endpoint_reaches_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
@@ -2432,6 +2528,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_aborts_when_stopping_flag_already_set, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),

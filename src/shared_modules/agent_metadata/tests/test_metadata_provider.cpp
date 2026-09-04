@@ -15,6 +15,14 @@
 #include <atomic>
 #include <vector>
 
+#ifndef _WIN32
+#include <cstdlib>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <climits>
+#endif
+
 class MetadataProviderTest : public ::testing::Test
 {
     protected:
@@ -346,3 +354,74 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
 
     metadata_provider_free_metadata(&retrieved);
 }
+
+#ifndef _WIN32
+
+extern const char* g_testBinaryPath;
+
+// #38766: a provider teardown registered after agentd's atexit(w_https_client_stop) runs
+// before it, so the drain that follows reads a dangling pointer and the process is
+// killed instead of exiting. Re-executes this binary because the fixture's SetUp() has
+// already built the singleton here; see runAtexitChild() in main.cpp.
+TEST_F(MetadataProviderTest, ReadFromAtexitAfterProviderTeardownDoesNotCrash)
+{
+    ASSERT_NE(g_testBinaryPath, nullptr);
+
+    const pid_t pid = fork();
+    ASSERT_NE(pid, -1);
+
+    if (pid == 0)
+    {
+        setenv("WAZUH_METADATA_ATEXIT_CHILD", "1", 1);
+        execl(g_testBinaryPath, g_testBinaryPath, static_cast<char*>(nullptr));
+        _exit(4); // Only reached if exec failed.
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+
+    ASSERT_FALSE(WIFSIGNALED(status)) << "child died with signal " << WTERMSIG(status)
+                                      << ": the provider was torn down while a later exit handler still read it";
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+// #38813: the shm fd was left open for the provider's whole lifetime, with no O_CLOEXEC,
+// so it leaked into every child process spawned afterward (e.g. SCA's command rules via
+// wm_exec()) -- exactly what an enforcing SELinux policy denies once such a child
+// transitions into a restricted domain, even though the child never touches the file.
+// mmap() doesn't need the fd once it succeeds, so the fix closes it right away instead of
+// relying on O_CLOEXEC alone; this asserts that steady state directly.
+//
+// Linux-only: relies on /proc/self/fd, which macOS (no procfs) doesn't have. SELinux is
+// Linux-only too, so the regression this guards against can't occur on macOS anyway.
+#ifdef __linux__
+TEST_F(MetadataProviderTest, MetadataFdNotLeftOpenAfterConstruction)
+{
+    agent_metadata_t metadata = createSampleMetadata();
+    ASSERT_EQ(metadata_provider_update(&metadata), 0); // triggers singleton construction
+
+    DIR* fdDir = opendir("/proc/self/fd");
+    ASSERT_NE(fdDir, nullptr);
+
+    struct dirent* entry;
+    char linkTarget[PATH_MAX];
+
+    while ((entry = readdir(fdDir)) != nullptr)
+    {
+        std::string path = std::string("/proc/self/fd/") + entry->d_name;
+        ssize_t len = readlink(path.c_str(), linkTarget, sizeof(linkTarget) - 1);
+
+        if (len > 0)
+        {
+            linkTarget[len] = '\0';
+            EXPECT_EQ(std::string(linkTarget).find(".wazuh_agent_metadata"), std::string::npos)
+                    << "fd " << entry->d_name << " still points at the metadata shm file";
+        }
+    }
+
+    closedir(fdDir);
+}
+#endif // __linux__
+
+#endif

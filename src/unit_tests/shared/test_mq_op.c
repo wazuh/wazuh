@@ -503,6 +503,119 @@ void test_SendMSGAction_secure_msg_keepalive(void ** state){
     assert_int_equal(ret, 0);
 }
 
+void test_SendMSGAction_rejects_a_null_message(void ** state){
+    (void)state;
+
+    expect_string(__wrap__merror, formatted_msg, "(1106): String not correctly formatted.");
+
+    int ret = SendMSG(0, NULL, "/var/log/test.log", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+/* utf8_reported in SendMSGAction() is process-global and cmocka runs every test in one
+ * process, so this must stay the first registered test that sends invalid UTF-8. A later
+ * one reaches the mdebug2 arm instead and this mwarn expectation fails. */
+void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void ** state){
+    (void)state;
+    int queue = 0;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Invalid UTF-8 byte in a message from '/var/log/test.log'. Replacing it with U+FFFD.");
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, "1:/var/log/test.log:caf\xEF\xBF\xBD");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    int ret = SendMSG(queue, "caf\xE9", "/var/log/test.log", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(void ** state){
+    (void)state;
+    int queue = 0;
+    char location[300];
+    char message[OS_MAXSTR];
+    char expected[OS_MAXSTR];
+
+    memset(location, 'a', sizeof(location) - 1);
+    location[sizeof(location) - 1] = '\0';
+
+    size_t budget = OS_MAXSTR - 1 - (strlen(location) + 3);
+
+    memset(message, 'b', budget - 1);
+    memcpy(message + budget - 1, "\xE2\x82\xAC", 3);
+    message[budget + 2] = '\0';
+
+    int header = snprintf(expected, sizeof(expected), "1:%s:", location);
+    memset(expected + header, 'b', budget - 1);
+    expected[header + budget - 1] = '\0';
+
+    char expected_debug[512];
+    snprintf(expected_debug, sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, expected);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    int ret = SendMSG(queue, message, location, LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+
+    /* Independent of the header formula above: OS_MAXSTR - 1 is what snprintf
+     * can write, the header takes 302 bytes of it, and the trailing three-byte
+     * character does not fit in the remainder, so the line stops one byte short
+     * of a full buffer. A header off by any amount moves this. */
+    assert_int_equal(strlen(expected), 65534);
+}
+
+void test_SendMSGAction_cuts_an_oversize_secure_message_on_a_character_boundary(void ** state){
+    (void)state;
+    int queue = 0;
+    char location[300];
+    char raw[OS_MAXSTR];
+    char expected[OS_MAXSTR];
+
+    memset(location, 'a', sizeof(location) - 1);
+    location[sizeof(location) - 1] = '\0';
+
+    size_t budget = OS_MAXSTR - 1 - (strlen(location) + 4);
+
+    int prefix = snprintf(raw, sizeof(raw), "4:");
+    memset(raw + prefix, 'b', budget - 1);
+    memcpy(raw + prefix + budget - 1, "\xE2\x82\xAC", 3);
+    raw[prefix + budget + 2] = '\0';
+
+    int header = snprintf(expected, sizeof(expected), "4:%s->", location);
+    memset(expected + header, 'b', budget - 1);
+    expected[header + budget - 1] = '\0';
+
+    char expected_debug[512];
+    snprintf(expected_debug, sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, expected);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    int ret = SendMSG(queue, raw, location, SECURE_MQ);
+
+    assert_int_equal(ret, 0);
+
+    /* Independent of the header formula above: OS_MAXSTR - 1 is what snprintf
+     * can write, the header takes 303 bytes of it, and the trailing three-byte
+     * character does not fit in the remainder, so the line stops one byte short
+     * of a full buffer. A header off by any amount moves this. */
+    assert_int_equal(strlen(expected), 65534);
+}
+
 void test_SendBinaryMSGAction_secure_mq_not_supported(void **state) {
     (void)state;
 
@@ -622,6 +735,10 @@ int main(void){
        cmocka_unit_test(test_SendMSGAction_socket_busy),
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
+       cmocka_unit_test(test_SendMSGAction_rejects_a_null_message),
+       cmocka_unit_test(test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message),
+       cmocka_unit_test(test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary),
+       cmocka_unit_test(test_SendMSGAction_cuts_an_oversize_secure_message_on_a_character_boundary),
        // Test test_SendBinaryMSG
        cmocka_unit_test(test_SendBinaryMSGAction_secure_mq_not_supported),
        cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),

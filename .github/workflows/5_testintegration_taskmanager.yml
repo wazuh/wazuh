@@ -1,0 +1,68 @@
+name: "5.X - Task Manager - Integration tests"
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_taskmanager.yml"
+      - "src/wazuh_modules/task_manager/**"
+      - "src/shared_modules/uds_http_server/**"
+      - "src/shared_modules/http-request/**"
+      - "src/shared_modules/utils/**"
+      - "src/shared_modules/metrics/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  task-manager-integration:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build external dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The QA harness boots the real module through this: the same shared object modulesd loads,
+      # the same C ABI, its own socket and database per test.
+      - name: Task Manager - Test tool
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "task_manager_testtool"
+          test: "false"
+          asan: "false"
+
+      - name: Install dependencies
+        run: |
+          pip install -r src/wazuh_modules/task_manager/qa/requirements.txt
+
+      # No container and no external service: the suite stubs the consumer itself, which is what
+      # lets it drive the cases that matter -- a route that stalls, answers 409, or is not listening
+      # at all -- and it kills the module outright to exercise the startup sweep's recovery.
+      - name: Run integration QA
+        run: |
+          cd src/wazuh_modules/task_manager/qa
+          WAZUH_BUILD=${GITHUB_WORKSPACE}/src/build python -m pytest -vv --log-cli-level=INFO

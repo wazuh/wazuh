@@ -28,8 +28,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
-  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager
   ${SRC_FOLDER}/wazuh_db/include
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/include/error_messages
@@ -155,8 +153,6 @@ if(UNIT_TEST)
       "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.c"
     )
   endif()
-  file(GLOB WRAPPERS_WAZUH_MONITORD_SRC
-       "${SRC_FOLDER}/unit_tests/wrappers/wazuh/monitord/*.c")
   file(GLOB WRAPPERS_WAZUH_OS_AUTH_SRC
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_auth/*.c")
   file(GLOB WRAPPERS_WAZUH_ADDAGENT_SRC
@@ -205,7 +201,6 @@ if(UNIT_TEST)
         ${WRAPPERS_WAZUH_SYSCHECKD_SRC}
         ${WRAPPERS_WAZUH_WAZUH_DB_SRC}
         ${WRAPPERS_WAZUH_WAZUH_MODULES_SRC}
-        ${WRAPPERS_WAZUH_MONITORD_SRC}
         ${WRAPPERS_WAZUH_OS_AUTH_SRC}
         ${WRAPPERS_WAZUH_ADDAGENT_SRC}
         ${WRAPPERS_WAZUH_CONFIG_SRC}
@@ -247,7 +242,6 @@ if(UNIT_TEST)
         ${WRAPPERS_WAZUH_SYSCHECKD_SRC}
         ${WRAPPERS_WAZUH_WAZUH_DB_SRC}
         ${WRAPPERS_WAZUH_WAZUH_MODULES_SRC}
-        ${WRAPPERS_WAZUH_MONITORD_SRC}
         ${WRAPPERS_WAZUH_OS_AUTH_SRC}
         ${WRAPPERS_WAZUH_ADDAGENT_SRC}
         ${WRAPPERS_WAZUH_CONFIG_SRC}
@@ -289,7 +283,6 @@ if(UNIT_TEST)
         ${WRAPPERS_WAZUH_SYSCHECKD_SRC}
         ${WRAPPERS_WAZUH_WAZUH_DB_SRC}
         ${WRAPPERS_WAZUH_WAZUH_MODULES_SRC}
-        ${WRAPPERS_WAZUH_MONITORD_SRC}
         ${WRAPPERS_WAZUH_OS_AUTH_SRC}
         ${WRAPPERS_WAZUH_ADDAGENT_SRC}
         ${WRAPPERS_WAZUH_CONFIG_SRC}

@@ -136,7 +136,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/engine-api-http.sock"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/engine-ingest-http.sock"
 #define INV_SYNC_SOCK      "queue/sockets/inventory-sync-http.sock"
-#define MON_LOCAL_SOCK     "queue/sockets/monitor.sock"
 #define CLUSTER_SOCK       "queue/sockets/cluster-internal.sock"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
@@ -157,9 +156,17 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Database socket
 #define WDB_LOCAL_SOCK "queue/sockets/wdb.sock"
 
-// Tasks sockets
-#define WM_UPGRADE_SOCK "queue/sockets/task-upgrade.sock"
-#define WM_TASK_MODULE_SOCK "queue/sockets/task.sock"
+/* Tasks socket. The task manager serves everything on it, including remote agent upgrades on
+ * /v1/agents/upgrade and /v1/agents/upgrade-custom. */
+#define WM_TASK_MODULE_SOCK "queue/sockets/task-http.sock"
+
+/* Host part of every task manager URL.
+ *
+ * The socket above is where the request actually goes -- libcurl is told the path through
+ * CURLOPT_UNIX_SOCKET_PATH and never resolves this host. It is still required: libcurl parses the
+ * URL before it looks at the socket option, and rejects a bare path with CURLE_URL_MALFORMAT (3)
+ * and no HTTP status, which reads to a caller exactly like an unreachable task manager. */
+#define WM_TASK_MODULE_URL "http://localhost"
 
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"

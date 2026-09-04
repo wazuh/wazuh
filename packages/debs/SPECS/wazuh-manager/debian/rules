@@ -105,10 +105,18 @@ override_dh_fixperms:
 	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.12.pc
 	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
 
+# debian/conffiles is intentionally empty: the manager registers no dpkg
+# conffiles. preinst snapshots ${DIR}/etc into manager_upgrade_preserve/ and
+# postinst's restore_upgrade_preserve() copies it back as the last content step,
+# so dpkg's conffile prompt would ask about a file the postinst overwrites from
+# that snapshot anyway.
+override_dh_installdeb:
+	dh_installdeb
+
 override_dh_auto_clean:
 	$(MAKE) -C src clean
 
 override_dh_strip:
 	dh_strip --dbg-package=wazuh-manager-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
 
-.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms
+.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms override_dh_installdeb

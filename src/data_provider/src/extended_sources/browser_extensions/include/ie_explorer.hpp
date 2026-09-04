@@ -141,7 +141,7 @@ class IEExtensionsProvider
          * @param clsidKeys List of CLSID subkeys to enumerate.
          * @param regPaths Vector to append found registry paths.
          */
-        void getRegistryPathsFromKeys(HKEY hive, const std::vector<std::string> clsidKeys, std::vector<std::string>& regPaths);
+        void getRegistryPathsFromKeys(HKEY hive, const std::vector<std::string>& clsidKeys, std::vector<std::string>& regPaths);
 
         /**
          * @brief Enumerate subkeys under a given registry hive.
@@ -155,7 +155,7 @@ class IEExtensionsProvider
          * @param key Registry path string with possible user placeholders.
          * @return Expanded list of registry paths.
          */
-        std::vector<std::string> expandUserKey(const std::string key);
+        std::vector<std::string> expandUserKey(const std::string& key);
 
         /**
          * @brief Expand multiple registry keys containing user placeholders.

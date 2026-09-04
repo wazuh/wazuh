@@ -17,6 +17,13 @@ what each metric means, and — where one exists — the configuration setting t
 means there is deliberately no setting behind the number (the fix is elsewhere: the
 downstream service, agent enrollment, deployed content, or nothing at all).
 
+For the timeout, retry and throttle settings in particular, the number here is only half the
+answer: those options pair with a deadline on the agent's side of the same hop, and moving one
+alone is what produces duplicate work or stalled uploads.
+[Connection timing tuning](timing-tuning.md) has the pairing rules and, in
+[§8](timing-tuning.md#8-verifying-a-change), which metric on this page has to move after each
+kind of change.
+
 ## Querying
 
 ```bash
@@ -102,6 +109,12 @@ it counts **both** here and as that endpoint's `responses.503`.
 small for the traffic or — more often — the downstream is not keeping up: check the
 [downstream failure taxonomy](#downstream-failures--remotedforwarder) before raising the cap.
 
+A slot is held for as long as the downstream deadline allows, so this family is the check on
+every timeout increase: raising a `downstream_*` timeout multiplies the occupancy of the same
+cap, and a change that fixes `error.response_timeout` while pushing `deferred.rejected.total`
+up has only moved the shed from one place to another
+([timing tuning §6](timing-tuning.md#6-environment-decisions)).
+
 ### Downstream failures — `remoted.forwarder.*`
 
 *Why* forwarded requests fail (the per-endpoint `responses.503` cells say *which* path is
@@ -124,6 +137,13 @@ The three timeouts are sequential phases of one request: their sum must stay ins
 [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout), or the HTTP
 server cuts the request off before the downstream deadline fires (`remoted` warns at startup
 when the deadlines cannot be honored).
+
+`error.response_timeout` is also the counter to read against the agent's own budget. The body
+has already been forwarded by the time this deadline runs, so an agent that gives up first
+retries a request the downstream still completes — duplicate work with no dedup on
+`/stateless`. Keep the response deadline under the agent's per-request budget for that endpoint
+(`agent.https_request_timeout`, 10 s; `agent.https_stateful_timeout`, 90 s) rather than raising
+it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
@@ -175,6 +195,17 @@ All are bounded by
 [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout): a p99 creeping
 toward that cap predicts request-cutoff failures before they happen.
 
+Two failure modes are **invisible** to these histograms, so do not read a healthy p99 as proof
+the agents are being served. Both are observed at the auth gateway or later, which means:
+
+- A request cut off while its body was still arriving never reaches the gateway. That is
+  [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) (10 s), a total
+  deadline on the upload rather than an idle timer, and the connection is simply closed — no
+  status, no observation here. On slow links it is the first thing to fail
+  ([timing tuning, invariant 3](timing-tuning.md#3-invariants)).
+- An agent that abandoned the request is not visible either: the manager finishes it and the
+  latency is observed as a success.
+
 ### Authentication rejections — `remoted.auth.reject.*`
 
 *Why* agents fail authentication, counted with the pre-collapse cause: on the wire the
@@ -195,6 +226,14 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
 | `remoted.auth.reject.malformed` | Missing/malformed authorization or protocol-version headers | diagnostic — agent/manager version drift or non-agent traffic |
+
+`clock_skew` is the one cell in this family that a timing setting can move, and it fails
+*before* any budget in the request path matters: the token profile's lifetime is a fixed 60 s,
+so the whole tolerance for host clock drift is
+[`jwt_max_age`](configuration.md#remotedjwt_max_age) +
+[`jwt_clock_skew`](configuration.md#remotedjwt_clock_skew). A fleet whose clocks drift past it
+fails every request with a generic `401` and no other symptom
+([timing tuning, invariant 7](timing-tuning.md#3-invariants)).
 
 ### Agent enrollment — `remoted.enroll.*`
 
@@ -268,6 +307,16 @@ task-manager clients.
 | `remoted.control.task_fetch_error` | counter | count | Pending-task fetches that failed | [`remoted.control_tm_deadline`](configuration.md#remotedcontrol_tm_deadline), [`remoted.control_tm_concurrency`](configuration.md#remotedcontrol_tm_concurrency), [`remoted.control_tm_max_queue_size`](configuration.md#remotedcontrol_tm_max_queue_size) |
 | `remoted.control.registry.agents` | gauge (pull) | agents | Agents currently tracked by the control registry | diagnostic — the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings |
 
+There is no counter for keepalives the throttle suppressed, and none is needed: on a fleet in
+steady state the control plane's wazuh-db traffic is almost entirely keepalive writes, so the
+ratio between the `remoted.control.notify` rate and the `remoted.control.wdb.latency`
+**observation** rate is the throttle's actual suppression factor. It should come out at
+[`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) ÷ the
+fleet's `<client><notify_time>` (6× at both defaults); a ratio of 1 means the throttle is at or
+below the notify cadence and is suppressing nothing. Startups and shutdowns inflate the
+wazuh-db side, so measure it on a fleet that is not restarting
+([timing tuning §5](timing-tuning.md#5-per-goal-recipes)).
+
 ### VD scan admission — `remoted.scanvd.*`
 
 `POST /scan/vd` is a synchronous passthrough of the Vulnerability Detection module's own
@@ -302,9 +351,10 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
 diagnostic**: its thread count, connection cap and socket path are fixed by design. Both admin
-routes are liveness-class, so the budget and the data/control session lanes are structurally
-zero — only `sessions.live` and `sessions.liveness` ever move; the full set is published so
-every `uds_http_server` consumer reports the same vocabulary.
+routes are liveness-class, so the budget lanes, the data/control session lanes and
+`rejected.budget` with them are structurally zero. What moves is `sessions.live`,
+`sessions.liveness` and the rest of the `rejected.*` family; the full set is published so every
+`uds_http_server` consumer reports the same vocabulary.
 
 | Metric | Type | Unit | Meaning |
 |---|---|---|---|
@@ -315,6 +365,20 @@ every `uds_http_server` consumer reports the same vocabulary.
 | `remoted.admin.server.sessions.data` | gauge (pull) | connections | Sessions on data-class routes |
 | `remoted.admin.server.sessions.control` | gauge (pull) | connections | Sessions on control-class routes |
 | `remoted.admin.server.sessions.liveness` | gauge (pull) | connections | Sessions on liveness-class routes |
+| `remoted.admin.server.rejected.budget` | counter (pull) | requests | Answered `503`: the in-flight byte budget could not admit the request |
+| `remoted.admin.server.rejected.session_cap` | counter (pull) | requests | Answered `503`: the request's class session cap was reached |
+| `remoted.admin.server.rejected.shutdown` | counter (pull) | requests | Answered `503`: the server was already stopping |
+| `remoted.admin.server.rejected.no_response` | counter (pull) | requests | Answered `503`: the handler returned without answering. A handler bug |
+
+The `rejected.*` family is cumulative since start and is the only attributable record of a shed on
+this transport: the answer comes from the transport rather than from a handler, so it reaches no
+`responses.*` cell, and the throttled WARN in the log reports only the occurrences of its own
+window. A throttled line is a floor, not a census: it reports only what is pending when it is
+emitted, so a burst that starts and ends inside one window is reported as `1` and the rest is
+never printed. Where a cumulative counter exists it is the figure to trust; where it does not, as
+with the wazuh-db error throttles in the control plane, the line's own total is all there is and it
+under-reports. Three of the four are decided before any route runs; `rejected.no_response` is the
+exception, counted after a handler returned without answering.
 
 ## Accounting boundaries
 
@@ -348,6 +412,8 @@ These rules say what sums to what — read them before comparing families:
 
 - [Configuration](configuration.md#internal-options) — every `remoted.*` setting linked from
   the Tuning columns above
+- [Connection timing tuning](timing-tuning.md) — how the timeout/retry/throttle settings behind
+  these metrics pair with the agent's own, and which metric to watch after changing one
 - [HTTPS Agent API — Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems)
 - [Module overview — Local admin socket](README.md#local-admin-socket)
 - Developer-level detail (where each metric is counted, hot-path cost, test coverage):

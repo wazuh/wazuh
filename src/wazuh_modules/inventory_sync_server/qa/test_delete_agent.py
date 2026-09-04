@@ -1,4 +1,8 @@
-"""Whole-agent deletion: DELETE /agents and its POST alias (authd's route)."""
+"""Whole-agent deletion: POST /_internal/agents/delete, the Task Manager dispatcher's route.
+
+Answered at COMPLETION -- the 200 means the delete-by-query ran AND flushed -- so unlike every
+other suite here these tests never poll for the by-query half. agent_docs() refreshes and
+searches once, and that absence of a wait IS the assertion."""
 
 import json
 
@@ -52,13 +56,15 @@ def test_delete_agent_wipes_only_that_agent(client, cluster, indexer, agent_id):
     _seed(client, cluster, survivor)
     indexer.refresh()  # delete-by-query acts on the search view
 
-    response = client.delete_agent(agent_id)
+    response = client.delete_agent({"agent_id": agent_id})
     assert response.status == 200, response.body
-    # Answered at admission: the body says "queued", not "ok", so nobody reads it as a completion.
-    assert json.loads(response.body) == {"status": "queued"}
+    # Answered at COMPLETION, so the purge has already run and flushed when this arrives.
+    assert json.loads(response.body) == {"status": "ok"}
 
-    # And the queued purge does reach every wazuh-states-* index -- this wait is the proof.
-    assert indexer.wait_for_docs(agent_id, 0) == []
+    # No polling anywhere in this file, and that is the assertion: agent_docs() refreshes and
+    # searches once, so a purge that were still queued would be caught here.
+    assert indexer.agent_docs(agent_id) == [], \
+        "the response arrived before the purge: `completed` would not mean purged"
     assert len(indexer.agent_docs(survivor)) == 2
 
 
@@ -68,9 +74,9 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
     with the agent gone from client.keys nothing ever overwrote them again.
 
     These two are no longer covered by the deletion's by-query pass at all: they are deleted by
-    document id on the async connector that writes them (AGENT_DELETION_SCOPE_BY_ID). This test is
-    what keeps that half honest for documents already in the indexer;
-    test_a_report_in_flight_does_not_survive_the_deletion covers one still in the queue."""
+    document id on the async connector that writes them (AGENT_DELETION_SCOPE_BY_ID). That half stays
+    fire-and-forget -- the queue it rides is what orders it behind a report already accepted, and it
+    exposes nothing to wait on -- so unlike the by-query half it IS awaited here."""
     survivor = f"{int(agent_id) + 1:03d}"
     _seed(client, cluster, agent_id)
     _seed_config_and_stats(client, agent_id)
@@ -80,7 +86,7 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
     _await_config_and_stats(indexer, survivor)
     indexer.refresh()  # the wazuh-states-* seeds too: the server does not refresh before deleting
 
-    assert client.delete_agent(agent_id).status == 200
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
 
     for pattern, docs in indexer.wait_for_empty_scope(agent_id).items():
         assert docs == [], f"agent {agent_id} still has documents in {pattern}"
@@ -96,8 +102,8 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
 def test_delete_sees_documents_written_inside_the_refresh_interval(client, cluster, indexer, agent_id):
     """No indexer.refresh() here, deliberately -- this is the window the deletion leaves open.
 
-    A delete-by-query is a SEARCH, and the state indices refresh on their own interval; authd deletes
-    right behind the agent's last session, so documents that session wrote inside that interval are
+    A delete-by-query is a SEARCH, and the state indices refresh on their own interval; the deletion
+    runs behind the agent's last session, so documents that session wrote inside that interval are
     invisible to the query. The deletion answers 200 having matched nothing and, with the agent gone
     from client.keys, nothing ever overwrites them.
 
@@ -110,30 +116,46 @@ def test_delete_sees_documents_written_inside_the_refresh_interval(client, clust
     they ARE in the indexer, just not searchable yet -- which is exactly the window under test."""
     _seed(client, cluster, agent_id)
 
-    assert client.delete_agent(agent_id).status == 200
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
 
-    assert indexer.wait_for_docs(agent_id, 0) == [], \
+    assert indexer.agent_docs(agent_id) == [], \
         "the deletion missed state documents that were flushed but not yet refreshed"
 
 
-def test_post_alias_behaves_identically(client, cluster, indexer, agent_id):
+def test_deleting_an_absent_agent_succeeds(client, agent_id):
+    """404-as-success: repeating a delete is harmless -- a delete-by-query against an index that was
+    never created counts as success in the connector. It is what makes the dispatcher's retries free,
+    and this task type has no attempt budget, so it retries until it succeeds."""
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
+
+
+def test_the_agent_id_comes_from_the_body(client, cluster, indexer, agent_id):
+    """No X-Wazuh-Agent-Id anywhere in this request. The dispatcher sends a task row's payload as the
+    body and nothing else, so the body is the only channel the id can arrive through."""
+    survivor = f"{int(agent_id) + 1:03d}"
+    _seed(client, cluster, agent_id)
+    _seed(client, cluster, survivor)
+    indexer.refresh()
+
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
+    assert indexer.agent_docs(agent_id) == []
+    assert len(indexer.agent_docs(survivor)) == 2, "the deletion is per agent, not a wipe"
+
+
+def test_a_body_that_names_no_agent_is_400(client):
+    for body in (b"", b"not json", b"[]", {}, {"agent_id": None}, {"agent_id": "not-numeric"}):
+        assert client.delete_agent(body).status == 400, f"body={body!r}"
+
+
+def test_the_number_spelling_of_an_agent_id_is_accepted(client, cluster, indexer, agent_id):
+    """A producer that writes 7 rather than "7" is tolerated on purpose: this task type's 4xx comes
+    back to the dispatcher as retryable, so rejecting it would re-queue the deletion forever."""
     _seed(client, cluster, agent_id)
     indexer.refresh()
-    response = client.post_delete_agent_alias(agent_id)
-    assert response.status == 200, response.body
-    assert indexer.wait_for_docs(agent_id, 0) == []
 
-
-def test_deleting_an_absent_agent_succeeds(client, agent_id):
-    """404-as-success: repeating a delete (authd's retry) is harmless -- a delete-by-query
-    against an index that was never created counts as success in the connector."""
-    assert client.delete_agent(agent_id).status == 200
-    assert client.delete_agent(agent_id).status == 200
-
-
-def test_missing_or_invalid_target_is_400(client):
-    assert client.delete_agent(None).status == 400
-    assert client.delete_agent("not-numeric").status == 400
+    assert client.delete_agent({"agent_id": int(agent_id)}).status == 200
+    assert indexer.agent_docs(agent_id) == []
 
 
 def test_delete_orders_after_the_same_agents_session(client, cluster, indexer, agent_id):
@@ -143,8 +165,8 @@ def test_delete_orders_after_the_same_agents_session(client, cluster, indexer, a
     _seed(client, cluster, agent_id)  # a second in-flight-ish write
     indexer.refresh()
 
-    assert client.delete_agent(agent_id).status == 200
-    assert indexer.wait_for_docs(agent_id, 0) == []
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
+    assert indexer.agent_docs(agent_id) == []
 
 
 def test_a_report_in_flight_does_not_survive_the_deletion(client, cluster, indexer, agent_id):
@@ -164,7 +186,7 @@ def test_a_report_in_flight_does_not_survive_the_deletion(client, cluster, index
     survivor = f"{int(agent_id) + 1:03d}"
 
     _seed_config_and_stats(client, agent_id)     # deliberately NOT awaited: still in the async queue
-    assert client.delete_agent(agent_id).status == 200
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
 
     # The barrier, and the reason this test cannot pass for the wrong reason: a report queued AFTER
     # the deletion. Its document appearing proves the queue has drained past everything queued

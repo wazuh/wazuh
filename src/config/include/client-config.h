@@ -32,15 +32,19 @@ typedef struct agent_server {
 } agent_server;
 
 /* TLS verification posture for the HTTPS transport.
- * Values mirror the module ABI's hc_verify_mode_t so the bridge can copy them
- * verbatim into hc_config_t. FULL is 0, so a zero-initialized struct that never
- * goes through the agent's own default-setting path (ClientConf) still fails
- * closed. The agent's own default, applied when <ssl> is absent, is NONE. */
+ * FULL/CERT/NONE/SYSTEM mirror the module ABI's hc_verify_mode_t (bridge_map_verify_mode()
+ * translates between them explicitly, so the two enums are free to diverge). UNSET is
+ * agent-config-only: it never reaches the bridge, and only ever exists between ClientConf()
+ * setting it and ClientConf() resolving it once <ssl> has been parsed -- to
+ * AGENT_VERIFY_CERT when <certificate_authorities> was configured without an explicit
+ * <verification_mode> (mirrors the manager's own inference, remote-config.c), otherwise to
+ * AGENT_VERIFY_SYSTEM, so a default install verifies without requiring any <ssl> block. */
 typedef enum agent_verify_mode_t {
     AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
-    AGENT_VERIFY_NONE = 2,   ///< No TLS verification (the agent's own configured default).
-    AGENT_VERIFY_SYSTEM = 3  ///< Verify peer (+ hostname) against the OS trust store, not a configured CA.
+    AGENT_VERIFY_NONE = 2,   ///< No TLS verification (explicit operator opt-out only).
+    AGENT_VERIFY_SYSTEM = 3, ///< Verify peer (+ hostname) against the OS trust store, not a configured CA.
+    AGENT_VERIFY_UNSET = 4   ///< Not yet resolved; never valid past ClientConf() returning.
 } agent_verify_mode_t;
 
 /* Agent-side HTTPS transport TLS settings: the <agent><ssl> block (FR10 / #37702 §10). */
@@ -48,7 +52,7 @@ typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
     char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
-    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default FULL.
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default SYSTEM.
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 
@@ -109,6 +113,10 @@ typedef struct agent_enrollment {
     char *authorization_pass_path;    ///< <authorization_pass_path>: password FILE PATH (default
                                        ///< AUTHD_PASS); re-read on every attempt, never cached here.
     time_t delay_after_enrollment;    ///< <delay_after_enrollment>: seconds to wait post-enrollment.
+    /* Not XML: internal options, resolved once by ClientConf() and read from here by both
+     * enrollment loops. */
+    int retry_max;                    ///< agent.enrollment_retry_max: retry delay ceiling, seconds.
+    int retry_delta;                  ///< agent.enrollment_retry_delta: delay growth per failure, seconds.
 } agent_enrollment;
 
 /* Configuration structure */

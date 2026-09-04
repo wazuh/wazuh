@@ -134,8 +134,8 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_TriggersDataClean)
     setupWithEmptyPoliciesAndDataInDB();
 
     // Expect notifyDataClean to be called with SCA index
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult{true}));
 
     // Run should detect no policies + data in DB and trigger DataClean
     m_sca->Run();
@@ -175,13 +175,13 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure_Retries)
 
     // Expect notifyDataClean to fail on first call, retry will trigger,
     // then second call stops the module to exit the retry loop
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(false))  // First call fails
-    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option) -> bool
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult{false}))  // First call fails
+    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option, bool) -> SyncModuleResult
     {
         // Stop the module on retry to exit the loop
         m_sca->Stop();
-        return false;
+        return {false};
     }));
 
     // Run should detect failure and enter retry loop, then exit when Stop() is called on retry
@@ -219,7 +219,7 @@ TEST_F(SCADataCleanTest, NoPoliciesNoData_ExitsCleanly)
     }));
 
     // DataClean should NOT be called since there's no data
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
     .Times(0);
 
     m_sca->Run();
@@ -235,8 +235,8 @@ TEST_F(SCADataCleanTest, HandleAllPoliciesRemoved_SendsDataCleanAndExits)
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     // Expect notifyDataClean to succeed
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult{true}));
 
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
@@ -273,7 +273,7 @@ TEST_F(SCADataCleanTest, ModuleDisabled_DoesNotTriggerDataClean)
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     // DataClean should NOT be called for disabled module
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
     .Times(0);
 
     m_sca->Run();
@@ -316,7 +316,7 @@ TEST_F(SCADataCleanTest, PartialPolicyRemoval_GeneratesDeleteEvents)
     }));
 
     // DataClean should NOT be called since we have policies configured
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
     .Times(0);
 
     m_sca->Run();
@@ -330,8 +330,8 @@ TEST_F(SCADataCleanTest, DataCleanSetsExitFlag)
 {
     setupWithEmptyPoliciesAndDataInDB();
 
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult{true}));
 
     m_sca->Run();
 
@@ -406,7 +406,7 @@ TEST_F(SCADataCleanTest, DataClean_WaitsForSyncInProgress)
     .WillRepeatedly(::testing::Return());
 
     // Expect DataClean to be called after sync completes
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(SyncModuleResult{true}));
 
     // Start Run() in a separate thread since it will block waiting for sync
     std::thread runThread([this]()

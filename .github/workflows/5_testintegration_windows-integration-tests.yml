@@ -146,9 +146,8 @@ jobs:
             exit 1
           }
           # WAZUH_MANAGER_ENDPOINT carries the whole target now (#38624), so it replaces
-          # the separate WAZUH_MANAGER. The trailing slash is the prefix opt-out, which
-          # RemotedSimulator needs: it serves unprefixed endpoints only.
-          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER_ENDPOINT=`"127.0.0.1/`"" -Wait -NoNewWindow
+          # the separate WAZUH_MANAGER.
+          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER_ENDPOINT=`"127.0.0.1`"" -Wait -NoNewWindow
       # ================= QA FRAMEWORK =================
       - name: Download and install qa-integration-framework
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}

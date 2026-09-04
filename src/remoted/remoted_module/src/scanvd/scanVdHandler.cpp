@@ -36,11 +36,22 @@ namespace remoted::scanvd
     class ScanVdHandlerImpl::Impl
     {
     public:
-        Impl(std::shared_ptr<remoted::common::VdClient> vdClient, ScanVdMetrics& metrics, std::string socketPath)
+        Impl(std::shared_ptr<remoted::common::VdClient> vdClient,
+             ScanVdMetrics& metrics,
+             std::string socketPath,
+             long readTimeoutSeconds,
+             long writeTimeoutSeconds)
             : m_vdClient(std::move(vdClient))
             , m_metrics(metrics)
             , m_vdModulesdSocketPath(std::move(socketPath))
+            , m_readTimeoutSeconds(readTimeoutSeconds)
+            , m_writeTimeoutSeconds(writeTimeoutSeconds)
         {
+        }
+
+        long long budgetMs() const noexcept
+        {
+            return ScanVdHandlerImpl::budgetMsFor(m_readTimeoutSeconds, m_writeTimeoutSeconds);
         }
 
         void
@@ -133,8 +144,8 @@ namespace remoted::scanvd
                 // (AF_UNIX) to actually be treated as a Unix domain socket.
                 httplib::Client client(m_vdModulesdSocketPath);
                 client.set_address_family(AF_UNIX);
-                client.set_read_timeout(VD_SCAN_READ_TIMEOUT_SECONDS, 0);
-                client.set_write_timeout(VD_SCAN_WRITE_TIMEOUT_SECONDS, 0);
+                client.set_read_timeout(m_readTimeoutSeconds, 0);
+                client.set_write_timeout(m_writeTimeoutSeconds, 0);
 
                 nlohmann::json requestBody;
                 requestBody["agent_id"] = std::to_string(agentId);
@@ -172,18 +183,33 @@ namespace remoted::scanvd
         std::shared_ptr<remoted::common::VdClient> m_vdClient;
         ScanVdMetrics& m_metrics;
         std::string m_vdModulesdSocketPath;
+        long m_readTimeoutSeconds;
+        long m_writeTimeoutSeconds;
         /// One window for relay failures only -- VD logs its own capacity rejections.
         wazuh::uds_http::LogThrottle m_vdErrorThrottle;
     };
 
     ScanVdHandlerImpl::ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                                          ScanVdMetrics& metrics,
-                                         std::string vdModulesdSocketPath)
-        : m_impl(std::make_unique<Impl>(std::move(vdClient), metrics, std::move(vdModulesdSocketPath)))
+                                         std::string vdModulesdSocketPath,
+                                         long readTimeoutSeconds,
+                                         long writeTimeoutSeconds)
+        // <=0 -> the compiled-in default: a config that never ran through
+        // remoted_module_control_config() must not turn every request into an immediate timeout.
+        : m_impl(std::make_unique<Impl>(std::move(vdClient),
+                                        metrics,
+                                        std::move(vdModulesdSocketPath),
+                                        readTimeoutSeconds > 0 ? readTimeoutSeconds : VD_SCAN_READ_TIMEOUT_SECONDS,
+                                        writeTimeoutSeconds > 0 ? writeTimeoutSeconds : VD_SCAN_WRITE_TIMEOUT_SECONDS))
     {
     }
 
     ScanVdHandlerImpl::~ScanVdHandlerImpl() = default;
+
+    long long ScanVdHandlerImpl::getBudgetMs() const noexcept
+    {
+        return m_impl->budgetMs();
+    }
 
     void ScanVdHandlerImpl::handleVdScan(uint32_t agentId,
                                          uint64_t requestedOffset,

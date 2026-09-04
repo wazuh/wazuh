@@ -87,7 +87,7 @@ deliberately does not. Two footnotes from running these against a real manager:
 |---|---|---|
 | `contract_oversized_413` | The body-size limit (`413`): an intentionally huge single session | none (server-config dependent) |
 | `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies | all 12 answered `400` |
-| `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
+| `contract_delete_under_load` | `POST /_internal/agents/delete` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
 | `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-encodes `Start.feed_offset` on each retry rather than resending the original buffer, bounded by `--feed-timeout` (**uds mode needs `-vd-feed-offset` set to the target's real offset once it settles, or this ends `409` instead** — see [05](tool_simulator/docu/05-flatbuffers-messages.md)) | all 8 logical sessions end `200`, no budget exhausted (holds cold or warm) |
 | `contract_ramp_503` | The pipeline's own admission queue (`sync_queue_bytes`, 64 MiB default) — an 80-agent unpaced fleet of large (~2.4 MiB) sessions for a fixed 60s, retry off. `503`s here are expected backpressure, not a failure | `sessions.s503 >= 1`, no transport errors |
 | `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit. Needs `-vd-feed-offset` set correctly (uds mode) or sessions fast-reject with `409` before reaching the scanner instead of measuring real scan-lane pressure | none (load dependent) |

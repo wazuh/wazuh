@@ -1,0 +1,103 @@
+{
+    "cluster": {
+        "name": "wazuh",
+        "node_name": "master-node",
+        "node_type": "master",
+        "key": "9d273b53510fef702b54a92e9cffc82e",
+        "port": 1516,
+        "bind_addr": "0.0.0.0",
+        "nodes": [
+            "wazuh-master"
+        ],
+        "hidden": false
+    },
+    "global": {
+        "agents_disconnection_time": "15m"
+    },
+    "logging": {
+        "log_format": [
+            "plain"
+        ]
+    },
+    "remote": {
+        "legacy": {
+            "enabled": false,
+            "port": 1514,
+            "protocol": [
+                "tcp"
+            ],
+            "ipv6": false,
+            "queue_size": 131072,
+            "rids_closing_time": "5m",
+            "connection_overtake_time": 60
+        },
+        "https": {
+            "port": 1517,
+            "bind_addr": "0.0.0.0",
+            "global_prefix": "/wazuh-manager/",
+            "certificate": "etc/certs/remoted.pem",
+            "key": "etc/certs/remoted-key.pem",
+            "ca": ""
+        },
+        "agents": {
+            "allow_higher_versions": false
+        }
+    },
+    "auth": {
+        "disabled": false,
+        "port": 1515,
+        "ipv6": false,
+        "use_source_ip": false,
+        "force": {
+            "enabled": true,
+            "key_mismatch": true,
+            "disconnected_time": {
+                "enabled": true,
+                "value": "1h"
+            },
+            "after_registration_time": "1h"
+        },
+        "purge": false,
+        "use_password": false,
+        "ciphers": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+        "ssl_agent_ca": "",
+        "ssl_verify_host": false,
+        "ssl_manager_cert": "etc/certs/remoted.pem",
+        "ssl_manager_key": "etc/certs/remoted-key.pem",
+        "remote_enrollment": true,
+        "legacy_enrollment": true,
+        "agents": {
+            "allow_higher_versions": false
+        }
+    },
+    "wdb": {
+        "backup": {
+            "global": {
+                "enabled": true,
+                "interval": "1d",
+                "max_files": 3
+            }
+        }
+    },
+    "vulnerability-detection": {
+        "enabled": true,
+        "feed-update-interval": "60m",
+        "pageSize": 100,
+        "numSlices": 2
+    },
+    "indexer": {
+        "hosts": [],
+        "ssl": {
+            "certificate_authorities": [],
+            "certificate": "",
+            "key": ""
+        }
+    },
+    "task-manager": {
+        "task_ttl": 3600,
+        "cleanup_interval": 300,
+        "max_payload_bytes": 1048576,
+        "max_tasks_per_poll": 100,
+        "upgrade_enabled": true
+    }
+}

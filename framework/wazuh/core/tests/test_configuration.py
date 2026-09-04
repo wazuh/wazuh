@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import os
 import subprocess
 import sys
@@ -12,7 +13,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import OSSEC_CONF
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -208,37 +208,48 @@ def test_merged_mg2json():
     assert item['file_size'] == 76
 
 
-def test_get_ossec_conf():
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration.get_ossec_conf()
+SCHEMA_PATH = os.path.join(parent_directory, '..', '..', '..', 'src', 'shared_modules', 'manager_config', 'schema',
+                           'wazuh-manager.schema.json')
+FIXTURE_CONF = os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
+FIXTURE_EFFECTIVE = os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.effective.json')
 
-    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
-            configuration.get_ossec_conf(from_import=True)
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 0
+
+def _load_fixture_effective(conf_file=None):
+    """Stand-in for load_manager_conf(): the frozen `dump` of the fixture (the CLI itself is covered by
+    test_manager_conf.py, including the real-binary parity case)."""
+    if conf_file is not None and not os.path.isfile(conf_file):
+        raise WazuhError(1101, extra_message=conf_file)
+    with open(FIXTURE_EFFECTIVE) as f:
+        return json.loads(f.read())
+
+
+@patch('wazuh.core.common.MANAGER_CONF_SCHEMA', new=SCHEMA_PATH)
+@patch('wazuh.core.configuration.load_manager_conf', side_effect=_load_fixture_effective)
+def test_get_manager_conf(load_mock):
+    """get_manager_conf() returns the effective document (schema defaults applied) or a filtered part of it."""
+    with pytest.raises(WazuhError, match=".* 1101 .*"):
+        configuration.get_manager_conf(conf_file=os.path.join(parent_directory, tmp_path, 'configuration/noexists.yml'))
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
-        configuration.get_ossec_conf(section='noexists',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
+        configuration.get_manager_conf(section='noexists', conf_file=FIXTURE_CONF)
 
-    with pytest.raises(WazuhError, match=".* 1106 .*"):
-        configuration.get_ossec_conf(section='remote',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
+    with pytest.raises(WazuhError, match=".* 1103 .*"):
+        configuration.get_manager_conf(section='cluster', field='noexists', conf_file=FIXTURE_CONF)
 
-    assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
+    whole = configuration.get_manager_conf(conf_file=FIXTURE_CONF)
+    assert whole['cluster']['name'] == 'wazuh'
+    assert whole['cluster']['hidden'] is False
+    # Sections the fixture omits exist with their schema defaults
+    assert whole['remote']['https']['port'] == 1517
+    assert whole['indexer'] == {'hosts': [], 'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}}
 
-    assert configuration.get_ossec_conf(
-        section='cluster',
-        conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
+    assert configuration.get_manager_conf(section='cluster', conf_file=FIXTURE_CONF)['cluster']['node_name'] == 'master-node'
+    assert configuration.get_manager_conf(section='cluster', field='name', conf_file=FIXTURE_CONF) == \
+        {'cluster': {'name': 'wazuh'}}
 
-    assert configuration.get_ossec_conf(
-        section='cluster', field='name',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
-    )['cluster']['name'] == 'wazuh'
+    with patch('wazuh.core.configuration.load_manager_conf', return_value={'global': {}}):
+        with pytest.raises(WazuhError, match=".* 1106 .*"):
+            configuration.get_manager_conf(section='cluster')
 
 
 def test_get_agent_conf():
@@ -395,18 +406,11 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
             configuration.upload_group_file('default', [], 'a.conf')
 
 @pytest.mark.parametrize("component, socket, socket_dir, rec_msg", [
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": true}}'),
+    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": false}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {}}'),
-    ('agent', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('analysis', 'engine-api-http.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('monitor', 'monitor.sock', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
     ('request', 'remote.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('wazuh-manager-db', 'wdb.sock', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('wmodules', 'wmodules.sock', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
 ])
@@ -417,7 +421,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    sockets_json_protocol = {'remote.sock', 'wdb.sock'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol else "WazuhSocketJSON"
@@ -441,7 +445,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                     mock_receive.assert_called_once()
                     mock_close.assert_called_once()
 
-                    if result.get('auth', {}).get('use_password') == "yes":
+                    if result.get('auth', {}).get('use_password') is True:
                         assert result.get('authd.pass') == 'test_password'
                     else:
                         assert 'authd.pass' not in result
@@ -453,9 +457,9 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
     ('test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
 
     # Simple messages
-    ('syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
-    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
+    ('auth', 'auth', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
+    ('auth', 'auth', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
+    ('auth', 'auth', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
     # JSON messages
     ('request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
@@ -476,17 +480,3 @@ def test_get_active_configuration_ko(mock_exists, component, config, socket_exis
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
                         configuration.get_active_configuration(component=component, configuration=config)
-
-
-def test_write_ossec_conf():
-    content = "New config"
-    with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
-        configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(OSSEC_CONF, 'w')
-        mocked_file().writelines.assert_called_once_with(content)
-
-
-def test_write_ossec_conf_exceptions():
-    with patch('wazuh.core.configuration.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1126 .*"):
-            configuration.write_ossec_conf(new_conf="placeholder")

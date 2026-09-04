@@ -292,11 +292,13 @@ class AgentInfoImpl
         /// @return true if successful
         bool performDeltaSync(const std::string& table);
 
+    protected:
         /// @brief Perform integrity check synchronization for a table
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         /// @return true if successful
         bool performIntegritySync(const std::string& table);
 
+    private:
         /// @brief Helper to create JSON command messages
         /// @param command Command name
         /// @param params Optional parameters map
@@ -404,9 +406,11 @@ class AgentInfoImpl
         /// @brief Last successfully live-queried cluster_name
         std::string m_lastLiveClusterName;
 
+    protected:
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
+    private:
         /// @brief Flag to track if module has been stopped.
         /// Atomic so the poll loops can read it without holding m_mutex while
         /// stop() writes it from another thread (avoids a data race).

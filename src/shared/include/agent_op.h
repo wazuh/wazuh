@@ -42,6 +42,18 @@ int w_validate_group_name(const char *group, char *response);
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect();
 
+/**
+ * @brief Connect to Agentd with a receive deadline. Returns socket or -1 on error.
+ *
+ * Unlike auth_connect(), which can block indefinitely on a wedged authd, this bounds each
+ * receive. The send side is bounded too, but at a fixed five seconds that the caller does not
+ * choose, so a caller needing to bound its total run has to track elapsed time as well.
+ *
+ * @param recv_timeout Receive deadline in seconds.
+ * @return Socket descriptor or -1 on error.
+ */
+int auth_connect_timeout(int recv_timeout);
+
 // Close socket if valid.
 int auth_close(int sock);
 

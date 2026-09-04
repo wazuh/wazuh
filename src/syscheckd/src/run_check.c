@@ -1232,11 +1232,22 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         if (pause_requested && flush_request_detected) {
             minfo("Starting FIM synchronization requested by agent-info.");
 
+            // No identity check and no integrity loop in this branch, by construction: it is
+            // reached precisely because FIM is paused, which is what forbids taking the scan
+            // mutex both of them need. They stay in the branch below and fire on the first
+            // cycle after FIM resumes -- the same availability the integrity loop has always
+            // had, and the identity marker is untouched meanwhile, so nothing is lost.
             SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
 
             if (sync_result.success) {
-                minfo("FIM synchronization requested by agent-info finished successfully.");
+                // #38601: the same distinction the ordinary path below makes -- success with an
+                // empty queue never opened a session, so it cannot mean the manager took data.
+                if (sync_result.sent_anything) {
+                    minfo("FIM synchronization requested by agent-info finished successfully.");
+                } else {
+                    minfo("FIM synchronization requested by agent-info finished: nothing to send.");
+                }
             } else if (sync_result.stopped || fim_shutdown_process_on()) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
@@ -1291,7 +1302,14 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
             if (sync_result.success) {
-                minfo("FIM synchronization finished successfully.");
+                // #38601: success alone cannot tell "the manager took everything" from "there
+                // was nothing queued, so no session was opened". Both are fine outcomes, but
+                // only one of them means the manager has our data.
+                if (sync_result.sent_anything) {
+                    minfo("FIM synchronization finished successfully.");
+                } else {
+                    minfo("FIM synchronization finished: nothing to send.");
+                }
 
                 if (!first_sync_completed) {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
@@ -1335,6 +1353,30 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // is in progress.
             if (sync_result.success && fim_sync_module_running &&
                 fim_sync_lock_scan_mutex()) {
+                // #38601: identity before integrity. If this agent's id changed, the manager
+                // holds nothing under it and the per-table checksum loop below would only
+                // rediscover that one table at a time, an integrity_interval apart each.
+                //
+                // Both run inside fim_sync_lock_scan_mutex(), which holds fim_realtime_mutex as
+                // well as the scan one -- and realtime_process() reads the inotify descriptor
+                // under that same mutex, so neither of them can drain the kernel queue while a
+                // recovery is in flight. That is the recovery primitive's own critical section,
+                // not something this check introduces: the checksum loop below has always run
+                // the same primitive under the same mutexes, and after a re-enrollment every
+                // table mismatches, so it did the same work later rather than less of it.
+                // Shrinking that critical section around the manager round trip is #38705.
+                if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
+                                                  directories_snapshot)) {
+                    // Both markers move together, and only once the resync above proved the
+                    // manager accepted it. first_sync_completed is normally already set here,
+                    // but not always: an agent deleted before its very first sync finished
+                    // adopts an id while the marker is still absent, and this is the point
+                    // where that becomes true.
+                    fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
+                    first_sync_completed = true;
+                    atomic_int_set(&syscheck.fim_first_sync_completed, 1);
+                }
+
                 for (int i = 0; i < table_count; i++) {
                     if (fim_shutdown_process_on()) {
                         break;

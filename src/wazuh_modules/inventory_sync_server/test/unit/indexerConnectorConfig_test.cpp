@@ -40,11 +40,18 @@ namespace
         config.indexer_sync_request_timeout_seconds = 1111;
         config.indexer_async_request_timeout_seconds = 2222;
         config.indexer_monitoring_interval_seconds = 3333;
+        config.indexer_sync_max_retry_attempts = 4444;
+        config.indexer_sync_max_retry_duration_seconds = 5555;
+        config.indexer_sync_connector_max_bulk_size = 6666;
         return config;
     }
 
-    const std::vector<std::string> SYNC_KEYS {
-        "max_bulk_size", "flush_interval_seconds", "max_retry_delay_seconds", "request_timeout_seconds"};
+    const std::vector<std::string> SYNC_KEYS {"max_bulk_size",
+                                              "flush_interval_seconds",
+                                              "max_retry_delay_seconds",
+                                              "request_timeout_seconds",
+                                              "max_retry_attempts",
+                                              "max_retry_duration_seconds"};
 
     const std::vector<std::string> ASYNC_KEYS {"bulk_max_bytes",
                                                "flush_interval_seconds",
@@ -75,10 +82,14 @@ TEST(IndexerConnectorConfigTest, SyncOverlayEmitsOnlyTheSyncKeyNames)
     EXPECT_FALSE(result.contains("logger_queue_size"));
     EXPECT_FALSE(result.contains("logger_threads"));
 
-    EXPECT_EQ(111U, result.at("max_bulk_size").get<std::size_t>());
+    EXPECT_EQ(6666U, result.at("max_bulk_size").get<std::size_t>())
+        << "the connector's request cap comes from indexer_sync_connector_max_bulk_size, not from the "
+           "pipeline's group-commit threshold";
     EXPECT_EQ(222U, result.at("flush_interval_seconds").get<std::size_t>());
     EXPECT_EQ(333U, result.at("max_retry_delay_seconds").get<std::size_t>());
     EXPECT_EQ(1111U, result.at("request_timeout_seconds").get<std::size_t>());
+    EXPECT_EQ(4444U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(5555U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
@@ -201,6 +212,11 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_sync_request_timeout_seconds = 0;
     config.indexer_async_request_timeout_seconds = -4;
     config.indexer_monitoring_interval_seconds = -5;
+    // The retry bounds treat 0 as a real setting ("disable this bound"), so only a NEGATIVE value is
+    // "no opinion" for them; a 0 here would be forwarded, not dropped.
+    config.indexer_sync_max_retry_attempts = -6;
+    config.indexer_sync_max_retry_duration_seconds = -8;
+    config.indexer_sync_connector_max_bulk_size = -7;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)
@@ -219,6 +235,37 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     {
         EXPECT_FALSE(sessionResult.contains(key)) << "non-positive value must not be written: " << key;
     }
+}
+
+/// Raising the group-commit threshold must not drag the connector's request cap with it: that
+/// coupling is how a tuned deployment ended up sending `_bulk` requests past the indexer's
+/// `http.max_content_length`.
+TEST(IndexerConnectorConfigTest, ThePipelineGroupCommitThresholdNeverReachesTheConnector)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_bulk_size = 50 * 1024 * 1024;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+    EXPECT_FALSE(result.contains("max_bulk_size"))
+        << "indexer_sync_max_bulk_size is the pipeline's threshold; absent the connector option, the "
+           "connector keeps its own default";
+}
+
+/// The retry-budget bounds read `0` as "disable this bound", so unlike every other numeric key a
+/// `0` here must reach the connector VERBATIM -- dropping it would silently restore the default cap
+/// rather than remove it.
+TEST(IndexerConnectorConfigTest, AZeroRetryBoundIsForwardedAsExplicitZero)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_retry_attempts = 0;
+    config.indexer_sync_max_retry_duration_seconds = 0;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+
+    ASSERT_TRUE(result.contains("max_retry_attempts"));
+    ASSERT_TRUE(result.contains("max_retry_duration_seconds"));
+    EXPECT_EQ(0U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(0U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 /// `0` for max_queue_bytes is the connector's own legitimate "unlimited", so it must reach the

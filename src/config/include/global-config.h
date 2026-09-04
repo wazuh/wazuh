@@ -13,11 +13,15 @@
 
 #include "shared.h"
 
-/* Configuration structure */
+/* Configuration structure.
+ *
+ * One member, and <global> accepts exactly one element to match. Read by remoted, which compares an
+ * agent's keepalive staleness against it, and by the Task Manager's disconnection sweep, which uses
+ * it as both the staleness threshold and its own interval -- so it is shared configuration rather
+ * than either module's own.
+ */
 typedef struct __Config {
-    /* Agent's disconnection global parameters */
     long agents_disconnection_time;
-    long agents_disconnection_alert_time;
 } _Config;
 
 #endif /* CCONFIG_H */

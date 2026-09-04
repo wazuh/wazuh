@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Manual/end-to-end driver for the whole-agent deletion endpoint (`DELETE /agents`).
+Manual/end-to-end driver for the whole-agent deletion endpoint (`POST /_internal/agents/delete`).
 
-Speaks the same bytes authd puts on the wire over the module's UDS socket, so it exercises the
-real deletion path rather than an approximation of it. Standard library only, so it runs on the
-manager's own embedded interpreter.
+Speaks the same bytes the Task Manager's dispatcher puts on the wire over the module's UDS socket --
+the agent id in the body, no headers -- so it exercises the real deletion path rather than an
+approximation of it. Standard library only, so it runs on the manager's own embedded interpreter.
+
+The route answers AT COMPLETION: its 200 means the delete-by-query ran and flushed, not that the
+deletion was queued. That is what lets a manager task be recorded as `completed` and have that mean
+purged.
 
 The endpoint deletes every document of one agent across the whole deletion scope:
 
@@ -32,9 +36,6 @@ Examples:
     # Prove the deletion is scoped: 900 goes, 901 stays
     sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
 
-    # The POST alias authd uses (its HTTP helper only speaks POST)
-    ./send_delete_agent.py --agent-id 7 --alias
-
     # Contract checks: missing and non-numeric ids (both expect 400)
     ./send_delete_agent.py --agent-id ''
     ./send_delete_agent.py --agent-id not-numeric
@@ -52,11 +53,10 @@ import subprocess
 import sys
 
 DEFAULT_SOCKET = "queue/sockets/inventory-sync-http.sock"
-# Mirror invsync::endpoints::delete_agent::path()/altPath(). Source of truth:
+# Mirror invsync::endpoints::delete_agent::method()/path(). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/endpoints/deleteAgentEndpoint.hpp
-DELETE_PATH = "/agents"
-ALIAS_PATH = "/agents/delete"
-AGENT_ID_HEADER = "X-Wazuh-Agent-Id"
+DELETE_METHOD = "POST"
+DELETE_PATH = "/_internal/agents/delete"
 
 # Mirror the union of invsync::sync::AGENT_DELETION_SCOPE_BY_QUERY (the states pattern, deleted by
 # query on the sync connector) and AGENT_DELETION_SCOPE_BY_ID (the two wazuh-agent-* documents,
@@ -84,15 +84,22 @@ class UnixHTTPConnection(http.client.HTTPConnection):
         self.sock = sock
 
 
-def send_delete(socket_path, path, method, agent_id, timeout):
-    """Returns (status, reason, body). The body is ignored by the endpoint."""
+def send_delete(socket_path, agent_id, timeout):
+    """Returns (status, reason, body).
+
+    The agent id goes in the BODY and no header is sent, because that is what the endpoint's real
+    caller does: the Task Manager's dispatcher POSTs a task row's payload verbatim. An empty
+    agent_id sends an empty body, which is the 400 case worth exercising."""
     connection = UnixHTTPConnection(socket_path, timeout=timeout)
     try:
-        headers = {"Host": "localhost", "Connection": "close", "Content-Length": "0"}
-        if agent_id:
-            # What authd sets for the agent it just removed from client.keys.
-            headers[AGENT_ID_HEADER] = agent_id
-        connection.request(method, path, body=b"", headers=headers)
+        body = json.dumps({"agent_id": agent_id}).encode() if agent_id else b""
+        headers = {
+            "Host": "localhost",
+            "Connection": "close",
+            "Content-Type": "application/json",
+            "Content-Length": str(len(body)),
+        }
+        connection.request(DELETE_METHOD, DELETE_PATH, body=body, headers=headers)
         response = connection.getresponse()
         return response.status, response.reason, response.read().decode(errors="replace")
     finally:
@@ -175,9 +182,7 @@ def main():
     parser.add_argument("--socket", default=DEFAULT_SOCKET,
                         help=f"socket path, relative to the current directory (default: {DEFAULT_SOCKET})")
     parser.add_argument("--agent-id", default="900",
-                        help="agent to delete; pass an empty string to omit the header (expects 400)")
-    parser.add_argument("--alias", action="store_true",
-                        help=f"use POST {ALIAS_PATH} (authd's route) instead of DELETE {DELETE_PATH}")
+                        help="agent to delete; pass an empty string to send an empty body (expects 400)")
     parser.add_argument("--timeout", type=float, default=60.0,
                         help="per-request timeout in seconds (default: 60; the deletion does indexer I/O)")
     parser.add_argument("--verify", action="store_true",
@@ -208,8 +213,6 @@ def main():
               file=sys.stderr)
         return 2
 
-    method, path = ("POST", ALIAS_PATH) if args.alias else ("DELETE", DELETE_PATH)
-
     before = None
     if args.verify:
         print("--- before ---")
@@ -228,9 +231,9 @@ def main():
                   f"with nothing to delete, which proves nothing -- seed some first "
                   f"(POST /config, POST /stats).")
 
-    print(f"\n--> {method} {path}   {AGENT_ID_HEADER}: {args.agent_id or '(omitted)'}")
+    print(f"\n--> {DELETE_METHOD} {DELETE_PATH}   agent_id: {args.agent_id or '(omitted)'}")
     try:
-        status, reason, body = send_delete(args.socket, path, method, args.agent_id, args.timeout)
+        status, reason, body = send_delete(args.socket, args.agent_id, args.timeout)
     except Exception as error:  # noqa: BLE001 - a manual tool should report, not traceback
         print(f"<-- request failed: {error}", file=sys.stderr)
         return 1

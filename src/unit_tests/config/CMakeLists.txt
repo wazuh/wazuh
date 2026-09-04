@@ -69,9 +69,13 @@ if(${TARGET} STREQUAL "manager")
     list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 
     list(APPEND config_names "test_indexer")
-    list(APPEND config_flags "-Wl,--wrap,Read_Indexer -Wl,--wrap,get_indexer_cnf ${DEBUG_OP_WRAPPERS}")
+    list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 
     list(APPEND config_names "test_wmodules-config")
+    list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
+
+    # etc/wazuh-manager.conf loader (real manager_config library, temporary XML files).
+    list(APPEND config_names "test_mconf-config")
     list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 

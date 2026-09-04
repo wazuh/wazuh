@@ -1,4 +1,23 @@
 - sections:
+    # set_section_wazuh_conf() clears <agent> entirely before repopulating it, so the
+    # <manager><endpoint> the installed package's own config already carried has to be
+    # restated here too -- omitting it left the agent with no server configured at all
+    # ("No valid server IP found").
+    #
+    # The agent's default verification_mode is now 'system', which
+    # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+    # suite is not testing TLS trust.
+    - section: agent
+      elements:
+        - manager:
+            elements:
+              - endpoint:
+                  value: '127.0.0.1:1517'
+        - ssl:
+            elements:
+              - verification_mode:
+                  value: none
+
     - section: github
       elements:
         - enabled:

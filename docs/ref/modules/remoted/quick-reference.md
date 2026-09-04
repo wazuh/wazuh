@@ -119,4 +119,5 @@ Full catalog, with each metric linked to the setting it helps size: [Metrics](me
 - [Architecture](architecture.md)
 - [Protocol](event-protocol.md)
 - [Configuration](configuration.md)
+- [Connection timing tuning](timing-tuning.md)
 - [Metrics](metrics.md)

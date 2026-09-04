@@ -67,7 +67,7 @@ const struct file_system_type skip_file_systems[] = {
 
 short IsNFS(const char *dir_name)
 {
-#if defined(Linux)
+#if defined(__linux__)
     struct statfs stfs;
 
     /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
@@ -98,7 +98,7 @@ short IsNFS(const char *dir_name)
 
 short skipFS(const char *dir_name)
 {
-#if defined(Linux)
+#if defined(__linux__)
     struct statfs stfs;
 
     if ( ! statfs(dir_name, &stfs) )
