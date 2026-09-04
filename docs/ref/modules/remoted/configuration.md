@@ -1374,7 +1374,8 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 ```
 
 The full catalog, with each metric linked back to the setting it helps size, is in
-[Metrics](metrics.md). These are separate from (and additive to) the legacy statistics below.
+[Metrics](metrics.md). The admin socket is the complete, authoritative surface; the API below
+reports most of the same figures for remote consumption.
 
 ### View Statistics
 
@@ -1383,6 +1384,17 @@ Query remoted's statistics on demand via the API:
 ```bash
 GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
 ```
+
+The response carries **both** channels:
+
+- The keys directly under `metrics` — `bytes`, `tcp_sessions`, `messages`, `queues`,
+  `control_messages_queue_*` — count the **legacy** TCP/UDP channel. That channel is disabled
+  unless [`legacy.enabled`](#legacyenabled) is set, so on a default installation
+  every one of them reports `0`. In particular `metrics.bytes` and `metrics.tcp_sessions` are
+  **not** byte and session counts for HTTPS traffic — the HTTPS transport keeps neither.
+- `metrics.http_server` reports the HTTPS agent server, projected from the same registry the
+  admin socket serves. See [Metrics — API projection](metrics.md#api-projection) for the
+  mapping and its conventions.
 
 ### Enable Debug Logging
 

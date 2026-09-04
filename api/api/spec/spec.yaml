@@ -1518,6 +1518,13 @@ components:
     # Cluster and manager models
     WazuhRemotedStatsItem:
       type: object
+      description: |
+        Statistics of the `wazuh-manager-remoted` daemon, covering both of its agent channels.
+
+        The keys directly under `metrics` count the **legacy** TCP/UDP channel, which is
+        disabled unless `remote.legacy.enabled` is set — on a default installation they all
+        report `0`. Everything the HTTPS agent server does is reported under
+        `metrics.http_server` instead.
       properties:
         uptime:
           type: string
@@ -1541,11 +1548,11 @@ components:
                 received:
                   type: integer
                   format: int32
-                  description: "Bytes received from agents"
+                  description: "Bytes received from agents over the legacy TCP/UDP channel. Stays 0 unless `remote.legacy.enabled` is set; the HTTPS channel does not count bytes"
                 sent:
                   type: integer
                   format: int32
-                  description: "Bytes sent to agents"
+                  description: "Bytes sent to agents over the legacy TCP/UDP channel. Stays 0 unless `remote.legacy.enabled` is set; the HTTPS channel does not count bytes"
             control_messages_queue_breakdown:
               type: object
               properties:
@@ -1632,7 +1639,7 @@ components:
                     ack:
                       type: integer
                       format: int32
-                      description : "ACK messages (response to keepalive, startup and shutdown) sent to agents"
+                      description: "ACK messages (response to keepalive, startup and shutdown) sent to agents"
                     discarded:
                       type: integer
                       format: int32
@@ -1658,7 +1665,435 @@ components:
             tcp_sessions:
               type: integer
               format: int32
-              description: "Current active TCP sessions (agents)"
+              description: "Current active TCP sessions (agents) on the legacy TCP channel. Stays 0 unless `remote.legacy.enabled` is set; for the HTTPS channel see `http_server`"
+            http_server:
+              type: object
+              description: |
+                Statistics of the HTTPS agent server, read from the daemon's local admin socket.
+
+                The whole object is **absent** when that socket could not be read: it is an
+                optional, best-effort diagnostic surface, so its unavailability never fails the
+                request. Individual fields, sub-objects and groups are likewise omitted when the
+                daemon does not report the metric behind them — an absent field means "not
+                reported", never "zero".
+
+                Counters are cumulative since the daemon started. Gauges read `0` while the
+                component behind them is stopped. All durations are microseconds.
+              properties:
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: "When the HTTPS agent server collected these values"
+                responses:
+                  type: object
+                  description: "Responses sent per agent-facing endpoint, by status. Rejections produced by the authentication gateway (401, 413, bad encoding) are answered before any endpoint runs and are counted only in `auth_rejections`"
+                  properties:
+                    stateless:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`POST /stateless` — event ingestion"
+                    stateful:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`POST /stateful` — inventory synchronization"
+                    stats:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`POST /stats` — agent-reported statistics"
+                    config:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`POST /config` — agent-reported configuration"
+                    enroll:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`POST /enroll` — agent enrollment"
+                latency:
+                  type: object
+                  description: "End-to-end request duration per endpoint, in microseconds, from request receipt to response delivery. Percentiles are log-linear bucket estimates (~12.5% relative error). Only the endpoints whose latency answers a tuning question are measured"
+                  properties:
+                    stateless:
+                      $ref: '#/components/schemas/RemotedHistogramSummary'
+                    stateful:
+                      $ref: '#/components/schemas/RemotedHistogramSummary'
+                    enroll:
+                      $ref: '#/components/schemas/RemotedHistogramSummary'
+                auth_rejections:
+                  type: object
+                  description: "Requests refused by the authentication gateway, by reason. This is the *why* behind a rejection; these requests never reach an endpoint and so are absent from `responses`"
+                  properties:
+                    total:
+                      type: integer
+                      format: int64
+                      description: "Sum of the reasons reported below"
+                    unknown_agent:
+                      type: integer
+                      format: int64
+                      description: "The agent identity is not in the keystore"
+                    invalid_signature:
+                      type: integer
+                      format: int64
+                      description: "The request signature did not verify"
+                    bad_token:
+                      type: integer
+                      format: int64
+                      description: "The authentication token was malformed, expired or otherwise unusable"
+                    identity_mismatch:
+                      type: integer
+                      format: int64
+                      description: "The authenticated identity does not match the one the request claims"
+                    clock_skew:
+                      type: integer
+                      format: int64
+                      description: "The request timestamp is too far from the manager's clock"
+                    unusable_key:
+                      type: integer
+                      format: int64
+                      description: "The agent's key exists but could not be used"
+                    address_not_allowed:
+                      type: integer
+                      format: int64
+                      description: "The source address is not allowed for that agent"
+                    enrollment_key_unavailable:
+                      type: integer
+                      format: int64
+                      description: "The enrollment key needed to authenticate the request was not available"
+                    payload_mismatch:
+                      type: integer
+                      format: int64
+                      description: "The request body does not match what its authenticated header declares"
+                    body_too_large:
+                      type: integer
+                      format: int64
+                      description: "The request body exceeded the accepted size and was answered with 413"
+                    bad_encoding:
+                      type: integer
+                      format: int64
+                      description: "The request body could not be decoded or decompressed"
+                    malformed:
+                      type: integer
+                      format: int64
+                      description: "The request could not be parsed at all"
+                enrollment:
+                  type: object
+                  description: "Agent enrollment handled by `POST /enroll`, which bridges to the enrollment daemon"
+                  properties:
+                    accepted:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests accepted"
+                    rejected_auth:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests rejected because they did not authenticate"
+                    rejected_validation:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests rejected because their content did not validate"
+                    disabled:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests refused because enrollment is disabled"
+                    authd_error:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests that the enrollment daemon answered with an error"
+                    authd_unavailable:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests that could not reach the enrollment daemon"
+                    authd_queue:
+                      type: object
+                      description: "The queue of enrollment requests waiting on the enrollment daemon"
+                      properties:
+                        depth:
+                          type: integer
+                          format: int64
+                          description: "Requests currently queued"
+                        capacity:
+                          type: integer
+                          format: int64
+                          description: "Maximum requests the queue holds"
+                        rejected_total:
+                          type: integer
+                          format: int64
+                          description: "Requests refused because the queue was full"
+                control:
+                  type: object
+                  description: "The control plane: agent connection lifecycle and task dispatch over `POST /control`"
+                  properties:
+                    startup:
+                      type: integer
+                      format: int64
+                      description: "Startup requests handled, one per agent connecting"
+                    notify:
+                      type: integer
+                      format: int64
+                      description: "Keepalive (notify) requests handled"
+                    shutdown:
+                      type: integer
+                      format: int64
+                      description: "Shutdown requests handled, one per agent disconnecting cleanly"
+                    rejected:
+                      type: integer
+                      format: int64
+                      description: "Control requests rejected"
+                    wdb_error:
+                      type: integer
+                      format: int64
+                      description: "Control requests whose database update failed"
+                    task_fetch:
+                      type: integer
+                      format: int64
+                      description: "Pending-task lookups performed for connected agents"
+                    task_fetch_error:
+                      type: integer
+                      format: int64
+                      description: "Pending-task lookups that failed"
+                    registry_agents:
+                      type: integer
+                      format: int64
+                      description: "Agents currently tracked as connected"
+                    wdb_latency:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHistogramSummary'
+                        - description: "Database round-trip time on the control path, in microseconds"
+                keystore:
+                  type: object
+                  description: "Health of the agent keystore the authentication gateway reads"
+                  properties:
+                    agents:
+                      type: integer
+                      format: int64
+                      description: "Agent identities currently loaded"
+                    entries_skipped:
+                      type: integer
+                      format: int64
+                      description: "Keystore entries skipped as unusable on the last load"
+                    reloads_total:
+                      type: integer
+                      format: int64
+                      description: "Keystore reloads performed"
+                    reload_failures_total:
+                      type: integer
+                      format: int64
+                      description: "Keystore reloads that failed, leaving the previous contents in place"
+                downstream:
+                  type: object
+                  description: "Delivery of accepted requests to the services behind the daemon. A failure here is answered to the agent with 503 and also counted in `responses.<endpoint>.503`"
+                  properties:
+                    downstream_5xx:
+                      type: integer
+                      format: int64
+                      description: "Requests a downstream service answered with a 5xx status"
+                    route_mismatch:
+                      type: integer
+                      format: int64
+                      description: "Requests that matched no configured downstream route"
+                    errors:
+                      type: object
+                      description: "Transport-level failures while forwarding, by kind"
+                      properties:
+                        connect:
+                          type: integer
+                          format: int64
+                          description: "Could not connect to the downstream service"
+                        connect_timeout:
+                          type: integer
+                          format: int64
+                          description: "Connecting to the downstream service timed out"
+                        write_timeout:
+                          type: integer
+                          format: int64
+                          description: "Writing the request to the downstream service timed out"
+                        response_timeout:
+                          type: integer
+                          format: int64
+                          description: "Waiting for the downstream response timed out"
+                        transport:
+                          type: integer
+                          format: int64
+                          description: "The connection to the downstream service failed mid-exchange"
+                        protocol:
+                          type: integer
+                          format: int64
+                          description: "The downstream response could not be parsed"
+                        response_too_large:
+                          type: integer
+                          format: int64
+                          description: "The downstream response exceeded the accepted size"
+                    deferred:
+                      type: object
+                      description: "The limiter on forwarding work deferred off the request thread"
+                      properties:
+                        capacity:
+                          type: integer
+                          format: int64
+                          description: "Maximum deferred forwards allowed at once"
+                        inflight:
+                          type: integer
+                          format: int64
+                          description: "Deferred forwards currently in progress"
+                        rejected_total:
+                          type: integer
+                          format: int64
+                          description: "Requests shed with 503 because the limiter was saturated"
+                backpressure:
+                  type: object
+                  description: "The in-flight byte budget of the HTTPS listener. Requests over budget are shed with 503 on the transport thread, before any endpoint runs, so they are counted only here and never in `responses`"
+                  properties:
+                    available_bytes:
+                      type: integer
+                      format: int64
+                      description: "Budget still available for new requests"
+                    inflight_bytes:
+                      type: integer
+                      format: int64
+                      description: "Budget currently held by requests being processed"
+                    inflight_requests:
+                      type: integer
+                      format: int64
+                      description: "Requests currently being processed"
+                    rejected_total:
+                      type: integer
+                      format: int64
+                      description: "Requests shed because the budget was exhausted"
+                downloads:
+                  type: object
+                  description: "File downloads served to agents over `POST /download`. Everything is counted when the transfer is offered, so an aborted transfer still counts its offered bytes"
+                  properties:
+                    started:
+                      type: integer
+                      format: int64
+                      description: "Downloads started"
+                    rejected:
+                      type: integer
+                      format: int64
+                      description: "Download requests rejected"
+                    not_found:
+                      type: integer
+                      format: int64
+                      description: "Download requests for a file that does not exist"
+                    open_error:
+                      type: integer
+                      format: int64
+                      description: "Download requests for a file that exists but could not be opened"
+                    bytes_total:
+                      type: integer
+                      format: int64
+                      description: "Bytes offered across all started downloads"
+                vd_scan:
+                  type: object
+                  description: "On-demand vulnerability scan requests admitted from agents over `POST /scan/vd`"
+                  properties:
+                    requests_total:
+                      type: integer
+                      format: int64
+                      description: "Scan requests received"
+                    accepted:
+                      type: integer
+                      format: int64
+                      description: "Scan requests handed to the vulnerability scanner"
+                    version_mismatch:
+                      type: integer
+                      format: int64
+                      description: "Scan requests refused because the agent version is not supported"
+                    queue_full:
+                      type: integer
+                      format: int64
+                      description: "Scan requests refused because the scanner queue was full"
+                    invalid_agent:
+                      type: integer
+                      format: int64
+                      description: "Scan requests naming an agent that could not be resolved"
+                    vd_error:
+                      type: integer
+                      format: int64
+                      description: "Scan requests the vulnerability scanner answered with an error"
+                    indexer_unavailable:
+                      type: integer
+                      format: int64
+                      description: "Scan requests refused because the indexer was unavailable"
+
+    RemotedHttpResponseCounters:
+      type: object
+      description: |
+        Responses one agent-facing endpoint sent, by status. Each response is counted exactly
+        once, wherever the endpoint answered from.
+
+        The status set is shared by every endpoint so a scraper's columns stay uniform; a cell
+        that is structurally impossible for a given endpoint reports `0` (for example
+        `/stateless` never answers `409`).
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: "Sum of the status cells reported below"
+        '2xx':
+          type: integer
+          format: int64
+          description: "Any success — `202` for `/stateless`, `200` elsewhere"
+        '400':
+          type: integer
+          format: int64
+          description: "The request was rejected as malformed by the endpoint"
+        '403':
+          type: integer
+          format: int64
+          description: "The request was refused"
+        '409':
+          type: integer
+          format: int64
+          description: "The request conflicted with the current state"
+        '413':
+          type: integer
+          format: int64
+          description: "The request body exceeded the size the endpoint accepts"
+        '500':
+          type: integer
+          format: int64
+          description: "The endpoint failed to handle the request"
+        '503':
+          type: integer
+          format: int64
+          description: "The request could not be delivered downstream, or was shed by the deferred-forwarding limiter. Requests shed by the listener's byte budget are *not* counted here — see `backpressure.rejected_total`"
+        other:
+          type: integer
+          format: int64
+          description: "Responses with any other status"
+
+    RemotedHistogramSummary:
+      type: object
+      description: "A duration distribution in microseconds. Percentiles are log-linear bucket estimates (~12.5% relative error)"
+      properties:
+        count:
+          type: integer
+          format: int64
+          description: "Observations recorded"
+        sum:
+          type: integer
+          format: int64
+          description: "Sum of all observations, for computing a mean"
+        min:
+          type: integer
+          format: int64
+          description: "Shortest observation"
+        max:
+          type: integer
+          format: int64
+          description: "Longest observation"
+        p50:
+          type: integer
+          format: int64
+          description: "Median"
+        p90:
+          type: integer
+          format: int64
+          description: "90th percentile"
+        p99:
+          type: integer
+          format: int64
+          description: "99th percentile"
 
     EngineMetricEntry:
       type: object
@@ -5931,6 +6366,86 @@ paths:
                             size: 67108864
                             usage: 0
                         tcp_sessions: 0
+                        http_server:
+                          timestamp: 2022-07-21T10:48:32Z
+                          responses:
+                            stateless: { total: 98220, '2xx': 98213, '400': 2, '403': 0, '409': 0, '413': 1, '500': 0, '503': 4, other: 0 }
+                            stateful: { total: 4102, '2xx': 4100, '400': 0, '403': 0, '409': 2, '413': 0, '500': 0, '503': 0, other: 0 }
+                            stats: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
+                            config: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
+                            enroll: { total: 37, '2xx': 34, '400': 1, '403': 2, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
+                          latency:
+                            stateless: { count: 98213, sum: 210394821, min: 312, max: 90210, p50: 1830, p90: 4110, p99: 9920 }
+                            stateful: { count: 4100, sum: 31201400, min: 1204, max: 42109, p50: 6810, p90: 12300, p99: 28100 }
+                            enroll: { count: 34, sum: 1904221, min: 21033, max: 92104, p50: 54100, p90: 81200, p99: 92104 }
+                          auth_rejections:
+                            total: 5
+                            unknown_agent: 3
+                            invalid_signature: 0
+                            bad_token: 1
+                            identity_mismatch: 0
+                            clock_skew: 0
+                            unusable_key: 0
+                            address_not_allowed: 0
+                            enrollment_key_unavailable: 0
+                            payload_mismatch: 0
+                            body_too_large: 1
+                            bad_encoding: 0
+                            malformed: 0
+                          enrollment:
+                            accepted: 34
+                            rejected_auth: 2
+                            rejected_validation: 1
+                            disabled: 0
+                            authd_error: 0
+                            authd_unavailable: 0
+                            authd_queue: { depth: 0, capacity: 128, rejected_total: 0 }
+                          control:
+                            startup: 34
+                            notify: 421337
+                            shutdown: 2
+                            rejected: 0
+                            wdb_error: 0
+                            task_fetch: 421337
+                            task_fetch_error: 0
+                            registry_agents: 32
+                            wdb_latency: { count: 421373, sum: 903421884, min: 88, max: 41200, p50: 1810, p90: 3900, p99: 11200 }
+                          keystore:
+                            agents: 34
+                            entries_skipped: 0
+                            reloads_total: 3
+                            reload_failures_total: 0
+                          downstream:
+                            downstream_5xx: 0
+                            route_mismatch: 0
+                            errors:
+                              connect: 0
+                              connect_timeout: 0
+                              write_timeout: 0
+                              response_timeout: 0
+                              transport: 0
+                              protocol: 0
+                              response_too_large: 0
+                            deferred: { capacity: 512, inflight: 3, rejected_total: 0 }
+                          backpressure:
+                            available_bytes: 67099136
+                            inflight_bytes: 9728
+                            inflight_requests: 3
+                            rejected_total: 0
+                          downloads:
+                            started: 12
+                            rejected: 0
+                            not_found: 1
+                            open_error: 0
+                            bytes_total: 48213004
+                          vd_scan:
+                            requests_total: 8
+                            accepted: 8
+                            version_mismatch: 0
+                            queue_full: 0
+                            invalid_agent: 0
+                            vd_error: 0
+                            indexer_unavailable: 0
                     - status: OK
                       name: wazuh-manager-analysisd
                       uptime: 2022-07-21T10:09:20+00:00
