@@ -514,17 +514,21 @@ private:
         // arguments): since the socket unification, /offset starvation is prevented by the
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.
-        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, m_scanVdMetrics);
+        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient,
+                                                                               m_scanVdMetrics,
+                                                                               "/queue/sockets/vd-http.sock",
+                                                                               m_config.vd_scan_read_timeout_sec,
+                                                                               m_config.vd_scan_write_timeout_sec);
 
         m_authGateway->addAuthenticatedRoute(*m_httpServer,
                                              remoted::http::Method::Post,
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
-        // Deadlines fixed at compile time: nothing to reduce, so the check names only the cap.
+        // The budget also carries VdClient's fixed offset round trip, so it exceeds the two options.
         warnIfBudgetExceedsRequestTimeout("/scan/vd",
-                                          nullptr,
-                                          remoted::scanvd::ScanVdHandlerImpl::VD_SCAN_BUDGET_MS,
+                                          "vd_scan_read_timeout'/'vd_scan_write_timeout",
+                                          m_scanVdHandler->getBudgetMs(),
                                           static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this

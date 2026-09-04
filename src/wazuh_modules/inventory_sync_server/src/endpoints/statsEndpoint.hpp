@@ -46,11 +46,9 @@ namespace invsync::endpoints::stats
      * this side would have to be edited for every metric the agent ever adds, and only the agent
      * knows which of its counters are cumulative.
      *
-     * That does NOT make an agent-side addition free. The `wazuh-agent-stats` mapping is
-     * `dynamic: strict` with every leaf declared, so a module or metric it does not declare makes the
-     * indexer reject the whole document with `strict_dynamic_mapping_exception`. The write is
-     * fire-and-forget and the agent already has its 200, so that rejection is silent: a new metric
-     * needs no change HERE, but it does need one in the index template.
+     * An agent-side addition is free. The `wazuh-agent-stats` mapping is `dynamic: true`: a module or
+     * metric it does not declare is indexed like any other field, not rejected. A new metric needs
+     * no change HERE, and none in the index template either.
      *
      * The document is built from scratch rather than by stamping onto the agent's, so the `agent_id`
      * and `cluster` the agent's reporter writes at the root are dropped instead of ending up indexed

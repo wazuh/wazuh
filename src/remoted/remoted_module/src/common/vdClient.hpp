@@ -53,7 +53,7 @@ namespace remoted::common
         /// Per-query socket deadlines for the offset request. Named rather than inlined at the call
         /// site because they are part of the budget of every request that gates on an offset: a
         /// stale cache makes getOffset() pay them synchronously before the caller's own downstream
-        /// work starts (see ScanVdHandlerImpl::VD_SCAN_BUDGET_MS).
+        /// work starts (see ScanVdHandlerImpl::budgetMsFor()).
         static constexpr long OFFSET_READ_TIMEOUT_SECONDS = 1;
         static constexpr long OFFSET_WRITE_TIMEOUT_SECONDS = 1;
 
