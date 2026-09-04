@@ -16,6 +16,8 @@ from connexion.exceptions import ProblemException, OAuthProblem
 
 from freezegun import freeze_time
 
+from wazuh.core.exception import WazuhInternalError
+
 from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_attempt, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
     SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
@@ -390,6 +392,38 @@ async def test_access_log_hash_auth_context(mock_req):
         mock_custom_logging.assert_called_once_with(
             user, mock_req.client.host, mock_req.method, endpoint, mock_req.query_params, body, 0.0,
             response.status_code, hash_auth_context=hash_auth_context, headers=mock_req.headers
+        )
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_unreadable_keypair(mock_req):
+    """An unreadable keypair must not turn an already-served response into a 500.
+
+    `access_log` runs after the response has been produced and `generate_keypair` is no longer
+    memoized for the life of the process, so it can raise 6003 on any call: an error escaping here
+    would discard a successful response.
+    """
+    response = MagicMock()
+    response.status_code = 200
+    body = {}
+    endpoint = '/agents'
+
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.method = 'GET'
+    mock_req.scope = {'path': endpoint}
+    mock_req.headers = {}
+    mock_req.query_params = {}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.generate_keypair', side_effect=WazuhInternalError(6003)), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+              return_value=('bearer', 'token')):
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+        mock_custom_logging.assert_called_once_with(
+            UNKNOWN_USER_STRING, mock_req.client.host, mock_req.method, endpoint, mock_req.query_params,
+            body, 0.0, response.status_code, hash_auth_context='', headers=mock_req.headers
         )
 
 

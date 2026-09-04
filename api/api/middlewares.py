@@ -21,6 +21,7 @@ from connexion.security import AbstractSecurityHandler
 
 from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 
+from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
@@ -101,7 +102,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                 user = s['sub']
                 if HASH_AUTH_CONTEXT_KEY in s:
                     hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
-        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
+        # `WazuhInternalError` covers a keypair that could not be read (6003). This runs after the
+        # response has already been produced, so a transient failure here must degrade the logged
+        # username, never turn a served response into a 500.
+        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem,
+                WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
     # Sanitize username to escape control characters
