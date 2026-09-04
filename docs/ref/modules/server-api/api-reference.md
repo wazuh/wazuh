@@ -311,6 +311,8 @@ curl -k -X PUT "https://localhost:55000/security/user/revoke?pretty=true" \
 
 ### MITRE ATT&CK
 
+The bundled dataset is MITRE ATT&CK Enterprise **v19.2** (STIX 2.0 bundle from github.com/mitre/cti), loaded into `var/db/mitre.db` at installation time.
+
 **`GET /mitre/techniques`** — Query MITRE techniques with full details (tactics, mitigations, software, groups, references).
 
 ```bash
