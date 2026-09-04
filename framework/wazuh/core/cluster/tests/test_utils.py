@@ -283,7 +283,6 @@ def test_get_cluster_items():
             "worker": {
                 "sync_integrity": 9,
                 "sync_agent_info": 10,
-                "sync_agent_groups": 30,
                 "keep_alive": 60,
                 "connection_retry": 10,
                 "timeout_agent_groups": 40,
