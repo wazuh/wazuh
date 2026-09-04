@@ -5,6 +5,7 @@
 #
 #   make        -> builds the BPF object + engine + test harness
 #   make run    -> requires root (BPF load/attach)
+#   make check  -> builds and runs the contract tests (no kernel, no root)
 #   make clean
 
 CC      ?= cc
@@ -28,7 +29,16 @@ rt_engine.o: src/rt_engine.c include/rt_engine.h include/rt_event_contract.h
 rt_engine_harness: rt_engine.o rt_file.bpf.o test/rt_engine_harness.c
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_harness.c rt_engine.o -ldl
 
-clean:
-	rm -f rt_engine_harness rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+# Contract tests: no BPF object, no kernel, no root — so this target must not
+# depend on rt_file.bpf.o (that is the point of keeping them separate from the
+# harness, which does need a real kernel to be useful).
+rt_engine_contract_test: rt_engine.o test/rt_engine_contract_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_contract_test.c rt_engine.o -ldl
 
-.PHONY: all clean
+check: rt_engine_contract_test
+	./rt_engine_contract_test
+
+clean:
+	rm -f rt_engine_harness rt_engine_contract_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+
+.PHONY: all check clean
