@@ -313,7 +313,8 @@ namespace
                 // The CURLcode collapses into a coarse TransportStatus, so this is
                 // the only place the real cause exists: keep libcurl's own message.
                 char errorBuffer[CURL_ERROR_SIZE] {};
-                curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, errorBuffer);
+                const bool errorBufferSet =
+                    curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK;
 
                 const CURLcode code = curl_easy_perform(m_handle);
 
@@ -329,14 +330,19 @@ namespace
                     m_lastError = "(" + std::to_string(static_cast<int>(code)) + ") " +
                                   curl_easy_strerror(code);
 
-                    if (errorBuffer[0] != '\0')
+                    if (errorBufferSet && errorBuffer[0] != '\0')
                     {
                         m_lastError += ": ";
                         m_lastError += errorBuffer;
                     }
 
                     char* url = nullptr;
-                    curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url);
+
+                    if (curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url) != CURLE_OK)
+                    {
+                        url = nullptr;
+                    }
+
                     LOGFN_DEBUG1(handleLogFn(),
                                  "libcurl failed on %s: %s",
                                  url != nullptr ? url : "unknown URL",
@@ -345,21 +351,42 @@ namespace
 
                 // libcurl kept the pointer rather than copying it, so drop it
                 // before the buffer goes out of scope.
-                curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr);
+                if (errorBufferSet)
+                {
+                    const auto resetResult = curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr);
+
+                    if (resetResult != CURLE_OK)
+                    {
+                        LOGFN_DEBUG1(handleLogFn(),
+                                     "Failed to reset CURLOPT_ERRORBUFFER: %s",
+                                     curl_easy_strerror(resetResult));
+                    }
+                }
+
                 return statusFromCurlCode(code);
             }
 
             long responseCode() override
             {
                 long code = 0;
-                curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code);
+
+                if (curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code) != CURLE_OK)
+                {
+                    code = 0;
+                }
+
                 return code;
             }
 
             std::string localIp() override
             {
                 char* ip = nullptr;
-                curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip);
+
+                if (curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip) != CURLE_OK)
+                {
+                    ip = nullptr;
+                }
+
                 return ip != nullptr ? std::string(ip) : std::string();
             }
 

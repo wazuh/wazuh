@@ -86,7 +86,7 @@ class AgentInfoImpl
                       handshake_query_callback_t handshakeQueryFunction = nullptr);
         ~AgentInfoImpl();
 
-        void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
+        void start(int interval, int integrityInterval = 86400, const std::function<bool()>& shouldContinue = nullptr);
         void stop();
 
         /**

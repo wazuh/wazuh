@@ -320,11 +320,13 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
     // unique name, leaving a predictable path a symlink could be pre-planted at before wfopen() opened
     // it. Expand it now and, on POSIX, reuse the descriptor mkstemp() already vetted instead of a second,
     // name-based open that would reintroduce the same race.
+    mode_t old_mask = umask(0022);
 #ifndef WIN32
     {
-        int fd;
+        int fd = mkstemp(dest);
 
-        if (fd = mkstemp(dest), fd < 0) {
+        if (fd < 0) {
+            umask(old_mask);
             gzclose(fsource);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
             return -1;
@@ -338,14 +340,17 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
             unlink(dest);
             close(fd);
             gzclose(fsource);
+            umask(old_mask);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "uncompress()", dest);
             return -1;
         }
 
-        if (ftarget = fdopen(fd, "wb"), !ftarget) {
+        ftarget = fdopen(fd, "wb");
+        if (!ftarget) {
             unlink(dest);
             close(fd);
             gzclose(fsource);
+            umask(old_mask);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
             return -1;
         }
@@ -353,6 +358,7 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
 #else
     if (_mktemp_s(dest, strlen(dest) + 1)) {
         gzclose(fsource);
+        umask(old_mask);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
         return -1;
     }
@@ -361,10 +367,12 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
 
     if (!destBareName || (ftarget = w_fopen_nofollow(TMP_DIR, destBareName, "wb"), !ftarget)) {
         gzclose(fsource);
+        umask(old_mask);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;
     }
 #endif
+    umask(old_mask);
 
     {
         int length;
