@@ -43,6 +43,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38845](https://github.com/wazuh/wazuh/issues/38845) | Fixed the gcloud wodle failing to import on Python >= 3.13 by bumping the pinned `google-cloud-storage` version off a release that imported the removed stdlib `cgi` module. |
 
 ## Prior versions
 
