@@ -181,9 +181,10 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute_
 /**
  * @brief `agents_disconnection_time` from the effective `global` section.
  *
- * That value is the disconnection sweep's INTERVAL as well as its window, and remoted reads the
- * same one, which is why `global` had to survive monitord's removal. Read here rather than inside
- * the module so the module needs no configuration reader of its own.
+ * That value is the disconnection sweep's WINDOW -- the sweep polls it on a shorter interval
+ * derived from it -- and remoted reads the same one, which is why `global` had to survive
+ * monitord's removal. Read here rather than inside the module so the module needs no configuration
+ * reader of its own.
  *
  * NOT in wm_task_manager_read(): wm_config() initialises the default modules BEFORE it calls
  * w_mconf_load(), so there is no effective document to read at that point. This function runs from
@@ -203,7 +204,7 @@ static int wm_task_manager_disconnection_time(void) {
 
     if (section == NULL || Read_Global_JSON(section, &global_config) < 0) {
         mwarn("Cannot read the global configuration; the agent disconnection sweep will use its "
-              "default interval.");
+              "default window.");
         cJSON_Delete(section);
         return 0;
     }

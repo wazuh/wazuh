@@ -184,7 +184,10 @@ Interval between agent keep-alive notifications to the manager.
 - **Default value:** `60`
 - **Allowed values:** Positive integer (seconds)
 - **Minimum:** `10`
-- **Note:** Manager considers agent disconnected after 3x this interval
+- **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
+  `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
+  `notify_time` only has to be comfortably below that figure — see the
+  [manager configuration reference](../../configuration/manager/reference.md#global).
 
 ### time-reconnect
 

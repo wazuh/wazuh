@@ -125,7 +125,7 @@ extern "C"
         int max_rows;                   ///< Hard ceiling on MANAGER_TASKS.
 
         /* ---- recurring work ------------------------------------------------------------- */
-        int disconnection_time; ///< <global><agents_disconnection_time>. Sweep interval AND window.
+        int disconnection_time; ///< <global><agents_disconnection_time>. The sweep's window; its interval is derived.
         int delete_old_agents;  ///< Minutes; 0 disables the retention deletion schedule.
         int monitor_agents;     ///< 0 disables the disconnection sweep schedule.
         int disconnect_log_max; ///< Cap on per-agent diagnostic lookups in one sweep. [-1 disables: name none]

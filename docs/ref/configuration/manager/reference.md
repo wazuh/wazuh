@@ -32,7 +32,7 @@ Options shared by remoted and the task manager's disconnection sweep.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `agents_disconnection_time` | integer or string | `15m` | >= 0; `^[0-9]+[smhdw]?$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second). |
+| `agents_disconnection_time` | integer or string | `15m` | >= 0; `^[0-9]+[smhdw]?$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second). The sweep that applies it polls on a quarter of this, bounded to `[60 s, 300 s]`, so the transition happens between this value and this value plus one poll — 15 m to 18 m 45 s at the default. See [Recurring manager tasks](../../modules/task_manager/schedules.md#window-and-interval-are-not-the-same-number). |
 
 ## `logging`
 

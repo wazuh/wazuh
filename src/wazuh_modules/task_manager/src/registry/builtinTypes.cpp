@@ -200,23 +200,60 @@ namespace task_manager::registry
         return TaskRegistry {std::move(policy), std::move(descriptors)};
     }
 
+    std::chrono::seconds sweepPeriod(const std::chrono::seconds window, const std::chrono::seconds maxPeriod)
+    {
+        const auto seconds {window.count()};
+        if (seconds <= 0)
+        {
+            return std::chrono::seconds {0};
+        }
+
+        auto period {seconds / SWEEP_PERIOD_DIVISOR};
+
+        if (period < MIN_SWEEP_PERIOD_SECONDS)
+        {
+            period = MIN_SWEEP_PERIOD_SECONDS;
+        }
+
+        if (period > maxPeriod.count())
+        {
+            period = maxPeriod.count();
+        }
+
+        // Both bounds above can push the period PAST the window on a short one -- a sixty-second
+        // window against a sixty-second floor is the ordinary case. Clamping here is what makes
+        // this a strict improvement: at worst the period equals the window, which is what it was
+        // before, and the transition never lands later than it used to.
+        if (period > seconds)
+        {
+            period = seconds;
+        }
+
+        return std::chrono::seconds {period};
+    }
+
     std::vector<schedule::Schedule> buildBuiltinSchedules(const task_manager_config_t& config)
     {
         const auto disconnectionTime {
             std::chrono::seconds {valueOr(config.disconnection_time, DEFAULT_DISCONNECTION_TIME)}};
+        const auto retentionWindow {std::chrono::seconds {static_cast<long>(config.delete_old_agents) * 60}};
 
         std::vector<schedule::Schedule> schedules;
 
-        // The sweep's interval IS agents_disconnection_time, which merely defaults to 900 -- it is
-        // not a hardcoded fifteen minutes. remoted reads the same <global> value, which is why
-        // that section had to survive monitord's removal.
+        // The WINDOW is agents_disconnection_time, which merely defaults to 900 -- it is not a
+        // hardcoded fifteen minutes. remoted reads the same <global> value, which is why that
+        // section had to survive monitord's removal.
+        //
+        // The INTERVAL is derived from it and is deliberately not the same number; see sweepPeriod.
+        // The handler still applies the full window as the age, so shortening this changes only
+        // how promptly an agent that has crossed it is noticed, never which agents cross it.
         {
             schedule::Schedule sweep;
             sweep.definition = {SCHEDULE_AGENT_DISCONNECT_SWEEP,
                                 TYPE_AGENT_DISCONNECT_SWEEP,
                                 schedule::NodeScope::Master,
                                 schedule::Cadence::Interval};
-            sweep.interval = disconnectionTime;
+            sweep.interval = sweepPeriod(disconnectionTime, std::chrono::seconds {MAX_DISCONNECT_SWEEP_PERIOD_SECONDS});
             sweep.enabled = config.monitor_agents != 0;
             schedules.push_back(std::move(sweep));
         }
@@ -224,13 +261,18 @@ namespace task_manager::registry
         // Disabled by default, and destructive when enabled. That is why re-enabling recomputes
         // the next run rather than honouring a stale slot: an operator flipping the switch and
         // getting an instant purge is a surprise worth not shipping.
+        //
+        // Its window is the retention minutes ON TOP OF the disconnection time (deleteOldExpired),
+        // but the period is derived from the retention minutes alone: that is the part the
+        // operator set here, and the disconnection time already has its own sweep polling it.
         {
             schedule::Schedule retention;
             retention.definition = {SCHEDULE_AGENT_DELETE_OLD,
                                     TYPE_AGENT_DELETE_OLD,
                                     schedule::NodeScope::Master,
                                     schedule::Cadence::Interval};
-            retention.interval = std::chrono::seconds {static_cast<long>(config.delete_old_agents) * 60};
+            retention.interval =
+                sweepPeriod(retentionWindow, std::chrono::seconds {MAX_DELETE_OLD_SWEEP_PERIOD_SECONDS});
             retention.enabled = config.delete_old_agents > 0;
             schedules.push_back(std::move(retention));
         }
