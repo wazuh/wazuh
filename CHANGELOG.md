@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed false positive vulnerability reports for Debian packages installed from backports suites. ([#38474](https://github.com/wazuh/wazuh/pull/38474))
 - Added Fluentd server identity verification to the `fluent-forward` module: the certificate name is now checked against the configured address and the shared key digest returned by the server is verified. ([#38686](https://github.com/wazuh/wazuh/pull/38686))
 - Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
+- Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
 
 ### Agent
 
