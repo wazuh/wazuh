@@ -27,7 +27,7 @@ from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
-from api.alogging import MAX_LOGGED_BODY_SIZE, custom_logging
+from api.alogging import MAX_LOGGED_BODY_SIZE, control_chars_pattern, custom_logging, escape_control_chars
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 
@@ -244,15 +244,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                 WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
-    # Sanitize username to escape control characters
-    if user and user != UNKNOWN_USER_STRING:
-        # Check if username contains control characters and log a warning
-        if any(c in user for c in ['\n', '\r', '\t']):
-            logger.warning(
-                f'Username contains control characters. User: {user!r}, IP: {host}, '
-                f'Path: {path}.'
-            )
-        user = user.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    # custom_logging() escapes every field it writes; this only flags the attempt.
+    if user and user != UNKNOWN_USER_STRING and control_chars_pattern.search(user):
+        logger.warning(
+            f'Username contains control characters. User: {user!r}, IP: {host}, '
+            f'Path: {escape_control_chars(path)}.'
+        )
 
     # Create hash if run_as login. Only from an auth context that was actually read: hashing the
     # empty body that stands in for a payload no layer cached would stamp every such attempt with

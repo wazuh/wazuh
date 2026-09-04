@@ -14,7 +14,8 @@
 #include "dynamic_library_wrapper.h"
 #include <memory>
 
-volatile bool event_received = false;
+// Defined in src/ebpf_whodata.cpp
+extern volatile bool event_received;
 volatile bool ebpf_hc_created = false;
 
 class fimebpf

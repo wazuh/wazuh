@@ -482,7 +482,7 @@ def test_GSCAccessLogs_load_information_from_file(mock_client, file_path):
 # Module-level import error
 # ---------------------------------------------------------------------------
 
-def test_bucket_import_error_raises_WazuhIntegrationException():
+def test_bucket_import_error_raises_GCloudError():
     """Importing bucket.py without a required dependency hits the except ImportError block."""
     import runpy
     import sys
@@ -494,16 +494,8 @@ def test_bucket_import_error_raises_WazuhIntegrationException():
     saved_pytz = sys.modules.get('pytz', _sentinel)
     sys.modules['pytz'] = None
 
-    # WazuhIntegrationException lacks ERRORS; patch it with a side_effect so the
-    # call on line 27 is recorded by coverage before the exception propagates.
-    raised_pkg = []
-    def _fake_exc(errcode, **kwargs):
-        raised_pkg.append(kwargs.get('package'))
-        raise Exception(f"GCloudImportError: package={kwargs.get('package')}")
-
     try:
-        with patch.object(exceptions, 'WazuhIntegrationException', side_effect=_fake_exc), \
-                pytest.raises(Exception):
+        with pytest.raises(exceptions.GCloudError) as exc_info:
             runpy.run_path(bucket_path, run_name='bucket_import_error_test')
     finally:
         if saved_pytz is _sentinel:
@@ -511,4 +503,5 @@ def test_bucket_import_error_raises_WazuhIntegrationException():
         else:
             sys.modules['pytz'] = saved_pytz
 
-    assert raised_pkg == ['pytz']
+    assert exc_info.value.errcode == 1003
+    assert "'pytz' module is required" in str(exc_info.value)

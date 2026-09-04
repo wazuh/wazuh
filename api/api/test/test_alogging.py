@@ -119,6 +119,40 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
 
 
+@pytest.mark.parametrize("value, expected", [
+    ('plain', 'plain'),
+    ('a\nb', 'a\\nb'),
+    ('a\r\n\tb', 'a\\r\\n\\tb'),
+    ('a\x1b[31mb\x00\x7f', 'a\\x1b[31mb\\x00\\x7f'),
+    ('already\\nescaped', 'already\\nescaped'),
+])
+def test_escape_control_chars(value, expected):
+    """Check every C0 control character and DEL is replaced by its escape sequence."""
+    assert alogging.escape_control_chars(value) == expected
+
+
+@pytest.mark.parametrize("user, path, expected_prefix", [
+    ('wazuh\nFAKE 127.0.0.1 "GET /security/users"', '/agents',
+     'wazuh\\nFAKE 127.0.0.1 "GET /security/users" 1.1.1.1 "GET /agents"'),
+    ('wazuh', '/x\n2026/01/01 03:14:15 INFO: admin 10.0.0.5 "GET /agents',
+     'wazuh 1.1.1.1 "GET /x\\n2026/01/01 03:14:15 INFO: admin 10.0.0.5 "GET /agents"'),
+    (None, '/x\r\n\x1b[2J', 'None 1.1.1.1 "GET /x\\r\\n\\x1b[2J"'),
+])
+def test_custom_logging_escapes_control_chars(user, path, expected_prefix):
+    """The plain-text access log entry stays on one line whatever the user and path carry."""
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        alogging.custom_logging(user=user, remote='1.1.1.1', method='GET', path=path, query={}, body={},
+                                elapsed_time=0.001, status=404)
+
+    plain_line, json_record = (c[0][0] for c in logger_mock.info.call_args_list)
+    assert plain_line == f'{expected_prefix} with parameters {{}} and body {{}} done in 0.001s: 404'
+    assert not alogging.control_chars_pattern.search(plain_line)
+    # The JSON record keeps the raw values; its formatter escapes them.
+    assert json_record['user'] == user
+    assert json_record['uri'] == f'GET {path}'
+
+
 def test_custom_logging_omits_oversized_body():
     """Check that a body too large to log is replaced by a marker in both log lines.
 
