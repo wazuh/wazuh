@@ -298,6 +298,9 @@ def test_apid_spares_unrelated_process_with_recycled_pid(wazuh_running):
     tags:
         - manager_control
     '''
+    killed_pids = _kill_apid_family_uncleanly()
+    assert killed_pids, "Precondition failed: no 'wazuh_manager_apid.py' process was running to kill"
+
     decoy = subprocess.Popen(
         ['python3', '-c', 'import time; time.sleep(120)', APID_SCRIPT_MARKER],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -310,9 +313,6 @@ def test_apid_spares_unrelated_process_with_recycled_pid(wazuh_running):
 
         backdated = time.time() - 3600
         os.utime(collision_file, (backdated, backdated))
-
-        killed_pids = _kill_apid_family_uncleanly()
-        assert killed_pids, "Precondition failed: no 'wazuh_manager_apid.py' process was running to kill"
 
         control_service('start')
         wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,

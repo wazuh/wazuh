@@ -59,7 +59,7 @@ def clean_pid_files(daemon: str) -> None:
             full_path = path.join(common.OSSEC_PIDFILE_PATH, pid_file)
             try:
                 process = psutil.Process(pid)
-                command = process.cmdline()[-1]
+                command = ' '.join(process.cmdline())
                 belongs_to_daemon = daemon.replace('-', '_') in command
                 predates_file = process.create_time() <= path.getmtime(full_path)
 
@@ -79,11 +79,10 @@ def clean_pid_files(daemon: str) -> None:
                     print(f"{daemon}: Process {pid} belongs to {daemon} but was created after its stale "
                           f"pidfile (PID recycled), removing from {common.WAZUH_PATH}/var/run...")
 
-            except (OSError, psutil.Error, IndexError):
+            except (OSError, psutil.Error):
                 # psutil.Error also covers AccessDenied (the PID was recycled by a process
-                # owned by another user) and ZombieProcess; IndexError covers a recycling
-                # process with an empty cmdline (e.g. a kernel thread). None of these mean
-                # the file's original owner is still around, so it's still safe to drop it.
+                # owned by another user) and ZombieProcess. Neither means the file's
+                # original owner is still around, so it's still safe to drop it.
                 print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(full_path)
