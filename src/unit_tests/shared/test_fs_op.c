@@ -14,9 +14,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#ifdef __linux__
+#include <sys/vfs.h>
+#endif
 
 #include "shared.h"
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+
+// Wrappers
+
+#ifdef __linux__
+int __wrap_statfs(const char * path, struct statfs * buf) {
+    check_expected(path);
+
+    long f_type = mock_type(long);
+
+    if (f_type != -1) {
+        buf->f_type = f_type;
+    }
+
+    return mock_type(int);
+}
+#endif
 
 // Tests
 
@@ -54,9 +75,81 @@ void test_fs_magic(void **state)
     assert_int_equal(compare(&statfs), 1);
 }
 
+// Regression tests for https://github.com/wazuh/wazuh/issues/38693:
+// skipFS()/IsNFS() must actually evaluate the "#if defined(__linux__)" branch
+// instead of silently short-circuiting to 0. __wrap_statfs() above only exists
+// on Linux (struct statfs itself is only declared there), so these are too.
+#ifdef __linux__
+
+void test_skipFS_overlayfs_is_skipped(void **state)
+{
+    (void) state;
+
+    expect_string(__wrap_statfs, path, "/etc");
+    will_return(__wrap_statfs, 0x794c7630 /* OVERLAYFS, mirrors test_fs_magic above */);
+    will_return(__wrap_statfs, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Skipping dir (FS OVERLAYFS): /etc ");
+
+    assert_int_equal(skipFS("/etc"), 1);
+}
+
+void test_skipFS_regular_fs_is_not_skipped(void **state)
+{
+    (void) state;
+
+    expect_string(__wrap_statfs, path, "/etc");
+    will_return(__wrap_statfs, 0xEF53 /* EXT4_SUPER_MAGIC */);
+    will_return(__wrap_statfs, 0);
+
+    assert_int_equal(skipFS("/etc"), 0);
+}
+
+void test_skipFS_statfs_error(void **state)
+{
+    (void) state;
+
+    expect_string(__wrap_statfs, path, "/nonexistent");
+    will_return(__wrap_statfs, -1);
+    errno = ENOENT;
+    will_return(__wrap_statfs, -1);
+
+    assert_int_equal(skipFS("/nonexistent"), -1);
+}
+
+void test_IsNFS_nfs_mount_is_detected(void **state)
+{
+    (void) state;
+
+    expect_string(__wrap_statfs, path, "/mnt/nfs");
+    will_return(__wrap_statfs, 0x6969 /* NFS */);
+    will_return(__wrap_statfs, 0);
+
+    assert_int_equal(IsNFS("/mnt/nfs"), 1);
+}
+
+void test_IsNFS_regular_fs_is_not_detected(void **state)
+{
+    (void) state;
+
+    expect_string(__wrap_statfs, path, "/etc");
+    will_return(__wrap_statfs, 0xEF53 /* EXT4_SUPER_MAGIC */);
+    will_return(__wrap_statfs, 0);
+
+    assert_int_equal(IsNFS("/etc"), 0);
+}
+
+#endif // __linux__
+
 int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_fs_magic),
+#ifdef __linux__
+            cmocka_unit_test(test_skipFS_overlayfs_is_skipped),
+            cmocka_unit_test(test_skipFS_regular_fs_is_not_skipped),
+            cmocka_unit_test(test_skipFS_statfs_error),
+            cmocka_unit_test(test_IsNFS_nfs_mount_is_detected),
+            cmocka_unit_test(test_IsNFS_regular_fs_is_not_detected),
+#endif // __linux__
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

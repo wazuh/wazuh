@@ -46,11 +46,10 @@ options see [Authd Configuration](configuration.md).
 |--------|------|
 | Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
-| Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and hands the indexer purge of every removed agent to the relay. It never waits on the network |
-| Purge relay | Sends the queued indexer purges to the [Inventory Sync Server](../inventory-sync-server/README.md), after the configured delay, and owns every retry |
+| Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and records the indexer purge of every removed agent as a Task Manager task. It never waits on the network |
 | authpass watcher | On a worker with `use_password`, re-reads `etc/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects enrollments |
 
-The writer and the purge relay run on the **master only**. See [Cluster](#cluster) below.
+The writer runs on the **master only**. See [Cluster](#cluster) below.
 
 ## Cluster
 
@@ -71,7 +70,7 @@ the agent already holds; see
 | `/var/wazuh-manager/etc/client.keys` | One line per agent: `<id> <name> <ip> <key>` |
 | `/var/wazuh-manager/etc/agents-timestamp` | Per-agent registration timestamp |
 | `/var/wazuh-manager/etc/authd.pass` | Enrollment password (auto-generated on first start; required by default) |
-| `/var/wazuh-manager/queue/authd/pending-purges` | Indexer purges authd still owes, plus the highest agent id ever handed out |
+| `/var/wazuh-manager/queue/authd/pending-purges` | Deletions authd has begun recording but not yet finished, plus the highest agent id and sequence ever handed out. Normally empty |
 
 > For the diagrams — the thread layout, the removal path and the three intervals the purge has to
 > outlast — see [Architecture](architecture.md).
@@ -87,45 +86,65 @@ agent is gone. Four places are involved, and only the first three are immediate:
 | 1 | the entry in the in-memory keystore | authd itself: duplicate checks, agent limit | on the request |
 | 2 | the `client.keys` file | remoted, to authenticate agents | next writer pass |
 | 3 | the row in wazuh-db | the server API, to list agents | next writer pass |
-| 4 | the documents in the indexer | the dashboard | after `authd.purge_delay` |
+| 4 | the documents in the indexer | the dashboard | a Task Manager task, first attempted after `authd.purge_delay` |
 
-**The writer thread never waits on the network.** It records the purge and moves on; a dedicated
-relay thread sends it. This is deliberate and it is the reason the split exists: the writer is the
-only thread that persists `client.keys`, so a slow or unreachable indexer used to stall every key
-write behind it — on a fleet-wide removal, no freshly enrolled agent reached `client.keys` and
-remoted answered `401` to all of them until the whole batch drained.
+**The writer thread never waits on the network.** It records the deletion as a durable task and moves
+on; the Task Manager's dispatcher executes it. This is deliberate and it is the reason the split
+exists: the writer is the only thread that persists `client.keys`, so a slow or unreachable indexer
+used to stall every key write behind it — on a fleet-wide removal, no freshly enrolled agent reached
+`client.keys` and remoted answered `401` to all of them until the whole batch drained.
 
 ### The delay before a purge
 
-A purge is not sent immediately. It waits at least `authd.purge_delay` seconds (see
-[Configuration](configuration.md)), because a `_delete_by_query` is a *search* and can only match
-what the indexer has already made searchable, and because in a cluster the worker nodes still hold
-the previous `client.keys` for a few seconds. Sending it right away would let the last documents a
-departing agent wrote survive the purge, with nothing left to ever overwrite them.
+A purge is not attempted immediately. The task's first attempt is set at least `authd.purge_delay`
+seconds out (see [Configuration](configuration.md)), because a `_delete_by_query` is a *search* and
+can only match what the indexer has already made searchable, and because in a cluster the worker
+nodes still hold the previous `client.keys` for a few seconds. Running it right away would let the
+last documents a departing agent wrote survive the purge, with nothing left to ever overwrite them.
 
-### What the deletion route answers
+### Where authd's responsibility ends
 
-The Inventory Sync Server answers **at admission**: `200 {"status":"queued"}` means it recorded the
-deletion and will purge it, not that the documents are already gone. So authd's responsibility ends
-when it gets that `200` — from then on the purge's outcome is reported in modulesd's log. A `503` means
-"not admitted, come back": no indexer host is healthy, the module is stopping, or its queue is full,
-and the relay keeps the entry and retries. Anything else is treated the same way.
+At the durable task row. There is no completion signal back to authd, by design — waiting for one is
+what used to block the writer — and the purge's own outcome is the task's status, reported in
+modulesd's log. The task type carries **no attempt budget**: once `client.keys` is written the agent is
+gone and nobody will ask again, so the deletion is retried until it succeeds rather than given up on.
 
 ### Durability
 
-Pending purges are persisted in `queue/authd/pending-purges` before the relay is woken, and removed
-only once the Inventory Sync Server has accepted them. A restart replays whatever is left — with the
-delay re-armed from the recorded timestamp — and logs how many purges were recovered. A relay that
-cannot deliver keeps the entry and retries; nothing has to be repeated by hand.
+The deletion is journaled in `queue/authd/pending-purges` **before** `client.keys` is rewritten, and
+the line is dropped only once wazuh-db has acknowledged the task as committed. The journal is normally
+empty: it drains as fast as wazuh-db answers, not as fast as the indexer does.
+
+On the next start every surviving line is compared against the `client.keys` just read. An agent still
+listed there means the deletion never became final, so the line is dropped; an absent one means the
+task is still owed and is created now. That is what closes the window a crash between the key write
+and the task's creation used to leave open — nothing else in the system knows those documents are
+owed, since the agent is already out of `client.keys` and out of wazuh-db.
 
 The file also stores `last_id`, the highest agent id ever handed out. **An id is never reused**, even
 when the agents holding the highest ids have been deleted and `client.keys` no longer mentions them:
-a purge in flight matches by agent id, so recycling one would let it delete the documents of a *new*
+a pending purge matches by agent id, so recycling one would let it delete the documents of a *new*
 agent. On startup the id counter is raised to that mark if needed, and the change is logged.
 
-For the same reason, an insertion that names an id explicitly
-(`POST /agents/insert`) is **refused** while that id still owes a purge, rather than cancelling the
-purge: a queued purge always runs.
+Both `client.keys` and the database keep the id in a signed 32-bit integer, so a fleet large or
+long-lived enough can drive the counter all the way to `INT_MAX` on its own — no out-of-range input
+anywhere. Authd refuses to hand out the next id rather than wrapping it to a negative value: the
+auto-assigned enrollment fails the same way an ordinary `max_agents` refusal does — `9013 Maximum
+number of agents reached` — instead of silently producing a record `client.keys` and the database
+would disagree about.
+
+For the same reason, an insertion that names an id explicitly (`POST /agents/insert`) is **refused**
+while that id still owes a purge, rather than cancelling the purge: a recorded purge always runs.
+
+### When a deletion is refused
+
+A deletion can be turned down. If too many earlier ones are still waiting to reach the indexer, the
+request answers `9021` (`1766` through the server API) and the agent is left **untouched** — the check
+runs before the agent leaves the keystore, so retrying once the backlog drains is all that is needed.
+
+This is new behaviour and it replaces a worse one: the limit used to be discovered after `client.keys`
+had been written, where the only options left were to drop the purge silently or to log it while the
+documents were orphaned.
 
 ### What a manager rebuilt from scratch inherits
 
@@ -155,14 +174,22 @@ is never replaced.
 deleted through the API: it goes through the same removal queue, the same writer thread and the same
 indexer purge. This matters for scale — a fleet that re-enrolls with names that already exist
 generates one deletion per agent, without anyone calling the API — and it is why the delay and the
-persistence above apply to enrollment just as much as to `DELETE /agents`.
+persistence above apply to enrollment just as much as to a deletion through the API. The admission
+bound applies as well: when too many deletions are already in progress the *enrollment* is refused,
+rather than the replacement going ahead with a purge that cannot be recorded.
 
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
-`POST /agents/insert`, and there authd refuses rather than replacing: an id that belongs to an
-existing agent answers `9012 Duplicate ID`, and one whose purge is still pending answers
+`POST /agents/insert`, and there authd refuses rather than replacing: an id outside
+`[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
+reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
+answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
+
+`9018` also covers a wazuh-db that cannot answer whether the id still owes a deletion: the guard fails
+closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
+Auto-assigned ids are unaffected — the id counter comes from authd's own journal.
 
 ## Local socket enrollment protocol
 
@@ -202,7 +229,10 @@ A request is a single-line JSON object:
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
     `manage_agents` and the API have always accepted — containing `%`, a single character, or a
     leading `.` — keep working.
-  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
+  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
+    be a positive integer no greater than `2147483647` (the width `client.keys` and the database
+    store it in) and other than `0` (reserved for the manager), or the request fails with
+    `9020 Invalid agent ID`
   - `groups` (optional) — comma-separated centralized group(s) to assign
   - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
@@ -291,5 +321,5 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
   requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
-  decisions (D1–D8) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
+  decisions (D1–D10) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
   and which test suite covers what.

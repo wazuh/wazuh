@@ -32,7 +32,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager/
   ${SRC_FOLDER}/wazuh_db/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/)
@@ -85,7 +84,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-authd
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/main-server.c")
   set_target_properties(
-    wazuh-manager-authd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+    wazuh-manager-authd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                      ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-authd PRIVATE authd_lib)
   wazuh_link_jemalloc(wazuh-manager-authd)

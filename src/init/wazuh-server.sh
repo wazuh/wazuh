@@ -12,6 +12,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
+# Reader of the manager configuration: validation and effective values (schema defaults applied).
+MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${DIR}/etc/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.0.1"
@@ -28,7 +30,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -169,6 +171,11 @@ disable()
     fi
 }
 
+get_node_type()
+{
+    ${MCONF} get cluster.node_type 2>/dev/null
+}
+
 status()
 {
     RETVAL=0
@@ -176,10 +183,17 @@ status()
 
     checkpid;
 
+    node_type=$(get_node_type);
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
+        ## The API daemon only runs on the master node
+        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+            continue
+        fi
+
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -224,7 +238,26 @@ testconfig()
     # may never run to clear a marker left by an earlier, unrelated one.
     rm -f ${DIR}/var/run/*.failed
 
-    # We first loop to check the config.
+    # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
+    # with the JSON pointer of the offending option before any daemon runs its own -t.
+    MCONF_VERDICT=$(${MCONF} validate 2>&1)
+    if [ $? != 0 ]; then
+        echo "${MCONF_VERDICT}" >&2
+        # With the fail-fast no daemon starts, so nothing else records the reason where operators
+        # (and the integration tests) look for it: surface the verdict in the manager log too.
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
+        else
+            echo "${WAZUH_CONF}: Configuration error. Exiting"
+        fi
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock;
+        exit 1;
+    fi
+
+    # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
         daemon_name="$i"
         ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
@@ -342,7 +375,7 @@ start_service()
     TO_DELETE="$DIR/tmp"
     find "$TO_DELETE" -mindepth 1 -delete
 
-    node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    node_type=$(get_node_type);
     if [ -z $node_type ]; then
         echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
         unlock;
@@ -360,16 +393,9 @@ start_service()
             continue
         fi
 
-        ## If wazuh-manager-authd is disabled, don't try to start it.
+        ## If wazuh-manager-authd is disabled (auth.disabled: true), don't try to start it.
         if [ X"$i" = "Xwazuh-manager-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/${WAZUH_CONF} | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
+             if [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
                 continue
              fi
         fi

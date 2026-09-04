@@ -246,15 +246,21 @@ auth.timeout_microseconds=0
 # Maximum number of agents allowed (0 = unlimited)
 authd.max_agents=0
 
-# Seconds a deletion waits before its indexer purge is relayed (0 = immediate)
+# Seconds a deletion waits before its indexer purge may run (0 = immediate)
 authd.purge_delay=120
+
+# Seconds authd allows for one wazuh-db round trip
+authd.wdb_timeout=10
+
+# Deletions still waiting to reach the indexer before new ones are refused (0 = unlimited)
+wazuh_modules.manager_task_max_pending_deletes=20000
 ```
 
 ### authd.purge_delay
 
-How long an agent's deletion waits before authd asks the Inventory Sync Server to purge that agent's
-documents from the indexer. The deletion itself is never delayed: `client.keys` and wazuh-db are
-updated immediately, and only the indexer purge is held back.
+How long an agent's deletion waits before its indexer purge may run. The deletion itself is never
+delayed: `client.keys` and wazuh-db are updated immediately, and only the indexer purge is held back —
+authd records it as a Task Manager task whose first attempt is this far out.
 
 - **Default value:** `120`
 - **Allowed values:** `0` to `3600` (seconds)
@@ -269,11 +275,40 @@ misses survives forever** — the agent is gone, so nothing will overwrite those
 | keepalive tolerance, 120 s | the longest a worker can be out of touch and still be considered alive, so the longest it can legitimately be behind |
 
 120 seconds covers the widest of the three. **A single-node manager** only faces the first one and can
-lower this to a few seconds safely. `0` relays immediately and exists for tests; raising it beyond a
-couple of minutes only makes documents linger longer.
+lower this to a few seconds safely. `0` makes the purge eligible immediately and exists for tests;
+raising it beyond a couple of minutes only makes documents linger longer.
 
-Pending purges are persisted, so the wait survives a restart: see
+The deletion is a durable task, so the wait survives a restart: see
 [Agent removal and the indexer](README.md#agent-removal-and-the-indexer).
+
+### authd.wdb_timeout
+
+How long authd allows for one wazuh-db round trip.
+
+- **Default value:** `10`
+- **Allowed values:** `1` to `300` (seconds)
+
+It exists because the thread that records a deletion is the same thread that persists `client.keys`.
+With an unbounded client a wedged wazuh-db would **hang** it, and a stuck writer has no next cycle to
+recover in; bounded, the same failure is just a phase that did not complete, and the next cycle
+retries it. There is no reason to raise this on a healthy manager — a local socket answers in
+milliseconds.
+
+### wazuh_modules.manager_task_max_pending_deletes
+
+How many agent deletions may be waiting to reach the indexer before authd refuses new ones with
+`9021` (`1766` through the server API). A refused deletion leaves the agent **untouched**.
+
+- **Default value:** `20000`
+- **Allowed values:** `0` (unlimited) to `1000000`
+
+It lives in the Task Manager's namespace on purpose: this is one bound on one queue, enforced when the
+task is created and pre-checked by authd so a caller gets a refusal instead of a deletion that only
+half-succeeds. Two keys would let the two halves disagree.
+
+Raising it lets a larger fleet-wide deletion be admitted in one go, at the cost of a deeper backlog if
+the indexer is slow or unreachable. Setting it to `0` removes the bound entirely, which is only safe
+if you are certain the indexer keeps up.
 
 **Note:** Use `wazuh-manager-internal-options.conf` to preserve settings across upgrades.
 

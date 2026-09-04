@@ -21,13 +21,15 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   BEFORE indexing — a `200` guarantees the scan ran AND the inventory was flushed; a failed scan
   answers `500` with nothing indexed; a still-downloading CVE feed answers `503 + Retry-After`
   without processing.
-- **Agent deletion endpoint** (`DELETE /agents`, plus a `POST /agents/delete` alias for C callers):
-  UDS-local, called by `wazuh-manager-authd` when an agent is removed. It reaches every index holding
+- **Agent deletion endpoint** (`POST /_internal/agents/delete`): manager-internal and UDS-local,
+  called by the Task Manager's dispatcher to execute a durable deletion task that
+  `wazuh-manager-authd` created when the agent was removed. It reaches every index holding
   the agent's documents in two halves, one per writer: `wazuh-states-*` by delete-by-query on the
   agent's worker shard (so it orders correctly against in-flight sessions of that same agent), and
   the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous
   connector that writes them (so it orders after a `/config` or `/stats` report that connector has
-  accepted but not yet pushed). The HTTP status makes a lost deletion visible instead of silent.
+  accepted but not yet pushed). It answers at COMPLETION — the `200` means the delete-by-query ran
+  and flushed — which is what lets the task be recorded as `completed` and have that mean purged.
 - HTTP/1.1 over a Unix domain socket, so no TCP port is exposed; admission control before a body is
   read (in-flight byte budget, connection cap); two-phase shutdown; the socket does not open until
   the indexer session and connectors are constructed successfully.
@@ -47,7 +49,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 | Route | Caller | Purpose |
 | --- | --- | --- |
 | `POST /stateful` | Remoted (relaying agents) | Apply one whole synchronization session |
-| `DELETE /agents` / `POST /agents/delete` | authd | Delete every document of an agent, across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` |
+| `POST /_internal/agents/delete` | The Task Manager's dispatcher | Delete every document of an agent, across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. Agent id in the body; answered at completion |
 | `POST /stats`, `POST /config` | Remoted (relaying agents) | Agent stats/config documents |
 | `GET /` | anyone local | Liveness probe |
 | `GET /metrics` | anyone local (operators, the benchmark harness) | Runtime statistics as JSON — full catalog in [Metrics](metrics.md) |
@@ -82,9 +84,11 @@ agent's documents). The situations an operator will recognize:
   (`ModuleCheck`); a `409` answer tells it to full-resync that module.
 - **Full resync**: two ordinary requests — clean the module's indices, then re-send the full
   dataset. Their order is guaranteed by the per-agent worker shard.
-- **Agent deletion**: authd calls `DELETE /agents` when an agent is removed, purging every document
-  of that agent across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` (this is why
-  deleting an agent also removes its data from the dashboard).
+- **Agent deletion**: when an agent is removed, authd records a deletion task and the Task Manager's
+  dispatcher calls `POST /_internal/agents/delete`, purging every document of that agent across
+  `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` (this is why deleting an agent also
+  removes its data from the dashboard). The task is durable, so an indexer outage delays the purge
+  rather than losing it.
 
 ## FAQ (operations)
 

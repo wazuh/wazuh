@@ -16,6 +16,7 @@ add_library(base STATIC
     ${SRC_DIR}/logging.cpp
     ${SRC_DIR}/process.cpp
     ${SRC_DIR}/libwazuhshared.cpp
+    ${SRC_DIR}/managerConfig.cpp
 )
 target_include_directories(base
     PUBLIC
@@ -37,6 +38,13 @@ target_link_libraries(base
     ZLIB::ZLIB
     Minizip::Minizip
     ${CMAKE_DL_LIBS}
+
+    PRIVATE
+    # Loader of etc/wazuh-manager.conf (shared_modules/manager_config, C++ API): a target of the same
+    # top-level tree (src/CMakeLists.txt adds it after engine/; names resolve at generate time), like
+    # indexer_connector for wiconnector. Never import build/lib/libmanager_config.a instead: a
+    # UNIT_TEST tree builds it with coverage instrumentation.
+    manager_config
 )
 
 # Tests
@@ -67,6 +75,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
     ${UNIT_SRC_DIR}/process_test.cpp
+    ${UNIT_SRC_DIR}/managerConfig_test.cpp
     ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
     ${UNIT_SRC_DIR}/utils/generator_test.cpp
     ${UNIT_SRC_DIR}/utils/vectorHelpers_test.cpp

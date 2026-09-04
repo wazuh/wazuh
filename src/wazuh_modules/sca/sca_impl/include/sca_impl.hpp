@@ -197,6 +197,12 @@ class SecurityConfigurationAssessment
         ///       deterministically without spinning the asynchronous flush controller.
         int executeFlushSync();
 
+        /// @brief Perform full recovery: load all checks and resync
+        /// @return true on success, false on failure.
+        /// @note Protected (rather than private) so test subclasses can drive recovery
+        ///       deterministically, same reason as executeFlushSync() above.
+        bool performRecovery();
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -232,6 +238,19 @@ class SecurityConfigurationAssessment
         /// @return true on success, false on error.
         bool updateMetadataValue(const std::string& key, int64_t value);
 
+        /// @brief Re-sends everything when this agent's id has changed since the last sync.
+        ///
+        /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
+        /// including first_sync_completed -- survive untouched, so every later cycle sends a
+        /// delta against a baseline the manager no longer has for this identity. Comparing the
+        /// id each cycle turns that into a full snapshot on the first cycle after the change,
+        /// instead of waiting for integrity_interval to notice through a checksum mismatch.
+        ///
+        /// Reads the id from the shared-memory metadata provider, which is the same value, via
+        /// the same call, that stamps the outgoing session -- so a resync can never be sent
+        /// under an id different from the one it was compared against.
+        void checkAgentIdentity();
+
         /// @brief Refresh the cached first-sync completion flag from metadata.
         void refreshFirstSyncCompletedState();
 
@@ -244,9 +263,19 @@ class SecurityConfigurationAssessment
         /// @return SyncModuleResult with success flag and an optional failure reason string.
         SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
-        /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success, false on failure.
-        bool performRecovery();
+        /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
+        /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
+        /// @p genericFailureLevel) otherwise. Shared by syncModule(), performRecovery() and
+        /// executeFlushSync() so all three apply the same tolerance policy to any failure a
+        /// sync/recovery/flush attempt returns, including one from synchronizeDatabaseSnapshot()'s
+        /// DataClean step. (#38579)
+        /// @param result The failed result (caller must not call this when result.success is true).
+        /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
+        /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
+        /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
+        /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+        void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
+                            modules_log_level_t genericFailureLevel = LOG_WARNING);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate

@@ -1305,6 +1305,56 @@ void OS_GetIPv4FromIPv6_empty_group(void **state) {
     assert_int_equal(ret, 0);
 }
 
+/* validate_op.c points the defines files at the working directory under WAZUH_UNIT_TESTING, so the
+ * real reader can be driven with a real file. Only the local one is written: an absent key falls
+ * through to "./internal_options.conf", and a missing defines file is not an error. */
+static int setup_local_defines(void **state)
+{
+    (void)state;
+
+    FILE *fp = fopen("./local_internal_options.conf", "w");
+    assert_non_null(fp);
+    fputs("agent.blank_value=\n"
+          "agent.good_value=7\n",
+          fp);
+    fclose(fp);
+
+    return 0;
+}
+
+static int teardown_local_defines(void **state)
+{
+    (void)state;
+
+    unlink("./local_internal_options.conf");
+
+    return 0;
+}
+
+/* Accepted, an empty value becomes 0, which passes the range check only where the minimum is 0. */
+void getDefine_Int_default_empty_value_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.blank_value: ''.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "blank_value", 0, 10, 5));
+}
+
+void getDefine_Int_default_absent_key_returns_default(void **state)
+{
+    (void)state;
+
+    assert_int_equal(getDefine_Int_default("agent", "never_written", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_present_value_is_read(void **state)
+{
+    (void)state;
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1366,6 +1416,13 @@ int main(void) {
         cmocka_unit_test(OS_GetIPv4FromIPv6_compile_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_match_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_empty_group),
+        // Test getDefine_Int_default
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_empty_value_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_absent_key_returns_default, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_present_value_is_read, setup_local_defines,
+                                        teardown_local_defines),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

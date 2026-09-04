@@ -651,6 +651,28 @@ char* fim_db_calculate_table_checksum(const char* table_name)
     return result;
 }
 
+bool fim_db_try_get_last_sync_time(const char* table_name, int64_t* out_value)
+{
+    if (!table_name || !out_value)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return false;
+    }
+
+    try
+    {
+        *out_value = DB::getLastSyncTime(table_name);
+        return true;
+    }
+    catch (const std::exception& err)
+    {
+        // Reported rather than folded into a zero: a caller that adopts an id on "absent" must
+        // not do so because the database was momentarily unreadable.
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return false;
+    }
+}
+
 int64_t fim_db_get_last_sync_time(const char* table_name)
 {
     int64_t result = 0;

@@ -50,7 +50,7 @@ class AgentInsertedModel(Body):
         self._ip = ip
         self._agent_id = agent_id
         self._key = key
-        self._force = AgentForce(**force or {}).to_dict()
+        self._force = AgentForce(**force).to_dict() if force else None
 
     @property
     def id(self) -> str:

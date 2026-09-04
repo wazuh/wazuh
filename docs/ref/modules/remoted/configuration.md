@@ -36,6 +36,10 @@ message-handler worker pool, and the fd closer thread).
   regardless, since the HTTPS `/download` endpoint also serves it to 5.x agents.
   Disabling this also causes `remote_upgrade` task creation for agents below v5.0.0 to be
   rejected at creation time, since there is no delivery path for them anymore.
+- **Read by modulesd at start-up.** The Task Manager's upgrade routes consult this value to decide
+  whether an upgrade can be delivered at all, and read it **once**, when modulesd starts. Changing it
+  therefore needs `wazuh-manager-modulesd` restarted as well as `wazuh-manager-remoted`, or upgrade
+  requests will keep applying the previous value.
 
 ### legacy.port
 
@@ -81,13 +85,12 @@ Enable IPv6 support for agent connections.
 
 Bind remoted to a specific local IP address.
 
-- **Default value:** `127.0.0.1` (loopback-only) when `ipv6` is `no`; all IPv6 interfaces (`::`)
-  when `ipv6` is `yes` (the `127.0.0.1` default only applies in IPv4 mode)
+- **Default value:** `0.0.0.0` (all IPv4 interfaces) when `ipv6` is `no`; all IPv6 interfaces (`::`)
+  when `ipv6` is `yes` (the `0.0.0.0` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on the specified interface. Set to `0.0.0.0` to
-  accept agent connections from any IPv4 interface. The shipped `wazuh-manager.conf` and
-  install-time template ship the loopback-only default as-is; an operator who wants
-  remote agents must add `<local_ip>0.0.0.0</local_ip>` after install.
+- **Note:** Restricts remoted to listen only on the specified interface. The shipped
+  `wazuh-manager.conf` and the install-time template write the `0.0.0.0` default explicitly; set a
+  specific address (or `127.0.0.1`) to accept agents only through that interface.
 
 ### legacy.rids_closing_time
 
@@ -125,7 +128,7 @@ HTTPS listening port.
 
 Address the HTTPS listener binds to.
 
-- **Default value:** `127.0.0.1`
+- **Default value:** `0.0.0.0` (all IPv4 interfaces)
 - **Allowed values:** Valid IPv4 or IPv6 address
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
@@ -216,6 +219,12 @@ Client-certificate verification strictness.
 - **Note:** any other value is rejected as a configuration error (the config test fails), so a
   typo cannot silently leave client-certificate verification disabled.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
+- **Effect on agent upgrades:** anything other than `none` (or unset) blocks upgrading an agent
+  *to* v5.0.0 or newer, because the freshly upgraded agent comes back speaking HTTPS and may not be
+  able to re-establish a connection. `PUT /agents/upgrade` can override that with `force`, accepting
+  the risk and logging it; `PUT /agents/upgrade_custom` has no `force` parameter and so cannot.
+  Like `legacy.enabled`, this is read **once at modulesd start-up**, so changing it needs modulesd
+  restarted before upgrades see the new value.
 
 ### https.ciphers
 
@@ -549,6 +558,10 @@ bind address, port and max body size are regular `<remote>` settings instead (se
 `wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
 `remoted` from starting, same as every other internal option.
 
+The timeout and retry settings below each pair with a deadline on the agent's side of the same
+hop; [Connection timing tuning](timing-tuning.md) covers which pairs must move together and what
+breaks when only one does.
+
 #### remoted.http_io_threads
 
 Number of I/O threads (accept + read/write) for the HTTPS agent server.
@@ -576,6 +589,14 @@ Seconds to wait for a full request to arrive on a connection.
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** The clock starts as soon as the connection is established, so this also bounds a
   stalled TLS handshake -- there is no separate handshake timeout
+- **Note:** It is a **total** deadline on receiving the request, not an idle timer: it is armed
+  once and never rearmed as bytes arrive, so a body that takes longer than this to upload is cut
+  even though it never stalled, and the connection is closed without an HTTP status. This is the
+  setting that bounds a large `POST /stateful` or `POST /stateless` over a slow link -- raising
+  the agent's own per-request budget without raising this one changes nothing (see
+  [Connection timing tuning](timing-tuning.md#3-invariants)). The startup downstream-budget warning
+  names `remoted.http_request_timeout` instead, so that is the option usually reached for first,
+  and raising it does not widen the window an agent has to send its body
 
 #### remoted.http_write_timeout
 
@@ -583,6 +604,15 @@ Seconds to wait for a response write to complete.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `300`
+- **Note:** On a streamed `POST /download` the deadline is rearmed per chunk, but it still bounds
+  each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link: measured
+  5/10 aborts at the shipped 10 s below ~1 Mbit/s against 0/5 at 120 s on the same shaper. Size it
+  against the slowest link that must be able to complete an upgrade
+  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). The per-chunk deadline puts a
+  floor on the usable link speed, `remoted.http_stream_chunk_size` divided by this value, about
+  6.5 KB/s at the defaults of 64 KiB and 10 s. An abort leaves no line in the manager log at any
+  level: RESTinio reports the expiry from `handle_xxx_timeout()` at trace level, and the module's
+  logger adapter strips trace at compile time
 
 #### remoted.http_request_timeout
 
@@ -633,8 +663,9 @@ Maximum in-flight unanswered requests per connection (HTTP pipelining depth).
 
 Maximum concurrent in-progress TCP accepts for the HTTPS agent server.
 
-- **Default value:** `2`
-- **Allowed values:** Integer from `1` to `64`
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`, floored at `2` so a single-core host or
+  cgroup does not regress below the previous fixed default)
+- **Allowed values:** Integer from `0` to `64`
 
 #### remoted.http_buffer_size
 
@@ -662,9 +693,11 @@ Maximum simultaneous HTTPS connections.
 - **Allowed values:** Integer from `1` to `65536`
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
-  `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a transfer open
-  indefinitely and there is no per-stream limiter. A mass upgrade (the whole fleet fetching a WPK
-  at once, many over slow links) is therefore bounded only by this value. Started transfers and
+  `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
+  a slot for as long as the transfer needs. A slow one does not get the same freedom: below roughly
+  1 Mbit/s the per-chunk write deadline is what aborts the transfer (see
+  [Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). A mass upgrade (the whole fleet
+  fetching a WPK at once, many over slow links) is therefore bounded only by this value. Started transfers and
   offered bytes are visible as `remoted.download.*` in
   [`GET /metrics`](metrics.md#downloads--remoteddownload).
 
@@ -741,7 +774,9 @@ Seconds to wait for the downstream service's response after the write completes.
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
   declare its own deadline instead of forcing this value up for every endpoint (which would delay
-  detection of a genuinely hung downstream on the fast ones).
+  detection of a genuinely hung downstream on the fast ones). `/stateless` is bound by this default:
+  it must stay above the engine's real p99 ingestion latency, or a batch the engine takes longer to
+  ingest is redelivered by the agent's retry, with nothing able to recognize it as the same batch.
 
 #### remoted.downstream_stateful_response_timeout
 
@@ -840,11 +875,12 @@ database.
   ignore the window: the first host-carrying notify, and the first notify after a `startup`
   (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
 - **Note:** Keep it below half of `<global><agents_disconnection_time>` (default `15m`); remoted
-  warns at startup from half upward. The staleness monitord compares against the threshold is the
-  throttle plus the agent's notify interval, so any value at or above half can disconnect agents
-  that are answering normally. Half rather than just below the threshold also bounds detection:
-  monitord's sweep period is the disconnection time itself, so detection lands anywhere between
-  one and two times it.
+  warns at startup from half upward. The staleness the disconnection sweep compares against the
+  threshold is the throttle plus the agent's notify interval, so any value at or above half can
+  disconnect agents that are answering normally. Half rather than just below the threshold also
+  bounds detection: the sweep's period is the disconnection time itself, so detection lands anywhere
+  between one and two times it. The sweep runs as a
+  [recurring manager task](../task_manager/schedules.md), on the cluster master only.
 - **Note:** A value at or below the fleet's notify cadence suppresses nothing: the throttle can
   only drop a notify that arrives inside an open window. This is not checked at startup, because
   remoted does not know the agent's `notify_time`.
@@ -867,6 +903,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
   of `3600` the two differ by about two orders of magnitude.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
+- **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
+  unreachable **every** notify retries the query: one wazuh-db round trip per notify, for the whole
+  fleet, on top of serving the membership the cache already holds. That retry is deliberate. Marking
+  the cache fresh on failure would stop it, at the cost of serving membership that can be a full
+  `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
+  security product. The retry rate is visible as `remoted.control.wdb.*` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
 
 #### remoted.control_wdb_request_connections
 
@@ -975,6 +1018,26 @@ Concurrent connections `remoted` keeps to `authd` for enrollment.
   gains nothing. Raise it when
   [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
   its capacity at peak.
+
+#### remoted.vd_scan_read_timeout
+
+Seconds to wait for VD's answer to the inline `POST /scan/vd` admission relay.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** VD answers at admission into its bounded dispatch queue, not after running the scan,
+  so this is a local-socket round trip measured in milliseconds. A larger value does not make VD
+  queue the scan any sooner.
+
+#### remoted.vd_scan_write_timeout
+
+Seconds to wait for the write side of the same inline `POST /scan/vd` relay to VD.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** Same admission-only round trip as `remoted.vd_scan_read_timeout`. Both, plus the
+  fixed deadlines of the `/offset` query the scan gates on, make up the `/scan/vd` downstream
+  budget checked at startup against `http_request_timeout`.
 
 ---
 

@@ -14,6 +14,7 @@ include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/tests/mocks/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC "*.cpp")
 
@@ -27,6 +28,11 @@ file(GLOB DBSYNC_IMP_SRC "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
 add_executable(
   syscollectorimp_unit_test ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}
                             ${SYSCOLLECTOR_IMP_SRC} ${DBSYNC_IMP_SRC})
+
+# Enables the FRIEND_TEST declarations in syscollector_defs.hpp for this binary only.
+# Deliberately module-scoped rather than the project-wide WAZUH_UNIT_TESTING, which also
+# switches behaviour inside agent_sync_protocol.cpp and would change what these tests observe.
+target_compile_definitions(syscollectorimp_unit_test PRIVATE SYSCOLLECTOR_UNIT_TESTING)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_custom_command(
     TARGET syscollectorimp_unit_test
@@ -63,6 +69,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ssl
     crypt32
     agent_sync_protocol
+    agent_metadata
     schema_validator
     -static-libgcc
     -static-libstdc++)
@@ -91,6 +98,7 @@ else()
     crypto
     dl
     agent_sync_protocol
+    agent_metadata
     schema_validator)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

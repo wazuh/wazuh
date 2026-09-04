@@ -27,7 +27,7 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
 
 ## Transport and TLS
 
-- **Bind address / port:** `127.0.0.1:1517` by default. Both IPv4 and IPv6 literals are accepted
+- **Bind address / port:** `0.0.0.0:1517` by default. Both IPv4 and IPv6 literals are accepted
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
@@ -315,9 +315,10 @@ prefix — `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health
 `404`. The prefixed path is what travels on the wire and what the router matches: agents send the
 full prefixed target. The token does not bind it, so a prefix mismatch is a `404`, never a `401`.
 
-The module's own statistics are **not** served here: they live on a separate manager-local Unix
-socket (`GET /`, `GET /metrics` on `queue/sockets/remote-admin-http.sock`), so they are never reachable
-from an agent — see [the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
+The module's own statistics and readiness are **not** served here: they live on a separate
+manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
+`queue/sockets/remote-admin-http.sock`), so they are never reachable from an agent — see
+[the admin socket](README.md#local-admin-socket) and [Metrics](metrics.md).
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
@@ -404,16 +405,17 @@ notes).
 | Max header value size                 | `8192 B`              | `remoted.http_max_header_value_size`    |
 | Max header count                      | `64`                  | `remoted.http_max_header_count`         |
 | Max pipelined requests per connection | `4`                   | `remoted.http_max_pipelined_requests`   |
-| Concurrent TCP accepts                | `2`                   | `remoted.http_concurrent_accepts`       |
+| Concurrent TCP accepts                | `cpp_get_nproc()`, floored at `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size               | `8192 B`              | `remoted.http_buffer_size`              |
 | Accept `Content-Encoding: zstd`       | enabled               | `remoted.http_content_encoding_enabled` |
 
-I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
-set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
+I/O threads, handler worker threads, and concurrent TCP accepts are count settings: a `<=0` value
+(including "not set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
 (`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed constant, so the pool
 sizes track the host/container's available CPUs. The handler worker pool is oversubscribed (`2x`)
 because that work can block (token verification, `client.keys` file I/O), unlike the purely
-async I/O threads.
+async I/O threads. Concurrent TCP accepts is additionally floored at `2` regardless of core count,
+so a single-vCPU host or cgroup does not regress below the historical fixed default.
 
 Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
 ciphers, client verification mode) are **not** internal options -- they are regular, user-facing
@@ -427,7 +429,7 @@ above).
 
 | Setting                                                                          | `<https>` tag       | Default                                                                                       |
 | -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `127.0.0.1`                                                                                   |
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `0.0.0.0`                                                                                     |
 | Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
 | Port                                                                             | `port`              | `1517`                                                                                        |
 | Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |
@@ -579,9 +581,14 @@ Three more that are not about tuning:
   that can actually authenticate — a key that fails to decode is reported separately and is **not**
   counted, so this number can be trusted. If `client.keys` is unreadable, that is logged explicitly:
   otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
+- A missing or unreadable `etc/authd.pass`, at `remoted` startup or on a later poll, is normally a
+  **WARNING** naming the file. The exception is a cluster worker within about a minute of starting:
+  there, the file not having synced down from the master yet is expected, so it logs at **DEBUG1**
+  instead ("waiting for the enrollment password to be synchronized from the master node"). A worker
+  still missing the file past that window, or a master hitting this path at all, still warns.
 - **`Could not derive the enrollment key from 'etc/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
-  distinct from an unreadable or invalid password file (a WARNING naming the file).
+  distinct from an unreadable or invalid password file (see above).
 - **The HTTPS server failing to start** is an ERROR naming which of the two is the problem (the
   certificate or the private key). There is no retry: remoted must not start without the HTTPS
   transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
@@ -829,7 +836,7 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
   hostname, etc.) via `agent <id> set <field> <value>` commands, updates connection status, and
   reads back the agent's groups. Dedicated worker threads with bounded request queues and async I/O
   prevent blocking the HTTP worker threads.
-- **task-manager** (`queue/sockets/task.sock`): Task delivery. The handler queries pending tasks for the
+- **task-manager** (`queue/sockets/task-http.sock`): Task delivery. The handler queries pending tasks for the
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
@@ -1336,14 +1343,10 @@ agent.
 
 > **A `200` means accepted, not indexed.** The sync server answers before the indexer write completes
 > (the write is fire-and-forget), so an indexer-side rejection is **silent** to the agent, which
-> already has its `200`. This matters most on `/stats`, whose `wazuh-agent-stats` mapping is
-> `dynamic: strict` with every leaf declared: a module or metric the template does not declare makes
-> the indexer reject the **whole** document with `strict_dynamic_mapping_exception`. So an agent-side
-> metric addition needs no change to this endpoint, but it does need one in the index template — and
-> if it is missed, statistics stop landing with nothing in the agent's logs to say so. `/config`'s
-> template is `dynamic: false` instead, which is far more forgiving: an unrecognized module, or an
-> undeclared key inside a known one, is still written and kept in `_source`, just not indexed for
-> search. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
+> already has its `200`. Both `wazuh-agent-stats` and `wazuh-agent-config` are mapped `dynamic: true`,
+> so a module, metric or key the template does not declare is indexed like any other field with no
+> schema check: an agent-side addition needs no change to this endpoint, and none in the index
+> template. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
 
 ### Error handling
 

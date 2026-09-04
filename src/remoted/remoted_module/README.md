@@ -255,9 +255,10 @@ src/endpoints/
   `wazuh-agent-stats` / `wazuh-agent-config`
   (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
   report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
-  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed* —
-  `wazuh-agent-stats` is `dynamic: strict`, so an undeclared metric is dropped silently at the
-  indexer. Three things differ from `/stateless`:
+  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed*, and an
+  indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
+  undeclared metric is indexed like any other field rather than rejected. Three things differ from
+  `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
     these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
     That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
@@ -557,7 +558,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
 | `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
-| `taskSocketPath` | `/queue/sockets/task.sock` | — (fixed) |
+| `taskSocketPath` | `/queue/sockets/task-http.sock` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -685,9 +686,10 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
-  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
-  items), so the round trip is inline route work measured in milliseconds, never a scan.
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a read/write timeout
+  each configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
+  5 s each): VD answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup
+  of queued items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
   VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
   own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
@@ -1102,11 +1104,10 @@ otherwise — the bridge always has something to talk to as long as authd is run
 `enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
 no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
 
-`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
-sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
-that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
-It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
-explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+`authd_config_t.flags.disabled` is a plain boolean, defaulting to enabled (`0`) unless
+`<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
+(`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
+but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
 normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
 
 ### Manager certificate unification
@@ -1656,7 +1657,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
-| `remoted.admin.server.*` (7 pulls) | the admin transport dogfooding itself | `IUdsHttpServer::diagnostics()` |
+| `remoted.admin.server.*` (11 pulls) | the admin transport dogfooding itself: 7 levels plus the 4 `rejected.*` shed counters | `IUdsHttpServer::diagnostics()` |
 
 **Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
 the transport I/O thread BEFORE any route runs — it appears ONLY in
@@ -1676,14 +1677,60 @@ catalogs consume.
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
-brought up by `startAdminServer()` right after the public server. It serves exactly two
-read-only routes, both **Liveness** class (answered inline from resident state, exempt from the
+brought up by `startAdminServer()` right after the public server. It serves exactly three
+read-only routes, all **Liveness** class (answered inline from resident state, exempt from the
 byte budget):
 
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
+| `GET /status` | Readiness, not bare liveness — see below |
+
+### `GET /status`: readiness, not liveness
+
+Unlike `/` and `/metrics`, this route answers a business-logic question: can this node
+currently do Password-mode enrollment, and did its `client.keys` mirror last reload
+successfully. It reads two pieces of state the module already owns in-process — no I/O, no
+KDF, nothing that can block the admin socket's fixed 2-reactor-thread "never block" contract:
+
+- `Keystore::lastLoadOk()`/`agentsLoaded()`/`entriesSkipped()` (plain atomics, see the
+  `remoted.auth.keystore.*` pulls above) through the same `m_keystoreDiagMutex`/
+  `m_keystoreDiagTarget` weak_ptr pair `/metrics`'s pulls already use.
+- `PasswordKeySource::currentKey().has_value()` (a mutex-guarded check of an already-derived,
+  cached key — see `#### PasswordKeySource` above; `currentKey()` does make a transient,
+  wiped-on-destroy copy internally, but that copy is never serialized into the response or
+  logged) through a sibling `m_passwordKeySourceDiagMutex`/`m_passwordKeySourceDiagTarget`
+  weak_ptr pair, populated right after `EnrollmentAuthenticator` construction and permanently
+  expired when Password-mode enrollment is disabled.
+
+Response shape:
+
+```json
+{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}
+```
+
+- **`ready`** is the AND of the *gating* components only, and `enrollment_password` (when
+  present) is the sole gating component. With Password-mode disabled, `ready` is `true`
+  whenever the handler answers at all.
+- **`enrollment_password`** is present only when enrollment is administratively enabled
+  **and** Password-mode enrollment is on (the diag weak_ptr resolves); omitted entirely if
+  either is off, not reported as a distinct not-applicable state. Its `ready` is raw current
+  state — never grace-window masked.
+- **`keystore`** is always present and always informational — `readable` (not `ready`, to
+  avoid reading as a readiness claim) reflects `Keystore::lastLoadOk()`; `agents_loaded`/
+  `entries_skipped` mirror the pull metrics. It never gates the top-level `ready`: the module
+  cannot distinguish an empty-but-fine `client.keys` from a stale one still serving the old
+  table, and gating on either would flap a healthy node in and out of `ready`.
+- If the `Keystore` diag weak_ptr is expired (only reachable during facade teardown, since
+  `Keystore` is otherwise unconditionally constructed), the handler answers `503`, mirroring
+  `/metrics`'s `weakManager.lock()` fallback exactly.
+
+The unreachable-admin-socket fallback (an `httpx.ConnectError` on the framework side falls
+back to plain liveness with a surfaced reason, rather than reporting the node not ready) lives
+entirely in `framework/wazuh/manager.py`'s `_remoted_status()`, not in this handler — from
+this route's own perspective, the socket either answers or it doesn't come up at all (the
+warn-and-continue policy below).
 
 Contract points:
 
@@ -1706,6 +1753,7 @@ Contract points:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 ```
 
 ## Integration in remoted
@@ -1763,9 +1811,13 @@ exercise directly).
 Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
 the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
 metric family in the catalog (one representative name per family, plus live — not quiesced —
-values for the public-transport pulls), 404/405 exact-match routing, the warn-and-continue
-policy when the bind fails with the public listener unaffected, and `stop()` unlinking the
-socket with a restart cycle bringing the plane back).
+values for the public-transport pulls), `GET /status` reporting `enrollment_password` as the
+sole gate on top-level `ready` (present only when Password-mode enrollment is enabled) and
+`keystore.readable` as purely informational — including the case where `client.keys` fails to
+load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{readable:false,...}`
+to prove a keystore failure alone never drags `ready` down, 404/405 exact-match routing, the
+warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
+unlinking the socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V

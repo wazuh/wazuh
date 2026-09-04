@@ -129,6 +129,11 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+    IndexerBulkRequestStats takeBulkRequestStats()
+    {
+        return m_impl.takeBulkRequestStats();
+    }
 };
 
 IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
@@ -239,6 +244,11 @@ void IndexerConnectorSync::refresh(std::string_view indexPattern)
 bool IndexerConnectorSync::isAvailable() const
 {
     return m_impl->isAvailable();
+}
+
+IndexerBulkRequestStats IndexerConnectorSync::takeBulkRequestStats()
+{
+    return m_impl->takeBulkRequestStats();
 }
 
 // LCOV_EXCL_STOP

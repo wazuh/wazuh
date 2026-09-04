@@ -27,7 +27,7 @@ class TEndpointGetV1AgentsParamGroups final
     static constexpr auto LOGTAG = "wazuh-db-http";
     // uds_http_server routes exact-match only, so the agent id can't travel as a path segment
     // (see wdb_http.cpp) -- it travels in this header instead, the same convention
-    // inventory_sync_server's DELETE /agents uses. Header names are lower-cased by the transport.
+    // inventory_sync_server's sync routes use. Header names are lower-cased by the transport.
     static constexpr auto AGENT_ID_HEADER = "x-wazuh-agent-id";
 
     struct Response final

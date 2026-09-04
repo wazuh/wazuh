@@ -303,20 +303,24 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithMismatchedFeedOffsetIsRejectedWith
     EXPECT_TRUE(m_events->syncOps().empty()) << "a stale-offset VD session must never reach the scanner or the indexer";
 }
 
-TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
+/// Deletion over the REAL transport, with the bytes the Task Manager's dispatcher puts on the wire:
+/// POST, the agent id in the body, and no headers of its own.
+static std::string deleteRequestFor(const std::string& body)
 {
-    // The canonical DELETE /agents (design doc 04) and its POST alias -- the alias is load-bearing:
-    // authd's uhttp_* helper only speaks POST, so a route drift would silently orphan deletions.
-    const std::string deleteHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
-                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteHead);
-    EXPECT_EQ(200, response.status) << response.body;
-    // Answered at admission: "queued" is the wire saying the purge has not run yet.
-    EXPECT_EQ(R"({"status":"queued"})", response.body);
+    return "POST /_internal/agents/delete HTTP/1.1\r\nHost: localhost\r\n"
+           "Content-Type: application/json\r\nContent-Length: " +
+           std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+}
 
-    const std::string aliasHead = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 10\r\n"
-                                  "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, aliasHead).status);
+TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAcrossBothHalves)
+{
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"9"})"));
+    EXPECT_EQ(200, response.status) << response.body;
+    // Answered at COMPLETION: "ok" is the pipeline's own answer, sent after the flush, which is what
+    // lets the dispatcher record its task row `completed` and have that mean purged.
+    EXPECT_EQ(R"({"status":"ok"})", response.body);
+
+    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"10"})")).status);
 
     /*
      * A deletion has TWO halves, one per writer, and this E2E is where the facade's wiring of both
@@ -327,8 +331,9 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
      *  - by document id, on the ASYNC connector that writes `wazuh-agent-config` and
      *    `wazuh-agent-stats`, queued at admission -- two per deletion, so four here.
      *
-     * Only the first half has to be waited for: both callers are already free, but the by-id half
-     * was queued on the handler's own thread before the response was sent.
+     * Neither half has to be waited for any more: the by-query half flushed before the response was
+     * sent, and the by-id half was queued on the handler's own thread before that. The wait below is
+     * kept because the by-id ops are recorded on a shared log the pipeline worker also writes to.
      */
     const auto deleteByQueries = [this]
     {
@@ -376,9 +381,9 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
         {"bulkDelete", "010", "wazuh-agent-stats"}};
     EXPECT_EQ(expectedAsyncOps, asyncOps);
 
-    const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
-                                "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, badHead).status);
+    // A body naming no usable agent. The header is NOT a fallback -- setting one here would still be
+    // a 400, which is the point: the dispatcher never sends one.
+    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"nope"})")).status);
 }
 
 TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)
@@ -439,10 +444,7 @@ TEST_F(StatefulEndpointE2ETest, DeletionsAreControlClassAndStatefulIsDataClass)
 {
     const std::string oversized(100 * 1024, 'x'); // over Control's 64 KiB, nothing to Data
 
-    std::string deleteRequest = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
-                                "Content-Length: " +
-                                std::to_string(oversized.size()) + "\r\nConnection: close\r\n\r\n" + oversized;
-    const auto rejected = wazuh::uds_http::test::sendRaw(m_path, deleteRequest);
+    const auto rejected = wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(oversized));
     EXPECT_EQ(413, rejected.status);
     EXPECT_NE(std::string::npos, rejected.body.find("control-class")) << rejected.body;
 

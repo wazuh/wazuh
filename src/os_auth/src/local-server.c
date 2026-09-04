@@ -42,7 +42,9 @@ typedef enum auth_local_err {
     ENOMASTERCOMM,
     EINVALIDNAME,
     EPENDINGPURGE,
-    EINVALIDKEY // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDKEY,
+    EINVALIDID,
+    EDELETEBACKLOG // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -72,7 +74,16 @@ static const struct {
     { 9018, "Agent ID has a pending deletion" },
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
-    { 9019, "Invalid agent key" }
+    { 9019, "Invalid agent key" },
+    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
+    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    { 9020, "Invalid agent ID" },
+    // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
+    // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
+    // remedy is to wait rather than to pick a different id. 9021 rather than 9020: both features
+    // appended their code independently, and 9020 was already taken by the id check above -- the
+    // framework maps the two to different API errors.
+    { 9021, "Too many agent deletions are pending" }
 };
 
 // Dispatch local request
@@ -606,7 +617,51 @@ cJSON* local_add(const char *id,
     bool warn = false;
 
     mdebug2("add(%s)", name);
+
+    /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
+     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
+     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
+     * thread -- to ask whether an id that cannot exist owes a deletion.
+     *
+     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
+     * not the id space /agents/insert accepts.
+     *
+     * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
+     * held yet. */
+    if (id && !OS_IsValidAgentInsertID(id)) {
+        return local_create_error_response(ERRORS[EINVALIDID].code, ERRORS[EINVALIDID].message);
+    }
+
+    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
+     * owner is still being cleaned up. Both this check and the duplicate-ID one below refuse
+     * instead of reassigning it, because the pending purge matches by agent id and would delete the
+     * NEW agent's documents -- and nothing in a state document lets the purge tell the two owners
+     * apart.
+     *
+     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
+     * caller is told to come back, which for a migration script is a retry, not a data loss.
+     *
+     * BEFORE mutex_keys, and that placement is the point: once authd has handed a deletion off, the
+     * only authority on it is the manager-task row, so this can block for up to authd.wdb_timeout.
+     * mutex_keys is the lock the writer thread and every enrollment take, so holding it across that
+     * query would let a slow wazuh-db stall enrollment -- the exact wedge the deletion redesign
+     * exists to remove. Nothing here reads the keystore, so there is nothing to serialise. */
+    if (id && purge_is_pending(id)) {
+        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
+        return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
+    }
+
     w_mutex_lock(&mutex_keys);
+
+    /* The same question again, from memory only, now that the keystore is locked: a deletion of
+     * this very id could have been admitted between the check above and this lock, and add_remove()
+     * reserves the id under mutex_keys. The expensive half is not repeated -- a row that reached a
+     * terminal status a moment ago cannot have become outstanding again. */
+    if (id && purge_is_pending_locally(id)) {
+        mwarn("Agent ID '%s' was deleted while the insertion was being validated, rejecting it.", id);
+        ierror = EPENDINGPURGE;
+        goto fail;
+    }
 
     /* Check if groups are valid to be aggregated */
     if (groups) {
@@ -621,19 +676,6 @@ cJSON* local_add(const char *id,
      * every request as an unusable key, which is far harder to diagnose than refusing it here. */
     if (key && !OS_IsValidAgentKey(key)) {
         ierror = EINVALIDKEY;
-        goto fail;
-    }
-
-    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
-     * owner is still being cleaned up. Both branches below refuse instead of reassigning it,
-     * because the pending purge matches by agent id and would delete the NEW agent's documents --
-     * and nothing in a state document lets the purge tell the two owners apart.
-     *
-     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
-     * caller is told to come back, which for a migration script is a retry, not a data loss. */
-    if (id && purge_is_pending(id)) {
-        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
-        ierror = EPENDINGPURGE;
         goto fail;
     }
 
@@ -786,6 +828,17 @@ cJSON* local_remove(const char *id, int purge) {
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    } else if (purge_backlog_full()) {
+        /* PHASE 0, and it has to be here rather than anywhere later.
+         *
+         * One line below, add_remove() and OS_DeleteKey() have run: the agent is out of the
+         * in-memory keystore and this function is about to answer "deleted". From that point there
+         * is nothing left to refuse and nobody to tell, which is why the old code -- discovering
+         * the overflow in the writer -- could only choose between dropping the purge silently and
+         * logging it while the documents were orphaned. Refusing the REQUEST leaves the agent
+         * exactly as it was, and the caller can retry. */
+        mwarn("Error %d: %s.", ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
+        response = local_create_error_response(ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */

@@ -22,7 +22,6 @@
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_agent.h"
