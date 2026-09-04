@@ -544,9 +544,12 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error,
-                                                  const long statusCode,
-                                                  const std::string& responseBody) -> void
+        // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
+        // included, draw from it too, so a split cannot multiply what a flush may spend.
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
+                                                                const long statusCode,
+                                                                const std::string& responseBody) -> void
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
@@ -562,7 +565,7 @@ class IndexerConnectorSyncImpl final
                     m_boundaries.clear();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
                 }
-                splitAndProcessBulk();
+                splitAndProcessBulk(retryBudget);
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -605,7 +608,6 @@ class IndexerConnectorSyncImpl final
         {
             IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                     std::chrono::seconds {m_maxRetryDelay}};
-            IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
             do
             {
                 if (m_stopping.load())
@@ -667,7 +669,7 @@ class IndexerConnectorSyncImpl final
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
-    void splitAndProcessBulk()
+    void splitAndProcessBulk(IndexerRetryBudget& retryBudget)
     {
         // Clear on every exit path: on failure the caller re-stages, so bytes kept here would be
         // re-sent by whoever flushes next.
@@ -701,7 +703,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(firstHalf, firstBoundaries);
+                processBulkChunk(firstHalf, firstBoundaries, retryBudget);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -714,7 +716,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(secondHalf, secondBoundaries);
+                processBulkChunk(secondHalf, secondBoundaries, retryBudget);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -729,7 +731,7 @@ class IndexerConnectorSyncImpl final
         }
     }
 
-    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
+    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries, IndexerRetryBudget& retryBudget)
     {
         bool needToRetry = false;
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
@@ -747,7 +749,7 @@ class IndexerConnectorSyncImpl final
                 indexingFailures = true;
             }
         };
-        const auto onError = [this, &needToRetry, boundaries, data](
+        const auto onError = [this, &needToRetry, &retryBudget, boundaries, data](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -771,8 +773,8 @@ class IndexerConnectorSyncImpl final
                     }
                     const std::string_view firstHalf = data.substr(0, splitPos - chunkStart);
                     const std::string_view secondHalf = data.substr(splitPos - chunkStart);
-                    processBulkChunk(firstHalf, firstBoundaries);
-                    processBulkChunk(secondHalf, secondBoundaries);
+                    processBulkChunk(firstHalf, firstBoundaries, retryBudget);
+                    processBulkChunk(secondHalf, secondBoundaries, retryBudget);
                     return;
                 }
                 LOGFN_WARN(m_logFn, "Single operation too large for server limits");
@@ -811,7 +813,6 @@ class IndexerConnectorSyncImpl final
         };
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
-        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
         do
         {
             if (m_stopping.load())

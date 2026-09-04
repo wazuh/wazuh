@@ -5973,6 +5973,97 @@ TEST_F(IndexerConnectorSyncTest, ChunkRetryBudgetBoundsSplitRetries)
     EXPECT_EQ(postCount.load(), 3);
 }
 
+/// The chunks of a 413 split draw from their flush's budget: the attempt one chunk spends is gone
+/// for the next, so a split cannot multiply what one flush may retry.
+TEST_F(IndexerConnectorSyncTest, SplitChunksShareTheFlushRetryAttempts)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                switch (++postCount)
+                {
+                    case 1: respondBulkError(postParams, "Payload Too Large", 413); break;
+                    case 2: respondBulkError(postParams, "Too many requests", 429); break;
+                    case 3: respondBulkSuccess(postParams); break;
+                    case 4: respondBulkError(postParams, "Too many requests", 429); break;
+                    default: respondBulkSuccess(postParams); break;
+                }
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "the second chunk's 429 must exhaust the attempts the first chunk already spent";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    }
+    EXPECT_EQ(postCount.load(), 4) << "full batch, first chunk twice, second chunk once";
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 4) << "the split's DEFER consumed the buffer";
+}
+
+/// Same for the deadline: the second chunk's first backoff would cross the flush's deadline, so
+/// the flush fails after ~1 s instead of granting every chunk its own window.
+TEST_F(IndexerConnectorSyncTest, SplitChunksShareTheFlushRetryDeadline)
+{
+    config["max_retry_attempts"] = 0;
+    config["max_retry_duration_seconds"] = 2;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                switch (++postCount)
+                {
+                    case 1: respondBulkError(postParams, "Payload Too Large", 413); break;
+                    case 2: respondBulkError(postParams, "Too many requests", 429); break;
+                    case 3: respondBulkSuccess(postParams); break;
+                    case 4: respondBulkError(postParams, "Too many requests", 429); break;
+                    default: respondBulkSuccess(postParams); break;
+                }
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "the second chunk's backoff must not be granted past the flush's deadline";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    }
+    EXPECT_EQ(postCount.load(), 4) << "full batch, first chunk twice, second chunk once";
+}
+
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryBudgetBounds429Retries)
 {
     config["max_retry_attempts"] = 2;

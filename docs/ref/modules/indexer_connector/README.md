@@ -78,7 +78,8 @@ Example with the defaults (base = 1s, max = 15s):
 
 **Retries are bounded (sync).** Every sync retry loop carries a budget: at most `max_retry_attempts`
 failed attempts (default 5) and a wall-clock deadline of `max_retry_duration_seconds` (default 15s)
-per operation, whichever is spent first. On exhaustion the operation throws instead of retrying —
+per operation, whichever is spent first; the chunks of a `413` split draw from their flush's budget,
+so a split cannot multiply it. On exhaustion the operation throws instead of retrying —
 the batch is dropped and the caller retries by re-staging, the same contract as any other terminal
 failure. `0` disables the corresponding bound. Without the budget, a persistent 429 or an
 unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
