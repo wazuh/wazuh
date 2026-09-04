@@ -418,6 +418,9 @@ static void test_wm_gcp_pubsub_run_unknown_error(void **state) {
 
     will_return(__wrap_isDebug, 1);
 
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, ":gcloud_wodle:Unknown error - This is an unknown error.");
+
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -455,6 +458,10 @@ static void test_wm_gcp_pubsub_run_unknown_error_no_description(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
 
     will_return(__wrap_isDebug, 1);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Unknown error - This is an unknown error.");
+
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -492,6 +499,10 @@ static void test_wm_gcp_pubsub_run_error_parsing_args(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 2");
 
     will_return(__wrap_isDebug, 1);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Error!! integration.py: error: unable to parse");
+
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -531,6 +542,9 @@ static void test_wm_gcp_pubsub_run_error_parsing_args_no_description(void **stat
 
     will_return(__wrap_isDebug, 1);
 
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Error!! But won't trigger a specific message");
+
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -568,6 +582,9 @@ static void test_wm_gcp_pubsub_run_generic_error(void **state) {
 
     will_return(__wrap_isDebug, 0);
 
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "ERROR: A specific error message.");
+
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -603,6 +620,191 @@ static void test_wm_gcp_pubsub_run_generic_error_no_description(void **state) {
 
     expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 3");
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "A specific error message.");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_surfaces_raw_traceback_on_crash(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // No :gcloud_wodle: token anywhere -- the wodle crashed before its own logger was built,
+    // e.g. a missing dependency at import time.
+    will_return(__wrap_wm_exec,
+        "Traceback (most recent call last):\n"
+        "  File \"/var/ossec/wodles/gcloud/gcloud.py\", line 15, in <module>\n"
+        "    from buckets.access_logs import GCSAccessLogs\n"
+        "ModuleNotFoundError: No module named 'cgi'");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
+        "Traceback (most recent call last):\n"
+        "  File \"/var/ossec/wodles/gcloud/gcloud.py\", line 15, in <module>\n"
+        "    from buckets.access_logs import GCSAccessLogs\n"
+        "ModuleNotFoundError: No module named 'cgi'");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_surfaces_raw_traceback_after_hidden_debug_line(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // The wodle logs one line through its own formatter (hidden here since debug_level < 2),
+    // then crashes mid-run with a raw traceback that carries no further token at all. Even
+    // though the token IS present somewhere in the output, nothing in it ever became a visible
+    // log line -- the real cause must still be surfaced instead of silently dropped.
+    will_return(__wrap_wm_exec,
+        ":gcloud_wodle: - DEBUG - Starting run\n"
+        "Traceback (most recent call last):\n"
+        "  File \"/var/ossec/wodles/gcloud/gcloud.py\", line 64, in main\n"
+        "    subscriber_client.check_permissions()\n"
+        "RuntimeError: permission denied");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
+        ":gcloud_wodle: - DEBUG - Starting run\n"
+        "Traceback (most recent call last):\n"
+        "  File \"/var/ossec/wodles/gcloud/gcloud.py\", line 64, in main\n"
+        "    subscriber_client.check_permissions()\n"
+        "RuntimeError: permission denied");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_no_output_on_success_is_not_logged(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // No token and exit code 0 (success): nothing should be logged as an error.
+    will_return(__wrap_wm_exec, "Some benign, unformatted stdout noise");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_isDebug, 0);
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logged_error_on_failure_is_not_duplicated(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // The wodle exits non-zero AND logs a recognized, visible ERROR line through its own
+    // formatter: the real cause is already surfaced, so the raw-output fallback must not add a
+    // second, redundant mterror call for the same failure.
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is the real error");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is the real error");
 
     wm_gcp_pubsub_run(gcp_config);
 }
@@ -1423,6 +1625,9 @@ static void test_wm_gcp_bucket_run_error(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
 
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Unknown error - This is an unknown error.");
+
     wm_gcp_bucket_run(cur_bucket);
 }
 
@@ -1460,6 +1665,9 @@ static void test_wm_gcp_bucket_run_error_no_description(void **state) {
 
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This description does not match the criteria");
 
     wm_gcp_bucket_run(cur_bucket);
 }
@@ -1500,6 +1708,9 @@ static void test_wm_gcp_bucket_run_error_parsing_args(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 2");
 
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Error!! integration.py: error: unable to parse");
+
     wm_gcp_bucket_run(cur_bucket);
 }
 
@@ -1539,6 +1750,9 @@ static void test_wm_gcp_bucket_run_error_parsing_args_no_description(void **stat
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 2");
 
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Error!! But won't trigger a specific message");
+
     wm_gcp_bucket_run(cur_bucket);
 }
 
@@ -1576,6 +1790,9 @@ static void test_wm_gcp_bucket_run_generic_error(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 3");
 
     will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "ERROR: A specific error message.");
 
     wm_gcp_bucket_run(cur_bucket);
 }
@@ -1615,6 +1832,9 @@ static void test_wm_gcp_bucket_run_generic_error_no_description(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 3");
 
     will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "A specific error message.");
 
     wm_gcp_bucket_run(cur_bucket);
 }
@@ -2494,6 +2714,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_error_parsing_args_no_description, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_generic_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_generic_error_no_description, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_raw_traceback_on_crash, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_raw_traceback_after_hidden_debug_line, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_no_output_on_success_is_not_logged, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logged_error_on_failure_is_not_duplicated, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_message_warning, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multiline_message_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multimessage_message_error, setup_group_pubsub, teardown_group_pubsub),
