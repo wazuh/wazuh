@@ -222,7 +222,17 @@ class BaselineDriver {
             }
 
             // Stable checksum so DBSync can detect row-level changes between runs.
-            const std::string dump = row.dump();
+            //
+            // The container-scope columns are excluded deliberately: container_id
+            // is part of the row's key (the transaction is already scoped to it),
+            // and container_json is a copy of the container's metadata blob. With
+            // the blob inside the digest, editing one label changed the checksum
+            // of every file row of that container and re-emitted the whole file
+            // set as MODIFIED — a metadata edit reported as file changes.
+            auto checksumInput = row;
+            checksumInput.erase("container_id");
+            checksumInput.erase("container_json");
+            const std::string dump = checksumInput.dump();
             char sha1[41] = {0};
             fim_compute_row_checksum(dump.c_str(), sha1);
             row["checksum"] = std::string(sha1);
