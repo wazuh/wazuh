@@ -48,7 +48,7 @@ from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
 from wazuh_testing.utils.services import check_all_daemon_status, wait_expected_daemon_status
 
 # Marks
-pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.server, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # The API daemon's own startup script (api/scripts/wazuh_manager_apid.py). Both the real daemon
 # and the '-t' config-validation invocation wazuh-manager-control also launches match this
@@ -77,7 +77,7 @@ def _kill_apid_family_uncleanly():
     """SIGKILL every live process whose cmdline names the apid script, leaving their pidfiles.
 
     A graceful stop (SIGTERM) runs wazuh_manager_apid.py's own exit_handler, which deletes its
-    pidfile itself (api/scripts/wazuh_manager_apid.py:384). SIGKILL skips that handler entirely,
+    pidfile itself (exit_handler in api/scripts/wazuh_manager_apid.py). SIGKILL skips that handler,
     which is the actual precondition from #38695: an unclean stop (docker kill, OOM, a crash)
     leaves the pidfile behind for the next start to find.
 
