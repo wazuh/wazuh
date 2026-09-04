@@ -26,12 +26,12 @@ The library provides two classes depending on the use case:
 1. The caller instantiates a connector with a JSON configuration (derived from the `<indexer>` XML block).
 2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
 3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
-4. A server-selector performs round-robin load balancing across available nodes.
+4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
 ### Sync flush behavior
 
-- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size` for Inventory Sync Server).
+- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size` for Inventory Sync Server).
 - Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner; the Inventory Sync Server deliberately overrides its periodic flush — its ingestion workers own every flush, see its [configuration reference](../inventory-sync-server/configuration.md)).
 - `flush_interval_seconds = 0` means **no background flush thread at all**: the connector is never created with one and every flush is the caller's. Use it when the caller has to answer for a failed flush — a timer flush that fails discards the staging buffer and has no caller to report to, so a later `flush()` finds an empty buffer and returns success for data that never landed. The value is set directly by the Inventory Sync Server; it is not reachable through the Vulnerability Scanner's `wazuh_modules.indexer_flush_interval`, whose range is 1–3600.
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
@@ -76,6 +76,17 @@ Example with the defaults (base = 1s, max = 15s):
 | 4th | random between 4s and 8s |
 | 5th and beyond | random between 8s and 15s (capped) |
 
+**Retries are bounded (sync).** Every sync retry loop carries a budget: at most `max_retry_attempts`
+failed attempts (default 5) and a wall-clock deadline of `max_retry_duration_seconds` (default 15s)
+per operation, whichever is spent first; the chunks of a `413` split draw from their flush's budget,
+so a split cannot multiply it. On exhaustion the operation throws instead of retrying —
+the batch is dropped and the caller retries by re-staging, the same contract as any other terminal
+failure. `0` disables the corresponding bound. Without the budget, a persistent 429 or an
+unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
+long after the caller's response window closed. The deadline only gates the sleeps: one in-flight
+request can still overshoot it by up to `request_timeout_seconds`. The indexer's `Retry-After`
+header is not honored — the transport does not expose response headers (tracked in #38942).
+
 ### Delete-by-query
 
 `IndexerConnectorSync` also exposes the operation the manager's whole-agent deletion is built on. It
@@ -87,12 +98,16 @@ achieve leaves documents nothing will ever overwrite:
   moved between the query's search and delete phases is skipped instead of aborting the whole run.
 - **A `200` is not automatically success.** The response is inspected, and the flush throws when it
   reports per-shard `failures` or a non-zero `version_conflicts` — the two ways a `200` can leave
-  matching documents in place. Callers treat that as retriable.
+  matching documents in place — or when its body cannot be parsed at all. Callers treat that as
+  retriable.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
-- HTTP-level `404`, `409` and `429` on a delete-by-query are tolerated (logged at debug) rather than
-  raised: a missing index has nothing to delete, and the other two are retried by re-running the
-  deletion.
+- HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the
+  same backoff as the bulk paths, and anything else — a request-level `409` included — fails the
+  flush: an unconfirmed delete is never reported as applied.
+- **`executeUpdateByQuery` follows the same contract**: a `200` whose body tallies `failures` or
+  `version_conflicts`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
+  instead of confirming it.
 - **A delete-by-query is a SEARCH**, so it only sees documents that are already searchable. Callers
   that need it to cover writes of the last few seconds must refresh the index themselves — the
   connector does not do it for them, and `refresh()` requires `indices:admin/refresh`, which is not
