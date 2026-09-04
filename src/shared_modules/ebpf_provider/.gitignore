@@ -1,0 +1,10 @@
+# Artifacts of the standalone Makefile build (see the header of Makefile).
+# Only the CMake build's outputs land under src/build/; running `make` or
+# `make check` in this directory writes here, so keep them untracked.
+*.o
+bpf/vmlinux.h
+rt_file.bpf.o
+rt_engine_harness
+rt_engine_contract_test
+rt_engine_leak_test
+rt_engine_drops_test
