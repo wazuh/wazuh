@@ -19,7 +19,7 @@
   <rule id="1001" level="2">
     <match>^Couldn't open /etc/securetty</match>
     <description>File missing. Root access unrestricted.</description>
-    <group>pci_dss_10.2.4,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.2.4,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,dora_Article_9.2,nist_csf_2_PR.AC-01,</group>
   </rule>
 
   <rule id="1002" level="2">
@@ -39,20 +39,20 @@
   <rule id="1004" level="5">
     <match>^exiting on signal</match>
     <description>Syslogd exiting (logging stopped).</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,dora_Article_10.1,nist_csf_2_DE.CM-01,</group>
   </rule>
 
   <rule id="1005" level="5">
     <program_name>syslogd</program_name>
     <match>^restart</match>
     <description>Syslogd restarted.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,dora_Article_10.1,nist_csf_2_DE.CM-01,</group>
   </rule>
 
   <rule id="1006" level="5">
     <regex>^syslogd \S+ restart</regex>
     <description>Syslogd restarted.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,dora_Article_10.1,nist_csf_2_DE.CM-01,</group>
   </rule>
 
   <rule id="1007" level="7">

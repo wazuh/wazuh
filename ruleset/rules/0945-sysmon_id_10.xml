@@ -17,6 +17,7 @@
     <mitre>
       <id>T1003.001</id>
     </mitre>
+    <group>credential_access,pci_dss_10.2.4,gdpr_IV_35.7.d,dora_Article_9.2,dora_Article_10.1,nist_csf_2_PR.AC-01,</group>
   </rule>
 
   <rule id="92910" level="12">
