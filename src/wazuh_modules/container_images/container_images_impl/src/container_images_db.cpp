@@ -292,7 +292,11 @@ namespace containerimages
             record.variant = stringOf(row, "platform_variant");
             record.osVersion = stringOf(row, "platform_os_version");
 
-            const auto tags {nlohmann::json::parse(stringOf(row, "tags"), nullptr, false)};
+            // Copy-initialized on purpose. Brace-initializing a json from a json selects its
+            // initializer-list constructor, and a two-element array whose first element is a
+            // string is then read as a key and a value: ["1.4","latest"] became the object
+            // {"1.4":"latest"}, is_array() was false, and every stored tag was silently lost.
+            const auto tags = nlohmann::json::parse(stringOf(row, "tags"), nullptr, false);
 
             if (tags.is_array())
             {

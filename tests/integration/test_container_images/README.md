@@ -34,10 +34,15 @@ fixed number of seconds and hoping a scan finished. These tests avoid that entir
 test_container_images/
 ├── README.md                     # this file
 ├── conftest.py                   # OCI-layout build/update fixtures
+├── framework_module/             # the suite's own helpers, used by all three test packages
+│   ├── patterns.py               # log anchors the monitors wait on
+│   ├── db.py                     # reads the module's SQLite tables
+│   └── registry.py               # a TLS registry served locally, answering as ghcr.io
 ├── test_configuration/           # parsing of the <container_images> block
 │   ├── test_container_images_configuration.py
 │   └── data/{configuration_templates,test_cases}/
-└── test_inventory/               # scan -> store -> update detection
+├── test_inventory/               # scan -> store -> update detection
+└── test_registry/                # remote <ref> references against the local registry
     ├── test_container_images_inventory.py
     └── data/{configuration_templates,test_cases}/
 ```
@@ -132,3 +137,58 @@ Not integrated yet. Both test modules import from
 framework package, so the suite only runs after they are copied into the installed
 `wazuh_testing`. Landing them in the framework repository and registering the module in
 `.github/test_modules_linux.json` is what makes these run on a pull request.
+
+
+## Remote references (`test_registry`)
+
+These cases drive the agent against a registry served on the test host rather than against
+GitHub. No network is used and no container engine is needed.
+
+### Why the local registry answers as `ghcr.io`
+
+The module accepts a `<ref>` only when its registry is `ghcr.io`, and it builds the request URL
+with no port, so a registry on `localhost:5000` is rejected before a request is made. Rather
+than weaken that check for the benefit of a test, the `local_registry` fixture makes the local
+server *be* `ghcr.io` for the duration of a case:
+
+- it listens on `127.0.0.1:443`, with a certificate issued for `ghcr.io` by a throwaway
+  authority generated per run,
+- it adds a `127.0.0.1 ghcr.io` line to `/etc/hosts` and removes it afterwards,
+- it points `<ca_bundle>` at that authority, which also exercises the certificate resolution
+  the module performs at run time.
+
+**These cases therefore need root**, like the rest of the suite: they bind a privileged port,
+edit `/etc/hosts`, restart the agent and run the agent's keystore tool. A case that fails part
+way still restores `/etc/hosts`, because the fixture writes it back on teardown.
+
+### What each case establishes
+
+| Case | Establishes |
+|---|---|
+| `case_test_public_reference` | A public repository is read with no credential, the token is requested anonymously, and the layer arrives through the registry's redirect with the token **not** carried across it. |
+| `case_test_authenticated_reference` | A private repository is read with the credential from the agent store, and neither the credential nor the bearer token appears anywhere in the log. |
+| `case_test_wrong_credential` | A wrong credential and an absent one are each reported, store nothing, retrieve no image content, and do not stop the scan. |
+| `case_test_platform_variants` | An index offering two platforms is read from the agent's own; one offering none is reported with no layer fetched. |
+| `case_test_unchanged_reference` | A second scan of an unchanged reference requests **zero** blobs. Asserted as a count, not as a duration. |
+
+### Verifying the registry without root
+
+`issues/38587/scripts/verify_local_registry.py` drives the same `framework_module/registry.py`
+on an unprivileged port against a small C++ driver built from the module's own transport, byte
+stream and reader helpers. It covers the protocol end of these cases (challenge, token, public
+and private access, a wrong credential, the redirect and the withheld token, `429` with
+`Retry-After`, and a missing repository) without needing port 443 or a hosts entry, which makes
+it usable on a developer machine.
+
+
+## Why the helpers live in `framework_module/`
+
+`patterns.py` and `db.py` are imported from this directory by all three test packages rather
+than from `wazuh_testing.modules.modulesd.container_images`. The published
+`qa-integration-framework` does not ship a `container_images` module, so importing from there
+only works on a machine whose framework has been modified locally, and the suite silently
+breaks on any other. Keeping one copy here means the tests depend on the framework only for
+what the framework actually publishes.
+
+When these constants are productized into `qa-integration-framework`, the imports move and
+this directory goes away.

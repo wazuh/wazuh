@@ -46,6 +46,15 @@ EXPORTED void container_images_init(const unsigned int interval,
                                     const char** referenceValues,
                                     const unsigned int referencesCount);
 
+/// Registry options, set before container_images_start() and only when a registry
+/// reference is configured. Kept apart from container_images_init() so the existing
+/// initialization contract does not change for a module that configures no registry.
+EXPORTED void container_images_set_registry_options(const char** registryHosts,
+                                                    const char** registryUserKeys,
+                                                    const char** registryPasskeyKeys,
+                                                    const unsigned int registryAuthCount,
+                                                    const char* caBundle);
+
 EXPORTED void container_images_start();
 
 EXPORTED void container_images_stop();
@@ -63,6 +72,11 @@ typedef void (*container_images_init_func)(const unsigned int interval,
                                            const char** referenceTypes,
                                            const char** referenceValues,
                                            const unsigned int referencesCount);
+typedef void (*container_images_set_registry_options_func)(const char** registryHosts,
+                                                           const char** registryUserKeys,
+                                                           const char** registryPasskeyKeys,
+                                                           const unsigned int registryAuthCount,
+                                                           const char* caBundle);
 typedef void (*container_images_start_func)();
 typedef void (*container_images_stop_func)();
 typedef void (*container_images_release_resources_func)();

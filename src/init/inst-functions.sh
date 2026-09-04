@@ -1804,6 +1804,14 @@ InstallAgent()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
+
+    # Agent credential store. The directory is root-only: the store's permissions are
+    # what protects the credentials it holds, so the enclosing directory matches.
+    if [ -f build/bin/wazuh-agent-keystore ]
+    then
+        ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/queue/credentials
+        ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agent-keystore ${INSTALLDIR}/bin/wazuh-agent-keystore
+    fi
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files

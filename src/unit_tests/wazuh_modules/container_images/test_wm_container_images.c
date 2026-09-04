@@ -32,6 +32,19 @@ static void wmodule_cleanup(wmodule *module) {
             os_free(data->references);
         }
 
+        if (data && data->registries) {
+            for (int i = 0; i < data->registries_count; i++) {
+                os_free(data->registries[i].host);
+                os_free(data->registries[i].user_key);
+                os_free(data->registries[i].passkey_key);
+            }
+            os_free(data->registries);
+        }
+
+        if (data) {
+            os_free(data->ca_bundle);
+        }
+
         os_free(module->data);
         os_free(module->tag);
         os_free(module);
@@ -246,6 +259,191 @@ void test_read_unknown_tag(void **state) {
     assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
 }
 
+
+void test_read_registry_auth(void **state) {
+    const char *string =
+        "<references>\n"
+        "  <ref>ghcr.io/owner/app:1.0</ref>\n"
+        "</references>\n"
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->references[0].type, "ref");
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].host, "ghcr.io");
+    assert_string_equal(data->registries[0].user_key, "ghcr_user");
+    assert_string_equal(data->registries[0].passkey_key, "ghcr_token");
+}
+
+void test_read_several_registries(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>a_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>a_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>other.example</host>\n"
+        "    <user_keystore_key>b_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>b_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 2);
+    assert_string_equal(data->registries[0].host, "ghcr.io");
+    assert_string_equal(data->registries[1].host, "other.example");
+}
+
+void test_read_registry_with_only_a_passkey(void **state) {
+    /* One of the two key names is enough to be a usable entry. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].user_key, "");
+    assert_string_equal(data->registries[0].passkey_key, "ghcr_token");
+}
+
+void test_read_registry_without_host_is_skipped(void **state) {
+    /* Skipped, not rejected: rejecting invalidates the whole module configuration and
+     * stops wazuh-modulesd from starting, which is why every entry here is forgiving. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_without_any_key_is_skipped(void **state) {
+    /* A registry with no key names would be attempted anonymously anyway, so storing it
+     * would be indistinguishable from having no entry at all. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_unknown_tag_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <nonsense>x</nonsense>\n"
+        "  </registry>\n"
+        "  <nonsense>y</nonsense>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].host, "ghcr.io");
+}
+
+void test_read_empty_registry_auth_block(void **state) {
+    const char *string = "<registry_auth></registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_ca_bundle(void **state) {
+    const char *string = "<ca_bundle>/etc/ssl/certs/ca-certificates.crt</ca_bundle>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_string_equal(data->ca_bundle, "/etc/ssl/certs/ca-certificates.crt");
+}
+
+void test_read_empty_ca_bundle_is_skipped(void **state) {
+    const char *string = "<ca_bundle></ca_bundle>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_null(data->ca_bundle);
+}
+
+void test_read_ca_bundle_last_one_wins(void **state) {
+    /* The second value replaces the first rather than leaking it. */
+    const char *string =
+        "<ca_bundle>/first.crt</ca_bundle>\n"
+        "<ca_bundle>/second.crt</ca_bundle>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_string_equal(data->ca_bundle, "/second.crt");
+}
+
+void test_read_defaults_have_no_registry_configuration(void **state) {
+    const char *string = "<enabled>yes</enabled>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+    assert_null(data->registries);
+    assert_null(data->ca_bundle);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_defaults, setup_test_read, teardown_test_read),
@@ -262,6 +460,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_does_not_fit_unsigned_int, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_invalid_enabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_unknown_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_auth, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_several_registries, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_without_host_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_without_any_key_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_unknown_tag_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_empty_registry_auth_block, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ca_bundle, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_empty_ca_bundle_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ca_bundle_last_one_wins, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_defaults_have_no_registry_configuration, setup_test_read, teardown_test_read),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
