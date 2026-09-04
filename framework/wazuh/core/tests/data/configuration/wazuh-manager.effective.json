@@ -86,7 +86,9 @@
         "numSlices": 2
     },
     "indexer": {
-        "hosts": [],
+        "hosts": [
+            "https://127.0.0.1:9200"
+        ],
         "ssl": {
             "certificate_authorities": [],
             "certificate": "",
