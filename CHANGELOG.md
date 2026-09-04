@@ -159,3 +159,4 @@
 | [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
 | [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
 | [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |
+| [#38825](https://github.com/wazuh/wazuh/issues/38825) | Fixed the agent silently stopping every timer-driven message for the whole duration of a backward system-clock jump, because the HTTPS client's interruptible wait was anchored to `CLOCK_REALTIME`. |

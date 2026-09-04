@@ -12,9 +12,9 @@
 #ifndef _HC_STOP_TOKEN_HPP
 #define _HC_STOP_TOKEN_HPP
 
+#include "monotonicCondition.hpp"
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <mutex>
 
 /**
@@ -37,8 +37,8 @@ class Waiter
         /// must exit); true when the wait elapsed or notify() woke it early.
         virtual bool waitFor(std::chrono::milliseconds timeout)
         {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            m_cv.wait_for(lock, timeout, [this] { return m_stop.load() || m_wake; });
+            std::unique_lock<MonotonicCondition::Mutex> lock(m_mutex);
+            m_condition.waitFor(lock, timeout, [this] { return m_stop.load() || m_wake; });
             m_wake = false;
             return !m_stop.load();
         }
@@ -47,20 +47,20 @@ class Waiter
         virtual void notify()
         {
             {
-                std::lock_guard<std::mutex> lock(m_mutex);
+                std::lock_guard<MonotonicCondition::Mutex> lock(m_mutex);
                 m_wake = true;
             }
-            m_cv.notify_all();
+            m_condition.notifyAll();
         }
 
         /// Requests cooperative stop and wakes any pending waitFor().
         void requestStop()
         {
             {
-                std::lock_guard<std::mutex> lock(m_mutex);
+                std::lock_guard<MonotonicCondition::Mutex> lock(m_mutex);
                 m_stop = true;
             }
-            m_cv.notify_all();
+            m_condition.notifyAll();
         }
 
         bool stopRequested() const
@@ -75,8 +75,8 @@ class Waiter
         }
 
     private:
-        std::mutex m_mutex;
-        std::condition_variable m_cv;
+        MonotonicCondition::Mutex m_mutex;
+        MonotonicCondition m_condition;
         std::atomic<bool> m_stop {false};
         bool m_wake {false};
 };
