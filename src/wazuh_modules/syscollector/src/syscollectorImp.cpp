@@ -215,6 +215,29 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return wazuh::hex_encode(digest.data(), digest.size());
 }
 
+// The two container-scope columns are row *identity* and row *context*, never row
+// content, so neither may reach the checksum:
+//
+//   container_id   is the leading PRIMARY KEY of every table in
+//                  syscollectorTablesDef.hpp, so rows are already told apart by
+//                  it. Digesting it changed every host row's checksum against a
+//                  pre-container agent ('' is still a value), which would have
+//                  re-synced the whole host inventory of every upgraded agent —
+//                  including agents that run no containers at all.
+//   container_json is a copy of the container's metadata blob stamped onto each
+//                  of its rows. Digesting it makes one label or annotation edit
+//                  change the checksum of every row of that container, in every
+//                  table, and re-emit its entire inventory as MODIFIED.
+//
+// Strip both here rather than at each call site: nothing about a future caller
+// stamping the scope earlier should be able to put them back into the digest.
+static std::string getRowChecksum(nlohmann::json item)
+{
+    item.erase(std::string{CONTAINER_ID_COLUMN});
+    item.erase(std::string{CONTAINER_JSON_COLUMN});
+    return getItemChecksum(item);
+}
+
 // Runtime counters that move on their own between scans. They are part of the inventory state, so
 // they are stored and synchronized like any other column, but a scan where only these moved is not
 // a change worth reporting: it is muted on the stateless path. They are also left out of the item
@@ -1963,7 +1986,7 @@ void Syscollector::scanPackages()
 
             auto checksumInput = rawData;
             eraseVolatileFields(checksumInput, PACKAGES_TABLE);
-            rawData["checksum"] = getItemChecksum(checksumInput);
+            rawData["checksum"] = getRowChecksum(checksumInput);
 
             input["table"] = PACKAGES_TABLE;
             m_spNormalizer->normalize("packages", rawData);
@@ -2141,7 +2164,7 @@ void Syscollector::scanProcesses()
 
             auto checksumInput = rawData;
             eraseVolatileFields(checksumInput, PROCESSES_TABLE);
-            rawData["checksum"] = getItemChecksum(checksumInput);
+            rawData["checksum"] = getRowChecksum(checksumInput);
 
             input["table"] = PROCESSES_TABLE;
             input["data"] = nlohmann::json::array( { rawData } );
@@ -2461,7 +2484,7 @@ void Syscollector::scanContainerBaseline()
                 for (auto& row : tableRows)
                 {
                     sanitizeJsonValue(row);
-                    row["checksum"] = getItemChecksum(row);
+                    row["checksum"] = getRowChecksum(row);
                 }
 
                 self->updateChanges(table, tableRows, current, notifyOverride,
