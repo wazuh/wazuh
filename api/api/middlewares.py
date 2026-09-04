@@ -65,6 +65,9 @@ ip_lock = asyncio.Lock()
 general_request_stats: dict = {}
 general_request_lock = asyncio.Lock()
 
+# Rolling-window length used by the general_request_stats buckets below
+RATE_LIMIT_WINDOW_SECONDS = 60
+
 
 def get_declared_content_length(request: Request) -> Optional[int]:
     """Get the body size the request declares in its `Content-Length` header.
@@ -377,7 +380,7 @@ async def reserve_unauthenticated_request(request: Request, max_requests: int, e
     async with general_request_lock:
         entry = general_request_stats.setdefault(host, {})
         bucket = entry.get('unauthenticated')
-        if bucket is None or now - bucket['window_start'] >= 60:
+        if bucket is None or now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS:
             bucket = {'count': 0, 'window_start': now}
             entry['unauthenticated'] = bucket
 
@@ -443,7 +446,7 @@ async def settle_authenticated_request(request: Request, max_requests: int, erro
             return 0
 
         auth_bucket = entry.get('authenticated')
-        if auth_bucket is None or now - auth_bucket['window_start'] >= 60:
+        if auth_bucket is None or now - auth_bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS:
             auth_bucket = {'count': 0, 'window_start': now}
             entry['authenticated'] = auth_bucket
 
@@ -452,6 +455,32 @@ async def settle_authenticated_request(request: Request, max_requests: int, erro
             return error_code
 
     return 0
+
+
+async def cleanup_general_request_stats(now: float = None) -> None:
+    """Prune host entries from general_request_stats whose buckets have all expired.
+
+    general_request_stats gains one entry per distinct client address ever seen (unlike
+    ip_stats, which only tracks failed login attempts), so without an active sweep it would
+    grow without bound for traffic from many/rotating addresses. A bucket older than
+    RATE_LIMIT_WINDOW_SECONDS is dead weight: reserve_unauthenticated_request and
+    settle_authenticated_request already discard and recreate a bucket that old from scratch,
+    so removing it here changes no rate-limiting behavior.
+
+    Parameters
+    ----------
+    now : float
+        Current UTC timestamp; defaults to the real current time. Overridable for tests.
+    """
+    now = now if now is not None else get_utc_now().timestamp()
+
+    async with general_request_lock:
+        stale_hosts = [
+            host for host, entry in general_request_stats.items()
+            if all(now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS for bucket in entry.values())
+        ]
+        for host in stale_hosts:
+            del general_request_stats[host]
 
 
 class CheckRateLimitsMiddleware(BaseHTTPMiddleware):

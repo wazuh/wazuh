@@ -21,10 +21,11 @@ from freezegun import freeze_time
 from wazuh.core.exception import WazuhInternalError
 
 from api.middlewares import reserve_unauthenticated_request, settle_authenticated_request, check_blocked_ip, \
-    settle_login_attempt, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, \
-    CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, SettleRateLimitMiddleware, WazuhAccessLoggerMiddleware, \
-    CheckBlockedIP, SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, \
-    get_declared_content_length, read_capped_body, CACHED_BODY_KEY
+    settle_login_attempt, cleanup_general_request_stats, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
+    RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
+    SettleRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
+    CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
+    CACHED_BODY_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -88,7 +89,6 @@ def chunked_receive(chunk, chunks):
         {'type': 'http.request', 'body': chunk, 'more_body': index < chunks - 1}
         for index in range(chunks)
     ])
-
 
 
 @pytest.fixture
@@ -423,6 +423,42 @@ async def test_two_sub_counters_prevent_unauthenticated_traffic_from_denying_aut
         # independent authenticated bucket, which hasn't been touched by the flood.
         settle_code = await settle_authenticated_request(mock_req, max_requests=300, error_code=6001)
         assert settle_code == 0
+
+
+@pytest.mark.asyncio
+async def test_cleanup_general_request_stats_removes_fully_expired_host():
+    """A host whose only bucket is older than the window is dead weight - the next request
+       from it would recreate the bucket from scratch anyway - so cleanup must drop it."""
+    stats = {'stale-ip': {'unauthenticated': {'count': 5, 'window_start': 0}}}
+    with patch("api.middlewares.general_request_stats", new=stats) as mock_stats:
+        await cleanup_general_request_stats(now=100)
+
+        assert mock_stats == {}
+
+
+@pytest.mark.asyncio
+async def test_cleanup_general_request_stats_keeps_host_with_live_bucket():
+    """A host with at least one bucket still inside its window must survive cleanup, even if
+       its other bucket has already expired."""
+    stats = {
+        'active-ip': {
+            'unauthenticated': {'count': 1, 'window_start': 90},
+            'authenticated': {'count': 1, 'window_start': 0},
+        },
+    }
+    with patch("api.middlewares.general_request_stats", new=stats) as mock_stats:
+        await cleanup_general_request_stats(now=100)
+
+        assert 'active-ip' in mock_stats
+
+
+@pytest.mark.asyncio
+async def test_cleanup_general_request_stats_noop_on_empty_dict():
+    """Cleanup must be a no-op (no error) when there is nothing to prune."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        await cleanup_general_request_stats(now=100)
+
+        assert mock_stats == {}
 
 
 @pytest.mark.asyncio

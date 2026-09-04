@@ -165,8 +165,15 @@ def start(params: dict):
         app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
                            max_content_size=api_conf['max_upload_size'])
         app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
-    if api_conf['access']['max_request_per_minute'] > 0:
+    # CheckRateLimitsMiddleware enforces max_unauthenticated_request_per_minute (it runs before
+    # authentication); SettleRateLimitMiddleware enforces max_request_per_minute but must also run
+    # whenever CheckRateLimitsMiddleware does, since it is the only place that releases the
+    # unauthenticated reservation CheckRateLimitsMiddleware charges on every request.
+    add_unauthenticated_limit = api_conf['access']['max_unauthenticated_request_per_minute'] > 0
+    add_authenticated_limit = api_conf['access']['max_request_per_minute'] > 0
+    if add_unauthenticated_limit:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    if add_unauthenticated_limit or add_authenticated_limit:
         app.add_middleware(SettleRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
