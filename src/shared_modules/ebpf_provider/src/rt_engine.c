@@ -72,6 +72,15 @@ struct libbpf_api
     int (*rb_poll)(struct ring_buffer*, int);
     void (*rb_free)(struct ring_buffer*);
     int (*link_destroy)(struct bpf_link*);
+
+    /* Map access, for draining per-cgroup drop accounting. */
+    int (*map_get_next_key)(int, const void*, void*);
+    int (*map_lookup_elem)(int, const void*, void*);
+    int (*map_delete_elem)(int, const void*);
+    /* Preferred when present: one syscall, and atomic against the BPF side
+     * still incrementing the entry. Absent on kernels/libbpf builds without
+     * BPF_MAP_LOOKUP_AND_DELETE_ELEM for hash maps, hence optional. */
+    int (*map_lookup_and_delete_elem)(int, const void*, void*);
 };
 
 static struct libbpf_api g_libbpf;
@@ -184,6 +193,14 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
     RT_RESOLVE_SYM(rb_poll, "ring_buffer__poll");
     RT_RESOLVE_SYM(rb_free, "ring_buffer__free");
     RT_RESOLVE_SYM(link_destroy, "bpf_link__destroy");
+    RT_RESOLVE_SYM(map_get_next_key, "bpf_map_get_next_key");
+    RT_RESOLVE_SYM(map_lookup_elem, "bpf_map_lookup_elem");
+    RT_RESOLVE_SYM(map_delete_elem, "bpf_map_delete_elem");
+
+    /* Optional — see the struct comment. Absence costs one extra syscall per
+     * reported cgroup and a narrow race with the BPF side, not correctness of
+     * the visible-loss guarantee. */
+    *(void**)(&g_libbpf.map_lookup_and_delete_elem) = dlsym(mod, "bpf_map_lookup_and_delete_elem");
 
     g_libbpf.module = mod;
     return 1;
@@ -213,6 +230,10 @@ struct rt_engine_handle
     unsigned int link_count;
 
     struct rt_log_target log;
+
+    /* fd of cgroup_drops_map, or -1 when the loaded object predates it. */
+    int cgroup_drops_fd;
+    int cgroup_drops_absent_reported;
 
     int cgroup_v1;
 
@@ -410,6 +431,8 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
     h->log = log;
+    /* calloc leaves this 0, which is a legitimate descriptor number. */
+    h->cgroup_drops_fd = -1;
 
     h->cgroup_v1 = detect_cgroup_v1();
     if (h->cgroup_v1)
@@ -498,6 +521,17 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
+    /* Optional: an object built before per-cgroup drop accounting still loads
+     * and runs, it just cannot attribute loss. Not a reason to refuse the open —
+     * the global in-band counter still works. */
+    h->cgroup_drops_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_drops_map");
+    if (h->cgroup_drops_fd < 0)
+    {
+        rt_log(&h->log, RT_LOG_WARN,
+               "BPF object has no 'cgroup_drops_map': dropped events will be visible but not "
+               "attributable to a cgroup. Rebuild rt_file.bpf.o to enable rt_drain_drops().");
+    }
+
     rt_log(&h->log, RT_LOG_INFO, "eBPF engine ready: %u program(s) attached, ABI %d.%d", h->link_count,
            RT_ABI_MAJOR, RT_ABI_MINOR);
     return (rt_handle_t)h;
@@ -542,6 +576,91 @@ void rt_close(rt_handle_t handle)
         g_libbpf.close_obj(h->obj);
     }
     free(h);
+}
+
+/* Keys collected per drain call. A node with more than this many cgroups losing
+ * events in one interval is already in deep trouble; the remainder simply waits
+ * for the next drain rather than making this function unbounded. */
+#define RT_DRAIN_BATCH 512
+
+int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h)
+    {
+        return -1;
+    }
+
+    if (h->cgroup_drops_fd < 0)
+    {
+        if (!h->cgroup_drops_absent_reported)
+        {
+            h->cgroup_drops_absent_reported = 1;
+            rt_log(&h->log, RT_LOG_WARN,
+                   "rt_drain_drops(): this BPF object has no per-cgroup drop map, so loss cannot be "
+                   "attributed. Further calls will not be logged.");
+        }
+        return -1;
+    }
+
+    /* Collect keys first, then drain them.
+     *
+     * Deleting the current key mid-iteration is not safe with
+     * bpf_map_get_next_key: the deleted key is the iteration cursor, and once
+     * it is gone the kernel may restart from the beginning, which can loop
+     * forever or skip entries. So walk the keyspace once, then act on the
+     * snapshot. Entries created after the walk are picked up next drain. */
+    unsigned long long keys[RT_DRAIN_BATCH];
+    unsigned int collected = 0;
+
+    unsigned long long key = 0;
+    unsigned long long next = 0;
+    int rc = g_libbpf.map_get_next_key(h->cgroup_drops_fd, NULL, &next);
+    while (rc == 0 && collected < RT_DRAIN_BATCH)
+    {
+        keys[collected++] = next;
+        key = next;
+        rc = g_libbpf.map_get_next_key(h->cgroup_drops_fd, &key, &next);
+    }
+
+    int reported = 0;
+    for (unsigned int i = 0; i < collected; ++i)
+    {
+        unsigned int drops = 0;
+
+        if (g_libbpf.map_lookup_and_delete_elem)
+        {
+            if (g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
+            {
+                continue; /* raced with another drain, or already gone */
+            }
+        }
+        else
+        {
+            if (g_libbpf.map_lookup_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
+            {
+                continue;
+            }
+            /* Non-atomic fallback: a drop recorded between the lookup and the
+             * delete is lost from the per-cgroup view. It is still counted in
+             * the global in-band counter, so it cannot vanish silently — it
+             * just arrives unattributed, which is the pre-existing behaviour. */
+            g_libbpf.map_delete_elem(h->cgroup_drops_fd, &keys[i]);
+        }
+
+        if (drops == 0)
+        {
+            continue; /* created by the insert-then-add path, not yet incremented */
+        }
+
+        if (cb)
+        {
+            cb(keys[i], drops, user);
+        }
+        ++reported;
+    }
+
+    return reported;
 }
 
 int rt_abi_major(void)
