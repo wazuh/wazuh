@@ -42,6 +42,11 @@ All notable changes to this project will be documented in this file.
 - Fixed the `disable-account` active response returning success when the account command was missing or the system was not supported. ([#38645](https://github.com/wazuh/wazuh/pull/38645))
 - Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
 
+### Ruleset
+
+#### Fixed
+- Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
+
 ## [v4.14.8]
 
 ### Manager
