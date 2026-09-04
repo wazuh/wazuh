@@ -40,14 +40,6 @@ int authd_read_config(const char *path) {
         config.ciphers = strdup(DEFAULT_CIPHERS);
     }
 
-    switch (config.flags.disabled) {
-    case AD_CONF_UNPARSED:
-        config.flags.disabled = 1;
-        break;
-    case AD_CONF_UNDEFINED:
-        config.flags.disabled = 0;
-    }
-
     config.timeout_sec = getDefine_Int_default("auth", "timeout_seconds", 0, INT_MAX, 1);
     config.timeout_usec = getDefine_Int_default("auth", "timeout_microseconds", 0, 999999, 0);
     config.max_agents = (unsigned int)getDefine_Int_default("authd", "max_agents", 0, INT_MAX, 0);

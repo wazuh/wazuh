@@ -19,13 +19,8 @@
 
 #define XML_MAXSIZE           20480
 #define XML_MAX_ATTR_DEPTH    48
-#define XML_VARIABLE_MAXSIZE  256
-
-#define XML_VAR              "var"
-#define XML_VAR_ATTRIBUTE    "name"
 
 //#define XML_ELEM                101
 //#define XML_ATTR                102
-//#define XML_VARIABLE_BEGIN      '$'
 
 #endif /* OS_XML_INTERNAL_H */

@@ -1102,11 +1102,10 @@ otherwise — the bridge always has something to talk to as long as authd is run
 `enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
 no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
 
-`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
-sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
-that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
-It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
-explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+`authd_config_t.flags.disabled` is a plain boolean, defaulting to enabled (`0`) unless
+`<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
+(`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
+but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
 normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
 
 ### Manager certificate unification
