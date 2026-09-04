@@ -56,11 +56,15 @@ the language).
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
   off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
-  always generates one, and a `cluster` section without `key` fails with `required`.
+  always generates one. `cluster` is the only `required` property at the document root (every manager runs as a
+  cluster node, issue #38638), so a document that omits `<cluster>` entirely, or one whose `<cluster>` omits `<key>`,
+  both fail with `required` at `validate` time instead of leaving the effective document a `key`-less section that
+  only breaks `wazuh-manager-clusterd` on restart.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
   default.
-- **An empty file is invalid** (XML needs a root); the minimal document is `<wazuh_config/>`, whose effective
-  configuration is every schema default.
+- **An empty file is invalid** (XML needs a root); the minimal valid document is
+  `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster></wazuh_config>` — every other option keeps its
+  schema default.
 
 ## Layout
 

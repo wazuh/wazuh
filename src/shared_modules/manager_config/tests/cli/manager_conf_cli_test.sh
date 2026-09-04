@@ -97,12 +97,12 @@ else
     fail cli_get_object_and_missing "object exit $rc '$object'; missing exit $rc_missing err='$(cat "$TMP/err")'"
 fi
 
-rc=$(run "$CLI" --skip-file-checks -f "$VALID/empty-root.conf" dump)
+rc=$(run "$CLI" --skip-file-checks -f "$VALID/minimal-cluster.conf" dump)
 if [ "$rc" = 0 ] && grep -q '"remote"' "$TMP/out" && grep -q '"cluster"' "$TMP/out" \
-    && [ "$(effective "$VALID/empty-root.conf" wdb.backup.global.interval)" = "1d" ]; then
+    && [ "$(effective "$VALID/minimal-cluster.conf" wdb.backup.global.interval)" = "1d" ]; then
     pass cli_dump_defaults
 else
-    fail cli_dump_defaults "exit $rc; interval='$(effective "$VALID/empty-root.conf" wdb.backup.global.interval)'"
+    fail cli_dump_defaults "exit $rc; interval='$(effective "$VALID/minimal-cluster.conf" wdb.backup.global.interval)'"
 fi
 
 mkdir -p "$TMP/home/etc"
