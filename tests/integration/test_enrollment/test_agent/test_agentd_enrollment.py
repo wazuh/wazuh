@@ -67,12 +67,17 @@ test_configuration = load_configuration_template(config_path, config_parameters,
 # Test variables.
 socket_listener = None
 
+# Collapse the held-credential retry ramp so a rejected pre-existent key re-enrolls
+# within the poll deadline instead of after the production back-off (#38610).
+local_internal_options = {'agent.auth_retry_delta': '1', 'agent.auth_retry_max': '1'}
+
 daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, shutdown_agentd,
+def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                           daemons_handler_module, shutdown_agentd,
                            set_keys, set_password, configure_socket_listener, restart_agentd):
     """
     description:
