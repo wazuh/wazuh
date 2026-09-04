@@ -11,6 +11,9 @@
 
 #include "control/metrics.hpp"
 #include "control/taskClient.hpp"
+// fakeUdsServer.hpp is included ONLY for makeUniqueSocketPath: the Task Manager speaks HTTP
+// now, so the framed server in that header is no longer what this client talks to.
+#include "fakeTaskServer.hpp"
 #include "fakeUdsServer.hpp"
 
 #include <wazuh_metrics/manager.hpp>
@@ -27,7 +30,7 @@
 #include <vector>
 
 using namespace remoted::control;
-using remoted::test::FakeUdsServer;
+using remoted::test::FakeTaskServer;
 using namespace std::chrono_literals;
 
 namespace
@@ -56,27 +59,24 @@ namespace
 } // namespace
 
 // -----------------------------------------------------------------------------
-// Happy path: two pending tasks, well-formed JSON envelope.
+// Happy path: two pending tasks, well-formed JSON body.
 // -----------------------------------------------------------------------------
 TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_ok");
 
-    std::string lastReq;
-    FakeUdsServer server(path,
-                         [&](const std::string& req) -> std::string
-                         {
-                             lastReq = req;
-                             nlohmann::json out;
-                             out["status"] = "ok";
-                             out["tasks"] = nlohmann::json::array();
-                             out["tasks"].push_back({{"task_id", "t1"},
-                                                     {"task_type", "upgrade"},
-                                                     {"payload", {{"target_version", "v5.0"}}}});
-                             out["tasks"].push_back(
-                                 {{"task_id", "t2"}, {"task_type", "restart"}, {"payload", nlohmann::json::object()}});
-                             return out.dump();
-                         });
+    FakeTaskServer server(path);
+    server.setHandler(
+        [](const httplib::Request&, httplib::Response& res)
+        {
+            nlohmann::json out;
+            out["tasks"] = nlohmann::json::array();
+            out["tasks"].push_back(
+                {{"task_id", "t1"}, {"task_type", "upgrade"}, {"payload", {{"target_version", "v5.0"}}}});
+            out["tasks"].push_back(
+                {{"task_id", "t2"}, {"task_type", "restart"}, {"payload", nlohmann::json::object()}});
+            res.set_content(out.dump(), "application/json");
+        });
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -95,9 +95,11 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
     EXPECT_EQ(w.value.second[1].id, "t2");
     EXPECT_EQ(w.value.second[1].type, "restart");
 
-    // Wire format assertion: JSON with action & string agent_id.
-    auto req = nlohmann::json::parse(lastReq);
-    EXPECT_EQ(req.value("action", ""), "get_pending_tasks");
+    // Wire format. The `action` member is gone with the framed protocol -- the route carries what
+    // it used to say -- so the body is the agent id and nothing else, still zero-padded to match
+    // the stored format.
+    auto req = nlohmann::json::parse(server.lastBody());
+    EXPECT_FALSE(req.contains("action"));
     EXPECT_EQ(req.value("agent_id", ""), "042");
 
     EXPECT_GE(metrics.taskFetch->get(), 1U);
@@ -109,7 +111,8 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
 TEST(TaskClientTest, GetPendingTasksEmpty)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_empty");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    FakeTaskServer server(path);
+    server.setBody(R"({"tasks":[]})");
 
     ControlMetrics metrics;
     TaskClient client(path, 1, 1000, 100, metrics);
@@ -127,7 +130,8 @@ TEST(TaskClientTest, GetPendingTasksEmpty)
 TEST(TaskClientTest, GetPendingTasksTolerantOfMissingTasksField)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_notasks");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"status\":\"ok\"}"; });
+    FakeTaskServer server(path);
+    server.setBody("{}");
 
     ControlMetrics metrics;
     TaskClient client(path, 1, 1000, 100, metrics);
@@ -145,7 +149,8 @@ TEST(TaskClientTest, GetPendingTasksTolerantOfMissingTasksField)
 TEST(TaskClientTest, GetPendingTasksProtocolErrorOnErrorField)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_err");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"error\":\"boom\"}"; });
+    FakeTaskServer server(path);
+    server.setBody(R"({"error":"boom"})");
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -160,13 +165,17 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnErrorField)
 }
 
 // -----------------------------------------------------------------------------
-// Status not "ok" -> ProtocolError. Belt-and-suspenders check for the client
-// treating "status" as a real success indicator.
+// A non-2xx status -> ProtocolError, whatever the body says.
+//
+// This replaces the old `status != "ok"` check. There is no `status` member on the wire any more:
+// the HTTP status carries that, so THIS is now the belt-and-suspenders check that the client
+// treats the server's own success signal as a real one.
 // -----------------------------------------------------------------------------
-TEST(TaskClientTest, GetPendingTasksProtocolErrorOnBadStatus)
+TEST(TaskClientTest, GetPendingTasksProtocolErrorOnNon2xx)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_bad");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"status\":\"nope\"}"; });
+    FakeTaskServer server(path);
+    server.setStatus(500);
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -181,12 +190,14 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnBadStatus)
 }
 
 // -----------------------------------------------------------------------------
-// Malformed JSON reply -> ProtocolError (parser throws internally).
+// A 2xx carrying a body that is not JSON -> ProtocolError. Deliberately a 2xx: the status says
+// the request succeeded, so only the parse can reject it.
 // -----------------------------------------------------------------------------
 TEST(TaskClientTest, GetPendingTasksProtocolErrorOnMalformedJson)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_mal");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "not json at all"; });
+    FakeTaskServer server(path);
+    server.setBody("not json at all");
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -201,13 +212,13 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnMalformedJson)
 }
 
 // -----------------------------------------------------------------------------
-// Server drops responses -> deadline expires -> Timeout + metric.
+// Server holds the response past the deadline -> Timeout + metric.
 // -----------------------------------------------------------------------------
 TEST(TaskClientTest, GetPendingTasksTimeoutIncrementsMetric)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_to");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
-    server.setDropResponses(true);
+    FakeTaskServer server(path);
+    server.setStall(800ms);
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -217,6 +228,9 @@ TEST(TaskClientTest, GetPendingTasksTimeoutIncrementsMetric)
     Waiter<SocketError> w;
     client.getPendingTasks(1, [&](SocketError e, std::vector<Task>) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
+
+    // Timeout, NOT Io: the poller retries a timeout and gives up differently on an I/O failure,
+    // so collapsing the two would change what remoted does about a slow task manager.
     EXPECT_EQ(w.value, SocketError::Timeout);
     EXPECT_GE(metrics.taskFetchError->get(), 1U);
 }
@@ -227,8 +241,8 @@ TEST(TaskClientTest, GetPendingTasksTimeoutIncrementsMetric)
 TEST(TaskClientTest, QueueFullRejectsSynchronously)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_qf");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
-    server.setDropResponses(true);
+    FakeTaskServer server(path);
+    server.setStall(5000ms); // long enough that nothing drains while the queue fills
 
     // A real manager-backed set (not the null object): this test asserts the count.
     wazuh::metrics::Manager metricsManager;
@@ -270,8 +284,8 @@ TEST(TaskClientTest, QueueFullRejectsSynchronously)
 TEST(TaskClientTest, DtorFailsPendingCallbacksWithIo)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_dt");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
-    server.setDropResponses(true);
+    FakeTaskServer server(path);
+    server.setStall(5000ms);
 
     ControlMetrics metrics;
     std::atomic<int> io {0};

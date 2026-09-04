@@ -135,7 +135,7 @@ void test_query_ex_timeout_bounds_the_socket(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "task poll_manager_tasks {}";
+    char *query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // One connect attempt, not wdbc_connect()'s ladder of five with 1, 2, 3, 4 and 5 second
@@ -168,7 +168,7 @@ void test_query_ex_timeout_fails_when_deadline_cannot_be_set(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "task poll_manager_tasks {}";
+    char *query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
@@ -276,7 +276,7 @@ static void expect_lost_connection_retry(const char *query, int reset_errno)
 void test_query_ex_retries_once_after_a_connection_reset(void **state)
 {
     int wdb_sock = -1;
-    char *query = "task claim_manager_task {}";
+    char *query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // ECONNRESET, not EPIPE: a wazuh-db that closed with a queued query unread reports this one,
@@ -292,7 +292,7 @@ void test_query_ex_retries_once_after_a_connection_reset(void **state)
 void test_query_ex_retries_once_after_a_broken_pipe(void **state)
 {
     int wdb_sock = -1;
-    char *query = "task claim_manager_task {}";
+    char *query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // The sibling errno, pinned alongside it so the two cannot drift apart again.

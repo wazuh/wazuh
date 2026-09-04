@@ -29,8 +29,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
-  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager
   ${SRC_FOLDER}/wazuh_db/include)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

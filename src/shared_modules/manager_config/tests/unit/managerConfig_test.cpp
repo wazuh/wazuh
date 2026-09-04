@@ -84,7 +84,6 @@ TEST(Load, EffectiveDefaultsFromEmptyRoot)
                                 "wdb",
                                 "vulnerability-detection",
                                 "indexer",
-                                "agent-upgrade",
                                 "task-manager",
                                 "cluster"})
     {
@@ -104,10 +103,12 @@ TEST(Load, EffectiveDefaultsFromEmptyRoot)
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/indexer/hosts").Get(effective)->Size(), 0u) << "absent indexer: empty hosts";
-    EXPECT_EQ(rapidjson::Pointer("/agent-upgrade/wpk_repository").Get(effective), nullptr)
-        << "no default: the module picks the repository by target agent version";
-    EXPECT_TRUE(rapidjson::Pointer("/agent-upgrade/enabled").Get(effective)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/task-manager/task_ttl").Get(effective)->GetInt(), 3600);
+    // Agent upgrades are the task manager's on a manager; there is no `agent-upgrade` section.
+    EXPECT_FALSE(effective.HasMember("agent-upgrade"));
+    EXPECT_TRUE(rapidjson::Pointer("/task-manager/upgrade_enabled").Get(effective)->GetBool());
+    EXPECT_EQ(rapidjson::Pointer("/task-manager/wpk_repository").Get(effective), nullptr)
+        << "no default: the repository is picked from the target agent version";
     EXPECT_STREQ(rapidjson::Pointer("/cluster/node_type").Get(effective)->GetString(), "master");
     EXPECT_EQ(rapidjson::Pointer("/cluster/nodes").Get(effective)->Size(), 1u);
 }

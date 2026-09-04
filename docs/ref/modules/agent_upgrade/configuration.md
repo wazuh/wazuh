@@ -2,70 +2,14 @@
 
 Complete configuration reference for the Agent Upgrade module.
 
-The Agent Upgrade module handles remote agent upgrades using WPK files. Configuration differs between manager and agent:
+This is the **agent-side** configuration: whether the agent accepts remote upgrades, and how it
+validates the WPK it is given.
 
-- **Manager:** Enables the module and optionally overrides the WPK repository URL. The manager no longer configures per-transfer parameters (chunk size, worker threads) — the manager only creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md); the WPK is served over the manager's HTTPS interface when the agent requests it. For agents older than v5.0.0, `remoted`'s own legacy task delivery poller (see [`remoted.legacy_task_polling_interval`](../remoted/configuration.md)) pushes the task instead, over the agent's existing 1514 session — that path does reintroduce WPK chunking, but as a fixed internal 32768-byte constant, not a user-facing option, so no new per-transfer knob is exposed either way.
-- **Agent:** Enables the module and controls WPK signature verification.
+**Manager-side upgrade options live in
+[`<task-manager>`](../task_manager/configuration.md#agent-upgrades)** — the manager serves upgrades
+from the Task Manager, and this module is not part of a manager at all.
 
 For module overview and architecture, see [Agent Upgrade Module](README.md).
-
----
-
-## Manager Configuration
-
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
-
-**XML Section:** `<agent-upgrade>`
-
-**Internal Options:** None
-
-### enabled
-
-Enable or disable the agent upgrade module on the manager.
-
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Note:** When disabled, the module exits at startup and the manager will not accept upgrade requests.
-
-### wpk_repository
-
-Base URL from which WPK upgrade packages are fetched. Only applies to the manager.
-
-- **Default value:** none — the module falls back to `packages.wazuh.com/<major>.x/wpk/`, derived from the manager version.
-- **Allowed values:** any valid URL. A trailing `/` is added automatically if absent.
-
----
-
-## Manager Configuration Examples
-
-### Default Configuration
-
-Standard configuration for most deployments:
-
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-</agent-upgrade>
-```
-
-### Custom WPK Repository
-
-Use an internal or mirrored WPK repository instead of the official Wazuh one:
-
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-  <wpk_repository>https://packages.internal.company.com/wazuh/wpk/</wpk_repository>
-</agent-upgrade>
-```
-
-### Disable Remote Upgrades on the Manager
-
-```xml
-<agent-upgrade>
-  <enabled>no</enabled>
-</agent-upgrade>
-```
 
 ---
 
@@ -172,18 +116,6 @@ Use one or more custom CAs to sign WPK packages:
 
 ## Monitoring
 
-### Check module status on the manager
-
-```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep agent-upgrade
-```
-
-Successful upgrade requests produce log lines from the `agent-upgrade` and `task-manager` module tags: `agent-upgrade` validates the request and creates a task, `task-manager` only stores/tracks it — it never delivers anything itself. For upgrades to an agent below v5.0.0, `remoted`'s own task-polling thread also logs under its own tag, since it — not `agent-upgrade` or `task-manager` — is what actually delivers the WPK to that agent.
-
-### Inspect pending upgrade tasks
-
-Since upgrade requests end up as `remote_upgrade` rows in `tasks.db`, task state can be inspected the same way as any other task type. See the [Task Manager configuration reference](../task_manager/configuration.md) for the query examples.
-
 ### View agent-side upgrade logs
 
 ```bash
@@ -196,33 +128,33 @@ tail -f /var/ossec/logs/ossec.log | grep agent-upgrade
 Get-Content 'C:\Program Files (x86)\ossec-agent\ossec.log' -Wait | Select-String agent-upgrade
 ```
 
+After the upgrade the agent restarts and reports the outcome as a stateless event; the manager is
+never told directly.
+
 ---
 
 ## Troubleshooting
 
-### Upgrade requests are rejected on the manager
+### The agent refuses an upgrade command
 
-Verify the module is enabled:
+The agent answers `Upgrade module is disabled or not ready yet` when `<enabled>` is `no`, or before
+the module has finished starting.
 
-```bash
-grep -A 3 "<agent-upgrade>" /var/wazuh-manager/etc/wazuh-manager.conf
-```
+### The agent rejects the WPK signature
 
-Verify the target version is compatible (see [Version constraints](README.md#version-constraints)).
+`Could not verify signature` means the WPK was not signed by any CA in `<ca_store>`. Confirm the
+package came from a repository whose signing CA the agent trusts, and see
+[`ca_verification`](#ca_verification).
 
-### WPK download failures on the manager
-
-Confirm the manager has outbound HTTPS access to the WPK repository configured in `wpk_repository`, or place the WPK manually under `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade API endpoint.
-
-### Upgrades never complete
-
-The manager only records that a task was created. Whether the agent picked it up, downloaded the WPK, and executed the installer is visible in the agent-side log and in the `delivery_time` column of the `tasks.db` row. If a task remains in the `pending` state past `task_ttl` (default 1 h), it will be marked `expired` by the Task Manager cleanup thread.
+**Manager-side troubleshooting** — a rejected request, a failed WPK download, a request refused
+under load — is in the
+[Task Manager configuration reference](../task_manager/configuration.md#troubleshooting-agent-upgrades),
+since that is the module doing the work.
 
 ---
 
 ## See Also
 
 - [Agent Upgrade Module](README.md) — Module overview and architecture
-- [Task Manager Configuration](../task_manager/configuration.md) — Backing store for upgrade tasks
-- [Manager Configuration Reference](../../configuration/manager/README.md)
+- [Task Manager Configuration](../task_manager/configuration.md#agent-upgrades) — the manager side: options, monitoring and troubleshooting
 - [Agent Configuration Reference](../../configuration/agent/README.md)

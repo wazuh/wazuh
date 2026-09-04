@@ -311,7 +311,6 @@ stages:
               indexer: !anything
               wdb: !anything
               task-manager: !anything
-              agent-upgrade: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

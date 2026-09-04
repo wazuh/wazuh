@@ -36,6 +36,10 @@ message-handler worker pool, and the fd closer thread).
   regardless, since the HTTPS `/download` endpoint also serves it to 5.x agents.
   Disabling this also causes `remote_upgrade` task creation for agents below v5.0.0 to be
   rejected at creation time, since there is no delivery path for them anymore.
+- **Read by modulesd at start-up.** The Task Manager's upgrade routes consult this value to decide
+  whether an upgrade can be delivered at all, and read it **once**, when modulesd starts. Changing it
+  therefore needs `wazuh-manager-modulesd` restarted as well as `wazuh-manager-remoted`, or upgrade
+  requests will keep applying the previous value.
 
 ### legacy.port
 
@@ -215,6 +219,12 @@ Client-certificate verification strictness.
 - **Note:** any other value is rejected as a configuration error (the config test fails), so a
   typo cannot silently leave client-certificate verification disabled.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
+- **Effect on agent upgrades:** anything other than `none` (or unset) blocks upgrading an agent
+  *to* v5.0.0 or newer, because the freshly upgraded agent comes back speaking HTTPS and may not be
+  able to re-establish a connection. `PUT /agents/upgrade` can override that with `force`, accepting
+  the risk and logging it; `PUT /agents/upgrade_custom` has no `force` parameter and so cannot.
+  Like `legacy.enabled`, this is read **once at modulesd start-up**, so changing it needs modulesd
+  restarted before upgrades see the new value.
 
 ### https.ciphers
 

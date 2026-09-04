@@ -106,43 +106,6 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_time.tv_usec = 25600;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_time.tv_usec = 12500;
-    wdb_state.queries_breakdown.task_queries = 45;
-    wdb_state.queries_breakdown.task_breakdown.sql_queries = 1;
-    wdb_state.queries_breakdown.task_breakdown.tasks.create_queries = 20;
-    wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_queries = 10;
-    wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_queries = 5;
-    wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_queries = 8;
-    wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_queries = 2;
-    wdb_state.queries_breakdown.task_breakdown.sql_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.sql_time.tv_usec = 56300;
-    wdb_state.queries_breakdown.task_breakdown.tasks.create_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.tasks.create_time.tv_usec = 10230;
-    wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_time.tv_usec = 156322;
-    wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_time.tv_usec = 52120;
-    wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_time.tv_usec = 123548;
-    wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time.tv_usec = 12000;
-    wdb_state.queries_breakdown.task_breakdown.commit_queries = 4;
-    wdb_state.queries_breakdown.task_breakdown.commit_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.commit_time.tv_usec = 1000;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_queries = 7;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_queries = 9;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_queries = 3;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_queries = 6;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_queries = 4;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.create_time.tv_usec = 2000;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.claim_time.tv_usec = 3000;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.requeue_time.tv_usec = 4000;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.result_time.tv_usec = 5000;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_time.tv_sec = 0;
-    wdb_state.queries_breakdown.task_breakdown.manager_tasks.get_time.tv_usec = 6000;
     wdb_state.queries_breakdown.mitre_queries = 2;
     wdb_state.queries_breakdown.mitre_breakdown.sql_queries = 2;
     wdb_state.queries_breakdown.mitre_breakdown.sql_time.tv_sec = 0;
@@ -261,49 +224,18 @@ void test_wazuhdb_create_state_json(void** state)
     assert_non_null(cJSON_GetObjectItem(mitre_queries_db, "sql"));
     assert_int_equal(cJSON_GetObjectItem(mitre_queries_db, "sql")->valueint, 2);
 
-    assert_non_null(cJSON_GetObjectItem(received_breakdown, "task"));
-    assert_int_equal(cJSON_GetObjectItem(received_breakdown, "task")->valueint, 45);
 
-    cJSON* task_queries_breakdown = cJSON_GetObjectItem(received_breakdown, "task_breakdown");
 
-    cJSON* task_queries_db = cJSON_GetObjectItem(task_queries_breakdown, "db");
-    assert_non_null(cJSON_GetObjectItem(task_queries_db, "sql"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_db, "sql")->valueint, 1);
 
-    cJSON* task_queries_tables = cJSON_GetObjectItem(task_queries_breakdown, "tables");
 
-    cJSON* task_tasks_queries_breakdown = cJSON_GetObjectItem(task_queries_tables, "tasks");
-    assert_non_null(cJSON_GetObjectItem(task_tasks_queries_breakdown, "create"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_queries_breakdown, "create")->valueint, 20);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_queries_breakdown, "get_pending"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_queries_breakdown, "get_pending")->valueint, 10);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_queries_breakdown, "mark_delivered"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_queries_breakdown, "mark_delivered")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_queries_breakdown, "cleanup_expired"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_queries_breakdown, "cleanup_expired")->valueint, 8);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_queries_breakdown, "delete_old"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_queries_breakdown, "delete_old")->valueint, 2);
 
-    assert_non_null(cJSON_GetObjectItem(task_queries_db, "commit"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_db, "commit")->valueint, 4);
 
-    cJSON* task_manager_tasks_queries_breakdown = cJSON_GetObjectItem(task_queries_tables, "manager_tasks");
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "create"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "create")->valueint, 7);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "claim"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "claim")->valueint, 9);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "requeue"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "requeue")->valueint, 3);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "result"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "result")->valueint, 6);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "get"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_queries_breakdown, "get")->valueint, 4);
 
     assert_non_null(cJSON_GetObjectItem(metrics, "time"));
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 5278);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4847);
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
@@ -387,43 +319,6 @@ void test_wazuhdb_create_state_json(void** state)
     cJSON* mitre_time_db = cJSON_GetObjectItem(mitre_time_breakdown, "db");
     assert_non_null(cJSON_GetObjectItem(mitre_time_db, "sql"));
     assert_int_equal(cJSON_GetObjectItem(mitre_time_db, "sql")->valueint, 15);
-
-    assert_non_null(cJSON_GetObjectItem(execution_breakdown, "task"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "task")->valueint, 431);
-
-    cJSON* task_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "task_breakdown");
-
-    cJSON* task_time_db = cJSON_GetObjectItem(task_time_breakdown, "db");
-    assert_non_null(cJSON_GetObjectItem(task_time_db, "sql"));
-    assert_int_equal(cJSON_GetObjectItem(task_time_db, "sql")->valueint, 56);
-    assert_non_null(cJSON_GetObjectItem(task_time_db, "commit"));
-    assert_int_equal(cJSON_GetObjectItem(task_time_db, "commit")->valueint, 1);
-
-    cJSON* task_time_tables = cJSON_GetObjectItem(task_time_breakdown, "tables");
-
-    cJSON* task_tasks_time_breakdown = cJSON_GetObjectItem(task_time_tables, "tasks");
-    assert_non_null(cJSON_GetObjectItem(task_tasks_time_breakdown, "create"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_time_breakdown, "create")->valueint, 10);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_time_breakdown, "get_pending"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_time_breakdown, "get_pending")->valueint, 156);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_time_breakdown, "mark_delivered"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_time_breakdown, "mark_delivered")->valueint, 52);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_time_breakdown, "cleanup_expired"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_time_breakdown, "cleanup_expired")->valueint, 123);
-    assert_non_null(cJSON_GetObjectItem(task_tasks_time_breakdown, "delete_old"));
-    assert_int_equal(cJSON_GetObjectItem(task_tasks_time_breakdown, "delete_old")->valueint, 12);
-
-    cJSON* task_manager_tasks_time_breakdown = cJSON_GetObjectItem(task_time_tables, "manager_tasks");
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "create"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "create")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "claim"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "claim")->valueint, 3);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "requeue"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "requeue")->valueint, 4);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "result"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "result")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "get"));
-    assert_int_equal(cJSON_GetObjectItem(task_manager_tasks_time_breakdown, "get")->valueint, 6);
 }
 
 int main(void)

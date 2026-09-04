@@ -32,7 +32,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager/
   ${SRC_FOLDER}/wazuh_db/include/
   ${SRC_FOLDER}/shared_modules/agent_metadata/include/
   ${SRC_FOLDER}/shared_modules/common/

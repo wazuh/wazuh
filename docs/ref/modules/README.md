@@ -3,7 +3,7 @@
 - [Active Response](active-response/index.html) - Automated security response actions triggered by detected events
 - [Agent Info](agent_info/index.html) - Agent metadata collection and reporting
 - [Agent Management](agent-management/index.html) - Centralized configuration and group management for agents
-- [Agent Upgrade](agent_upgrade/index.html) - Remote agent upgrade via WPK distribution
+- [Agent Upgrade](agent_upgrade/index.html) - Agent-side WPK verification and install (the manager side is in [Task Manager](task_manager/index.html))
 - [Authd](authd/index.html) - Agent enrollment service (TLS, key generation)
 - [Client](client/index.html) - Agent daemon (wazuh-agentd) managing agent-manager communication
 - [Cluster](cluster/index.html) - Manages the Wazuh server cluster

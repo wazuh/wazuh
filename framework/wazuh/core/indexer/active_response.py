@@ -18,7 +18,7 @@ from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.utils import ClusterFilter
 from wazuh.core.exception import WazuhError, WazuhException, IndexerUnavailableError
 from wazuh.core.indexer.indexer import get_indexer_client
-from wazuh.core.wazuh_socket import WazuhSocketJSON
+from wazuh.core.task_http import TaskManagerHTTPClient
 
 
 AR_INDEX = "wazuh-active-responses*"
@@ -29,6 +29,11 @@ AR_INDEX = "wazuh-active-responses*"
 #: on the next cycle; over it the reference is taken as broken, which is what keeps an event that
 #: never appears from freezing the cursor for the whole fleet.
 EVENT_VISIBILITY_GRACE_SECONDS = 120
+
+#: `WazuhError` code TaskManagerHTTPClient raises for a non-2xx answer -- the module received the
+#: request and refused it. Distinguished from every transport failure at the dispatch handler
+#: below, because a refusal is terminal for one document while a transport failure is not.
+HTTP_REJECTED_CODE = 2019
 AR_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -627,87 +632,91 @@ class ActiveResponseBuilder:
         # conditional: a Task Manager that cannot be reached is transient and page-wide.
         transport_failed = False
 
-        for ar in self._ars:
-            # Extract timestamp from AR document (for deterministic task ID)
-            timestamp_str = ar.doc_source.get("@timestamp")
-            if not timestamp_str:
-                self.logger.warning(
-                    f"AR document {ar.doc_id} missing @timestamp, skipping"
-                )
-                continue
-
-            # Convert ISO8601 timestamp to Unix timestamp
-            try:
-                dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                create_time = int(dt.timestamp())
-            except (ValueError, AttributeError) as e:
-                self.logger.error(
-                    f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
-                )
-                continue
-
-            # Build payload (merge AR source with event if available)
-            payload = dict(ar.doc_source)
-            if ar.event:
-                wazuh = ar.doc_source.get("wazuh", {}).copy()
-                event_wazuh = ar.event.get("wazuh", {})
-                payload = {**ar.doc_source, **ar.event}
-                payload["wazuh"] = {**event_wazuh, **wazuh}
-
-            # Dispatch to each target agent
-            for agent_id in ar.target_agents(self._all_agents):
-                try:
-                    # Build Task Manager message
-                    task_msg = {
-                        "action": "create_task",
-                        "agent_id": agent_id,
-                        "task_type": "active_response",
-                        "payload": payload,
-                        "source_id": ar.doc_id,
-                        "create_time": create_time
-                    }
-
-                    self.logger.debug(
-                        f"Creating task for agent `{agent_id}` (AR {ar.doc_id}): {task_msg}"
+        # One client for the whole pass. Each request still gets its own connection -- the Task
+        # Manager answers one request per connection and closes it -- but the client, and the
+        # transport it holds, are built once instead of once per agent.
+        with TaskManagerHTTPClient() as task_client:
+            for ar in self._ars:
+                # Extract timestamp from AR document (for deterministic task ID)
+                timestamp_str = ar.doc_source.get("@timestamp")
+                if not timestamp_str:
+                    self.logger.warning(
+                        f"AR document {ar.doc_id} missing @timestamp, skipping"
                     )
+                    continue
 
-                    # Send to Task Manager via TCP socket and receive response
-                    with WazuhSocketJSON(common.TASKS_SOCKET) as sock:
-                        sock.send(task_msg)
-                        response = sock.receive(raw=True)
+                # Convert ISO8601 timestamp to Unix timestamp
+                try:
+                    dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    create_time = int(dt.timestamp())
+                except (ValueError, AttributeError) as e:
+                    self.logger.error(
+                        f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
+                    )
+                    continue
 
-                    # Parse response
-                    if response.get("status") == "ok":
-                        task_id = response.get("task_id")
+                # Build payload (merge AR source with event if available)
+                payload = dict(ar.doc_source)
+                if ar.event:
+                    wazuh = ar.doc_source.get("wazuh", {}).copy()
+                    event_wazuh = ar.event.get("wazuh", {})
+                    payload = {**ar.doc_source, **ar.event}
+                    payload["wazuh"] = {**event_wazuh, **wazuh}
+
+                # Dispatch to each target agent
+                for agent_id in ar.target_agents(self._all_agents):
+                    try:
                         self.logger.debug(
-                            f"Created task {task_id} for agent {agent_id}"
+                            f"Creating task for agent `{agent_id}` (AR {ar.doc_id})"
+                        )
+
+                        # The Task Manager answers 2xx with a task id and raises on anything else, so
+                        # there is no status member to inspect: reaching the next line means the row
+                        # exists. source_id is the AR document id, mixed into the deterministic task id
+                        # so the same alert produces the same task on any cluster node.
+                        response = task_client.create_task(
+                            agent_id=agent_id,
+                            task_type="active_response",
+                            create_time=create_time,
+                            payload=payload,
+                            source_id=ar.doc_id,
+                        )
+
+                        self.logger.debug(
+                            f"Created task {response.get('task_id')} for agent {agent_id}"
                         )
                         msgs_sent += 1
-                    else:
-                        error = response.get("error", "unknown")
-                        message = response.get("message", "")
-                        self.logger.error(
-                            f"Task Manager error for agent {agent_id}: {error} - {message}"
-                        )
 
-                # WazuhException, not WazuhError: WazuhSocketJSON raises WazuhInternalError when
-                # it cannot connect and plain WazuhException on a failed send or receive, and both
-                # are siblings of WazuhError under WazuhException. Catching the narrow one let a
-                # dead Task Manager socket escape the whole loop, which aborted the cycle from
-                # that response on.
-                #
-                # Everything caught here is transport, never a rejected task: receive(raw=True)
-                # skips the cmd_error raise in WazuhSocketJSON, so Task Manager answering with an
-                # error arrives as `status != "ok"` above. What lands here is 1013 (cannot
-                # connect), 1121 and 1014 (failed send or receive) -- conditions that say nothing
-                # about this response and will resolve on their own, so the page is held instead
-                # of cleared. Handling them without escaping is what keeps a terminal discard
-                # elsewhere on the page from being re-read forever.
-                except WazuhException as e:
-                    transport_failed = True
-                    self.logger.error(
-                        f"Failed to create task for agent `{agent_id}`: {e}"
-                    )
+                    # WazuhException, not WazuhError: the two are siblings under it, and the
+                    # client raises both. Catching the narrow one let a dead Task Manager escape
+                    # the whole loop, which aborted the cycle from that response on.
+                    #
+                    # THE SPLIT BELOW IS THE CURSOR CONTRACT'S HALF OF THE WORK, and it had to be
+                    # rewritten when this stopped being a framed socket. WazuhSocketJSON with
+                    # receive(raw=True) never raised for a task the module REFUSED -- that arrived
+                    # as `status != "ok"` in the body -- so everything reaching the handler was
+                    # transport and a blanket `transport_failed = True` was right.
+                    # TaskManagerHTTPClient raises on a non-2xx instead, so a permanently invalid
+                    # document (a payload over the cap, a timestamp outside the admission window)
+                    # now lands here too. Holding the page for one of those would freeze the cursor
+                    # on it for as long as the document exists -- the exact failure the contract
+                    # below says was already fixed once.
+                    #
+                    # So: 2019 is the module answering and refusing, which is terminal for THIS
+                    # document and must let the page advance past it. Everything else -- every
+                    # WazuhInternalError (2018 construct, 2020 timeout, 2021 connect, 2022
+                    # unparseable) and WazuhError 2013 (send failed) -- says nothing about this
+                    # response and will resolve on its own, so the page is held and read again.
+                    except WazuhException as e:
+                        if isinstance(e, WazuhError) and e.code == HTTP_REJECTED_CODE:
+                            self.logger.error(
+                                f"Task Manager refused the task for agent `{agent_id}`: {e}"
+                            )
+                        else:
+                            transport_failed = True
+                            self.logger.error(
+                                f"Failed to create task for agent `{agent_id}`: {e}"
+                            )
 
         self.logger.info(
             f"Created {msgs_sent} task(s) from {len(self._ars)} active response(s)."

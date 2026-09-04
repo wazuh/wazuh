@@ -836,7 +836,7 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
   hostname, etc.) via `agent <id> set <field> <value>` commands, updates connection status, and
   reads back the agent's groups. Dedicated worker threads with bounded request queues and async I/O
   prevent blocking the HTTP worker threads.
-- **task-manager** (`queue/sockets/task.sock`): Task delivery. The handler queries pending tasks for the
+- **task-manager** (`queue/sockets/task-http.sock`): Task delivery. The handler queries pending tasks for the
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.

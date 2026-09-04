@@ -65,11 +65,10 @@ extern long long purge_last_seq;
  * too: a case that queues no answer and still passes has shown that the question was settled from
  * memory, without a round trip. */
 
-int __wrap_manager_task_agent_status(const char *agent_id, const char *task_type, int timeout, int *sock) {
+int __wrap_manager_task_agent_status(const char *agent_id, const char *task_type, int timeout) {
     check_expected(agent_id);
     (void)task_type;
     (void)timeout;
-    (void)sock;
     return mock_type(int);
 }
 
