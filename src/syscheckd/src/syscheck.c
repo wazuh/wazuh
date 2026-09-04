@@ -78,7 +78,7 @@ void read_internal(int debug_level)
     syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
     syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     syscheck.sync_flush_batch_size = getDefine_Int_default("syscheck", "sync_flush_batch_size", 1, 100000, 100);
-    syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 1, 3600000, 500);
+    syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 50, 3600000, 500);
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);

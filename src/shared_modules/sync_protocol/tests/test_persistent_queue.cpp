@@ -13,10 +13,13 @@
 #include "ipersistent_queue_storage.hpp"
 #include "persistent_queue.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
 using ::testing::_;
+using ::testing::DoAll;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SaveArg;
 
@@ -95,9 +98,13 @@ TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     std::vector<PersistedData> flushedBatch;
+    std::atomic<bool> flushed{false};
     EXPECT_CALL(*mockStorage, submitBatch(_))
     .Times(1)
-    .WillOnce(SaveArg<0>(&flushedBatch));
+    .WillOnce(DoAll(SaveArg<0>(&flushedBatch), InvokeWithoutArgs([&flushed]
+    {
+        flushed.store(true, std::memory_order_release);
+    })));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
@@ -108,9 +115,14 @@ TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
     queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
     queue.submit("id2", "index2", "{}", Operation::CREATE, 1);
 
-    // Give the flush thread a moment to react to the count threshold.
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Poll instead of a fixed sleep so this doesn't flake on a slow CI runner.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!flushed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
 
+    ASSERT_TRUE(flushed.load(std::memory_order_acquire));
     ASSERT_EQ(flushedBatch.size(), 2u);
 }
 
