@@ -798,6 +798,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
             # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
+            if not any(n.nodeType == n.ELEMENT_NODE for n in xml.documentElement.childNodes):
+                raise WazuhError(1113, 'Configuration must contain at least one element')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
