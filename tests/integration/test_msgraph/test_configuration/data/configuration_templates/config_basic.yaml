@@ -1,4 +1,18 @@
 - sections:
+    # #38956: the agent's default verification_mode is now 'system', which
+    # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+    # suite is not testing TLS trust.
+    - section: agent
+      elements:
+        - manager:
+            elements:
+              - endpoint:
+                  value: '127.0.0.1:1517'
+        - ssl:
+            elements:
+              - verification_mode:
+                  value: none
+
     - section: ms-graph
       elements:
         - enabled:

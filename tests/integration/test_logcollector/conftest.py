@@ -20,6 +20,56 @@ from wazuh_testing.utils.file import truncate_file, replace_regex_in_file, write
 # Logcollector internal paths
 LOGCOLLECTOR_OFE_PATH = path_join(WAZUH_PATH, 'queue', 'logcollector', 'file_status.json')
 
+
+@pytest.fixture(scope="module", autouse=True)
+def set_agent_config():
+    """Write the manager endpoint and TLS opt-out directly into the installed ossec.conf,
+    once per module, before any test's own set_wazuh_configuration runs.
+
+    This does NOT go through each test's own `test_configuration["sections"]`: several
+    logcollector test files (test_basic_configuration_alias.py, _command.py, _location.py,
+    _label.py, _out_format.py, _target.py) call
+    validate_test_config_with_module_config(test_configuration), which queries
+    `getconfig <section>` on logcollector's own control socket for every section listed
+    there and raises if logcollector doesn't recognize it -- 'agent' isn't one of
+    logcollector's own sections ('localfile', 'socket'), so it would fail there even though
+    the opt-out has nothing to do with what those tests are actually validating.
+
+    set_wazuh_configuration() (tests/integration/conftest.py) backs up and restores the
+    whole file around each test, and re-reads the current file as its own template when
+    passed no explicit one, so a section written here before the first test survives every
+    later per-test backup/restore/reapply cycle in the module untouched.
+    """
+    # <agent> is the 5.x name for what 4.x spelled <client> (#38103). <endpoint> carries the
+    # whole target -- host, port and path (#38624) -- which is why <address> and <port> are no
+    # longer written here: they are the deprecated spelling and are ignored outright whenever
+    # <endpoint> is present.
+    agent_conf = {
+        "section": "agent",
+        "elements": [
+            {
+                "manager": {
+                    "elements": [
+                        {"endpoint": {"value": "127.0.0.1:1517"}},
+                    ]
+                }
+            },
+            {
+                # #38956: the agent's default verification_mode is now 'system', which
+                # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+                # suite is not testing TLS trust.
+                "ssl": {
+                    "elements": [
+                        {"verification_mode": {"value": "none"}},
+                    ]
+                }
+            },
+        ],
+    }
+
+    configuration.write_wazuh_conf(configuration.set_section_wazuh_conf([agent_conf]))
+
+
 @pytest.fixture()
 def stop_logcollector(request):
     """Stop wazuh-logcollector and truncate logs file."""
