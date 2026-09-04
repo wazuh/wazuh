@@ -41,6 +41,39 @@ constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
 std::atomic<bool> g_everSawContainers{false};
 
+// ...and the retry-on-empty is additionally confined to the FIRST discovery of
+// the process, which is the only moment the warm-up race can happen. Without
+// this, a node that genuinely runs no containers never latches
+// g_everSawContainers and so pays the full retry cost on every recurring scan,
+// forever — the exact unbounded latency the comment above warns about.
+std::atomic<bool> g_warmupWindowClosed{false};
+
+// A connector that has answered can still be mid-enumeration: it reports a
+// well-formed, non-empty, but INCOMPLETE list. That is not hypothetical — on a
+// real node FIM baselined 3 of 4 containers at startup and the fourth (a Docker
+// container) never appeared, because Docker's connector had not finished its
+// first snapshot when the one-shot baseline ran
+// (spike-37533/startup-race-solutions-and-edge-cases.md, finding #2).
+//
+// So once a list is in hand, poll again until two consecutive polls report the
+// same SET of container ids — sets, not counts, so that one container starting
+// as another stops cannot look like quiescence. Bounded, and latched once
+// quiescence is genuinely observed so the cost is paid at most once per process.
+constexpr int kQuiescenceRetryAttempts = 5;
+std::atomic<bool> g_containersStable{false};
+
+std::unordered_set<std::string>
+ContainerIdSet(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
+{
+    std::unordered_set<std::string> ids;
+    ids.reserve(refs.size());
+    for (const auto& ref : refs)
+    {
+        ids.insert(ref.containerId);
+    }
+    return ids;
+}
+
 /// Parses one container_instances record (see wire_protocol.hpp's
 /// recordToJson()) into the shared runtime context. Pod/namespace/node/
 /// annotations/owner_refs are only ever present when the module reports
@@ -138,30 +171,91 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     }
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
-    const int attempts = g_everSawContainers.load() ? 1 : kListRetryAttempts;
+    bool answered = false;
+
+    // Phase 1 — get an answer, and give a still-warming connector time to have
+    // something to report.
+    const bool warmupWindow = !g_everSawContainers.load() && !g_warmupWindowClosed.load();
+    const int attempts = warmupWindow ? kListRetryAttempts : 1;
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
-        bool answered = false;
-        refs = client.listContainers(&answered);
-
-        if (reachable != nullptr)
+        bool polled = false;
+        auto listed = client.listContainers(&polled);
+        if (polled)
         {
-            *reachable = answered;
+            answered = true;
+            refs = std::move(listed);
         }
 
-        // Retry only while the connector has not answered at all. A well-formed
-        // empty list is authoritative — retrying it would just delay a scan on
-        // a node that legitimately runs no containers.
-        if (answered || attempt == attempts)
+        // Two different reasons to poll again, and they must not be conflated:
+        //
+        //   not answered   the connector is unreachable. Retrying may find it.
+        //   answered empty the connector is reachable but may not have finished
+        //                  its first enumeration, in which case an empty list is
+        //                  a truthful "nothing yet" rather than "nothing".
+        //
+        // The difference matters for DELETIONS, not for how long to wait: only
+        // `answered` gates the caller's stale sweep (see the header), and an
+        // empty list from a connector that has answered is still authoritative
+        // once the warm-up window has closed.
+        if ((answered && !refs.empty()) || attempt == attempts)
         {
             break;
         }
         std::this_thread::sleep_for(kListRetryDelay);
     }
 
+    g_warmupWindowClosed.store(true);
+
+    if (reachable != nullptr)
+    {
+        *reachable = answered;
+    }
+
     if (!refs.empty())
     {
         g_everSawContainers.store(true);
+    }
+
+    // Phase 2 — quiescence. Only meaningful once there is a list to compare.
+    if (!refs.empty() && !g_containersStable.load())
+    {
+        auto lastIds = ContainerIdSet(refs);
+        bool stable = false;
+
+        for (int attempt = 1; attempt <= kQuiescenceRetryAttempts; ++attempt)
+        {
+            std::this_thread::sleep_for(kListRetryDelay);
+
+            bool polled = false;
+            auto nextRefs = client.listContainers(&polled);
+            if (!polled)
+            {
+                // The connector went away mid-check. Keep the last list that it
+                // did answer with rather than adopting a failed poll's empty
+                // one, and leave the latch clear so the next run re-checks.
+                break;
+            }
+
+            auto nextIds = ContainerIdSet(nextRefs);
+            if (nextIds == lastIds)
+            {
+                stable = true;
+                break;
+            }
+            refs = std::move(nextRefs);
+            lastIds = std::move(nextIds);
+        }
+
+        if (stable)
+        {
+            g_containersStable.store(true);
+        }
+        // Otherwise: the attempts ran out without two consecutive polls
+        // agreeing. Proceed with whatever the last answered poll returned
+        // rather than blocking this run indefinitely, and deliberately leave
+        // g_containersStable clear so the next call checks again instead of
+        // accepting a possibly-incomplete list for the rest of the process.
     }
 
     out.reserve(refs.size());
