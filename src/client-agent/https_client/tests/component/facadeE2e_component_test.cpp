@@ -673,6 +673,52 @@ TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
     EXPECT_EQ(64u, recorder.hash.size()); // A SHA-256 hex.
 }
 
+// #38514: the manager end of this negotiation (#38506) is not yet merged, but its own contract is
+// exercised for real here -- FakeManager compresses only because it saw the client's own
+// Accept-Encoding: zstd header (fakeManagerZstdCompress + requestAdvertisesZstd, fakeManager.hpp),
+// the same negotiation shape the real manager will use. This proves the whole chain through the
+// real curl path: the request header goes out, the compressed+Content-Encoding response comes
+// back, RetrySender decompresses it in place before the callback ever fires, and the delivered
+// bytes/hash are identical to the uncompressed test above -- "byte-identical" not just for the
+// plain case, but for what the caller ultimately sees regardless of which case occurred.
+TEST_F(FacadeE2eTest, ConfigMismatchDownloadsAZstdCompressedResponseAndDeliversPlainBytes)
+{
+    const uint16_t port = TLS_PORT + 12;
+    // Long and repetitive so it actually compresses, exercising a real (non-trivial) frame.
+    const std::string blob = "#merged.mg v2\n<agent_config></agent_config>\n" + std::string(4096, 'x');
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob,
+                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/{}, /*statefulHoldFile=*/{},
+                         /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
+                         /*enrollPassword=*/{}, /*enrollForcedStatus=*/0,
+                         /*compressConfigResponse=*/true};
+
+    ConfigRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    std::strncpy(config.config_checksum, "0000-local-out-of-date",
+                 sizeof(config.config_checksum) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = onConfigDownloaded;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    ASSERT_TRUE(waitFor(recorder.count, 1, 5000)); // Downloaded + decompressed + delivered.
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {2500});
+    EXPECT_EQ(1, recorder.count.load()); // Optimistic update: no re-download loop.
+    hc_destroy(handle);
+
+    std::lock_guard<std::mutex> lock(recorder.mutex);
+    // The callback only ever sees plain bytes -- config_hash is verified against them (matching
+    // the manager's own plain-file config_hash), never the compressed wire bytes.
+    EXPECT_EQ(blob, recorder.content);
+    EXPECT_EQ(64u, recorder.hash.size()); // A SHA-256 hex.
+}
+
 namespace
 {
     struct ReenrollRecorder

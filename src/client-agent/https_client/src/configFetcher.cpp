@@ -36,11 +36,11 @@ namespace
 ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& performer,
                              const ISigner& signer, IClock& clock, IRandom& random,
                              ISpoolFileFactory& spoolFactory, AuthGate& authGate,
-                             CompressionGate& compressionGate)
+                             CompressionGate& compressionGate, IFileDecompressor& decompressor)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
-               config.serverEndpoint)
+               config.serverEndpoint, &decompressor)
     , m_spoolFactory(spoolFactory)
 {
 }
@@ -62,6 +62,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     spec.target = "/download";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
+    // #38514: unconditional -- decompression itself is decided solely by the response's own
+    // Content-Encoding header (never by having sent this), so there is nothing to gate here.
+    spec.headers.push_back("Accept-Encoding: zstd");
     spec.responseFilePath = spool->path();
     spec.maxResponseBytes = CONFIG_MAX_DOWNLOAD_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.

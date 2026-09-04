@@ -13,6 +13,7 @@
 #define _HC_CONFIG_FETCHER_HPP
 
 #include "backoff.hpp"
+#include "fileDecompressor.hpp"
 #include "iHttpPerformer.hpp"
 #include "iSigner.hpp"
 #include "moduleConfig.hpp"
@@ -34,6 +35,14 @@
  * re-arms itself for free, because the next Notify still reports the
  * mismatch. If config blobs ever grow past that, lift this onto its own
  * thread with a single-flight latch keyed by the expected hash.
+ *
+ * Unconditionally advertises Accept-Encoding: zstd (#38514) -- a manager
+ * running #38506 may answer with a zstd-compressed body, decompressed
+ * transparently by RetrySender before fetch() ever sees the spool file, so
+ * the hash check below always runs on plain bytes exactly as before this
+ * feature existed. A manager that doesn't compress (older version, or the
+ * feature gated off) simply never sets Content-Encoding, and nothing here
+ * changes.
  */
 class ConfigFetcher final
 {
@@ -45,7 +54,8 @@ class ConfigFetcher final
                       IRandom& random,
                       ISpoolFileFactory& spoolFactory,
                       AuthGate& authGate,
-                      CompressionGate& compressionGate);
+                      CompressionGate& compressionGate,
+                      IFileDecompressor& decompressor);
 
         /// Downloads the config named by `resourceId` -- the manager's own
         /// agent.config_token, used verbatim and never interpreted here --
