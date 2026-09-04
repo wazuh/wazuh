@@ -76,6 +76,7 @@ struct libbpf_api
     /* Map access, for draining per-cgroup drop accounting. */
     int (*map_get_next_key)(int, const void*, void*);
     int (*map_lookup_elem)(int, const void*, void*);
+    int (*map_update_elem)(int, const void*, const void*, unsigned long long);
     int (*map_delete_elem)(int, const void*);
     /* Preferred when present: one syscall, and atomic against the BPF side
      * still incrementing the entry. Absent on kernels/libbpf builds without
@@ -195,6 +196,7 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
     RT_RESOLVE_SYM(link_destroy, "bpf_link__destroy");
     RT_RESOLVE_SYM(map_get_next_key, "bpf_map_get_next_key");
     RT_RESOLVE_SYM(map_lookup_elem, "bpf_map_lookup_elem");
+    RT_RESOLVE_SYM(map_update_elem, "bpf_map_update_elem");
     RT_RESOLVE_SYM(map_delete_elem, "bpf_map_delete_elem");
 
     /* Optional — see the struct comment. Absence costs one extra syscall per
@@ -234,6 +236,10 @@ struct rt_engine_handle
     /* fd of cgroup_drops_map, or -1 when the loaded object predates it. */
     int cgroup_drops_fd;
     int cgroup_drops_absent_reported;
+
+    /* fds of the filtering maps, or -1 when the object predates them. */
+    int filter_cfg_fd;
+    int cgroup_allow_fd;
 
     int cgroup_v1;
 
@@ -431,8 +437,10 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
     h->log = log;
-    /* calloc leaves this 0, which is a legitimate descriptor number. */
+    /* calloc leaves these 0, which is a legitimate descriptor number. */
     h->cgroup_drops_fd = -1;
+    h->filter_cfg_fd = -1;
+    h->cgroup_allow_fd = -1;
 
     h->cgroup_v1 = detect_cgroup_v1();
     if (h->cgroup_v1)
@@ -532,9 +540,93 @@ rt_handle_t rt_open(const struct rt_filter* filter)
                "attributable to a cgroup. Rebuild rt_file.bpf.o to enable rt_drain_drops().");
     }
 
-    rt_log(&h->log, RT_LOG_INFO, "eBPF engine ready: %u program(s) attached, ABI %d.%d", h->link_count,
-           RT_ABI_MAJOR, RT_ABI_MINOR);
+    h->filter_cfg_fd = g_libbpf.find_map_fd_by_name(h->obj, "filter_cfg");
+    h->cgroup_allow_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_allow_map");
+
+    /* Write the requested mode. An object that predates filtering has neither
+     * map: unfiltered is what it does anyway, so ALL is satisfied silently and
+     * only ALLOWLIST is an error — asking to filter and getting everything is
+     * a correctness surprise, not a degradation to absorb quietly. */
+    if (h->filter_cfg_fd < 0 || h->cgroup_allow_fd < 0)
+    {
+        if (filter->cgroup_mode != RT_CGROUP_MODE_ALL)
+        {
+            rt_log(&h->log, RT_LOG_ERROR,
+                   "cgroup filtering requested but this BPF object has no filtering maps: every event "
+                   "on the host would be delivered. Rebuild rt_file.bpf.o.");
+            abort_open(h);
+            return NULL;
+        }
+    }
+    else if (rt_set_cgroup_mode(h, filter->cgroup_mode) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not set cgroup filter mode %d", filter->cgroup_mode);
+        abort_open(h);
+        return NULL;
+    }
+
+    rt_log(&h->log, RT_LOG_INFO, "eBPF engine ready: %u program(s) attached, ABI %d.%d, cgroup filter %s",
+           h->link_count, RT_ABI_MAJOR, RT_ABI_MINOR,
+           filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off");
     return (rt_handle_t)h;
+}
+
+int rt_set_cgroup_mode(rt_handle_t handle, int mode)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->filter_cfg_fd < 0)
+    {
+        return -1;
+    }
+    if (mode != RT_CGROUP_MODE_ALL && mode != RT_CGROUP_MODE_ALLOWLIST)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "unknown cgroup filter mode %d", mode);
+        return -1;
+    }
+
+    const unsigned int key = 0;
+    const unsigned int value = (unsigned int)mode;
+    if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+int rt_allow_cgroup(rt_handle_t handle, unsigned long long cgroup_id)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->cgroup_allow_fd < 0)
+    {
+        return -1;
+    }
+
+    const unsigned char present = 1;
+    if (g_libbpf.map_update_elem(h->cgroup_allow_fd, &cgroup_id, &present, 0 /* BPF_ANY */) != 0)
+    {
+        /* Almost always E2BIG: the map is full. In allowlist mode that means
+         * the cgroups which did not fit are unmonitored, silently, which is
+         * exactly the kind of gap that must be loud. */
+        rt_log(&h->log, RT_LOG_ERROR,
+               "could not add cgroup %llu to the allowlist (map full?); its events will not be "
+               "delivered while allowlist mode is active",
+               cgroup_id);
+        return -1;
+    }
+    return 0;
+}
+
+int rt_deny_cgroup(rt_handle_t handle, unsigned long long cgroup_id)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->cgroup_allow_fd < 0)
+    {
+        return -1;
+    }
+    /* Absent is the desired end state, so a failed delete of a missing key is
+     * success, not an error. */
+    g_libbpf.map_delete_elem(h->cgroup_allow_fd, &cgroup_id);
+    return 0;
 }
 
 int rt_poll(rt_handle_t handle, rt_sink_fn sink, void* user, int timeout_ms)

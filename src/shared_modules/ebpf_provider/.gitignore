@@ -8,3 +8,4 @@ rt_engine_harness
 rt_engine_contract_test
 rt_engine_leak_test
 rt_engine_drops_test
+rt_engine_filter_test

@@ -111,7 +111,70 @@ struct
     __uint(max_entries, 4096);
 } cgroup_drops_map SEC(".maps");
 
+/* In-kernel cgroup filtering.
+ *
+ * Without it every consumer receives every write-intent open on the host, as a
+ * 12,416-byte record into an 8 MiB ring — roughly 675 records in flight. A
+ * container-scoped consumer pays that whole firehose to learn about a handful
+ * of cgroups, and it is what makes loss reachable at all: measured, 198,000
+ * events from ten parallel producers dropped 203, while the same producer count
+ * confined to a few cgroups would have delivered almost nothing to filter.
+ *
+ * `filter_cfg` slot 0 holds the mode, written by userspace at rt_open():
+ *
+ *   RT_CGROUP_MODE_ALL (0)        every event is submitted. The default, and
+ *                                 what host whodata needs — it is not
+ *                                 container-scoped and must see the node.
+ *   RT_CGROUP_MODE_ALLOWLIST (1)  only events whose cgroup_id is present in
+ *                                 cgroup_allow_map are submitted.
+ *
+ * A filtered-out event is NOT counted as a drop. Drops mean "the consumer
+ * wanted this and lost it"; a filter miss means "the consumer never asked".
+ * Conflating them would make every unfiltered container's activity look like
+ * loss and trigger endless re-baselining.
+ *
+ * The mode lives in a map rather than a .rodata constant so that a consumer can
+ * change it on a live handle; the allowlist has to be mutable anyway, because
+ * containers are created after the engine is opened.
+ */
+#define RT_CGROUP_MODE_ALL       0
+#define RT_CGROUP_MODE_ALLOWLIST 1
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, __u32);
+    __type(value, __u32);
+    __uint(max_entries, 1);
+} filter_cfg SEC(".maps");
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, __u64);
+    __type(value, __u8);
+    __uint(max_entries, 4096);
+} cgroup_allow_map SEC(".maps");
+
 extern int LINUX_KERNEL_VERSION __kconfig;
+
+/* Returns non-zero when this event should reach the ring buffer. Called before
+ * bpf_ringbuf_reserve() so a filtered event costs one map lookup rather than a
+ * 12 KB reservation. */
+statfunc int event_is_wanted(__u64 cgroup_id)
+{
+    __u32 key = 0;
+    __u32* mode = bpf_map_lookup_elem(&filter_cfg, &key);
+
+    /* No config yet (or the lookup failed) means submit: an engine whose
+     * userspace has not written a mode must not silently deliver nothing. */
+    if (!mode || *mode == RT_CGROUP_MODE_ALL)
+    {
+        return 1;
+    }
+
+    return bpf_map_lookup_elem(&cgroup_allow_map, &cgroup_id) != NULL;
+}
 
 statfunc void bump_drop_counter(void)
 {
@@ -308,6 +371,15 @@ statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
 
 statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev)
 {
+    /* Resolved once, up front: the filter needs it before deciding whether to
+     * reserve, and the event needs it afterwards. */
+    __u64 cgroup_id = bpf_get_current_cgroup_id();
+
+    if (!event_is_wanted(cgroup_id))
+    {
+        return;
+    }
+
     struct rt_file_event* evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
     if (!evt)
     {
@@ -331,7 +403,7 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     evt->inode = ino;
     evt->dev = dev;
 
-    evt->cgroup_id = bpf_get_current_cgroup_id();
+    evt->cgroup_id = cgroup_id;
     evt->mnt_ns = get_mnt_ns_inum(current_task);
 
     evt->dropped = take_drop_counter();
