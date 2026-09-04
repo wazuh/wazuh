@@ -45,7 +45,7 @@ import pytest
 from wazuh_testing.constants.daemons import API_DAEMON
 from wazuh_testing.constants.paths.binaries import WAZUH_CONTROL_PATH
 from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
-from wazuh_testing.utils.services import check_all_daemon_status, control_service, wait_expected_daemon_status
+from wazuh_testing.utils.services import check_all_daemon_status, wait_expected_daemon_status
 
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
@@ -59,6 +59,18 @@ APID_SCRIPT_MARKER = 'wazuh_manager_apid.py'
 # per-daemon startup loop to finish; this is wall-clock, not CPU, time.
 RACE_TIMEOUT_SECONDS = 20
 STATUS_TIMEOUT_SECONDS = 30
+
+
+def _control_start():
+    """Run 'wazuh-manager-control start' directly and wait for its launch loop to finish.
+
+    Not control_service('start'): on Linux that goes through 'service wazuh-manager start', and
+    the unit (Type=forking, KillMode=process) stays active while any daemon is alive, so systemd
+    treats the start as a no-op and a single killed daemon is never relaunched. The control
+    script itself starts whatever is not running and reports 'already running' for the rest.
+    """
+    subprocess.run([WAZUH_CONTROL_PATH, 'start'], check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _kill_apid_family_uncleanly():
@@ -140,15 +152,15 @@ def _race_and_plant_collision(before_pids, timeout=RACE_TIMEOUT_SECONDS):
 @pytest.fixture()
 def wazuh_running():
     """Ensure every daemon is up before the test, and leave the manager fully running after."""
-    control_service('start')
+    _control_start()
     wait_expected_daemon_status(timeout=STATUS_TIMEOUT_SECONDS)
     yield
     # The test may have left apid down (that is the failure mode under test); bring everything
     # back up regardless of the outcome so later tests in the suite start from a clean state.
-    # Mirrors the setup above: control_service('start') returning only means the control
-    # script's own launch loop finished, not that every daemon is actually up yet -- without
-    # this wait, a still-initializing manager can bleed into whatever runs next.
-    control_service('start')
+    # Mirrors the setup above: _control_start() returning only means the control script's own
+    # launch loop finished, not that every daemon is actually up yet -- without this wait, a
+    # still-initializing manager can bleed into whatever runs next.
+    _control_start()
     wait_expected_daemon_status(timeout=STATUS_TIMEOUT_SECONDS)
 
 
@@ -317,7 +329,7 @@ def test_apid_spares_unrelated_process_with_recycled_pid(wazuh_running):
         backdated = time.time() - 3600
         os.utime(collision_file, (backdated, backdated))
 
-        control_service('start')
+        _control_start()
         wait_expected_daemon_status(target_daemon=API_DAEMON, running_condition=True,
                                      timeout=STATUS_TIMEOUT_SECONDS)
 
