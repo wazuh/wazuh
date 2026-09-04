@@ -75,7 +75,7 @@ def rbac_mocks(preprocessor_module):
 def test_get_roles_uses_auth_context_method(preprocessor_module, rbac_mocks, auth_context):
     """Check that any given authorization context, empty included, is resolved through the checker.
 
-    An empty context is falsy but present: it must be resolved as a context that matched no rule,
+    An empty context is falsy but present: it must go through the rules like any other context,
     never fall back to the account's static roles.
     """
     _, rbac_checker = rbac_mocks
@@ -116,7 +116,7 @@ def test_get_permissions_run_as_not_allowed(preprocessor_module, rbac_mocks, aut
 
 
 def test_get_permissions_empty_auth_context_returns_no_roles(preprocessor_module, rbac_mocks):
-    """Check that an empty authorization context resolves to an empty role set."""
+    """Check that an empty authorization context is resolved through the rules, not the user link."""
     auth_manager, rbac_checker = rbac_mocks
     auth_manager.user_allow_run_as.return_value = True
     rbac_checker.run_auth_context_roles.return_value = []

@@ -126,10 +126,10 @@ def optimize_resources(roles: list = None) -> dict:
 def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
     """Obtain the roles of a user using auth_context or user_id.
 
-    The authorization context is resolved whenever one is given, even if it is empty. An empty
-    context matches no rule and therefore yields no roles, exactly like any other context that
-    resolves to no identity. Only an absent context (`None`, the plain login path) falls back to
-    the user-role link, i.e. the account's static roles.
+    The authorization context is resolved against the rules whenever one is given, even if it is
+    empty: an empty context is granted whatever the ruleset matches on it, which is nothing for
+    every rule in the default ruleset. Only an absent context (`None`, the plain login path) falls
+    back to the user-role link, i.e. the account's static roles.
 
     Parameters
     ----------
@@ -146,8 +146,8 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
     with AuthenticationManager() as am:
         user_id = am.get_user(username=user_id)['id']
     rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
-    # Authorization Context method. Test for presence, not truth: an empty context is a context
-    # that matched no rule, never a request to fall back to the account's static roles.
+    # Authorization Context method. Test for presence, not truth: an empty context is still a
+    # context to resolve, never a request to fall back to the account's static roles.
     if auth_context is not None:
         roles = rbac.run_auth_context_roles()
     # User-role link method

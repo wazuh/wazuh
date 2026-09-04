@@ -1169,6 +1169,21 @@ stages:
         json:
           login_token: data.token
 
+  - name: Log in with wazuh-wui and an empty auth context (raw)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      params:
+        raw: True
+      method: POST
+      json: {}
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_token_raw_format
+
   - name: An empty auth context grants nothing (Denied)
     request:
       verify: False
