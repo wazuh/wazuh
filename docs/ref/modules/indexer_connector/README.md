@@ -85,7 +85,7 @@ failure. `0` disables the corresponding bound. Without the budget, a persistent 
 unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
 long after the caller's response window closed. The deadline only gates the sleeps: one in-flight
 request can still overshoot it by up to `request_timeout_seconds`. The indexer's `Retry-After`
-header is not honored — the transport does not expose response headers.
+header is not honored — the transport does not expose response headers (tracked in #38942).
 
 ### Delete-by-query
 
