@@ -112,7 +112,7 @@ void test_get_ip_version_success_invalid_ip(void **state) {
     assert_int_equal(ret, -1);    //OS_INVALID
 }
 
-// Tests for is_valid_username (Debian adduser constraints)
+// Tests for is_valid_username
 
 void test_is_valid_username_valid_simple(void **state) {
     (void) state;
@@ -170,17 +170,17 @@ void test_is_valid_username_invalid_empty(void **state) {
 
 void test_is_valid_username_invalid_starts_with_dash(void **state) {
     (void) state;
-    assert_int_equal(is_valid_username("-testuser"), 0);  // Debian constraint
+    assert_int_equal(is_valid_username("-testuser"), 0);
 }
 
 void test_is_valid_username_invalid_starts_with_plus(void **state) {
     (void) state;
-    assert_int_equal(is_valid_username("+testuser"), 0);  // Debian constraint
+    assert_int_equal(is_valid_username("+testuser"), 0);
 }
 
 void test_is_valid_username_invalid_starts_with_tilde(void **state) {
     (void) state;
-    assert_int_equal(is_valid_username("~testuser"), 0);  // Debian constraint
+    assert_int_equal(is_valid_username("~testuser"), 0);
 }
 
 void test_is_valid_username_invalid_with_colon(void **state) {
@@ -238,6 +238,44 @@ void test_is_valid_username_length_boundary(void **state) {
     assert_int_equal(is_valid_username(username), 0);
 }
 
+void test_is_valid_username_invalid_shell_metacharacters(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test;user"), 0);
+    assert_int_equal(is_valid_username("test|user"), 0);
+    assert_int_equal(is_valid_username("test&user"), 0);
+    assert_int_equal(is_valid_username("test`user`"), 0);
+    assert_int_equal(is_valid_username("test$(id)"), 0);
+    assert_int_equal(is_valid_username("test'user"), 0);
+    assert_int_equal(is_valid_username("test\"user"), 0);
+    assert_int_equal(is_valid_username("test*user"), 0);
+    assert_int_equal(is_valid_username("test>user"), 0);
+}
+
+void test_is_valid_username_invalid_plus_or_tilde_anywhere(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test+user"), 0);
+    assert_int_equal(is_valid_username("test~user"), 0);
+}
+
+void test_is_valid_username_invalid_qualified_name(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("alice@example.com"), 0);
+    assert_int_equal(is_valid_username("user@REALM"), 0);
+}
+
+void test_is_valid_username_invalid_control_characters(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test\x01" "user"), 0);
+    assert_int_equal(is_valid_username("test\x1b" "user"), 0);
+    assert_int_equal(is_valid_username("test\x7f" "user"), 0);
+}
+
+void test_is_valid_username_invalid_non_ascii(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("caf\xc3\xa9"), 0);
+    assert_int_equal(is_valid_username("\xff" "user"), 0);
+}
+
 // Tests for get_username_from_json (the getter must apply is_valid_username)
 
 void test_get_username_from_json_accepts_valid(void **state) {
@@ -284,7 +322,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_ip_version_no_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_invalid_ip, test_setup, test_teardown),
 
-        // is_valid_username tests (Debian constraints)
+        // is_valid_username tests
         cmocka_unit_test(test_is_valid_username_valid_simple),
         cmocka_unit_test(test_is_valid_username_valid_with_numbers),
         cmocka_unit_test(test_is_valid_username_valid_with_underscore),
@@ -305,6 +343,11 @@ int main(void) {
         cmocka_unit_test(test_is_valid_username_invalid_separators_in_traversal),
         cmocka_unit_test(test_is_valid_username_valid_with_consecutive_dots),
         cmocka_unit_test(test_is_valid_username_length_boundary),
+        cmocka_unit_test(test_is_valid_username_invalid_shell_metacharacters),
+        cmocka_unit_test(test_is_valid_username_invalid_plus_or_tilde_anywhere),
+        cmocka_unit_test(test_is_valid_username_invalid_qualified_name),
+        cmocka_unit_test(test_is_valid_username_invalid_control_characters),
+        cmocka_unit_test(test_is_valid_username_invalid_non_ascii),
 
         // get_username_from_json tests
         cmocka_unit_test(test_get_username_from_json_accepts_valid),

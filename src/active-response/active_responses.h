@@ -92,11 +92,10 @@ const char* get_username_from_json(const cJSON *input);
 
 /**
  * Validate username format
- * Follows Debian adduser constraints:
- * - Must not start with dash, plus, or tilde
- * - Must not contain colon, comma, or whitespace
- * - Should not contain slash (may break home directory paths)
- * Rejects: reserved names (root), empty strings, null
+ * Accepts only [A-Za-z0-9._-] plus '$' anywhere for machine accounts, and rejects
+ * a leading dash so the name cannot be read as an option. '@' is excluded: only
+ * local accounts can be locked, and those cannot carry a realm suffix.
+ * Rejects: reserved names (root), empty strings, null, names over 256 bytes
  * @param username Username to validate
  * @retval 1 If username is valid
  * @retval 0 If username is invalid
