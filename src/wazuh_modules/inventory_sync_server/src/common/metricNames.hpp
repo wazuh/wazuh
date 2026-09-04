@@ -39,6 +39,10 @@ namespace invsync::metrics
     constexpr auto SESSION_DURATION_BULK {"sync.session.duration.bulk"};
     constexpr auto SESSION_DURATION_IMMEDIATE {"sync.session.duration.immediate"};
     constexpr auto SHARD_PREFIX {"sync.shard."}; ///< + <worker> + ".depth" / ".bytes"
+    constexpr auto INDEXER_BULK_REQUESTS {"sync.indexer.bulk.requests"};
+    constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
+    constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."}; ///< + documents/exhausted/other
+    constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
 
     // -- session application ----------------------------------------------------------------
     constexpr auto DOCS_INDEXED {"sync.docs.indexed"};

@@ -11,6 +11,8 @@ import base64
 import jwt
 import asyncio
 
+from typing import Optional
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -21,13 +23,13 @@ from connexion.security import AbstractSecurityHandler
 
 from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 
+from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
-from api.alogging import custom_logging, control_chars_pattern, escape_control_chars
+from api.alogging import MAX_LOGGED_BODY_SIZE, control_chars_pattern, custom_logging, escape_control_chars
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
-from api.controllers.util import build_recursion_error_response
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
@@ -39,8 +41,14 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
-# Allowed upper bound for auth_context payload
+# Allowed upper bound for auth_context payload. Must not exceed MAX_LOGGED_BODY_SIZE: the access
+# logger only caches a body up to that size, and a run_as attempt whose body was never cached is
+# logged without its auth context hash.
 AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
+
+# Scope extensions key under which a middleware leaves a body it has already read, for the layers
+# above it -- which never see the stream -- to report
+CACHED_BODY_KEY = 'wazuh_cached_body'
 
 # API secure headers
 server = Server().set("Wazuh")
@@ -58,6 +66,116 @@ general_request_counter = 0
 general_current_time = None
 
 
+def get_declared_content_length(request: Request) -> Optional[int]:
+    """Get the body size the request declares in its `Content-Length` header.
+
+    The header is readable before a single byte of the body is consumed, and the ASGI server never
+    delivers more body than the request declares, so it is a sound upper bound on what reading the
+    body would cost. Requests that declare no length at all, i.e. chunked transfer encoding, have to
+    be capped while they are read instead.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    Optional[int]
+        Declared body length, or None when the header is absent, malformed or negative.
+    """
+    try:
+        declared_length = int(request.headers.get('content-length'))
+    except (TypeError, ValueError):
+        return None
+
+    # A negative length is not a length at all: treating it as unknown sends the request down the
+    # capped-read path instead of letting it slip past an upper-bound comparison it cannot fail.
+    return declared_length if declared_length >= 0 else None
+
+
+async def read_capped_body(request: Request, limit: int, detail: str) -> bytes:
+    """Read the request body, abandoning the stream as soon as `limit` bytes are exceeded.
+
+    `Request.body()` materialises the whole payload and leaves the caller to measure it afterwards,
+    so an oversized body has already been paid for by the time it is refused. This pulls the stream
+    chunk by chunk and stops reading from the socket at the limit instead.
+
+    A body that fits is cached in the request the same way `Request.body()` caches it, so it is
+    still replayed to the middleware stack below. That cache is per `Request` object and travels
+    downwards only, so a caller that also needs the bytes read here to be visible to an outer
+    middleware has to publish them with `set_cached_body`.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    limit : int
+        Maximum body size allowed, in bytes.
+    detail : str
+        Detail reported in the exception when the body is too large.
+
+    Returns
+    -------
+    bytes
+        Request body.
+
+    Raises
+    ------
+    PayloadTooLargeException
+        If the body exceeds `limit` bytes.
+    """
+    if not hasattr(request, '_body'):
+        chunks = []
+        read = 0
+        async for chunk in request.stream():
+            read += len(chunk)
+            if read > limit:
+                raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
+            chunks.append(chunk)
+        request._body = b''.join(chunks)
+
+    if len(request._body) > limit:
+        raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
+
+    return request._body
+
+
+def set_cached_body(request: Request, body: bytes):
+    """Publish a body already read for this request to the middlewares above.
+
+    Every `BaseHTTPMiddleware` layer builds its own `Request`, and the body one of them caches is
+    replayed downwards but is invisible upwards: the outer layer holds a different object, and by
+    the time it runs again the stream is gone. The ASGI scope is the one thing both layers share,
+    so the bytes travel up through the `extensions` dict the access logger creates before
+    dispatching -- the same channel that carries the authenticated identity back out.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    body : bytes
+        Body already read for this request.
+    """
+    request.scope.setdefault('extensions', {})[CACHED_BODY_KEY] = body
+
+
+def get_cached_body(request: Request) -> Optional[bytes]:
+    """Get the body an inner middleware published for this request.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    Optional[bytes]
+        Body read below, or None when no layer published one and the stream was left to the endpoint.
+    """
+    return request.scope.get('extensions', {}).get(CACHED_BODY_KEY)
+
+
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
 
@@ -69,11 +187,29 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     host = request.client.host if hasattr(request, 'client') else ''
     method = request.method if hasattr(request, 'method') else ''
     query = dict(request.query_params) if hasattr(request, 'query_params') else {}
-    # If the request content is valid, the _json attribute is set when the
-    # first time the json function is awaited. This check avoids raising an
-    # exception when the request json content is invalid.
-    body = await request.json() if hasattr(request, '_json') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
+
+    # Only a caller the security handler accepted gets its payload recorded. connexion writes the
+    # identity into the request context once, and only once, authentication has succeeded, so its
+    # presence is the answer -- not the response status, which cannot distinguish a rejection issued
+    # above the security handler from the same code returned to an authenticated caller further
+    # down. `WazuhAccessLoggerMiddleware` is what makes the context readable from out here.
+    log_body = bool(context.get('user', None) or context.get('token_info', None))
+
+    # The body is deserialised here, after the response, and no longer in the middleware before the
+    # request was dispatched: nothing should build an object graph out of a payload for a caller
+    # nobody has authenticated yet. It is parsed only where the result is used -- written to the
+    # logs, or hashed into a run_as auth context identifier -- and only from bytes the middleware
+    # already cached, never by reading the stream again. This runs after the response has been
+    # produced, so a payload that will not parse degrades to an empty body rather than turning a
+    # served response into a 500.
+    body_read = hasattr(request, '_body')
+    body = {}
+    if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
+        try:
+            body = await request.json()
+        except RecursionError:
+            body = {}
 
     if 'password' in query:
         query['password'] = '****'
@@ -101,7 +237,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                 user = s['sub']
                 if HASH_AUTH_CONTEXT_KEY in s:
                     hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
-        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
+        # `WazuhInternalError` covers a keypair that could not be read (6003). This runs after the
+        # response has already been produced, so a transient failure here must degrade the logged
+        # username, never turn a served response into a 500.
+        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem,
+                WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
     # custom_logging() escapes every field it writes; this only flags the attempt.
@@ -111,10 +251,17 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             f'Path: {escape_control_chars(path)}.'
         )
 
-    # Create hash if run_as login
-    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
+    # Create hash if run_as login. Only from an auth context that was actually read: hashing the
+    # empty body that stands in for a payload no layer cached would stamp every such attempt with
+    # the same constant, valid-looking digest instead of leaving the field empty.
+    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT and body_read:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
+
+    # The auth context hash computed above is kept even when the body is not logged: it is a
+    # fixed-size digest, and it is precisely the useful field for a run_as attempt that failed.
+    if not log_body:
+        body = {}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
@@ -261,14 +408,37 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
     """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Refuse an oversized auth context without paying for it first.
+
+        The declared `Content-Length` is checked before the body is touched, so a payload a
+        thousand times the endpoint's limit is refused at the header. A request that declares no
+        length is read with a cap and abandoned at the limit, rather than materialised in full and
+        measured afterwards.
+
+        Parameters
+        ----------
+        request : Request
+            HTTP Request received.
+        call_next :  RequestResponseEndpoint
+            Endpoint callable to be executed.
+
+        Returns
+        -------
+        Response
+            Returned response.
+        """
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
-            body = await request.body()
-            if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
-                raise PayloadTooLargeException(
-                    title="Request Entity Too Large",
-                    detail=f"Auth context payload exceeds the maximum allowed size of "
-                           f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
-                )
+            detail = f"Auth context payload exceeds the maximum allowed size of " \
+                     f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes."
+            declared_length = get_declared_content_length(request)
+            if declared_length is None:
+                # This is the only layer that reads a chunked auth context, and the access logger
+                # above it will never see the stream, so the bytes are handed over explicitly.
+                # Without this, a chunked run_as attempt is logged with an empty body.
+                set_cached_body(request,
+                                await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, detail))
+            elif declared_length > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+                raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
         return await call_next(request)
 
 
@@ -303,24 +473,39 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         """
         prev_time = time.time()
 
-        body = await request.body()
+        # connexion's routing middleware passes a shallow copy of the scope downwards, so the
+        # request context that the security handler writes into the copy's `extensions` is invisible
+        # from out here -- which is why the username below has to be recovered from the authorization
+        # header. Creating `extensions` before the request is dispatched makes the copy share this
+        # very dict, so `access_log` can read the identity the security handler settled on and does
+        # not have to guess it from the response status.
+        request.scope.setdefault('extensions', {})
 
-        # Don't allow heavy bodies when trying to authenticate. Necessary because this middleware is executed before
-        # CheckAuthContextSizeMiddleware can be executed
-        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
-            try:
-                # Load the request body to the _json field before calling the controller so it's cached before the stream
-                # is consumed. If there's a json error we skip it so it's handled later.
-                # Related to https://github.com/wazuh/wazuh/issues/24060.
-                _ = await request.json()
-            except json.decoder.JSONDecodeError:
-                pass
-            except RecursionError:
-                conn_resp = build_recursion_error_response(pretty=False)
-                return Response(content=conn_resp.body, status_code=conn_resp.status_code,
-                            media_type=conn_resp.content_type)
+        # This is the outermost middleware, so reading every body here handed an unauthenticated
+        # caller a max_upload_size buffer plus the object graph deserialised from it, once per
+        # request, before the security handler had been asked who was calling.
+        #
+        # Only the bytes are buffered, and only when they are small enough to be worth logging.
+        # `access_log` runs after the response, when the stream is gone, so they have to be cached
+        # here for it to report them; the deserialisation is deferred to `access_log`, which by then
+        # knows whether the result is needed at all. Reading is bounded by the declared length, since
+        # the ASGI server never delivers more body than the request declares; a request that declares
+        # none, or declares more than is worth logging, is left for the endpoint to read and its body
+        # does not reach the log.
+        content_length = get_declared_content_length(request)
+        if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
+            # Related to https://github.com/wazuh/wazuh/issues/24060.
+            await request.body()
 
         response = await call_next(request)
+
+        # A chunked run_as auth context is read by `CheckAuthContextSizeMiddleware`, which caps it
+        # while reading because there is no length to check. That happens below this layer, and a
+        # body cached in one `BaseHTTPMiddleware` request travels downwards only, so adopt the
+        # bytes it published; otherwise the attempt is logged, and hashed, as an empty body.
+        if not hasattr(request, '_body') and (cached_body := get_cached_body(request)) is not None:
+            request._body = cached_body
+
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
         return response
 

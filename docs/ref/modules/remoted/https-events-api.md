@@ -1343,14 +1343,10 @@ agent.
 
 > **A `200` means accepted, not indexed.** The sync server answers before the indexer write completes
 > (the write is fire-and-forget), so an indexer-side rejection is **silent** to the agent, which
-> already has its `200`. This matters most on `/stats`, whose `wazuh-agent-stats` mapping is
-> `dynamic: strict` with every leaf declared: a module or metric the template does not declare makes
-> the indexer reject the **whole** document with `strict_dynamic_mapping_exception`. So an agent-side
-> metric addition needs no change to this endpoint, but it does need one in the index template — and
-> if it is missed, statistics stop landing with nothing in the agent's logs to say so. `/config`'s
-> template is `dynamic: false` instead, which is far more forgiving: an unrecognized module, or an
-> undeclared key inside a known one, is still written and kept in `_source`, just not indexed for
-> search. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
+> already has its `200`. Both `wazuh-agent-stats` and `wazuh-agent-config` are mapped `dynamic: true`,
+> so a module, metric or key the template does not declare is indexed like any other field with no
+> schema check: an agent-side addition needs no change to this endpoint, and none in the index
+> template. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
 
 ### Error handling
 

@@ -23,7 +23,6 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
     [WDB_UPDATE_AGENT_STATUS_CODE] = "global update-status-code %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
-    [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_FIND_GROUP] = "global find-group %s",
@@ -424,59 +423,6 @@ rb_tree* wdb_get_all_agents_rbtree(int *sock) {
     }
 
     return tree;
-}
-
-int wdb_find_agent(const char *name, const char *ip, int *sock) {
-    int output = OS_INVALID;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *data_in = NULL;
-    char *data_in_str = NULL;
-    cJSON *root = NULL;
-    cJSON *json_id = NULL;
-    int aux_sock = -1;
-
-    if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get agent ID.");
-        return OS_INVALID;
-    }
-
-    data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddStringToObject(data_in, "name", name);
-    cJSON_AddStringToObject(data_in, "ip", ip);
-
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_AGENT], data_in_str);
-    os_free(data_in_str);
-
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB for agent ID.");
-        return OS_INVALID;
-    }
-
-    json_id = cJSON_GetObjectItem(root->child,"id");
-    if (cJSON_IsNumber(json_id)) {
-        output = json_id->valueint;
-    }
-    else {
-        output = -2;
-    }
-
-    cJSON_Delete(root);
-    return output;
 }
 
 cJSON* wdb_get_agent_info(int id, int *sock) {

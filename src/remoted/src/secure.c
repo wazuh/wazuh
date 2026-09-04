@@ -520,6 +520,11 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
               logr.global.agents_disconnection_time);
     }
 
+    // /scan/vd's relay to VD is answered at admission into its dispatch queue: a local-socket
+    // round trip measured in milliseconds.
+    rm_config->vd_scan_read_timeout_sec = getDefine_Int_default("remoted", "vd_scan_read_timeout", 1, 300, 5);
+    rm_config->vd_scan_write_timeout_sec = getDefine_Int_default("remoted", "vd_scan_write_timeout", 1, 300, 5);
+
     extern module_limits_t manager_module_limits;
     extern bool manager_module_limits_enabled;
 

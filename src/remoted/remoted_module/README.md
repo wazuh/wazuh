@@ -255,9 +255,10 @@ src/endpoints/
   `wazuh-agent-stats` / `wazuh-agent-config`
   (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
   report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
-  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed* —
-  `wazuh-agent-stats` is `dynamic: strict`, so an undeclared metric is dropped silently at the
-  indexer. Three things differ from `/stateless`:
+  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed*, and an
+  indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
+  undeclared metric is indexed like any other field rather than rejected. Three things differ from
+  `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
     these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
     That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
@@ -685,9 +686,10 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
-  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
-  items), so the round trip is inline route work measured in milliseconds, never a scan.
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a read/write timeout
+  each configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
+  5 s each): VD answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup
+  of queued items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
   VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
   own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
@@ -1102,11 +1104,10 @@ otherwise — the bridge always has something to talk to as long as authd is run
 `enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
 no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
 
-`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
-sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
-that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
-It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
-explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+`authd_config_t.flags.disabled` is a plain boolean, defaulting to enabled (`0`) unless
+`<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
+(`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
+but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
 normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
 
 ### Manager certificate unification

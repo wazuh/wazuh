@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps
 from grp import getgrnam
-from multiprocessing import Event
+from multiprocessing import Value
 from pwd import getpwnam
 from typing import Any, Dict
 
@@ -124,8 +124,17 @@ _context_cache = dict()
 
 
 # =========================================== Wazuh constants and variables ============================================
-# Token cache clear event.
-token_cache_event = Event()
+# Monotonic generation counter bumped on every RBAC cache invalidation. Each process compares it
+# against the generation it last applied and flushes its own POLICIES_CACHE independently, so a
+# single revocation reaches every worker instead of only the first reader (the one-shot Event it
+# replaces was consumed by whichever process observed it first).
+#
+# The counter is inherited by the API process pools, which are forked from the process that created
+# it, and reaches no further: see `wazuh.rbac.utils.clear_tokens_cache`. It is a freshness
+# optimisation, not a security boundary: the authentication decision itself is no longer cached
+# (see `api.authentication.check_token`), so a process that failed to observe a bump can serve a
+# stale policy set for at most POLICIES_CACHE_TTL seconds, never a stale identity.
+token_cache_generation = Value('L', 0)
 _WAZUH_UID = None
 _WAZUH_GID = None
 GROUP_NAME = 'wazuh-manager'

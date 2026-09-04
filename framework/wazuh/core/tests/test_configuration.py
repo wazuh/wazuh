@@ -421,7 +421,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    sockets_json_protocol = {'remote.sock', 'wdb.sock'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol else "WazuhSocketJSON"

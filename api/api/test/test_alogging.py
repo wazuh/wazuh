@@ -151,3 +151,26 @@ def test_custom_logging_escapes_control_chars(user, path, expected_prefix):
     # The JSON record keeps the raw values; its formatter escapes them.
     assert json_record['user'] == user
     assert json_record['uri'] == f'GET {path}'
+
+
+def test_custom_logging_omits_oversized_body():
+    """Check that a body too large to log is replaced by a marker in both log lines.
+
+    The same payload is written once to api.log and again to api.json, so an oversized body turns
+    one request into several times its size on disk.
+    """
+    body = {'field': 'a' * (alogging.MAX_LOGGED_BODY_SIZE + 1)}
+    expected_body = {'body_omitted': f'body of {len(json.dumps(body))} serialised bytes exceeds '
+                                     f'the {alogging.MAX_LOGGED_BODY_SIZE} byte logging limit'}
+
+    with patch('api.alogging.logger') as log_info_mock:
+        log_info_mock.info = MagicMock()
+        log_info_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/agents',
+                                query={}, body=body, elapsed_time=1.01, status=200, headers={})
+
+        log_line, json_line = [called.args[0] for called in log_info_mock.info.call_args_list]
+
+    assert json_line['body'] == expected_body
+    assert json.dumps(expected_body) in log_line
+    assert 'aaaa' not in log_line
