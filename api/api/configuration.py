@@ -64,7 +64,8 @@ default_api_configuration = {
     "access": {
         "max_login_attempts": 50,
         "block_time": 300,
-        "max_request_per_minute": 300
+        "max_request_per_minute": 300,
+        "max_unauthenticated_request_per_minute": 10
     },
     "upload_configuration": {
         "agents": {

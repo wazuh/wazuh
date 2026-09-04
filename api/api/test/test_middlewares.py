@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
 import binascii
 import jwt
@@ -19,11 +20,11 @@ from freezegun import freeze_time
 
 from wazuh.core.exception import WazuhInternalError
 
-from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_attempt, UNKNOWN_USER_STRING, \
-    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, \
-    CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
-    CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
-    CACHED_BODY_KEY
+from api.middlewares import reserve_unauthenticated_request, settle_authenticated_request, check_blocked_ip, \
+    settle_login_attempt, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, \
+    CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, SettleRateLimitMiddleware, WazuhAccessLoggerMiddleware, \
+    CheckBlockedIP, SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, \
+    get_declared_content_length, read_capped_body, CACHED_BODY_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -89,6 +90,7 @@ def chunked_receive(chunk, chunks):
     ])
 
 
+
 @pytest.fixture
 def mock_req():
     """fixture to wrap functions with request"""
@@ -97,6 +99,10 @@ def mock_req():
     req.json = AsyncMock(side_effect=lambda: {'ctx': ''} )
     req.context = MagicMock()
     req.context.get = MagicMock(return_value={})
+    # Real attribute get/set semantics (unset attribute raises AttributeError, like
+    # starlette.datastructures.State), unlike a plain MagicMock attribute which
+    # auto-vivifies a truthy child mock on first read.
+    req.state = SimpleNamespace()
 
     return req
 
@@ -234,28 +240,197 @@ async def test_middlewares_repeated_successful_logins_never_block_ip(mock_req):
         assert "ip" not in mock_ip_block
 
 
-@freeze_time(datetime(1970, 1, 1))
-@pytest.mark.parametrize("current_time,max_requests,current_time_key, current_counter_key,expected_error_code", [
-    (-80, 300, 'general_current_time', 'general_request_counter', 0),
-    (0, 0, 'general_current_time', 'general_request_counter', 0),
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('stats, max_requests, expected_count, expected_error_code', [
+    ({}, 5, 1, 0),
+    ({'ip': {'unauthenticated': {'count': 2, 'window_start': 10}}}, 5, 3, 0),
+    ({'ip': {'unauthenticated': {'count': 5, 'window_start': 10}}}, 5, 6, 6005),
 ])
-def test_middlewares_check_rate_limit(
-    current_time, max_requests, current_time_key, current_counter_key,
-    expected_error_code, mock_req):
-    """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
+async def test_reserve_unauthenticated_request_counts_current_request(
+        stats, max_requests, expected_count, expected_error_code, mock_req):
+    """Test that `reserve_unauthenticated_request` counts the CURRENT request inline (no
+       off-by-one: an empty starting bucket must leave count == 1, not 0) and returns the
+       error code once the ceiling is exceeded, else 0."""
+    with patch("api.middlewares.general_request_stats", new=dict(stats)) as mock_stats:
+        code = await reserve_unauthenticated_request(mock_req, max_requests, 6005)
 
-    with patch(f"api.middlewares.{current_time_key}", new=current_time):
-        code = check_rate_limit(
-            current_time_key=current_time_key,
-            request_counter_key=current_counter_key,
-            max_requests=max_requests,
-            error_code=expected_error_code)
+        assert mock_stats['ip']['unauthenticated']['count'] == expected_count
         assert code == expected_error_code
 
 
 @pytest.mark.asyncio
-async def test_check_rate_limits_middleware(mock_req):
-    """Test limits middleware."""
+@freeze_time(datetime(1970, 1, 1, 0, 1, 5))
+async def test_reserve_unauthenticated_request_window_rollover(mock_req):
+    """Regression test for the rollover off-by-one bug in the old `check_rate_limit`: a
+       bucket whose window started more than 60s ago must reset to a fresh window that still
+       counts the current request (count == 1), not silently let it through uncounted."""
+    stats = {'ip': {'unauthenticated': {'count': 42, 'window_start': 0}}}
+    with patch("api.middlewares.general_request_stats", new=stats) as mock_stats:
+        code = await reserve_unauthenticated_request(mock_req, max_requests=5, error_code=6005)
+
+        assert mock_stats['ip']['unauthenticated']['count'] == 1
+        assert mock_stats['ip']['unauthenticated']['window_start'] == datetime(1970, 1, 1, 0, 1, 5).timestamp()
+        assert code == 0
+
+
+@pytest.mark.asyncio
+async def test_reserve_unauthenticated_request_disabled(mock_req):
+    """Check that the unauthenticated bucket is disabled (no bucket created, no charge) when
+       max_requests is 0."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        code = await reserve_unauthenticated_request(mock_req, max_requests=0, error_code=6005)
+
+        assert code == 0
+        assert mock_stats == {}
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_reserve_unauthenticated_request_keys_by_host(mock_req):
+    """Core regression test for the issue itself: two distinct hosts get independent
+       buckets, so exhausting one host's allowance must not deny the other's requests."""
+    # Give both requests their OWN independent `.client` mock (rather than relying on
+    # MagicMock()'s attribute auto-vivification) so this test's two hosts can never alias
+    # each other, regardless of what other tests in the suite may have done with `.client`.
+    mock_req.client = MagicMock()
+    mock_req.client.host = 'ip'
+    other_req = MagicMock()
+    other_req.client = MagicMock()
+    other_req.client.host = 'other-ip'
+    other_req.state = SimpleNamespace()
+
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        for _ in range(3):
+            code = await reserve_unauthenticated_request(mock_req, max_requests=3, error_code=6005)
+        assert code == 0
+
+        # A 4th request from the SAME host is now over its ceiling.
+        code = await reserve_unauthenticated_request(mock_req, max_requests=3, error_code=6005)
+        assert code == 6005
+
+        # A DIFFERENT host is entirely unaffected by the first host's exhausted bucket.
+        other_code = await reserve_unauthenticated_request(other_req, max_requests=3, error_code=6005)
+        assert other_code == 0
+        assert mock_stats['other-ip']['unauthenticated']['count'] == 1
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_settle_authenticated_request_releases_unauthenticated_charge(mock_req):
+    """Test that `settle_authenticated_request` releases the reservation `reserve_
+       unauthenticated_request` made for this same request, decrementing by exactly 1, and
+       floors at 0 instead of going negative."""
+    now = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+    mock_req.state.rate_limit_reserved_window_start = now
+
+    with patch("api.middlewares.general_request_stats",
+               new={'ip': {'unauthenticated': {'count': 3, 'window_start': now}}}) as mock_stats:
+        code = await settle_authenticated_request(mock_req, max_requests=0, error_code=6001)
+
+        assert mock_stats['ip']['unauthenticated']['count'] == 2
+        assert code == 0
+
+    with patch("api.middlewares.general_request_stats",
+               new={'ip': {'unauthenticated': {'count': 0, 'window_start': now}}}) as mock_stats:
+        await settle_authenticated_request(mock_req, max_requests=0, error_code=6001)
+
+        assert mock_stats['ip']['unauthenticated']['count'] == 0
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('auth_stats, max_requests, expected_count, expected_error_code', [
+    ({}, 5, 1, 0),
+    ({'authenticated': {'count': 2, 'window_start': 10}}, 5, 3, 0),
+    ({'authenticated': {'count': 5, 'window_start': 10}}, 5, 6, 6001),
+])
+async def test_settle_authenticated_request_charges_and_checks_authenticated_bucket(
+        auth_stats, max_requests, expected_count, expected_error_code, mock_req):
+    """Test that `settle_authenticated_request` increments the authenticated bucket inline
+       and enforces its ceiling, mirroring the unauthenticated bucket's counting shape."""
+    with patch("api.middlewares.general_request_stats", new={'ip': dict(auth_stats)}) as mock_stats:
+        code = await settle_authenticated_request(mock_req, max_requests, 6001)
+
+        assert mock_stats['ip']['authenticated']['count'] == expected_count
+        assert code == expected_error_code
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_settle_authenticated_request_disabled(mock_req):
+    """Check that max_requests=0 still releases the unauthenticated charge (a real,
+       intentional side effect) but always returns 0 for the authenticated check, and never
+       creates an authenticated bucket."""
+    now = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+    mock_req.state.rate_limit_reserved_window_start = now
+
+    with patch("api.middlewares.general_request_stats",
+               new={'ip': {'unauthenticated': {'count': 3, 'window_start': now}}}) as mock_stats:
+        code = await settle_authenticated_request(mock_req, max_requests=0, error_code=6001)
+
+        assert code == 0
+        assert mock_stats['ip']['unauthenticated']['count'] == 2
+        assert 'authenticated' not in mock_stats['ip']
+
+
+@pytest.mark.asyncio
+async def test_settle_authenticated_request_unknown_host(mock_req):
+    """Test that `settle_authenticated_request` is a no-op release for a host with no prior
+       `unauthenticated` entry (not a KeyError), mirroring `settle_login_attempt`'s
+       unknown-host behavior."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        code = await settle_authenticated_request(mock_req, max_requests=5, error_code=6001)
+
+        assert code == 0
+        assert mock_stats['ip']['authenticated']['count'] == 1
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_settle_authenticated_request_skips_release_after_window_rollover(mock_req):
+    """Regression test for the cross-window release race found during design review: if the
+       unauthenticated window rolls over between the gate's charge and this settle call (e.g.
+       other concurrent requests from the same host started a fresh window), settle must NOT
+       decrement the NEW window's count - that would silently grant it one request beyond its
+       ceiling. Do not remove or weaken this test."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        await reserve_unauthenticated_request(mock_req, max_requests=100, error_code=6005)
+        old_window_start = mock_stats['ip']['unauthenticated']['window_start']
+
+        # Simulate a rollover in between: other requests from the same host already started
+        # a fresh window with their own charges.
+        mock_stats['ip']['unauthenticated'] = {'count': 3, 'window_start': old_window_start + 61}
+
+        await settle_authenticated_request(mock_req, max_requests=100, error_code=6001)
+
+        assert mock_stats['ip']['unauthenticated']['count'] == 3
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_two_sub_counters_prevent_unauthenticated_traffic_from_denying_authenticated_caller(mock_req):
+    """Automated regression test for the issue's expected-behavior point 2: exhausting a
+       host's unauthenticated bucket (simulating a failed-auth flood) must not deny an
+       authenticated caller sharing that same host, since the two buckets are independent."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        for _ in range(10):
+            await reserve_unauthenticated_request(mock_req, max_requests=10, error_code=6005)
+        denied_code = await reserve_unauthenticated_request(mock_req, max_requests=10, error_code=6005)
+        assert denied_code == 6005
+
+        # An authenticated request from the SAME host must still succeed: it draws from the
+        # independent authenticated bucket, which hasn't been touched by the flood.
+        settle_code = await settle_authenticated_request(mock_req, max_requests=300, error_code=6001)
+        assert settle_code == 0
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limits_middleware_calls_reserve(mock_req):
+    """Test that `CheckRateLimitsMiddleware` calls `reserve_unauthenticated_request` with the
+       configured `max_unauthenticated_request_per_minute`, and raises
+       `MaxRequestsException(code=6005)` without calling `call_next` when it returns
+       non-zero."""
     response = MagicMock()
     dispatch_mock = AsyncMock(return_value=response)
     middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
@@ -263,58 +438,75 @@ async def test_check_rate_limits_middleware(mock_req):
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    rq_x_min = 10000
-    api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
+    max_unauth = 10
+    api_conf = {'access': {'max_unauthenticated_request_per_minute': max_unauth}}
+
     with TestContext(operation=operation), \
-        patch('api.middlewares.check_rate_limit', return_value=0) as mock_check, \
+        patch('api.middlewares.reserve_unauthenticated_request',
+              new=AsyncMock(return_value=0)) as mock_reserve, \
         patch('api.middlewares.configuration.api_conf', new=api_conf):
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        mock_check.assert_called_once_with(
-            'general_request_counter', 'general_current_time', rq_x_min, 6001)
+        mock_reserve.assert_awaited_once_with(mock_req, max_unauth, 6005)
         dispatch_mock.assert_awaited()
-
-
-@freeze_time(datetime(1970, 1, 1))
-def test_check_rate_limit_disabled():
-    """Check that rate limit is disabled when max_requests is 0."""
-    code = check_rate_limit(
-        request_counter_key='general_request_counter',
-        current_time_key='general_current_time',
-        max_requests=0,
-        error_code=6001
-    )
-    assert code == 0
 
 
 @pytest.mark.asyncio
 async def test_check_rate_limits_middleware_ko(mock_req):
-    """Test limits middleware."""
-    return_value_sequence = [6001, 0]
-    def check_rate_limit_side_effect(*_):
-        """Side effect function."""
-        return return_value_sequence.pop(0)
-
+    """Test that `CheckRateLimitsMiddleware` raises `MaxRequestsException(code=6005)` and
+       never calls `call_next` when `reserve_unauthenticated_request` reports the ceiling
+       exceeded."""
     dispatch_mock = AsyncMock()
     middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
     operation = MagicMock(name="operation")
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    rq_x_min = 10000
-    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
+    api_conf = {'access': {'max_unauthenticated_request_per_minute': 10}}
+
     with TestContext(operation=operation), \
-        patch('api.middlewares.ConnexionRequest.from_starlette_request',
-              return_value=mock_req) as mock_from, \
-        patch('api.middlewares.configuration.api_conf', api_conf), \
-        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect) as mock_check, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf), \
+        patch('api.middlewares.reserve_unauthenticated_request',
+              new=AsyncMock(return_value=6005)), \
         pytest.raises(ProblemException) as exc_info:
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        mock_from.assert_called_once_with(mock_req)
-        dispatch_mock.assert_not_awaited()
-        assert exc_info.value.status == 429
-        assert exc_info.value.title == "Permission Denied"
-        assert exc_info.value.detail == 6001
-        assert exc_info.ext == mock_req
+
+    assert exc_info.value.status == 429
+    assert exc_info.value.ext.get('code') == 6005
+    dispatch_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_settle_rate_limit_middleware_calls_settle(mock_req):
+    """Test that `SettleRateLimitMiddleware` calls `settle_authenticated_request` with the
+       configured `max_request_per_minute`, and raises `MaxRequestsException(code=6001)`
+       without calling `call_next` when it returns non-zero."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = SettleRateLimitMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    max_requests = 300
+    api_conf = {'access': {'max_request_per_minute': max_requests}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.settle_authenticated_request',
+              new=AsyncMock(return_value=0)) as mock_settle, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_settle.assert_awaited_once_with(mock_req, max_requests, 6001)
+        dispatch_mock.assert_awaited()
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.configuration.api_conf', new=api_conf), \
+        patch('api.middlewares.settle_authenticated_request',
+              new=AsyncMock(return_value=6001)), \
+        pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 429
+    assert exc_info.value.ext.get('code') == 6001
 
 
 @pytest.mark.asyncio
@@ -1149,6 +1341,64 @@ async def test_access_log_no_warning_for_normal_username(mock_req):
         patch('api.middlewares.custom_logging'), \
         patch('api.middlewares.base64.b64decode', return_value=encoded_creds.encode("latin1")), \
         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header), \
+        patch('api.middlewares.logger.warning') as mock_warning:
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_warning.assert_not_called()
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_warns_on_429(mock_req):
+    """Test that `access_log` logs a WARNING naming the IP and user when the response is a
+       429 (rate-limit exhaustion), covering rejections from both the gate (code 6005) and
+       the settle step (code 6001)."""
+    response = MagicMock()
+    response.status_code = 429
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging'), \
+        patch('api.middlewares.logger.warning') as mock_warning:
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_warning.assert_called_once_with(
+            f'Maximum number of requests per minute reached. IP: {mock_req.client.host}. User: wazuh.')
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_no_warning_for_200(mock_req):
+    """Guard against a too-broad condition: a normal 200 response must not trigger the new
+       429 WARNING branch."""
+    response = MagicMock()
+    response.status_code = 200
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging'), \
         patch('api.middlewares.logger.warning') as mock_warning:
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
         await access_log(request=mock_req, response=response, prev_time=expected_time)

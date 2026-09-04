@@ -62,8 +62,8 @@ start_stop_logger = logging.getLogger('start-stop-api')
 ip_stats = dict()
 ip_block = set()
 ip_lock = asyncio.Lock()
-general_request_counter = 0
-general_current_time = None
+general_request_stats: dict = {}
+general_request_lock = asyncio.Lock()
 
 
 def get_declared_content_length(request: Request) -> Optional[int]:
@@ -269,6 +269,8 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             method in {'GET', 'POST'}:
         logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
+    if response.status_code == 429:
+        logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
 
 
 async def check_blocked_ip(request: Request):
@@ -343,60 +345,146 @@ async def settle_login_attempt(request: Request):
             ip_block.discard(host)
 
 
-def check_rate_limit(
-    request_counter_key: str,
-    current_time_key: str,
-    max_requests: int,
-    error_code: int
-) -> int:
-    """Check that the maximum number of requests per minute
-    passed in `max_requests` is not exceeded.
+async def reserve_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
+    """Pessimistically charge `request.client.host`'s unauthenticated bucket for this request.
+
+    Called before authentication runs, so every request — including ones that will go on to
+    authenticate successfully — is charged here first; `settle_authenticated_request` releases
+    the charge once (and only once) authentication is known to have succeeded, guarded against
+    the window having rolled over in between (see the note above `settle_authenticated_request`
+    for why the guard is required, not optional).
 
     Parameters
     ----------
-    request_counter_key : str
-        Key of the request counter variable to get from globals() dict.
-    current_time_key : str
-        Key of the current time variable to get from globals() dict.
+    request : Request
+        HTTP request.
     max_requests : int
-        Maximum number of requests per minute permitted.
+        Maximum number of unauthenticated requests per minute permitted.
     error_code : int
-        error code to return if the counter is greater than max_requests.
+        Error code to return if the bucket's count exceeds max_requests.
 
     Return
     ------
-        0 if the request is allowed
-        else error_code.
+    int
+        0 if the request is allowed, else error_code.
     """
     if max_requests == 0:
         return 0
 
-    if not globals()[current_time_key]:
-        globals()[current_time_key] = get_utc_now().timestamp()
+    host = request.client.host
+    now = get_utc_now().timestamp()
 
-    if get_utc_now().timestamp() - 60 <= globals()[current_time_key]:
-        globals()[request_counter_key] += 1
-    else:
-        globals()[request_counter_key] = 0
-        globals()[current_time_key] = get_utc_now().timestamp()
+    async with general_request_lock:
+        entry = general_request_stats.setdefault(host, {})
+        bucket = entry.get('unauthenticated')
+        if bucket is None or now - bucket['window_start'] >= 60:
+            bucket = {'count': 0, 'window_start': now}
+            entry['unauthenticated'] = bucket
 
-    if globals()[request_counter_key] > max_requests:
-        return error_code
+        bucket['count'] += 1
+        request.state.rate_limit_reserved_window_start = bucket['window_start']
+        if bucket['count'] > max_requests:
+            return error_code
+
+    return 0
+
+
+async def settle_authenticated_request(request: Request, max_requests: int, error_code: int) -> int:
+    """Release the unauthenticated reservation for a request that just passed authentication,
+    and charge/check the authenticated bucket instead.
+
+    Only ever called from `SettleRateLimitMiddleware`, which is positioned after connexion's
+    `SecurityMiddleware` in the stack — reaching this function is itself proof the request just
+    authenticated successfully (an auth failure raises inside `SecurityMiddleware` and never
+    reaches here), for every operation that carries a security requirement. All operations in
+    the current spec.yaml do; if a future operation is ever added with `security: []` (a genuinely
+    public endpoint), it would reach here too and be billed into the authenticated bucket despite
+    presenting no credentials — not a security regression (still address-keyed and bounded), but a
+    mislabeling this function's contract doesn't cover.
+
+    The release only fires if the `unauthenticated` bucket currently in `general_request_stats`
+    is still the same window instance `reserve_unauthenticated_request` charged (compared via
+    `request.state.rate_limit_reserved_window_start`). Without this guard, a window rollover
+    between the gate charge and this settle call (e.g. another request from the same host rolling
+    the window over first) would decrement a newer window's count instead of the stale one this
+    request actually paid into, silently granting that new window one request beyond its ceiling.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    max_requests : int
+        Maximum number of authenticated requests per minute permitted.
+    error_code : int
+        Error code to return if the bucket's count exceeds max_requests.
+
+    Return
+    ------
+    int
+        0 if the request is allowed, else error_code.
+    """
+    host = request.client.host
+    now = get_utc_now().timestamp()
+
+    async with general_request_lock:
+        entry = general_request_stats.setdefault(host, {})
+
+        unauth_bucket = entry.get('unauthenticated')
+        reserved_window_start = getattr(request.state, 'rate_limit_reserved_window_start', None)
+        if unauth_bucket is not None and reserved_window_start is not None \
+                and unauth_bucket['window_start'] == reserved_window_start:
+            # Only release into the SAME window the gate charged. If the window rolled over
+            # in between (another request from this host started a fresh one), that stale
+            # window is already dead and irrelevant to any future check — decrementing the
+            # NEW window instead would silently grant it one request beyond its ceiling.
+            unauth_bucket['count'] = max(unauth_bucket['count'] - 1, 0)
+
+        if max_requests == 0:
+            return 0
+
+        auth_bucket = entry.get('authenticated')
+        if auth_bucket is None or now - auth_bucket['window_start'] >= 60:
+            auth_bucket = {'count': 0, 'window_start': now}
+            entry['authenticated'] = auth_bucket
+
+        auth_bucket['count'] += 1
+        if auth_bucket['count'] > max_requests:
+            return error_code
 
     return 0
 
 
 class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
-    """Rate Limits Middleware."""
+    """Rate Limits Middleware. Charges the unauthenticated bucket for `request.client.host`
+    pessimistically, before authentication has run."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """"Check request limits per minute."""
-        max_request_per_minute = configuration.api_conf['access']['max_request_per_minute']
-        error_code = check_rate_limit(
-            'general_request_counter',
-            'general_current_time',
-            max_request_per_minute,
-            6001)
+        """Check unauthenticated request limits per minute, keyed by client address."""
+        max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
+        error_code = await reserve_unauthenticated_request(request, max_unauthenticated, 6005)
+
+        if error_code:
+            raise MaxRequestsException(code=error_code)
+        else:
+            return await call_next(request)
+
+
+class SettleRateLimitMiddleware(BaseHTTPMiddleware):
+    """Rate Limits Middleware (post-authentication). Registered at BEFORE_VALIDATION, i.e.
+    immediately after connexion's SecurityMiddleware - only ever reached once authentication has
+    already succeeded. Releases the unauthenticated reservation and charges/checks the
+    authenticated bucket instead.
+
+    Assumes every operation reaching here required real credentials: a future spec operation
+    declared with `security: []` would land here uncharged for authentication yet still be
+    billed into the authenticated bucket - not a security regression, but a mislabeling this
+    assumption doesn't cover if that ever changes.
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Settle the reservation into the authenticated bucket and enforce its ceiling."""
+        max_requests = configuration.api_conf['access']['max_request_per_minute']
+        error_code = await settle_authenticated_request(request, max_requests, 6001)
 
         if error_code:
             raise MaxRequestsException(code=error_code)
