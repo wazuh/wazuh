@@ -167,6 +167,7 @@ def start(params: dict):
         app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+        app.add_middleware(SettleRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
@@ -320,6 +321,7 @@ if __name__ == '__main__':
         CheckAuthContextSizeMiddleware,
         CheckBlockedIP,
         CheckRateLimitsMiddleware,
+        SettleRateLimitMiddleware,
         SecureHeadersMiddleware,
         WazuhAccessLoggerMiddleware,
         CheckExpectHeaderMiddleware,

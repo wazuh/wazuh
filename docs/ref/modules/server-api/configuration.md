@@ -113,6 +113,7 @@ access:
   max_login_attempts: 50
   block_time: 300
   max_request_per_minute: 300
+  max_unauthenticated_request_per_minute: 10
 upload_configuration:
   agents:
     allow_higher_versions:
@@ -141,6 +142,7 @@ access:
   max_login_attempts: 3
   block_time: 900  # 15 minutes
   max_request_per_minute: 100
+  max_unauthenticated_request_per_minute: 10
 upload_configuration:
   agents:
     allow_higher_versions:
@@ -179,6 +181,7 @@ access:
   max_login_attempts: 10
   block_time: 60
   max_request_per_minute: 1000
+  max_unauthenticated_request_per_minute: 10
 logs:
   level: debug
 ```
@@ -284,6 +287,15 @@ max_request_per_minute: 600
 ```yaml
 max_request_per_minute: 1000
 ```
+
+Requests are keyed per client address, so `max_request_per_minute` is enforced independently
+for each address rather than as a single counter shared by every caller. Unauthenticated and
+failed-authentication requests draw from a separate, much smaller allowance controlled by
+`max_unauthenticated_request_per_minute` (default `10`), so they can't exhaust the budget an
+authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
+to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
+with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
+demand, so it stays at `10` regardless of deployment size.
 
 ### Response Caching
 
@@ -405,6 +417,7 @@ cache:
 ```yaml
 access:
   max_request_per_minute: 100
+  max_unauthenticated_request_per_minute: 10
 ```
 
 ### CORS Issues

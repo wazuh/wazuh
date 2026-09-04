@@ -126,6 +126,7 @@ api_config_schema = {
                 "max_login_attempts": {"type": "integer"},
                 "block_time": {"type": "integer"},
                 "max_request_per_minute": {"type": "integer"},
+                "max_unauthenticated_request_per_minute": {"type": "integer"},
             },
         },
         "upload_configuration": {
