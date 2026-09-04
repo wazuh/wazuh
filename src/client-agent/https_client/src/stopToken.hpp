@@ -37,7 +37,7 @@ class Waiter
         /// must exit); true when the wait elapsed or notify() woke it early.
         virtual bool waitFor(std::chrono::milliseconds timeout)
         {
-            std::unique_lock<MonotonicCondition::Mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             m_condition.waitFor(lock, timeout, [this] { return m_stop.load() || m_wake; });
             m_wake = false;
             return !m_stop.load();
@@ -47,7 +47,7 @@ class Waiter
         virtual void notify()
         {
             {
-                std::lock_guard<MonotonicCondition::Mutex> lock(m_mutex);
+                std::lock_guard<std::mutex> lock(m_mutex);
                 m_wake = true;
             }
             m_condition.notifyAll();
@@ -57,7 +57,7 @@ class Waiter
         void requestStop()
         {
             {
-                std::lock_guard<MonotonicCondition::Mutex> lock(m_mutex);
+                std::lock_guard<std::mutex> lock(m_mutex);
                 m_stop = true;
             }
             m_condition.notifyAll();
@@ -75,7 +75,7 @@ class Waiter
         }
 
     private:
-        MonotonicCondition::Mutex m_mutex;
+        std::mutex m_mutex;
         MonotonicCondition m_condition;
         std::atomic<bool> m_stop {false};
         bool m_wake {false};
