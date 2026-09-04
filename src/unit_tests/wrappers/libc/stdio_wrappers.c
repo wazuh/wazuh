@@ -19,17 +19,13 @@
 
 fpos_t * test_position = NULL;
 
-// Weak: see __real_fdopen below. Every __real_* extern in this file is weak for the
-// same reason -- this whole object file is linked into virtually every unit test
-// (through libwazuh_test.a), but any one binary typically only passes -Wl,--wrap for
-// the handful of these functions it actually cares about, leaving the rest dead code.
-extern int __real_fclose(FILE *_File) __attribute__((weak));
+extern int __real_fclose(FILE *_File);
 int __wrap_fclose(FILE *_File) {
     if(test_mode) {
         check_expected(_File);
         return mock();
     } else {
-        return __real_fclose ? __real_fclose(_File) : -1;
+        return __real_fclose(_File);
     }
 }
 void expect_fclose(FILE *_File, int ret) {
@@ -37,13 +33,13 @@ void expect_fclose(FILE *_File, int ret) {
     will_return(__wrap_fclose, ret);
 }
 
-extern int __real_ferror(FILE *_File) __attribute__((weak));
+extern int __real_ferror(FILE *_File);
 int __wrap_ferror(FILE *_File) {
     if(test_mode) {
         check_expected(_File);
         return mock();
     } else {
-        return __real_ferror ? __real_ferror(_File) : -1;
+        return __real_ferror(_File);
     }
 }
 void expect_ferror(FILE *_File, int ret) {
@@ -51,15 +47,15 @@ void expect_ferror(FILE *_File, int ret) {
     will_return(__wrap_ferror, ret);
 }
 
-extern int __real_fflush(FILE *__stream) __attribute__((weak));
+extern int __real_fflush(FILE *__stream);
 int __wrap_fflush(FILE *__stream) {
     if (test_mode) {
         return 0;
     }
-    return __real_fflush ? __real_fflush(__stream) : -1;
+    return __real_fflush(__stream);
 }
 
-extern char * __real_fgets (char * __s, int __n, FILE * __stream) __attribute__((weak));
+extern char * __real_fgets (char * __s, int __n, FILE * __stream);
 char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
     if (test_mode) {
         char *buffer = mock_type(char*);
@@ -76,29 +72,29 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
         }
         return NULL;
     } else {
-        return __real_fgets ? __real_fgets(__s, __n, __stream) : NULL;
+        return __real_fgets(__s, __n, __stream);
     }
 }
 
-extern int __real_fgetpos(FILE *__restrict __stream, fpos_t * __pos) __attribute__((weak));
+extern int __real_fgetpos(FILE *__restrict __stream, fpos_t * __pos);
 int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos) {
     if(test_mode) {
         check_expected(__stream);
         memcpy(__pos, test_position, sizeof(fpos_t));
         return mock();
     } else {
-        return __real_fgetpos ? __real_fgetpos(__stream, __pos) : -1;
+        return __real_fgetpos(__stream, __pos);
     }
 }
 
-extern FILE* __real_fopen(const char* path, const char* mode) __attribute__((weak));
+extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
     if(test_mode) {
         check_expected_ptr(path);
         check_expected(mode);
         return mock_ptr_type(FILE*);
     } else {
-        return __real_fopen ? __real_fopen(path, mode) : NULL;
+        return __real_fopen(path, mode);
     }
 }
 void expect_fopen(const char* path, const char* mode, FILE *fp) {
@@ -158,7 +154,7 @@ void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret) {
 #endif
 }
 
-extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream) __attribute__((weak));
+extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
     if (test_mode) {
         strncpy((char *) ptr, mock_type(char *), n);
@@ -169,7 +165,7 @@ size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
             return ret;
         }
     }
-    return __real_fread ? __real_fread(ptr, size, n, stream) : 0;
+    return __real_fread(ptr, size, n, stream);
 }
 
 void expect_fread(char *file, size_t ret) {
@@ -181,29 +177,29 @@ long int __wrap_ftell(__attribute__ ((__unused__)) FILE *stream) {
     return mock();
 }
 
-extern int __real_fseek(FILE *stream, long offset, int whence) __attribute__((weak));
+extern int __real_fseek(FILE *stream, long offset, int whence);
 int __wrap_fseek(FILE *stream, long offset, int whence) {
     if (test_mode) {
         return mock();
     }
-    return __real_fseek ? __real_fseek(stream, offset, whence) : -1;
+    return __real_fseek(stream, offset, whence);
 }
 
-extern size_t __real_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) __attribute__((weak));
+extern size_t __real_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
     if (test_mode) {
         return mock_type(size_t);
     }
-    return __real_fwrite ? __real_fwrite(ptr, size, nmemb, stream) : 0;
+    return __real_fwrite(ptr, size, nmemb, stream);
 }
 
-extern int __real_remove(const char *filename) __attribute__((weak));
+extern int __real_remove(const char *filename);
 int __wrap_remove(const char *filename) {
     if(test_mode){
         check_expected(filename);
         return mock();
     }
-    return __real_remove ? __real_remove(filename) : -1;
+    return __real_remove(filename);
 }
 
 int __wrap_rename(const char *__old, const char *__new) {
@@ -223,12 +219,12 @@ int __wrap_fileno (FILE *__stream) {
     return mock();
 }
 
-extern int __real_fgetc(FILE * stream) __attribute__((weak));
+extern int __real_fgetc(FILE * stream);
 int __wrap_fgetc(FILE * stream) {
     if(test_mode) {
         return mock_type(int);
     } else {
-        return __real_fgetc ? __real_fgetc(stream) : -1;
+        return __real_fgetc(stream);
     }
 }
 
@@ -237,10 +233,10 @@ int __wrap__fseeki64(__attribute__ ((__unused__)) FILE *stream, \
      return mock();
 }
 
-extern FILE *__real_popen(const char *command, const char *type) __attribute__((weak));
+extern FILE *__real_popen(const char *command, const char *type);
 FILE *__wrap_popen(const char *command, const char *type) {
     if(!test_mode){
-        return __real_popen ? __real_popen(command, type) : NULL;
+        return __real_popen(command, type);
     }
     check_expected(command);
     check_expected(type);
