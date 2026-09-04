@@ -8,9 +8,13 @@
         <Property Id="REBOOT" Value="ReallySuppress" />
 
         <!-- Do not run while a system restart is pending: abort before making any change so the
-             install is never left half-committed and later broken by the pending restart. Uninstall
-             and repair of an already-installed product are still allowed. -->
-        <Condition Message="A system restart is pending on this computer. Please reboot and run the Wazuh agent installer again."><![CDATA[Installed OR NOT MsiSystemRebootPending]]></Condition>
+             install is never left half-committed and later broken by the pending restart. Uninstall,
+             repair of an already-installed product, and a detected upgrade of a prior Wazuh install
+             are still allowed. MsiSystemRebootPending is a machine-wide flag (set by msiexec itself
+             from PendingFileRenameOperations/Component Based Servicing/Windows Update reboot markers)
+             and does not distinguish a Wazuh-caused pending restart from an unrelated one (e.g. a
+             third-party auto-updater), so a genuine version upgrade should not be blocked by it. -->
+        <Condition Message="A system restart is pending on this computer. Please reboot and run the Wazuh agent installer again."><![CDATA[Installed OR WIX_UPGRADE_DETECTED OR NOT MsiSystemRebootPending]]></Condition>
 
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
