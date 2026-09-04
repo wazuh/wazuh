@@ -165,16 +165,14 @@ def start(params: dict):
         app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
                            max_content_size=api_conf['max_upload_size'])
         app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
-    # CheckRateLimitsMiddleware enforces max_unauthenticated_request_per_minute (it runs before
-    # authentication); SettleRateLimitMiddleware enforces max_request_per_minute but must also run
-    # whenever CheckRateLimitsMiddleware does, since it is the only place that releases the
-    # unauthenticated reservation CheckRateLimitsMiddleware charges on every request.
-    add_unauthenticated_limit = api_conf['access']['max_unauthenticated_request_per_minute'] > 0
-    add_authenticated_limit = api_conf['access']['max_request_per_minute'] > 0
-    if add_unauthenticated_limit:
+    # CheckRateLimitsMiddleware (wraps SecurityMiddleware) charges the unauthenticated bucket only
+    # once a request has actually failed authentication; CheckAuthenticatedRateLimitMiddleware
+    # (runs right after SecurityMiddleware) charges the authenticated bucket for one that
+    # succeeded. Each is now independent -- neither reserves anything for the other to release.
+    if api_conf['access']['max_unauthenticated_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
-    if add_unauthenticated_limit or add_authenticated_limit:
-        app.add_middleware(SettleRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
+    if api_conf['access']['max_request_per_minute'] > 0:
+        app.add_middleware(CheckAuthenticatedRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
@@ -326,9 +324,9 @@ if __name__ == '__main__':
     from api.constants import API_LOG_PATH
     from api.middlewares import (
         CheckAuthContextSizeMiddleware,
+        CheckAuthenticatedRateLimitMiddleware,
         CheckBlockedIP,
         CheckRateLimitsMiddleware,
-        SettleRateLimitMiddleware,
         SecureHeadersMiddleware,
         WazuhAccessLoggerMiddleware,
         CheckExpectHeaderMiddleware,
