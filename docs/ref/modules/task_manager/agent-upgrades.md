@@ -17,7 +17,7 @@ The agent's half — verifying the WPK's signature and running the installer —
 API / agent_upgrade CLI
         │  POST /v1/agents/upgrade  (or /v1/agents/upgrade-custom)
         ▼
-queue/sockets/task.sock ──► parse, then hand the batch to a worker  ──► answer immediately
+queue/sockets/task-http.sock ──► parse, then hand the batch to a worker  ──► answer immediately
                                             │
                         ┌───────────────────┴───────────────────┐
                         │  PER AGENT                            │
@@ -133,7 +133,7 @@ of it. Progress is observable through the agent's reported version, the agent's 
 
 | Socket | Direction | Purpose |
 | --- | --- | --- |
-| `queue/sockets/task.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the Server API |
+| `queue/sockets/task-http.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the Server API |
 
 Outbound, the only traffic is HTTPS to the WPK repository.
 

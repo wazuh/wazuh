@@ -18,7 +18,7 @@ Source: [src/wazuh_modules/task_manager/](../../../../src/wazuh_modules/task_man
 
 ## Overview
 
-The module exposes an HTTP/1.1 interface over `queue/sockets/task.sock` and **owns `queue/tasks/tasks.db` outright** — it is the only process that opens that database.
+The module exposes an HTTP/1.1 interface over `queue/sockets/task-http.sock` and **owns `queue/tasks/tasks.db` outright** — it is the only process that opens that database.
 
 Key properties:
 
@@ -48,7 +48,7 @@ Manager tasks are described in [Manager tasks](manager-tasks.md); the three recu
 
 ## HTTP interface
 
-The module listens on `queue/sockets/task.sock`, serving HTTP/1.1 through the shared
+The module listens on `queue/sockets/task-http.sock`, serving HTTP/1.1 through the shared
 [uds_http_server](../utils/uds-http-server/) transport — the same one wazuh-db and inventory-sync use.
 
 **Every route is a POST**, including the reads. Routing is exact-match with no path parameters, and
@@ -131,7 +131,7 @@ These two are the only `GET`s on the socket. Every other route is a `POST`, incl
 because the C clients that call them speak `POST` only; these two have no C client and no body.
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock http://localhost/v1/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localhost/v1/metrics
 ```
 
 ---

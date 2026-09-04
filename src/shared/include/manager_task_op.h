@@ -15,7 +15,7 @@
 
 /**
  * The producer side of the manager task queue: creating rows, counting them, and asking what an
- * agent still owes. Everything here POSTs JSON over `queue/sockets/task.sock`, which is how a
+ * agent still owes. Everything here POSTs JSON over `queue/sockets/task-http.sock`, which is how a
  * producer OUTSIDE modulesd reaches the queue.
  *
  * It lives in shared/ rather than in the Task Manager because its callers cannot link the Task

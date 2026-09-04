@@ -56,7 +56,7 @@ class ModuleUnderTest:
     def __init__(self, testtool: Path, workdir: Path, consumer_socket: Path):
         self.testtool = testtool
         self.workdir = workdir
-        self.socket_path = workdir / 'task.sock'
+        self.socket_path = workdir / 'task-http.sock'
         self.db_path = workdir / 'tasks.db'
         self.consumer_socket = consumer_socket
         self.process = None

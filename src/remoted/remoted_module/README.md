@@ -557,7 +557,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
 | `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
-| `taskSocketPath` | `/queue/sockets/task.sock` | — (fixed) |
+| `taskSocketPath` | `/queue/sockets/task-http.sock` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |

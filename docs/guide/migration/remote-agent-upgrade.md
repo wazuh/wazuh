@@ -20,7 +20,7 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
 | Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
-| Manager-side upgrade socket | Its own `task-upgrade.sock`, framed length-prefixed JSON | Served on the Task Manager's `task.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `task-upgrade.sock` no longer exists |
+| Manager-side upgrade socket | Its own `task-upgrade.sock`, framed length-prefixed JSON | Served on the Task Manager's `task-http.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `task-upgrade.sock` no longer exists |
 
 ---
 
@@ -154,7 +154,7 @@ The manager downloads the WPK from the Wazuh repository before making it availab
 
 ```
 API request or agent_upgrade binary (target: an agent below v5.0.0)
-    └─► Task Manager, upgrade routes (queue/sockets/task.sock)
+    └─► Task Manager, upgrade routes (queue/sockets/task-http.sock)
             ├─► validates each agent's version and platform
             ├─► downloads and verifies the WPK -- once per distinct
             │       package, however many agents were requested
@@ -170,7 +170,7 @@ API request or agent_upgrade binary (target: an agent below v5.0.0)
 
 ```
 API request or agent_upgrade binary
-    └─► Task Manager, upgrade routes (queue/sockets/task.sock)
+    └─► Task Manager, upgrade routes (queue/sockets/task-http.sock)
             ├─► validates each agent's version and platform
             ├─► downloads and verifies the WPK -- once per distinct
             │       package, however many agents were requested

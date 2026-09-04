@@ -91,7 +91,7 @@ extern "C"
     typedef struct task_manager_config_t
     {
         /* ---- paths ---------------------------------------------------------------------- */
-        char socket_path[PATH_MAX];          ///< UDS to bind (queue/sockets/task.sock).
+        char socket_path[PATH_MAX];          ///< UDS to bind (queue/sockets/task-http.sock).
         char db_path[PATH_MAX];              ///< tasks.db. The module is its sole owner.
         char inventory_sync_socket[PATH_MAX];///< Consumer socket for the two routed task types.
 

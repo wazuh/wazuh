@@ -211,7 +211,7 @@ void test_create_posts_an_absolute_url_to_the_task_socket(void **state) {
     // -- which manager_task_request() reports as "did not reach the task manager", so the mistake
     // reads as an outage and every creation fails silently.
     assert_string_equal(sent->url, "http://localhost/v1/manager-tasks");
-    assert_string_equal(sent->unix_socket_path, "queue/sockets/task.sock");
+    assert_string_equal(sent->unix_socket_path, "queue/sockets/task-http.sock");
     assert_string_equal(sent->content_type, "application/json");
 
     // The caller's timeout bounds the whole round trip; the connect deadline is the client's own,

@@ -326,7 +326,7 @@ static bool wm_control_wait_for_service_active(const char *service) {
 1. API/Framework
    └─► core_restart_agents(agent_ids, request_time)
        └─► ONE request per chunk of up to 500 agents, not one per agent:
-           ├─► POST /v1/tasks/bulk on queue/sockets/task.sock (HTTP over UDS)
+           ├─► POST /v1/tasks/bulk on queue/sockets/task-http.sock (HTTP over UDS)
            │       {"tasks": [{"agent_id": "001", "task_type": "agent_restart",
            │                   "create_time": 1234567890, "payload": {}}, ...]}
            └─► Receive: {"results": [{"agent_id": "001", "task_id": "...",
@@ -362,7 +362,7 @@ static bool wm_control_wait_for_service_active(const char *service) {
 1. API/Framework
    └─► core_restart_agents(agent_ids, request_time)
        └─► ONE request per chunk of up to 500 agents, not one per agent:
-           ├─► POST /v1/tasks/bulk on queue/sockets/task.sock (HTTP over UDS)
+           ├─► POST /v1/tasks/bulk on queue/sockets/task-http.sock (HTTP over UDS)
            │       {"tasks": [{"agent_id": "001", "task_type": "agent_restart",
            │                   "create_time": 1234567890, "payload": {}}, ...]}
            └─► Receive: {"results": [{"agent_id": "001", "task_id": "...",

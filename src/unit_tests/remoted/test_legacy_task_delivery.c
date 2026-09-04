@@ -725,7 +725,7 @@ static void test_poll_cycle_retry_recovers_within_same_cycle(void **state) {
     // nothing for every cycle, forever.
     const uhttp_captured_options_t *sent = uhttp_wrappers_last_options();
     assert_string_equal(sent->url, "http://localhost/v1/tasks/pending");
-    assert_string_equal(sent->unix_socket_path, "queue/sockets/task.sock");
+    assert_string_equal(sent->unix_socket_path, "queue/sockets/task-http.sock");
 
     free_single_task_poll_cycle(keyentries, response);
 }

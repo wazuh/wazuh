@@ -152,6 +152,65 @@ Debug output can be enabled through the shared wodle debug switch in `wazuh-mana
 wazuh_modules.debug=2
 ```
 
+### Read the metrics
+
+`GET /v1/metrics` on the module's own socket. No body, no headers, no authentication — it is a local
+Unix socket readable by the `wazuh-manager` group:
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock \
+     http://localhost/v1/metrics | jq
+```
+
+**The path is `/v1/metrics`, not `/metrics`.** Every route on this socket is versioned, including the
+two `GET`s — an unversioned request answers `{"error":"Unknown endpoint","code":404}`. Note that
+`inventory-sync-http.sock` does use a bare `/metrics`, so the two are not interchangeable.
+
+The envelope is the shared `wazuh_metrics` dump: a name, a timestamp and one entry per metric.
+
+```json
+{
+  "name": "task_manager",
+  "timestamp": "2026-09-04T12:44:54Z",
+  "metrics": [
+    {"name": "task_manager.agent_tasks.created", "type": "counter", "value": 0,
+     "description": "Agent tasks stored", "unit": "count"},
+    {"name": "task_manager.queue.pending.agent_delete_indexer", "type": "pull", "value": 0.0,
+     "description": "Pending manager tasks of type agent_delete_indexer", "unit": "tasks"}
+  ]
+}
+```
+
+What is published, by family:
+
+| Prefix | Kind | What it tells you |
+| --- | --- | --- |
+| `task_manager.agent_tasks.{created,delivered}` | counter | Agent-task throughput in and out |
+| `task_manager.agent_tasks.empty_cache_entries` | pull | Agents the negative cache knows have no work |
+| `task_manager.queue.pending.<task_type>` | pull | Queue depth per manager-task type, read from the database |
+| `task_manager.manager_tasks.created.<task_type>.<result>` | counter | `created` / `coalesced` / `collided` / `queue_full`, per type |
+| `task_manager.manager_tasks.retired.<task_type>.<status>` | counter | `completed` / `failed` / `dead_letter` / `superseded`, per type |
+| `task_manager.manager_tasks.reclaimed` | counter | Rows the ownership sweep returned to pending |
+| `task_manager.handler.outcome.<type>.<outcome>` | counter | Per-type handler outcomes |
+| `task_manager.handler.duration` | histogram | Handler wall time, with count/sum/min/max/p50/p90/p99 |
+| `task_manager.executor.busy_workers` | gauge_int | Executor occupancy right now |
+| `task_manager.upgrade.*` | pull | Upgrade queue depth, sheds, WPK downloads and cache hits |
+| `task_manager.http.*` | pull | Transport diagnostics: live sessions, in-flight requests and bytes |
+
+Counters and pull gauges are cheap to read — the counters are already maintained and the gauges are
+one indexed query each — but this is a cold path by design. Scrape it on the order of seconds, not
+per request.
+
+A few starting points:
+
+- **Is anything stuck?** `queue.pending.<type>` that does not fall, with `executor.busy_workers` at
+  zero, means nothing is eligible yet — check `next_attempt_at` on a row through
+  [`/v1/manager-tasks/list`](manager-tasks.md).
+- **Is a consumer down?** `handler.outcome.<type>.not_ready` climbing means the consumer socket is
+  not listening; `.busy` means it answered `409`.
+- **Is work being abandoned?** Any increase in `manager_tasks.retired.<type>.dead_letter` deserves a
+  look at the log line that accompanies it — it carries the task id.
+
 ### Common Issues
 
 **Issue:** A task shows up as `expired` before an agent could pick it up.
@@ -339,7 +398,7 @@ The counters are also published on the module's metrics endpoint — `wpk_downlo
 `wpk_cache_hits`, `versions_fetches`, `versions_cache_hits`, `queue_depth` and `batches_shed`:
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock http://localhost/v1/metrics
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localhost/v1/metrics
 ```
 
 Each request produces one `remote_upgrade` row per accepted agent, inspectable like any other task

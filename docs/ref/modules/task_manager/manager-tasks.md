@@ -143,13 +143,13 @@ directly. These are manager-internal routes on the Task Manager's own socket, no
 
 ```bash
 # One task, by id
-curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock \
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock \
      -H 'Content-Type: application/json' \
      -d '{"task_id":"<task_id>"}' \
      http://localhost/v1/manager-tasks/get
 
 # Everything of one type that dead-lettered, paged by task id
-curl --unix-socket /var/wazuh-manager/queue/sockets/task.sock \
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock \
      -H 'Content-Type: application/json' \
      -d '{"task_type":"agent_delete_indexer","status":"dead_letter"}' \
      http://localhost/v1/manager-tasks/list

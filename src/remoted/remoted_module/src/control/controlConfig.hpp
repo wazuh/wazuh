@@ -37,7 +37,7 @@ namespace remoted::control
     /// going to; a slow connect is really an absent task manager.
     inline constexpr int kTaskConnectTimeoutMs = 2000;
 
-    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task.sock";
+    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task-http.sock";
 
     /// The task manager route that hands over an agent's pending tasks and marks them delivered.
     inline constexpr const char* kTaskPendingRoute = "/v1/tasks/pending";

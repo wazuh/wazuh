@@ -158,7 +158,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Tasks socket. The task manager serves everything on it, including remote agent upgrades on
  * /v1/agents/upgrade and /v1/agents/upgrade-custom. */
-#define WM_TASK_MODULE_SOCK "queue/sockets/task.sock"
+#define WM_TASK_MODULE_SOCK "queue/sockets/task-http.sock"
 
 /* Host part of every task manager URL.
  *
