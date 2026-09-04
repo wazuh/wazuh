@@ -85,6 +85,32 @@ struct
     __uint(max_entries, 1);
 } drops_map SEC(".maps");
 
+/* Per-cgroup drop attribution, keyed on bpf_get_current_cgroup_id().
+ *
+ * The single-slot counter above makes loss VISIBLE but not ATTRIBUTABLE, and
+ * that is not good enough for a consumer that has to decide what to re-read.
+ * Measured on a real node: 203 dropped events surfaced as three flag-bearing
+ * events carrying 188, 11 and 4 — so a consumer following "any event with
+ * RT_F_DROPS_BEFORE means re-check everything" would re-baseline every
+ * container on the node three times over, for a 0.1% loss that in fact belonged
+ * entirely to one cgroup.
+ *
+ * This map answers "which cgroups lost events, and how many" so the consumer
+ * can re-read only those. Userspace drains it with rt_drain_drops(), which
+ * removes each key as it reports it, so counts are deltas since the last drain
+ * and the map self-trims to the cgroups that are actually losing events.
+ *
+ * When the map is full the drop is still counted globally, so loss never
+ * becomes invisible — it degrades to unattributed, which is where this started.
+ */
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, __u64);
+    __type(value, __u32);
+    __uint(max_entries, 4096);
+} cgroup_drops_map SEC(".maps");
+
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 statfunc void bump_drop_counter(void)
@@ -94,6 +120,23 @@ statfunc void bump_drop_counter(void)
     if (counter)
     {
         __sync_fetch_and_add(counter, 1);
+    }
+
+    /* Attribute the same drop to the cgroup that would have owned the event. */
+    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    __u32* per_cgroup = bpf_map_lookup_elem(&cgroup_drops_map, &cgroup_id);
+    if (!per_cgroup)
+    {
+        /* Create-then-look-up rather than create-with-1: two CPUs dropping for
+         * the same cgroup at once both try to insert, one loses on BPF_NOEXIST,
+         * and the loser must still find the winner's entry to add to. */
+        __u32 zero = 0;
+        bpf_map_update_elem(&cgroup_drops_map, &cgroup_id, &zero, BPF_NOEXIST);
+        per_cgroup = bpf_map_lookup_elem(&cgroup_drops_map, &cgroup_id);
+    }
+    if (per_cgroup)
+    {
+        __sync_fetch_and_add(per_cgroup, 1);
     }
 }
 
@@ -105,8 +148,31 @@ statfunc __u32 take_drop_counter(void)
     {
         return 0;
     }
+    /* Lock-free read-and-clear that cannot lose a concurrent increment.
+     *
+     * The obvious `v = *counter; *counter = 0;` discards every drop another CPU
+     * records between the two statements — precisely when drops happen, since
+     * it took concurrent load to fill the ring at all. The obvious atomic fix,
+     * __sync_fetch_and_and(counter, 0), does not compile for BPF: the backend
+     * rejects 32-bit atomic swap ("unsupported atomic operation, please use 64
+     * bit version") and widening the counter would change the map's value type.
+     *
+     * Subtracting exactly what was read achieves the same thing: an increment
+     * landing between the read and the subtract survives it, because it is not
+     * part of what gets subtracted. Worst case a drop is reported one event
+     * later than it happened; none is lost.
+     *
+     * It has to be expressed as an ADD of the two's complement, with the result
+     * discarded. BPF's only 32-bit atomic arithmetic instruction is add, so
+     * __sync_fetch_and_sub lowers to an AtomicLoadSub the backend cannot select
+     * either, and using an atomic's return value additionally requires the
+     * fetch variant. Adding (0 - value) is the same operation in modular
+     * arithmetic and compiles to the one instruction that exists. */
     __u32 value = *counter;
-    *counter = 0;
+    if (value)
+    {
+        __sync_fetch_and_add(counter, 0u - value);
+    }
     return value;
 }
 

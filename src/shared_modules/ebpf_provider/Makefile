@@ -49,10 +49,14 @@ check: rt_engine_contract_test
 rt_engine_leak_test: rt_engine.o test/rt_engine_leak_test.c
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_leak_test.c rt_engine.o -ldl
 
-check-kernel: rt_engine_leak_test rt_file.bpf.o
+rt_engine_drops_test: rt_engine.o test/rt_engine_drops_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_drops_test.c rt_engine.o -ldl
+
+check-kernel: rt_engine_leak_test rt_engine_drops_test rt_file.bpf.o
 	sudo ./rt_engine_leak_test ./rt_file.bpf.o
+	sudo ./rt_engine_drops_test ./rt_file.bpf.o
 
 clean:
-	rm -f rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+	rm -f rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine_drops_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
 
 .PHONY: all check clean
