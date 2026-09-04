@@ -85,11 +85,16 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *gcp_config);          // Rea
 
 /**
  * @brief Parse the output of the GCP script and prints it depending on the debug
- *        level stated by the script
+ *        level stated by the script. If the script exited non-zero and nothing in
+ *        its output ended up as a visible log line (e.g. it crashed before its own
+ *        logger was constructed, or crashed with an unformatted traceback after only
+ *        logging below the configured debug level), the raw output is surfaced
+ *        instead of being dropped.
  * @param output Output returned by the call to the script
  * @param tag Tag that should be used when printing the messages
+ * @param exit_status Exit code returned by the script
  */
-static void wm_gcp_parse_output(char *output, char *tag);
+static void wm_gcp_parse_output(char *output, char *tag, int exit_status);
 
 
 /* Context definition */
@@ -318,14 +323,22 @@ void wm_gcp_pubsub_run(const wm_gcp_pubsub *data) {
         mtwarn(WM_GCP_PUBSUB_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG);
+    wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG, status);
     os_free(output);
 }
 
-static void wm_gcp_parse_output(char *output, char *tag){
+static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
     char *line;
     char * parsing_output = output;
     int debug_level = isDebug();
+    // Set once anything in the output matched a visible, tokenized log line. It is a global
+    // flag, not per-segment: if the wodle logs something benign early and then crashes later
+    // with an unformatted traceback, this stays true and the crash is not surfaced. That gap
+    // is currently closed by wodles/gcloud/gcloud.py's own top-level `except Exception` handler
+    // always being the last thing it logs before exiting, tokenized and visible at any debug
+    // level -- if that Python-side invariant ever changes (e.g. logging something in a
+    // `finally:` after it), this flag needs revisiting.
+    int logged_anything = 0;
 
     for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
         char * tokenized_line;
@@ -348,31 +361,47 @@ static void wm_gcp_parse_output(char *output, char *tag){
             if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
                 p_line += 10;
                 mtdebug1(tag, "%s", p_line);
+                logged_anything = 1;
             }
         }
         if (debug_level >= 1) {
             if ((p_line = strstr(tokenized_line, "- INFO - "))) {
                 p_line += 9;
                 mtinfo(tag, "%s", p_line);
+                logged_anything = 1;
             }
         }
         if (debug_level >= 0) {
             if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
                 p_line += 13;
                 mterror(tag, "%s", p_line);
+                logged_anything = 1;
             }
             if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
                 p_line += 10;
                 mterror(tag, "%s", p_line);
+                logged_anything = 1;
             }
             if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
                 p_line += 12;
                 mtwarn(tag, "%s", p_line);
+                logged_anything = 1;
             }
         }
 
         parsing_output += cp_length + strlen(WM_GCP_LOGGING_TOKEN) - 1;
         os_free(tokenized_line);
+    }
+
+    // The wodle exited non-zero but nothing in its output ended up as a visible log line --
+    // either none of it carried the wodle's own logging token at all (e.g. it crashed at
+    // import time, before its logger existed), or it did log something but only at a debug
+    // level below the configured one, and whatever caused the failure (e.g. a raw traceback
+    // after a partial run) never matched a recognized level marker either way. Surface the raw
+    // output so ossec.log names the real cause instead of just the exit code already reported
+    // by the caller.
+    if (!logged_anything && exit_status != 0 && output && *output) {
+        mterror(tag, "%.*s", OS_MAXSTR - 1, output);
     }
 }
 
@@ -441,7 +470,7 @@ void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
         mtwarn(WM_GCP_BUCKET_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_gcp_parse_output(output, WM_GCP_BUCKET_LOGTAG);
+    wm_gcp_parse_output(output, WM_GCP_BUCKET_LOGTAG, status);
     os_free(output);
 }
 
