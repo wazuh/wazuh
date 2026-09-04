@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -519,4 +520,30 @@ TEST(ListContainers, EmptySocketPathReportsFailure)
     const auto sink = [](const std::string&) {};
 
     EXPECT_LT(wazuh::container_baseline::ListContainers("", sink), 0);
+}
+
+TEST(ListContainers, TheWarmupRetryIsPaidOncePerProcessNotOnEveryCall)
+{
+    const auto sink = [](const std::string&) {};
+    const char* socket = "/tmp/container-baseline-test-no-such-socket.sock";
+
+    // Discovery retries a missing or still-warming connector for up to
+    // kListRetryAttempts * kListRetryDelay (5s), which is what lets a
+    // one-shot baseline outlast a connector's first enumeration. That budget
+    // must be spent once, not on every call: this baseline also runs on
+    // syscollector's recurring cycle, and a node that genuinely has no
+    // containers would otherwise add the full 5s to every scan, forever,
+    // because the "have we ever seen a container" latch never sets there.
+    (void)wazuh::container_baseline::ListContainers(socket, sink);
+
+    const auto start = std::chrono::steady_clock::now();
+    (void)wazuh::container_baseline::ListContainers(socket, sink);
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+
+    // Deliberately a loose bound with a large margin: the retrying path takes
+    // ~5000ms and the non-retrying one takes ~0ms, so this cannot be flaky
+    // without the behaviour having actually regressed. Only the second call is
+    // asserted on, so the test does not depend on gtest's execution order.
+    EXPECT_LT(elapsed, 1000) << "a later call re-paid the warm-up retry budget (" << elapsed << "ms)";
 }
