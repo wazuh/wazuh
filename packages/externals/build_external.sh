@@ -59,8 +59,8 @@ log() { echo "[external] $*"; }
 err() { echo "[external][ERROR] $*" >&2; }
 
 # Source-of-truth for any blob we re-ship rather than build here (currently
-# cpython and libbpf-bootstrap — see the cpython pass-through block and
-# stage_precompiled below). Reading from src/Makefile keeps the URLs in
+# cpython — see the cpython pass-through block below; libbpf-bootstrap is
+# built in the build-ebpf job using Zig). Reading from src/Makefile keeps the URLs in
 # lockstep with what `make deps` would download for the same source tree,
 # which means DEPS_VERSION must point at an *existing* publish at the time
 # this workflow runs. Never bump DEPS_VERSION in the same branch that
@@ -488,6 +488,11 @@ fi
 
 # Pre-build source snapshots.
 for name in ${DEPS_FOR_LEG}; do
+    # Skip libbpf-bootstrap: built and packaged by the build-ebpf CI job with Zig
+    if [ "${name}" = "libbpf-bootstrap" ]; then
+        log "skipping ${name} source snapshot (handled by build-ebpf job)"
+        continue
+    fi
     # Skip deps that the manifest filters out for non-Linux legs.
     if [ "${EXT_LINUX_ONLY[$name]:-false}" = "true" ] && \
        [ "${SYSTEM}" != "deb" ] && [ "${SYSTEM}" != "rpm" ]; then
@@ -548,17 +553,13 @@ if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
     # libffi now builds from source on the manager legs (see
     # src/external/CMakeLists.txt), so it no longer needs staging.
     #
-    # libbpf-bootstrap still cannot be built here: its source needs kernel
-    # UAPI headers >= 4.13 (linux/bpf_perf_event.h) and a BPF-capable
-    # clang, neither of which the legacy agent builder image provides — a
-    # from-source attempt fails with "linux/bpf_perf_event.h: No such file
-    # or directory". Wazuh builds it in a dedicated centos:7 +
-    # clang-15-from-source image (issue 28626); here we reuse that
-    # precompiled tarball. Staged on every Linux leg regardless of
-    # BUILD_TARGET so the per-leg output is binary-complete; the
-    # CMakeLists.txt if(EXISTS ...) short-circuit decides whether the
-    # current leg actually consumes it, so staging it unused is harmless.
-    stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
+    # libbpf-bootstrap is built independently in the dedicated build-ebpf CI job
+    # using Zig for all Linux architectures. To prevent make build-external from
+    # attempting an unsupported from-source compilation in legacy builder images,
+    # create the sentinel so CMakeLists.txt treats it as precompiled and creates
+    # a no-op target. The post-build snapshot skips it, leaving packaging to build-ebpf.
+    mkdir -p "${SRC_DIR}/external/libbpf-bootstrap/build"
+    touch "${SRC_DIR}/external/libbpf-bootstrap/build/modern.bpf.o"
 fi
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
@@ -621,6 +622,11 @@ done
 
 # Post-build snapshots.
 for name in ${DEPS_FOR_LEG}; do
+    # Skip libbpf-bootstrap: built and packaged by the build-ebpf CI job with Zig
+    if [ "${name}" = "libbpf-bootstrap" ]; then
+        log "skipping ${name} built snapshot (handled by build-ebpf job)"
+        continue
+    fi
     if [ "${EXT_LINUX_ONLY[$name]:-false}" = "true" ] && \
        [ "${SYSTEM}" != "deb" ] && [ "${SYSTEM}" != "rpm" ]; then
         continue

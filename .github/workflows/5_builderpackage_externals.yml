@@ -153,6 +153,46 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
+  build-ebpf:
+    # Cross-compile eBPF & libbpf-bootstrap for all supported Linux
+    # architectures (amd64, aarch64, arm32, i386, ppc64le) using Zig
+    # targeting legacy glibc baselines (glibc 2.17 / 2.19) natively on
+    # Ubuntu without Docker or QEMU emulation.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    name: Build eBPF dependencies (Zig)
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang bpftool
+          ZIG_VERSION="0.13.0"
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
+            | sudo tar -xJ --strip-components=1 -C /usr/local/
+          zig version
+
+      - name: Compile eBPF & libbpf for all architectures
+        run: |
+          bash packages/externals/ebpf/build_ebpf.sh \
+            --output packages/output_externals/ebpf
+          mkdir -p packages/output_externals
+          tar -czf packages/output_externals/externals-ebpf.tar.gz \
+            -C packages/output_externals/ebpf libraries
+
+      - name: Upload eBPF tarball
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: externals-linux-ebpf
+          path: packages/output_externals/externals-ebpf.tar.gz
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
   consolidate:
     # Merge every per-leg tarball into a single libraries/ tree shaped
     # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
@@ -166,7 +206,7 @@ jobs:
     # their per-leg tarballs overlap. The merge picks a winner per dep from
     # the build output itself — no dep lists — so changing a dependency
     # never needs a workflow change.
-    needs: build-externals
+    needs: [build-externals, build-ebpf]
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -236,14 +276,17 @@ jobs:
             [ "${incoming_is_agent}" = "yes" ]
           }
 
-          # Process manager legs first, then agent legs, so an agent copy is
-          # the last writer and can take the intersection per rule 2 above.
+          # Process manager legs first, then agent legs, and finally ebpf leg,
+          # so an agent copy wins over manager per rule 2, and the dedicated
+          # ebpf leg wins for eBPF libraries built with Zig.
           ordered_legs="$( (ls -d staging/*/ | grep -- '-manager/$' || true);
-                            (ls -d staging/*/ | grep -v -- '-manager/$' || true) )"
+                            (ls -d staging/*/ | grep -v -- '-manager/$' | grep -v -- '-ebpf/$' || true);
+                            (ls -d staging/*/ | grep -- '-ebpf/$' || true) )"
 
           for leg_dir in ${ordered_legs}; do
             case "${leg_dir}" in
               *-agent/) is_agent=yes ;;
+              *-ebpf/)  is_agent=yes ;;
               *)        is_agent=no  ;;
             esac
             [ -d "${leg_dir}libraries" ] || continue

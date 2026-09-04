@@ -66,9 +66,9 @@ We don't build separate `deb` legs because rpm glibc is forward-compatible with 
 ## Jobs
 
 ```
-build-externals (matrix, 7 jobs)
-       │
-       └─► consolidate ──► smoke-build (5 jobs)
+build-externals (matrix, 7 jobs) ──┐
+                                   ├─► consolidate ──► smoke-build (5 jobs)
+build-ebpf (1 job, Zig) ───────────┘
 ```
 
 - **`build-externals`** — each leg seeds `src/external/`, applies `--dependencies` overrides, runs the build, and uploads `externals-<leg>-<target>.tar.gz`.
@@ -203,7 +203,7 @@ the download behind a flag drops them from the bundle and breaks every test buil
 2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
 3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
-5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython / libbpf re-ship URLs.
+5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython pass-through URL.
 
 ## Caveats
 
@@ -213,22 +213,17 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 - `make deps EXTERNAL_SRC_ONLY=yes` (the source seed for `src/external/`) reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/`.
 - The cpython pass-through block pulls `…/deps/${DEPS_VERSION}/libraries/sources/cpython_<arch>.tar.gz`.
-- `stage_precompiled` pulls `…/deps/${DEPS_VERSION}/libraries/linux/<arch>/libbpf-bootstrap.tar.gz`.
 
-If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, all three fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
+If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, these fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
 
-### `libbpf-bootstrap` and `cpython` are re-shipped, not rebuilt
+### `cpython` is re-shipped; `libbpf-bootstrap` is built with Zig
 
-Two deps are not actually compiled by this workflow — `build_external.sh` downloads prebuilt blobs from `packages.wazuh.com/deps/${DEPS_VERSION}/…` and packs them into the per-leg tarballs:
+Two deps require special handling outside the legacy Docker builder containers:
 
-- **`libbpf-bootstrap`** needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither — a from-source attempt fails with `linux/bpf_perf_event.h: No such file or directory`. Wazuh builds it in a separate centos:7 + clang-15-from-source image (issue #28626). Linux legs only; macOS and Windows agents don't include it.
+- **`libbpf-bootstrap`** needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`). Instead of building it out-of-repo with legacy CentOS 7 Dockerfiles (issue #28626), the `5_builderpackage_externals.yml` workflow now builds it in parallel via the `build-ebpf` job. It runs `packages/externals/ebpf/build_ebpf.sh` on Ubuntu using `zig cc` to cross-compile for all Linux architectures (amd64, aarch64, arm32, i386, ppc64le) targeting legacy glibc baselines (2.17/2.19), and merges the tarballs into `consolidated/libraries/linux/`. Linux legs only; macOS and Windows agents don't include it.
 - **`cpython`** has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`.
 
-So bumping either of these is out of scope here. The flow is:
-
-1. Run the dedicated pipeline (embedded-python for cpython; the centos:7+clang-15 image for libbpf-bootstrap — that build is currently out-of-repo).
-2. Upload the new blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…` alongside the rest of the externals tree this workflow produces.
-3. Bump `DEPS_VERSION` in `src/Makefile`. Because `build_external.sh` reads `DEPS_VERSION` straight from the Makefile, this single bump is what makes the next run pick up the new cpython / libbpf blob.
+So bumping `cpython` requires running its pipeline and uploading the blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…`, while `libbpf-bootstrap` is rebuilt automatically within this workflow. Bumping `DEPS_VERSION` in `src/Makefile` makes downstream runs pick up the new published deps release.
 
 ### macOS and Windows are agent-only
 
