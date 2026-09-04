@@ -2059,38 +2059,28 @@ components:
           type: string
 
     WazuhManagerConfiguration:
+      description: "Effective manager configuration (etc/wazuh-manager.conf with the schema defaults applied). One property per top-level section of the schema."
       type: object
       properties:
-        alerts:
-          type: object
-        auth:
-          type: object
-        cluster:
-          type: object
-        command:
-          type: array
-          items:
-            type: object
-        gcp-pubsub:
-          type: object
         global:
           type: object
         logging:
           type: object
         remote:
-          type: array
-          items:
-            type: object
-        reports:
+          type: object
+        auth:
+          type: object
+        wdb:
           type: object
         vulnerability-detection:
           type: object
         indexer:
           type: object
-        socket:
+        agent-upgrade:
           type: object
-        #Wodle sections inside WazuhConfiguration(wazuh configuration file)
-        syscollector:
+        task-manager:
+          type: object
+        cluster:
           type: object
 
     WazuhLogs:
@@ -2318,44 +2308,44 @@ components:
         <tr>
         <th>Component</th>
         <th>Configuration</th>
-        <th>Tag</th>
+        <th>Source</th>
         </tr>
         </thead>
         <tbody>
         <tr>
         <td>auth</td>
         <td>auth</td>
-        <td><code>&lt;auth&gt;</code></td>
+        <td><code>auth</code> section of <code>etc/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>global</td>
-        <td><code>&lt;global&gt;</code></td>
+        <td><code>global</code> section of <code>etc/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>remote</td>
-        <td><code>&lt;remote&gt;</code></td>
+        <td><code>remote</code> section of <code>etc/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>internal</td>
-        <td><code>&lt;remoted&gt;</code></td>
+        <td><code>remoted.*</code> keys of <code>etc/wazuh-manager-internal-options.conf</code></td>
         </tr>
         <tr>
         <td>wazuh-manager-db</td>
         <td>internal</td>
-        <td><code>&lt;wazuh_db&gt;</code></td>
+        <td><code>wazuh_db.*</code> keys of <code>etc/wazuh-manager-internal-options.conf</code></td>
         </tr>
         <tr>
         <td>wazuh-manager-db</td>
         <td>wdb</td>
-        <td><code>&lt;wdb&gt;</code></td>
+        <td><code>wdb</code> section of <code>etc/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>wmodules</td>
         <td>wmodules</td>
-        <td><code>&lt;wodle&gt;</code></td>
+        <td>module configuration reported by wazuh-manager-modulesd (<code>vulnerability-detection</code>, <code>agent-upgrade</code>, <code>task-manager</code>)</td>
         </tr>
         </tbody>
         </table>
@@ -2849,26 +2839,20 @@ components:
     section:
       in: query
       name: section
-      description: "Indicates the wazuh configuration section"
+      description: "Indicates the manager configuration section (a top-level key of etc/wazuh-manager.conf)"
       schema:
         type: string
         enum:
-        - active-response
-        - alerts
-        - auth
-        - client
-        - client_buffer
-        - cluster
-        - command
         - global
         - logging
         - remote
-        - reports
-        - socket
+        - auth
+        - wdb
         - vulnerability-detection
         - indexer
-        # Wodle sections
-        - syscollector
+        - agent-upgrade
+        - task-manager
+        - cluster
     field:
       in: query
       name: field
@@ -5590,7 +5574,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node readiness"
-      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. remoted embeds enrollment_password/keystore readiness, and reports a reason: \"admin socket unreachable\" field instead of ready: false when its own admin socket cannot be reached while the daemon itself keeps running. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -5652,7 +5636,7 @@ paths:
                           inventory-sync: { available: true }
                           content-manager: { available: true }
                           task-manager: { available: true }
-                      wazuh-manager-remoted: { ready: true, running: true }
+                      wazuh-manager-remoted: { ready: true, running: true, enrollment_password: { ready: true }, keystore: { readable: true, agents_loaded: 12, entries_skipped: 0 } }
                       wazuh-manager-db: { ready: true, running: true }
                       wazuh-manager-authd: { ready: false, running: false }
                       wazuh-manager-clusterd: { ready: true, running: true }
@@ -5729,7 +5713,8 @@ paths:
       tags:
         - Cluster
       summary: "Get node config"
-      description: "Return wazuh configuration used in node {node_id}. The 'section' and 'field' parameters will be
+      description: "Return the manager configuration (etc/wazuh-manager.conf) used in node {node_id}: the effective document
+      (schema defaults applied) as JSON, or the file as XML text with 'raw'. The 'section' and 'field' parameters will be
       ignored if 'raw' parameter is provided."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
@@ -5757,93 +5742,39 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        agents_disconnection_time: "10m"
-                        update_check: yes
-                      alerts:
-                        log_alert_level: "3"
+                        agents_disconnection_time: 15m
+                      logging:
+                        log_format:
+                        - plain
                       remote:
-                        - legacy:
-                            enabled: "yes"
-                            port: "1514"
-                            protocol:
-                              - tcp
-                            local_ip: "127.0.0.1"
-                          https:
-                            port: "1517"
-                            bind_addr: "127.0.0.1"
-                            certificate: "etc/certs/remoted.pem"
-                            key: "etc/certs/remoted-key.pem"
-                          agents:
-                            allow_higher_versions: "no"
-                      syscollector:
-                        disabled: no
-                        interval: "1h"
-                        scan_on_start: yes
-                        hardware: yes
-                        os: yes
-                        network: yes
-                        packages: yes
-                        ports:
-                          all: no
-                          item: yes
-                        processes: yes
-                        synchronization:
-                          max_eps: 10
-                      vulnerability-detection:
-                        enabled: yes
-                        feed-update-interval: "60m"
-                      indexer:
-                        hosts:
-                          - http://127.0.0.1:9200
-                        ssl:
-                          certificate_authorities:
-                            ca:
-                              - /var/wazuh-manager/etc/certs/root-ca.pem
-                          certificate:
-                            - /var/wazuh-manager/etc/certs/indexer-connector.pem
-                          key:
-                            - /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-                      command:
-                        - name: disable-account
-                          executable: disable-account
-                          timeout_allowed: yes
-                        - name: restart-wazuh
-                          executable: restart-wazuh
-                        - name: firewall-drop
-                          executable: firewall-drop
-                          timeout_allowed: yes
-                        - name: host-deny
-                          executable: host-deny
-                          timeout_allowed: yes
-                        - name: route-null
-                          executable: route-null
-                          timeout_allowed: yes
-                        - name: win_route-null
-                          executable: route-null.exe
-                          timeout_allowed: yes
-                        - name: netsh
-                          executable: netsh.exe
-                          timeout_allowed: yes
-                      auth:
-                        disabled: no
-                        port: "1515"
-                        use_source_ip: "no"
-                        purge: "yes"
-                        use_password: "no"
-                        ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
-                        ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/certs/remoted.pem"
-                        ssl_manager_key: "etc/certs/remoted-key.pem"
+                        legacy:
+                          enabled: false
+                          port: 1514
+                          protocol:
+                          - tcp
+                          ipv6: false
+                          queue_size: 131072
+                          rids_closing_time: 5m
+                          connection_overtake_time: 60
+                        https:
+                          port: 1517
+                          bind_addr: 0.0.0.0
+                          global_prefix: /wazuh-manager/
+                          certificate: etc/certs/remoted.pem
+                          key: etc/certs/remoted-key.pem
+                          ca: ''
+                        agents:
+                          allow_higher_versions: false
                       cluster:
-                        name: "wazuh"
-                        node_name: "master-node"
-                        node_type: "master"
-                        key: "9d273b53510fef702b54a92e9cffc82e"
-                        port: "1516"
-                        bind_addr: "127.0.0.1"
+                        name: wazuh
+                        node_name: master-node
+                        node_type: master
+                        key: 9d273b53510fef702b54a92e9cffc82e
+                        port: 1516
+                        bind_addr: 0.0.0.0
                         nodes:
-                          - "wazuh-master"
-                        hidden: "no"
+                        - wazuh-master
+                        hidden: false
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -5863,7 +5794,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace wazuh configuration for the given node with the data contained in the API request"
+      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections) before the file is written."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
@@ -5872,9 +5803,13 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
       requestBody:
-        description: "Content of the wazuh-manager.conf to be uploaded"
+        description: "Content of etc/wazuh-manager.conf to be uploaded (XML text)"
         required: true
         content:
+          application/xml:
+            schema:
+              type: string
+              format: binary
           application/octet-stream:
             schema:
               type: string
@@ -6313,10 +6248,10 @@ paths:
                   affected_items:
                     - wdb:
                         backup:
-                          database: global
-                          enabled: true
-                          interval: 86400
-                          max_files: 3
+                          global:
+                            enabled: true
+                            interval: "1d"
+                            max_files: 3
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []

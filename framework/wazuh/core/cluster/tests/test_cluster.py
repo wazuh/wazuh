@@ -35,7 +35,7 @@ agent_groups = b"default,windows-servers"
 # does it matches on a file name. Both the name and the list come from production sources so these
 # tests break if either side stops covering the real file (see
 # test_cluster_json_excludes_the_manager_configuration below).
-MANAGER_CONF_FILENAME = os.path.basename(common.OSSEC_CONF)
+MANAGER_CONF_FILENAME = os.path.basename(common.MANAGER_CONF)
 EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
 # Valid configurations
@@ -90,7 +90,12 @@ custom_incomplete_configuration = {
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
+    # get_manager_conf() returns the effective section: every option the case omits carries its schema default
+    effective_defaults = {'name': 'wazuh', 'node_name': 'node01', 'node_type': 'master', 'key': 'a' * 32, 'port': 1516,
+                          'bind_addr': '127.0.0.1', 'nodes': ['127.0.0.1'], 'hidden': False}
+    read_config = {'cluster': {**effective_defaults, **read_config['cluster']}}
+    wazuh.core.cluster.utils.read_config.cache_clear()  # never reuse a section cached by another test
+    with patch('wazuh.core.cluster.utils.get_manager_conf', return_value=read_config) as m:
         with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
             configuration = wazuh.core.cluster.utils.read_config()
             for key in m.return_value["cluster"]:

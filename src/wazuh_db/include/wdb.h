@@ -190,7 +190,6 @@ typedef enum wdb_backup_db {
 
 extern char *schema_global_sql;
 extern char *schema_task_manager_sql;
-extern _Config gconfig;
 
 /**
  * @brief pointer to function for any transaction

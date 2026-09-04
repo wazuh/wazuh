@@ -21,6 +21,8 @@ on:
       - ".github/actions/5_builderpackage_linux-smoke-uninstall-test/**"
       - ".github/actions/5_builderpackage_linux-smoke-upgrade-test/**"
       - ".github/actions/5_testintegration_detect-changes/**"
+      - "tests/integration/**"
+      - "wodles/**"
   workflow_dispatch:
     inputs:
       architecture:

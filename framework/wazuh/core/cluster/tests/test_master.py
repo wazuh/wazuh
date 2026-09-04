@@ -35,9 +35,9 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # The exclusion guard matches a file name, so the name under test and the list it is matched
-# against both come from production sources (common.OSSEC_CONF and cluster.json): dropping the
+# against both come from production sources (common.MANAGER_CONF and cluster.json): dropping the
 # entry from cluster.json must make these tests fail.
-MANAGER_CONF_FILENAME = os.path.basename(common.OSSEC_CONF)
+MANAGER_CONF_FILENAME = os.path.basename(common.MANAGER_CONF)
 EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
 # Global variables
@@ -1794,8 +1794,8 @@ def test_master_get_node(get_running_loop_mock):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
-async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_mock):
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_initialization(get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks initialization."""
     
     cluster_items_with_sync = cluster_items.copy()
@@ -1817,8 +1817,8 @@ async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
-async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mock):
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_batch_agents(get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks batch_agents method."""
     
     cluster_items_with_sync = cluster_items.copy()
@@ -1849,13 +1849,13 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
 @patch('wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents')
 async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter_by_time(
     mock_wazuh_db_query, 
     mock_async_conn,
-    mock_get_ossec_conf
+    mock_get_manager_conf
 ):
     """Test DisconnectedAgentSyncTasks _get_disconnected_agents_filter_by_time method."""
 
@@ -1896,11 +1896,11 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
 @patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks.check_indexer', new_callable=AsyncMock)
 @patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks._get_disconnected_agents_filter_by_time')
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
-async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_ossec_conf_mock):
+async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks run method when disabled."""
 
     cluster_items_with_sync = cluster_items.copy()

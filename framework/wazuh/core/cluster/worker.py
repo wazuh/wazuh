@@ -20,7 +20,7 @@ from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
@@ -888,7 +888,7 @@ class Worker(client.AbstractClientManager):
                                       (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
         try:
-            _indexer_conf = get_ossec_conf(section="indexer")
+            _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
         except Exception:
             _indexer_conf = {}
 
@@ -898,7 +898,7 @@ class Worker(client.AbstractClientManager):
             )
         else:
             self.logger.warning(
-                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer is not configured in etc/wazuh-manager.conf (indexer.hosts is empty) or it is unavailable; "
                 "Indexer tasks will not be started."
             )
         if self.run_active_response_job:

@@ -328,6 +328,13 @@ if [ "$1" -eq 1 ]; then
     echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.conf." >&2
     exit 1
   fi
+  # The generated file must validate against the embedded schema (file existence is not
+  # checked: the certificates it references are generated later).
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f %{_localstatedir}/etc/wazuh-manager.conf; then
+    rm -f %{_localstatedir}/etc/wazuh-manager.conf
+    echo "ERROR: the generated %{_localstatedir}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
+    exit 1
+  fi
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
   chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
@@ -569,6 +576,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
 %attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
@@ -583,6 +591,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default

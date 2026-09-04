@@ -20,10 +20,12 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "auth/passwordKeySource.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
@@ -84,8 +86,8 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
-// remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
+// purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
@@ -206,8 +208,9 @@ public:
 
             // Same phase-1 contract for the local admin socket: after this, no admin handler
             // will ever run again. Its handlers only read m_metricsManager -- which is never
-            // reset -- but the discipline of closing accepts before ANY teardown is kept
-            // uniform so the admin plane can never depend on teardown order by accident.
+            // reset -- and, via /status, the Keystore/PasswordKeySource diag weak_ptrs -- which
+            // outlive this call too -- but the discipline of closing accepts before ANY teardown
+            // is kept uniform so the admin plane can never depend on teardown order by accident.
             if (m_adminServer)
             {
                 m_adminServer->stopAccepting();
@@ -544,7 +547,7 @@ private:
         const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
 
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
-        if (enrollConfig.usePassword)
+        if (enrollConfig.enrollmentEnabled && enrollConfig.usePassword)
         {
             enrollPasswordKeySource =
                 std::make_shared<remoted::auth::PasswordKeySource>(remoted::auth::PasswordKeySource::kDefaultPath,
@@ -556,6 +559,11 @@ private:
             remoted::enrollment::EnrollmentAuthConfig {
                 enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
             enrollPasswordKeySource);
+
+        // Reachability for GET /status on the admin server (see startAdminServer()). Null when
+        // Password mode is disabled: the weak_ptr then stays permanently expired, which is exactly
+        // the condition the handler uses to omit `enrollment_password` from its response.
+        registerPasswordKeySourceDiagnostics(enrollPasswordKeySource);
 
         m_authdClient =
             std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
@@ -714,6 +722,20 @@ private:
     }
 
     /**
+     * @brief Register reachability to PasswordKeySource for GET /status on the admin server.
+     *
+     * Unlike registerKeystoreDiagnostics(), no pull metrics are added here -- just a weak_ptr the
+     * /status handler can lock. @p source is null whenever Password-mode enrollment is disabled,
+     * which leaves the weak_ptr permanently expired -- .lock() then always returns nullptr, which
+     * is exactly the condition the handler uses to omit `enrollment_password` from its response.
+     */
+    void registerPasswordKeySourceDiagnostics(const std::shared_ptr<remoted::auth::PasswordKeySource>& source)
+    {
+        std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
+        m_passwordKeySourceDiagTarget = source;
+    }
+
+    /**
      * @brief Publish the agent registry's live size as a pull metric
      *        (remoted.control.registry.agents).
      *
@@ -749,12 +771,12 @@ private:
     }
 
     /**
-     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics) -- best effort.
+     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics + GET /status) -- best effort.
      *
      * Sibling of startHttpServer(), called after it: this is the module's management plane
      * (shared_modules/uds_http_server over REMOTED_MODULE_ADMIN_SOCKET_PATH), reachable only
      * from the local host -- agents can never reach it, and the public HTTPS server must never
-     * grow these routes (it is agent-facing, not an admin plane). Both routes are Liveness
+     * grow these routes (it is agent-facing, not an admin plane). All three routes are Liveness
      * class: answered inline from resident state, exempt from the byte budget, so they respond
      * under any pressure.
      *
@@ -806,6 +828,72 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // GET /status: readiness, not bare liveness -- whether an enrollment password key is
+            // currently available when Password-mode enrollment is enabled. `client.keys`/keystore
+            // state is reported for information only and never gates `ready`: remoted cannot tell
+            // an empty-but-fine client.keys apart from a stale one still serving the old table, so
+            // gating on it would flap a healthy node. Both reads are resident, in-process state
+            // (plain atomics behind lastLoadOk()/agentsLoaded()/entriesSkipped(), a mutex-guarded
+            // cached key copy behind currentKey()) -- no I/O, no KDF, nothing that can block the
+            // admin socket's fixed 2-thread reactor. `ready` always reflects the real current
+            // state, never grace-window masked.
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/status",
+                [this](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                       std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
+                    std::shared_ptr<remoted::auth::Keystore> keystore;
+                    {
+                        std::lock_guard<std::mutex> lock {m_keystoreDiagMutex};
+                        keystore = m_keystoreDiagTarget.lock();
+                    }
+                    if (!keystore)
+                    {
+                        responder->send(
+                            wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                        return;
+                    }
+
+                    std::shared_ptr<remoted::auth::PasswordKeySource> passwordSource;
+                    {
+                        std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
+                        passwordSource = m_passwordKeySourceDiagTarget.lock();
+                    }
+
+                    // enrollment_password is the ONLY gating component. With Password-mode disabled
+                    // (passwordSource null), there is nothing to gate on, so `ready` is true
+                    // whenever this handler runs at all.
+                    bool overallReady = true;
+                    bool pwReady = false;
+                    const bool hasPasswordSource = static_cast<bool>(passwordSource);
+                    if (hasPasswordSource)
+                    {
+                        // .has_value() only -- currentKey() does make a transient, wiped-on-destroy
+                        // copy internally (see passwordKeySource.cpp), but that copy is never
+                        // serialized into the response or logged.
+                        pwReady = passwordSource->currentKey().has_value();
+                        overallReady = pwReady;
+                    }
+
+                    std::ostringstream body;
+                    body << R"({"ready":)" << (overallReady ? "true" : "false");
+                    if (hasPasswordSource)
+                    {
+                        body << R"(,"enrollment_password":{"ready":)" << (pwReady ? "true" : "false") << "}";
+                    }
+                    // keystore is informational ONLY -- never folded into overallReady.
+                    // "readable", not "ready": it can't distinguish an empty-but-fine client.keys
+                    // from a stale one still serving the old table, so it must not read as a
+                    // readiness claim.
+                    body << R"(,"keystore":{"readable":)" << (keystore->lastLoadOk() ? "true" : "false")
+                         << R"(,"agents_loaded":)" << keystore->agentsLoaded() << R"(,"entries_skipped":)"
+                         << keystore->entriesSkipped() << "}}";
+
+                    responder->send(wazuh::uds_http::HttpResponse::json(200, body.str()));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -813,7 +901,7 @@ private:
             config.logTag = "wazuh-manager-remoted:remoted-module:admin";
             config.serverName = "remoted admin";
             config.serverHeader = "wazuh-remoted";
-            // Two liveness routes serving one local operator: sized far below the library's
+            // Three liveness routes serving one local operator: sized far below the library's
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
@@ -823,7 +911,7 @@ private:
             registerAdminTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
-                       "remoted admin server listening on '%s' (routes: GET / and GET /metrics).",
+                       "remoted admin server listening on '%s' (routes: GET /, GET /metrics, and GET /status).",
                        REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)
@@ -1173,8 +1261,8 @@ private:
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
     /// nothing else shares ownership.
     std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
-    /// Local admin plane (fixed UDS socket, GET / + GET /metrics). OPTIONAL by policy: a failed
-    /// start leaves it null and the module keeps running (see startAdminServer()).
+    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status). OPTIONAL by
+    /// policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
     /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is
     /// repointed under its own mutex on every start; the pulls are registered exactly once per
@@ -1201,6 +1289,12 @@ private:
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
+
+    /// Same plumbing for PasswordKeySource reachability (see registerPasswordKeySourceDiagnostics()).
+    /// No pull metrics of its own -- just lets GET /status reach currentKey().has_value().
+    std::mutex m_passwordKeySourceDiagMutex;
+    std::weak_ptr<remoted::auth::PasswordKeySource> m_passwordKeySourceDiagTarget;
+
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.

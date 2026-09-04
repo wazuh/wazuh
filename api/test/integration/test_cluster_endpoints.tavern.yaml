@@ -23,7 +23,7 @@ stages:
               port: !anyint
               bind_addr: !anystr
               nodes: !anything
-              hidden: !anystr
+              hidden: !anybool
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -667,14 +667,14 @@ stages:
           affected_items:
             - auth:
                 ciphers: !anystr
-                disabled: !anystr
+                disabled: !anybool
                 force: !anything
                 port: !anyint
-                purge: !anystr
+                purge: !anything
                 ssl_manager_cert: !anystr
                 ssl_manager_key: !anystr
-                use_password: !anystr
-                use_source_ip: !anystr
+                use_password: !anybool
+                use_source_ip: !anybool
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -691,16 +691,14 @@ stages:
       json:
         error: 0
         data:
-          # Asserts the SHAPE of the report -- the three sibling blocks of <remote> -- not the
-          # options inside them: which legacy keys are present depends on whether this node has a
-          # <legacy> block at all (with none, only `enabled: no` is reported), and the <https>
-          # options are only reported when an operator set them.
+          # Asserts the SHAPE of the report -- the effective `remote` section of etc/wazuh-manager.conf
+          # (schema defaults applied): its three blocks are always present, with native types.
           affected_items:
             - remote:
-              - legacy: !anything
+                legacy: !anything
                 https: !anything
                 agents:
-                  allow_higher_versions: !anystr
+                  allow_higher_versions: !anybool
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -781,9 +779,9 @@ stages:
           affected_items:
             - wdb:
                 backup:
-                  - database: !anystr
+                  global:
                     enabled: !anybool
-                    interval: !anyint
+                    interval: !anystr
                     max_files: !anyint
           failed_items: []
           total_affected_items: 1
@@ -1387,10 +1385,12 @@ stages:
         data:
           affected_items:
             - remote:
-                - legacy:
-                    port: '1514'
-                    protocol:
-                      - tcp
+                legacy:
+                  enabled: true
+                  port: 1514
+                  protocol:
+                    - tcp
+                  local_ip: 0.0.0.0
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1414,7 +1414,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1113
+                code: 1130
               id:
                 - 'worker1'
           total_affected_items: 0

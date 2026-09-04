@@ -1,36 +1,83 @@
 # Manager Configuration
 
-Configuration reference for Wazuh manager components.
+Configuration reference for Wazuh manager components. The manager configuration is a **strict XML**
+file validated against a JSON schema (the agent keeps its own XML `ossec.conf`, read by the legacy
+parser).
 
 ## Configuration Files
 
-| File | Location | Description |
-|------|----------|-------------|
-| `wazuh-manager.conf` | `/var/wazuh-manager/etc/` | Main XML configuration |
-| `wazuh-manager-internal-options.conf` | `/var/wazuh-manager/etc/` | Internal tuning parameters |
-| `api.yaml` | `/var/wazuh-manager/api/configuration/` | REST API configuration |
+| File | Location | Mode | Description |
+|------|----------|------|-------------|
+| `wazuh-manager.conf` | `/var/wazuh-manager/etc/` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
+| `wazuh-manager.schema.json` | `/var/wazuh-manager/etc/` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json` (product, not configuration) |
+| `wazuh-manager-internal-options.conf` | `/var/wazuh-manager/etc/` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`) |
+| `api.yaml` | `/var/wazuh-manager/api/configuration/` | 640 | REST API configuration |
+
+`wazuh-manager.conf` is **generated, not shipped**: the installer and the packages write it once
+(`src/init/gen_wazuh.sh conf manager <dist> <version>` prints the same document) from the templates in
+`etc/templates/config/`, validate it with `wazuh-manager-conf` and install it. Upgrades preserve it;
+DEB upgrades leave the regenerated defaults next to it as `wazuh-manager.conf.new`.
+
+The file is parsed as **well-formed XML**: a single `<wazuh_config>` root, no unescaped `&` or `<`,
+`<!-- -->` comments only, and XML entities (`&amp;`, `&lt;`…) are decoded into the values. Values are
+typed by the schema: booleans are written `yes`/`no`, numbers as digits, lists as repeated elements
+(`<hosts><host>…</host></hosts>`) or comma-separated values where the 4.x syntax did so.
+
+## Validation and tools
+
+- `bin/wazuh-manager-conf validate [-f <file>] [--skip-file-checks]` — XML syntax, schema (types,
+  ranges, enums, unknown options), cross-field rules (port clashes) and, unless `--skip-file-checks`,
+  the existence of the files the configuration names. Silent on success; on failure it prints the JSON
+  pointer of the offending option: `(1244): Invalid configuration at '/remote/legacy/port': does not
+  satisfy 'maximum' [...]` (syntax problems name the file and embed the line instead).
+- `bin/wazuh-manager-conf get <key.path>` — one option of the **effective** document (defaults
+  applied): scalars as plain text, objects and lists as JSON. `bin/wazuh-manager-conf dump` prints the
+  whole effective document.
+- `bin/wazuh-manager-control start|restart` validates the file first and refuses to start any daemon
+  when it is invalid (the CLI's `(1244)` verdict, then `wazuh-manager.conf: Configuration error.`);
+  a daemon started against an invalid file reports the same ERROR `(1244)` and CRITICAL `(1202)` in
+  `logs/wazuh-manager.log`. Each daemon's `-t` validates the whole file, including the files it names.
+- The API serves the effective sections as JSON (`GET /cluster/{node_id}/configuration`, optional
+  `section`/`field`, `raw=true` for the XML text) and replaces the file with an XML document
+  (`PUT /cluster/{node_id}/configuration`, `application/xml` or `application/octet-stream`); a
+  malformed document is refused with error 1131 and an invalid one with error 1130 and the same JSON
+  pointer. After a `PUT` the file is owned by `wazuh-manager:wazuh-manager` (the API runs as that user).
 
 ## Configuration Sections
 
-**Note:** The `<global>` XML section (`src/config/src/global-config.c`) implements exactly one element, `agents_disconnection_time`; anything else in that section is a startup error. It is read by both Remoted and the Task Manager's disconnection sweep, so it is shared configuration rather than one module's. The manager's log-rotation and agent-retention tunables (`wazuh_modules.manager_task_log_*`, `wazuh_modules.manager_task_delete_old_agents`) are internal options unrelated to `<global>` — see [Recurring manager tasks](../../modules/task_manager/schedules.md).
+| Module | Section | Internal Options |
+|--------|---------|------------------|
+| [Agent Upgrade](../../modules/agent_upgrade/configuration.md) | `agent-upgrade` | - |
+| [Server API](../../modules/server-api/configuration.md) | - (`api.yaml`) | - |
+| [Authentication](../../modules/authd/configuration.md) | `auth` | `authd.*` |
+| [Cluster](../../modules/cluster/configuration.md) | `cluster` | `wazuh_clusterd.*` |
+| [Database Sync](../../modules/database-sync/configuration.md) | - | `wazuh_database.*` |
+| [Engine](../../modules/engine/configuration.md) | `cluster`, `logging`, `indexer` (read-only consumer) | `analysisd.*` |
+| [Indexer Connector](../../modules/indexer_connector/configuration.md) | `indexer` | - |
+| [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
+| [Logging](../../modules/logging/configuration.md) | `logging` | - |
+| [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`) | `remoted.*` |
+| [Task Manager](../../modules/task_manager/configuration.md) | `task-manager`, `global` (disconnection settings only) | `wazuh_modules.manager_task_*` |
+| [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection` | `vulnerability-detection.*` |
+| [Wazuh DB](../../modules/wazuh_db/configuration.md) | `wdb` | `wazuh_db.*` |
 
-| Module | XML Section | YAML Section | Internal Options |
-|--------|-------------|--------------|------------------|
-| [Agent Upgrade](../../modules/agent_upgrade/configuration.md) | `<agent-upgrade>` | - | - |
-| [Server API](../../modules/server-api/configuration.md) | - | `api.yaml` | - |
-| [Authentication](../../modules/authd/configuration.md) | `<auth>` | - | `authd.*` |
-| [Cluster](../../modules/cluster/configuration.md) | `<cluster>` | - | `wazuh_clusterd.*` |
-| [Database Sync](../../modules/database-sync/configuration.md) | - | - | `wazuh_database.*` |
-| [Engine](../../modules/engine/configuration.md) | - | - | `analysisd.*` |
-| [Indexer Connector](../../modules/indexer_connector/configuration.md) | `<indexer>` | - | - |
-| [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | - | - | `wazuh_modules.inventory_sync_server_*` |
-| [Logging](../../modules/logging/configuration.md) | `<logging>` | - | - |
-| [Remoted](../../modules/remoted/configuration.md) | `<remote>` | - | `remoted.*` |
-| [Task Manager](../../modules/task_manager/configuration.md) | `<task-manager>`, `<global>` (disconnection settings only) | - | `wazuh_modules.manager_task_*` |
-| [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `<vulnerability-detection>` | - | `vulnerability-detection.*` |
-| [Wazuh DB](../../modules/wazuh_db/configuration.md) | `<wdb>` | - | `wazuh_db.*` |
+Every option, with its type, default, constraints and description, is listed in the
+[Manager Configuration Reference](reference.md), generated from the schema. The `global` section only
+holds `agents_disconnection_time`; it is read by both remoted and the Task Manager's disconnection
+sweep, so it is shared configuration rather than one module's. The manager's log-rotation and
+agent-retention tunables (`wazuh_modules.manager_task_log_*`,
+`wazuh_modules.manager_task_delete_old_agents`) are internal options unrelated to `global` — see
+[Recurring manager tasks](../../modules/task_manager/schedules.md).
 
 **Note:** All wodle-based modules (Task Manager, Inventory Sync Server, Vulnerability Scanner) also use common `wazuh_modules.*` options documented in [Common Internal Options](#common-internal-options).
+
+## When a change takes effect
+
+| Section | Applied |
+|---|---|
+| `cluster` | `wazuh-manager-control restart` or `reload` (clusterd re-reads the file on both) |
+| `indexer` | Python consumers re-read the file when its modification time changes; the C daemons (modulesd, engine) read it at start |
+| every other section | at daemon start (`restart`); note that `reload` does **not** restart `wazuh-manager-remoted`, so a change in `remote` needs `restart` |
 
 ---
 

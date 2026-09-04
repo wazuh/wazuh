@@ -28,6 +28,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38816](https://github.com/wazuh/wazuh/issues/38816) | Replaced the manager's pseudo-XML configuration parser with a schema-validated strict-XML loader (`shared_modules/manager_config`): every consumer — the C daemons, the engine, the control script, the Python framework and the API — reads the same effective document; any daemon's `-t` and the new `bin/wazuh-manager-conf validate\|get\|dump` CLI validate the whole file (including the installed schema copy `etc/wazuh-manager.schema.json`) with JSON-pointer diagnostics (error 1244); `GET /cluster/{node_id}/configuration` serves the canonical schema shape with native types, and `cluster.key` becomes mandatory. Constructs the old parser tolerated (multiple roots, raw `&`, legacy comments, unknown options) are now rejected at startup — see the migration guide. |
 | [#33377](https://github.com/wazuh/wazuh/issues/33377) [#33570](https://github.com/wazuh/wazuh/issues/33570) | Upgraded embedded Python interpreter from 3.10 to 3.12. |
 | [#30535](https://github.com/wazuh/wazuh/issues/30535) | Adapted Vulnerability Detector input pipeline to the new Wazuh 5.0 synchronization algorithm, covering first-scan, inventory-change, and feed-update scenarios. |
 | [#34608](https://github.com/wazuh/wazuh/issues/34608) | Removed legacy configuration surfaces, database schemas, build targets, and compatibility layers in the second server cleanup phase. |
@@ -158,3 +159,4 @@
 | [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
 | [#38829](https://github.com/wazuh/wazuh/issues/38829) | Fixed Coverity findings across agent components (`syscheckd`, `sca`, `agent-info`, `https_client`, `agent-upgrade`, and `shared`). |
 | [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
+| [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |

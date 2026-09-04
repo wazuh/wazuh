@@ -20,7 +20,7 @@
 
 namespace
 {
-    constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
+    constexpr auto DEFAULT_BIND_ADDRESS {"0.0.0.0"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {1517};
     // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
     // work here can block (token verification, client.keys file I/O), so it is oversubscribed.
@@ -70,7 +70,7 @@ namespace
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 
-    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular <remote>
+    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular remote
     // setting rather than an internal option, but resolved the same way: positive wins).
     std::size_t resolveUnsigned(const long configValue, const std::size_t defaultValue)
     {

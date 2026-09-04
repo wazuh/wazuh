@@ -15,6 +15,9 @@
 #include "sha1_op.h"
 #include "sha256_op.h"
 #include "os_net.h"
+#ifndef CLIENT
+#include "mconf-config.h"
+#endif
 #include <sys/types.h>
 
 #ifdef WIN32
@@ -28,6 +31,9 @@ static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
+#ifndef CLIENT
+const char *wm_config_path = WAZUHCONF;   // Manager configuration (etc/wazuh-manager.conf), -c overrides it.
+#endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
 void wm_sleep_interruptible(int seconds) {
@@ -96,7 +102,9 @@ void wm_setGroupID(const gid_t gid)
 
 int wm_config() {
 
+#ifdef CLIENT
     int agent_cfg = 0;
+#endif
 
     // Get defined values from internal_options
 
@@ -115,17 +123,53 @@ int wm_config() {
     }
 
 
-    // Read configuration
+#ifdef CLIENT
+    // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, WAZUHCONF, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 
-#ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
+    // Read the manager configuration (etc/wazuh-manager.conf): loaded once (the helper logs the error),
+    // then each section of the effective document as cJSON. agent-upgrade and task-manager always exist
+    // (default_modules[]); vulnerability-detection is created only when its section is present.
+
+    if (w_mconf_load(wm_config_path) < 0) {
+        return OS_INVALID;
+    }
+
+    static const char *manager_sections[] = { "vulnerability-detection", "indexer", "agent-upgrade", "task-manager" };
+
+    for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
+        cJSON *section = w_mconf_section(manager_sections[i]);
+        int rc;
+
+        switch (i) {
+        case 0:
+            rc = Read_Vulnerability_Detection_JSON(section, &wmodules);
+            break;
+        case 1:
+            rc = Read_Indexer_JSON(section);
+            break;
+        case 2:
+            rc = wm_agent_upgrade_read_json(section, wm_find_module(WM_AGENT_UPGRADE_CONTEXT.name));
+            break;
+        default:
+            rc = wm_task_manager_read_json(section, wm_find_module(WM_TASK_MANAGER_CONTEXT.name));
+            break;
+        }
+
+        cJSON_Delete(section);
+
+        if (rc < 0) {
+            return OS_INVALID;
+        }
+    }
+
     wmodule *module;
 
     if ((module = wm_content_manager_read())) {

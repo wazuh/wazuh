@@ -64,7 +64,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
-                            -Wl,--wrap,ReadConfig")
+                            -Wl,--wrap,w_mconf_section")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -92,7 +92,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
                             -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name \
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_mconf_load -Wl,--wrap,w_mconf_section -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name \
                             -Wl,--wrap,get_cluster_name -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd -Wl,--wrap,OS_IsValidIP")
 
 list(APPEND remoted_names "test_remote-state")

@@ -210,6 +210,23 @@ The abort happens before the package manager runs, so the agent stays on 4.14.X,
 
 The target address and port come from the same place the agent reads them: `<agent><manager>` first, then `<client><server><address>`, with `1517` as the port default.
 
+### Certificate trust check
+
+A 4.X agent never verified the manager's certificate at all; a 5.0 agent does by default (`<agent><ssl><verification_mode>`, default `system` -- see [`verification_mode`](../../ref/modules/client/configuration.md#verification_mode)). Once the connectivity check above passes, the WPK installer also checks that the *upgraded* agent will actually be able to verify that certificate, before installing anything:
+
+- If `<verification_mode>` resolves to `full` or `certificate`, it requires a readable `<certificate_authorities>` file and aborts otherwise -- same as a fresh install.
+- For the default `system` mode, it performs a real TLS handshake against the manager using the OS's own trust store. If that already verifies the certificate (e.g. it's issued by a publicly-trusted CA), the upgrade proceeds untouched.
+- Otherwise, it looks for a CA at a default drop-in path -- `/var/ossec/etc/certs/root-ca.pem` on Linux/macOS, `<installdir>\certs\root-ca.pem` on Windows -- and pins it into `<certificate_authorities>` automatically if found there.
+- If there is nothing to pin, the upgrade aborts:
+
+```console
+2026/09/02 - Upgrade failed. The system trust store does not verify the manager's certificate at MANAGER_IP:1517, and no CA was found at ./etc/certs/root-ca.pem. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade.
+```
+
+As with the connectivity check, the abort happens before the package manager runs: the agent stays on 4.14.X, keeps running, and the upgrade can be retried. `upgrade_result` is `2`.
+
+This matters specifically for an **on-prem fleet whose manager uses a self-signed certificate** — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
+
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 
 Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
@@ -231,10 +248,10 @@ ERROR: SSL context setup failed. Exiting.
 
 Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
 
-`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an invalid element and blocks the manager from starting:
+`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an unknown option (the manager configuration is validated against its schema) and blocks the manager from starting:
 
 ```console
-ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.
+ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
 ```
 
 Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.

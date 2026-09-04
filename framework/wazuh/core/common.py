@@ -153,7 +153,8 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 
 
 # ================================================ Wazuh path - Config =================================================
-OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
+MANAGER_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
+MANAGER_CONF_SCHEMA = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.schema.json')
 INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
 CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
@@ -180,6 +181,7 @@ AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth.sock')
 CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control.sock')
 UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task-upgrade.sock')
 REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote.sock')
+REMOTED_ADMIN_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote-admin-http.sock')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'task.sock')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb.sock')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http.sock')

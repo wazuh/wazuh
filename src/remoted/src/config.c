@@ -14,6 +14,7 @@
 #include "os_net.h"
 #include "remoted.h"
 #include "config.h"
+#include "mconf-config.h"
 #include "module_limits.h"
 
 /* Global variables */
@@ -55,8 +56,6 @@ bool manager_module_limits_enabled = true;
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
 {
-    int modules = 0;
-
     /* Initialize module limits with default values */
     module_limits_init(&manager_module_limits);
 
@@ -84,7 +83,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 
-    modules |= CREMOTE;
 
     cfg->port = 0;
     cfg->queue_size = 131072;
@@ -131,9 +129,28 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
 
-    if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
-        ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
+    /* etc/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
+     * of the effective document is read as cJSON (mconf-config.h). */
+    if (w_mconf_load(cfgfile) < 0) {
         return (OS_INVALID);
+    }
+
+    {
+        cJSON *remote = w_mconf_section("remote");
+        int ret = Read_Remote_JSON(remote, cfg);
+        cJSON_Delete(remote);
+
+        if (ret < 0) {
+            return (OS_INVALID);
+        }
+
+        cJSON *global = w_mconf_section("global");
+        ret = Read_Global_JSON(global, &cfg->global);
+        cJSON_Delete(global);
+
+        if (ret < 0) {
+            return (OS_INVALID);
+        }
     }
 
     if (cfg->queue_size < 1) {
@@ -163,150 +180,14 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
-/* Mirrors the <remote> XML tree this reports on: <legacy>, <https> and <agents> are siblings, and
- * each option is reported under the block it is actually configured in. The pre-5.0 flat shape
- * (every option directly under the connection object, plus a "connection":"secure" key) is gone
- * along with the flat XML it described -- <connection> was removed in 5.0, and reporting it kept
- * GET /manager/configuration describing a configuration the manager can no longer be given.
- *
- * Numeric options stay strings, unchanged from what this function has always emitted.
- *
- * Note this feeds ONE endpoint: GET /manager|cluster/.../configuration/request/remote, which asks
- * the daemon over its socket. The plain .../configuration endpoint does NOT come through here -- the
- * framework parses ossec.conf itself (get_ossec_conf()), so it reports the XML verbatim and its
- * output is unaffected by anything below. */
+/* getconfig "remote": the effective `remote` section of etc/wazuh-manager.conf (schema defaults
+ * applied, native types), exactly what RemotedConfig() loaded. Feeds one endpoint:
+ * GET /cluster/.../configuration/request/remote, which asks the daemon over its socket. */
 cJSON *getRemoteConfig(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *rem = cJSON_CreateArray();
-    char buffer[255] = {0};
+    cJSON *remote = w_mconf_section("remote");
 
-    cJSON *conn = cJSON_CreateObject();
-
-    /* <legacy>: the classic TCP/UDP listener. Reported only when it is actually running -- when the
-     * block is absent or disabled, RemotedConfig() zeroes port/proto/lip, so reporting the block
-     * would describe a listener that was never bound. */
-    if (logr.legacy_enabled) {
-        cJSON *legacy = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(legacy, "enabled", "yes");
-
-        if (logr.port) {
-            snprintf(buffer, sizeof(buffer), "%d", logr.port);
-            cJSON_AddStringToObject(legacy, "port", buffer);
-        }
-
-        if (logr.proto) {
-            cJSON *proto_array = cJSON_CreateArray();
-
-            /* If TCP is enabled */
-            if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-                cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
-            }
-            /* If UDP is enabled */
-            if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-                cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
-            }
-            cJSON_AddItemToObject(legacy, "protocol", proto_array);
-        }
-
-        cJSON_AddStringToObject(legacy, "ipv6", logr.ipv6 ? "yes" : "no");
-
-        if (logr.lip) {
-            cJSON_AddStringToObject(legacy, "local_ip", logr.lip);
-        }
-
-        if (logr.queue_size) {
-            snprintf(buffer, sizeof(buffer), "%ld", logr.queue_size);
-            cJSON_AddStringToObject(legacy, "queue_size", buffer);
-        }
-
-        snprintf(buffer, sizeof(buffer), "%d", logr.rids_closing_time);
-        cJSON_AddStringToObject(legacy, "rids_closing_time", buffer);
-
-        snprintf(buffer, sizeof(buffer), "%d", logr.connection_overtake_time);
-        cJSON_AddStringToObject(legacy, "connection_overtake_time", buffer);
-
-        cJSON_AddItemToObject(conn, "legacy", legacy);
-    } else {
-        cJSON *legacy = cJSON_CreateObject();
-        cJSON_AddStringToObject(legacy, "enabled", "no");
-        cJSON_AddItemToObject(conn, "legacy", legacy);
-    }
-
-    /* <https>: the agent-facing HTTPS listener. Always running, so always reported. Each option is
-     * reported only when the operator set it: an absent value means the C++ module applies its own
-     * default, and inventing that default here would report a value this side does not own. */
-    cJSON *https = cJSON_CreateObject();
-
-    if (logr.https.port) {
-        snprintf(buffer, sizeof(buffer), "%d", logr.https.port);
-        cJSON_AddStringToObject(https, "port", buffer);
-    }
-
-    if (logr.https.bind_addr) {
-        cJSON_AddStringToObject(https, "bind_addr", logr.https.bind_addr);
-    }
-
-    if (logr.https.global_prefix) {
-        cJSON_AddStringToObject(https, "global_prefix", logr.https.global_prefix);
-    }
-
-    if (logr.https.certificate) {
-        cJSON_AddStringToObject(https, "certificate", logr.https.certificate);
-    }
-
-    if (logr.https.key) {
-        cJSON_AddStringToObject(https, "key", logr.https.key);
-    }
-
-    if (logr.https.ca) {
-        cJSON_AddStringToObject(https, "ca", logr.https.ca);
-    }
-
-    /* UNSET is deliberately not reported: it is "the operator never configured this", which is a
-     * different statement from an explicit "none" and must not be flattened into it. */
-    switch (logr.https.verification_mode) {
-    case REMOTED_HTTPS_VERIFY_NONE:
-        cJSON_AddStringToObject(https, "verification_mode", "none");
-        break;
-    case REMOTED_HTTPS_VERIFY_CERTIFICATE:
-        cJSON_AddStringToObject(https, "verification_mode", "certificate");
-        break;
-    case REMOTED_HTTPS_VERIFY_FULL:
-        cJSON_AddStringToObject(https, "verification_mode", "full");
-        break;
-    default:
-        break;
-    }
-
-    if (logr.https.ciphers) {
-        cJSON_AddStringToObject(https, "ciphers", logr.https.ciphers);
-    }
-
-    if (logr.https.max_body_size) {
-        snprintf(buffer, sizeof(buffer), "%ld", logr.https.max_body_size);
-        cJSON_AddStringToObject(https, "max_body_size", buffer);
-    }
-
-    if (logr.https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET) {
-        cJSON_AddStringToObject(https, "dual_stack",
-                                logr.https.dual_stack == REMOTED_HTTPS_DUAL_STACK_YES ? "yes" : "no");
-    }
-
-    cJSON_AddItemToObject(conn, "https", https);
-
-    /* <agents>: a sibling of the two listener blocks, not part of either. It used to be emitted
-     * inside the connection object and only when queue_size was non-zero -- an unrelated legacy
-     * option, so allow_higher_versions went unreported on any manager that had not set it. */
-    cJSON *agents = cJSON_CreateObject();
-    cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
-    cJSON_AddItemToObject(conn, "agents", agents);
-
-    cJSON_AddItemToArray(rem, conn);
-
-    cJSON_AddItemToObject(root, "remote", rem);
-
+    cJSON_AddItemToObject(root, "remote", remote != NULL ? remote : cJSON_CreateObject());
     return root;
 }
 
@@ -358,17 +239,11 @@ cJSON *getRemoteInternalConfig(void) {
 
 }
 
+/* getconfig "global": the effective `global` section of etc/wazuh-manager.conf. */
 cJSON *getRemoteGlobalConfig(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *global = cJSON_CreateObject();
-    cJSON *remoted = cJSON_CreateObject();
+    cJSON *global = w_mconf_section("global");
 
-    cJSON_AddNumberToObject(remoted,"agents_disconnection_time",logr.global.agents_disconnection_time);
-
-    cJSON_AddItemToObject(global,"remoted",remoted);
-    cJSON_AddItemToObject(root,"global",global);
-
+    cJSON_AddItemToObject(root, "global", global != NULL ? global : cJSON_CreateObject());
     return root;
-
 }
