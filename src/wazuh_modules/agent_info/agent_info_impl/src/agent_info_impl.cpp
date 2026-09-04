@@ -210,10 +210,17 @@ void AgentInfoImpl::start(int interval, int integrityInterval, const std::functi
         return;
     }
 
-    // Reset sync protocol stop flag to allow restarting operations
-    if (m_spSyncProtocol)
+    // Reset sync protocol stop flag to allow restarting operations. Under
+    // m_syncProtocolMutex and re-checked: stop() sets m_stopped and then takes this same
+    // mutex to call m_spSyncProtocol->stop(), so without both the reset can land after
+    // that stop() and leave the protocol permanently uninterruptible.
     {
-        m_spSyncProtocol->reset();
+        std::lock_guard<std::mutex> protocolLock(m_syncProtocolMutex);
+
+        if (m_spSyncProtocol && !isShutdownInProgress())
+        {
+            m_spSyncProtocol->reset();
+        }
     }
 
     // Initial delay before first run to allow other modules to start
