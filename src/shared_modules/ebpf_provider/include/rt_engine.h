@@ -100,6 +100,34 @@ int rt_poll(rt_handle_t handle, rt_sink_fn sink, void* user, int timeout_ms);
  * for the life of the process. Safe to call with handle == NULL. */
 void rt_close(rt_handle_t handle);
 
+/* Reports one cgroup's dropped-event count. `drops` is the number lost since
+ * the previous drain for that cgroup, never a running total. */
+typedef void (*rt_drop_fn)(unsigned long long cgroup_id, unsigned int drops, void* user);
+
+/* Drains per-cgroup drop accounting, invoking cb() once per cgroup that lost
+ * events since the last drain, and clearing what it reports.
+ *
+ * Why this exists. Every event carries `dropped` and RT_F_DROPS_BEFORE, which
+ * makes loss visible but NOT attributable: the in-band counter is global, so a
+ * consumer seeing the flag knows only that the node lost events, not which
+ * containers to re-read. Measured on a real node, 203 dropped events surfaced
+ * as three flag-bearing events — a consumer treating that as "re-check
+ * everything" would re-baseline every container three times for a 0.1% loss
+ * belonging to one cgroup. Drain this instead, and re-read only what it names.
+ *
+ * Cheap enough to call on the consumer's own cadence (once per poll cycle is
+ * fine): it touches only the cgroups that have actually lost events, because
+ * reporting a cgroup removes its entry.
+ *
+ * A drop that arrives while the in-kernel map is full is still counted in the
+ * global in-band counter, so loss never becomes invisible — only unattributed.
+ *
+ * Returns the number of cgroups reported, 0 when nothing was lost, or -1 on a
+ * bad handle or a BPF object with no per-cgroup map (an object older than this
+ * engine — reported once through the log sink, not on every call). Safe with
+ * cb == NULL, which discards the counts and just clears the map. */
+int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user);
+
 /* The ABI this engine was compiled against, for a consumer that may have been
  * built against a different copy of rt_event_contract.h than the engine it is
  * linked to. A consumer MUST refuse to use an engine whose major differs from
