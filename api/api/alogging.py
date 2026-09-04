@@ -14,10 +14,19 @@ from api.api_exception import APIError
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
+# C0 control characters and DEL. Written raw to the plain-text log they start a forged
+# entry or drive the terminal that displays the file.
+control_chars_pattern = re.compile(r'[\x00-\x1f\x7f]')
+
 logger = logging.getLogger('wazuh-api')
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
+
+
+def escape_control_chars(value: str) -> str:
+    """Replace each control character with its Python escape sequence (`\\n`, `\\x1b`...)."""
+    return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
 
 
 class APILoggerSize:
@@ -250,6 +259,9 @@ def custom_logging(user, remote, method, path, query,
         'time': f'{elapsed_time:.3f}s',
         'status_code': status
     }
+
+    # Only the plain-text line needs it: the JSON record is escaped by its formatter.
+    user, path = escape_control_chars(str(user)), escape_control_chars(str(path))
 
     if not hash_auth_context:
         log_info = f'{user} {remote} "{method} {path}" '

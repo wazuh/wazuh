@@ -24,7 +24,7 @@ from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
-from api.alogging import custom_logging
+from api.alogging import custom_logging, control_chars_pattern, escape_control_chars
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 from api.controllers.util import build_recursion_error_response
@@ -105,15 +105,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
             user = UNKNOWN_USER_STRING
 
-    # Sanitize username to escape control characters
-    if user and user != UNKNOWN_USER_STRING:
-        # Check if username contains control characters and log a warning
-        if any(c in user for c in ['\n', '\r', '\t']):
-            logger.warning(
-                f'Username contains control characters. User: {user!r}, IP: {host}, '
-                f'Path: {path}.'
-            )
-        user = user.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    # custom_logging() escapes every field it writes; this only flags the attempt.
+    if user and user != UNKNOWN_USER_STRING and control_chars_pattern.search(user):
+        logger.warning(
+            f'Username contains control characters. User: {user!r}, IP: {host}, '
+            f'Path: {escape_control_chars(path)}.'
+        )
 
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
