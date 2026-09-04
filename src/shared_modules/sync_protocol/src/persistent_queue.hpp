@@ -103,6 +103,9 @@ class PersistentQueue : public IPersistentQueue
         ///        syscheck.sync_flush_interval_ms). Callers other than FIM always get this default.
         static constexpr std::chrono::milliseconds DEFAULT_FLUSH_INTERVAL{500};
 
+        /// @brief Cap on upfront buffer reservation, independent of FLUSH_BATCH_SIZE.
+        static constexpr std::size_t MAX_RESERVE_HINT = 1000;
+
         /// @brief Maximum number of buffered events before triggering an immediate flush.
         const std::size_t FLUSH_BATCH_SIZE;
 

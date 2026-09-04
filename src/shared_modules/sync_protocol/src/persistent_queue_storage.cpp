@@ -46,11 +46,10 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         m_connection.execute("PRAGMA synchronous = OFF;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
 
-        // Raise the WAL auto-checkpoint threshold from SQLite's default (1000
-        // pages) to reduce how often the WAL is flushed back into the main
-        // fim_sync.db file. This only affects checkpoint frequency — WAL
-        // contents remain fully durable and recoverable regardless of this
-        // threshold.
+        // Raise the WAL auto-checkpoint threshold from SQLite's default (1000 pages) to
+        // reduce how often the WAL flushes back into fim_sync.db; durability is unaffected.
+        // Hardcoded for now, tuned to this feature's 1000-files/100-EPS workload — thread it
+        // through like sync_flush_batch_size/sync_flush_interval_ms if other workloads need it.
         m_connection.execute("PRAGMA wal_autocheckpoint = 8000;");
     }
     // LCOV_EXCL_START

@@ -37,8 +37,9 @@ PersistentQueue::PersistentQueue(const std::string& dbPath,
         throw;
     }
 
-    m_buffers[0].reserve(FLUSH_BATCH_SIZE);
-    m_buffers[1].reserve(FLUSH_BATCH_SIZE);
+    const auto reserveHint = std::min(FLUSH_BATCH_SIZE, MAX_RESERVE_HINT);
+    m_buffers[0].reserve(reserveHint);
+    m_buffers[1].reserve(reserveHint);
     m_flushThread = std::thread(&PersistentQueue::flushLoop, this);
 }
 
