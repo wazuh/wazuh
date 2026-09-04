@@ -113,6 +113,10 @@ typedef struct agent_enrollment {
     char *authorization_pass_path;    ///< <authorization_pass_path>: password FILE PATH (default
                                        ///< AUTHD_PASS); re-read on every attempt, never cached here.
     time_t delay_after_enrollment;    ///< <delay_after_enrollment>: seconds to wait post-enrollment.
+    /* Not XML: internal options, resolved once by ClientConf() and read from here by both
+     * enrollment loops. */
+    int retry_max;                    ///< agent.enrollment_retry_max: retry delay ceiling, seconds.
+    int retry_delta;                  ///< agent.enrollment_retry_delta: delay growth per failure, seconds.
 } agent_enrollment;
 
 /* Configuration structure */

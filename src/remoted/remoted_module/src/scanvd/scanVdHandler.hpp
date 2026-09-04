@@ -12,17 +12,13 @@
 #ifndef SCANVD_HANDLER_HPP
 #define SCANVD_HANDLER_HPP
 
+#include "common/vdClient.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
-
-namespace remoted::common
-{
-    class VdClient;
-}
 
 namespace remoted::scanvd
 {
@@ -47,9 +43,14 @@ namespace remoted::scanvd
         // from VD being down, and the honest answer to the agent is the same 503 either way.
         static constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 5;
         static constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
-        /// Total downstream budget for one scan, for the facade's startup check.
-        static constexpr long long VD_SCAN_BUDGET_MS =
-            (VD_SCAN_READ_TIMEOUT_SECONDS + VD_SCAN_WRITE_TIMEOUT_SECONDS) * 1000;
+        /// Total downstream budget for one scan, for the facade's startup check. Includes
+        /// VdClient's offset query: handleVdScan() calls getOffset() synchronously before the scan
+        /// POST, and on a stale cache that is a round trip with its own deadlines, paid inside this
+        /// request. Leaving it out under-states the budget by two seconds.
+        static constexpr long long VD_SCAN_BUDGET_MS = (VD_SCAN_READ_TIMEOUT_SECONDS + VD_SCAN_WRITE_TIMEOUT_SECONDS +
+                                                        remoted::common::VdClient::OFFSET_READ_TIMEOUT_SECONDS +
+                                                        remoted::common::VdClient::OFFSET_WRITE_TIMEOUT_SECONDS) *
+                                                       1000;
 
         /**
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw

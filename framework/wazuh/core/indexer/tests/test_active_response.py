@@ -4,9 +4,11 @@
 
 import pytest
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import mock_open, AsyncMock, MagicMock, patch
 
 from wazuh.core.indexer.active_response import (
+    EVENT_VISIBILITY_GRACE_SECONDS,
     ActiveResponse,
     ActiveResponseFetchTask,
     ActiveResponseBookmark,
@@ -37,6 +39,19 @@ UNUSABLE_EVENT_DOCS = [
 
 def _ar(doc_source):
     return ActiveResponse(doc_source=doc_source, bookmark=ActiveResponseBookmark())
+
+
+def _stamp(seconds_ago=0):
+    """An ISO8601 `@timestamp` that many seconds in the past."""
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)).isoformat().replace("+00:00", "Z")
+
+
+def _missing_event_doc(seconds_ago):
+    """An active response whose referenced event is not in the mget result, stamped in the past."""
+    return {
+        "@timestamp": _stamp(seconds_ago),
+        "event": {"index": "idx", "doc_id": "missing"},
+    }
 
 
 class TestActiveResponseBookmark:
@@ -159,6 +174,46 @@ class TestActiveResponseBookmarkFile:
 
         mock_save.assert_not_called()
 
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_caps_a_future_dated_cursor(self, _, mock_save):
+        """A cursor written by the code that advanced it once per delivered response can hold a
+        future `@timestamp`. Left as read, search_after asks for documents sorting after an instant
+        the query's own `lte: now` ceiling excludes, so every cycle reads zero hits until
+        wall-clock time catches up and the only recovery is deleting the file."""
+        future_ms = int(datetime.now(timezone.utc).timestamp() * 1000) + 3_600_000
+
+        with patch("builtins.open", new_callable=mock_open, read_data=f'{{"sort":[{future_ms},"doc-1"]}}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort[0] < future_ms
+        assert bf.sort[1] == "doc-1"
+        # Persisted, or a cycle that reads no hits writes no cursor and leaves the bad value on
+        # disk for the next restart to load again.
+        mock_save.assert_called_once()
+
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_leaves_a_past_cursor_alone(self, _, mock_save):
+        """The cap must not touch a healthy cursor: rewriting it would move the stream."""
+        past_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - 3_600_000
+
+        with patch("builtins.open", new_callable=mock_open, read_data=f'{{"sort":[{past_ms},"doc-1"]}}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort == [past_ms, "doc-1"]
+        mock_save.assert_not_called()
+
+    @patch.object(ActiveResponseBookmarkFile, "_save")
+    @patch("wazuh.core.indexer.active_response.os.path.exists", return_value=True)
+    def test_load_leaves_a_cursor_that_does_not_lead_with_a_timestamp(self, _, mock_save):
+        """Nothing validates the file, so the comparison has to survive whatever is in it."""
+        with patch("builtins.open", new_callable=mock_open, read_data='{"sort":["nope","doc-1"]}'):
+            bf = ActiveResponseBookmarkFile(path="dummy")
+
+        assert bf.sort == ["nope", "doc-1"]
+        mock_save.assert_not_called()
+
 
 class TestActiveResponse:
     """Tests for ActiveResponse.target_agents."""
@@ -262,6 +317,72 @@ class TestActiveResponseHelpers:
             assert (
                 body["query"]["bool"]["filter"][0]["range"]["@timestamp"]["gte"] == 123
             )
+            # Bounded above as well, so a future-stamped document cannot enter the page and
+            # move the cursor past everything created before it.
+            assert (
+                body["query"]["bool"]["filter"][0]["range"]["@timestamp"]["lte"]
+                <= int(datetime.now(timezone.utc).timestamp() * 1000)
+            )
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_search_after_is_still_bounded_above(self, mock_client):
+            """The cursor branch carries no gte, so the upper bound is the only thing keeping a
+            future-stamped document out of the page it would otherwise skip past."""
+            client = AsyncMock()
+            client.search.return_value = {"hits": {"hits": []}}
+            mock_client.return_value.__aenter__.return_value = client
+
+            bookmark = MagicMock()
+            bookmark.build_sort.return_value = [{"@timestamp": "asc"}]
+            bookmark.to_search_after.return_value = [1, "a"]
+
+            await ActiveResponseHelpers.fetch_active_response_docs(bookmark)
+
+            timestamp_range = client.search.call_args.kwargs["body"]["query"]["bool"]["filter"][0][
+                "range"
+            ]["@timestamp"]
+
+            assert "gte" not in timestamp_range
+            assert timestamp_range["lte"] <= int(datetime.now(timezone.utc).timestamp() * 1000)
+            bookmark.ensure_only_events_after.assert_not_called()
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_the_page_extent_is_recorded_before_filtering(self, mock_client):
+            """What the cursor follows is how far the page reached, so it is taken from the last hit
+            and not from the documents that survive validation below."""
+            client = AsyncMock()
+            client.search.return_value = {
+                "hits": {
+                    "hits": [
+                        {"_source": {"k": "v"}, "_id": "1", "_index": "idx", "sort": [1, "1"]},
+                        {"_source": {"k": "v"}, "_id": "2", "_index": "idx", "sort": [2, "2"]},
+                    ]
+                }
+            }
+            mock_client.return_value.__aenter__.return_value = client
+
+            # Seeded with a cursor so the read takes the search_after branch: the initial branch
+            # resolves only_events_after, which only the file-backed bookmark implements.
+            bookmark = ActiveResponseBookmark(sort=[0, "0"])
+
+            await ActiveResponseHelpers.fetch_active_response_docs(bookmark)
+
+            assert bookmark.page_end_sort == [2, "2"]
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_an_empty_page_leaves_the_cursor_alone(self, mock_client):
+            client = AsyncMock()
+            client.search.return_value = {"hits": {"hits": []}}
+            mock_client.return_value.__aenter__.return_value = client
+
+            bookmark = ActiveResponseBookmark(sort=[0, "0"])
+
+            await ActiveResponseHelpers.fetch_active_response_docs(bookmark)
+
+            assert bookmark.page_end_sort is None
 
         @pytest.mark.asyncio
         @patch("wazuh.core.indexer.active_response.get_indexer_client")
@@ -270,8 +391,8 @@ class TestActiveResponseHelpers:
             client.search.return_value = {
                 "hits": {
                     "hits": [
-                        {"_source": {"valid": True}, "_id": "1", "_index": "idx"},
-                        {"_source": {"invalid": True}, "_id": "2", "_index": "idx"},
+                        {"_source": {"valid": True}, "_id": "1", "_index": "idx", "sort": [1, "1"]},
+                        {"_source": {"invalid": True}, "_id": "2", "_index": "idx", "sort": [2, "2"]},
                     ]
                 }
             }
@@ -455,7 +576,7 @@ class TestActiveResponseBuilder:
             await builder.enrich_ar_with_events_info(allow_empty_event=False)
 
             assert builder._ars == []
-            logger.debug.assert_called()
+            logger.warning.assert_called()
 
         @pytest.mark.asyncio
         @patch(
@@ -487,23 +608,99 @@ class TestActiveResponseBuilder:
         async def test_enrich_unusable_event_is_discarded(self, mock_events, doc_source):
             # Reachable only once get_events_by_ar() stops raising: the handler's log line reads
             # both names, and a truthy non-mapping reached .get() on a str/int/list outside the try.
+            #
+            # Stamped now on purpose. An unusable reference is terminal at any age, so it must not
+            # take the event-visibility hold: get_events_by_ar() already refused to look it up, and
+            # a reference it would not query can never become visible. Without the `usable` check
+            # this document holds the whole page for the length of the grace window.
             mock_events.return_value = {"idx": {"1": {"k": "v"}}}
 
             logger = MagicMock()
             good = _ar(GOOD_EVENT_DOC)
 
+            bookmark_file = ActiveResponseBookmark(page_end_sort=[9, "z"])
             builder = ActiveResponseBuilder(
                 logger=logger,
                 all_agents=[],
-                bookmark_file=MagicMock(),
+                bookmark_file=bookmark_file,
             )
-            builder._ars = [_ar(doc_source), good]
+            builder._ars = [_ar({**doc_source, "@timestamp": _stamp()}), good]
 
             await builder.enrich_ar_with_events_info(allow_empty_event=False)
 
             assert builder._ars == [good]
             assert builder._ars[0].event == {"k": "v"}
-            logger.debug.assert_called()
+            assert bookmark_file.page_end_sort == [9, "z"], "a terminal discard must not hold the page"
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar")
+        async def test_an_event_not_visible_yet_holds_the_page(self, mock_events):
+            # The page carried two responses and only the first resolved. The cursor has to stop
+            # between them, so the second is read again once its event is visible.
+            mock_events.return_value = {"idx": {"1": {"k": "v"}}}
+
+            good = ActiveResponse(
+                doc_source=GOOD_EVENT_DOC, bookmark=ActiveResponseBookmark([1, "1"])
+            )
+            pending = ActiveResponse(
+                doc_source=_missing_event_doc(5), bookmark=ActiveResponseBookmark([2, "2"])
+            )
+
+            bookmark_file = ActiveResponseBookmark(page_end_sort=[2, "2"])
+            builder = ActiveResponseBuilder(
+                logger=MagicMock(), all_agents=[], bookmark_file=bookmark_file
+            )
+            builder._ars = [good, pending]
+
+            await builder.enrich_ar_with_events_info()
+
+            assert builder._ars == [good]
+            assert bookmark_file.page_end_sort == [1, "1"]
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar")
+        async def test_holding_on_the_first_response_leaves_the_cursor_alone(self, mock_events):
+            mock_events.return_value = {}
+
+            pending = ActiveResponse(
+                doc_source=_missing_event_doc(5), bookmark=ActiveResponseBookmark([1, "1"])
+            )
+
+            bookmark_file = ActiveResponseBookmark(page_end_sort=[1, "1"])
+            builder = ActiveResponseBuilder(
+                logger=MagicMock(), all_agents=[], bookmark_file=bookmark_file
+            )
+            builder._ars = [pending]
+
+            await builder.enrich_ar_with_events_info()
+
+            assert builder._ars == []
+            assert bookmark_file.page_end_sort is None
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar")
+        async def test_an_event_missing_past_the_grace_window_is_discarded(self, mock_events):
+            # The counterpart of the hold: an event that never appears cannot keep the cursor,
+            # or one broken reference would stop delivery for the whole fleet.
+            mock_events.return_value = {}
+            logger = MagicMock()
+
+            stale = ActiveResponse(
+                doc_source=_missing_event_doc(EVENT_VISIBILITY_GRACE_SECONDS + 60),
+                bookmark=ActiveResponseBookmark([1, "1"]),
+            )
+
+            bookmark_file = ActiveResponseBookmark(page_end_sort=[1, "1"])
+            builder = ActiveResponseBuilder(
+                logger=logger, all_agents=[], bookmark_file=bookmark_file
+            )
+            builder._ars = [stale]
+
+            await builder.enrich_ar_with_events_info()
+
+            assert builder._ars == []
+            assert bookmark_file.page_end_sort == [1, "1"]
+            logger.warning.assert_called_once()
 
     class TestDispatch:
         """Tests for dispatch."""
@@ -536,6 +733,9 @@ class TestActiveResponseBuilder:
             )
 
             bookmark_file = MagicMock()
+            # The page's extent is what the cursor follows now, not each response's own
+            # sort: these tests drive dispatch() with _ars set directly, so it is set here.
+            bookmark_file.page_end_sort = [1, "ar-doc-123"]
 
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
@@ -575,13 +775,13 @@ class TestActiveResponseBuilder:
             assert result is builder
 
         @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
-        def test_dispatch_handles_socket_error(self, mock_socket):
-            """Test error handling when Task Manager socket fails."""
-            from wazuh.core.exception import WazuhError
+        def test_dispatch_holds_the_page_on_a_failed_send(self, mock_socket):
+            """WazuhSocketJSON raises a bare WazuhException(1014) when the send fails. That says
+            nothing about this response, so the page must be held rather than cleared."""
+            from wazuh.core.exception import WazuhException
 
-            # Mock socket to raise error
             mock_sock_instance = MagicMock()
-            mock_sock_instance.send.side_effect = WazuhError(1001)
+            mock_sock_instance.send.side_effect = WazuhException(1014)
             mock_socket.return_value.__enter__.return_value = mock_sock_instance
 
             ar = ActiveResponse(
@@ -604,6 +804,9 @@ class TestActiveResponseBuilder:
 
             logger = MagicMock()
             bookmark_file = MagicMock()
+            # The page's extent is what the cursor follows now, not each response's own
+            # sort: these tests drive dispatch() with _ars set directly, so it is set here.
+            bookmark_file.page_end_sort = [1]
 
             builder = ActiveResponseBuilder(
                 logger=logger,
@@ -614,14 +817,116 @@ class TestActiveResponseBuilder:
 
             builder.dispatch()
 
-            # Error should be logged
             logger.error.assert_called_once()
-            # Bookmark should still be updated (move past failed AR)
-            bookmark_file.update.assert_called_once_with([1])
+            bookmark_file.update.assert_not_called()
+
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_holds_the_page_when_task_manager_is_unreachable(self, mock_socket):
+            """A dead Task Manager socket raises WazuhInternalError, a sibling of WazuhError under
+            WazuhException rather than a subclass, so catching only WazuhError let it escape the
+            loop and abort the cycle from that response on. Caught here instead, and the page is
+            held: clearing it would drop every response on it over a transient outage, turning
+            at-least-once delivery into at-most-once."""
+            from wazuh.core.exception import WazuhInternalError
+
+            mock_socket.return_value.__enter__.side_effect = WazuhInternalError(1013)
+
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1]),
+            )
+
+            logger = MagicMock()
+            bookmark_file = MagicMock()
+            bookmark_file.page_end_sort = [1]
+
+            builder = ActiveResponseBuilder(
+                logger=logger,
+                all_agents=["001"],
+                bookmark_file=bookmark_file,
+            )
+            builder._ars = [ar]
+
+            builder.dispatch()
+
+            logger.error.assert_called_once()
+            bookmark_file.update.assert_not_called()
+
+        def test_dispatch_advances_the_cursor_on_a_page_that_dispatched_nothing(self):
+            """Every document of the page was discarded before dispatch (invalid schema, unusable
+            event reference, unparseable @timestamp), so nothing reaches _ars. The cursor still has
+            to clear the page, or it is re-read every polling cycle for as long as the document
+            exists."""
+            bookmark_file = MagicMock()
+            bookmark_file.page_end_sort = [9, "z"]
+
+            builder = ActiveResponseBuilder(
+                logger=MagicMock(), all_agents=[], bookmark_file=bookmark_file
+            )
+            builder._ars = []
+
+            builder.dispatch()
+
+            bookmark_file.update.assert_called_once_with([9, "z"])
+
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_follows_the_page_not_the_last_dispatched_response(self, mock_socket):
+            """The cursor clears the whole page, including documents that came after the last one
+            dispatched. Following the last dispatched response instead would leave them to be
+            re-read."""
+            mock_sock_instance = MagicMock()
+            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "t1"}
+            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1, "ar-doc-123"]),
+            )
+
+            bookmark_file = MagicMock()
+            bookmark_file.page_end_sort = [7, "later-doc"]
+
+            builder = ActiveResponseBuilder(
+                logger=MagicMock(), all_agents=["001"], bookmark_file=bookmark_file
+            )
+            builder._ars = [ar, ar]
+
+            builder.dispatch()
+
+            # Once for the page, not once per response, which also means one fsync per cycle.
+            bookmark_file.update.assert_called_once_with([7, "later-doc"])
 
         @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
         def test_dispatch_handles_task_manager_error_response(self, mock_socket):
-            """Test handling when Task Manager returns error response."""
+            """Task Manager answering with an error is a decision about this task, not a transport
+            failure (receive(raw=True) returns it instead of raising), so the page still clears.
+            This is the contrast with the two hold cases above."""
             # Mock socket to return error response
             mock_sock_instance = MagicMock()
             mock_sock_instance.receive.return_value = {
@@ -651,6 +956,9 @@ class TestActiveResponseBuilder:
 
             logger = MagicMock()
             bookmark_file = MagicMock()
+            # The page's extent is what the cursor follows now, not each response's own
+            # sort: these tests drive dispatch() with _ars set directly, so it is set here.
+            bookmark_file.page_end_sort = [1]
 
             builder = ActiveResponseBuilder(
                 logger=logger,

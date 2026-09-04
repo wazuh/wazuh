@@ -204,7 +204,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 
 - **Default value:** `1024`
 - **Allowed values:** 0 to 65536
-- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter — a hit shows in the logs and as `live` pinned at the cap).
+- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
 
 ### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
@@ -216,7 +216,7 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 
 - **Default value:** `268435456` (256 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
-- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server) (levels only — budget sheds have no cumulative counter).
+- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server), and the cumulative shed count as `server.rejected.budget`.
 
 ### wazuh_modules.inventory_sync_server_reserved_control_connections
 
@@ -576,8 +576,8 @@ Four gates shed with a `503`, in the order a request meets them — each with it
 1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections. No shed
    counter; `server.sessions.live` pinned at the cap is the signature.
 2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
-   No shed counter either; watch the `server.budget.*` levels (available near 0, inflight near
-   the cap).
+   Counted in `server.rejected.budget`; watch the `server.budget.*` levels alongside it (available
+   near 0, inflight near the cap).
 3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
    worker exceed the global byte cap; counted as `sync.pipeline.shed.total`.
 4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;

@@ -148,9 +148,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// module-local socket to reach this wait - a hop that can silently drop it (no
         /// route for the session, a full module socket, a send() failure). Without a
         /// ceiling here that drop wedges this module's sync forever. The value is set well
-        /// above https_client's own worst case for one /stateful session (5 attempts *
-        /// 120s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~14 minutes) so it only
-        /// fires on an actual delivery failure, never on a slow-but-alive manager.
+        /// above https_client's own worst case for one /stateful session at the defaults (5
+        /// attempts * 90s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~11.5 minutes) so it
+        /// only fires on an actual delivery failure, never on a slow-but-alive manager. Both
+        /// operands are configurable and neither is compared against this constant, so a raised
+        /// https_stateful_attempts or _timeout can still cross it.
         static constexpr auto SESSION_RESPONSE_TIMEOUT = std::chrono::minutes(15);
 
         /// @brief Total attempts for a module integrity check (requiresFullSync()) before

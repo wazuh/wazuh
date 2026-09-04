@@ -16,12 +16,19 @@ from typing import Any, Dict, Optional, List, Set
 from wazuh.core import common
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.utils import ClusterFilter
-from wazuh.core.exception import WazuhError, IndexerUnavailableError
+from wazuh.core.exception import WazuhError, WazuhException, IndexerUnavailableError
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wazuh_socket import WazuhSocketJSON
 
 
 AR_INDEX = "wazuh-active-responses*"
+
+#: How long the event a response references may stay invisible before the response is given up on.
+#: The event is written to a different index by a different pipeline, so a response can be readable
+#: here while its event is not refresh-visible yet. Under this age the page is held and read again
+#: on the next cycle; over it the reference is taken as broken, which is what keeps an event that
+#: never appears from freezing the cursor for the whole fleet.
+EVENT_VISIBILITY_GRACE_SECONDS = 120
 AR_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -77,11 +84,40 @@ AR_SCHEMA = {
 }
 
 
+def _ar_age_seconds(doc_source: Dict[str, Any]) -> Optional[float]:
+    """Age of an active response document, or None when its `@timestamp` cannot be read.
+
+    Parameters
+    ----------
+    doc_source : Dict[str, Any]
+        The `_source` of an active response document.
+
+    Returns
+    -------
+    Optional[float]
+        Seconds since the document was stamped, or None if the field is missing or unparseable.
+    """
+    try:
+        stamped = datetime.fromisoformat(str(doc_source["@timestamp"]).replace("Z", "+00:00"))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    # A stamp without an offset is read as UTC, the same assumption the query's bound makes.
+    if stamped.tzinfo is None:
+        stamped = stamped.replace(tzinfo=timezone.utc)
+
+    return (datetime.now(timezone.utc) - stamped).total_seconds()
+
+
 @dataclass
 class ActiveResponseBookmark:
     sort: list[Any] = field(default_factory=list)
     sort_fields: list[str] = field(default_factory=lambda: ["@timestamp", "_id"])
     only_events_after: int | None = None
+    #: How far the last page read reached, whatever happened to each of its documents. Not
+    #: persisted: it is the input to the single `update()` the caller makes once the page is
+    #: processed. See the cursor contract in ActiveResponseBuilder.dispatch().
+    page_end_sort: list[Any] | None = None
 
     def build_sort(self) -> List[Dict[str, str]]:
         """Build the sort structure for OpenSearch queries.
@@ -142,7 +178,35 @@ class ActiveResponseBookmarkFile(ActiveResponseBookmark):
                     self.sort_fields = data.get("sort_fields", self.sort_fields)
                     self.only_events_after = data.get("only_events_after")
         except (json.JSONDecodeError, IOError):
-            pass
+            return
+
+        self._clamp_sort_to_present()
+
+    def _clamp_sort_to_present(self) -> None:
+        """Cap the loaded cursor's `@timestamp` at the present instant and persist the cap."""
+        # A cursor written by a version that advanced it once per delivered response can hold a
+        # future `@timestamp`: nothing upstream validates the field, and clock skew on the node
+        # that stamped the document is enough to produce one. search_after would then ask for
+        # documents sorting after an instant the query's own `lte: now` ceiling excludes, so every
+        # cycle reads zero hits until wall-clock time catches up and the only recovery is deleting
+        # this file by hand. Capping unfreezes the stream; it does not recover the responses that
+        # cursor already skipped. Persisted right here, because a cycle that reads no hits writes
+        # no cursor, which would leave the bad value on disk for the next restart to load again.
+        if not self.sort or isinstance(self.sort[0], bool) or not isinstance(self.sort[0], (int, float)):
+            return
+
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        if self.sort[0] <= now_ms:
+            return
+
+        ActiveResponseHelpers.logger.warning(
+            f"Active response bookmark `{self.path}` points at {self.sort[0]}, ahead of the "
+            f"present instant. Capping it at {now_ms}; delivery would otherwise stay frozen until "
+            f"wall-clock time reached it. Responses stamped before that point were already skipped."
+        )
+        self.sort = [now_ms, *self.sort[1:]]
+        self._save()
 
     def _save(self) -> None:
         """Persist current bookmark data to the JSON file."""
@@ -287,13 +351,33 @@ class ActiveResponseHelpers:
 
         search_after = bookmark.to_search_after()
 
+        # Never read past the present. The cursor pages `@timestamp` ascending and is written from
+        # the last document processed, so a single document stamped in the future would move it
+        # beyond every active response created before that instant and stop delivery for the whole
+        # fleet until wall-clock time catches up. Nothing upstream validates the field, and clock
+        # skew on the node that stamped it is enough to produce one.
+        #
+        # Bounding the read rather than the write is what keeps this from trading one failure for
+        # another: such a document is simply not returned until its own time arrives, so the cursor
+        # never has to refuse to advance, and the document is not re-fetched and re-dispatched on
+        # every polling cycle in the meantime.
+        #
+        # The bound is this node's wall clock, so a clock stepped backwards past the cursor returns
+        # nothing until it catches up: delivery stalls for the length of the step and then resumes
+        # on its own. That is the accepted cost of bounding the read.
+        timestamp_range: Dict[str, int] = {}
+
         if search_after:
             query["search_after"] = search_after
         else:
-            start_ts = bookmark.ensure_only_events_after()
-            query["query"]["bool"]["filter"].append(
-                {"range": {"@timestamp": {"gte": start_ts}}}
-            )
+            timestamp_range["gte"] = bookmark.ensure_only_events_after()
+
+        # Read after the lower bound is resolved, never before: on the first run ever
+        # ensure_only_events_after() stamps its own now(), and taking this one first would put the
+        # ceiling below the floor and return an empty first page.
+        timestamp_range["lte"] = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        query["query"]["bool"]["filter"].append({"range": {"@timestamp": timestamp_range}})
 
         ActiveResponseHelpers.logger.debug(f"Documents retrieval query: {query}")
 
@@ -302,18 +386,26 @@ class ActiveResponseHelpers:
             resp = await client.search(index=AR_INDEX, body=query)
 
         docs = []
+        hits = resp["hits"]["hits"]
+
+        # Recorded before anything is filtered out below: the cursor is a high-water mark of what
+        # was READ, so a document this loop discards (invalid schema) must not hold it back.
+        if hits:
+            bookmark.page_end_sort = hits[-1]["sort"]
 
         ActiveResponseHelpers.logger.debug(
-            f"{ len(resp['hits']['hits']) or  'No' } active reponse documents fetched."
+            f"{ len(hits) or  'No' } active reponse documents fetched."
         )
 
-        for doc in resp["hits"]["hits"]:
+        for doc in hits:
             try:
                 if validate:
                     jsonschema.validate(instance=doc["_source"], schema=AR_SCHEMA)
                 docs.append(doc)
             except jsonschema.ValidationError as e:
-                ActiveResponseHelpers.logger.debug(
+                # Terminal: the document will never validate, so the page moves past it and the
+                # response is lost. Above debug level because that loss is silent otherwise.
+                ActiveResponseHelpers.logger.warning(
                     f"Discarding active response document `{doc['_id']}` (`{doc['_index']}`). Reason: {e})"
                 )
 
@@ -349,7 +441,7 @@ class ActiveResponseHelpers:
             # raises nothing here and comes back as a 400 from mget instead. Either way one document
             # aborted the work for the whole page, which this loop builds before any I/O.
             if not isinstance(index, str) or not isinstance(doc_id, str) or not index or not doc_id:
-                ActiveResponseHelpers.logger.debug(f"Active response `{ar.doc_id}` carries no usable event reference.")
+                ActiveResponseHelpers.logger.warning(f"Active response `{ar.doc_id}` carries no usable event reference. Discarding it.")
                 continue
 
             docs_by_index.setdefault(index, set()).add(doc_id)
@@ -446,6 +538,11 @@ class ActiveResponseBuilder:
 
         ars_with_events = []
 
+        # How far the cursor may reach if the page has to be held: the last response resolved
+        # before the first one that was not. See the cursor contract in dispatch().
+        resolved_through: Optional[List[Any]] = None
+        holding = False
+
         for ar in self._ars:
             # Bound before the try: the handler's message reads both. isinstance, not `or {}`:
             # a non-empty string `event` is truthy and has no .get().
@@ -453,16 +550,65 @@ class ActiveResponseBuilder:
             event_ref = event_ref if isinstance(event_ref, dict) else {}
             index_id = event_ref.get("index")
             event_id = event_ref.get("doc_id")
+            # Same predicate get_events_by_ar() applies before the mget, because the two decisions
+            # have to agree: a reference it refused to look up can never be "not visible yet".
+            usable = bool(isinstance(index_id, str) and index_id and isinstance(event_id, str) and event_id)
+
             try:
                 ar.event = events[index_id][event_id]
-                ars_with_events.append(ar)
+                keep = True
             except (KeyError, TypeError):
+                keep = allow_empty_event
+                if keep:
+                    self.logger.debug(f"Expected event `{event_id}` (`{index_id}`) not found.")
+
+            if keep:
+                ars_with_events.append(ar)
+                if not holding:
+                    resolved_through = ar.bookmark.sort
+                continue
+
+            if not usable:
+                # Terminal, and already reported at WARNING by get_events_by_ar(), which dropped the
+                # reference before the mget rather than asking the indexer about a null index.
                 self.logger.debug(
-                    f"Expected event `{event_id}` (`{index_id}`) not found."
-                    f"{' Discarding related active response.' if not allow_empty_event else ''}"
+                    f"Discarding active response `{ar.doc_id}`: its event reference is unusable."
                 )
-                if allow_empty_event:
-                    ars_with_events.append(ar)
+                continue
+
+            age = _ar_age_seconds(ar.doc_source)
+
+            # Two different failures reach here in the same shape. An event written moments ago may
+            # simply not be refresh-visible yet, and the response is still deliverable on the next
+            # cycle: hold the cursor short of it instead of losing it, which is what the per-response
+            # cursor used to do by accident whenever the discard happened to be last on the page. An
+            # event still missing after the grace window is not coming, and holding the cursor for it
+            # would stop delivery for the whole fleet, so that one is dropped and said out loud. A
+            # negative age is a document stamped ahead of this node's clock, which the query's upper
+            # bound already excludes: it is not "written moments ago" and must not hold.
+            if age is not None and 0 <= age < EVENT_VISIBILITY_GRACE_SECONDS:
+                if not holding:
+                    holding = True
+                    # One high-water mark cannot both hold here and clear the terminal documents
+                    # earlier on this page, so those are read again every cycle the hold lasts and
+                    # their discard is reported again with them. Bounded by the grace window, and
+                    # the alternative is the per-document state this cursor exists to avoid.
+                    self._bookmark_file.page_end_sort = resolved_through
+                self.logger.debug(
+                    f"Expected event `{event_id}` (`{index_id}`) is not visible yet. "
+                    f"Holding active response `{ar.doc_id}` and the rest of the page."
+                )
+                continue
+
+            reason = (
+                f"not found after {EVENT_VISIBILITY_GRACE_SECONDS}s"
+                if age is not None
+                else "not found, and the response carries no readable @timestamp"
+            )
+            self.logger.warning(
+                f"Expected event `{event_id}` (`{index_id}`) {reason}. "
+                f"Discarding active response `{ar.doc_id}`."
+            )
 
         self._ars = ars_with_events
 
@@ -476,10 +622,10 @@ class ActiveResponseBuilder:
         ActiveResponseBuilder
             The builder instance.
         """
-        if not self._ars:
-            return self
-
         msgs_sent = 0
+        # Set by the WazuhException handler below, and the reason the cursor write at the end is
+        # conditional: a Task Manager that cannot be reached is transient and page-wide.
+        transport_failed = False
 
         for ar in self._ars:
             # Extract timestamp from AR document (for deterministic task ID)
@@ -544,17 +690,63 @@ class ActiveResponseBuilder:
                             f"Task Manager error for agent {agent_id}: {error} - {message}"
                         )
 
-                except WazuhError as e:
+                # WazuhException, not WazuhError: WazuhSocketJSON raises WazuhInternalError when
+                # it cannot connect and plain WazuhException on a failed send or receive, and both
+                # are siblings of WazuhError under WazuhException. Catching the narrow one let a
+                # dead Task Manager socket escape the whole loop, which aborted the cycle from
+                # that response on.
+                #
+                # Everything caught here is transport, never a rejected task: receive(raw=True)
+                # skips the cmd_error raise in WazuhSocketJSON, so Task Manager answering with an
+                # error arrives as `status != "ok"` above. What lands here is 1013 (cannot
+                # connect), 1121 and 1014 (failed send or receive) -- conditions that say nothing
+                # about this response and will resolve on their own, so the page is held instead
+                # of cleared. Handling them without escaping is what keeps a terminal discard
+                # elsewhere on the page from being re-read forever.
+                except WazuhException as e:
+                    transport_failed = True
                     self.logger.error(
                         f"Failed to create task for agent `{agent_id}`: {e}"
                     )
 
-            # Update bookmark after processing all targets for this AR
-            self._bookmark_file.update(ar.bookmark.sort)
-
         self.logger.info(
             f"Created {msgs_sent} task(s) from {len(self._ars)} active response(s)."
         )
+
+        # THE CURSOR CONTRACT, in one place. The bookmark is a high-water mark of what was READ,
+        # not of what was delivered, and it moves once per page rather than once per active
+        # response. Two failures follow from getting this wrong, and the code used to have both:
+        #
+        #  - Advancing per delivered response skipped the rest of the stream whenever the cursor
+        #    could jump (a document stamped in the future). The read is bounded at the present
+        #    instant now, so a task Task Manager rejects loses exactly that document, reported by
+        #    the ERROR that branch writes. A Task Manager that cannot be reached at all is not
+        #    that case: nothing was decided about any response on this page, so the page is held
+        #    and read again, and the repeated create_task calls are absorbed by the same
+        #    deterministic task id that makes one write per page safe.
+        #  - Never advancing for a document that did not reach this loop (invalid schema, unusable
+        #    event reference, unparseable @timestamp) froze the cursor on its page, which was then
+        #    re-read every polling cycle for as long as the document existed. Those three are
+        #    terminal: the document can never become valid, so the page moves past it, and each is
+        #    reported at WARNING where it is discarded rather than left to debug level.
+        #
+        # The one discard that is not terminal is an event that is not visible yet, and
+        # enrich_ar_with_events_info() holds page_end_sort short of it instead of losing a response
+        # that is still deliverable. That hold expires with EVENT_VISIBILITY_GRACE_SECONDS, so a
+        # reference that never resolves cannot freeze the cursor either. While it lasts, the
+        # responses after it are dispatched again each cycle, absorbed by the same deterministic
+        # task id that makes one write per page safe.
+        #
+        # A crash between the page and this write re-reads the page: the duplicate create_task
+        # calls are absorbed by the deterministic task id, which is what makes one write per page
+        # safe (and saves one fsync per response).
+        if transport_failed:
+            self.logger.warning(
+                "Task Manager was unreachable for at least one active response. Holding the "
+                "cursor so this page is read again on the next cycle."
+            )
+        elif self._bookmark_file.page_end_sort is not None:
+            self._bookmark_file.update(self._bookmark_file.page_end_sort)
 
         return self
 

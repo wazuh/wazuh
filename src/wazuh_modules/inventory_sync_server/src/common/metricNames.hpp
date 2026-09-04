@@ -53,6 +53,12 @@ namespace invsync::metrics
     constexpr auto SERVER_SESSIONS_DATA {"server.sessions.data"};
     constexpr auto SERVER_SESSIONS_CONTROL {"server.sessions.control"};
     constexpr auto SERVER_SESSIONS_LIVENESS {"server.sessions.liveness"};
+    /// Transport-level 503s by cause; see wazuh::uds_http::TransportDiagnostics for why they are
+    /// invisible to the sync.* families.
+    constexpr auto SERVER_REJECTED_BUDGET {"server.rejected.budget"};
+    constexpr auto SERVER_REJECTED_SESSION_CAP {"server.rejected.session_cap"};
+    constexpr auto SERVER_REJECTED_SHUTDOWN {"server.rejected.shutdown"};
+    constexpr auto SERVER_REJECTED_NO_RESPONSE {"server.rejected.no_response"};
 
     // -- vulnerability-detection lane -------------------------------------------------------
     constexpr auto VD_CAPACITY_503_TOTAL {"vd.capacity.503.total"};

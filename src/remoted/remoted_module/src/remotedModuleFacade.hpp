@@ -1007,6 +1007,28 @@ private:
             },
             "Admin sessions classified on liveness-class routes",
             "connections");
+
+        // Why these cannot be derived from the endpoint families: TransportDiagnostics's own comment.
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.budget",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedBudgetExhausted); },
+            "Admin requests answered 503 because the in-flight payload budget was exhausted",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.session_cap",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedSessionCap); },
+            "Admin requests answered 503 because their class session cap was reached",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.shutdown",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedShutdown); },
+            "Admin requests answered 503 because the server was already stopping",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.no_response",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedNoResponse); },
+            "Admin requests answered 503 because their handler produced no response",
+            "requests");
     }
 
     /**

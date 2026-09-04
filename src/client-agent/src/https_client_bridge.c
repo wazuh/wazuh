@@ -109,13 +109,6 @@ static bool bridge_stopping(void)
     return stopping;
 }
 
-/* Same incremental back-off as the initial-enrollment loop (start_agent.c's
- * w_agentd_keys_init). Both read the same two internal options, so the two
- * loops can no longer drift apart -- which is what the duplicated file-local
- * constants used to risk. */
-#define BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT 5
-#define BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT 60
-
 /* Runs off the dispatcher thread (spawned by bridge_on_reenroll_required):
  * the module's callback contract forbids blocking it, and enrollment can
  * take anywhere from seconds to (against a down manager) indefinitely.
@@ -145,12 +138,10 @@ void *bridge_reenroll_thread(void *arg)
         enroll_result = try_enroll_to_server();
 
         if (enroll_result != 0) {
-            const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
-                                                       BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT);
-            const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
-                                                         BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT);
-            if (delay_sleep < retry_max) {
-                delay_sleep += retry_delta;
+            /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
+             * ClientConf() resolved, so the two cannot drift apart. */
+            if (delay_sleep < agt->enrollment.retry_max) {
+                delay_sleep += agt->enrollment.retry_delta;
             }
             mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
             sleep((unsigned int)delay_sleep);

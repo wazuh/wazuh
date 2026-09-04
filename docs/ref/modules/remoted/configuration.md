@@ -584,7 +584,9 @@ Seconds to wait for a full request to arrive on a connection.
   even though it never stalled, and the connection is closed without an HTTP status. This is the
   setting that bounds a large `POST /stateful` or `POST /stateless` over a slow link -- raising
   the agent's own per-request budget without raising this one changes nothing (see
-  [Connection timing tuning](timing-tuning.md#3-invariants))
+  [Connection timing tuning](timing-tuning.md#3-invariants)). The startup downstream-budget warning
+  names `remoted.http_request_timeout` instead, so that is the option usually reached for first,
+  and raising it does not widen the window an agent has to send its body
 
 #### remoted.http_write_timeout
 
@@ -596,7 +598,11 @@ Seconds to wait for a response write to complete.
   each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link: measured
   5/10 aborts at the shipped 10 s below ~1 Mbit/s against 0/5 at 120 s on the same shaper. Size it
   against the slowest link that must be able to complete an upgrade
-  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes))
+  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). The per-chunk deadline puts a
+  floor on the usable link speed, `remoted.http_stream_chunk_size` divided by this value, about
+  6.5 KB/s at the defaults of 64 KiB and 10 s. An abort leaves no line in the manager log at any
+  level: RESTinio reports the expiry from `handle_xxx_timeout()` at trace level, and the module's
+  logger adapter strips trace at compile time
 
 #### remoted.http_request_timeout
 
@@ -885,6 +891,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
   of `3600` the two differ by about two orders of magnitude.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
+- **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
+  unreachable **every** notify retries the query: one wazuh-db round trip per notify, for the whole
+  fleet, on top of serving the membership the cache already holds. That retry is deliberate. Marking
+  the cache fresh on failure would stop it, at the cost of serving membership that can be a full
+  `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
+  security product. The retry rate is visible as `remoted.control.wdb.*` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
 
 #### remoted.control_wdb_request_connections
 

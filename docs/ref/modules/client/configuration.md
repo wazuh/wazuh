@@ -431,6 +431,11 @@ agent.enrollment_retry_delta=5
 agent.enrollment_retry_max=60
 ```
 
+Both values are resolved once, when the agent starts, and the loops use the resolved value for the
+life of the process. Editing either one on a running agent has no effect until it restarts, and an
+out-of-range value refuses the start rather than terminating the agent later, at its first failed
+re-enrollment.
+
 ### Buffer Settings
 
 ```ini
