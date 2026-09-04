@@ -26,6 +26,25 @@ typedef void* rt_handle_t;
 
 typedef void (*rt_sink_fn)(const struct rt_file_event* ev, void* user);
 
+/* Severity passed to rt_log_fn. Deliberately its own small enum rather than
+ * Wazuh's log levels: the engine is consumer-agnostic, so mapping these onto
+ * mdebug1/merror/etc. is the consumer's job. */
+enum rt_log_level
+{
+    RT_LOG_ERROR = 0,
+    RT_LOG_WARN  = 1,
+    RT_LOG_INFO  = 2,
+    RT_LOG_DEBUG = 3,
+};
+
+/* Diagnostics sink. Without one, the engine writes to stderr — which for a
+ * daemonised agent means nowhere: a failed eBPF load would never reach
+ * ossec.log, so "eBPF unavailable, falling back to periodic rescan" would be
+ * undiagnosable in the field. `msg` is a NUL-terminated single line with no
+ * trailing newline, valid only for the duration of the call. May be called
+ * from whichever thread is inside rt_open/rt_poll/rt_close. */
+typedef void (*rt_log_fn)(int level, const char* msg, void* user);
+
 struct rt_filter
 {
     /* Bitmask of (1u << rt_event_type). Only the BPF programs needed to
@@ -44,6 +63,10 @@ struct rt_filter
      * has no opinion on Wazuh's install-path layout, per the
      * consumer-agnostic constraint. */
     const char* bpf_obj_path;
+
+    /* Optional diagnostics sink; NULL keeps the stderr behaviour. */
+    rt_log_fn log;
+    void* log_user;
 };
 
 #define RT_FILE_OPEN_BIT   (1u << RT_EV_FILE_OPEN)
@@ -72,9 +95,32 @@ rt_handle_t rt_open(const struct rt_filter* filter);
  * to call concurrently on the same handle from two threads. */
 int rt_poll(rt_handle_t handle, rt_sink_fn sink, void* user, int timeout_ms);
 
-/* Detaches and frees everything opened by rt_open(). Safe to call with
- * handle == NULL. */
+/* Detaches and frees everything opened by rt_open(), including every
+ * bpf_link, so the programs are actually detached rather than left attached
+ * for the life of the process. Safe to call with handle == NULL. */
 void rt_close(rt_handle_t handle);
+
+/* The ABI this engine was compiled against, for a consumer that may have been
+ * built against a different copy of rt_event_contract.h than the engine it is
+ * linked to. A consumer MUST refuse to use an engine whose major differs from
+ * its own RT_ABI_MAJOR: the event record is exchanged by raw memory
+ * reinterpretation, so a layout change is silent otherwise.
+ *
+ * The engine applies the same rule to the BPF object at runtime, per event,
+ * since the object is a separate build artefact: a record whose abi_major does
+ * not match, or which is shorter than this build's struct, is dropped rather
+ * than handed to the sink, and reported once per handle. */
+int rt_abi_major(void);
+int rt_abi_minor(void);
+
+/* Non-zero when this host uses cgroup v1, i.e. when bpf_get_current_cgroup_id()
+ * — and therefore every event's cgroup_id — is not a usable correlation key
+ * and mnt_ns must be used instead (spike #37396 ADR-002). Determined once at
+ * rt_open() from the cgroup mount layout, not from the events.
+ *
+ * NOTE: the per-event RT_F_CGROUP_V1 flag is NOT yet set by the BPF program;
+ * this accessor is currently the only reliable source. See rt_engine.c. */
+int rt_host_cgroup_v1(rt_handle_t handle);
 
 #ifdef __cplusplus
 }
