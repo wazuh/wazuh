@@ -61,11 +61,47 @@ else
     abort_upgrade "2"
 fi
 
+# Escapes the three characters that are structurally significant in XML content --
+# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+# particular) can never be mistaken for markup or break the file's well-formedness.
+# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
+# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
+xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+# Strips commented-out lines before xml_value/xml_tag_present/xml_block_present extract
+# anything, so a tag an operator comments out (e.g. to fall back to the default) reads as
+# absent here too, matching OS_XML's own comment handling -- same in_comment
+# line-tracking technique this file's pin_ca() and register_configure_agent.sh's
+# agent_option_value() already use. Like those, a comment that opens and closes on the
+# same line is not stripped: every comment actually shipped in this codebase's XML wraps
+# whole indented lines, so that trade-off is accepted here too rather than fixed once and
+# left inconsistent elsewhere.
+strip_xml_comments() {
+    awk '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        # A self-contained one-line comment ("<!-- ... -->", both on this line) must be
+        # dropped whole here too, not just a comment that opens on this line and closes
+        # later -- xml_value()/xml_tag_present() do unanchored substring matching on the
+        # output, so a commented-out example left in would be read as live.
+        $0 ~ /<!--/ && $0 ~ /-->/ { next }
+        $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
+        { print }
+    ' ./etc/ossec.conf 2>/dev/null
+}
+
 # Read <block><sub><tag> from the agent configuration, taking the last match.
 xml_value() {
-    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+    # [[:space:]], not a literal space: tr -d '\n\r' above collapses a multi-line,
+    # tab-indented value onto one line, and a leading tab that survived would make a
+    # perfectly valid path fail [ -f ] right after (confirmed empirically).
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | \
         grep -o "<$2>.*</$2>" | grep -o "<$3>[^<]*</$3>" | tail -1 | \
-        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
+        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||'
 }
 
 # True (exit 0) if <block><sub><tag> exists in the config at all, even with empty
@@ -77,7 +113,7 @@ xml_value() {
 # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml), so
 # the agent reads it as the same empty-content opt-out and this must agree.
 xml_tag_present() {
-    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | \
         grep -o "<$2>.*</$2>" | grep -qE "<$3>[^<]*</$3>|<$3[[:space:]]*/>"
 }
 
@@ -236,9 +272,10 @@ parse_manager_endpoint() {
 # including the health probe, is served under the manager's global_prefix
 # (#38491) -- an unprefixed request always gets a 404, so the probe URL must
 # include the same endpoint/prefix the agent itself connects with (arg 3).
-probe_server() {
-    PROBE_TIMEOUT=5
-
+# Shared by probe_server()/probe_server_verified(), which differ only in which curl/wget
+# flags decide whether to accept the manager's certificate, not in how the target URL is
+# built. Sets PROBE_HOST/PROBE_PATH from ($1=host $2=port $3=endpoint).
+probe_build_target() {
     # MEP_HOST holds an IPv6 literal unbracketed, the way <endpoint> stores it. A URL
     # needs it bracketed again or curl, wget and Invoke-WebRequest all reject the value
     # as malformed and the upgrade aborts with "manager is not reachable".
@@ -257,6 +294,11 @@ probe_server() {
     else
         PROBE_PATH="/${3}/"
     fi
+}
+
+probe_server() {
+    PROBE_TIMEOUT=5
+    probe_build_target "${1}" "${2}" "${3}"
 
     if command -v curl > /dev/null 2>&1; then
         curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
@@ -285,6 +327,144 @@ probe_server() {
     fi
     wait ${PROBE_PID}
     return $?
+}
+
+# Same target as probe_server(), but without -k: succeeds only if the system's own
+# trust store actually verifies the manager's certificate. probe_server() cannot tell
+# us this -- it deliberately skips verification so a plain reachability check never
+# depends on TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work
+# post-upgrade. No TCP fallback here: a client that cannot do the real handshake
+# cannot tell us whether the cert is trusted, so treat that as "unverified" rather
+# than assume trust -- this deliberately stays fail-closed even for the curl-too-old
+# case below, since there is no way to positively confirm trust without the
+# handshake; only the log message distinguishes the two causes for the operator.
+probe_server_verified() {
+    PROBE_TIMEOUT=5
+    probe_build_target "${1}" "${2}" "${3}"
+
+    if command -v curl > /dev/null 2>&1; then
+        curl --tlsv1.3 -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        RC=$?
+        # Mirrors probe_server()'s own curl-too-old handling (#38607): exit 2/4 means
+        # curl itself doesn't recognize --tlsv1.3, not that the handshake was
+        # attempted and failed -- worth a distinct log line so an operator doesn't
+        # mistake "this curl build is too old" for "the manager's certificate is
+        # untrusted".
+        if [ ${RC} -eq 2 ] || [ ${RC} -eq 4 ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, so the manager's certificate could not be verified (not the same as an untrusted certificate)." >> ./logs/upgrade.log
+        fi
+        return ${RC}
+    elif command -v wget > /dev/null 2>&1; then
+        wget -q --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        return $?
+    else
+        return 1
+    fi
+}
+
+# True (exit 0) if <block><sub> exists at all, regardless of what it contains --
+# distinct from xml_tag_present, which looks for a specific leaf tag. Needed so
+# pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
+# <ssl> block instead of creating a second, duplicate one.
+xml_block_present() {
+    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -qE "<$2>|<$2[ \t]*/>"
+}
+
+# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
+# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
+# register_configure_agent.sh; duplicated because this script ships inside the WPK
+# and runs standalone, with nothing to source. Only called when
+# xml_tag_present agent ssl certificate_authorities is false, so it never overwrites
+# an operator-configured CA.
+#
+# Returns non-zero (and leaves ossec.conf untouched) if the insertion point was never
+# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
+# rather than silently reporting success with nothing actually pinned.
+pin_ca() {
+    CA_PATH="$(xml_escape "${1}")"
+    TMP_PIN_CONF="$(mktemp)"
+    PIN_OK=1
+
+    if xml_block_present agent ssl; then
+        # SSL_CA (xml_value agent ssl certificate_authorities) is empty both when the tag
+        # is absent AND when it's present-but-empty (a self-closed <certificate_authorities/>,
+        # or leftover from an interrupted prior run) -- callers reach pin_ca() in both cases.
+        # Drop any such existing occurrence within this <ssl> block instead of inserting a
+        # second, sibling one: the real parser applies last-tag-wins, and the newly inserted
+        # tag lands BEFORE (not after) an existing one here, so the stale/empty tag would
+        # otherwise silently win over the CA this function was just asked to pin.
+        awk -v ca="${CA_PATH}" '
+            in_comment {
+                if ($0 ~ /-->/) { in_comment = 0 }
+                print
+                next
+            }
+            # A self-contained one-line comment ("<!-- ... -->", both on this line) must
+            # be recognized here too, ahead of every rule below -- otherwise a
+            # commented-out example matches the unanchored certificate_authorities check
+            # further down and gets stripped as if it were the live tag.
+            $0 ~ /<!--/ {
+                print
+                if ($0 !~ /-->/) { in_comment = 1 }
+                next
+            }
+            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
+                print
+                print "      <certificate_authorities>" ca "</certificate_authorities>"
+                inserted = 1
+                in_ssl = 1
+                next
+            }
+            inserted && in_ssl && /^[[:space:]]*<\/ssl>[[:space:]]*$/ {
+                in_ssl = 0
+                print
+                next
+            }
+            inserted && in_ssl && (/<certificate_authorities[[:space:]]*\/>/ || /<certificate_authorities>[^<]*<\/certificate_authorities>/) {
+                next
+            }
+            { print }
+            END { if (!inserted) { exit 1 } }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
+        PIN_OK=$?
+    else
+        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
+        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
+        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
+        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
+        # report success here while leaving the real parser's certificate_authorities
+        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
+        # instead of believing a CA it can't actually use is now pinned.
+        awk -v ca="${CA_PATH}" '
+            in_comment {
+                if ($0 ~ /-->/) { in_comment = 0 }
+                print
+                next
+            }
+            $0 ~ /<!--/ {
+                print
+                if ($0 !~ /-->/) { in_comment = 1 }
+                next
+            }
+            !inserted && /^[[:space:]]*<agent>[[:space:]]*$/ {
+                print
+                print "    <ssl>"
+                print "      <certificate_authorities>" ca "</certificate_authorities>"
+                print "    </ssl>"
+                inserted = 1
+                next
+            }
+            { print }
+            END { if (!inserted) { exit 1 } }
+        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
+        PIN_OK=$?
+    fi
+
+    if [ "${PIN_OK}" -eq 0 ]; then
+        cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+    fi
+    rm -f "${TMP_PIN_CONF}"
+    return ${PIN_OK}
 }
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
@@ -353,6 +533,100 @@ else
     fi
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 fi
+
+# The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
+# posture the new agent boots under is exactly what's on disk now. A verifying mode
+# with no readable CA can never connect -- mirrors
+# w_agent_validate_ssl_ca() in config.c -- so catch it here, before the old agent
+# is gone, rather than leaving a freshly-upgraded host silently offline.
+SSL_VERIFICATION_MODE=$(xml_value agent ssl verification_mode)
+SSL_CA=$(xml_value agent ssl certificate_authorities)
+SSL_VERIFICATION_MODE_EXPLICIT=0
+xml_tag_present agent ssl verification_mode && SSL_VERIFICATION_MODE_EXPLICIT=1
+
+if [ -z "${SSL_VERIFICATION_MODE}" ]; then
+    if [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
+        # <verification_mode/> (or <verification_mode></verification_mode>) is present
+        # but carries no value -- xml_tag_present() counts it as present, same as
+        # OS_XML does, but Read_Agent_SSL() rejects empty content as an unrecognized
+        # value (XML_VALUEERR) same as any other typo. Treat it the same way here
+        # instead of silently substituting the default on a config the new binary is
+        # about to refuse to parse.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is present but empty, interrupting upgrade." >> ./logs/upgrade.log
+        abort_upgrade "2"
+    elif [ -n "${SSL_CA}" ]; then
+        SSL_VERIFICATION_MODE="certificate"
+    else
+        SSL_VERIFICATION_MODE="system"
+    fi
+fi
+
+# Default drop-in location for the manager's CA (mirrored on Windows in
+# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf. Resolves to /var/ossec/etc/certs/root-ca.pem on a default
+# install.
+DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
+
+case "${SSL_VERIFICATION_MODE}" in
+    full|certificate)
+        if [ -z "${SSL_CA}" ] || [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+        ;;
+    system)
+        # verification_mode=system with a certificate_authorities also set is rejected
+        # outright at runtime (validateTls() in moduleConfig.cpp) regardless of
+        # whether the manager's certificate happens to verify against the OS store --
+        # catch the config error itself here rather than let a live probe that
+        # happens to pass mask a daemon that will refuse to start.
+        if [ -n "${SSL_CA}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is 'system' but <certificate_authorities> ('${SSL_CA}') is also set; 'system' trusts the OS store, not a configured CA, and the agent refuses to start with both set. Remove <certificate_authorities>, or switch to <verification_mode>certificate</verification_mode>, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+
+        # 'system' trusts the OS store, not a configured CA -- probe_server() above
+        # cannot tell us whether that store actually trusts THIS manager's
+        # certificate, since it deliberately skips verification (-k) so the plain
+        # reachability check never depends on TLS trust. Find out for real before
+        # assuming the freshly-upgraded agent will still be able to connect.
+        if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - System CA trust check skipped (test mode)." >> ./logs/upgrade.log
+        elif probe_server_verified "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> ./logs/upgrade.log
+        elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
+            # <verification_mode>system</verification_mode> was set explicitly:
+            # pinning a CA here would be rejected at runtime (validateTls() in
+            # moduleConfig.cpp refuses system+certificate_authorities together), so
+            # there is nothing this script can safely fix on the operator's behalf.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+            if pin_ca "${DEFAULT_CA_FILE}"; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> ./logs/upgrade.log
+                abort_upgrade "2"
+            fi
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        fi
+        ;;
+    none)
+        # Explicitly disabled -- nothing for this gate to check.
+        ;;
+    *)
+        # Neither ReadConfig() nor this gate's own default-resolution above can produce
+        # anything but full/certificate/system/none, so getting here means ossec.conf
+        # carries something else (a typo, wrong case, hand-edited garbage). Read_Agent_SSL()
+        # rejects that value case-sensitively too, so letting the upgrade proceed would just
+        # trade this loud failure for the new binary refusing to start after the old one is
+        # already gone.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}', which is not a value this agent recognizes (full, certificate, system, or none); interrupting upgrade." >> ./logs/upgrade.log
+        abort_upgrade "2"
+        ;;
+esac
 
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1

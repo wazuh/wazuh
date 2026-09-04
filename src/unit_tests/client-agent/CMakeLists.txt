@@ -103,6 +103,11 @@ list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundl
 list(APPEND client-agent_names "test_agent_config")
 list(APPEND client-agent_flags " ")
 
+# ClientConf() itself, run end to end against real temp files: no wrappers, needs a
+# real etc/internal_options.conf at the working directory instead (see below).
+list(APPEND client-agent_names "test_client_conf_ssl_resolution")
+list(APPEND client-agent_flags " ")
+
 # w_enrollment_build_request()/w_enrollment_process_response() (#38465): pure
 # functions, no https_client involvement, so no hc_*/wurl_* wraps needed --
 # just the log wrappers every merror()/minfo() call goes through, plus

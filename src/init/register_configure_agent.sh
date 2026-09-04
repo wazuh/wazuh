@@ -233,7 +233,11 @@ delete_blank_lines() {
 # silently fails to match them.
 insert_into_agent_block() {
 
-    awk -v payload_file="$1" '
+    # $2 is the opening-tag pattern to insert right after, e.g. "ssl" for set_agent_ssl_ca()'s
+    # fresh-block fallback; defaults to <agent>/<client> for every other caller.
+    target_tag="${2:-agent|client}"
+
+    awk -v payload_file="$1" -v target_tag="${target_tag}" '
         BEGIN {
             while ((getline line < payload_file) > 0) {
                 payload = payload line "\n"
@@ -245,7 +249,7 @@ insert_into_agent_block() {
             print
             next
         }
-        !inserted && /^[ \t]*<(agent|client)>[ \t]*$/ {
+        !inserted && $0 ~ ("^[ \t]*<(" target_tag ")>[ \t]*$") {
             print
             printf "%s", payload
             inserted = 1
@@ -255,26 +259,103 @@ insert_into_agent_block() {
             if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
             print
         }
-    ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+        END { if (!inserted) { exit 1 } }
+    ' "${CONF_FILE}" > "${TMP_INSERT}"
+    inserted=$?
 
+    if [ "${inserted}" -eq 0 ]; then
+        cat "${TMP_INSERT}" > "${CONF_FILE}"
+    fi
     rm -f "${TMP_INSERT}"
 
+    return "${inserted}"
+
+}
+
+# Escapes the three characters that are structurally significant in XML content --
+# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+# particular) can never be mistaken for markup or break the file's well-formedness.
+# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
+# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
+xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
 
 # True when the option is really set, as opposed to appearing inside a comment.
 # Commented-out options are exactly how the shipped files used to show an example,
 # and editing one leaves the setting the caller asked for unwritten.
+#
+# Scoped to <agent> (or <agent><$2> when a second argument is given), mirroring
+# xml_tag_present()'s <block><sub><tag> scoping in pkg_installer.sh -- unscoped, this
+# would match a same-named tag anywhere else in the file, not just the one this script
+# means to edit. $2 omitted means "direct child of <agent>" (e.g. "ssl" itself).
 agent_option_is_set() {
 
-    awk -v tag="$1" '
+    # Matches both <tag> and the self-closing <tag/> -- OS_XML parses the two as
+    # equivalent (see test_simple_nodes3, src/unit_tests/os_xml, and xml_tag_present()'s
+    # identical convention in pkg_installer.sh), so a self-closing, present-but-empty tag
+    # must count as "set" here too, or set_agent_ssl_ca() would insert a second, duplicate
+    # <certificate_authorities> right alongside it.
+    # $2 is passed to awk as "subtag", not "sub" -- gawk reserves "sub" as its builtin
+    # string-substitution function and refuses to bind a variable of that name at all
+    # (a fatal error, not a warning; caught empirically, this was the first version).
+    awk -v tag="$1" -v subtag="$2" '
         in_comment {
             if ($0 ~ /-->/) { in_comment = 0 }
             next
         }
-        $0 ~ "^[ \t]*<" tag ">" { found = 1; exit }
-        { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
+        $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
+        $0 ~ /^[ \t]*<agent>[ \t]*$/ { in_agent = 1; next }
+        $0 ~ /^[ \t]*<\/agent>[ \t]*$/ { in_agent = 0; next }
+        !in_agent { next }
+        subtag != "" && $0 ~ ("^[ \t]*<" subtag ">[ \t]*$") { in_sub = 1; next }
+        subtag != "" && $0 ~ ("^[ \t]*</" subtag ">[ \t]*$") { in_sub = 0; next }
+        subtag != "" && !in_sub { next }
+        $0 ~ "^[ \t]*<" tag "([ \t]*/)?>" { found = 1; exit }
         END { exit found ? 0 : 1 }
     ' "${CONF_FILE}"
+
+}
+
+# Text content of a tag, comment-aware like agent_option_is_set and scoped the same way
+# (<agent>, or <agent><$2> when a second argument is given) -- empty if the tag is
+# absent, commented out, or present only outside that scope.
+agent_option_value() {
+
+    tag="$1"
+    sub="$2"
+
+    # Strips comments and flattens newlines first, instead of matching one line ($0) at
+    # a time -- mirrors strip_xml_comments() + tr -d '\n\r' in pkg_installer.sh's
+    # xml_value(), so a value split across multiple lines is still seen (matching $0
+    # alone is blind to it, and set_agent_ssl_ca()'s system-mode guard depends on this
+    # returning the real value, not an empty string, to work at all).
+    flattened="$(awk '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        # A self-contained one-line comment ("<!-- ... -->") must be dropped here too --
+        # the grep -o chain below does unanchored substring matching on the flattened
+        # result, so a commented-out example left in would otherwise be read as live.
+        $0 ~ /<!--/ && $0 ~ /-->/ { next }
+        $0 ~ /<!--/ && $0 !~ /-->/ { in_comment = 1; next }
+        { print }
+    ' "${CONF_FILE}" | tr -d '\n\r')"
+
+    # Same nested grep -o chain as xml_value() in pkg_installer.sh: narrow to <agent>,
+    # then to <$2> when given, before looking for $1 -- so a same-named tag outside
+    # that scope is never seen.
+    scoped="$(printf '%s' "${flattened}" | grep -o "<agent>.*</agent>")"
+    if [ -n "${sub}" ]; then
+        scoped="$(printf '%s' "${scoped}" | grep -o "<${sub}>.*</${sub}>")"
+    fi
+
+    # Takes the last match, not the first -- ReadConfig()'s own "last value wins"
+    # semantics, and what xml_value() already does. [[:space:]], not a literal space:
+    # a tab-indented, multi-line value would otherwise keep a leading tab after trim.
+    printf '%s' "${scoped}" | grep -o "<${tag}>[^<]*</${tag}>" | tail -1 | \
+        sed -e "s|<${tag}>||" -e "s|</${tag}>||" -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||'
 
 }
 
@@ -294,6 +375,227 @@ set_agent_option() {
 
     echo "    <$1>$2</$1>" > "${TMP_SERVER}"
     insert_into_agent_block "${TMP_SERVER}"
+    rm -f "${TMP_SERVER}"
+
+}
+
+# Replaces an existing <tag> inside <agent><ssl>, handling the self-closing
+# (<tag/>), single-line-paired, and multi-line-paired forms in one pass. Unlike
+# edit_value_tag()'s blind whole-file sed, this only ever looks inside <agent><ssl>,
+# so a same-named tag elsewhere in the file (e.g. a <localfile> block that happens to
+# define one) is never touched -- confirmed empirically: edit_value_tag() alone
+# rewrites such a decoy too, since its substitution isn't scoped at all. Only called
+# after agent_option_is_set() has confirmed the tag is present within that same scope.
+replace_agent_ssl_tag() {
+
+    tag="$1"
+    value="$2"
+
+    # Plain string concatenation throughout below (match()+substr(), never sub()'s
+    # replacement-text argument) -- deliberately, not an oversight: gawk's own -v
+    # assignment already strips a literal backslash out of "\&" before the awk program
+    # even runs (confirmed empirically: `awk -v v='A\&B' 'BEGIN{print v}'` prints "A&B"
+    # with a warning), so a caller-side sed escape meant to survive sub()'s '&'/'\&'
+    # convention never survives to reach it -- and a bare, unescaped '&' in `value`
+    # (which XML-escaping itself introduces, as part of "&amp;"/"&lt;"/"&gt;") is
+    # completely inert in a plain concatenation, so no escaping of `value` is needed here.
+    # Collects (drops) every occurrence of <tag> found inside <agent><ssl> -- self-closing,
+    # single-line-paired, or multi-line-paired -- and inserts exactly one, correct
+    # occurrence right before </ssl> once the block ends. Rather than stopping at the
+    # first match: the real parser applies last-tag-wins (ReadConfig()'s own semantics,
+    # the same reasoning agent_option_value() above already honors via tail -1), so a
+    # leftover duplicate (e.g. from an interrupted prior install run) sitting after the
+    # first, updated one would silently win at runtime if only the first were touched.
+    awk -v tag="${tag}" -v value="${value}" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            print
+            next
+        }
+        $0 ~ /<!--/ {
+            # A self-contained one-line comment (e.g. "<!-- <tag>x</tag> -->", the
+            # shipped-template convention for a commented-out example) must be printed
+            # and skipped whole -- the unanchored tag patterns below match anywhere on
+            # the line, unlike agent_option_is_set()s ^-anchored check, so without this
+            # a commented-out example would be mistaken for the live tag to rewrite.
+            print
+            if ($0 !~ /-->/) { in_comment = 1 }
+            next
+        }
+        $0 ~ /^[ \t]*<agent>[ \t]*$/ { in_agent = 1; print; next }
+        $0 ~ /^[ \t]*<\/agent>[ \t]*$/ { in_agent = 0; print; next }
+        !in_agent { print; next }
+        $0 ~ /^[ \t]*<ssl>[ \t]*$/ { in_ssl = 1; print; next }
+        $0 ~ /^[ \t]*<\/ssl>[ \t]*$/ {
+            in_ssl = 0
+            if (found) {
+                print "      <" tag ">" value "</" tag ">"
+                done = 1
+            }
+            print
+            next
+        }
+        !in_ssl { print; next }
+        collecting {
+            found = 1
+            if ($0 ~ ("</" tag ">")) { collecting = 0 }
+            next
+        }
+        match($0, "<" tag "[ \t]*/>") { found = 1; next }
+        match($0, "<" tag ">.*</" tag ">") { found = 1; next }
+        $0 ~ ("<" tag ">") && $0 !~ ("</" tag ">") { collecting = 1; found = 1; next }
+        { print }
+        END { if (!done) { exit 1 } }
+    ' "${CONF_FILE}" > "${TMP_SERVER}"
+    replaced=$?
+
+    if [ "${replaced}" -eq 0 ]; then
+        cat "${TMP_SERVER}" > "${CONF_FILE}"
+    fi
+    rm -f "${TMP_SERVER}"
+
+    return "${replaced}"
+
+}
+
+# Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>.
+# The <enrollment><server_ca_path> tag set_auto_enrollment_tag_value below still
+# writes is parsed-but-ignored by the 5.x agent -- enrollment now reuses
+# <agent><ssl> instead of its own CA -- so without this an operator who supplies a
+# CA at install time still ends up with it silently unused.
+set_agent_ssl_ca() {
+
+    ca_path="$1"
+
+    if [ -z "${ca_path}" ]; then
+        return
+    fi
+
+    # verification_mode=system trusts the OS store, not a configured CA: the agent
+    # refuses to start with both set (validateTls() in moduleConfig.cpp), so writing
+    # a CA here would just trade a silently-unused CA for a daemon that won't boot.
+    if [ "$(agent_option_value verification_mode ssl)" = "system" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together." >> "${INSTALLDIR}/logs/ossec.log"
+        return
+    fi
+
+    # Same file-type/readability check as the WPK upgrade gate (pkg_installer.sh's
+    # SSL_CA check) -- without it, a path that's a directory (or missing/unreadable)
+    # installs cleanly here and the failure only surfaces later, at agent startup, via
+    # w_agent_validate_ssl_ca().
+    if [ ! -f "${ca_path}" ] || [ ! -r "${ca_path}" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA ('${ca_path}') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset." >> "${INSTALLDIR}/logs/ossec.log"
+        return
+    fi
+
+    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
+    # containing any of them (e.g. a literal '&') would leave ossec.conf malformed and
+    # unparseable, not just carry the wrong value. Every branch below writes this
+    # escaped form, never the raw path.
+    ca_path="$(xml_escape "${ca_path}")"
+
+    if agent_option_is_set "certificate_authorities" "ssl"; then
+        # No extra escaping needed here beyond the XML-escaping above:
+        # replace_agent_ssl_tag() builds the new line with plain string concatenation
+        # (match()+substr()), never sub()'s '&'/'\&' replacement-text convention, so a
+        # bare '&' (which XML-escaping itself introduces, as part of "&amp;"/"&lt;"/
+        # "&gt;") passes through inert -- see that function's own comment for why a
+        # sed-side pre-escape here would be actively wrong, not just redundant.
+        if ! replace_agent_ssl_tag "certificate_authorities" "${ca_path}"; then
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating certificate_authorities with variable ${ca_path}." >> "${INSTALLDIR}/logs/ossec.log"
+        fi
+        return
+    fi
+
+    if agent_option_is_set "ssl"; then
+        # <ssl> already exists (e.g. hand-configured) but without a CA yet: insert
+        # the tag right after the opening <ssl>, reusing insert_into_agent_block's own
+        # awk technique (parameterized by tag) instead of a second copy of it.
+        echo "      <certificate_authorities>${ca_path}</certificate_authorities>" > "${TMP_SERVER}"
+        if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
+            # Deliberately a warning, not an install-aborting failure: unlike
+            # pkg_installer.sh's equivalent pin_ca() failure during an upgrade (which
+            # aborts, because there is a working prior version to protect), a fresh
+            # install has no working state yet to fall back to -- aborting here would
+            # just block the install outright over a recoverable edge case (a
+            # hand-edited <ssl> block in a shipped template, which is not expected).
+            # The agent still comes up under the resolved default (system); an operator
+            # who needs the CA can add <certificate_authorities> by hand afterward.
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
+        fi
+        rm -f "${TMP_SERVER}"
+        return
+    fi
+
+    {
+        echo "    <ssl>"
+        echo "      <certificate_authorities>${ca_path}</certificate_authorities>"
+        echo "    </ssl>"
+    } > "${TMP_SERVER}"
+    # "agent" only, never the default agent|client: a pure 4.x-shaped <client> block is
+    # read by Read_Legacy_Client_Address(), which never looks at <ssl> -- same reasoning
+    # as pin_ca()'s <client>-rejection in pkg_installer.sh/do_upgrade.ps1. Pinning here
+    # would report success while the CA stays inert.
+    if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
+    fi
+    rm -f "${TMP_SERVER}"
+
+}
+
+# Route SSL_VERIFICATION into <agent><ssl><verification_mode>. Must run before
+# set_agent_ssl_ca() (see the call site) so that function's own "verification_mode is
+# 'system'" conflict check sees whatever this one wrote, rather than reading a value
+# from before this ran.
+set_agent_verification_mode() {
+
+    mode="$1"
+
+    if [ -z "${mode}" ]; then
+        return
+    fi
+
+    # Matches Read_Agent_SSL()'s own case-sensitive strcmp (src/config/src/client-config.c):
+    # a value that reads as valid to a human but not to the parser (e.g. 'System',
+    # 'None') would install cleanly and then fail at agent startup instead of here,
+    # where the operator can still see and fix it immediately.
+    case "${mode}" in
+        full|certificate|system|none) ;;
+        *)
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid SSL_VERIFICATION '${mode}': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset." >> "${INSTALLDIR}/logs/ossec.log"
+            return
+            ;;
+    esac
+
+    if agent_option_is_set "verification_mode" "ssl"; then
+        # replace_agent_ssl_tag(), not edit_value_tag(): the latter's substitution is a
+        # blind whole-file sed with no <agent><ssl> scoping, and only recognizes the
+        # paired <tag>...</tag> form -- see set_agent_ssl_ca()'s identical call for the
+        # full reasoning (self-closing, multi-line, and same-named-tag-elsewhere).
+        if ! replace_agent_ssl_tag "verification_mode" "${mode}"; then
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating verification_mode with variable ${mode}." >> "${INSTALLDIR}/logs/ossec.log"
+        fi
+        return
+    fi
+
+    if agent_option_is_set "ssl"; then
+        echo "      <verification_mode>${mode}</verification_mode>" > "${TMP_SERVER}"
+        if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin SSL_VERIFICATION into <ssl><verification_mode>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
+        fi
+        rm -f "${TMP_SERVER}"
+        return
+    fi
+
+    {
+        echo "    <ssl>"
+        echo "      <verification_mode>${mode}</verification_mode>"
+        echo "    </ssl>"
+    } > "${TMP_SERVER}"
+    # "agent" only, never the default agent|client -- same reasoning as set_agent_ssl_ca().
+    if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
+    fi
     rm -f "${TMP_SERVER}"
 
 }
@@ -384,6 +686,7 @@ set_vars () {
     export WAZUH_AGENT_NAME
     export WAZUH_AGENT_GROUP
     export ENROLLMENT_DELAY
+    export SSL_VERIFICATION
     # The following variables are yet supported but all of them are deprecated
     export WAZUH_MANAGER_IP
     export WAZUH_NOTIFY_TIME
@@ -410,7 +713,7 @@ unset_vars() {
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
-          ENROLLMENT_DELAY)
+          ENROLLMENT_DELAY SSL_VERIFICATION)
 
     for var in "${vars[@]}"; do
         unset "${var}"
@@ -618,11 +921,18 @@ main () {
         fi
     fi
 
+    # Independent of enrollment: an operator may want to force a verification posture
+    # (e.g. SSL_VERIFICATION=none) without supplying any other WAZUH_REGISTRATION_*
+    # value. Runs before the enrollment block below so set_agent_ssl_ca()'s own
+    # "verification_mode is 'system'" conflict check sees this value already written.
+    set_agent_verification_mode "${SSL_VERIFICATION}"
+
     if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" "${WAZUH_REGISTRATION_SERVER}"
         set_auto_enrollment_tag_value "port" "${WAZUH_REGISTRATION_PORT}"
         set_auto_enrollment_tag_value "server_ca_path" "${WAZUH_REGISTRATION_CA}"
+        set_agent_ssl_ca "${WAZUH_REGISTRATION_CA}"
         set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
         set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
         set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"

@@ -15,3 +15,10 @@
               # endpoint.
               - endpoint:
                   value: SERVER_ADDRESS
+          # The agent's default verification_mode is now 'system', which
+          # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+          # suite is not testing TLS trust.
+          - ssl:
+              elements:
+              - verification_mode:
+                  value: none

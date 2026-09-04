@@ -7,6 +7,13 @@
                     value: '127.0.0.1:1517'
             - notify_time:
                 value: '1'
+            # The agent's default verification_mode is now 'system', which
+            # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+            # suite is not testing TLS trust.
+            - ssl:
+                elements:
+                - verification_mode:
+                    value: none
       # syscheck + rootcheck must be explicitly enabled: these scenarios assert
       # that wazuh-syscheckd / wazuh-rootcheck log "Started" after the gate
       # releases, but syscheckd exits early ("Syscheck is disabled. Exiting.")

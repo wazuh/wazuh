@@ -51,11 +51,12 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-    /* The shipped configuration carries no <ssl> block, so this is the posture most
-     * agents actually run with -- as is any config written before the HTTPS transport
-     * existed. It is not the enum's zero value (FULL), which would make every one of
-     * those agents refuse to start on a missing CA, so it has to be set by hand. */
-    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    /* Resolved after parsing, once we know whether <certificate_authorities> was set:
+     * SYSTEM by default (verifies without requiring any <ssl> block, e.g. against
+     * cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was pinned
+     * without an explicit <verification_mode>. Never left UNSET past this function
+     * returning -- see the resolution below, after both ReadConfig() calls. */
+    agt->ssl.verification_mode = AGENT_VERIFY_UNSET;
 
     /* <config_report> ships enabled: the manager needs the periodic /config snapshot
      * even on a config nobody touched. It is not the struct's zero value, so it has
@@ -107,6 +108,27 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
+    /* verification_mode is still UNSET whenever ossec.conf didn't set it explicitly --
+     * the shared remote config never reaches this point at all: Read_Agent_Shared()
+     * (dispatched above for AGENTCONFIG) only recognizes <batch>/force_reconnect_interval
+     * under <agent> and rejects everything else, <ssl> included, so a centrally-managed
+     * fleet cannot set verification_mode/certificate_authorities via shared config today.
+     * Mirrors the manager's own inference (remote-config.c): a pinned CA without an
+     * explicit mode means the operator wants it verified, not silently unused. */
+    if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
+        /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
+         * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will
+         * still fail closed on it either way, but resolving to 'certificate' here would
+         * warn that a CA is "configured" when none actually was. */
+        if (agt->ssl.certificate_authorities != NULL && *agt->ssl.certificate_authorities != '\0') {
+            mwarn("The '<ssl><certificate_authorities>' option is configured but "
+                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
+            agt->ssl.verification_mode = AGENT_VERIFY_CERT;
+        } else {
+            agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+        }
+    }
+
     return (1);
 }
 
@@ -135,7 +157,11 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
      * one layer up so a bad config is caught before the module ever spins up threads. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
-        if (ca) {
+        /* A present-but-empty <certificate_authorities/> is not a real CA -- ClientConf()'s
+         * own UNSET-resolution above already treats it that way (resolving to 'system'
+         * instead of 'certificate'), so this check has to agree, or that exact shape
+         * resolves to 'system' and then refuses to start over a CA that isn't really set. */
+        if (ca && *ca != '\0') {
             merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
             return false;
         }

@@ -1538,6 +1538,15 @@ static int bridge_map_verify_mode(int agent_verify_mode)
         return HC_VERIFY_NONE;
     case AGENT_VERIFY_SYSTEM:
         return HC_VERIFY_SYSTEM;
+    case AGENT_VERIFY_UNSET:
+        // ClientConf() always resolves this to system or certificate before returning;
+        // reaching here means some other path built agt->ssl without going through that
+        // resolution step. Fail closed the same as an unrecognized value would, but say
+        // so loudly instead of silently blending into the FULL default below.
+        merror("https_client: verification_mode was still UNSET when the transport config was "
+               "built; defaulting to 'full'. This should never happen -- ClientConf() is supposed "
+               "to resolve it first.");
+        return HC_VERIFY_FULL;
     case AGENT_VERIFY_FULL:
     default:
         return HC_VERIFY_FULL;

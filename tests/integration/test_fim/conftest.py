@@ -141,7 +141,17 @@ def set_agent_config(request: pytest.FixtureRequest):
                         {"endpoint": {"value": "127.0.0.1:1517"}},
                     ]
                 }
-            }
+            },
+            {
+                # The agent's default verification_mode is now 'system', which
+                # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+                # suite is not testing TLS trust.
+                "ssl": {
+                    "elements": [
+                        {"verification_mode": {"value": "none"}},
+                    ]
+                }
+            },
         ],
     }
 
