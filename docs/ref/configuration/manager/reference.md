@@ -126,11 +126,11 @@ Vulnerability scanner module (modulesd).
 
 ## `indexer`
 
-Wazuh indexer connection shared by modulesd, the engine and the cluster. Absent section: hosts is empty and every consumer decides whether that is fatal.
+Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandatory: wazuh-manager-analysisd cannot start without at least one host.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `hosts` | list of string | `[]` | at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
+| `hosts` | list of string |  | at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
 | `ssl` | mapping |  |  | TLS material of the indexer connection (paths relative to the manager home unless absolute). |
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
