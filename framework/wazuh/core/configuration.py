@@ -763,7 +763,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1113)
-        XML syntax error.
+        XML syntax error, or the content has no XML elements at all (plain text or a comment-only body).
     WazuhError(1114)
         Wazuh syntax error.
     WazuhError(1115)
@@ -814,6 +814,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
                 pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
 
             tmp_file.write(pretty_xml)
+    except WazuhError:
+        raise
     except Exception as e:
         raise WazuhError(1113, str(e))
 
