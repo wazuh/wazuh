@@ -3172,16 +3172,18 @@ static void test_fim_directory_non_ascii_name(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
-    will_return(wrap_FindFirstFile, "A" "\xc5\x9f" ".txt");   // "Aş.txt" in UTF-8
+    will_return(wrap_FindFirstFile, "A" "\xc4\x9e" ".txt");   // "AĞ.txt" in UTF-8 (Ğ = U+011E, uppercase)
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
     will_return(wrap_FindFirstFile, (HANDLE)1);
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
 
-    // 'A' is lowercased to 'a'; the non-ASCII 'ş' (0xc5 0x9f) is left untouched.
+    // 'A' is lowercased to 'a' (ASCII); the non-ASCII uppercase 'Ğ' (0xc4 0x9e) is
+    // preserved byte for byte. A Unicode case fold (the removed LCMapStringW) would
+    // lowercase it to 'ğ', so this assertion fails if that regression returns.
     expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6319): No configuration found for (file):'test\\a" "\xc5\x9f" ".txt'");
+                  "(6319): No configuration found for (file):'test\\a" "\xc4\x9e" ".txt'");
 
     ret = fim_directory("test", &evt_data, NULL, NULL, NULL);
     assert_int_equal(ret, 0);
