@@ -35,9 +35,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries Default number of retries for synchronization operations.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
         /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
+        /// @param flushBatchSize Optional override for the persistent queue's flush batch size (see PersistentQueue).
+        /// @param flushInterval Optional override for the persistent queue's flush interval (see PersistentQueue).
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
-                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
+                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
+                                   std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                   std::optional<std::chrono::milliseconds> flushInterval = std::nullopt);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,

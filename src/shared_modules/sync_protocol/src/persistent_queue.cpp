@@ -12,8 +12,14 @@
 
 #include <algorithm>
 
-PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage)
-    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger)),
+PersistentQueue::PersistentQueue(const std::string& dbPath,
+                                  LoggerFunc logger,
+                                  std::shared_ptr<IPersistentQueueStorage> storage,
+                                  std::optional<std::size_t> flushBatchSize,
+                                  std::optional<std::chrono::milliseconds> flushInterval)
+    : FLUSH_BATCH_SIZE(flushBatchSize.value_or(DEFAULT_FLUSH_BATCH_SIZE)),
+      FLUSH_INTERVAL(flushInterval.value_or(DEFAULT_FLUSH_INTERVAL)),
+      m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger)),
       m_logger(std::move(logger))
 {
     if (!m_logger)
@@ -31,8 +37,9 @@ PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, s
         throw;
     }
 
-    m_buffers[0].reserve(FLUSH_BATCH_SIZE);
-    m_buffers[1].reserve(FLUSH_BATCH_SIZE);
+    const auto reserveHint = std::min(FLUSH_BATCH_SIZE, MAX_RESERVE_HINT);
+    m_buffers[0].reserve(reserveHint);
+    m_buffers[1].reserve(reserveHint);
     m_flushThread = std::thread(&PersistentQueue::flushLoop, this);
 }
 

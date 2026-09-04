@@ -79,7 +79,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             auto handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char* s)
             {
                 std::cout << s << std::endl;
-            });
+            }, 0, 0);
             asp_destroy(handle);
         }
 
@@ -295,7 +295,7 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     // exist here, so synchronizeModule() returns at the checkStatus early out
     // (no persistent-queue data needed).
 
-    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0);
     ASSERT_NE(handle, nullptr);
 
     // No stop requested: a real failure must not be flagged as shutdown-induced.

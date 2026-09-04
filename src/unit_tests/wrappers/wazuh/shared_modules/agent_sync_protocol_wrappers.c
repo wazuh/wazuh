@@ -12,10 +12,13 @@
 __attribute__((weak)) void __wrap_asp_sync_module_hook(void) {
 }
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                            uint64_t flush_batch_size, uint64_t flush_interval_ms) {
     check_expected_ptr(module);
     (void)db_path;
     (void)logger;
+    (void)flush_batch_size;
+    (void)flush_interval_ms;
     return mock_ptr_type(AgentSyncProtocolHandle*);
 }
 
