@@ -34,7 +34,9 @@ namespace task_manager::handlers
     /// @brief Everything the three local handlers read. Resolved once at start.
     struct LocalConfig
     {
-        /// @brief <global><agents_disconnection_time>. The sweep's INTERVAL and its WINDOW.
+        /// @brief <global><agents_disconnection_time>. The sweep's WINDOW; its interval is derived
+        ///        from this and is shorter (registry::sweepPeriod), so an agent that crosses the
+        ///        window is noticed within a quarter of it rather than within another whole one.
         std::chrono::seconds disconnectionTime {900};
         /// @brief Minutes past the disconnection window before an agent is deleted. 0 disables.
         int deleteOldAgents {0};

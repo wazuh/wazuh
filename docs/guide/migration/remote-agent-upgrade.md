@@ -63,7 +63,7 @@ monitoring — is now the Task Manager's, and its internal options were renamed 
 `wazuh_modules.manager_task_*`. An override left under the old name is **silently ignored**: the
 lookup compares the part before the first `.` as well as the part after it, so the old key simply
 never matches. The full list is in the
-[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-intervals-come-from).
+[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-settings-come-from).
 The agent keeps its own `monitord.*` keys.
 
 ---

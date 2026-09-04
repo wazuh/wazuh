@@ -878,8 +878,9 @@ database.
   warns at startup from half upward. The staleness the disconnection sweep compares against the
   threshold is the throttle plus the agent's notify interval, so any value at or above half can
   disconnect agents that are answering normally. Half rather than just below the threshold also
-  bounds detection: the sweep's period is the disconnection time itself, so detection lands anywhere
-  between one and two times it. The sweep runs as a
+  leaves room for the sweep's own granularity: the sweep polls the threshold on a quarter of it,
+  bounded to `[60 s, 300 s]`, so detection lands within the threshold plus one interval — 15 m to
+  18 m 45 s at the defaults. The sweep runs as a
   [recurring manager task](../task_manager/schedules.md), on the cluster master only.
 - **Note:** A value at or below the fleet's notify cadence suppresses nothing: the throttle can
   only drop a notify that arrives inside an open window. This is not checked at startup, because
