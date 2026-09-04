@@ -763,7 +763,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1113)
-        XML syntax error.
+        XML syntax error, or the content has no XML elements at all (plain text or a comment-only body).
     WazuhError(1114)
         Wazuh syntax error.
     WazuhError(1115)
@@ -798,6 +798,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
             # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
+            if not any(n.nodeType == n.ELEMENT_NODE for n in xml.documentElement.childNodes):
+                raise WazuhError(1113, 'Configuration must contain at least one element')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
@@ -812,6 +814,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
                 pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
 
             tmp_file.write(pretty_xml)
+    except WazuhError:
+        raise
     except Exception as e:
         raise WazuhError(1113, str(e))
 

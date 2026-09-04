@@ -5,6 +5,10 @@
   "description": "Single source of truth for the manager configuration: types, ranges, defaults and documentation of every option. Consumed by the manager_config C++ module (embedded) and by the Python framework (installed copy).",
   "type": "object",
   "additionalProperties": false,
+  "required": [
+    "cluster",
+    "indexer"
+  ],
   "definitions": {
     "boolean": {
       "type": "boolean"
@@ -497,10 +501,7 @@
     "indexer": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Wazuh indexer connection shared by modulesd, the engine and the cluster. Absent section: hosts is empty and every consumer decides whether that is fatal.",
-      "default": {
-        "hosts": []
-      },
+      "description": "Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandatory: wazuh-manager-analysisd cannot start without at least one host.",
       "properties": {
         "hosts": {
           "type": "array",
@@ -510,7 +511,6 @@
           },
           "minItems": 1,
           "uniqueItems": true,
-          "default": [],
           "description": "Indexer URLs (scheme://host:port)."
         },
         "ssl": {

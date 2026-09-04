@@ -241,7 +241,8 @@ def test_get_manager_conf(load_mock):
     assert whole['cluster']['hidden'] is False
     # Sections the fixture omits exist with their schema defaults
     assert whole['remote']['https']['port'] == 1517
-    assert whole['indexer'] == {'hosts': [], 'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}}
+    assert whole['indexer'] == {'hosts': ['https://127.0.0.1:9200'],
+                                'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}}
 
     assert configuration.get_manager_conf(section='cluster', conf_file=FIXTURE_CONF)['cluster']['node_name'] == 'master-node'
     assert configuration.get_manager_conf(section='cluster', field='name', conf_file=FIXTURE_CONF) == \
@@ -352,6 +353,9 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
             with patch('wazuh.core.configuration.open', return_value=Exception):
                 with pytest.raises(WazuhError, match=".* 1113 .*"):
                     configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
+            with patch('builtins.open'):
+                with pytest.raises(WazuhError, match=".* 1113 .*"):
+                    configuration.upload_group_configuration('default', "this is not a wazuh configuration")
             with patch('builtins.open'):
                 with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
                     with patch('wazuh.core.utils.chown', side_effect=None):
