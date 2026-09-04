@@ -464,6 +464,10 @@ class WazuhException(Exception):
                'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
                               f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'
                               f'configuration-file'},
+        6005: {'message': 'Maximum number of unauthenticated requests per minute reached',
+               'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
+                              f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'
+                              f'configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'

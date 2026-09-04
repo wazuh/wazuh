@@ -17,7 +17,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from connexion.exceptions import OAuthProblem
+from connexion.exceptions import OAuthProblem, Unauthorized
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -62,8 +62,11 @@ start_stop_logger = logging.getLogger('start-stop-api')
 ip_stats = dict()
 ip_block = set()
 ip_lock = asyncio.Lock()
-general_request_counter = 0
-general_current_time = None
+general_request_stats: dict = {}
+general_request_lock = asyncio.Lock()
+
+# Rolling-window length used by the general_request_stats buckets below
+RATE_LIMIT_WINDOW_SECONDS = 60
 
 
 def get_declared_content_length(request: Request) -> Optional[int]:
@@ -269,6 +272,8 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             method in {'GET', 'POST'}:
         logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
+    if response.status_code == 429:
+        logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
 
 
 async def check_blocked_ip(request: Request):
@@ -343,60 +348,165 @@ async def settle_login_attempt(request: Request):
             ip_block.discard(host)
 
 
-def check_rate_limit(
-    request_counter_key: str,
-    current_time_key: str,
-    max_requests: int,
-    error_code: int
-) -> int:
-    """Check that the maximum number of requests per minute
-    passed in `max_requests` is not exceeded.
+async def charge_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
+    """Charge and check `request.client.host`'s unauthenticated bucket.
+
+    Only ever called from `CheckRateLimitsMiddleware`'s `except Unauthorized` branch — reaching
+    this function is itself proof this specific request just failed authentication. A request
+    that goes on to authenticate successfully never calls this at all (see
+    `charge_authenticated_request` instead), so unauthenticated/failed-auth noise sharing an
+    address can never deny an authenticated caller: there is no pre-auth reservation for a
+    successful request to get caught behind.
 
     Parameters
     ----------
-    request_counter_key : str
-        Key of the request counter variable to get from globals() dict.
-    current_time_key : str
-        Key of the current time variable to get from globals() dict.
+    request : Request
+        HTTP request.
     max_requests : int
-        Maximum number of requests per minute permitted.
+        Maximum number of unauthenticated requests per minute permitted.
     error_code : int
-        error code to return if the counter is greater than max_requests.
+        Error code to return if the bucket's count exceeds max_requests.
 
     Return
     ------
-        0 if the request is allowed
-        else error_code.
+    int
+        0 if the request is allowed, else error_code.
     """
     if max_requests == 0:
         return 0
 
-    if not globals()[current_time_key]:
-        globals()[current_time_key] = get_utc_now().timestamp()
+    host = request.client.host
+    now = get_utc_now().timestamp()
 
-    if get_utc_now().timestamp() - 60 <= globals()[current_time_key]:
-        globals()[request_counter_key] += 1
-    else:
-        globals()[request_counter_key] = 0
-        globals()[current_time_key] = get_utc_now().timestamp()
+    async with general_request_lock:
+        entry = general_request_stats.setdefault(host, {})
+        bucket = entry.get('unauthenticated')
+        if bucket is None or now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS:
+            bucket = {'count': 0, 'window_start': now}
+            entry['unauthenticated'] = bucket
 
-    if globals()[request_counter_key] > max_requests:
-        return error_code
+        bucket['count'] += 1
+        if bucket['count'] > max_requests:
+            return error_code
 
     return 0
 
 
+async def charge_authenticated_request(request: Request, max_requests: int, error_code: int) -> int:
+    """Charge and check `request.client.host`'s authenticated bucket.
+
+    Only ever called from `CheckAuthenticatedRateLimitMiddleware`, positioned immediately after
+    connexion's `SecurityMiddleware` in the stack — reaching this function is itself proof the
+    request just authenticated successfully (an auth failure raises inside `SecurityMiddleware`
+    and never reaches here), for every operation that carries a security requirement. All
+    operations in the current spec.yaml do; if a future operation is ever added with
+    `security: []` (a genuinely public endpoint), it would reach here too and be billed into the
+    authenticated bucket despite presenting no credentials — not a security regression (still
+    address-keyed and bounded), but a mislabeling this function's contract doesn't cover.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    max_requests : int
+        Maximum number of authenticated requests per minute permitted.
+    error_code : int
+        Error code to return if the bucket's count exceeds max_requests.
+
+    Return
+    ------
+    int
+        0 if the request is allowed, else error_code.
+    """
+    if max_requests == 0:
+        return 0
+
+    host = request.client.host
+    now = get_utc_now().timestamp()
+
+    async with general_request_lock:
+        entry = general_request_stats.setdefault(host, {})
+        bucket = entry.get('authenticated')
+        if bucket is None or now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS:
+            bucket = {'count': 0, 'window_start': now}
+            entry['authenticated'] = bucket
+
+        bucket['count'] += 1
+        if bucket['count'] > max_requests:
+            return error_code
+
+    return 0
+
+
+async def cleanup_general_request_stats(now: float = None) -> None:
+    """Prune host entries from general_request_stats whose buckets have all expired.
+
+    general_request_stats gains one entry per distinct client address ever seen (unlike
+    ip_stats, which only tracks failed login attempts), so without an active sweep it would
+    grow without bound for traffic from many/rotating addresses. A bucket older than
+    RATE_LIMIT_WINDOW_SECONDS is dead weight: charge_unauthenticated_request and
+    charge_authenticated_request already discard and recreate a bucket that old from scratch,
+    so removing it here changes no rate-limiting behavior.
+
+    Parameters
+    ----------
+    now : float
+        Current UTC timestamp; defaults to the real current time. Overridable for tests.
+    """
+    now = now if now is not None else get_utc_now().timestamp()
+
+    async with general_request_lock:
+        stale_hosts = [
+            host for host, entry in general_request_stats.items()
+            if all(now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS for bucket in entry.values())
+        ]
+        for host in stale_hosts:
+            del general_request_stats[host]
+
+
 class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
-    """Rate Limits Middleware."""
+    """Rate Limits Middleware. Registered `BEFORE_SECURITY`, wrapping connexion's
+    `SecurityMiddleware`: charges the small unauthenticated bucket for `request.client.host`
+    only once a request has actually failed authentication, instead of guessing pessimistically
+    before the outcome is known.
+
+    `call_next()` runs the entire downstream pipeline (security, validation, the handler), but
+    for a request that fails authentication that pipeline barely runs at all — `SecurityMiddleware`
+    raises `Unauthorized` immediately, before invoking anything nested further (verified against
+    pinned `starlette==1.3.1`'s `BaseHTTPMiddleware.call_next`, which re-raises the inner app's
+    exception to the caller) — so this still rejects a flood of invalid-auth requests without
+    paying any cost beyond the authentication check itself. A request that succeeds is never
+    charged here at all, so unauthenticated/failed-auth noise sharing an address can no longer
+    deny it — see `CheckAuthenticatedRateLimitMiddleware` for the authenticated side.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """"Check request limits per minute."""
-        max_request_per_minute = configuration.api_conf['access']['max_request_per_minute']
-        error_code = check_rate_limit(
-            'general_request_counter',
-            'general_current_time',
-            max_request_per_minute,
-            6001)
+        """Charge the unauthenticated bucket only for a request that just failed authentication."""
+        try:
+            return await call_next(request)
+        except Unauthorized:
+            max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
+            error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
+            if error_code:
+                raise MaxRequestsException(code=error_code)
+            raise
+
+
+class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
+    """Rate Limits Middleware (post-authentication). Registered at BEFORE_VALIDATION, i.e.
+    immediately after connexion's SecurityMiddleware - only ever reached once authentication has
+    already succeeded. Charges and checks the authenticated bucket.
+
+    Assumes every operation reaching here required real credentials: a future spec operation
+    declared with `security: []` would land here uncharged for authentication yet still be
+    billed into the authenticated bucket - not a security regression, but a mislabeling this
+    assumption doesn't cover if that ever changes.
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Charge the authenticated bucket and enforce its ceiling."""
+        max_requests = configuration.api_conf['access']['max_request_per_minute']
+        error_code = await charge_authenticated_request(request, max_requests, 6001)
 
         if error_code:
             raise MaxRequestsException(code=error_code)

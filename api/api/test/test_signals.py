@@ -10,6 +10,7 @@ from api.constants import SECURITY_PATH
 from api.signals import (
     cancel_signal_handler,
     clean_auth_keys_cache,
+    clean_general_request_stats,
     lifespan_handler,
 )
 
@@ -24,9 +25,10 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
     coroutine_mock.assert_awaited_once()
 
 
+@patch('api.signals.clean_general_request_stats')
 @patch('api.signals.clean_auth_keys_cache')
 @pytest.mark.asyncio
-async def test_register_background_tasks(clean_auth_keys_cache_mock):
+async def test_register_background_tasks(clean_auth_keys_cache_mock, clean_general_request_stats_mock):
     class AwaitableMock(AsyncMock):
         def __await__(self):
             self.await_count += 1
@@ -37,9 +39,23 @@ async def test_register_background_tasks(clean_auth_keys_cache_mock):
         create_task_mock.create_task.return_value.cancel = AsyncMock()
 
         async with lifespan_handler(None):
-            assert create_task_mock.create_task.call_count == 1
+            assert create_task_mock.create_task.call_count == 2
 
-        assert create_task_mock.create_task.return_value.cancel.call_count == 1
+        assert create_task_mock.create_task.return_value.cancel.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch('api.signals.cleanup_general_request_stats', new_callable=AsyncMock)
+async def test_clean_general_request_stats(cleanup_mock):
+    """Test that `clean_general_request_stats` sleeps then sweeps on each iteration, and stops
+       cleanly (via `cancel_signal_handler`) once cancelled."""
+    with patch('api.signals.asyncio.sleep', new_callable=AsyncMock) as sleep_mock:
+        sleep_mock.side_effect = [None, asyncio.CancelledError]
+
+        await clean_general_request_stats()
+
+        assert sleep_mock.await_count == 2
+        cleanup_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio
