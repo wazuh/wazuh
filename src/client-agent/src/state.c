@@ -126,14 +126,11 @@ int write_state() {
         "# Number of generated events\n"
         W_AGENTD_FIELD_MSG_COUNT "='%u'\n"
         "\n"
-        "# Number of messages (events + control messages) sent to the manager\n"
-        W_AGENTD_FIELD_MSG_SENT "='%u'\n"
-        "\n"
         "# Number of events currently buffered\n"
         "# Always empty: the HTTPS accumulator reports occupancy as a ladder,\n"
         "# not as a count\n"
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
-        last_keepalive, agent_state.msg_count, agent_state.msg_sent);
+        last_keepalive, agent_state.msg_count);
 
         fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
 
@@ -206,9 +203,6 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
         break;
     case INCREMENT_MSG_COUNT:
         agent_state.msg_count++;
-        break;
-    case INCREMENT_MSG_SEND:
-        agent_state.msg_sent++;
         break;
     case RESET_MSG_COUNT_ON_SHRINK:
         if (data != NULL) {
