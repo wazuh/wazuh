@@ -46,8 +46,10 @@ the language).
   reference and `--` inside comments; both are rejected with their line, like every malformed-XML error
   (`invalid XML: … (line N)`, computed from pugixml's byte offset).
 - **Validate the raw document, then fill defaults, then check semantics.** The effective document may therefore contain
-  values the schema would reject on input (e.g. `indexer.hosts: []` when the section is absent): consumers decide whether
-  an absent section is fatal.
+  values the schema would reject on input for an optional section a consumer treats as non-fatal when absent (e.g.
+  `remote.legacy` disabled and unconfigured): the schema's own root `required` (`cluster`, `indexer`, issue #38638)
+  covers the sections that are never optional in practice, so a `validate` failure at PUT time replaces a startup
+  crash for those; there is no more general re-validation of the effective document.
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
   object properties. Options without `default` (`verification_mode`, `ciphers`, `max_body_size`, `dual_stack`) stay absent:
@@ -56,15 +58,15 @@ the language).
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
   off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
-  always generates one. `cluster` is the only `required` property at the document root (every manager runs as a
-  cluster node, issue #38638), so a document that omits `<cluster>` entirely, or one whose `<cluster>` omits `<key>`,
-  both fail with `required` at `validate` time instead of leaving the effective document a `key`-less section that
-  only breaks `wazuh-manager-clusterd` on restart.
+  always generates one. `cluster` and `indexer` are the only `required` properties at the document root (issue
+  #38638): every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
+  so a document that omits either section, or one whose `<cluster>` omits `<key>`, fails with `required` at
+  `validate` time instead of leaving the effective document with a gap that only breaks a daemon on restart.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
   default.
 - **An empty file is invalid** (XML needs a root); the minimal valid document is
-  `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster></wazuh_config>` — every other option keeps its
-  schema default.
+  `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host>
+  </hosts></indexer></wazuh_config>` — every other option keeps its schema default.
 
 ## Layout
 
