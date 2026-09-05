@@ -131,6 +131,51 @@ EXPORTED int cbaseline_run_fim_dbsync(const char*                connector_socke
                                       cb_rate_limit_fn           rate_limit,
                                       void*                      user_data);
 
+/* Baseline ONE container's FIM files, over the paths the caller supplies.
+ *
+ * Serves both actions an event-driven reconcile needs, differing only in what
+ * is passed as `paths`:
+ *   - re-walk a container: the same monitored paths as the whole-node run;
+ *   - re-read specific files: one cb_monitored_path_t per file. No special mode
+ *     is needed — a path naming a non-directory produces exactly one row.
+ *
+ * PATH VALIDATION. Unlike the whole-node entry points, whose paths come from
+ * agent configuration, these may originate outside the agent — in the eBPF
+ * consumer they arrive in kernel events emitted by processes running INSIDE the
+ * container, so the container chooses them. Each `internal_path` must therefore
+ * be lexically absolute and already canonical: no "." or ".." component, no
+ * empty component (so no "//" and no trailing '/'), no embedded NUL. Paths that
+ * are not are DROPPED, not normalised — rewriting "/etc/../x" into "/x" would
+ * silently scan something other than what was asked for — and a drop forces the
+ * scan to be reported partial, which suppresses delete detection.
+ *
+ * `status_sink` and `rate_limit` may be NULL, but a caller that intends to use
+ * delete detection needs `status_sink`: it is the only channel reporting that a
+ * scan was incomplete.
+ *
+ * Returns:
+ *    1  the container was baselined (a live, addressable PID was found);
+ *    0  nothing was baselined — unknown to the connector, no resolvable PID, or
+ *       no usable path was supplied. Its stored rows MUST be kept;
+ *   -1  the connector could not be reached. Its stored rows MUST be kept.
+ *
+ * The tri-state is the safety property, which is why this returns a status
+ * rather than a count like the functions above. Those can lean on
+ * cbaseline_list_containers()' own -1 to tell "stopped" from "could not ask";
+ * a single-container caller has no second signal, and collapsing 0 and -1 would
+ * let a momentary connector blip look exactly like "this container has no files
+ * any more" — the same mass false-delete this header warns about, one container
+ * at a time.
+ */
+EXPORTED int cbaseline_run_fim_dbsync_container(const char*                connector_socket_path,
+                                                const char*                container_id,
+                                                const cb_monitored_path_t* paths,
+                                                int                        path_count,
+                                                cb_dbsync_row_sink_t       sink,
+                                                cb_container_status_sink_t status_sink,
+                                                cb_rate_limit_fn           rate_limit,
+                                                void*                      user_data);
+
 /* Baseline process + network + account + package + os + interface + address +
  * route + service + hardware inventory for every container currently known to
  * the container-connector module, as raw dbsync rows.

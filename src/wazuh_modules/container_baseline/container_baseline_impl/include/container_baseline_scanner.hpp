@@ -134,6 +134,54 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
                               const ContainerStatusSink&        status_sink = {},
                               const std::function<void()>&      rate_limit = {});
 
+/// @brief FIM baseline for ONE container, over the paths the caller supplies.
+///
+/// Serves both actions the eBPF reconcile consumer (#37532) needs, differing
+/// only in what it passes as `paths`:
+///   - re-walk a container: the configured monitored paths;
+///   - re-read specific files: one MonitoredPath per file. No special mode is
+///     needed — WalkContainerPath() emits exactly one row when `internal_path`
+///     names a non-directory (rootfs_file_walker.cpp), at any recursion level.
+///
+/// **Paths are validated** with IsSafeInternalPath() and rejected ones are
+/// dropped, because unlike every other entry point here these may come from
+/// outside the agent's own configuration — in the eBPF consumer they arrive in
+/// kernel events emitted by processes inside the container. A rejection forces
+/// the scan to be reported partial, so it suppresses delete detection rather
+/// than passing unnoticed.
+///
+/// @return  1  baselined (a live, addressable PID was found);
+///          0  nothing was baselined — the container is unknown to the
+///             connector, has no resolvable PID, or was given no usable path.
+///             Its stored rows must be KEPT;
+///         -1  the connector could not be reached. Its stored rows must be KEPT.
+///
+/// The tri-state matters and is why this does not return a count like the
+/// whole-node entry points do. Those can lean on ListContainers()' own -1 to
+/// tell "stopped" from "could not ask"; a single-container caller has no such
+/// second signal, and collapsing 0 and -1 would let a momentary connector blip
+/// look exactly like "this container has no files any more" — the C15 mass
+/// false-delete, one container at a time.
+int RunFimDbsyncBaselineForContainer(const std::string&                connector_socket_path,
+                                      const std::string&                container_id,
+                                      const std::vector<MonitoredPath>& paths,
+                                      const DbsyncRowSink&              sink,
+                                      const ContainerStatusSink&        status_sink = {},
+                                      const std::function<void()>&      rate_limit = {});
+
+/// @brief Single-container FIM baseline over an explicit container list and PID
+/// index, so the selection, path validation and partial-reporting behaviour can
+/// be tested without a running connector. See RunFimDbsyncBaselineForContainer()
+/// for the contract; this variant cannot report -1, since reachability is the
+/// caller's to establish.
+int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        discover,
+                                          const std::string&                container_id,
+                                          const PidIndex&                   pids,
+                                          const std::vector<MonitoredPath>& paths,
+                                          const DbsyncRowSink&              sink,
+                                          const ContainerStatusSink&        status_sink = {},
+                                          const std::function<void()>&      rate_limit = {});
+
 /// @brief Syscollector inventory baseline over an explicit container list and
 /// PID index. See RunFimDbsyncBaselineFrom().
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
