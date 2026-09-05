@@ -7299,7 +7299,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
-      - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s*(VERBOSE|INFO)'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:loglevel\s*(VERBOSE|INFO)'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 4660

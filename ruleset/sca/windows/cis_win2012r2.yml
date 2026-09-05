@@ -1520,7 +1520,7 @@ checks:
     rules:
       - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
       - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext -> r:\w+'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 15031
@@ -10138,11 +10138,11 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> AntiDetours'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> BannedFunctions'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings-> DeepHooks'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> DeepHooks'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ExploitAction'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> AntiDetours -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> BannedFunctions -> 1'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings-> DeepHooks -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> DeepHooks -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ExploitAction -> 2'
 
   # 18.10.24.3 (L1) Ensure 'Default Protections for Internet Explorer' is set to 'Enabled'. (Automated)

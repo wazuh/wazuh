@@ -1457,7 +1457,7 @@ checks:
     rules:
       - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
       - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext -> r:\w+'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 16530
@@ -12276,7 +12276,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds ->EnableAppInstaller -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> EnableAppInstaller -> 0'
 
   # 18.10.17.2 (L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'. (Automated)
   - id: 16768
