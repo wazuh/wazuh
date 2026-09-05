@@ -299,6 +299,75 @@ TEST(ContainerEventRouterTest, AQuietCycleEscalatesNothing)
     EXPECT_EQ(0u, f.router.stats().global_escalations);
 }
 
+TEST(ContainerEventRouterTest, ARenameReWalksItsContainerBecauseTheSourcePathIsNeverReported)
+{
+    Fixture f;
+    f.router.applyContainerList({{160, "container-a"}});
+
+    // The engine names only the destination. If this staged /etc/passwd.bak and
+    // stopped there, the stored row for /etc/passwd would describe a file that
+    // no longer exists and nothing would ever correct it.
+    f.router.onRename(160);
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-a", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect);
+    EXPECT_EQ(1u, f.router.stats().renames_routed);
+}
+
+TEST(ContainerEventRouterTest, ManyRenamesCoalesceIntoOneReWalk)
+{
+    Fixture f;
+    f.router.applyContainerList({{170, "container-busy"}});
+
+    // A package upgrade renaming a thousand files must not cost a thousand
+    // re-walks; Suspect is a set keyed by container.
+    for (int i = 0; i < 1000; ++i)
+    {
+        f.router.onRename(170);
+    }
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    EXPECT_EQ(1u, batches.size());
+    EXPECT_EQ(1000u, f.router.stats().renames_routed);
+}
+
+TEST(ContainerEventRouterTest, ARenameSupersedesPathsAlreadyStagedForThatContainer)
+{
+    Fixture f;
+    f.router.applyContainerList({{180, "container-a"}});
+
+    f.router.onEvent(180, "/etc/hosts");
+    f.router.onRename(180);
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    // The re-walk covers /etc/hosts too, so keeping the path list as well would
+    // be duplicated work, not extra safety.
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_TRUE(batches[0].suspect);
+    EXPECT_TRUE(batches[0].paths.empty());
+}
+
+TEST(ContainerEventRouterTest, AHostCgroupsRenameIsDiscarded)
+{
+    Fixture f;
+    f.router.applyNotContainer(190);
+
+    f.router.onRename(190);
+
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(0u, f.router.stats().renames_routed);
+    EXPECT_EQ(0u, f.router.stats().global_escalations);
+}
+
 TEST(ContainerEventRouterTest, AnEventForACgroupWhoseContainerDiedIsNoLongerAttributed)
 {
     Fixture f;
