@@ -547,3 +547,208 @@ TEST(ListContainers, TheWarmupRetryIsPaidOncePerProcessNotOnEveryCall)
     // asserted on, so the test does not depend on gtest's execution order.
     EXPECT_LT(elapsed, 1000) << "a later call re-paid the warm-up retry budget (" << elapsed << "ms)";
 }
+
+// ---------------------------------------------------------------------------
+// Single-container baseline (#37532): the entry point the eBPF reconcile
+// consumer drives. Exercised through the *From seam, so none of this needs a
+// running connector or a real container.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+using wazuh::container_baseline::RunFimDbsyncBaselineForContainerFrom;
+
+/// A MonitoredPath naming one file rather than a tree — what a path reconcile
+/// passes. recursion_level is irrelevant for a non-directory, and 0 ("entry
+/// only") is what a caller would naturally write.
+MonitoredPath FilePathFor(const std::string& file)
+{
+    MonitoredPath mp;
+    mp.internal_path   = file;
+    mp.recursion_level = 0;
+    return mp;
+}
+
+} // namespace
+
+TEST(SingleContainerBaseline, BaselinesOnlyTheContainerItWasAskedFor)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    const auto discover = []
+    { return std::vector<ContainerIdentity>{MakeIdentity("c1"), MakeIdentity("c2")}; };
+    const auto self = ::getpid();
+    const auto pids = PidIndex::FromMap({{"c1", {self}}, {"c2", {self}}});
+
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(
+        discover, "c2", pids, {PathFor(tree.path())}, rec.rowSink(), rec.statusSink());
+
+    EXPECT_EQ(1, baselined);
+    ASSERT_EQ(1u, rec.statuses.size());
+    EXPECT_EQ("c2", rec.statuses[0].container_id);
+
+    for (const auto& row : rec.rows)
+    {
+        EXPECT_EQ("c2", row.container_id);
+    }
+    EXPECT_FALSE(rec.rows.empty());
+}
+
+TEST(SingleContainerBaseline, RereadingOneFileEmitsExactlyOneRow)
+{
+    TempTree tree;
+    tree.writeFile("wanted", "x");
+    tree.writeFile("ignored", "y");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // This is what makes a separate "stat these paths" API unnecessary: a
+    // MonitoredPath naming a file walks to exactly that file.
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(
+        discover, "c1", pids, {FilePathFor(tree.path() + "/wanted")}, rec.rowSink(), rec.statusSink());
+
+    EXPECT_EQ(1, baselined);
+    ASSERT_EQ(1u, rec.rows.size());
+    EXPECT_NE(std::string::npos, rec.rows[0].json.find("/wanted"));
+    EXPECT_EQ(std::string::npos, rec.rows[0].json.find("/ignored"));
+}
+
+TEST(SingleContainerBaseline, AContainerTheConnectorDoesNotKnowIsNotBaselined)
+{
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // 0, not an error: "gone" is the whole-node stale sweep's call to make,
+    // against a list it has confirmed reachable. One absence proves nothing.
+    EXPECT_EQ(0, RunFimDbsyncBaselineForContainerFrom(discover, "c-unknown", pids, {PathFor("/tmp")},
+                                                      rec.rowSink(), rec.statusSink()));
+    EXPECT_TRUE(rec.rows.empty());
+    EXPECT_TRUE(rec.statuses.empty());
+}
+
+TEST(SingleContainerBaseline, AContainerWithNoLivePidIsNotBaselined)
+{
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+
+    EXPECT_EQ(0, RunFimDbsyncBaselineForContainerFrom(discover, "c1", PidIndex::FromMap({}),
+                                                      {PathFor("/tmp")}, rec.rowSink(), rec.statusSink()));
+    EXPECT_TRUE(rec.statuses.empty());
+}
+
+TEST(SingleContainerBaseline, AnEmptyContainerIdIsNotBaselined)
+{
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+
+    EXPECT_EQ(0, RunFimDbsyncBaselineForContainerFrom(discover, "", PidIndex::FromMap({{"c1", {::getpid()}}}),
+                                                      {PathFor("/tmp")}, rec.rowSink(), rec.statusSink()));
+    EXPECT_TRUE(rec.rows.empty());
+}
+
+TEST(SingleContainerBaseline, AnEscapingPathIsDroppedAndTheScanReportedPartial)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // The second path is what a container could put in an eBPF event. It must
+    // not be resolved, and its absence must not read as a complete scan.
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(
+        discover, "c1", pids, {PathFor(tree.path()), FilePathFor("/etc/../../../../root/.ssh/id_rsa")},
+        rec.rowSink(), rec.statusSink());
+
+    EXPECT_EQ(1, baselined);
+    ASSERT_EQ(1u, rec.statuses.size());
+    EXPECT_TRUE(rec.statuses[0].partial)
+        << "a dropped path left the scan looking complete, so delete detection would run";
+
+    for (const auto& row : rec.rows)
+    {
+        EXPECT_EQ(std::string::npos, row.json.find("id_rsa"));
+    }
+}
+
+TEST(SingleContainerBaseline, AnEmptyPathIsAlsoDroppedAndReportedPartial)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    RunFimDbsyncBaselineForContainerFrom(discover, "c1", pids, {PathFor(tree.path()), FilePathFor("")},
+                                         rec.rowSink(), rec.statusSink());
+
+    ASSERT_EQ(1u, rec.statuses.size());
+    EXPECT_TRUE(rec.statuses[0].partial);
+}
+
+TEST(SingleContainerBaseline, AWellFormedPathSetIsNotReportedPartial)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // The control for the two tests above: without this, "partial" could be
+    // stuck on and they would pass for the wrong reason.
+    RunFimDbsyncBaselineForContainerFrom(discover, "c1", pids, {PathFor(tree.path())}, rec.rowSink(),
+                                         rec.statusSink());
+
+    ASSERT_EQ(1u, rec.statuses.size());
+    EXPECT_FALSE(rec.statuses[0].partial);
+}
+
+TEST(SingleContainerBaseline, WhenEveryPathIsRejectedNothingIsBaselined)
+{
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // Returning 1 here would announce a successful walk that emitted no rows,
+    // which a caller doing delete detection reads as "this container has no
+    // files" and acts on.
+    EXPECT_EQ(0, RunFimDbsyncBaselineForContainerFrom(discover, "c1", pids, {FilePathFor("/etc/../root")},
+                                                      rec.rowSink(), rec.statusSink()));
+    EXPECT_TRUE(rec.rows.empty());
+    EXPECT_TRUE(rec.statuses.empty());
+}
+
+TEST(SingleContainerBaseline, NoPathsAtAllMeansNothingIsBaselined)
+{
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    EXPECT_EQ(0, RunFimDbsyncBaselineForContainerFrom(discover, "c1", pids, {}, rec.rowSink(),
+                                                      rec.statusSink()));
+    EXPECT_TRUE(rec.statuses.empty());
+}
+
+TEST(SingleContainerBaseline, StatusSinkIsOptional)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    // Including with a rejected path, where the partial-forcing wrapper must not
+    // be installed over a null sink.
+    EXPECT_EQ(1, RunFimDbsyncBaselineForContainerFrom(
+                     discover, "c1", pids, {PathFor(tree.path()), FilePathFor("/a/../b")}, rec.rowSink()));
+    EXPECT_FALSE(rec.rows.empty());
+}
