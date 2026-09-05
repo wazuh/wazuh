@@ -14,22 +14,17 @@
 #include "agent_sync_protocol_types.hpp"
 
 #include <string>
-#include <array>
-#include <map>
 #include <vector>
-#include <optional>
 #include <mutex>
-#include <condition_variable>
-#include <thread>
-#include <chrono>
 #include <memory>
-#include <atomic>
+#include <unordered_map>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
 /// This class provides a module-scoped message queue.
 /// Messages are held in memory and synchronized with a storage backend
-/// implementing IPersistentQueueStorage (e.g., SQLite).
+/// implementing IPersistentQueueStorage — by default InMemoryQueueStorage, which itself
+/// only touches disk at construction (load) and destruction (save).
 ///
 /// Each module has its own queue and sequence counter, ensuring isolation and ordering.
 class PersistentQueue : public IPersistentQueue
@@ -39,7 +34,7 @@ class PersistentQueue : public IPersistentQueue
         /// @param dbPath Path to the SQLite database file for this protocol instance.
         /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
-        ///                If null, a default PersistentQueueStorage is used.
+        ///                If null, a default InMemoryQueueStorage is used.
         explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
 
         /// @brief Destructor.
@@ -87,33 +82,8 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
-        /// @brief Maximum number of buffered events before triggering an immediate flush.
-        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
-
-        /// @brief Maximum time to wait before flushing a non-full buffer.
-        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
-
-        /// @brief Mutex protecting m_buffers.
-        std::mutex m_mutex;
-
         /// @brief Mutex serializing all m_storage access across threads.
         std::mutex m_storageMutex;
-
-        /// @brief Condition variable signalling the flush thread.
-        std::condition_variable m_cv;
-
-        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
-        ///        the flush thread swaps the index and drains the old slot.
-        std::array<std::vector<PersistedData>, 2> m_buffers;
-
-        /// @brief Index (0 or 1) of the buffer currently accepting new events.
-        std::size_t m_currentIdx{0};
-
-        /// @brief Background thread that drains m_buffers into storage.
-        std::thread m_flushThread;
-
-        /// @brief Set to true to request flush thread shutdown.
-        std::atomic<bool> m_stop{false};
 
         /// @brief Storage backend to persist and restore messages.
         std::shared_ptr<IPersistentQueueStorage> m_storage;
@@ -121,13 +91,21 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Main loop executed by m_flushThread.
-        void flushLoop();
+        /// @brief Items that failed to persist on a previous call, keyed by id so repeated
+        ///        failures (or a newer submit() for the same id arriving before the older
+        ///        failed attempt is retried) coalesce instead of accumulating stale
+        ///        duplicates or being raw-overwritten -- a CREATE canceled by a later
+        ///        DELETE_ is dropped entirely rather than replayed as a lone DELETE_.
+        ///        Retried opportunistically at the start of
+        ///        submit(), fetchAndMarkForSync(), and fetchPendingItems() -- i.e. every entry
+        ///        point that touches m_storage, not just submit() -- so a transient storage
+        ///        failure does not silently and permanently lose the event even if no further
+        ///        submit() call for a different id ever happens. Also given one last
+        ///        best-effort drain attempt in the destructor, so a failed item that was never
+        ///        retried again is not additionally lost on an otherwise graceful shutdown.
+        std::unordered_map<std::string, PersistedData> m_pendingRetry;
 
-        /// @brief Writes a batch to storage in a single transaction.
-        /// @return true if the batch was persisted successfully, false otherwise.
-        bool flushBuffer(const std::vector<PersistedData>& batch);
-
-        /// @brief Steals any items currently in m_buffers and flushes them to storage.
-        void flushPendingBuffer();
+        /// @brief Retries every item in m_pendingRetry against m_storage, keeping only the
+        ///        ones that still fail. Caller must already hold m_storageMutex.
+        void drainPendingRetryLocked();
 };

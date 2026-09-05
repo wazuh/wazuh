@@ -78,6 +78,7 @@ add_library(
   src/agent_sync_protocol.cpp
   src/persistent_queue.cpp
   src/persistent_queue_storage.cpp
+  src/in_memory_queue_storage.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   src/sync_socket_transport.cpp
