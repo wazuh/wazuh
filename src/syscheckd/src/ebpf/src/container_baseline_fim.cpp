@@ -32,6 +32,7 @@
 #include "container_baseline_fim.h"
 #include "container_baseline.h"
 #include "container_baseline_fim_bridge.h"
+#include "container_event_drain.hpp"
 #include "db.h"
 #include "fimCommonDefs.h"
 
@@ -39,11 +40,13 @@
 
 #include <json.hpp>
 
+#include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -206,6 +209,17 @@ class ScopedContainerTxn {
 /// Streams the baseline into per-container transactions.
 class BaselineDriver {
     public:
+        /// `may_detect_deletions` is D15 (12-blocking-decisions.md) reaching the
+        /// database. A path reconcile re-reads a handful of named files, so the
+        /// rows it produces are a subset of the container's files BY DESIGN, not
+        /// by accident — and delete detection over a subset deletes everything
+        /// else the container owns. The whole-node and per-container walks pass
+        /// true and stay gated on `partial` as before.
+        explicit BaselineDriver(bool may_detect_deletions = true)
+            : m_may_delete(may_detect_deletions)
+        {
+        }
+
         void onRow(const char* container_id, const char* row_json)
         {
             if (!container_id || !row_json) return;
@@ -260,7 +274,7 @@ class BaselineDriver {
                 ++m_partial;
             }
 
-            finishCurrent(!partial);
+            finishCurrent(m_may_delete && !partial);
         }
 
         /// Containers still holding rows in the DB but no longer known to
@@ -331,6 +345,7 @@ class BaselineDriver {
             m_current.clear();
         }
 
+        const bool                           m_may_delete{true};
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
@@ -367,6 +382,150 @@ void container_id_sink(const char* container_id, void* user_data)
 {
     if (!container_id || !user_data) return;
     static_cast<std::set<std::string>*>(user_data)->insert(container_id);
+}
+
+
+/// Is `path` inside the configured monitored path `root`?
+///
+/// This is the prefix filter C22 makes necessary. An `ATTR` event on a
+/// container's rootfs also arrives under a HOST path
+/// (/var/lib/containerd/.../snapshots/117/fs/tmp/x), attributed to the
+/// container's cgroup; resolving that under /proc/<pid>/root would look for a
+/// file that does not exist inside the container. Requiring a staged path to sit
+/// under something the operator actually configured discards those, because no
+/// realistic configuration monitors the runtime's snapshot directory.
+bool PathIsUnder(const std::string& path, const char* root)
+{
+    if (root == nullptr || root[0] == '\0') return false;
+
+    const std::string prefix{root};
+
+    if (prefix == "/") return path.size() > 1 && path[0] == '/';
+    if (path.size() < prefix.size()) return false;
+    if (path.compare(0, prefix.size(), prefix) != 0) return false;
+
+    // Exactly the configured entry, or a child of it. The length check is what
+    // stops "/etc" matching "/etcpasswd".
+    return path.size() == prefix.size() || path[prefix.size()] == '/';
+}
+
+/// Turns the staged paths into one zero-recursion MonitoredPath each, keeping
+/// the hash policy of whichever configured entry contains them.
+///
+/// `storage` owns the strings, because cb_monitored_path_t holds a borrowed
+/// const char*.
+std::vector<cb_monitored_path_t> SelectReconcilePaths(const std::vector<std::string>& staged,
+                                                       const cb_monitored_path_t*      configured,
+                                                       size_t                          configured_count,
+                                                       std::vector<std::string>&       storage)
+{
+    std::vector<cb_monitored_path_t> selected;
+
+    storage.reserve(staged.size());
+    selected.reserve(staged.size());
+
+    for (const auto& path : staged) {
+        for (size_t i = 0; i < configured_count; ++i) {
+            if (!PathIsUnder(path, configured[i].internal_path)) continue;
+
+            storage.push_back(path);
+
+            cb_monitored_path_t entry = configured[i];
+            entry.internal_path   = storage.back().c_str();
+            entry.recursion_level = 0;  // this one file, not a tree
+            entry.max_files       = 1;
+            selected.push_back(entry);
+            break;
+        }
+    }
+
+    return selected;
+}
+
+/// Acts on one batch from the eBPF drain. Runs on the consumer thread, so
+/// nothing here may throw out of it.
+void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
+{
+    using fim_container_events::ReconcileMode;
+
+    if (request.mode == ReconcileMode::rebaselineAll) {
+        // Loss nobody could attribute. The whole-node walk already knows how to
+        // do this safely, including the reachability gate on its stale sweep.
+        LogDebug("Container FIM reconcile: unattributable event loss; re-baselining every container.");
+        fim_run_container_baseline();
+        return;
+    }
+
+    if (request.container_id.empty()) return;
+
+    cb_monitored_path_t* paths      = nullptr;
+    size_t               path_count = 0;
+
+    if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
+    if (!paths || path_count == 0U) return;
+
+    try {
+        if (request.mode == ReconcileMode::rewalkContainer) {
+            // A walk sees whole directories, so it can tell a deleted file from
+            // an unreadable one: delete detection is allowed, still gated on the
+            // scan being reported complete.
+            BaselineDriver driver{/*may_detect_deletions=*/true};
+
+            const int outcome = cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                                    request.container_id.c_str(),
+                                                                    paths,
+                                                                    static_cast<int>(path_count),
+                                                                    dbsync_sink,
+                                                                    status_sink,
+                                                                    fim_container_baseline_rate_limit,
+                                                                    &driver);
+
+            if (outcome < 0) {
+                LogDebug("Container FIM reconcile: connector unavailable while re-walking container "
+                         "'%s'; its rows are kept and the next event or scheduled baseline retries.",
+                         request.container_id.c_str());
+            } else {
+                LogDebug("Container FIM reconcile: re-walked container '%s' (%d), %zu row(s).",
+                         request.container_id.c_str(), outcome, driver.rows());
+            }
+        } else {
+            std::vector<std::string>       storage;
+            const auto selected = SelectReconcilePaths(request.paths, paths, path_count, storage);
+
+            if (selected.empty()) {
+                // Everything staged for this container fell outside the
+                // configured paths — C22 host-form paths, or activity in a
+                // directory nobody asked to monitor. Nothing to do, and
+                // certainly nothing to delete.
+                LogDebug("Container FIM reconcile: none of the %zu changed path(s) for container '%s' "
+                         "are under a configured container directory; nothing to reconcile.",
+                         request.paths.size(), request.container_id.c_str());
+            } else {
+                // D15: NEVER delete from a path reconcile. Its rows are a subset
+                // of the container's files by design, and delete detection over a
+                // subset would delete everything not named in this batch.
+                BaselineDriver driver{/*may_detect_deletions=*/false};
+
+                cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                   request.container_id.c_str(),
+                                                   selected.data(),
+                                                   static_cast<int>(selected.size()),
+                                                   dbsync_sink,
+                                                   status_sink,
+                                                   fim_container_baseline_rate_limit,
+                                                   &driver);
+
+                LogDebug("Container FIM reconcile: re-read %zu path(s) for container '%s', %zu row(s).",
+                         selected.size(), request.container_id.c_str(), driver.rows());
+            }
+        }
+    } catch (const std::exception& err) {
+        LogError("Container FIM reconcile failed: %s", err.what());
+    } catch (...) {
+        LogError("Container FIM reconcile failed with an unknown error.");
+    }
+
+    fim_free_container_monitored_paths(paths);
 }
 
 } // namespace
@@ -438,4 +597,41 @@ extern "C" void fim_run_container_baseline(void)
     }
 
     fim_free_container_monitored_paths(paths);
+}
+
+extern "C" void fim_container_events_start(void)
+{
+    // Subscribe-first: this runs BEFORE the baseline walk, so a file changed
+    // while the walk is in progress is staged and reconciled afterwards instead
+    // of falling into the gap between "the walk read this file" and "monitoring
+    // started".
+    fim_container_events::DrainConfig config;
+    config.connector_socket_path = CB_DEFAULT_CONNECTOR_SOCKET_PATH;
+
+    // A daemonised agent's CWD is not its install directory, so the engine's
+    // CWD-relative fallback would not find the object.
+    char resolved[PATH_MAX] = {0};
+    if (fim_container_baseline_abspath(CB_RT_BPF_OBJECT_PATH, resolved, sizeof(resolved)) == 0) {
+        config.bpf_object_path = resolved;
+    }
+
+    try {
+        if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch)) {
+            return;
+        }
+    } catch (const std::exception& err) {
+        LogError("Container eBPF drain failed to start: %s", err.what());
+    } catch (...) {
+        LogError("Container eBPF drain failed to start with an unknown error.");
+    }
+}
+
+extern "C" void fim_container_events_release(void)
+{
+    fim_container_events::ContainerEventDrain::instance().release();
+}
+
+extern "C" void fim_container_events_stop(void)
+{
+    fim_container_events::ContainerEventDrain::instance().stop();
 }

@@ -483,7 +483,19 @@ int main(int argc, char **argv)
     // container directories are configured, sync is disabled, or
     // container_instances isn't running.
     if (!syscheck.disabled) {
+        // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
+        // file events from here on, so a file changed while the walk is running
+        // is reconciled afterwards instead of falling into the gap between "the
+        // walk read this file" and "monitoring started". No-op when the eBPF
+        // engine is unavailable.
+        fim_container_events_start();
+
         fim_run_container_baseline();
+
+        // Only now may the reconcile consumer touch file_entry: a single-row
+        // upsert racing the same container's open scoped transaction silently
+        // lost 502 of 504 rows on a real node.
+        fim_container_events_release();
     }
 #endif
 

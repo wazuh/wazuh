@@ -40,6 +40,40 @@ extern "C" {
  */
 void fim_run_container_baseline(void);
 
+/**
+ * @brief Start draining container file events from the eBPF engine (#37396).
+ *
+ * MUST be called BEFORE fim_run_container_baseline(). That ordering is the
+ * whole point: events are staged from this moment on, so a file changed while
+ * the baseline walk is running is reconciled afterwards instead of being missed
+ * in the gap between "walk read this file" and "monitoring started". Starting
+ * after the walk would leave exactly that hole.
+ *
+ * The consumer does NOT act on anything until fim_container_events_release().
+ *
+ * No-op, with a debug line, when the eBPF engine is unavailable, its ABI does
+ * not match, or the host is cgroup v1 — none of which are startup failures.
+ * Container FIM then relies on scheduled baselines alone, exactly as it does
+ * today.
+ */
+void fim_container_events_start(void);
+
+/**
+ * @brief Release the reconcile consumer; call once the baseline walk has
+ * committed.
+ *
+ * Until this point the consumer is parked. A single-row upsert racing the same
+ * container's open scoped transaction silently lost 502 of 504 rows on a real
+ * node, which is why the gate exists rather than relying on the two rarely
+ * overlapping. Safe to call when fim_container_events_start() did nothing.
+ */
+void fim_container_events_release(void);
+
+/**
+ * @brief Stop the drain and close the engine. Idempotent.
+ */
+void fim_container_events_stop(void);
+
 #ifdef __cplusplus
 }
 #endif
