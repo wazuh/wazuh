@@ -28,7 +28,13 @@ namespace wazuh::container_instances_client
     struct LookupResult
     {
         LookupStatus status {LookupStatus::unavailable};
-        std::string json; ///< resolved: the "data" object; notContainer: the "reason" string.
+
+        /// The WHOLE reply line, for every status — not the "data" object and not
+        /// the "reason" string. roundTrip() extracts only the outcome class and
+        /// leaves parsing to the caller (see the note at the end of it), so a
+        /// consumer wanting the enrichment record must parse this and descend
+        /// into `data` itself. Empty when nothing was received.
+        std::string json;
     };
 
     struct ContainerRef
