@@ -51,6 +51,9 @@ PersistentQueue::~PersistentQueue()
     // on a clean, graceful shutdown, not just a crash. Any failure here is logged and swallowed
     // (there is no later point left to retry from), which is an accepted, disclosed loss on top
     // of the already-accepted "ungraceful termination loses unsaved state" trade-off.
+    // Locked for consistency with every other m_storage access.
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
+
     for (auto& [id, pending] : m_pendingRetry)
     {
         try

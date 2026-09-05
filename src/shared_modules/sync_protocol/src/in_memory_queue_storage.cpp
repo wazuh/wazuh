@@ -269,7 +269,21 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
         newCreateStatus = CreateStatus::NEW;
     }
 
-    m_totalEstimatedBytes -= estimateSerializedItemBytes(oldRow.data);
+    const size_t oldBytes = estimateSerializedItemBytes(oldRow.data);
+    const size_t newBytes = estimateSerializedItemBytes(newData);
+
+    // Only a growing update can breach the cap; check before mutating oldRow so a rejection
+    // leaves it untouched, like a rejected brand-new id above.
+    if (newBytes > oldBytes && m_totalEstimatedBytes - oldBytes + newBytes > MAX_QUEUE_BYTES)
+    {
+        std::string message = "InMemoryQueueStorage: Queue is at capacity (~" + std::to_string(m_totalEstimatedBytes);
+        message += " of " + std::to_string(MAX_QUEUE_BYTES) + " B); rejecting update that would grow tracked item id=" + newData.id;
+        message += ". The sync peer may be unreachable for an extended period.";
+        m_logger(LOG_ERROR, message);
+        throw std::runtime_error(message);
+    }
+
+    m_totalEstimatedBytes -= oldBytes;
 
     oldRow.data.index = newData.index;
     oldRow.data.data = newData.data;
@@ -280,7 +294,7 @@ void InMemoryQueueStorage::applyCoalesceLogic(const PersistedData& newData)
     oldRow.createStatus = newCreateStatus;
     oldRow.operationSyncing = newOperationSyncing;
 
-    m_totalEstimatedBytes += estimateSerializedItemBytes(oldRow.data);
+    m_totalEstimatedBytes += newBytes;
 }
 
 void InMemoryQueueStorage::submitOrCoalesce(const PersistedData& data)

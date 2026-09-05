@@ -696,6 +696,59 @@ TEST(InMemoryQueueStorageCapacityTest, CoalescedUpdatesDoNotLeakIntoTheByteBudge
     EXPECT_TRUE(newIdPresent);
 }
 
+TEST(InMemoryQueueStorageCapacityTest, RejectsCoalescedUpdateThatWouldGrowTrackedItemPastCapacity)
+{
+    // The cap must also apply when an already-tracked id grows, not just to brand-new ids.
+    InMemoryQueueStorage storage(":memory:", silentLogger());
+
+    const std::string largePayload(4096, 'x');
+
+    // Fill the queue with distinct ids up to just under the cap.
+    int lastAcceptedIndex = -1;
+
+    for (int i = 0; i < 3000; ++i)
+    {
+        try
+        {
+            storage.submitOrCoalesce(PersistedData{0, "id" + std::to_string(i), "idx", largePayload, Operation::CREATE, 1});
+            lastAcceptedIndex = i;
+        }
+        catch (const std::exception&)
+        {
+            break;
+        }
+    }
+
+    ASSERT_GE(lastAcceptedIndex, 0) << "Test setup expected at least one item to fit before the cap";
+
+    const std::string trackedId = "id" + std::to_string(lastAcceptedIndex);
+    const auto rowsBeforeGrowth = storage.fetchAll();
+    const auto originalRow = std::find_if(rowsBeforeGrowth.begin(), rowsBeforeGrowth.end(),
+                                          [&](const QueueRow & row)
+    {
+        return row.data.id == trackedId;
+    });
+    ASSERT_NE(originalRow, rowsBeforeGrowth.end());
+
+    // Re-submit that same, already-tracked id with a much bigger payload: this must be
+    // rejected exactly like a brand-new id would be once the cap is reached.
+    const std::string oversizedPayload(2 * 1024 * 1024, 'y');
+    EXPECT_THROW(
+        storage.submitOrCoalesce(PersistedData{0, trackedId, "idx", oversizedPayload, Operation::MODIFY, 2}),
+        std::runtime_error);
+
+    // The rejected update must leave the tracked item exactly as it was, not partially applied.
+    const auto rowsAfterRejection = storage.fetchAll();
+    const auto rowAfterRejection = std::find_if(rowsAfterRejection.begin(), rowsAfterRejection.end(),
+                                                [&](const QueueRow & row)
+    {
+        return row.data.id == trackedId;
+    });
+    ASSERT_NE(rowAfterRejection, rowsAfterRejection.end());
+    EXPECT_EQ(rowAfterRejection->data.data, originalRow->data.data);
+    EXPECT_EQ(rowAfterRejection->data.version, originalRow->data.version);
+}
+
 TEST(InMemoryQueueStorageCapacityTest, SubmitBatchRollsBackFullyOnMidBatchFailure)
 {
     // submitBatch() must persist atomically: a mid-batch failure must not leave earlier
