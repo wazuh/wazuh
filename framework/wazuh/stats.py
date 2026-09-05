@@ -7,7 +7,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.engine_http import EngineHTTPClient
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_socket
+from wazuh.core.stats import get_daemons_stats_socket, get_remoted_daemon_stats
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
@@ -42,6 +42,9 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
                     result.affected_items.append(client.get_metrics_dump())
                 finally:
                     client.close()
+            elif daemon == 'wazuh-manager-remoted':
+                # Two channels: the legacy getstats counters plus the HTTPS agent server's metrics.
+                result.affected_items.append(get_remoted_daemon_stats())
             else:
                 result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
         except WazuhException as e:

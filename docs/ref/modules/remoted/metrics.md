@@ -7,8 +7,11 @@ dump of the whole registry on **`GET /metrics` over the module's local admin soc
 `queue/sockets/remote-admin-http.sock`. See the admin-socket contract in the
 [module overview](README.md#local-admin-socket): the socket is local-only, optional
 (a failed bind is a warning, never fatal), and none of this is ever exposed on the public
-HTTPS listener. The legacy daemon statistics (`wazuh-manager-remoted.state`, the cluster
-daemons-stats API) are a separate, untouched mechanism — see
+HTTPS listener.
+
+That socket is the **authoritative** surface: it serves the whole registry, always current.
+Most of it is also reported remotely through the cluster daemons-stats API, alongside the
+legacy daemon counters — see [API projection](#api-projection) below and
 [Monitoring](configuration.md#monitoring).
 
 Every metric answers a concrete tuning or triage question. This page is the full catalog:
@@ -379,6 +382,93 @@ never printed. Where a cumulative counter exists it is the figure to trust; wher
 with the wazuh-db error throttles in the control plane, the line's own total is all there is and it
 under-reports. Three of the four are decided before any route runs; `rejected.no_response` is the
 exception, counted after a handler returned without answering.
+
+## API projection
+
+The catalog above is also reported through the server API, so it can be read remotely and per
+cluster node without shell access to the admin socket:
+
+```bash
+GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
+```
+
+The flat `remoted.*` names are projected onto a nested object, `metrics.http_server`, beside the
+legacy daemon counters that same response has always carried:
+
+```jsonc
+{
+  "uptime": "2026-08-19T09:12:04Z",
+  "timestamp": "2026-08-19T12:00:00Z",
+  "name": "wazuh-manager-remoted",
+  "metrics": {
+    "bytes": { "received": 0, "sent": 0 },   // legacy TCP/UDP channel — see the caveat below
+    "tcp_sessions": 0,
+    // ... the rest of the legacy counters ...
+    "http_server": {
+      "timestamp": "2026-08-19T12:00:00Z",
+      "responses": {
+        "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
+                       "413": 1, "500": 0, "503": 4, "other": 0 },
+        "stateful":  { "...": 0 }, "stats": { "...": 0 },
+        "config":    { "...": 0 }, "enroll": { "...": 0 }
+      },
+      "latency": {
+        "stateless": { "count": 98213, "sum": 210394821, "min": 312, "max": 90210,
+                       "p50": 1830, "p90": 4110, "p99": 9920 },
+        "stateful": { "...": 0 }, "enroll": { "...": 0 }
+      },
+      "auth_rejections": { "total": 5, "unknown_agent": 3, "bad_token": 1, "...": 0 },
+      "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 128, "...": 0 } },
+      "control":         { "notify": 421337, "registry_agents": 32, "wdb_latency": { "...": 0 } },
+      "keystore":        { "agents": 34, "reloads_total": 3, "...": 0 },
+      "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 512, "...": 0 } },
+      "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
+      "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
+      "vd_scan":         { "requests_total": 8, "accepted": 8, "...": 0 }
+    }
+  }
+}
+```
+
+The group names map onto the catalog sections above one-for-one:
+
+| API group under `metrics.http_server` | Catalog family |
+|---|---|
+| `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
+| `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
+| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject), plus a `total` rollup |
+| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll), with `remoted.enroll.authd.queue.*` under `authd_queue` |
+| `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
+| `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
+| `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
+| `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
+| `downloads` | [`remoted.download.*`](#downloads--remoteddownload) |
+| `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
+
+Conventions worth knowing before reading a response:
+
+- **`remoted.admin.server.*` is deliberately not projected.** Those metrics
+  ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API
+  reads the dump from; they are only meaningful when queried directly. The admin socket remains
+  the only way to see them.
+- **The whole `http_server` object is absent when the admin socket cannot be read.** It is
+  optional by contract, so its unavailability must not fail the request: the response still
+  carries the legacy counters, `total_failed_items` stays `0`, and the API log records a
+  warning. An absent object means "could not read", not "nothing to report".
+- **An absent field means "not reported", never zero.** Fields, sub-objects and whole groups
+  are omitted when the daemon does not report the metric behind them. A zero in the response is
+  therefore a real, observed zero — which is what makes the legacy caveat below detectable.
+- **The legacy counters are a different channel.** Everything directly under `metrics` counts
+  legacy TCP/UDP traffic and stays `0` unless `remote.legacy.enabled` is set. `metrics.bytes`
+  and `metrics.tcp_sessions` in particular are **not** the HTTPS figures: the HTTPS transport
+  keeps no byte or session counters, so there is nothing to project onto them.
+- **Names are flattened with underscores.** A dot inside a leaf name becomes an underscore
+  (`reloads.total` → `reloads_total`, `requests.total` → `requests_total`); the dots that
+  separate catalog *families* become the object nesting instead.
+- **Still no rates.** As with the raw dump, derive per-second figures by diffing between polls.
+
+Field-by-field descriptions are in the API reference: the `WazuhRemotedStatsItem` schema of
+`GET /cluster/{node_id}/daemons/stats`.
 
 ## Accounting boundaries
 
