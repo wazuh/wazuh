@@ -2797,8 +2797,10 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
 
     // Not for a call that ran no session at all: a flush landing on top of the periodic cycle
     // is reported as a success, and recording a VD first sync for it would tell agent-info a
-    // full scan has covered this agent when nothing was sent.
-    persistVDFirstSyncIfNeeded(vdResult.success && !vdResult.sessionSkipped, firstSyncDone);
+    // full scan has covered this agent when nothing was sent. #38899: an empty queue takes the
+    // same early-success path (sentAnything false), so it must be excluded here too -- success
+    // alone does not prove the manager received this agent's first snapshot.
+    persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped, firstSyncDone);
 
     return vdResult;
 }

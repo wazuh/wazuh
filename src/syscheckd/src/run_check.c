@@ -1279,7 +1279,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             atomic_int_set(&fim_flush_result, result);
             atomic_int_set(&fim_flush_in_progress, 0);
 
-            if (sync_result.success && !first_sync_completed) {
+            // #38899: success alone does not prove the manager received anything -- an empty
+            // queue takes the same early-success path as a delivered one. sent_anything is
+            // this durable marker's only valid proof of a round trip (see its own doc comment
+            // in agent_sync_protocol_types.hpp).
+            if (sync_result.success && sync_result.sent_anything && !first_sync_completed) {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                 first_sync_completed = true;
                 atomic_int_set(&syscheck.fim_first_sync_completed, 1);
@@ -1311,7 +1315,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     minfo("FIM synchronization finished: nothing to send.");
                 }
 
-                if (!first_sync_completed) {
+                // #38899: same reasoning as the flush branch above -- sent_anything is the only
+                // proof this cycle actually reached the manager, so it gates the durable marker.
+                if (sync_result.sent_anything && !first_sync_completed) {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                     first_sync_completed = true;
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
