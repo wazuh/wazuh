@@ -897,6 +897,57 @@ TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
     EXPECT_NE(std::string::npos, cfg.find(R"("agent_id":"001")"));
 }
 
+TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
+{
+    // #38840: hc_notify_now() reaches into ReporterStream::forceConfigReportNow()
+    // from the https_client_bridge callback thread, forcing the /config path's
+    // nextDue while the reporter's own thread concurrently reads and rewrites it
+    // inside tick()/runPath(). tick() only touches nextDue once the control loop
+    // is REGISTERED, which is why this lives here against a real FakeManager
+    // rather than in the black-box unit tests: a dead port never registers, so
+    // tick() never gets past its early "not registered" return and the race
+    // (real as it is by construction: no mutex protects the field) never
+    // actually happens in that harness for ThreadSanitizer to observe.
+    const uint16_t port = TLS_PORT + 6;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.config_report_enabled = true;
+    config.config_report_interval_s = 1;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_state_change = onState;
+    callbacks.collect_config = collectConfigStub;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    std::atomic<bool> notifying {true};
+    std::thread notifier(
+        [&]
+    {
+        // No iteration cap and no per-call delay: only notifying.load() bounds
+        // this, so it keeps contending with the reporter thread for the whole
+        // run instead of racing through a fixed count in a few microseconds
+        // and then sitting idle.
+        while (notifying.load())
+        {
+            hc_notify_now(handle);
+        }
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {500});
+
+    notifying = false;
+    notifier.join();
+    hc_destroy(handle);
+}
+
 TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
 {
     // A dedicated manager that flips its settings after 2 notifies: the

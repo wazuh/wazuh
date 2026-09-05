@@ -72,6 +72,15 @@ bool ReporterStream::anyEnabled() const
     return m_stats.enabled || m_config_.enabled;
 }
 
+void ReporterStream::forceConfigReportNow()
+{
+    // Path::nextDue's own convention (see reporterStream.hpp): default-constructed = epoch =>
+    // due immediately, picked up by the next tick() without disturbing m_stats' own cadence.
+    // Called from the https_client_bridge callback thread, not the reporter's own -- nextDue is
+    // atomic precisely so this store is well-defined against tick()/runPath() on the other side.
+    m_config_.nextDue.store(std::chrono::steady_clock::time_point {});
+}
+
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 {
     // Skip entirely (without advancing nextDue) when not registered or paused,
@@ -84,12 +93,12 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 
     const auto now = m_clock.steadyNow();
 
-    if (m_stats.enabled && now >= m_stats.nextDue)
+    if (m_stats.enabled && now >= m_stats.nextDue.load())
     {
         runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats());
     }
 
-    if (m_config_.enabled && now >= m_config_.nextDue)
+    if (m_config_.enabled && now >= m_config_.nextDue.load())
     {
         runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig());
     }
@@ -108,7 +117,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
         // gate right after registration, before the local modules unlock. Retry on
         // the same short backoff as a send failure rather than the full interval, so
         // a clean start still gets its first snapshot within seconds, not an hour.
-        path.nextDue = now + backoff.next();
+        path.nextDue.store(now + backoff.next());
         return;
     }
 
@@ -129,19 +138,19 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
     {
         LOGFN_DEBUG2(m_logFn, "%s snapshot delivered to the manager.", path.target.c_str());
         backoff.reset();
-        path.nextDue = now + path.interval;
+        path.nextDue.store(now + path.interval);
     }
     else if (result.outcome == OutcomeClass::BackPressure)
     {
         const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
-        path.nextDue =
-            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next());
+        path.nextDue.store(
+            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next()));
     }
     else
     {
         // Retryable / auth-paused (the gate is engaged by RetrySender) / other:
         // back off and try a fresh snapshot later.
-        path.nextDue = now + backoff.next();
+        path.nextDue.store(now + backoff.next());
     }
 }
 
@@ -173,12 +182,14 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
 
     if (m_stats.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_stats.nextDue - now));
+        soonest =
+            std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_stats.nextDue.load() - now));
     }
 
     if (m_config_.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_config_.nextDue - now));
+        soonest =
+            std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_config_.nextDue.load() - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

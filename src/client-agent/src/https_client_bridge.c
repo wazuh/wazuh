@@ -1108,6 +1108,14 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
                 "the startup gate directly instead (no restart will arrive to do it).");
         startup_gate_release_from_https_apply();
     }
+
+    /* #38840: the agent just applied a new shared configuration (this point is only reached when
+     * it will actually run with it, unlike the auto_restart-disabled early return above), but the
+     * /config reporter's own periodic cadence (default 3600s) would otherwise leave the manager's
+     * view of it stale for up to an hour. Pull that report in now instead of waiting it out. */
+    if (handle) {
+        hc_notify_now(handle);
+    }
 }
 
 /* Maps a producing module to the sync header its *com dispatch expects, and to
