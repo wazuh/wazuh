@@ -5,6 +5,7 @@
 #include "container_scope.hpp"
 #include "hardware_scanner.hpp"
 #include "image_content_cache.hpp"
+#include "internal_path_guard.hpp"
 #include "interface_scanner.hpp"
 #include "network_scanner.hpp"
 #include "os_scanner.hpp"
@@ -336,6 +337,69 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
     return baselined;
 }
 
+int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        discover,
+                                          const std::string&                container_id,
+                                          const PidIndex&                   pidIndex,
+                                          const std::vector<MonitoredPath>& paths,
+                                          const DbsyncRowSink&              sink,
+                                          const ContainerStatusSink&        status_sink,
+                                          const std::function<void()>&      rate_limit)
+{
+    if (container_id.empty()) return 0;
+
+    std::vector<ContainerIdentity> selected;
+    for (auto& identity : discover()) {
+        if (identity.container_id == container_id) {
+            selected.push_back(std::move(identity));
+            break;
+        }
+    }
+
+    // Not in the connector's list. Deliberately 0 and not an error: "gone" is
+    // decided by the whole-node stale sweep, which compares a REACHABLE list
+    // against what is stored. A single-container call has no standing to
+    // conclude anything about deletion from one absence.
+    if (selected.empty()) return 0;
+
+    // These paths may not come from agent configuration — in the eBPF consumer
+    // they arrive in kernel events emitted inside the container. Reject rather
+    // than normalise: rewriting "/etc/../x" into "/x" would silently scan
+    // something other than what was asked for. See internal_path_guard.hpp.
+    std::vector<MonitoredPath> safe;
+    safe.reserve(paths.size());
+    bool rejected = false;
+
+    for (const auto& mp : paths) {
+        if (IsSafeInternalPath(mp.internal_path)) {
+            safe.push_back(mp);
+        } else {
+            rejected = true;
+        }
+    }
+
+    // No usable path means nothing was baselined, and saying so matters: the
+    // alternative is returning 1 for a walk that emitted no rows, which a
+    // caller doing delete detection would read as "this container has no files"
+    // and act on. Covers both "every path was rejected" and "none were given".
+    if (safe.empty()) return 0;
+
+    ContainerStatusSink guarded = status_sink;
+
+    if (rejected && status_sink) {
+        // A dropped path makes the row set a subset of what was asked for —
+        // exactly what `partial` exists to say — so delete detection is
+        // suppressed instead of the rejection passing unnoticed.
+        guarded = [status_sink](const ContainerStatus& status) {
+            ContainerStatus forced = status;
+            forced.partial         = true;
+            status_sink(forced);
+        };
+    }
+
+    return RunFimDbsyncBaselineFrom([&selected]() { return selected; },
+                                    pidIndex, safe, sink, guarded, rate_limit);
+}
+
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
                                        const PidIndex&            pidIndex,
                                        const DbsyncRowSink&       sink,
@@ -504,6 +568,35 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
     return RunFimDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
         pids, paths, sink, status_sink, rate_limit);
+}
+
+int RunFimDbsyncBaselineForContainer(const std::string&                connector_socket_path,
+                                      const std::string&                container_id,
+                                      const std::vector<MonitoredPath>& paths,
+                                      const DbsyncRowSink&              sink,
+                                      const ContainerStatusSink&        status_sink,
+                                      const std::function<void()>&      rate_limit)
+{
+    if (container_id.empty()) return 0;
+
+    bool       reachable  = false;
+    const auto identities = DiscoverContainers(connector_socket_path, &reachable);
+
+    // -1 before anything else. An unreachable connector reports zero containers,
+    // so proceeding would make "I could not ask" indistinguishable from "this
+    // container is gone" — the C15 failure, scoped to one container.
+    if (!reachable) return -1;
+
+    // One /proc sweep per call. Measured cost, not a guess: on a node with N
+    // live processes this is N reads of /proc/<pid>/cgroup, and a re-walk storm
+    // pays it once per container per batch. The cheaper answer when it matters
+    // is reading the cgroup's own cgroup.procs, which needs the cgroup PATH
+    // while the eBPF consumer holds only its inode — see
+    // 13-container-baseline-api-plan.md §13.6.
+    const auto pids = PidIndex::FromMap({{container_id, ResolvePidsForContainer(container_id)}});
+
+    return RunFimDbsyncBaselineForContainerFrom([&identities]() { return identities; },
+                                                container_id, pids, paths, sink, status_sink, rate_limit);
 }
 
 int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
