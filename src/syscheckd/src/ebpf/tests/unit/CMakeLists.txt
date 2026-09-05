@@ -67,3 +67,19 @@ target_link_libraries(container_event_router_test
 
 add_test(NAME container_event_router_test
          COMMAND container_event_router_test)
+
+# D15 (12-blocking-decisions.md): a path reconcile may never authorise delete
+# detection. Enforced by the type the consumer acts on rather than by a comment
+# asking it to behave.
+add_executable(container_reconcile_plan_test container_reconcile_plan_test.cpp)
+
+target_link_libraries(container_reconcile_plan_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME container_reconcile_plan_test
+         COMMAND container_reconcile_plan_test)
