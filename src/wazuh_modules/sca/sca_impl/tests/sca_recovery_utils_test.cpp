@@ -53,6 +53,53 @@ TEST_F(SCARecoveryUtilsTest, EscapeSqlStringOnlyQuote)
     EXPECT_EQ(result, "''");
 }
 
+// The recovery path reads the same dumped columns as the delta path, so it decodes them the same way.
+TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArray)
+{
+    const nlohmann::json references = nlohmann::json::array(
+    {
+        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    });
+
+    EXPECT_EQ(sca::recovery::stringToJsonArray(references.dump()), references);
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArrayKeepsBackslashesAndCommas)
+{
+    const nlohmann::json rules = nlohmann::json::array(
+    {
+        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs",
+        "f:/etc/security/limits.conf -> r:^\\s*\\*\\s+hard\\s+core\\s+0, tail"
+    });
+
+    EXPECT_EQ(sca::recovery::stringToJsonArray(rules.dump()), rules);
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizeCheckForStatefulSerialisedRefsAndRules)
+{
+    const nlohmann::json references = nlohmann::json::array({"http://tldp.org/HOWTO/LVM-HOWTO/"});
+    const nlohmann::json rules = nlohmann::json::array({"c:findmnt -kn /tmp -> r:\\s*/tmp\\s"});
+
+    nlohmann::json check = {{"id", "31006"}, {"refs", references.dump()}, {"rules", rules.dump()}};
+
+    sca::recovery::normalizeCheckForStateful(check);
+
+    EXPECT_EQ(check["references"], references);
+    EXPECT_EQ(check["rules"], rules);
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizePolicyForStatefulSerialisedRefs)
+{
+    const nlohmann::json references = nlohmann::json::array({"https://www.cisecurity.org/cis-benchmarks/"});
+
+    nlohmann::json policy = {{"id", "cis_amazon_linux_2023"}, {"refs", references.dump()}};
+
+    sca::recovery::normalizePolicyForStateful(policy);
+
+    EXPECT_EQ(policy["references"], references);
+}
+
 // Tests for stringToJsonArray
 TEST_F(SCARecoveryUtilsTest, StringToJsonArrayEmptyString)
 {

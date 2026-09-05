@@ -128,8 +128,8 @@ class SCAEventHandler
         /// @return A JSON object representing the policy check.
         virtual nlohmann::json GetPolicyCheckById(const std::string& policyCheckId) const;
 
-        /// @brief Splits a comma-separated string into a JSON array.
-        /// @param input A string with elements separated by commas.
+        /// @brief Decodes a stored list column ("refs", "rules") into a JSON array.
+        /// @param input A serialised JSON array, or a comma-separated string for legacy rows.
         /// @return A JSON array of elements.
         nlohmann::json StringToJsonArray(const std::string& input) const;
 

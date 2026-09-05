@@ -5,6 +5,7 @@
 #include <sca_policy_loader.hpp>
 #include <sca_policy_loader_mock.hpp>
 #include <sca_policy_parser.hpp>
+#include <sca_recovery_utils.hpp>
 
 #include "logging_helper.hpp"
 
@@ -456,6 +457,63 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_PolicyTable_NoChecksum)
     EXPECT_FALSE(result[0].contains("checksum"));
     EXPECT_EQ(result[0]["name"], "Test Policy");
     EXPECT_EQ(result[0]["refs"], "\"ref1,ref2\"");
+}
+
+// Regression guard for the serialisation contract between the writer and the readers.
+// NormalizeData dumps "refs" and "rules" into the TEXT columns; whatever reads those columns back
+// must return the original list. Testing either side alone is what let the two drift apart, so this
+// runs a real policy and a real check through the writer and then through the reader.
+TEST_F(ScaPolicyLoaderTest, NormalizeDataRoundTripsRefsAndRules)
+{
+    const nlohmann::json policyReferences = nlohmann::json::array({"https://www.cisecurity.org/cis-benchmarks/"});
+    const nlohmann::json checkReferences = nlohmann::json::array(
+    {
+        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    });
+    const nlohmann::json checkRules = nlohmann::json::array(
+    {
+        "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found",
+        "not c:lsmod -> r:squashfs",
+        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs"
+    });
+
+    ScaPolicyLoaderMock policyLoader;
+
+    nlohmann::json policies = {{{"id", "cis_amazon_linux_2023"}, {"references", policyReferences}}};
+    nlohmann::json checks = {{{"id", "31002"}, {"references", checkReferences}, {"rules", checkRules}}};
+
+    auto storedPolicy = policyLoader.NormalizeData(policies)[0];
+    auto storedCheck = policyLoader.NormalizeData(checks)[0];
+
+    // The columns hold serialised arrays, not comma-separated text.
+    ASSERT_TRUE(storedPolicy["refs"].is_string());
+    ASSERT_TRUE(storedCheck["refs"].is_string());
+    ASSERT_TRUE(storedCheck["rules"].is_string());
+
+    sca::recovery::normalizePolicyForStateful(storedPolicy);
+    sca::recovery::normalizeCheckForStateful(storedCheck);
+
+    EXPECT_EQ(storedPolicy["references"], policyReferences);
+    EXPECT_EQ(storedCheck["references"], checkReferences);
+    EXPECT_EQ(storedCheck["rules"], checkRules);
+
+    // No element carries a bracket or a quote from the array it was serialised into.
+    const std::vector<nlohmann::json> decodedFields
+    {
+        storedPolicy["references"], storedCheck["references"], storedCheck["rules"]
+    };
+
+    for (const auto& field : decodedFields)
+    {
+        for (const auto& element : field)
+        {
+            const auto value = element.get<std::string>();
+            EXPECT_EQ(value.find('"'), std::string::npos) << value;
+            EXPECT_NE(value.front(), '[');
+            EXPECT_NE(value.back(), ']');
+        }
+    }
 }
 
 TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_CheckTable_AddsChecksum)

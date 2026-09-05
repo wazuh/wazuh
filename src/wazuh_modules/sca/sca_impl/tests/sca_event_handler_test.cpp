@@ -802,6 +802,95 @@ TEST_F(SCAEventHandlerTest, StringToJsonArray_ValuesWithTabs)
     EXPECT_EQ(handler->StringToJsonArray(input), expected);
 }
 
+// The "refs" and "rules" columns are written by SCAPolicyLoader::NormalizeData through
+// nlohmann::json::dump(), so the decoder has to parse them back rather than split them on commas.
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonArray)
+{
+    const std::string input =
+        R"(["https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/","https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"])";
+    const nlohmann::json expected =
+    {
+        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    };
+
+    EXPECT_EQ(handler->StringToJsonArray(input), expected);
+}
+
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonArraySingleElement)
+{
+    const std::string input = R"(["http://tldp.org/HOWTO/LVM-HOWTO/"])";
+    const nlohmann::json expected = {"http://tldp.org/HOWTO/LVM-HOWTO/"};
+
+    EXPECT_EQ(handler->StringToJsonArray(input), expected);
+}
+
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonArrayKeepsBackslashes)
+{
+    const nlohmann::json rules = nlohmann::json::array(
+    {
+        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs"
+    });
+
+    EXPECT_EQ(handler->StringToJsonArray(rules.dump()), rules);
+}
+
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonArrayKeepsCommasInsideElements)
+{
+    const nlohmann::json rules = nlohmann::json::array(
+    {
+        "f:/etc/security/limits.conf -> r:^\\s*\\*\\s+hard\\s+core\\s+0, tail",
+        "c:sysctl fs.suid_dumpable -> r:0"
+    });
+
+    EXPECT_EQ(handler->StringToJsonArray(rules.dump()), rules);
+}
+
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonArrayEmpty)
+{
+    EXPECT_EQ(handler->StringToJsonArray("[]"), nlohmann::json::array());
+}
+
+// A scalar field round-trips as a JSON string, so its content is still read as a list.
+TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonString)
+{
+    const nlohmann::json expected = {"ref1", "ref2"};
+
+    EXPECT_EQ(handler->StringToJsonArray(nlohmann::json("ref1,ref2").dump()), expected);
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_SerialisedRefsAndRules)
+{
+    const nlohmann::json references = nlohmann::json::array(
+    {
+        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    });
+    const nlohmann::json rules = nlohmann::json::array(
+    {
+        "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found",
+        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs"
+    });
+
+    nlohmann::json check = {{"id", "31002"}, {"refs", references.dump()}, {"rules", rules.dump()}};
+
+    handler->NormalizeCheck(check);
+
+    EXPECT_EQ(check["references"], references);
+    EXPECT_EQ(check["rules"], rules);
+}
+
+TEST_F(SCAEventHandlerTest, NormalizePolicy_SerialisedRefs)
+{
+    const nlohmann::json references = nlohmann::json::array({"https://www.cisecurity.org/cis-benchmarks/"});
+
+    nlohmann::json policy = {{"id", "cis_amazon_linux_2023"}, {"refs", references.dump()}};
+
+    handler->NormalizePolicy(policy);
+
+    EXPECT_EQ(policy["references"], references);
+}
+
 TEST_F(SCAEventHandlerTest, NormalizeCheck)
 {
     nlohmann::json check = {{"id", "1234"},
