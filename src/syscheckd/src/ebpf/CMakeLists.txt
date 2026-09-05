@@ -16,16 +16,25 @@ include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
 # #37532: container-baseline module (host-side FIM baseline for containers).
 include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
+# #37396: the eBPF Module's consumer-facing API (rt_open/rt_poll/rt_close), and
+# the container_instances IPC client the drain resolves cgroup ids through.
+include_directories(${SRC_FOLDER}/shared_modules/ebpf_provider/include/)
+include_directories(${SRC_FOLDER}/shared_modules/container_instances_client/include/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_baseline_fim_bridge.c ../persist_syscheck_msg.c)
+add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_event_drain.cpp src/container_baseline_fim_bridge.c ../persist_syscheck_msg.c)
 
-# Link against wazuh and the container-baseline module (#37532).
-target_link_libraries(fimebpf PRIVATE wazuh container_baseline)
+# Link against wazuh, the container-baseline module (#37532) and the eBPF
+# Module's loader (#37396). rt_engine is a static library built
+# POSITION_INDEPENDENT_CODE for exactly this: it is linked into a SHARED library.
+# It pulls in no libbpf at link time — libbpf is dlopen()'d at rt_open() — so
+# this adds no new build-time dependency on a BPF toolchain.
+target_link_libraries(fimebpf PRIVATE wazuh container_baseline rt_engine)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)

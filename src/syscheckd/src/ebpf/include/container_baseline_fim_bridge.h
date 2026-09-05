@@ -44,6 +44,18 @@ void fim_report_container_baseline_result(int baselined,
 void fim_container_baseline_log_debug(const char* message);
 void fim_container_baseline_log_error(const char* message);
 
+/* Install-relative location of the eBPF Module's compiled BPF object, mirroring
+ * how ebpf_whodata.cpp names modern.bpf.o. */
+#define CB_RT_BPF_OBJECT_PATH "lib/rt_file.bpf.o"
+
+/* Resolves an install-relative path against the agent's install directory.
+ * Returns 0 on success and writes a NUL-terminated absolute path into `out`.
+ *
+ * A shim for the same reason the logging ones are: shared.h's macros clash with
+ * the C++ headers the driver needs, so a C++ translation unit cannot include it
+ * to reach abspath() directly. */
+int fim_container_baseline_abspath(const char* relative, char* out, size_t out_size);
+
 /* Rate-limit hook handed to the baseline walker as its cb_rate_limit_fn:
  * applies FIM's own files-per-second budget (check_max_fps, driven by
  * syscheck.max_files_per_second). Its token bucket is process-global, so the

@@ -325,6 +325,22 @@ void fim_container_baseline_log_error(const char* message)
     }
 }
 
+int fim_container_baseline_abspath(const char* relative, char* out, size_t out_size)
+{
+    if (relative == NULL || out == NULL || out_size == 0) {
+        return -1;
+    }
+
+    out[0] = '\0';
+
+    if (abspath(relative, out, out_size) == NULL) {
+        mdebug1("Container eBPF drain: could not resolve '%s' against the install directory.", relative);
+        return -1;
+    }
+
+    return 0;
+}
+
 void fim_container_baseline_rate_limit(void)
 {
     check_max_fps();
