@@ -67,6 +67,7 @@ struct RouterStats
     unsigned long long drops_deferred{0};/* drop reports for a not-yet-identified cgroup */
     unsigned long long global_escalations{0}; /* whole-node re-baselines requested */
     unsigned long long late_escalations{0};   /* containers identified after their events */
+    unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
 };
 
 class ContainerEventRouter
@@ -142,6 +143,53 @@ class ContainerEventRouter
             }
         }
 
+        /* A rename. The engine reports the DESTINATION path only — bpf/
+         * rt_file.bpf.c's kprobe__vfs_rename builds its path from `new_dentry`
+         * — so the source path is never named by any event, before or after.
+         *
+         * Staging just the destination would therefore be silently wrong:
+         * `mv /etc/passwd /etc/passwd.bak` inside a container would reconcile
+         * the new name and leave the stored row for /etc/passwd describing a
+         * file that no longer exists, with nothing to ever correct it. A
+         * deletion that FIM never reports is the worst class of bug this
+         * consumer can have.
+         *
+         * So a rename escalates its container instead. That sounds expensive and
+         * is not: Suspect is a set keyed by container in the staging buffer, so
+         * any number of renames between two consumer batches coalesces into one
+         * re-walk. A package upgrade renaming a thousand files costs exactly
+         * what one renaming a single file costs.
+         *
+         * The real fix belongs in the engine — appending the source path to the
+         * event record, a MINOR ABI bump. It is not free: the record grows from
+         * 12,416 to ~16,512 bytes, cutting the 8 MiB ring from ~675 records to
+         * ~508 for every event class to fix one. Worth measuring before taking.
+         */
+        void onRename(std::uint64_t cgroup_id)
+        {
+            const auto resolution = m_map.classify(cgroup_id);
+
+            switch (resolution.klass)
+            {
+                case CgroupClass::container:
+                    bump(m_stats.renames_routed);
+                    m_staging.onDrops(resolution.container_id);
+                    return;
+
+                case CgroupClass::notContainer:
+                    bump(m_stats.host_events);
+                    return;
+
+                case CgroupClass::unknown:
+                default:
+                    /* Same reasoning as an unidentified cgroup's drops: the
+                     * cgroup is filed, and resolution escalates it if it turns
+                     * out to be a container. */
+                    bump(m_stats.unattributed);
+                    return;
+            }
+        }
+
         /* Loss the engine could not attribute to any cgroup — a BPF object with
          * no per-cgroup map, or a drop recorded while that map was full. Nothing
          * is known about what changed, so everything is suspect. */
@@ -197,6 +245,7 @@ class ContainerEventRouter
             out.drops_deferred = m_stats.drops_deferred.load(std::memory_order_relaxed);
             out.global_escalations = m_stats.global_escalations.load(std::memory_order_relaxed);
             out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
+            out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
             return out;
         }
 
@@ -215,6 +264,7 @@ class ContainerEventRouter
             std::atomic<unsigned long long> drops_deferred{0};
             std::atomic<unsigned long long> global_escalations{0};
             std::atomic<unsigned long long> late_escalations{0};
+            std::atomic<unsigned long long> renames_routed{0};
         };
 
         void bump(std::atomic<unsigned long long>& counter)
