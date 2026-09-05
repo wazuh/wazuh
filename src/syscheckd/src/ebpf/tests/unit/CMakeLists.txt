@@ -51,3 +51,19 @@ target_link_libraries(cgroup_container_map_test
 
 add_test(NAME cgroup_container_map_test
          COMMAND cgroup_container_map_test)
+
+# The policy joining the two above (#37532 / #37396): what the drain does with
+# an event, and what it does with reported loss. Kept out of the drain itself so
+# it is reachable without a kernel, a BPF object or root.
+add_executable(container_event_router_test container_event_router_test.cpp)
+
+target_link_libraries(container_event_router_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME container_event_router_test
+         COMMAND container_event_router_test)
