@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 
 #include "syntax.hpp"
+#include "stageValidator.hpp"
 
 namespace builder::policy
 {
@@ -294,6 +295,7 @@ Asset AssetBuilder::operator()(const json::Json& document) const
 
     // Get parents (optional)
     std::vector<base::Name> parents;
+    if (!objDoc.empty())
     {
         const auto& [key, value] = *objDoc.begin();
         if (key == syntax::asset::PARENTS_KEY)
@@ -303,6 +305,8 @@ Asset AssetBuilder::operator()(const json::Json& document) const
         }
     }
 
+    // Validate stages before building the expression.
+    validateStages(name, objDoc);
     // Build the expression (rest of keys if any)
     auto expression = buildExpression(name, objDoc);
 
