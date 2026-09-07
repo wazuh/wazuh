@@ -377,6 +377,14 @@ class MetricsSnapshotTasks:
         raw_id = doc.get("id")
         agent_id = str(raw_id).zfill(3) if raw_id is not None else None
 
+        # Groups come from the agent table's comma-separated `group` column, the same source
+        # the /agents API reads: WazuhDBQueryAgents splits it, the /agents/all HTTP endpoint
+        # returns it raw. An agent with no groups leaves the field out instead of asserting
+        # an empty group list.
+        raw_groups = doc.get("group")
+        if isinstance(raw_groups, str):
+            raw_groups = [group for group in raw_groups.split(",") if group]
+
         return MetricsSnapshotTasks._drop_none(
             {
                 "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
@@ -385,7 +393,7 @@ class MetricsSnapshotTasks:
                         "id": agent_id,
                         "name": doc.get("name"),
                         "version": doc.get("version"),
-                        "groups": doc.get("group", []),
+                        "groups": raw_groups or None,
                         "status": doc.get("status"),
                         "status_code": doc.get("status_code"),
                         "registered_at": MetricsSnapshotTasks._to_iso(

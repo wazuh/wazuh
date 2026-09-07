@@ -2064,6 +2064,61 @@ class TestNormalizeAgentDocIdZeroPadding:
 
 
 # ---------------------------------------------------------------------------
+# Agent groups (regression: /agents/all returns the raw comma-separated `group`
+# column, so the field must be split, and must be absent when the agent has none)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeAgentDocGroups:
+    """wazuh.agent.groups must carry the same value the /agents API reports."""
+
+    @pytest.mark.asyncio
+    async def test_comma_separated_group_becomes_a_list(self):
+        """The comma-separated `group` column is split into one entry per group."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 2, "name": "agent2", "group": "default,qa-group"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["groups"] == ["default", "qa-group"]
+
+    @pytest.mark.asyncio
+    async def test_single_group_becomes_a_single_entry_list(self):
+        """A single group name yields a one-element list, not the bare string."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "agent1", "group": "default"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["groups"] == ["default"]
+
+    @pytest.mark.asyncio
+    async def test_legacy_list_group_is_kept(self):
+        """WazuhDBQueryAgents already returns a list; it is passed through unchanged."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "agent1", "group": ["default", "qa-group"]}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["groups"] == ["default", "qa-group"]
+
+    @pytest.mark.asyncio
+    async def test_missing_group_leaves_the_field_out(self):
+        """No group in the raw doc means no wazuh.agent.groups, not an empty array."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "agent1"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "groups" not in docs[0]["wazuh"]["agent"]
+
+    @pytest.mark.asyncio
+    async def test_empty_group_leaves_the_field_out(self):
+        """An empty `group` column is not rendered as an empty array either."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "agent1", "group": ""}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "groups" not in docs[0]["wazuh"]["agent"]
+
+
+# ---------------------------------------------------------------------------
 # _normalize_comms_doc – zero value preservation (FR-2 fix)
 # ---------------------------------------------------------------------------
 
