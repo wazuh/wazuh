@@ -13,6 +13,7 @@ from wazuh.core.exception import WazuhInternalError
 
 from wazuh.core.indexer.active_response import (
     AR_SCHEMA,
+    DEFAULT_PAGE_SIZE,
     EVENT_VISIBILITY_GRACE_SECONDS,
     ActiveResponse,
     ActiveResponseFetchTask,
@@ -49,6 +50,20 @@ def _ar(doc_source):
 def _stamp(seconds_ago=0):
     """An ISO8601 `@timestamp` that many seconds in the past."""
     return (datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)).isoformat().replace("+00:00", "Z")
+
+
+def _common(**overrides):
+    """cluster_items with every intervals.common key at its default, some overridden."""
+    return {
+        "intervals": {
+            "common": {
+                "active_response_polling": 30,
+                "active_response_page_size": 1000,
+                "active_response_event_grace": 120,
+                **overrides,
+            }
+        }
+    }
 
 
 def _missing_event_doc(seconds_ago):
@@ -1080,6 +1095,58 @@ class TestActiveResponseFetchTask:
 
             assert task.polling_interval == task.DEFAULT_POLLING_INTERVAL
 
+        def test_page_size_and_grace_come_from_cluster_items(self):
+            server = MagicMock()
+            server.cluster_items = {
+                "intervals": {
+                    "common": {
+                        "active_response_polling": 10,
+                        "active_response_page_size": 2,
+                        "active_response_event_grace": 5,
+                    }
+                }
+            }
+
+            task = ActiveResponseFetchTask(server)
+
+            assert (task.polling_interval, task.page_size, task.event_grace) == (10, 2, 5)
+            task.logger.warning.assert_not_called()
+
+        def test_missing_keys_fall_back_to_defaults(self):
+            server = MagicMock()
+            server.cluster_items = {}
+
+            task = ActiveResponseFetchTask(server)
+
+            assert (task.polling_interval, task.page_size, task.event_grace) == (
+                task.DEFAULT_POLLING_INTERVAL,
+                DEFAULT_PAGE_SIZE,
+                EVENT_VISIBILITY_GRACE_SECONDS,
+            )
+            task.logger.warning.assert_called_once()
+            message = str(task.logger.warning.call_args)
+            assert "active_response_polling" in message
+            assert "active_response_page_size" in message
+            assert "active_response_event_grace" in message
+
+        @pytest.mark.parametrize(
+            "key,value",
+            [
+                ("active_response_page_size", 0),
+                ("active_response_page_size", "1000"),
+                ("active_response_event_grace", -1),
+            ],
+        )
+        def test_out_of_range_values_fall_back_to_defaults(self, key, value):
+            server = MagicMock()
+            server.cluster_items = _common(**{key: value})
+
+            task = ActiveResponseFetchTask(server)
+
+            assert (task.page_size, task.event_grace) == (DEFAULT_PAGE_SIZE, EVENT_VISIBILITY_GRACE_SECONDS)
+            task.logger.warning.assert_called_once()
+            assert key in str(task.logger.warning.call_args)
+
     class TestActiveResponseProcessing:
         """Tests for active_response_processing."""
 
@@ -1260,6 +1327,7 @@ class _FakeIndexer:
         self.events = events
 
     async def search(self, index, body):
+        self.last_search_body = body
         return {"hits": {"hits": self.hits}}
 
     async def mget(self, index, body):
@@ -1308,13 +1376,15 @@ class _SpyBookmark(ActiveResponseBookmark):
         super().update(sort)
 
 
-async def _run_cycle(hits, events=EVENTS, task_manager=None, all_agents=("001", "007")):
+async def _run_cycle(
+    hits, events=EVENTS, task_manager=None, all_agents=("001", "007"), cluster_items=None, indexer=None
+):
     """One active_response_processing() over a fake indexer and Task Manager.
 
     Returns the Task Manager, the bookmark and the logger the cycle used."""
     task_manager = task_manager if task_manager is not None else _FakeTaskManager()
     bookmark = _SpyBookmark()
-    indexer = _FakeIndexer(hits, events)
+    indexer = indexer if indexer is not None else _FakeIndexer(hits, events)
 
     @asynccontextmanager
     async def indexer_client():
@@ -1323,7 +1393,7 @@ async def _run_cycle(hits, events=EVENTS, task_manager=None, all_agents=("001", 
     logger = MagicMock()
     server = MagicMock()
     server.logger.getChild.return_value = logger
-    server.cluster_items = {}
+    server.cluster_items = cluster_items if cluster_items is not None else _common()
 
     with (
         patch("wazuh.core.indexer.active_response.get_indexer_client", indexer_client),
@@ -1456,3 +1526,38 @@ class TestArSchema:
             jsonschema.validate(instance=document, schema=AR_SCHEMA)
 
         assert rejected_with in excinfo.value.message
+
+
+class TestSettingsReachTheCycle:
+    """The values are passed down explicitly; nothing reads a module global at call time."""
+
+    @pytest.mark.asyncio
+    async def test_page_size_is_the_search_size(self):
+        indexer = _FakeIndexer([_hit("good", GOOD_AR, sort=[1, "good"])], EVENTS)
+
+        await _run_cycle([], indexer=indexer, cluster_items=_common(active_response_page_size=2))
+
+        assert indexer.last_search_body["size"] == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "grace,age,updates",
+        [
+            (5, 10, [[1, "waiting"]]),
+            (600, 200, []),
+            (0, 0, [[1, "waiting"]]),
+        ],
+        ids=["expired-is-discarded", "inside-the-window-is-held", "grace-zero-never-holds"],
+    )
+    async def test_event_grace_bounds_the_hold(self, grace, age, updates):
+        waiting = {
+            "event": {"index": "wazuh-alerts", "doc_id": "not-yet"},
+            "wazuh": {"active_response": _channel("defined-agent", "007")},
+        }
+        hits = [_hit("waiting", waiting, sort=[1, "waiting"], seconds_ago=age)]
+
+        _, bookmark, _ = await _run_cycle(
+            hits, cluster_items=_common(active_response_event_grace=grace)
+        )
+
+        assert bookmark.updates == updates
