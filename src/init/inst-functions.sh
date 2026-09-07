@@ -814,8 +814,8 @@ ValidateRemoteVars()
     REMOTE_VARS_VALIDATED="yes"
 
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
-                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS \
-                           WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
+                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CA_CERTIFICATE \
+                           WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
@@ -897,6 +897,7 @@ WriteRemote()
     echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
     echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
     echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "      <ca_certificate>${WAZUH_REMOTE_HTTPS_CA_CERTIFICATE:-etc/certs/root-ca.pem}</ca_certificate>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
         echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
     fi

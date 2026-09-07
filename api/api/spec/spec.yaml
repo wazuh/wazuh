@@ -6222,6 +6222,7 @@ paths:
                           certificate: etc/certs/remoted.pem
                           key: etc/certs/remoted-key.pem
                           ca: ''
+                          ca_certificate: etc/certs/root-ca.pem
                         agents:
                           allow_higher_versions: false
                       cluster:

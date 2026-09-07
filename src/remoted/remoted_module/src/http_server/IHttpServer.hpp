@@ -257,10 +257,12 @@ namespace remoted::http
         /// agent and manager surfaces as 404. Public HTTPS listener only (the local admin UDS
         /// server is never prefixed). Note: the prefix consumes part of maxUrlSize.
         std::string globalPrefix {};
-        std::string certificatePath; ///< TLS certificate chain (PEM) path.
-        std::string privateKeyPath;  ///< TLS private key (PEM) path.
-        std::string caPath;          ///< CA bundle (PEM) used to verify client certificates.
-        std::string ciphers;         ///< TLS 1.3 ciphersuite override
+        std::string certificatePath;   ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;    ///< TLS private key (PEM) path.
+        std::string caPath;            ///< CA bundle (PEM) used to verify client certificates.
+        std::string caCertificatePath; ///< CA that signs the listener certificate (PEM); served on GET /cacerts
+                                       ///< (remote.https.ca_certificate). Not the client-verification caPath.
+        std::string ciphers;           ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
