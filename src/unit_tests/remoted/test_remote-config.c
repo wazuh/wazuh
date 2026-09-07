@@ -1323,7 +1323,7 @@ static void test_read_remote_legacy_block_present_defaults_applied(void **state)
     assert_int_equal(result, 0);
     assert_true(ts->logr->legacy_enabled);
     assert_non_null(ts->logr->lip);
-    assert_string_equal(ts->logr->lip, "127.0.0.1");
+    assert_string_equal(ts->logr->lip, REMOTED_LEGACY_LOCAL_IP_DEFAULT);
     assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
     assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_DEFAULT);
 

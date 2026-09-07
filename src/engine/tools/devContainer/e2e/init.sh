@@ -77,9 +77,9 @@ WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 # ==============================================================================
 #                      Manager listener bind addresses
 # ==============================================================================
-# The manager ships remoted bound to loopback on purpose -- see
-# docs/ref/modules/remoted/configuration.md (legacy.local_ip, https.bind_addr):
-# an operator who wants remote agents is expected to open it after install.
+# Both remoted listeners (https.bind_addr, legacy.local_ip) ship bound to
+# 0.0.0.0 -- see docs/ref/modules/remoted/configuration.md -- but an installation
+# predating that default change may still carry the old 127.0.0.1 values.
 # Containerised agents reach the devContainer host over the docker bridge, so
 # loopback-only listeners refuse them with "Transport endpoint is not connected".
 function open_manager_listeners() {
