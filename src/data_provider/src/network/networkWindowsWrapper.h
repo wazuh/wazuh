@@ -25,6 +25,7 @@
 static const std::map<int, std::string> NETWORK_INTERFACE_TYPES =
 {
     { IF_TYPE_ETHERNET_CSMACD, "ethernet"       },
+    { IF_TYPE_SOFTWARE_LOOPBACK, "loopback"       },
     { IF_TYPE_ISO88025_TOKENRING, "token ring"     },
     { IF_TYPE_PPP, "point-to-point" },
     { IF_TYPE_ATM, "ATM"            },
