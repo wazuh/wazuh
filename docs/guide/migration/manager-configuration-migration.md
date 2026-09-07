@@ -578,6 +578,6 @@ A new `intervals.common` block is introduced:
 }
 ```
 
-This controls the polling interval (in seconds) for active-response status checks, shared across master and worker nodes.
+This is how often, in seconds, every node reads new documents from `wazuh-active-responses*` to turn them into agent tasks; see [Active Response → Manager-side ingestion](../../ref/modules/active-response/architecture.md#manager-side-ingestion).
 
 ---

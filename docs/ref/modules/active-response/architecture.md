@@ -8,39 +8,53 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
 
 ### Manager Side (v5.0)
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        wazuh-engine                                 │
-│                                                                     │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                   Alert Processing                            │  │
-│  │                                                               │  │
-│  │  Rule Match  ─►  AR Trigger  ─►  JSON Builder                 │  │
-│  │                                                               │  │
-│  └─────────────────────────────┬─────────────────────────────────┘  │
-└────────────────────────────────┼────────────────────────────────────┘
-                                 │
-                                 │ {"command": "enable", ...}
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Task Manager (wm_task_manager)                  │
-│                                                                     │
-│  Creates AR task with full event as payload                        │
-│  Task type: "active_response"                                      │
-│  Stores task in database (STATUS='pending')                        │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 │ Agent polls via HTTPS
-                                 ▼
-                          ┌──────────────┐
-                          │ Agent (v5.0+)│
-                          │ HTTPS Client │
-                          └──────────────┘
+The manager does not decide when a response fires. That decision is made in the Wazuh Indexer: an
+Alerting monitor evaluates indexed events, and a trigger whose action targets a notification channel
+of the Active Response type writes one document per matching event into the
+`wazuh-active-responses` data stream. The manager's part is to turn each of those documents into an
+agent task.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant AL as Indexer Alerting<br/>monitor + trigger
+    participant NO as Indexer Notifications<br/>Active Response channel
+    participant DS as wazuh-active-responses<br/>data stream
+    participant CD as wazuh-manager-clusterd<br/>ActiveResponseFetchTask, every node
+    participant TM as Task Manager<br/>queue/sockets/task-http.sock
+    participant RM as wazuh-manager-remoted<br/>POST /control
+    participant AG as agent<br/>wazuh-execd
+
+    AL->>NO: matching event (index, document id)
+    NO->>NO: copy the event's `wazuh` object; add `wazuh.active_response` from the channel, `event`, `@timestamp`
+    NO->>DS: index (op_type=create)
+    loop every active_response_polling seconds, on every node
+        CD->>DS: search after the bookmark, sorted by [@timestamp, _id], bounded at now
+        DS-->>CD: page (up to 1000 documents)
+        CD->>CD: validate against AR_SCHEMA, discard what fails
+        CD->>DS: mget the referenced events (event.index, event.doc_id)
+        CD->>CD: merge event and response into the payload, resolve target agents
+        CD->>TM: POST /v1/tasks {agent_id, task_type: active_response, payload, source_id: _id}
+        CD->>CD: write queue/cluster/ar_bookmark.json once per page
+    end
+    AG->>RM: POST /control (notify)
+    RM->>TM: POST /v1/tasks/pending
+    TM-->>RM: [{task_id, task_type, payload}]
+    RM-->>AG: pending tasks in the response
+    AG->>AG: hand the payload to wazuh-execd, run wazuh.active_response.executable
 ```
 
-**v5.0+ Agents**: Active Response commands are delivered via Task Manager polling.
-Agents retrieve AR tasks from `/control` HTTPS endpoint, which returns pending tasks
-including the full AR event JSON as the payload.
+Where each step lives:
+
+| Steps | Component | Source |
+|---|---|---|
+| 1-3 | Indexer Alerting and Notifications plugins | `wazuh/wazuh-indexer-notifications` (`SendMessageActionHelper.sendActiveResponseMessage`); the stream template and retention policy are in `wazuh/wazuh-indexer-plugins` |
+| 4-10 | `ActiveResponseFetchTask` in `wazuh-manager-clusterd`, started by the master and by every worker | [active_response.py](../../../../framework/wazuh/core/indexer/active_response.py), [master.py](../../../../framework/wazuh/core/cluster/master.py), [worker.py](../../../../framework/wazuh/core/cluster/worker.py) |
+| 11-14 | Task Manager and remoted | [Task Manager](../task_manager/README.md), [remoted architecture](../remoted/architecture.md) |
+| 15 | `wazuh-execd` on the agent | the rest of this page |
+
+The manager's part in detail — the document contract, the read, the cursor and every message it
+logs — is in [Manager-side ingestion](#manager-side-ingestion).
 
 ### Agent Side
 
@@ -92,13 +106,13 @@ including the full AR event JSON as the payload.
 
 ### Enable (Block) Command Flow (v5.0+ Task-Based)
 
-1. **Rule Match**: Manager's `engine` detects an event matching an Active Response rule
-2. **Command Generation**: `engine` builds a JSON message with `"command": "enable"`
-3. **Task Creation**: Task Manager creates AR task:
+1. **Trigger**: an Alerting monitor in the Wazuh Indexer matches an event; its Active Response channel writes one response document to `wazuh-active-responses`
+2. **Ingestion**: `wazuh-manager-clusterd` reads the document on its next polling cycle, validates it, merges the referenced event into the payload and resolves the target agents (see [Manager-side ingestion](#manager-side-ingestion))
+3. **Task Creation**: clusterd creates one Task Manager task per target agent:
    - Task type: `active_response`
-   - Payload: Full AR event JSON
-   - Status: `pending`
-   - Stored in Task Manager database
+   - Payload: the response document merged with the event it references
+   - Deterministic task id, so every cluster node creates the same task
+   - Status: `pending`, stored in the Task Manager database
 4. **Agent Polling**: Agent polls `/control` HTTPS endpoint for pending tasks
 5. **Task Retrieval**: Task Manager returns AR task to agent
 6. **Agent Reception**: Agent's `wazuh-agentd` receives the AR task

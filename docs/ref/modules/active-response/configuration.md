@@ -2,7 +2,7 @@
 
 Complete configuration reference for Active Response.
 
-The active response module enables automatic execution of scripts in response to detected threats. The agent executes response commands sent by the manager when specific conditions are met. This module is available on both managers and agents, though execution typically occurs on agents.
+The active response module enables automatic execution of scripts in response to detected threats. The Wazuh Indexer decides when a response fires, the manager relays it to the agent as a task, and the agent executes the script. Only the agent side has an `<active-response>` configuration section.
 
 For module overview and architecture, see [Active Response Module](index.html).
 
@@ -56,13 +56,28 @@ Prevent this agent from executing any active response scripts:
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+There is no `<active-response>` section in `wazuh-manager.conf`: in 5.0 the manager neither defines
+response triggers nor runs response scripts. A response is configured in the Wazuh Indexer, from the
+dashboard:
 
-**XML Section:** `<active-response>` (for defining response triggers)
+1. a **notification channel** of the Active Response type says what to run: `name`, `executable`,
+   `extra_arguments`, `type` and `stateful_timeout`, `location` and, for `defined-agent`, `agent_id`;
+2. an **Alerting monitor** says when: a trigger whose action targets that channel writes one response
+   document per matching event into `wazuh-active-responses`.
 
-Active response scripts and triggers are defined on the manager. The manager analyzes events and sends execution commands to agents when conditions match.
+The manager's part is the poller in `wazuh-manager-clusterd`, described in
+[Manager-side ingestion](architecture.md#manager-side-ingestion). Its only setting is internal, in
+`framework/wazuh/core/cluster/cluster.json`, a file that is not meant for user editing and is
+replaced on upgrade:
 
-For manager-side active response configuration, see:
+| Key | Default | Meaning |
+|---|---|---|
+| `intervals.common.active_response_polling` | `30` | Seconds between two reads of `wazuh-active-responses*`, on every node |
+
+Manager-side log lines are in `logs/cluster.log` under the `[Active Response]` tag; the message
+catalogue is in the same section of the architecture page.
+
+See also:
 - [Active Response Executables](executables.md) - Available response scripts
 - [Active Response Architecture](architecture.md) - How active response works
 - [Manager Configuration Reference](../../configuration/manager/README.md) - Manager configuration
@@ -92,8 +107,8 @@ execd.max_restart_lock=10
 
 ### Agent-Side Execution Flow
 
-1. **Manager trigger:** Manager detects condition (e.g., failed login, malware detection) and sends active response command to agent
-2. **Agent receives:** Agent daemon (execd) receives command via secure channel
+1. **Trigger:** an Alerting monitor in the Wazuh Indexer matches an event (e.g., failed login, malware detection); the manager relays the response to the agent as a task
+2. **Agent receives:** the agent picks the task up on its next `POST /control` and hands it to execd
 3. **Check enabled:** Agent checks if `<active-response><disabled>` is `no`
 4. **Script lookup:** Agent locates the specified script in `/var/ossec/active-response/bin/`
 5. **Execute script:** If enabled, agent executes the script with provided parameters
@@ -273,11 +288,8 @@ aa-status | grep wazuh
 ls -l /var/ossec/active-response/bin/script-name.sh
 ```
 
-**Check manager configuration:**
-```bash
-# Verify script name matches manager configuration
-grep -A5 "<command>" /var/wazuh-manager/etc/wazuh-manager.conf
-```
+**Check the channel:** the `executable` of the Active Response notification channel must match a
+script name in the agent's `active-response/bin/`.
 
 ### Too Many Concurrent Executions
 
@@ -306,7 +318,7 @@ type "C:\Program Files (x86)\ossec-agent\active-responses.log"
 
 **Manager logs:**
 ```bash
-tail -f /var/wazuh-manager/logs/active-responses.log
+grep '\[Active Response\]' /var/wazuh-manager/logs/cluster.log
 ```
 
 ### Check Recent Executions
