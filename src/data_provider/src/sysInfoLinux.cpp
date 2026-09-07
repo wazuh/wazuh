@@ -93,7 +93,6 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     nlohmann::json jsProcessInfo{};
     // Current process information
     jsProcessInfo["pid"]        = std::to_string(process->tid);
-    jsProcessInfo["name"]       = process->cmd;
     jsProcessInfo["state"]      = &process->state;
     jsProcessInfo["ppid"]       = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
@@ -121,6 +120,10 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
         }
     }
 
+    // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
+    // untruncated argv[0] basename instead, falling back to comm for kernel threads,
+    // which have no cmdline.
+    jsProcessInfo["name"] = commandLine.empty() ? process->cmd : std::filesystem::path(commandLine).filename().string();
     jsProcessInfo["cmd"]        = commandLine;
     jsProcessInfo["argvs"]      = commandLineArgs;
     jsProcessInfo["euser"]      = process->euser;
