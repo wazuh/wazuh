@@ -8,7 +8,9 @@ These are the cases unit tests structurally cannot cover: a real socket, a real 
 over one, real worker threads, and a process that is killed mid-handler.
 """
 
+import sqlite3
 import time
+from pathlib import Path
 
 from conftest import wait_until
 
@@ -265,3 +267,38 @@ def test_pending_work_survives_a_restart(module, consumer):
         # A pending manager task is never expired by age, and a restart is not an outage it should
         # lose work to.
         client.wait_for_status('del-1', 'completed', timeout=60)
+
+
+def test_the_wal_is_checkpointable_while_the_module_runs(module, consumer):
+    """A read snapshot the module never closes blocks every WAL checkpoint for its whole lifetime.
+
+    Asserted from OUTSIDE the process, with it still running, because that is the only place the
+    symptom shows: `tasks.db-wal` grows for as long as the manager is up -- 5 MB/h on an idle
+    single-node manager -- while `tasks.db` itself is never written to, and only a restart reclaims
+    it. Every read in the store that stops on its first row used to leave its statement mid-scan,
+    and under WAL a live cursor is an open snapshot whose frames SQLite may not recycle.
+    """
+    consumer.set_default(200, {'status': 'ok'})
+
+    with module.client() as client:
+        for index in range(20):
+            task_id = f'scan-{index}'
+            client.create_manager_task(task_id, SCAN, payload={'agent_id': '7'}, agent_id='7')
+            client.wait_for_status(task_id, 'completed')
+
+    def checkpointed():
+        connection = sqlite3.connect(str(module.db_path))
+        try:
+            busy, _frames, _moved = connection.execute('pragma wal_checkpoint(TRUNCATE)').fetchone()
+        finally:
+            connection.close()
+        return busy == 0
+
+    # Retried rather than asserted once: the module commits in batches, so a checkpoint that lands
+    # while one is open is legitimately busy. What must not happen is busy FOREVER.
+    assert wait_until(checkpointed, timeout=30, interval=1.0), 'every checkpoint came back busy'
+
+    # Pages moved back into the database file, which is the thing that never happened before: the
+    # WAL is truncated, and what has accumulated since is one batch rather than the whole uptime.
+    wal = Path(f'{module.db_path}-wal')
+    assert wal.stat().st_size < 512 * 1024

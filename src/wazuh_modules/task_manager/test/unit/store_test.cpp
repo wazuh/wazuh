@@ -13,7 +13,13 @@
 
 #include <gtest/gtest.h>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <atomic>
+#include <cstdint>
+#include <cstdlib>
 #include <set>
 #include <stdexcept>
 #include <thread>
@@ -26,9 +32,10 @@ using namespace task_manager::storage;
  * These run against REAL SQLite, in memory. That is a deliberate departure from the retired cmocka
  * suite, which mocked sqlite3_step() and friends and therefore asserted on a sequence of bind and
  * step calls rather than on results -- a test that passes when the SQL is wrong. Here the schema,
- * the statements, the indexes and the transaction boundaries are all exercised for real, and the
- * only thing not covered is what a file-backed database adds (WAL, fsync), which no unit test can
- * assert on anyway.
+ * the statements, the indexes and the transaction boundaries are all exercised for real.
+ *
+ * In memory there is no journal and no fsync, so a WAL that is never checkpointed looks exactly
+ * like a healthy one. WalStoreTest, at the bottom of this file, is file-backed for that reason.
  */
 namespace
 {
@@ -483,4 +490,121 @@ TEST_F(StoreTest, ANonTerminalInstanceSuppressesTheNextRun)
 
     m_store->setResult("run-1", TaskStatus::Completed, 1, 0, std::nullopt, 2000);
     EXPECT_FALSE(m_store->scheduleHasActiveRun("agent_delete_old"));
+}
+
+// ---- WAL -------------------------------------------------------------------------------------
+
+/*
+ * These are the only tests here that need a FILE, because WAL is the thing under test and an
+ * in-memory database has no journal at all -- which is exactly why the in-memory suite above could
+ * not have caught this: every read that stopped on its first row left its statement mid-scan, that
+ * cursor is an open read snapshot, and a snapshot blocks every checkpoint. On a real manager the
+ * -wal file grew ~5 MB/h for the life of the process while tasks.db was never written to.
+ */
+namespace
+{
+    class WalStoreTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            std::string pattern {"/tmp/wazuh_tasks_wal_test_XXXXXX"};
+            ASSERT_NE(::mkdtemp(pattern.data()), nullptr);
+            m_dir = pattern;
+            m_dbPath = m_dir + "/tasks.db";
+
+            SqliteTaskStore::Options options;
+            options.dbPath = m_dbPath;
+            // Commit every write immediately: a batch left open is a second way to pin the WAL,
+            // and keeping it out of the picture is what leaves the cursors as the only variable.
+            options.groupCommitWindow = std::chrono::milliseconds {0};
+            m_store = std::make_unique<SqliteTaskStore>(std::move(options));
+        }
+
+        void TearDown() override
+        {
+            m_store.reset();
+            if (!m_dir.empty())
+            {
+                static_cast<void>(std::system(("rm -rf '" + m_dir + "'").c_str()));
+            }
+        }
+
+        std::int64_t walBytes() const
+        {
+            struct stat info {};
+            if (::stat((m_dbPath + "-wal").c_str(), &info) != 0)
+            {
+                return 0;
+            }
+            return static_cast<std::int64_t>(info.st_size);
+        }
+
+        /// @brief One scheduler pass in miniature: a write, then the read that closes the pass and
+        ///        used to leave the snapshot behind.
+        void schedulerPass(const Timestamp nextRunAt)
+        {
+            m_store->setScheduleNextRun("s1", nextRunAt);
+            static_cast<void>(m_store->minPendingNextAttemptAt());
+            static_cast<void>(m_store->minScheduleNextRun());
+        }
+
+        std::string m_dir;
+        std::string m_dbPath;
+        std::unique_ptr<SqliteTaskStore> m_store;
+    };
+} // namespace
+
+TEST_F(WalStoreTest, AReadThatStopsOnItsFirstRowDoesNotPinTheWal)
+{
+    CreateManagerTaskRequest req;
+    req.taskId = "a";
+    req.taskType = "vd_scan";
+    req.payload = "{}";
+    req.createTime = 1000;
+    req.scheduleId = "s1";
+    req.scheduledRunAt = 1000;
+    ASSERT_EQ(m_store->createManagerTask(req).result, CreateResult::Created);
+    m_store->upsertSchedule("s1", 5000, true);
+
+    // Every one of these returns as soon as it has its row, which is where the cursors leaked.
+    ASSERT_TRUE(m_store->getManagerTask("a").has_value());
+    ASSERT_TRUE(m_store->minPendingNextAttemptAt().has_value());
+    ASSERT_TRUE(m_store->minScheduleNextRun().has_value());
+    ASSERT_TRUE(m_store->scheduleHasActiveRun("s1"));
+    ASSERT_EQ(m_store->countManagerTasks("vd_scan", TaskStatus::Pending), 1);
+
+    const auto stats {m_store->checkpointWal()};
+    EXPECT_FALSE(stats.busy);
+
+    // The checkpoint truncates, so one that really ran leaves nothing behind. Before the fix it
+    // came back busy and the file stayed at whatever the writes had grown it to.
+    EXPECT_EQ(walBytes(), 0);
+}
+
+TEST_F(WalStoreTest, TheWalStaysBoundedAcrossManySchedulerPasses)
+{
+    m_store->upsertSchedule("s1", 5000, true);
+
+    constexpr int PASSES {600};
+    // The scheduler's retention cadence, in passes rather than in minutes.
+    constexpr int CHECKPOINT_EVERY {30};
+    constexpr std::int64_t BOUND_BYTES {1024 * 1024};
+
+    std::int64_t peak {0};
+    for (int i = 0; i < PASSES; ++i)
+    {
+        schedulerPass(5000 + i);
+
+        if ((i + 1) % CHECKPOINT_EVERY == 0)
+        {
+            ASSERT_FALSE(m_store->checkpointWal().busy) << "pinned at pass " << i;
+        }
+        peak = std::max(peak, walBytes());
+    }
+
+    // The point of the assertion is that the ceiling is a function of the checkpoint interval and
+    // NOT of uptime: with the snapshot leaking, the file grew with every pass and nothing here --
+    // not the automatic checkpoint, not the explicit one -- could move a page out of it.
+    EXPECT_LT(peak, BOUND_BYTES) << "WAL peaked at " << peak << " bytes over " << PASSES << " passes";
 }

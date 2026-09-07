@@ -122,6 +122,19 @@ namespace task_manager::storage
         std::int64_t remaining {0};
     };
 
+    struct CheckpointStats
+    {
+        /// @brief The checkpoint could not run, because a snapshot still needs WAL frames. On this
+        ///        database, whose only connection is the module's own, that means the module left
+        ///        a transaction or a cursor open -- the defect this reports on.
+        ///
+        /// Just the one flag: SQLite's frame counters say nothing useful here. A checkpoint that
+        /// succeeds truncates the WAL and therefore reports zero frames either way, and the call
+        /// that never ran leaves them untouched. The file size is the observable, and it belongs
+        /// to whoever is watching the filesystem rather than to this interface.
+        bool busy {false};
+    };
+
     /**
      * @brief Everything the module persists.
      *
@@ -259,6 +272,15 @@ namespace task_manager::storage
         /// @brief Commit any open group-commit transaction. Called by the scheduler on every tick
         ///        and once more at shutdown.
         virtual void flushWrites() = 0;
+
+        /// @brief Move the WAL back into the database file and truncate it. Commits and releases
+        ///        the connection's cursors first, since either would make the checkpoint busy.
+        ///
+        /// A bound rather than a mechanism the module depends on: with cursors released, the
+        /// automatic checkpoint at 1000 pages already keeps the WAL small. This caps it on a
+        /// schedule regardless, and reports `busy` so a read snapshot that leaks again becomes a
+        /// log line instead of silent unbounded growth.
+        virtual CheckpointStats checkpointWal() = 0;
 
         /// @brief Compact the database. Commits and finalizes first: VACUUM cannot run inside a
         ///        transaction.
