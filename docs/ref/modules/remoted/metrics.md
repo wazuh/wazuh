@@ -73,7 +73,9 @@ Reading notes:
   module is stopped (or a component is torn down) they read `0` — the documented quiesced
   value, not an error.
 - **Histograms** carry their distribution in `summary` (values in microseconds); `value` is
-  the observation count. Percentiles are log-linear-bucket estimates (~12.5% relative error).
+  the observation count. Percentiles are log-linear-bucket estimates (~12.5% relative error),
+  clamped into the exact `[min, max]` of the same snapshot, so `min <= p50 <= p90 <= p99 <= max`
+  always holds within one `summary` and a single observation reports exactly.
 
 ## Catalog
 

@@ -2,7 +2,8 @@
 
 `wazuh_metrics` (`src/shared_modules/metrics/`) is the shared lock-free metrics library
 for manager daemons **outside the engine**: counters, gauges, histograms (128
-log-linear buckets, p50/p90/p99 with ~12.5% bounded error), pull metrics and a
+log-linear buckets, p50/p90/p99 with ~12.5% bounded error, clamped into the exact
+`[min, max]` of the same snapshot), pull metrics and a
 sliding-window rate, behind a thread-safe registry (`Manager`) and a JSON dump.
 
 It is derived from the engine's `fastmetrics` (same metric semantics, same hot-path
