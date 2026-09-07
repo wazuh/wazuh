@@ -301,7 +301,10 @@ namespace
 
                 if (m_shm_fd == -1 && errno == EACCES)
                 {
-                    // Permission denied for write, try read-only
+                    // Permission denied for write, try read-only. Not a leak: every path out of
+                    // this constructor closes m_shm_fd, including the success path right after
+                    // mmap(). CTOR_DTOR_LEAK only fires because the class has no destructor.
+                    // coverity[ctor_dtor_leak]
                     m_shm_fd = open(SHM_PATH, O_RDONLY | O_CLOEXEC);
                     m_read_only = true;
                 }
@@ -323,6 +326,10 @@ namespace
                     return;
                 }
 
+                // Deliberately never munmap()'d -- see the static_assert below and #38766:
+                // agentd's shutdown drain still reads this segment at exit, so a destructor
+                // would tear it down too early. The mapping lives for the process lifetime.
+                // coverity[ctor_dtor_leak]
                 m_shm = static_cast<SharedMetadata*>(mmap(
                                                          nullptr,
                                                          sizeof(SharedMetadata),

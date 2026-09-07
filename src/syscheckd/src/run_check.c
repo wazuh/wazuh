@@ -249,49 +249,44 @@ bool fim_shutdown_process_on() {
  * @return true with mutexes held, false if shutdown is in progress.
  */
 static bool fim_sync_lock_scan_mutex(void) {
-    while (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0) {
+    while (true) {
         if (!fim_sync_module_running || fim_shutdown_process_on()) {
             mdebug2("Stop in progress: skipping the FIM integrity validation process.");
             return false;
         }
 
-        sleep(1);
-    }
+        if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0) {
+            sleep(1);
+            continue;
+        }
 
-    while (pthread_mutex_trylock(&syscheck.fim_realtime_mutex) != 0) {
-        if (!fim_sync_module_running || fim_shutdown_process_on()) {
+        if (pthread_mutex_trylock(&syscheck.fim_realtime_mutex) != 0) {
             w_mutex_unlock(&syscheck.fim_scan_mutex);
-            mdebug2("Stop in progress: skipping the FIM integrity validation process.");
-            return false;
+            sleep(1);
+            continue;
         }
-
-        sleep(1);
-    }
 
 #ifdef WIN32
-    while (pthread_mutex_trylock(&syscheck.fim_registry_scan_mutex) != 0) {
+        if (pthread_mutex_trylock(&syscheck.fim_registry_scan_mutex) != 0) {
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+            sleep(1);
+            continue;
+        }
+#endif
+
         if (!fim_sync_module_running || fim_shutdown_process_on()) {
+#ifdef WIN32
+            w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
             w_mutex_unlock(&syscheck.fim_scan_mutex);
             mdebug2("Stop in progress: skipping the FIM integrity validation process.");
             return false;
         }
 
-        sleep(1);
+        return true;
     }
-#endif
-
-    if (!fim_sync_module_running || fim_shutdown_process_on()) {
-#ifdef WIN32
-        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-#endif
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        w_mutex_unlock(&syscheck.fim_scan_mutex);
-        mdebug2("Stop in progress: skipping the FIM integrity validation process.");
-        return false;
-    }
-
-    return true;
 }
 
 /**
@@ -1575,7 +1570,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
             if (dir_it->symbolic_links) {
                 if (real_path) {
                     // Check if link has changed
-                    if (strcmp(real_path, dir_it->symbolic_links)) {
+                    if (strcmp(real_path, dir_it->symbolic_links) != 0) {
                         mdebug2(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
                         fim_link_update(real_path, dir_it);
                     } else {

@@ -600,13 +600,17 @@ void fim_initialize() {
             continue;
         }
 
-        *synced_docs_ptr = fim_db_count_synced_docs(table_name);
-        if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
+        int current_synced = fim_db_count_synced_docs(table_name);
+        w_mutex_lock(&synced_docs_mutex);
+        *synced_docs_ptr = current_synced;
+        w_mutex_unlock(&synced_docs_mutex);
+
+        if (current_synced != 0) { // No need to check if no scans have been run
             if (limit == 0) { // If moving from limited agent to unlimited, promote everything
                 limit = INT_MAX;
             }
-            if (*synced_docs_ptr < limit) { // Limit might have increased
-                int document_count = limit - *synced_docs_ptr;
+            if (current_synced < limit) { // Limit might have increased
+                int document_count = limit - current_synced;
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
                 if (docs_to_promote) { // Limit has increased
@@ -616,7 +620,7 @@ void fim_initialize() {
                     drop_orphaned_promoted_documents(table_name, docs_to_promote);
 
                     // Send promoted documents to persistent queue as CREATE events
-                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
+                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", current_synced, limit, table_name, current_synced + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
                     OSList* pending_sync_updates = OSList_Create();
@@ -648,8 +652,8 @@ void fim_initialize() {
                     }
                     cJSON_Delete(docs_to_promote);
                 }
-            } else if (*synced_docs_ptr > limit) { // Limit might have decreased
-                int document_count = *synced_docs_ptr - limit;
+            } else if (current_synced > limit) { // Limit might have decreased
+                int document_count = current_synced - limit;
                 cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
 
                 if (docs_to_demote) { // Limit has decreased
