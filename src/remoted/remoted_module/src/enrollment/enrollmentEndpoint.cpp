@@ -355,12 +355,22 @@ namespace remoted::enrollment
             {
                 LOGFN_WARN(logFn(),
                            "%llu /enroll request(s) got no clean answer from authd in the last %d s (last: %s). Is "
-                           "authd running and enrollment reachable at its local socket?",
+                           "authd unreachable, or did it just not answer in time?",
                            throttle.total,
                            remoted::common::LogThrottle::kDefaultWindowSeconds,
                            result.message.c_str());
             }
-            return errorResponse(503, -1, "Enrollment service temporarily unavailable");
+
+            // Same 503 either way -- an agent's retry doesn't change. Only the body tells the two
+            // apart, for an operator or a monitoring system.
+            if (result.errorCode == kAuthdOutcomeUnknownErrorCode)
+            {
+                return errorResponse(503,
+                                     kAuthdOutcomeUnknownErrorCode,
+                                     "Enrollment outcome unknown: the request reached authd but no answer came "
+                                     "back in time -- it may have already been processed");
+            }
+            return errorResponse(503, kAuthdRequestNotSentErrorCode, "Enrollment service temporarily unavailable");
         }
 
     } // namespace
