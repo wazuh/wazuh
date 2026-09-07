@@ -1,0 +1,6 @@
+- name: default
+  description: The HTTPS agent server on its default port serves the externally provisioned (CI/wazuh-certs-tool) CA-signed certificate
+  configuration_parameters:
+    PORT: '1517'
+  metadata:
+    port: '1517'
