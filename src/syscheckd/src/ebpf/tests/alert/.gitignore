@@ -1,0 +1,4 @@
+# Standalone build artifacts (see Makefile) -- never committed.
+container_fim_alert_test
+container_fim_alert_test.o
+container_baseline_fim_bridge.o

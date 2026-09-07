@@ -11,6 +11,10 @@ include_directories(${SRC_FOLDER}/external/libbpf-bootstrap/build/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ebpf/include/)
+# #37532 (WP2): the bridge builds the container FIM stateless alert out of host
+# FIM's own fim_attributes_json() / fim_calculate_dbsync_difference(), declared
+# in src/file/file.h, so a container alert has the same shape as a host one.
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../file/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include/)
 include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
