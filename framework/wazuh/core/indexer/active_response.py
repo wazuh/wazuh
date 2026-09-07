@@ -34,10 +34,21 @@ EVENT_VISIBILITY_GRACE_SECONDS = 120
 #: request and refused it. Distinguished from every transport failure at the dispatch handler
 #: below, because a refusal is terminal for one document while a transport failure is not.
 HTTP_REJECTED_CODE = 2019
+
+#: The document contract, as the code depends on it. The readable version is the "Manager-side
+#: ingestion" section of docs/ref/modules/active-response/architecture.md; keep the two aligned.
 AR_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
+        "event": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "string", "minLength": 1},
+                "doc_id": {"type": "string", "minLength": 1},
+            },
+            "required": ["index", "doc_id"],
+        },
         "wazuh": {
             "type": "object",
             "properties": {
@@ -75,7 +86,10 @@ AR_SCHEMA = {
                             "if": {
                                 "properties": {"location": {"const": "defined-agent"}}
                             },
-                            "then": {"required": ["agent_id"]},
+                            "then": {
+                                "required": ["agent_id"],
+                                "properties": {"agent_id": {"type": "string", "minLength": 1}},
+                            },
                         },
                     ],
                 }
@@ -84,8 +98,42 @@ AR_SCHEMA = {
             "additionalProperties": True,
         }
     },
-    "required": ["wazuh"],
+    "required": ["event", "wazuh"],
     "additionalProperties": True,
+    # An absent key satisfies a `properties` clause, so the `if` states its own `required` at every
+    # level instead of relying on the ones above.
+    "allOf": [
+        {
+            "if": {
+                "required": ["wazuh"],
+                "properties": {
+                    "wazuh": {
+                        "required": ["active_response"],
+                        "properties": {
+                            "active_response": {
+                                "required": ["location"],
+                                "properties": {"location": {"const": "local"}},
+                            }
+                        },
+                    }
+                },
+            },
+            "then": {
+                "properties": {
+                    "wazuh": {
+                        "required": ["agent"],
+                        "properties": {
+                            "agent": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": {"id": {"type": "string", "minLength": 1}},
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    ],
 }
 
 
