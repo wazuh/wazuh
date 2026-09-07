@@ -77,6 +77,11 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 			"sent": c.ScanSent, "s200": c.Scan200, "s409": c.Scan409,
 			"s503": c.Scan503, "other": c.ScanOther,
 		},
+		// GET /cacerts: s200 = a CA PEM handed out; see RecordCacerts.
+		"cacerts": map[string]any{
+			"sent": c.CacertsSent, "s200": c.Cacerts200, "s404": c.Cacerts404,
+			"s503": c.Cacerts503, "other": c.CacertsOther,
+		},
 		"control": map[string]any{
 			"startup_ok": c.StartupOK, "startup_err": c.StartupErr,
 			"notify_ok": c.NotifyOK, "notify_err": c.NotifyErr,

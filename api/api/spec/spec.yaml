@@ -1708,6 +1708,10 @@ components:
                       allOf:
                         - $ref: '#/components/schemas/RemotedHttpResponseCounters'
                         - description: "`POST /enroll` — agent enrollment"
+                    cacerts:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`GET /cacerts` — CA distribution (the 404 for a missing CA file lands in `other`)"
                 latency:
                   type: object
                   description: "End-to-end request duration per endpoint, in microseconds, from request receipt to response delivery. Percentiles are log-linear bucket estimates (~12.5% relative error). Only the endpoints whose latency answers a tuning question are measured"
@@ -1982,6 +1986,34 @@ components:
                       type: integer
                       format: int64
                       description: "Bytes offered across all started downloads"
+                tls:
+                  type: object
+                  description: "The HTTPS listener's own certificate, evaluated when the listener starts and once a day afterwards. Both read `0` while the listener is down"
+                  properties:
+                    cert_expiry_days:
+                      type: integer
+                      format: int64
+                      description: "Days until the served TLS certificate expires; negative once it has expired"
+                    ca_matches_leaf:
+                      type: integer
+                      format: int64
+                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate, `0` otherwise (including when the CA file could not be read)"
+                cacerts:
+                  type: object
+                  description: "Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the listener certificate"
+                  properties:
+                    served:
+                      type: integer
+                      format: int64
+                      description: "Requests answered 200 with the CA PEM"
+                    not_found:
+                      type: integer
+                      format: int64
+                      description: "Requests answered 404 because the CA file is missing, unreadable or carries no certificate"
+                    ca_mismatch:
+                      type: integer
+                      format: int64
+                      description: "Requests refused with 503 because the configured CA does not sign the served certificate"
                 vd_scan:
                   type: object
                   description: "On-demand vulnerability scan requests admitted from agents over `POST /scan/vd`"
