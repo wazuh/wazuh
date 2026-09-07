@@ -23,7 +23,8 @@ from freezegun import freeze_time
 
 from wazuh.core.exception import WazuhInternalError
 
-from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, check_blocked_ip, \
+from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
+    is_authenticated_bucket_exhausted, check_blocked_ip, \
     settle_login_attempt, cleanup_general_request_stats, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
@@ -362,6 +363,83 @@ async def test_charge_authenticated_request_disabled(mock_req):
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('auth_stats, max_requests, expected', [
+    ({}, 300, False),                                                     # unknown host
+    ({'authenticated': {'count': 299, 'window_start': 10}}, 300, False),  # below ceiling
+    ({'authenticated': {'count': 300, 'window_start': 10}}, 300, True),   # at ceiling
+    ({'authenticated': {'count': 350, 'window_start': 10}}, 300, True),   # over ceiling
+    ({'authenticated': {'count': 300, 'window_start': -100}}, 300, False),  # expired window
+    ({'authenticated': {'count': 300, 'window_start': 10}}, 0, False),    # disabled
+])
+async def test_is_authenticated_bucket_exhausted(auth_stats, max_requests, expected, mock_req):
+    """Parametrized coverage of `is_authenticated_bucket_exhausted`'s read-only branches: unknown
+       host, below/at/over ceiling, an expired window, and max_requests=0 (disabled) all resolve
+       correctly, and none of them mutate `general_request_stats` -- the whole point of this
+       function is that it only reads."""
+    stats = {'ip': dict(auth_stats)} if auth_stats else {}
+    with patch("api.middlewares.general_request_stats", new=deepcopy(stats)) as mock_stats:
+        result = await is_authenticated_bucket_exhausted(mock_req, max_requests)
+
+        assert result is expected
+        assert mock_stats == stats
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limits_middleware_rejects_before_call_next_when_authenticated_bucket_exhausted(mock_req):
+    """Direct regression test for the finding that an over-quota authenticated caller paid full
+       authentication cost before being rejected: with the authenticated bucket already at its
+       ceiling, `CheckRateLimitsMiddleware` must raise `MaxRequestsException(code=6001)` WITHOUT
+       ever calling `call_next` -- proof the fix actually skips authentication, not just that it
+       eventually rejects."""
+    dispatch_mock = AsyncMock()
+    middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    max_requests = 300
+    api_conf = {'access': {'max_request_per_minute': max_requests, 'max_unauthenticated_request_per_minute': 10}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.is_authenticated_bucket_exhausted',
+              new=AsyncMock(return_value=True)) as mock_exhausted, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf), \
+        pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+    mock_exhausted.assert_awaited_once_with(mock_req, max_requests)
+    dispatch_mock.assert_not_awaited()
+    assert exc_info.value.status == 429
+    assert exc_info.value.ext.get('code') == 6001
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limits_middleware_still_calls_call_next_when_authenticated_bucket_has_room(mock_req):
+    """Guards against the new peek becoming a blanket reject: with the authenticated bucket NOT
+       exhausted, `call_next` must still be called."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    max_requests = 300
+    api_conf = {'access': {'max_request_per_minute': max_requests, 'max_unauthenticated_request_per_minute': 10}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.is_authenticated_bucket_exhausted',
+              new=AsyncMock(return_value=False)) as mock_exhausted, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        result = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+    mock_exhausted.assert_awaited_once_with(mock_req, max_requests)
+    dispatch_mock.assert_awaited_once_with(mock_req)
+    assert result is response
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 async def test_buckets_are_fully_independent_unauthenticated_noise_never_denies_authenticated_caller(mock_req):
     """Automated regression test for the issue's expected-behavior point 2, and for the T1
        finding this replaces: `charge_authenticated_request` never reads or is affected by the
@@ -432,9 +510,11 @@ async def test_check_rate_limits_middleware_passes_through_on_success(mock_req):
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    api_conf = {'access': {'max_unauthenticated_request_per_minute': 10}}
+    api_conf = {'access': {'max_unauthenticated_request_per_minute': 10, 'max_request_per_minute': 300}}
 
     with TestContext(operation=operation), \
+        patch('api.middlewares.is_authenticated_bucket_exhausted',
+              new=AsyncMock(return_value=False)), \
         patch('api.middlewares.charge_unauthenticated_request',
               new=AsyncMock(return_value=0)) as mock_charge, \
         patch('api.middlewares.configuration.api_conf', new=api_conf):
@@ -457,9 +537,11 @@ async def test_check_rate_limits_middleware_charges_on_auth_failure(mock_req):
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
     max_unauth = 10
-    api_conf = {'access': {'max_unauthenticated_request_per_minute': max_unauth}}
+    api_conf = {'access': {'max_unauthenticated_request_per_minute': max_unauth, 'max_request_per_minute': 300}}
 
     with TestContext(operation=operation), \
+        patch('api.middlewares.is_authenticated_bucket_exhausted',
+              new=AsyncMock(return_value=False)), \
         patch('api.middlewares.charge_unauthenticated_request',
               new=AsyncMock(return_value=0)) as mock_charge, \
         patch('api.middlewares.configuration.api_conf', new=api_conf), \
@@ -480,10 +562,12 @@ async def test_check_rate_limits_middleware_ko(mock_req):
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    api_conf = {'access': {'max_unauthenticated_request_per_minute': 10}}
+    api_conf = {'access': {'max_unauthenticated_request_per_minute': 10, 'max_request_per_minute': 300}}
 
     with TestContext(operation=operation), \
         patch('api.middlewares.configuration.api_conf', new=api_conf), \
+        patch('api.middlewares.is_authenticated_bucket_exhausted',
+              new=AsyncMock(return_value=False)), \
         patch('api.middlewares.charge_unauthenticated_request',
               new=AsyncMock(return_value=6005)), \
         pytest.raises(ProblemException) as exc_info:

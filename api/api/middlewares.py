@@ -401,14 +401,11 @@ async def charge_unauthenticated_request(request: Request, max_requests: int, er
 async def charge_authenticated_request(request: Request, max_requests: int, error_code: int) -> int:
     """Charge and check `request.client.host`'s authenticated bucket.
 
-    Only ever called from `CheckAuthenticatedRateLimitMiddleware`, positioned immediately after
-    connexion's `SecurityMiddleware` in the stack — reaching this function is itself proof the
-    request just authenticated successfully (an auth failure raises inside `SecurityMiddleware`
-    and never reaches here), for every operation that carries a security requirement. All
-    operations in the current spec.yaml do; if a future operation is ever added with
-    `security: []` (a genuinely public endpoint), it would reach here too and be billed into the
-    authenticated bucket despite presenting no credentials — not a security regression (still
-    address-keyed and bounded), but a mislabeling this function's contract doesn't cover.
+    Only ever called from `CheckAuthenticatedRateLimitMiddleware` once it has confirmed the
+    request actually carries an authenticated identity (`connexion_context['user']`) — a request
+    that reached that middleware without one, including one that never went through
+    `SecurityMiddleware` at all, is charged into the unauthenticated bucket instead, so reaching
+    this function specifically is genuine proof of a successful authentication.
 
     Parameters
     ----------
@@ -444,6 +441,43 @@ async def charge_authenticated_request(request: Request, max_requests: int, erro
     return 0
 
 
+async def is_authenticated_bucket_exhausted(request: Request, max_requests: int) -> bool:
+    """Read `request.client.host`'s authenticated bucket without charging it.
+
+    Lets `CheckRateLimitsMiddleware` reject a request already over its authenticated ceiling
+    before authentication runs, instead of paying the full authentication cost only to reject it
+    afterward in `CheckAuthenticatedRateLimitMiddleware`. Never mutates `general_request_stats` --
+    the durable charge/check for a request that goes on to authenticate still happens where it
+    always has, in `charge_authenticated_request`.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    max_requests : int
+        Maximum number of authenticated requests per minute permitted.
+
+    Return
+    ------
+    bool
+        True if the bucket is already at or over max_requests for the current window.
+    """
+    if max_requests == 0:
+        return False
+
+    host = request.client.host
+    now = get_utc_now().timestamp()
+
+    async with general_request_lock:
+        entry = general_request_stats.get(host)
+        if entry is None:
+            return False
+        bucket = entry.get('authenticated')
+        if bucket is None or now - bucket['window_start'] >= RATE_LIMIT_WINDOW_SECONDS:
+            return False
+        return bucket['count'] >= max_requests
+
+
 async def cleanup_general_request_stats(now: float = None) -> None:
     """Prune host entries from general_request_stats whose buckets have all expired.
 
@@ -472,9 +506,10 @@ async def cleanup_general_request_stats(now: float = None) -> None:
 
 class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
     """Rate Limits Middleware. Registered `BEFORE_SECURITY`, wrapping connexion's
-    `SecurityMiddleware`: charges the small unauthenticated bucket for `request.client.host`
-    only once a request has actually failed authentication, instead of guessing pessimistically
-    before the outcome is known.
+    `SecurityMiddleware`: rejects a request outright if `request.client.host`'s authenticated
+    bucket is already exhausted, before authentication runs; otherwise charges the small
+    unauthenticated bucket only once a request has actually failed authentication, instead of
+    guessing pessimistically before the outcome is known.
 
     `call_next()` runs the entire downstream pipeline (security, validation, the handler), but
     for a request that fails authentication that pipeline barely runs at all — `SecurityMiddleware`
@@ -487,7 +522,12 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Charge the unauthenticated bucket only for a request that just failed authentication."""
+        """Reject a request already over its authenticated ceiling before auth runs; otherwise
+        charge the unauthenticated bucket only for a request that just failed authentication."""
+        max_requests = configuration.api_conf['access']['max_request_per_minute']
+        if await is_authenticated_bucket_exhausted(request, max_requests):
+            raise MaxRequestsException(code=6001)
+
         try:
             return await call_next(request)
         except Unauthorized:

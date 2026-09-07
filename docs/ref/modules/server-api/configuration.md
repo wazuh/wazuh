@@ -297,7 +297,9 @@ to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value
 with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
 demand, so it stays at `10` regardless of deployment size. A request to a path or method the API
 does not expose is always billed to this smaller allowance, regardless of any credential it
-carries, since it never reaches the authentication step in the first place.
+carries, since it never reaches the authentication step in the first place. An authenticated
+caller already over its `max_request_per_minute` ceiling is rejected before authentication runs,
+not after, so exceeding the ceiling does not itself cost the authentication step.
 
 ### Response Caching
 
