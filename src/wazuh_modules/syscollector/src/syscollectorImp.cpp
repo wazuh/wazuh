@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <stack>
@@ -972,6 +973,30 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/host/memory/free", "memory_free", createFields);
     setJsonField(ret, originalData, "/host/memory/total", "memory_total", createFields);
     setJsonField(ret, originalData, "/host/memory/used", "memory_used", createFields);
+
+    // Derived field: used over total, as a fraction between 0 and 1 (the schema stores it as a
+    // scaled_float, not a 0-100 percentage). Both operands are already in this document, so it is
+    // computed here instead of being collected and stored. On the delta path originalData holds
+    // only the changed columns, so the key is left out entirely unless both operands are present.
+    if (createFields || (originalData.contains("memory_used") && originalData.contains("memory_total")))
+    {
+        const nlohmann::json::json_pointer pointer("/host/memory/usage");
+        const auto itUsed {originalData.find("memory_used")};
+        const auto itTotal {originalData.find("memory_total")};
+
+        if (itUsed != originalData.end() && itUsed->is_number()
+                && itTotal != originalData.end() && itTotal->is_number()
+                && itTotal->get<double>() > 0.0)
+        {
+            const auto usage {itUsed->get<double>() / itTotal->get<double>()};
+            ret[pointer] = std::clamp(usage, 0.0, 1.0);
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/host/serial_number", "serial_number", createFields);
 
     return ret;
