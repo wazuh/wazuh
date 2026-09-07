@@ -17,7 +17,7 @@ MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${DIR}/etc/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="rc1"
+REVISION="beta6"
 TYPE="manager"
 
 ###  Do not modify below here ###
