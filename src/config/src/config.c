@@ -108,6 +108,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                            /* Socket Config */
     const char *ossca = "sca";                                  /* Security Configuration Assessment */
     const char* osagent_info = "agent-info";                    /* Agent Info Module */
+    const char* oscontainer_instances = "container_instances";   /* Container Instances Module */
     const char *osvulndetection = "vulnerability-detection";    /* Vulnerability Detection Config */
     const char *osvulndetector = "vulnerability-detector";      /* Old Vulnerability Detector Config */
     const char *osindexer = "indexer";                          /* Indexer Config */
@@ -220,6 +221,17 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #else
             mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
+#endif
+        }
+        else if (strcmp(node[i]->element, oscontainer_instances) == 0)
+        {
+#if defined(__linux__) && defined(CLIENT)
+            if ((modules & CWMODULE) && (Read_ContainerInstances(xml, node[i], d1) < 0))
+            {
+                goto fail;
+            }
+#else
+            mdebug2("Container-instances module is not supported on this platform. Ignoring configuration.");
 #endif
         }
         else if (strcmp(node[i]->element, osvulndetection) == 0)
