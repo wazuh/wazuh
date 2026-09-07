@@ -12,12 +12,14 @@ import (
 )
 
 // Response is the outcome of one request the sender records: status, the
-// Retry-After header (empty if absent), the body, and the wall-clock latency.
+// Retry-After and Content-Type headers (empty if absent), the body, and the
+// wall-clock latency.
 type Response struct {
-	Status     int
-	RetryAfter string
-	Body       []byte
-	Latency    time.Duration
+	Status      int
+	RetryAfter  string
+	ContentType string
+	Body        []byte
+	Latency     time.Duration
 }
 
 // Client sends one agent's requests. There is one per agent so that identities
@@ -125,9 +127,10 @@ func (c *Client) Do(method, target string, body []byte, contentType, contentEnco
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
 	return Response{
-		Status:     resp.StatusCode,
-		RetryAfter: resp.Header.Get("Retry-After"),
-		Body:       data,
-		Latency:    time.Since(start),
+		Status:      resp.StatusCode,
+		RetryAfter:  resp.Header.Get("Retry-After"),
+		ContentType: resp.Header.Get("Content-Type"),
+		Body:        data,
+		Latency:     time.Since(start),
 	}, nil
 }
