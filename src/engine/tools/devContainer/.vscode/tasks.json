@@ -73,6 +73,16 @@
             "problemMatcher": []
         },
         {
+            "label": "E2E Scripts: [Manager] Regenerate certs (keep CA)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
+            "args": [
+                "--certs-only",
+                "--regen-certs"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
