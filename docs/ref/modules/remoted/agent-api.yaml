@@ -12,9 +12,9 @@ info:
     The listener only runs when a TLS certificate and key are present on disk; manager packages
     generate a self-signed pair at install time.
 
-    All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` MUST carry the
-    `protocol-version` header. Every route except `GET /` and `POST /enroll` is
-    authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
+    All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` and `GET /cacerts`
+    MUST carry the `protocol-version` header. Every route except `GET /`, `GET /cacerts` and
+    `POST /enroll` is authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
     32-byte key its 64-hex `client.keys` secret decodes to; the key is never transmitted. The token
     binds the agent's identity (`kid`/`sub`/`iss`) and its freshness (`iat`/`nbf`/`exp`, 60 s, fresh
     `jti` per request) — not the method, the request target or the body, which TLS protects.
@@ -26,7 +26,9 @@ info:
 
     `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses the sibling
     `wazuh-enroll+jwt` bearer keyed by the enrollment password (or no credential at all, depending
-    on the manager's configuration).
+    on the manager's configuration). `GET /cacerts` is the other: it hands out the CA that signs
+    the listener's own certificate, so an agent can bootstrap trust in the manager before it holds
+    any credential at all -- by construction it cannot require one.
 
     Statuses this API never returns: `429 Too Many Requests` and `426 Upgrade Required`. Capacity is
     shed with `503`. An agent that receives either has been answered by an intermediary, not by
@@ -53,6 +55,8 @@ servers:
 tags:
   - name: Health
     description: Liveness probe
+  - name: Trust
+    description: CA distribution (bootstrapping trust in the manager)
   - name: Events
     description: Event ingestion
   - name: State
@@ -83,6 +87,75 @@ paths:
                 properties:
                   status: { type: string, example: ok }
                   module: { type: string, example: remoted }
+
+  /cacerts:
+    get:
+      tags: [Trust]
+      operationId: getCaCertificates
+      summary: The CA that signs the listener certificate (unauthenticated)
+      description: |
+        Returns, byte for byte, the PEM file configured as `<remote><https><ca_certificate>` (the
+        installer provisions `etc/certs/root-ca.pem`, the CA it signs the listener certificate with),
+        so an agent can bootstrap trust in the manager without an out-of-band copy of the CA: fetch
+        it once, then verify every later connection against it. A bundle (several `CERTIFICATE`
+        blocks) is served as a bundle. No authentication and no `protocol-version` header -- by
+        construction the caller holds no credential yet; a body or an `Authorization` header, if
+        sent, is ignored. Exempt from the server's in-flight byte budget like `GET /`, so the trust
+        bootstrap is never shed with `503` under memory pressure.
+
+        The file is read on every request, so a CA that goes missing on the manager answers `404`
+        immediately. Coherence with the served certificate is evaluated when the listener starts and
+        once a day afterwards: when the CA on disk does **not** sign the certificate this very
+        listener is serving, the route answers `503 ca_mismatch` instead of handing out a CA that
+        would make every verifying agent fail its handshake against this manager (RF-27). The
+        converse rotation -- a *different but valid* CA written over the file without restarting --
+        is served until the next daily evaluation or a restart; rotate CA and certificate together
+        and restart remoted.
+
+        This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
+        holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
+        CA out of band SHOULD.
+      responses:
+        "200":
+          description: The CA certificate(s) the listener chains to, as a PEM file.
+          content:
+            application/x-pem-file:
+              schema:
+                type: string
+                example: |
+                  -----BEGIN CERTIFICATE-----
+                  MIIB...
+                  -----END CERTIFICATE-----
+        "404":
+          description: |
+            No CA to serve: the configured file is missing, unreadable, or carries no `CERTIFICATE`
+            block. Same body as an unknown route (an agent cannot tell them apart, and does not need
+            to -- neither is a CA it can use; the manager's log names the file).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [not_found] }
+              examples:
+                notFound:
+                  value: { error: "not_found" }
+        "503":
+          description: |
+            Refused: the configured CA does not sign the certificate this listener serves, so handing
+            it out would break every agent that trusted it. Fix the manager's `ca_certificate` /
+            `certificate` pair and restart remoted; the manager logs the mismatch as an ERROR.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [ca_mismatch] }
+              examples:
+                caMismatch:
+                  value: { error: "ca_mismatch" }
 
   /stateless:
     post:

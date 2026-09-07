@@ -60,6 +60,7 @@ namespace remoted::http
                       ResponseMode mode = ResponseMode::Buffered) override;
         std::optional<InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) override;
         TransportDiagnostics diagnostics() const override;
+        TlsCertificateSnapshot certificateStatus() const override;
         void start(const HttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;

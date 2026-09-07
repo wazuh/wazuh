@@ -98,6 +98,20 @@ means the budget is the active bottleneck: raise
 [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes), or reduce what a
 single request may cost ([`https.max_body_size`](configuration.md#httpsmax_body_size)).
 
+### TLS listener certificate — `remoted.server.tls.*`
+
+The health of the certificate the HTTPS listener serves, evaluated when the listener starts and
+once every 24 hours afterwards (each evaluation also re-logs its findings). The leaf is the
+certificate loaded when the listener started; the CA is re-read from disk at each evaluation. Both
+read `0` while the listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the
+mismatch signal, and `GET /cacerts` is answering `503` (see
+[CA distribution](#ca-distribution--remotedcacerts)).
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.server.tls.cert_expiry_days` | gauge (pull, signed) | days | Whole days until the served certificate's `notAfter`; **negative once expired** (the first 24 h past expiry read `-1`). The only signed value in the catalog — alert on `< 30`, which is also when remoted starts logging a WARN | [`https.certificate`](configuration.md#httpscertificate) — renew the certificate |
+| `remoted.server.tls.ca_matches_leaf` | gauge (pull) | flag | `1` when the configured CA signs the served certificate, `0` when it does not **or** could not be read (the log line tells which) | [`https.ca_certificate`](configuration.md#httpsca_certificate) — the CA that must sign [`https.certificate`](configuration.md#httpscertificate) |
+
 ### Deferred forwarding — `remoted.forwarder.deferred.*`
 
 The second half of the two-phase backpressure: how many requests are parked awaiting a
@@ -153,10 +167,11 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
 What each endpoint actually answered its agents. One family per endpoint — `stateless`,
-`stateful`, `stats`, `config` and `enroll` — each with the same closed set of eight status
-cells, so a scraper's columns line up across endpoints (some cells are structurally zero for
-a given endpoint, e.g. `/stateless` never answers 409). Every response is counted exactly
-once, at the single place it is sent. All units are `count`; all are counters.
+`stateful`, `stats`, `config`, `enroll` and `cacerts` (the one `GET` route) — each with the same
+closed set of eight status cells, so a scraper's columns line up across endpoints (some cells
+are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
+`/cacerts`'s `404` lands in `other`). Every response is counted exactly once, at the single
+place it is sent. All units are `count`; all are counters.
 
 | Cell (`remoted.http.<endpoint>.responses.` + code) | Meaning | Tuning |
 |---|---|---|
@@ -352,6 +367,19 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
 | `remoted.download.bytes.total` | counter | bytes | Bytes **offered** to started transfers, counted once at start (an aborted transfer overcounts) | [`remoted.http_stream_chunk_size`](configuration.md#remotedhttp_stream_chunk_size), [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) |
 
+### CA distribution — `remoted.cacerts.*`
+
+Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the
+listener certificate ([`https.ca_certificate`](configuration.md#httpsca_certificate)). The WHY
+behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503` is the
+[`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) pair.
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.cacerts.served` | counter | count | 200: the CA PEM was handed out | — |
+| `remoted.cacerts.not_found` | counter | count | 404: the CA file is missing, unreadable or carries no certificate — agents cannot bootstrap trust until it is restored | diagnostic — restore [`https.ca_certificate`](configuration.md#httpsca_certificate) |
+| `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the configured CA does not sign the served certificate | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the CA that signed [`https.certificate`](configuration.md#httpscertificate), then restart |
+
 ### Admin transport — `remoted.admin.server.*`
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
@@ -412,7 +440,8 @@ legacy daemon counters that same response has always carried:
         "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
                        "413": 1, "500": 0, "503": 4, "other": 0 },
         "stateful":  { "...": 0 }, "stats": { "...": 0 },
-        "config":    { "...": 0 }, "enroll": { "...": 0 }
+        "config":    { "...": 0 }, "enroll": { "...": 0 },
+        "cacerts":   { "total": 34, "2xx": 34, "...": 0 }
       },
       "latency": {
         "stateless": { "count": 98213, "sum": 210394821, "min": 312, "max": 90210,
@@ -426,6 +455,8 @@ legacy daemon counters that same response has always carried:
       "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 512, "...": 0 } },
       "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
       "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
+      "tls":             { "cert_expiry_days": 3649, "ca_matches_leaf": 1 },
+      "cacerts":         { "served": 34, "not_found": 0, "ca_mismatch": 0 },
       "vd_scan":         { "requests_total": 8, "accepted": 8, "...": 0 }
     }
   }
@@ -445,6 +476,8 @@ The group names map onto the catalog sections above one-for-one:
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
 | `downloads` | [`remoted.download.*`](#downloads--remoteddownload) |
+| `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
+| `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts) |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
 
 Conventions worth knowing before reading a response:

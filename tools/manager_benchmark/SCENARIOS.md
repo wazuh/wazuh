@@ -92,6 +92,7 @@ deliberately does not. Two footnotes from running these against a real manager:
 | `contract_ramp_503` | The pipeline's own admission queue (`sync_queue_bytes`, 64 MiB default) — an 80-agent unpaced fleet of large (~2.4 MiB) sessions for a fixed 60s, retry off. `503`s here are expected backpressure, not a failure | `sessions.s503 >= 1`, no transport errors |
 | `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit. Needs `-vd-feed-offset` set correctly (uds mode) or sessions fast-reject with `409` before reaching the scanner instead of measuring real scan-lane pressure | none (load dependent) |
 | `contract_vd_version_mismatch` | The `feed_offset` gate itself (`vdScanLane.cpp`): a deliberately wrong `feed_offset` (1) on every `VDFirst` session, pinning the `409 {"error":"version_mismatch","current_version":N}` contract — distinct from `checksum_reconcile`'s `409 checksum_mismatch` | all 4 sessions end `409`, none `200` |
+| `cacerts` | `GET /cacerts` (RF-27), the unauthenticated CA-distribution route: 20 agents × 10 fetches of the manager's CA PEM over the HTTPS listener — the trust-bootstrap contract, and the floor of the listener's fixed per-request cost (no downstream). `agent` mode only; needs the manager's `remote.https.ca_certificate` in place | all 200 answered `200` with an `application/x-pem-file` body, none `other`, no transport errors |
 
 ## Real captured payloads
 

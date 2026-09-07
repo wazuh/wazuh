@@ -82,6 +82,8 @@ EXPECTED_HTTP_SERVER_METRICS = {
                    '500': 1406, '503': 1407, 'other': 1408},
         'enroll': {'total': 12036, '2xx': 1501, '400': 1502, '403': 1503, '409': 1504, '413': 1505,
                    '500': 1506, '503': 1507, 'other': 1508},
+        'cacerts': {'total': 12836, '2xx': 1601, '400': 1602, '403': 1603, '409': 1604, '413': 1605,
+                    '500': 1606, '503': 1607, 'other': 1608},
     },
     'latency': {
         'stateless': {'count': 8100, 'sum': 8101, 'min': 8102, 'max': 8103, 'p50': 8104, 'p90': 8105,
@@ -113,6 +115,8 @@ EXPECTED_HTTP_SERVER_METRICS = {
                      'rejected_total': 6004},
     'downloads': {'started': 7001, 'rejected': 7002, 'not_found': 7003, 'open_error': 7004,
                   'bytes_total': 7005},
+    'tls': {'cert_expiry_days': 9001, 'ca_matches_leaf': 9002},
+    'cacerts': {'served': 9101, 'not_found': 9102, 'ca_mismatch': 9103},
     'vd_scan': {'requests_total': 8001, 'accepted': 8002, 'version_mismatch': 8003, 'queue_full': 8004,
                 'invalid_agent': 8005, 'vd_error': 8006, 'indexer_unavailable': 8007},
 }
@@ -175,6 +179,38 @@ def test_build_remoted_http_metrics_omits_groups_and_endpoints_that_report_nothi
     assert 'config' not in result['responses']
     assert result['enrollment']['accepted'] == 2001, 'the rest of the group must survive'
     assert 'stateless' in result['responses']
+
+
+def test_build_remoted_http_metrics_omits_the_certificate_groups_when_absent():
+    """A dump from a listener without the certificate families (or one that never started) omits
+    `tls`, `cacerts` and `responses.cacerts` entirely instead of inventing zeros."""
+    dump = _dump_without(
+        *[entry['name'] for entry in REMOTED_METRICS_DUMP['metrics']
+          if entry['name'].startswith(('remoted.server.tls.', 'remoted.cacerts.',
+                                       'remoted.http.cacerts.responses.'))])
+
+    result = stats.build_remoted_http_metrics(dump)
+
+    assert 'tls' not in result
+    assert 'cacerts' not in result
+    assert 'cacerts' not in result['responses']
+    assert result['downloads'] == EXPECTED_HTTP_SERVER_METRICS['downloads'], 'the neighbours must survive'
+    assert 'enroll' in result['responses']
+
+
+def test_build_remoted_http_metrics_keeps_a_negative_expiry_as_an_integer():
+    """`remoted.server.tls.cert_expiry_days` is the catalog's one signed pull (negative once the
+    certificate has expired): it must survive the double-to-int normalization with its sign."""
+    dump = copy.deepcopy(REMOTED_METRICS_DUMP)
+    for entry in dump['metrics']:
+        if entry['name'] == 'remoted.server.tls.cert_expiry_days':
+            entry['value'] = -3.0
+
+    result = stats.build_remoted_http_metrics(dump)
+
+    assert result['tls']['cert_expiry_days'] == -3
+    assert isinstance(result['tls']['cert_expiry_days'], int)
+    assert result['tls']['ca_matches_leaf'] == 9002
 
 
 def test_build_remoted_http_metrics_reports_pull_metrics_as_integers():

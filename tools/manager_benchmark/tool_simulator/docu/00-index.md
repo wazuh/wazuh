@@ -24,6 +24,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [12-acceptance-criteria.md](12-acceptance-criteria.md) | AC-A…AC-L: when the tool is done |
 | [13-engine-event-streams.md](13-engine-event-streams.md) | `POST /stateless`: the log-event batch a lane can stream, alongside inventory |
 | [14-scan-vd.md](14-scan-vd.md) | `POST /scan/vd`: the feed-update re-scan request, and how it differs from a VDFirst session's scan |
+| [15-cacerts.md](15-cacerts.md) | `GET /cacerts`: the CA-distribution request an agent uses to bootstrap trust in the manager |
 
 Operator-facing documentation of the system under test lives in
 `docs/ref/modules/inventory-sync-server/` (architecture, API reference, schemas) and

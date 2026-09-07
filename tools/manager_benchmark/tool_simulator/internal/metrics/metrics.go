@@ -22,6 +22,13 @@ type Counters struct {
 	// collects the 400/401 that also invalidate the run.
 	ScanSent, Scan200, Scan409, Scan503, ScanOther uint64
 
+	// Cacerts* are the GET /cacerts (CA distribution) counters. Cacerts200 is
+	// a PEM handed out; Cacerts404 the CA file missing on the manager;
+	// Cacerts503 the manager refusing a CA that does not sign its own
+	// certificate (docu/15-cacerts.md). CacertsOther collects what invalidates
+	// the run (a 200 without a PEM body, an unexpected status).
+	CacertsSent, Cacerts200, Cacerts404, Cacerts503, CacertsOther uint64
+
 	// RetriesFeed counts feed-not-ready (503+Retry-After) re-sends; Retries503
 	// counts bare-503 (backpressure) re-sends; RetriesExhausted counts sessions
 	// whose retry budget ran out while the server was still answering 503.
@@ -47,6 +54,7 @@ func newBucket() *bucket {
 		"notify":    NewHistogram(),
 		"startup":   NewHistogram(),
 		"scan":      NewHistogram(),
+		"cacerts":   NewHistogram(),
 	}}
 }
 
@@ -184,6 +192,28 @@ func (r *Registry) RecordScanVD(fleet, lane string, status int, latencyUS uint64
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Scan503 }, 1)
 	default:
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.ScanOther }, 1)
+	}
+}
+
+// RecordCacerts classifies a GET /cacerts outcome and records its latency.
+//
+// 200 (the CA PEM served), 404 (no CA file on the manager) and 503 (the
+// manager refuses to hand out a CA that does not sign its own certificate)
+// are the contract outcomes; anything else lands in CacertsOther, which the
+// caller pairs with invalidating the run (a status the contract does not
+// name, or a 200 that did not carry a PEM).
+func (r *Registry) RecordCacerts(fleet, lane string, status int, latencyUS uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.CacertsSent }, 1)
+	r.observe(fleet, lane, "cacerts", latencyUS)
+	switch status {
+	case 200:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts200 }, 1)
+	case 404:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts404 }, 1)
+	case 503:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts503 }, 1)
+	default:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.CacertsOther }, 1)
 	}
 }
 

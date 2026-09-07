@@ -503,7 +503,7 @@ _FWD_ERROR_FUNNEL_COLS = [
 
 # One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
 # structurally zero for a given endpoint (kept for a uniform vocabulary).
-_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll", "cacerts"]
 _HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
 
 # The admission split: everything that arrived lands in exactly one of these. remoted is a

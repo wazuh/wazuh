@@ -16,7 +16,7 @@ var validKinds = map[string]bool{
 	"delta": true, "cleans": true, "checksum": true,
 	"metadata": true, "groups": true, "full_resync": true,
 	"delete_agent": true, "engine": true, "raw": true,
-	"scan_vd": true,
+	"scan_vd": true, "cacerts": true,
 }
 
 // Load reads and strictly validates a scenario file. Unknown fields and unknown
@@ -158,6 +158,20 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 			step.Checksum != "" || step.Raw != "" || step.GlobalVer != 0 {
 			return fmt.Errorf("%s: scan_vd only takes feed_offset and the timing fields "+
 				"(it sends {\"type\":\"feed_update\",\"feed_offset\":N}, no session payload)", where)
+		}
+	}
+	if step.Kind == "cacerts" {
+		// GET /cacerts is a remoted route (the CA that signs the listener's own
+		// certificate); the module's Unix socket has nothing of the sort.
+		if s.Mode != "agent" {
+			return fmt.Errorf("%s: cacerts is agent-mode only (GET /cacerts is a remoted route)", where)
+		}
+		// No body, no parameters: only the timing fields make sense on this step.
+		if step.Documents != nil || step.Contexts != nil || step.Dump != "" ||
+			step.Module != "" || step.Option != "" || len(step.Indices) > 0 ||
+			step.Checksum != "" || step.Raw != "" || step.GlobalVer != 0 || step.FeedOffset != nil {
+			return fmt.Errorf("%s: cacerts only takes the timing fields "+
+				"(it sends a body-less GET /cacerts, nothing else)", where)
 		}
 	}
 	if (step.Kind == "metadata" || step.Kind == "groups") && len(step.Indices) == 0 {

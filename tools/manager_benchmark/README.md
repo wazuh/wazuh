@@ -234,7 +234,9 @@ The same scenarios over two transports, so the difference isolates the relay:
   scan lane.
 - **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with a
   `wazuh-agent+jwt` bearer token per request, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
-  the `POST /stateful` sessions.
+  the `POST /stateful` sessions. A `cacerts` step adds the unauthenticated `GET /cacerts` (the CA that
+  signs the listener certificate) — the trust bootstrap a real agent does first, and the floor of the
+  listener's fixed per-request cost since nothing sits downstream of it (`scenarios/cacerts.json`).
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
 `sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the
