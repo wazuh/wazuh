@@ -67,18 +67,21 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 
 Options marked "not set" are only written to the configuration file when their variable is provided; the value in parentheses is the built-in default applied by `wazuh-manager-remoted`. See the [remoted configuration reference](../modules/remoted/configuration.md) for the meaning and accepted values of each option.
 
-`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. When they are, the installer does not generate the default self-signed certificate: the referenced files are managed by the administrator. `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. The installer never generates the listener certificate: whether these keep their defaults or not, the referenced files are provisioned and managed by the administrator (see [Deploy certificates](#deploy-certificates)). `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
 
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. When the file is not there, the HTTPS server fails to start and takes the legacy agent listener down with it: the service reports `active` while nothing is listening. The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them and does not adjust their ownership.
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`). The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them, and only fixes the ownership of the default `etc/certs/remoted.pem`/`remoted-key.pem` pair.
 
 ### Configuration
 
 #### Deploy certificates
 
-Deploy the SSL certificates for secure communication between the Wazuh server and indexer. These certificates should be extracted from the `wazuh-certificates.tar` file generated during the certificate creation process.
+The manager does not generate TLS certificates. Both the material it needs come from the Wazuh installation assistant's certificate tool (`wazuh-certs-tool`), which issues one root CA and a leaf per node from it, and are extracted from the `wazuh-certificates.tar` file generated during the certificate creation process:
+
+- the **indexer connection** (`root-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`), from the manager node's `$NODE_NAME.pem`/`$NODE_NAME-key.pem`;
+- the **HTTPS agent listener** served by `wazuh-manager-remoted` (and reused by `wazuh-manager-authd` on port 1515): `remoted.pem`/`remoted-key.pem`, from the node's `$NODE_NAME-remoted.pem`/`$NODE_NAME-remoted-key.pem`. This must be a leaf of the same `root-ca.pem` — the manager serves that CA on `GET /cacerts` and agents pin it — never a self-signed pair.
 
 ```bash
 NODE_NAME=node-1
@@ -87,27 +90,56 @@ NODE_NAME=node-1
 sudo mkdir -p /var/wazuh-manager/etc/certs
 
 # Extract and deploy certificates
-sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ \
+    ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem \
+    ./$NODE_NAME-remoted.pem ./$NODE_NAME-remoted-key.pem
 sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
 sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
 
-# Set ownership and permissions on the indexer certificates.
-# The installer creates etc/certs as root:wazuh-manager with the sticky bit (1770)
-# and the daemons self-generate their own certificates (authd, remoted, apid) there
-# as wazuh-manager:wazuh-manager. Only the externally provisioned indexer material is
-# owned by root:wazuh-manager 0640, so the manager can read it after dropping
-# privileges but cannot replace its own trust anchor.
+# Set ownership and permissions.
+# The installer creates etc/certs as root:wazuh-manager with the sticky bit (1770).
+# The indexer trust material is read as root and owned by root:wazuh-manager 0640, so
+# the manager can read it after dropping privileges but cannot replace its own trust
+# anchor. remoted and authd open the listener pair AFTER dropping privileges, so it is
+# owned by wazuh-manager:wazuh-manager 0640 (the installer re-applies this to an already
+# deployed pair at the default paths on every install or upgrade).
 sudo chown root:wazuh-manager \
     /var/wazuh-manager/etc/certs/root-ca.pem \
     /var/wazuh-manager/etc/certs/indexer-connector.pem \
     /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo chown wazuh-manager:wazuh-manager \
+    /var/wazuh-manager/etc/certs/remoted.pem \
+    /var/wazuh-manager/etc/certs/remoted-key.pem
 sudo chmod 640 \
     /var/wazuh-manager/etc/certs/root-ca.pem \
     /var/wazuh-manager/etc/certs/indexer-connector.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+    /var/wazuh-manager/etc/certs/remoted.pem \
+    /var/wazuh-manager/etc/certs/remoted-key.pem
 ```
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.
+
+The listener pair is mandatory and the manager fails closed without it. When it is missing at install time the package prints, once:
+
+```
+NOTICE: no TLS certificate for the HTTPS agent listener was found
+        (/var/wazuh-manager/etc/certs/remoted.pem, /var/wazuh-manager/etc/certs/remoted-key.pem).
+        wazuh-manager does not generate certificates. Provision root-ca.pem,
+        remoted.pem and remoted-key.pem with the Wazuh installation assistant
+        (wazuh-certs-tool) before starting the service; wazuh-manager-control
+        refuses to start until they exist. ...
+```
+
+and `wazuh-manager-control start` stops at the configuration validator, before any daemon runs, with the same verdict on the console and in `logs/wazuh-manager.log`:
+
+```
+(1244): Invalid configuration at '/remote/https/certificate': file not found: /var/wazuh-manager/etc/certs/remoted.pem (the manager does not generate certificates; provision the file, e.g. with wazuh-certs-tool).
+```
+
+A pair that exists but is not readable by the `wazuh-manager` user passes that validator (it runs as root) and stops `wazuh-manager-remoted` instead, which logs `Cannot start the HTTPS agent listener: the TLS private key 'etc/certs/remoted-key.pem' is missing or unreadable by the service user.` (or the certificate, or both) followed by the same provisioning hint, and exits; `wazuh-manager-authd` reports `SSL context setup failed (certificate '…', key '…')` for the same reason. Fix the ownership as above and start again.
 
 #### Configure indexer connection
 

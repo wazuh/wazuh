@@ -507,7 +507,9 @@ int main(int argc, char **argv)
 
         /* Start SSL */
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
-            merror("SSL context setup failed. Exiting.");
+            merror("SSL context setup failed (certificate '%s', key '%s'). wazuh-manager does not generate TLS "
+                   "certificates: provision them with wazuh-certs-tool (Wazuh installation assistant); see 'Deploy "
+                   "certificates' in the installation guide. Exiting.", config.manager_cert, config.manager_key);
             exit(1);
         }
 

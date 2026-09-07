@@ -45,7 +45,10 @@ namespace manager_config::detail
             std::error_code ec;
             if (!std::filesystem::is_regular_file(resolved, ec))
             {
-                return Error {pointer, "file not found: " + resolved.string()};
+                return Error {pointer,
+                              "file not found: " + resolved.string() +
+                                  " (the manager does not generate certificates; provision the file, e.g. with "
+                                  "wazuh-certs-tool)"};
             }
             return std::nullopt;
         }
@@ -118,9 +121,10 @@ namespace manager_config::detail
             }
         }
 
-        // Only the files the manager itself owns: the installer generates the HTTPS/authd certificate and the
-        // operator provides the rest. indexer.ssl.* is deliberately not checked (the installer never creates
-        // those files and the indexer connector reports them at runtime), otherwise a fresh install could not start.
+        // The manager does not generate any of these files: the operator provisions the HTTPS/authd certificate
+        // pair and CA (e.g. with wazuh-certs-tool), so a missing file is a fail-closed verdict here, before any
+        // daemon starts. indexer.ssl.* is deliberately not checked (the indexer connector reports those files at
+        // runtime), otherwise a manager without an indexer could not start.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",

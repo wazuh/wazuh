@@ -110,6 +110,9 @@ STATIC char* build_limits_json(const module_limits_t *limits);
 // Read control endpoint internal options into the C++ module's config struct
 STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
 
+// Fail closed when the HTTPS listener's certificate or private key is missing or unreadable
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config);
+
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
 #define UPGRADE_ACK_HEADER_SIZE 17
@@ -545,6 +548,37 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     }
 }
 
+/**
+ * @brief Refuse to start when the HTTPS agent listener's certificate or private key cannot be read.
+ *        The manager does not generate these files: the operator provisions them. The configuration
+ *        validator wazuh-manager-control runs first (wazuh-manager-conf validate) only checks that they
+ *        exist, as root; this runs after remoted has entered its chroot and dropped privileges (main.c,
+ *        HandleRemote()), so access(R_OK) answers the question the C++ module would otherwise die on:
+ *        can the service user open them? Exactly one deterministic message is logged (the paths as
+ *        configured, relative to the chroot) and the daemon exits; the module's own exception
+ *        (RestinioHttpServer) stays as the last resort for files that exist but fail to load.
+ *        certificate_path/private_key_path are always populated: the schema gives both options a
+ *        non-empty default and w_remoted_build_module_config() copies them verbatim.
+ */
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) {
+    const char *certificate = rm_config->certificate_path;
+    const char *key = rm_config->private_key_path;
+    const bool certificate_ok = access(certificate, R_OK) == 0;
+    const bool key_ok = access(key, R_OK) == 0;
+
+    if (certificate_ok && key_ok) {
+        return;
+    }
+
+    if (!certificate_ok && !key_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_BOTH, certificate, key);
+    } else if (!certificate_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CERT, certificate);
+    } else {
+        merror_exit(REMOTED_TLS_FILES_MISSING_KEY, key);
+    }
+}
+
 void w_remoted_validate_module_config(void) {
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&logr, &rm_config);
@@ -589,6 +623,7 @@ void HandleSecure()
         remoted_module_config_t rm_config;
         w_remoted_build_module_config(&logr, &rm_config);
         remoted_module_control_config(&rm_config);
+        w_remoted_check_tls_files(&rm_config);
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {

@@ -60,6 +60,42 @@ USER_REGISTER_SERVICE="n" \
 To move the system service to the new directory on purpose, pass
 `USER_TAKEOVER_SERVICE="y"` instead.
 
+### Provision certificates
+
+The manager does not generate TLS certificates. Before the first start, deploy under
+`etc/certs` the indexer trust material — `root-ca.pem`, `indexer-connector.pem`,
+`indexer-connector-key.pem` (`root:wazuh-manager 640`) — and the HTTPS agent listener
+pair — `remoted.pem`, `remoted-key.pem` (`wazuh-manager:wazuh-manager 640`) — issued
+by the Wazuh installation assistant's certificate tool (`wazuh-certs-tool`). The
+installer prints a `NOTICE` when the listener pair is missing, and
+`wazuh-manager-control start` refuses to start until it exists
+(`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`).
+See [Deploy certificates](../ref/getting-started/installation.md#deploy-certificates).
+
+In the devcontainer, the E2E environment carries a copy of that tool
+(`src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by
+`wazuh-certs-tool.yml` next to it) and a script that deploys its output with the
+names and ownership above:
+
+```bash
+cd $WAZUH_REPO/src/engine/tools/devContainer/e2e
+./init.sh --certs-only          # issues certs/ (reuses certs/root-ca.pem when present)
+sudo ./wazuh_copy_certs.sh      # -> /var/wazuh-manager/etc/certs
+```
+
+For a sandbox install, point the copy script at its directory:
+
+```bash
+sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
+```
+
+Or run the tool directly and `install` the five files yourself, as the CI does
+(`.github/workflows/5_testintegration_manager.yml`, step "Provision TLS certificates"):
+
+```bash
+bash $WAZUH_REPO/src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs
+```
+
 ### Starting the Server
 
 After installation, start the manager:

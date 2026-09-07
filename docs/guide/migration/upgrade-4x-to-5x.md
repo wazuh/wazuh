@@ -225,7 +225,7 @@ A 4.X agent never verified the manager's certificate at all; a 5.0 agent does by
 
 As with the connectivity check, the abort happens before the package manager runs: the agent stays on 4.14.X, keeps running, and the upgrade can be retried. `upgrade_result` is `2`.
 
-This matters specifically for an **on-prem fleet whose manager uses a self-signed certificate** — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
+This matters specifically for an **on-prem fleet whose manager certificate is issued by the deployment's own CA** (the `root-ca.pem` of the Wazuh installation assistant's `wazuh-certs-tool`, which also issues the listener certificate — the manager generates none itself) — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
 
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 

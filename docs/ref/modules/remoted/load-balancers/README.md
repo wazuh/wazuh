@@ -235,9 +235,9 @@ flowchart LR
   verification, which you should. Its subjectAltName must contain the name the balancer uses to
   reach it.
 
-> Certificates generated automatically at install time are a starting point. For a real deployment,
-> replace them with certificates that carry the names actually used, issued by a CA both sides
-> trust.
+> The manager does not generate certificates: the listener pair is issued externally (the Wazuh
+> installation assistant's `wazuh-certs-tool`), so issue it with the names actually used — the one
+> the balancer checks and the one agents connect to — from a CA both sides trust.
 
 ## 6. `verification_mode`: read this before enabling it
 
