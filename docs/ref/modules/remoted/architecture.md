@@ -83,7 +83,7 @@ when it silently is not.
 ### Layering
 
 - **Transport** — RESTinio + OpenSSL, behind a transport-agnostic interface, so the HTTP library can
-  be swapped without touching a single endpoint. Default bind `127.0.0.1:1517`.
+  be swapped without touching a single endpoint. Default bind `0.0.0.0:1517`.
 - **Auth middleware** — framework-agnostic verification of the `wazuh-agent+jwt` bearer: compact
   grammar, exact header/claim sets, HS256 with the agent's key (constant-time comparison), time rules,
   identity, and the registered-address check against the agent's `ip` column in `client.keys` (the

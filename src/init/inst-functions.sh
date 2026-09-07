@@ -893,7 +893,7 @@ WriteRemote()
     echo "  <remote>" >> $NEWCONFIG
     echo "    <https>" >> $NEWCONFIG
     echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
-    echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}</bind_addr>" >> $NEWCONFIG
+    echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-0.0.0.0}</bind_addr>" >> $NEWCONFIG
     echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
     echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
     echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
@@ -922,9 +922,9 @@ WriteRemote()
         echo "      <ipv6>${WAZUH_REMOTE_LEGACY_IPV6}</ipv6>" >> $NEWCONFIG
     fi
     # With an IPv6 listener and no explicit address, local_ip is left out so
-    # that remoted applies its own IPv6 default instead of 127.0.0.1.
+    # that remoted applies its own IPv6 default instead of 0.0.0.0.
     if [ -n "${WAZUH_REMOTE_LEGACY_LOCAL_IP}" ] || [ "X${WAZUH_REMOTE_LEGACY_IPV6}" != "Xyes" ]; then
-        echo "      <local_ip>${WAZUH_REMOTE_LEGACY_LOCAL_IP:-127.0.0.1}</local_ip>" >> $NEWCONFIG
+        echo "      <local_ip>${WAZUH_REMOTE_LEGACY_LOCAL_IP:-0.0.0.0}</local_ip>" >> $NEWCONFIG
     fi
     echo "      <queue_size>${WAZUH_REMOTE_LEGACY_QUEUE_SIZE:-131072}</queue_size>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}" ]; then

@@ -187,7 +187,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
 {
     const auto config = buildHttpServerConfig(zeroedConfig());
 
-    EXPECT_EQ(config.bindAddress, "127.0.0.1");
+    EXPECT_EQ(config.bindAddress, "0.0.0.0");
     // Empty C-ABI buffer -> "" == no prefix, today's behavior (D3: an absent tag changes nothing).
     EXPECT_EQ(config.globalPrefix, "");
     EXPECT_EQ(config.port, 1517);
