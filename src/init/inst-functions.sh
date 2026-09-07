@@ -1024,6 +1024,27 @@ InstallCommon()
                       chcon -t textrel_shlib_t ${INSTALLDIR}/lib/modern.bpf.o
                   fi
           fi
+
+          # rt_file.bpf.o is the eBPF Module's own BPF object (#37396), built by
+          # shared_modules/ebpf_provider into build/lib/. It is a *second*
+          # object, not a replacement for modern.bpf.o above: host FIM whodata
+          # still loads modern.bpf.o, and only the container event drain loads
+          # this one (see ADR-001 / D9). syscheckd resolves it as
+          # CB_RT_BPF_OBJECT_PATH = "lib/rt_file.bpf.o" relative to the install
+          # directory, because a daemonised agent's CWD is not INSTALLDIR --
+          # without this rule rt_open() cannot find its object and the whole
+          # container event path degrades silently to "no engine".
+          # The object is only produced when the build host has a working
+          # bpftool and libbpf headers (the provider's CMake gates it), hence
+          # the -f guard.
+          if [ -f build/lib/rt_file.bpf.o ]
+              then
+                  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/rt_file.bpf.o ${INSTALLDIR}/lib
+
+                  if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                      chcon -t textrel_shlib_t ${INSTALLDIR}/lib/rt_file.bpf.o
+                  fi
+          fi
       fi
     fi
 

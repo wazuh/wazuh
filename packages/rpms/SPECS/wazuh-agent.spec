@@ -180,8 +180,18 @@ install -m 0440 VERSION.json ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/a
 install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init
 
 rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
+# rt_file.bpf.o (the eBPF Module's object, #37396) gets the same treatment as
+# modern.bpf.o: moved out of the way of find-debuginfo.sh, which cannot process
+# a BPF ELF, then copied back afterwards. Guarded because the provider's CMake
+# only produces it when the build host has a working bpftool and libbpf headers.
+if [ -f ${RPM_BUILD_ROOT}%{_localstatedir}/lib/rt_file.bpf.o ]; then
+    rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/rt_file.bpf.o
+fi
 %{_rpmconfigdir}/find-debuginfo.sh
 cp %{_localstatedir}/lib/modern.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
+if [ -f %{_localstatedir}/lib/rt_file.bpf.o ]; then
+    cp %{_localstatedir}/lib/rt_file.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
+fi
 
 exit 0
 
