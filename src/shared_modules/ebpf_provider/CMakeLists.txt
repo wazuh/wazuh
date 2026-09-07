@@ -68,7 +68,20 @@ else()
 endif()
 
 set(RT_BPF_OBJ ${CMAKE_BINARY_DIR}/lib/rt_file.bpf.o)
-set(RT_BPF_PREBUILT ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/rt_file.bpf.o)
+
+# PER-ARCHITECTURE, and this is not cosmetic. A BPF object is compiled against
+# one architecture's vmlinux.h with -D__TARGET_ARCH_<arch>, so an x86 object is
+# not loadable on arm64 — the CO-RE relocations and the pt_regs field offsets
+# are both wrong. A single arch-blind prebuilt/rt_file.bpf.o would be copied
+# into place on every build host and fail to load on half of them, and the
+# runtime failure looks exactly like "no eBPF here", which is the one thing
+# this path degrades to silently.
+#
+# To refresh one: build it on a host of that architecture with clang, libbpf
+# headers and either the vendored vmlinux.h or a usable bpftool (the elseif
+# branch below is what produces it, at build/lib/rt_file.bpf.o), then copy it
+# to prebuilt/${RT_BPF_ARCH}/. See 14-spike-integration-plan.md WP6.
+set(RT_BPF_PREBUILT ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o)
 
 # The portable, per-architecture vmlinux.h the existing pipeline already uses
 # (fetched by external/libbpf-bootstrap's vmlinux.h ExternalProject). Preferred
@@ -104,7 +117,7 @@ endif()
 
 if(EXISTS ${RT_BPF_PREBUILT})
 
-  message(STATUS "eBPF Module: using prebuilt rt_file.bpf.o")
+  message(STATUS "eBPF Module: using prebuilt ${RT_BPF_ARCH} rt_file.bpf.o")
   add_custom_command(
     OUTPUT ${RT_BPF_OBJ}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RT_BPF_PREBUILT} ${RT_BPF_OBJ}
@@ -160,6 +173,7 @@ else()
   if(NOT EXISTS ${RT_VMLINUX_VENDORED} AND NOT RT_BPFTOOL_USABLE)
     string(APPEND RT_BPF_SKIP_REASON " no vendored vmlinux.h and no usable bpftool;")
   endif()
+  string(APPEND RT_BPF_SKIP_REASON " no prebuilt at ${RT_BPF_PREBUILT};")
   message(STATUS "eBPF Module: skipping rt_file.bpf.o —${RT_BPF_SKIP_REASON} "
                  "librt_engine still builds, rt_open() will report eBPF unavailable at runtime.")
   add_custom_target(rt_file_bpf_object)
